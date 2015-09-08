@@ -22,28 +22,31 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.AllocatableValue;
 
-import com.oracle.graal.compiler.common.alloc.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Indent;
+import com.oracle.graal.lir.LIRInsertionBuffer;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.trace.TraceInterval.SpillState;
 import com.oracle.graal.lir.alloc.trace.TraceLinearScan.IntervalPredicate;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
-import com.oracle.graal.lir.phases.*;
 
-final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
+final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAllocationPhase {
 
     private static final IntervalPredicate mustStoreAtDefinition = new TraceLinearScan.IntervalPredicate() {
 
@@ -53,30 +56,15 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
         }
     };
 
-    protected final TraceLinearScan allocator;
-
-    protected TraceLinearScanEliminateSpillMovePhase(TraceLinearScan allocator) {
-        this.allocator = allocator;
-    }
-
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig) {
-        eliminateSpillMoves();
-    }
-
-    /**
-     * @return the index of the first instruction that is of interest for
-     *         {@link #eliminateSpillMoves()}
-     */
-    protected static int firstInstructionOfInterest() {
-        // also look at Labels as they define PHI values
-        return 0;
+                    RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
+        eliminateSpillMoves(allocator);
     }
 
     // called once before assignment of register numbers
     @SuppressWarnings("try")
-    void eliminateSpillMoves() {
+    private static void eliminateSpillMoves(TraceLinearScan allocator) {
         try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves")) {
 
             /*
@@ -95,7 +83,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
                     int numInst = instructions.size();
 
                     // iterate all instructions of the block.
-                    for (int j = firstInstructionOfInterest(); j < numInst; j++) {
+                    for (int j = 0; j < numInst; j++) {
                         LIRInstruction op = instructions.get(j);
                         int opId = op.id();
 
@@ -179,7 +167,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
      * @param block The block {@code move} is located in.
      * @param move Spill move.
      */
-    protected static boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
+    private static boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
         // TODO (je) do not eliminate spill moves yet!
         return false;
     }

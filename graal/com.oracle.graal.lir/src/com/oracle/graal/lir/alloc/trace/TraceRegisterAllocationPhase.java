@@ -22,25 +22,34 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.compiler.common.alloc.*;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import com.oracle.graal.compiler.common.alloc.TraceBuilder;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.Indent;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
+import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.ssi.*;
+import com.oracle.graal.lir.phases.AllocationPhase;
+import com.oracle.graal.lir.ssi.SSIUtil;
+import com.oracle.graal.lir.ssi.SSIVerifier;
 
 public final class TraceRegisterAllocationPhase extends AllocationPhase {
     public static class Options {
@@ -77,8 +86,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     trivialTracesMetric.increment();
                 }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + traceNumber + ": " + trace);
-                if (TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                    new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, new AllocationContext(spillMoveFactory, registerAllocationConfig), false);
+                if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
+                    new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, new TraceAllocationContext(spillMoveFactory, registerAllocationConfig), false);
                 } else {
                     TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces);
                     allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
@@ -92,7 +101,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         }
         Debug.dump(lir, "After trace allocation");
 
-        new TraceGlobalMoveResolutionPhase(resultTraces).apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, new AllocationContext(spillMoveFactory, registerAllocationConfig));
+        new TraceGlobalMoveResolutionPhase(resultTraces).apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, new TraceAllocationContext(spillMoveFactory, registerAllocationConfig));
 
         try (Scope s = Debug.scope("TraceRegisterAllocationFixup")) {
             if (replaceStackToStackMoves(lir, spillMoveFactory)) {

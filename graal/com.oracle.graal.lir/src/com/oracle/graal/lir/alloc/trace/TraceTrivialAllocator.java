@@ -43,7 +43,6 @@ import com.oracle.graal.lir.ValueProcedure;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
-import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.util.VariableVirtualStackValueMap;
 
@@ -51,7 +50,7 @@ import com.oracle.graal.lir.util.VariableVirtualStackValueMap;
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
  * than the {@link LabelOp} and the {@link JumpOp}.
  */
-final class TraceTrivialAllocator extends AllocationPhase {
+final class TraceTrivialAllocator extends TraceAllocationPhase {
 
     private final TraceBuilderResult<?> resultTraces;
 
