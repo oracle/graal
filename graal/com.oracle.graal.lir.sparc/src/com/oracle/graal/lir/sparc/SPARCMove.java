@@ -189,25 +189,25 @@ public class SPARCMove {
             getDelayedControlTransfer().emitControlTransfer(crb, masm);
             if (resultKind == Float) {
                 if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
-                    masm.movwtos(asIntReg(input), asFloatReg(result));
+                    masm.movwtos(asRegister(input, Kind.Int), asRegister(result, Kind.Float));
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
             } else if (resultKind == Double) {
                 if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
-                    masm.movxtod(asIntReg(input), asDoubleReg(result));
+                    masm.movxtod(asRegister(input, Kind.Int), asRegister(result, Kind.Double));
                 } else {
-                    masm.movxtod(asLongReg(input), asDoubleReg(result));
+                    masm.movxtod(asRegister(input, Kind.Long), asRegister(result, Kind.Double));
                 }
             } else if (inputKind == Float) {
                 if (resultKind == Int || resultKind == Short || resultKind == Byte) {
-                    masm.movstosw(asFloatReg(input), asIntReg(result));
+                    masm.movstosw(asRegister(input, Kind.Float), asRegister(result, Kind.Int));
                 } else {
-                    masm.movstouw(asFloatReg(input), asIntReg(result));
+                    masm.movstouw(asRegister(input, Kind.Float), asRegister(result, Kind.Int));
                 }
             } else if (inputKind == Double) {
                 if (resultKind == Long) {
-                    masm.movdtox(asDoubleReg(input), asLongReg(result));
+                    masm.movdtox(asRegister(input, Kind.Double), asRegister(result, Kind.Long));
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
@@ -297,7 +297,7 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress address = addressValue.toAddress();
-            loadEffectiveAddress(crb, masm, address, asLongReg(result), getDelayedControlTransfer());
+            loadEffectiveAddress(crb, masm, address, asRegister(result, Kind.Long), getDelayedControlTransfer());
         }
     }
 
@@ -424,7 +424,7 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress address = (SPARCAddress) crb.asAddress(slot);
-            loadEffectiveAddress(crb, masm, address, asLongReg(result), getDelayedControlTransfer());
+            loadEffectiveAddress(crb, masm, address, asRegister(result, Kind.Long), getDelayedControlTransfer());
         }
     }
 
@@ -688,7 +688,7 @@ public class SPARCMove {
     protected static void compareAndSwap(CompilationResultBuilder crb, SPARCMacroAssembler masm, AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue,
                     SPARCDelayedControlTransfer delay) {
         delay.emitControlTransfer(crb, masm);
-        switch (cmpValue.getKind()) {
+        switch ((Kind) cmpValue.getPlatformKind()) {
             case Int:
                 masm.cas(asRegister(address), asRegister(cmpValue), asRegister(newValue));
                 break;

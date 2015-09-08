@@ -197,7 +197,7 @@ public class ForeignCallStub extends Stub {
     protected StructuredGraph getGraph() {
         WordTypes wordTypes = providers.getWordTypes();
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
-        boolean isObjectResult = linkage.getOutgoingCallingConvention().getReturn().getKind() == Kind.Object;
+        boolean isObjectResult = !linkage.getOutgoingCallingConvention().getReturn().getLIRKind().isValue();
 
         StructuredGraph graph = new StructuredGraph(toString(), null, AllowAssumptions.NO);
         graph.disableInlinedMethodRecording();

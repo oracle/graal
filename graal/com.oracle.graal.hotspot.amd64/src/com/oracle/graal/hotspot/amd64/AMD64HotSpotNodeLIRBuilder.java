@@ -78,7 +78,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
         for (int i = 0; i < params.length - 1; i++) {
-            params[i] = LIRGenerator.toStackKind(incomingArguments.getArgument(i));
+            params[i] = incomingArguments.getArgument(i);
             if (isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
                 if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
@@ -96,7 +96,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp()));
+            assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp())) : paramValue.getLIRKind() + " != " + param.stamp();
             setResult(param, gen.emitMove(paramValue));
         }
     }
@@ -173,7 +173,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         RegisterValue raxLocal = AMD64.rax.asValue(expected.getLIRKind());
         gen.emitMove(raxLocal, expected);
-        append(new CompareAndSwapOp(expected.getKind(), raxLocal, getGen().asAddressValue(operand(x.getAddress())), raxLocal, newVal));
+        append(new CompareAndSwapOp((Kind) expected.getPlatformKind(), raxLocal, getGen().asAddressValue(operand(x.getAddress())), raxLocal, newVal));
 
         setResult(x, gen.emitMove(raxLocal));
     }

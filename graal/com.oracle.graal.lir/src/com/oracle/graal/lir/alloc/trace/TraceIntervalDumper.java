@@ -53,7 +53,7 @@ final class TraceIntervalDumper implements IntervalDumper {
         Value hint = null;
         AllocatableValue operand = interval.operand;
         String type = "fixed";
-        char typeChar = operand.getKind().getTypeChar();
+        char typeChar = operand.getPlatformKind().getTypeChar();
         visitor.visitIntervalStart(operand, operand, operand, hint, type, typeChar);
 
         // print ranges
@@ -71,7 +71,7 @@ final class TraceIntervalDumper implements IntervalDumper {
         Value hint = interval.locationHint(false) != null ? interval.locationHint(false).location() : null;
         AllocatableValue operand = interval.operand;
         String type = isRegister(operand) ? "fixed" : operand.getLIRKind().getPlatformKind().toString();
-        char typeChar = operand.getKind().getTypeChar();
+        char typeChar = operand.getPlatformKind().getTypeChar();
         visitor.visitIntervalStart(interval.splitParent().operand, operand, interval.location(), hint, type, typeChar);
 
         // print ranges

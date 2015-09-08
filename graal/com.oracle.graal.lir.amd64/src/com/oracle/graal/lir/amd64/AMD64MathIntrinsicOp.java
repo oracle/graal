@@ -52,11 +52,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         switch (opcode) {
-            case LOG:   masm.flog(asDoubleReg(result), asDoubleReg(input), false); break;
-            case LOG10: masm.flog(asDoubleReg(result), asDoubleReg(input), true); break;
-            case SIN:   masm.fsin(asDoubleReg(result), asDoubleReg(input)); break;
-            case COS:   masm.fcos(asDoubleReg(result), asDoubleReg(input)); break;
-            case TAN:   masm.ftan(asDoubleReg(result), asDoubleReg(input)); break;
+            case LOG:   masm.flog(asRegister(result, Kind.Double), asRegister(input, Kind.Double), false); break;
+            case LOG10: masm.flog(asRegister(result, Kind.Double), asRegister(input, Kind.Double), true); break;
+            case SIN:   masm.fsin(asRegister(result, Kind.Double), asRegister(input, Kind.Double)); break;
+            case COS:   masm.fcos(asRegister(result, Kind.Double), asRegister(input, Kind.Double)); break;
+            case TAN:   masm.ftan(asRegister(result, Kind.Double), asRegister(input, Kind.Double)); break;
             default:    throw JVMCIError.shouldNotReachHere();
         }
     }

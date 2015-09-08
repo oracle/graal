@@ -58,10 +58,10 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
             case SQRT:
                 switch (inputKind) {
                     case Float:
-                        masm.fsqrts(asFloatReg(input), asFloatReg(result));
+                        masm.fsqrts(asRegister(input, Kind.Float), asRegister(result, Kind.Float));
                         break;
                     case Double:
-                        masm.fsqrtd(asDoubleReg(input), asDoubleReg(result));
+                        masm.fsqrtd(asRegister(input, Kind.Double), asRegister(result, Kind.Double));
                         break;
                     default:
                         JVMCIError.shouldNotReachHere();
@@ -70,10 +70,10 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
             case ABS:
                 switch (inputKind) {
                     case Float:
-                        masm.fabss(asFloatReg(input), asFloatReg(result));
+                        masm.fabss(asRegister(input, Kind.Float), asRegister(result, Kind.Float));
                         break;
                     case Double:
-                        masm.fabsd(asDoubleReg(input), asDoubleReg(result));
+                        masm.fabsd(asRegister(input, Kind.Double), asRegister(result, Kind.Double));
                         break;
                     default:
                         JVMCIError.shouldNotReachHere();

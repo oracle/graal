@@ -144,7 +144,7 @@ public class AMD64ControlFlow {
             this.scratch = scratch;
             assert keyConstants.length == keyTargets.length;
             assert keyConstants.length == strategy.keyProbabilities.length;
-            assert (scratch.getKind() == Kind.Illegal) == (key.getKind() == Kind.Int || key.getKind() == Kind.Long);
+            assert (scratch.getPlatformKind() == Kind.Illegal) == (key.getPlatformKind() == Kind.Int || key.getPlatformKind() == Kind.Long);
         }
 
         @Override
@@ -154,7 +154,7 @@ public class AMD64ControlFlow {
             BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
                 @Override
                 protected void conditionalJump(int index, Condition condition, Label target) {
-                    switch (key.getKind()) {
+                    switch (keyConstants[index].getKind()) {
                         case Int:
                             if (crb.codeCache.needsDataPatch(keyConstants[index])) {
                                 crb.recordInlineDataInCode(keyConstants[index]);
@@ -169,7 +169,7 @@ public class AMD64ControlFlow {
                         case Object:
                             assert condition == Condition.EQ || condition == Condition.NE;
                             AMD64Move.const2reg(crb, masm, scratch, keyConstants[index]);
-                            masm.cmpptr(keyRegister, asObjectReg(scratch));
+                            masm.cmpptr(keyRegister, asRegister(scratch));
                             break;
                         default:
                             throw new JVMCIError("switch only supported for int, long and object");
@@ -202,9 +202,9 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            Register indexReg = asIntReg(index);
-            Register idxScratchReg = asIntReg(idxScratch);
-            Register scratchReg = asLongReg(scratch);
+            Register indexReg = asRegister(index, Kind.Int);
+            Register idxScratchReg = asRegister(idxScratch, Kind.Int);
+            Register scratchReg = asRegister(scratch, Kind.Long);
 
             if (!indexReg.equals(idxScratchReg)) {
                 masm.movl(idxScratchReg, indexReg);
@@ -342,7 +342,7 @@ public class AMD64ControlFlow {
     private static void cmove(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, ConditionFlag cond, Value other) {
         if (isRegister(other)) {
             assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
-            switch (other.getKind()) {
+            switch ((Kind) other.getPlatformKind()) {
                 case Boolean:
                 case Byte:
                 case Short:
@@ -358,7 +358,7 @@ public class AMD64ControlFlow {
             }
         } else {
             AMD64Address addr = (AMD64Address) crb.asAddress(other);
-            switch (other.getKind()) {
+            switch ((Kind) other.getPlatformKind()) {
                 case Boolean:
                 case Byte:
                 case Short:

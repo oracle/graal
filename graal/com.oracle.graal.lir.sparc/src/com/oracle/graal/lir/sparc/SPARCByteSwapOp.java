@@ -54,19 +54,19 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
-        SPARCMove.emitStore(input, addr, result.getKind(), SPARCDelayedControlTransfer.DUMMY, null, crb, masm);
+        SPARCMove.emitStore(input, addr, result.getPlatformKind(), SPARCDelayedControlTransfer.DUMMY, null, crb, masm);
         if (addr.getIndex().equals(Register.None)) {
-            Register tempReg = ValueUtil.asLongReg(tempIndex);
+            Register tempReg = ValueUtil.asRegister(tempIndex, Kind.Long);
             new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
             addr = new SPARCAddress(addr.getBase(), tempReg);
         }
         getDelayedControlTransfer().emitControlTransfer(crb, masm);
-        switch (input.getKind()) {
+        switch ((Kind) input.getPlatformKind()) {
             case Int:
-                masm.lduwa(addr.getBase(), addr.getIndex(), asIntReg(result), Asi.ASI_PRIMARY_LITTLE);
+                masm.lduwa(addr.getBase(), addr.getIndex(), asRegister(result, Kind.Int), Asi.ASI_PRIMARY_LITTLE);
                 break;
             case Long:
-                masm.ldxa(addr.getBase(), addr.getIndex(), asLongReg(result), Asi.ASI_PRIMARY_LITTLE);
+                masm.ldxa(addr.getBase(), addr.getIndex(), asRegister(result, Kind.Long), Asi.ASI_PRIMARY_LITTLE);
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();

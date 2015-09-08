@@ -283,22 +283,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     protected abstract void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
-    public static AllocatableValue toStackKind(AllocatableValue value) {
-        if (value.getKind().getStackKind() != value.getKind()) {
-            // We only have stack-kinds in the LIR, so convert the operand kind for values from the
-            // calling convention.
-            LIRKind stackKind = value.getLIRKind().changeType(value.getKind().getStackKind());
-            if (isRegister(value)) {
-                return asRegister(value).asValue(stackKind);
-            } else if (isStackSlot(value)) {
-                return StackSlot.get(stackKind, asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
-            } else {
-                throw JVMCIError.shouldNotReachHere();
-            }
-        }
-        return value;
-    }
-
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState frameState, Value... args) {
         LIRFrameState state = null;
@@ -436,6 +420,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     // automatic derived reference handling
 
+    protected boolean isNumericInteger(PlatformKind kind) {
+        return ((Kind) kind).isNumericInteger();
+    }
+
     protected abstract Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags);
 
     public final Variable emitAdd(Value aVal, Value bVal, boolean setFlags) {
@@ -443,7 +431,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         Value a = aVal;
         Value b = bVal;
 
-        if (a.getKind().isNumericInteger()) {
+        if (isNumericInteger(a.getPlatformKind())) {
             LIRKind aKind = a.getLIRKind();
             LIRKind bKind = b.getLIRKind();
             assert a.getPlatformKind() == b.getPlatformKind();
@@ -487,7 +475,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         Value a = aVal;
         Value b = bVal;
 
-        if (a.getKind().isNumericInteger()) {
+        if (isNumericInteger(a.getPlatformKind())) {
             LIRKind aKind = a.getLIRKind();
             LIRKind bKind = b.getLIRKind();
             assert a.getPlatformKind() == b.getPlatformKind();

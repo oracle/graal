@@ -187,7 +187,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         LIRKind wordKind = LIRKind.value(getProviders().getCodeCache().getTarget().wordKind);
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         SPARCAddressValue pendingDeoptAddress = new SPARCImmediateAddressValue(wordKind, thread, offset);
-        append(new StoreOp(v.getKind(), pendingDeoptAddress, load(v), null));
+        append(new StoreOp(v.getPlatformKind(), pendingDeoptAddress, load(v), null));
     }
 
     @Override

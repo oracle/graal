@@ -154,8 +154,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     private void emitSSE41Compare(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
         assert supportsSSE41(crb.target);
 
-        Register vector1 = asDoubleReg(vectorTemp1);
-        Register vector2 = asDoubleReg(vectorTemp2);
+        Register vector1 = asRegister(vectorTemp1, Kind.Double);
+        Register vector2 = asRegister(vectorTemp2, Kind.Double);
 
         Label loop = new Label();
         Label compareTail = new Label();

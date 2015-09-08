@@ -185,12 +185,12 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             // backup scratch register
-            move(backupSlot.getKind(), crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
+            move((Kind) backupSlot.getPlatformKind(), crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
             // move stack slot
-            move(getInput().getKind(), crb, masm, scratch.asValue(getInput().getLIRKind()), getInput());
-            move(getResult().getKind(), crb, masm, getResult(), scratch.asValue(getResult().getLIRKind()));
+            move((Kind) getInput().getPlatformKind(), crb, masm, scratch.asValue(getInput().getLIRKind()), getInput());
+            move((Kind) getResult().getPlatformKind(), crb, masm, getResult(), scratch.asValue(getResult().getLIRKind()));
             // restore scratch register
-            move(backupSlot.getKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
+            move((Kind) backupSlot.getPlatformKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
 
         }
     }
@@ -216,16 +216,16 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             // backup scratch register
-            move(backupSlot.getKind(), crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
+            move((Kind) backupSlot.getPlatformKind(), crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
             for (int i = 0; i < results.length; i++) {
                 Value input = inputs[i];
                 AllocatableValue result = results[i];
                 // move stack slot
-                move(input.getKind(), crb, masm, scratch.asValue(input.getLIRKind()), input);
-                move(result.getKind(), crb, masm, result, scratch.asValue(result.getLIRKind()));
+                move((Kind) input.getPlatformKind(), crb, masm, scratch.asValue(input.getLIRKind()), input);
+                move((Kind) result.getPlatformKind(), crb, masm, result, scratch.asValue(result.getLIRKind()));
             }
             // restore scratch register
-            move(backupSlot.getKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
+            move((Kind) backupSlot.getPlatformKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
 
         }
     }
@@ -276,7 +276,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            masm.leaq(asLongReg(result), address.toAddress());
+            masm.leaq(asRegister(result, Kind.Long), address.toAddress());
         }
     }
 
@@ -313,7 +313,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            masm.leaq(asLongReg(result), (AMD64Address) crb.asAddress(slot));
+            masm.leaq(asRegister(result, Kind.Long), (AMD64Address) crb.asAddress(slot));
         }
     }
 
@@ -474,7 +474,7 @@ public class AMD64Move {
     }
 
     public static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
-        move(result.getKind(), crb, masm, result, input);
+        move((Kind) result.getPlatformKind(), crb, masm, result, input);
     }
 
     public static void move(Kind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
@@ -517,16 +517,16 @@ public class AMD64Move {
                 masm.movq(asRegister(result), asRegister(input));
                 break;
             case Float:
-                masm.movflt(asFloatReg(result), asFloatReg(input));
+                masm.movflt(asRegister(result, Kind.Float), asRegister(input, Kind.Float));
                 break;
             case Double:
-                masm.movdbl(asDoubleReg(result), asDoubleReg(input));
+                masm.movdbl(asRegister(result, Kind.Double), asRegister(input, Kind.Double));
                 break;
             case Object:
                 masm.movq(asRegister(result), asRegister(input));
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere("kind=" + result.getKind());
+                throw JVMCIError.shouldNotReachHere("kind=" + result.getPlatformKind());
         }
     }
 
@@ -548,10 +548,10 @@ public class AMD64Move {
                 masm.movq(dest, asRegister(input));
                 break;
             case Float:
-                masm.movflt(dest, asFloatReg(input));
+                masm.movflt(dest, asRegister(input, Kind.Float));
                 break;
             case Double:
-                masm.movsd(dest, asDoubleReg(input));
+                masm.movsd(dest, asRegister(input, Kind.Double));
                 break;
             case Object:
                 masm.movq(dest, asRegister(input));
@@ -583,10 +583,10 @@ public class AMD64Move {
                 masm.movq(asRegister(result), src);
                 break;
             case Float:
-                masm.movflt(asFloatReg(result), src);
+                masm.movflt(asRegister(result, Kind.Float), src);
                 break;
             case Double:
-                masm.movdbl(asDoubleReg(result), src);
+                masm.movdbl(asRegister(result, Kind.Double), src);
                 break;
             case Object:
                 masm.movq(asRegister(result), src);
@@ -641,18 +641,18 @@ public class AMD64Move {
                 // This is *not* the same as 'constant == 0.0f' in the case where constant is -0.0f
                 if (Float.floatToRawIntBits(input.asFloat()) == Float.floatToRawIntBits(0.0f)) {
                     assert !crb.codeCache.needsDataPatch(input);
-                    masm.xorps(asFloatReg(result), asFloatReg(result));
+                    masm.xorps(asRegister(result, Kind.Float), asRegister(result, Kind.Float));
                 } else {
-                    masm.movflt(asFloatReg(result), (AMD64Address) crb.asFloatConstRef(input));
+                    masm.movflt(asRegister(result, Kind.Float), (AMD64Address) crb.asFloatConstRef(input));
                 }
                 break;
             case Double:
                 // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
                 if (Double.doubleToRawLongBits(input.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
                     assert !crb.codeCache.needsDataPatch(input);
-                    masm.xorpd(asDoubleReg(result), asDoubleReg(result));
+                    masm.xorpd(asRegister(result, Kind.Double), asRegister(result, Kind.Double));
                 } else {
-                    masm.movdbl(asDoubleReg(result), (AMD64Address) crb.asDoubleConstRef(input));
+                    masm.movdbl(asRegister(result, Kind.Double), (AMD64Address) crb.asDoubleConstRef(input));
                 }
                 break;
             case Object:
@@ -700,7 +700,7 @@ public class AMD64Move {
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
-        switch (result.getKind()) {
+        switch ((Kind) result.getPlatformKind()) {
             case Byte:
                 assert NumUtil.isByte(imm) : "Is not in byte range: " + imm;
                 AMD64MIOp.MOVB.emit(masm, OperandSize.BYTE, dest, (int) imm);
@@ -724,7 +724,7 @@ public class AMD64Move {
                 masm.movlong(dest, imm);
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere("Unknown result Kind: " + result.getKind());
+                throw JVMCIError.shouldNotReachHere("Unknown result Kind: " + result.getPlatformKind());
         }
     }
 }

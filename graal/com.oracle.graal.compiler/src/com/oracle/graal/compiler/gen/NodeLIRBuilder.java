@@ -407,7 +407,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
-            params[i] = LIRGenerator.toStackKind(incomingArguments.getArgument(i));
+            params[i] = incomingArguments.getArgument(i);
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
                 if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
@@ -592,7 +592,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
-                AllocatableValue operand = LIRGenerator.toStackKind(invokeCc.getArgument(j));
+                AllocatableValue operand = invokeCc.getArgument(j);
                 gen.emitMove(operand, operand(arg));
                 result[j] = operand;
                 j++;
@@ -630,12 +630,14 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 LabelRef[] keyTargets = new LabelRef[keyCount];
                 JavaConstant[] keyConstants = new JavaConstant[keyCount];
                 double[] keyProbabilities = new double[keyCount];
+                Kind keyKind = x.keyAt(0).getKind();
                 for (int i = 0; i < keyCount; i++) {
                     keyTargets[i] = getLIRBlock(x.keySuccessor(i));
                     keyConstants[i] = x.keyAt(i);
                     keyProbabilities[i] = x.keyProbability(i);
+                    assert keyConstants[i].getKind() == keyKind;
                 }
-                if (value.getKind() != Kind.Int || !x.isSorted()) {
+                if (keyKind != Kind.Int || !x.isSorted()) {
                     // hopefully only a few entries
                     gen.emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
                 } else {

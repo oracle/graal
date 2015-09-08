@@ -99,11 +99,11 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
         Label done = new Label();
 
         // Load array base addresses.
-        masm.add(asObjectReg(array1Value), arrayBaseOffset, array1);
-        masm.add(asObjectReg(array2Value), arrayBaseOffset, array2);
+        masm.add(asRegister(array1Value), arrayBaseOffset, array1);
+        masm.add(asRegister(array2Value), arrayBaseOffset, array2);
 
         // Get array length in bytes.
-        masm.mulx(asIntReg(lengthValue), arrayIndexScale, length);
+        masm.mulx(asRegister(lengthValue, Kind.Int), arrayIndexScale, length);
         masm.mov(length, result); // copy
 
         emit8ByteCompare(masm, result, array1, array2, length, trueLabel, falseLabel);

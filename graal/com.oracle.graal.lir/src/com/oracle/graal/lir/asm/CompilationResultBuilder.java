@@ -216,7 +216,7 @@ public class CompilationResultBuilder {
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(Value value) {
-        assert (value.getKind().isNumericInteger()) && isJavaConstant(value);
+        assert isJavaConstant(value) && asJavaConstant(value).getKind().isNumericInteger();
         JavaConstant constant = asJavaConstant(value);
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         long c = constant.asLong();
@@ -230,7 +230,7 @@ public class CompilationResultBuilder {
      * Returns the float value of any constant that can be represented by a 32-bit float value.
      */
     public float asFloatConst(Value value) {
-        assert (value.getKind().getStackKind() == Kind.Float && isJavaConstant(value));
+        assert isJavaConstant(value) && asJavaConstant(value).getKind() == Kind.Float;
         JavaConstant constant = asJavaConstant(value);
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asFloat();
@@ -240,7 +240,7 @@ public class CompilationResultBuilder {
      * Returns the long value of any constant that can be represented by a 64-bit long value.
      */
     public long asLongConst(Value value) {
-        assert (value.getKind().getStackKind() == Kind.Long && isJavaConstant(value));
+        assert isJavaConstant(value) && asJavaConstant(value).getKind() == Kind.Long;
         JavaConstant constant = asJavaConstant(value);
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asLong();
@@ -250,7 +250,7 @@ public class CompilationResultBuilder {
      * Returns the double value of any constant that can be represented by a 64-bit float value.
      */
     public double asDoubleConst(Value value) {
-        assert (value.getKind().getStackKind() == Kind.Double && isJavaConstant(value));
+        assert isJavaConstant(value) && asJavaConstant(value).getKind() == Kind.Double;
         JavaConstant constant = asJavaConstant(value);
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asDouble();
@@ -297,37 +297,32 @@ public class CompilationResultBuilder {
     }
 
     public AbstractAddress asByteAddr(Value value) {
-        assert value.getKind().getByteCount() >= Kind.Byte.getByteCount();
+        assert value.getPlatformKind().getSizeInBytes() >= Kind.Byte.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asShortAddr(Value value) {
-        assert value.getKind().getByteCount() >= Kind.Short.getByteCount();
+        assert value.getPlatformKind().getSizeInBytes() >= Kind.Short.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asIntAddr(Value value) {
-        assert value.getKind().getByteCount() >= Kind.Int.getByteCount();
+        assert value.getPlatformKind().getSizeInBytes() >= Kind.Int.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asLongAddr(Value value) {
-        assert value.getKind().getByteCount() >= Kind.Long.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asObjectAddr(Value value) {
-        assert value.getKind() == Kind.Object;
+        assert value.getPlatformKind().getSizeInBytes() >= Kind.Long.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asFloatAddr(Value value) {
-        assert value.getKind().getByteCount() >= Kind.Float.getByteCount();
+        assert value.getPlatformKind().getSizeInBytes() >= Kind.Float.getByteCount();
         return asAddress(value);
     }
 
     public AbstractAddress asDoubleAddr(Value value) {
-        assert value.getKind().getByteCount() >= Kind.Double.getByteCount();
+        assert value.getPlatformKind().getSizeInBytes() >= Kind.Double.getByteCount();
         return asAddress(value);
     }
 

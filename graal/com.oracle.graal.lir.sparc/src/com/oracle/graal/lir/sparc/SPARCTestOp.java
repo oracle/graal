@@ -49,31 +49,31 @@ public class SPARCTestOp extends SPARCLIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         if (isRegister(y)) {
-            switch (x.getKind()) {
+            switch ((Kind) x.getPlatformKind()) {
                 case Short:
                 case Byte:
                 case Char:
                 case Boolean:
                 case Int:
-                    masm.andcc(asIntReg(x), asIntReg(y), g0);
+                    masm.andcc(asRegister(x, Kind.Int), asRegister(y, Kind.Int), g0);
                     break;
                 case Long:
-                    masm.andcc(asLongReg(x), asLongReg(y), g0);
+                    masm.andcc(asRegister(x, Kind.Long), asRegister(y, Kind.Long), g0);
                     break;
                 default:
                     throw JVMCIError.shouldNotReachHere();
             }
         } else if (isJavaConstant(y)) {
-            switch (x.getKind()) {
+            switch ((Kind) x.getPlatformKind()) {
                 case Short:
                 case Byte:
                 case Char:
                 case Boolean:
                 case Int:
-                    masm.andcc(asIntReg(x), crb.asIntConst(y), g0);
+                    masm.andcc(asRegister(x, Kind.Int), crb.asIntConst(y), g0);
                     break;
                 case Long:
-                    masm.andcc(asLongReg(x), crb.asIntConst(y), g0);
+                    masm.andcc(asRegister(x, Kind.Long), crb.asIntConst(y), g0);
                     break;
                 default:
                     throw JVMCIError.shouldNotReachHere();

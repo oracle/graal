@@ -239,26 +239,26 @@ public class SPARCControlFlow {
                 case Int:
                     if (isJavaConstant(actualY)) {
                         int constantY = asJavaConstant(actualY).asInt();
-                        CBCOND.emit(masm, conditionFlag, false, asIntReg(actualX), constantY, actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, false, asRegister(actualX, Kind.Int), constantY, actualTrueTarget);
                     } else {
-                        CBCOND.emit(masm, conditionFlag, false, asIntReg(actualX), asIntReg(actualY), actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, false, asRegister(actualX, Kind.Int), asRegister(actualY, Kind.Int), actualTrueTarget);
                     }
                     break;
                 case Long:
                     if (isJavaConstant(actualY)) {
                         int constantY = (int) asJavaConstant(actualY).asLong();
-                        CBCOND.emit(masm, conditionFlag, true, asLongReg(actualX), constantY, actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, Kind.Long), constantY, actualTrueTarget);
                     } else {
-                        CBCOND.emit(masm, conditionFlag, true, asLongReg(actualX), asLongReg(actualY), actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, Kind.Long), asRegister(actualY, Kind.Long), actualTrueTarget);
                     }
                     break;
                 case Object:
                     if (isJavaConstant(actualY)) {
                         // Object constant valid can only be null
                         assert asJavaConstant(actualY).isNull();
-                        CBCOND.emit(masm, conditionFlag, true, asObjectReg(actualX), 0, actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX), 0, actualTrueTarget);
                     } else { // this is already loaded
-                        CBCOND.emit(masm, conditionFlag, true, asObjectReg(actualX), asObjectReg(actualY), actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX), asRegister(actualY), actualTrueTarget);
                     }
                     break;
                 default:
@@ -303,7 +303,7 @@ public class SPARCControlFlow {
         public void verify() {
             super.verify();
             assert SUPPORTED_KINDS.contains(kind) : kind;
-            assert x.getKind().equals(kind) && y.getKind().equals(kind) : x + " " + y;
+            assert x.getPlatformKind().equals(kind) && y.getPlatformKind().equals(kind) : x + " " + y;
         }
     }
 
@@ -454,7 +454,7 @@ public class SPARCControlFlow {
                     JavaConstant constant = keyConstants[index];
                     CC conditionCode;
                     Long bits;
-                    switch (key.getKind()) {
+                    switch (constant.getKind()) {
                         case Char:
                         case Byte:
                         case Short:
@@ -548,8 +548,8 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            Register value = asIntReg(index);
-            Register scratchReg = asLongReg(scratch);
+            Register value = asRegister(index, Kind.Int);
+            Register scratchReg = asRegister(scratch, Kind.Long);
 
             // Compare index against jump table bounds
             int highKey = lowKey + targets.length - 1;
@@ -649,17 +649,17 @@ public class SPARCControlFlow {
         public SizeEstimate estimateSize() {
             int constantSize = 0;
             if (isJavaConstant(trueValue) && !SPARCAssembler.isSimm13(asJavaConstant(trueValue))) {
-                constantSize += trueValue.getKind().getByteCount();
+                constantSize += trueValue.getPlatformKind().getSizeInBytes();
             }
             if (isJavaConstant(falseValue) && !SPARCAssembler.isSimm13(asJavaConstant(falseValue))) {
-                constantSize += trueValue.getKind().getByteCount();
+                constantSize += trueValue.getPlatformKind().getSizeInBytes();
             }
             return SizeEstimate.create(3, constantSize);
         }
     }
 
     private static void cmove(SPARCMacroAssembler masm, CC cc, Value result, ConditionFlag cond, Value other) {
-        switch (other.getKind()) {
+        switch ((Kind) other.getPlatformKind()) {
             case Boolean:
             case Byte:
             case Short:
@@ -692,10 +692,10 @@ public class SPARCControlFlow {
                 }
                 break;
             case Float:
-                masm.fmovscc(cond, cc, asFloatReg(other), asFloatReg(result));
+                masm.fmovscc(cond, cc, asRegister(other, Kind.Float), asRegister(result, Kind.Float));
                 break;
             case Double:
-                masm.fmovdcc(cond, cc, asDoubleReg(other), asDoubleReg(result));
+                masm.fmovdcc(cond, cc, asRegister(other, Kind.Double), asRegister(result, Kind.Double));
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();

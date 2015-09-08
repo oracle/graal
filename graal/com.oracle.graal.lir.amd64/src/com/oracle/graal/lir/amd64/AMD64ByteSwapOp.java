@@ -45,12 +45,12 @@ public final class AMD64ByteSwapOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         AMD64Move.move(crb, masm, result, input);
-        switch (input.getKind()) {
+        switch ((Kind) input.getPlatformKind()) {
             case Int:
-                masm.bswapl(ValueUtil.asIntReg(result));
+                masm.bswapl(ValueUtil.asRegister(result, Kind.Int));
                 break;
             case Long:
-                masm.bswapq(ValueUtil.asLongReg(result));
+                masm.bswapq(ValueUtil.asRegister(result, Kind.Long));
         }
     }
 }

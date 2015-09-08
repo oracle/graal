@@ -94,8 +94,8 @@ public enum AMD64Arithmetic {
         @Override
         public void verify() {
             super.verify();
-            assert (opcode.name().startsWith("F") && result.getKind() == Kind.Float && x.getKind() == Kind.Float && y.getKind() == Kind.Float) ||
-                            (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double);
+            assert (opcode.name().startsWith("F") && result.getPlatformKind() == Kind.Float && x.getPlatformKind() == Kind.Float && y.getPlatformKind() == Kind.Float) ||
+                            (opcode.name().startsWith("D") && result.getPlatformKind() == Kind.Double && x.getPlatformKind() == Kind.Double && y.getPlatformKind() == Kind.Double);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,7 @@ public abstract class BytecodeLIRBuilder {
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
-            params[i] = LIRGenerator.toStackKind(incomingArguments.getArgument(i));
+            params[i] = incomingArguments.getArgument(i);
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
                 if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
@@ -56,7 +56,7 @@ public abstract class BytecodeLIRBuilder {
         boolean isStatic = method.isStatic();
         for (int i = 0; i < sig.getParameterCount(!isStatic); i++) {
             Value paramValue = params[i];
-            assert paramValue.getKind() == sig.getParameterKind(i).getStackKind();
+            assert paramValue.getLIRKind().equals(gen.target().getLIRKind(sig.getParameterKind(i).getStackKind()));
             parser.storeLocal(i, gen.emitMove(paramValue));
         }
 

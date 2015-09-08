@@ -316,7 +316,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                             /*
                              * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
                              * !liveKill(block)).
-                             * 
+                             *
                              * Note: liveIn has to be computed only in first iteration or if liveOut
                              * has changed!
                              */
@@ -634,7 +634,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
          * Object method arguments that are passed on the stack are currently not optimized because
          * this requires that the runtime visits method arguments during stack walking.
          */
-        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && value.getKind() != Kind.Object;
+        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && value.getLIRKind().isValue();
     }
 
     /**

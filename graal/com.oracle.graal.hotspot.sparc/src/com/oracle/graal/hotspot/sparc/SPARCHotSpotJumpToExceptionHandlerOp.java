@@ -54,7 +54,7 @@ final class SPARCHotSpotJumpToExceptionHandlerOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        Register addrRegister = asLongReg(address);
+        Register addrRegister = asRegister(address, Kind.Long);
         masm.jmp(addrRegister);
         masm.restoreWindow();
     }

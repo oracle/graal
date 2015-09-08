@@ -68,7 +68,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        Register dst = asIntReg(result);
+        Register dst = asRegister(result, Kind.Int);
         if (isRegister(input)) {
             Register src = asRegister(input);
             switch (opcode) {
@@ -81,7 +81,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     masm.popc(src, dst);
                     break;
                 case BSF:
-                    Kind tkind = input.getKind();
+                    PlatformKind tkind = input.getPlatformKind();
                     if (tkind == Kind.Int) {
                         masm.sub(src, 1, dst);
                         masm.andn(dst, src, dst);
@@ -96,7 +96,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     }
                     break;
                 case IBSR: {
-                    Kind ikind = input.getKind();
+                    PlatformKind ikind = input.getPlatformKind();
                     assert ikind == Kind.Int;
                     Register tmp = asRegister(scratch);
                     assert !tmp.equals(dst);
@@ -116,7 +116,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     break;
                 }
                 case LBSR: {
-                    Kind lkind = input.getKind();
+                    PlatformKind lkind = input.getPlatformKind();
                     assert lkind == Kind.Long;
                     Register tmp = asRegister(scratch);
                     assert !tmp.equals(dst);
