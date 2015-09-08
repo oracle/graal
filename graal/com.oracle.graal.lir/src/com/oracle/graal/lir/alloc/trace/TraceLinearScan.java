@@ -74,6 +74,13 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
  */
 final class TraceLinearScan {
 
+    private static final TraceLinearScanRegisterAllocationPhase TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE = new TraceLinearScanRegisterAllocationPhase();
+    private static final TraceLinearScanAssignLocationsPhase TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE = new TraceLinearScanAssignLocationsPhase();
+    // TODO (je) use!
+    @SuppressWarnings("unused") private static final TraceLinearScanEliminateSpillMovePhase TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE = new TraceLinearScanEliminateSpillMovePhase();
+    private static final TraceLinearScanResolveDataFlowPhase TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE = new TraceLinearScanResolveDataFlowPhase();
+    private static final TraceLinearScanLifetimeAnalysisPhase TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE = new TraceLinearScanLifetimeAnalysisPhase();
+
     public static class BlockData {
 
         /**
@@ -716,21 +723,19 @@ final class TraceLinearScan {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
-            createLifetimeAnalysisPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {
                 sortIntervalsBeforeAllocation();
                 sortFixedIntervalsBeforeAllocation();
 
-                createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
                 // resolve intra-trace data-flow
-                TraceLinearScanResolveDataFlowPhase dataFlowPhase = createResolveDataFlowPhase();
-                dataFlowPhase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-                Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", dataFlowPhase.getName());
+                TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
 
-                TraceLinearScanAssignLocationsPhase assignPhase = createAssignLocationsPhase();
-                assignPhase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
                 if (DetailedAsserts.getValue()) {
                     verifyIntervals();
@@ -739,29 +744,6 @@ final class TraceLinearScan {
                 throw Debug.handle(e);
             }
         }
-    }
-
-    protected TraceLinearScanLifetimeAnalysisPhase createLifetimeAnalysisPhase() {
-        return new TraceLinearScanLifetimeAnalysisPhase();
-    }
-
-    protected TraceLinearScanResolveDataFlowPhase createResolveDataFlowPhase() {
-        return new TraceLinearScanResolveDataFlowPhase();
-    }
-
-    protected TraceLinearScanEliminateSpillMovePhase createSpillMoveEliminationPhase() {
-        return new TraceLinearScanEliminateSpillMovePhase();
-    }
-
-    protected TraceLinearScanAssignLocationsPhase createAssignLocationsPhase() {
-        return new TraceLinearScanAssignLocationsPhase();
-    }
-
-    protected void beforeSpillMoveElimination() {
-    }
-
-    protected TraceLinearScanRegisterAllocationPhase createRegisterAllocationPhase() {
-        return new TraceLinearScanRegisterAllocationPhase();
     }
 
     @SuppressWarnings("try")
