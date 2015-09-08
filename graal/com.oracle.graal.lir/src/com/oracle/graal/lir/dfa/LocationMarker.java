@@ -110,7 +110,6 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
     }
 
     private static final EnumSet<OperandFlag> REGISTER_FLAG_SET = EnumSet.of(OperandFlag.REG);
-    private static final LIRKind REFERENCE_KIND = LIRKind.reference(Kind.Object);
 
     private S currentSet;
 
@@ -127,7 +126,8 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
             op.visitEachOutput(defConsumer);
             if (frameMap != null && op.destroysCallerSavedRegisters()) {
                 for (Register reg : frameMap.getRegisterConfig().getCallerSaveRegisters()) {
-                    defConsumer.visitValue(reg.asValue(REFERENCE_KIND), OperandMode.TEMP, REGISTER_FLAG_SET);
+                    PlatformKind kind = frameMap.getTarget().arch.getLargestStorableKind(reg.getRegisterCategory());
+                    defConsumer.visitValue(reg.asValue(LIRKind.value(kind)), OperandMode.TEMP, REGISTER_FLAG_SET);
                 }
             }
 

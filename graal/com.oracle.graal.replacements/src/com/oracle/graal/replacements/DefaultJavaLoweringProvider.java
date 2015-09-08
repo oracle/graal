@@ -620,7 +620,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected abstract int arrayBaseOffset(Kind elementKind);
 
     public int arrayScalingFactor(Kind elementKind) {
-        return target.getSizeInBytes(elementKind);
+        return target.arch.getPlatformKind(elementKind).getSizeInBytes();
     }
 
     protected abstract LocationIdentity initLocationIdentity();

@@ -540,9 +540,10 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     public int arrayScalingFactor(Kind kind) {
         if (runtime.getConfig().useCompressedOops && kind == Kind.Object) {
-            return this.runtime.getTarget().getSizeInBytes(Kind.Int);
+            return super.arrayScalingFactor(Kind.Int);
+        } else {
+            return super.arrayScalingFactor(kind);
         }
-        return super.arrayScalingFactor(kind);
     }
 
     @Override

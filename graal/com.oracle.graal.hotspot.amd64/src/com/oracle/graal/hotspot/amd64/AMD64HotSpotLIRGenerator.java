@@ -475,7 +475,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
         Value actionAndReason = emitJavaConstant(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0));
-        Value nullValue = emitConstant(LIRKind.reference(Kind.Object), JavaConstant.NULL_POINTER);
+        Value nullValue = emitConstant(LIRKind.reference(Kind.Long), JavaConstant.NULL_POINTER);
         moveDeoptValuesToThread(actionAndReason, nullValue);
         append(new AMD64HotSpotDeoptimizeCallerOp(saveRbp.getRbpRescueSlot()));
     }
@@ -531,7 +531,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getLIRKind();
-        assert inputKind.getPlatformKind() == Kind.Long || inputKind.getPlatformKind() == Kind.Object;
+        assert inputKind.getPlatformKind() == Kind.Long;
         if (inputKind.isReference(0)) {
             // oop
             Variable result = newVariable(LIRKind.reference(Kind.Int));
@@ -555,7 +555,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         assert inputKind.getPlatformKind() == Kind.Int;
         if (inputKind.isReference(0)) {
             // oop
-            Variable result = newVariable(LIRKind.reference(Kind.Object));
+            Variable result = newVariable(LIRKind.reference(Kind.Long));
             append(new AMD64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {

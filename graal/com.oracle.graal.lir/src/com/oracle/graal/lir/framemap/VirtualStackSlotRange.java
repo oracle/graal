@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,8 @@ public class VirtualStackSlotRange extends VirtualStackSlot {
     private final BitSet objects;
     private final int slots;
 
-    public VirtualStackSlotRange(int id, int slots, BitSet objects) {
-        super(id, LIRKind.reference(Kind.Object));
+    public VirtualStackSlotRange(int id, int slots, BitSet objects, LIRKind kind) {
+        super(id, kind);
         this.slots = slots;
         this.objects = (BitSet) objects.clone();
     }
