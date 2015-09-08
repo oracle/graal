@@ -726,7 +726,7 @@ final class TraceLinearScan {
     }
 
     protected TraceLinearScanResolveDataFlowPhase createResolveDataFlowPhase() {
-        return new TraceLinearScanResolveDataFlowPhase(this);
+        return new TraceLinearScanResolveDataFlowPhase(this, traceBuilderResult);
     }
 
     protected TraceLinearScanEliminateSpillMovePhase createSpillMoveEliminationPhase() {

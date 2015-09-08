@@ -37,6 +37,8 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterPriority;
@@ -233,6 +235,26 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         }
     }
 
+    private int insertIdAtBasicBlockBoundary(int opId) {
+        assert allocator.isBlockBegin(opId) : "Not a block begin: " + opId;
+        assert allocator.instructionForId(opId) instanceof LabelOp;
+        assert allocator.instructionForId(opId - 2) instanceof BlockEndOp;
+
+        AbstractBlockBase<?> toBlock = allocator.blockForId(opId);
+        AbstractBlockBase<?> fromBlock = allocator.blockForId(opId - 2);
+
+        final int operandId;
+        if (fromBlock.getSuccessorCount() == 1) {
+            // insert move in predecessor
+            operandId = opId - 2;
+        } else {
+            assert toBlock.getPredecessorCount() == 1 : String.format("Critical Edge? %s->%s", fromBlock, toBlock);
+            // insert move in predecessor
+            operandId = opId + 2;
+        }
+        return operandId;
+    }
+
     private void insertMove(int operandId, TraceInterval srcIt, TraceInterval dstIt) {
         // output all moves here. When source and target are equal, the move is
         // optimized away later in assignRegNums
@@ -335,12 +357,13 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             // must calculate this before the actual split is performed and before split position is
             // moved to odd opId
             boolean isBlockBegin = allocator.isBlockBegin(optimalSplitPos);
-            boolean moveNecessary = !isBlockBegin;
+            boolean moveNecessary = true;
 
-            if (!isBlockBegin) {
-                // move position before actual instruction (odd opId)
-                optimalSplitPos = (optimalSplitPos - 1) | 1;
+            if (isBlockBegin) {
+                optimalSplitPos = insertIdAtBasicBlockBoundary(optimalSplitPos);
             }
+            // move position before actual instruction (odd opId)
+            optimalSplitPos = (optimalSplitPos - 1) | 1;
 
             if (Debug.isLogEnabled()) {
                 Debug.log("splitting at position %d", optimalSplitPos);
@@ -434,10 +457,11 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                 assert optimalSplitPos < interval.to() : "cannot split at end of interval";
                 assert optimalSplitPos >= interval.from() : "cannot split before start of interval";
 
-                if (!allocator.isBlockBegin(optimalSplitPos)) {
-                    // move position before actual instruction (odd opId)
-                    optimalSplitPos = (optimalSplitPos - 1) | 1;
+                if (allocator.isBlockBegin(optimalSplitPos)) {
+                    optimalSplitPos = insertIdAtBasicBlockBoundary(optimalSplitPos);
                 }
+                // move position before actual instruction (odd opId)
+                optimalSplitPos = (optimalSplitPos - 1) | 1;
 
                 try (Indent indent2 = Debug.logAndIndent("splitting at position %d", optimalSplitPos)) {
                     assert allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 1) : "split pos must be odd when not on block boundary";
@@ -448,12 +472,13 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                     handleSpillSlot(spilledPart);
                     changeSpillState(spilledPart, optimalSplitPos);
 
-                    if (!allocator.isBlockBegin(optimalSplitPos)) {
-                        if (Debug.isLogEnabled()) {
-                            Debug.log("inserting move from interval %d to %d", interval.operandNumber, spilledPart.operandNumber);
-                        }
-                        insertMove(optimalSplitPos, interval, spilledPart);
+                    if (allocator.isBlockBegin(optimalSplitPos)) {
+                        optimalSplitPos = insertIdAtBasicBlockBoundary(optimalSplitPos);
                     }
+                    if (Debug.isLogEnabled()) {
+                        Debug.log("inserting move from interval %s to %d", interval, spilledPart);
+                    }
+                    insertMove(optimalSplitPos, interval, spilledPart);
 
                     // the currentSplitChild is needed later when moves are inserted for reloading
                     assert spilledPart.currentSplitChild() == interval : "overwriting wrong currentSplitChild";
