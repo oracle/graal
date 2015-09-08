@@ -447,12 +447,14 @@ def specjvm2008(args):
         return sanitycheck.getSPECjvm2008(harnessArgs + [bm]).bench(get_vm(), extraVmOpts=extraVmOpts)
 
     availableBenchmarks = set(sanitycheck.specjvm2008Names)
-    for name in sanitycheck.specjvm2008Names:
-        parts = name.rsplit('.', 1)
-        if len(parts) > 1:
-            assert len(parts) == 2
-            group = parts[0]
-            availableBenchmarks.add(group)
+    if "all" not in args:
+        # only add benchmark groups if we are not running "all"
+        for name in sanitycheck.specjvm2008Names:
+            parts = name.rsplit('.', 1)
+            if len(parts) > 1:
+                assert len(parts) == 2
+                group = parts[0]
+                availableBenchmarks.add(group)
 
     _run_benchmark(args, sorted(availableBenchmarks), launcher)
 
