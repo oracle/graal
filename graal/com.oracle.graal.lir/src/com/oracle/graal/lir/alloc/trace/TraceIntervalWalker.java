@@ -73,6 +73,7 @@ class TraceIntervalWalker {
         return true;
     }
 
+    @SuppressWarnings("try")
     protected void logCurrentStatus() {
         try (Indent i = Debug.logAndIndent("active:")) {
             logList(activeFixedList.getFixed());
@@ -140,6 +141,7 @@ class TraceIntervalWalker {
      * {@link State#Inactive} (and eventually to {@link State#Handled} but handled intervals are not
      * managed).
      */
+    @SuppressWarnings("try")
     private void walkToFixed(State state, int from) {
         assert state == State.Active || state == State.Inactive : "wrong state";
         FixedInterval prevprev = null;
@@ -209,6 +211,7 @@ class TraceIntervalWalker {
      * Trace intervals can switch once from {@link State#Unhandled} to {@link State#Active} and then
      * to {@link State#Handled} but handled intervals are not managed.
      */
+    @SuppressWarnings("try")
     private void walkToAny(int from) {
         TraceInterval prevprev = null;
         TraceInterval prev = activeAnyList.getAny();
