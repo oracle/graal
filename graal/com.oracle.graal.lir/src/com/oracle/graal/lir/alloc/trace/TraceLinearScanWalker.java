@@ -818,8 +818,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                     }
 
                     // safety check that there is really no register available
-                    // TODO (je): fix
-                    // assert !allocFreeRegister(interval) : "found a register for this interval";
+                    assert !allocFreeRegister(interval) : "found a register for this interval";
                     return true;
                 }
             }
