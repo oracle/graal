@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.common.UnsafeAccess.*;
 import static jdk.internal.jvmci.compiler.Compiler.*;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.*;
+
+import sun.misc.Unsafe;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
@@ -41,6 +43,22 @@ import jdk.internal.jvmci.service.*;
 //JaCoCo Exclude
 
 public class CompilationTask {
+
+    private static final Unsafe UNSAFE = initUnsafe();
+
+    private static Unsafe initUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            try {
+                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
+        }
+    }
 
     private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
 
@@ -242,9 +260,9 @@ public class CompilationTask {
             }
 
             if (jvmciEnv != 0) {
-                long ctask = unsafe.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
+                long ctask = UNSAFE.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
                 assert ctask != 0L;
-                unsafe.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
+                UNSAFE.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
             }
             long compilationTime = System.nanoTime() - startCompilationTime;
             if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
@@ -263,7 +281,7 @@ public class CompilationTask {
         if (config.ciTime || config.ciTimeEach || CompiledBytecodes.isEnabled()) {
             return true;
         }
-        if (jvmciEnv == 0 || unsafe.getByte(jvmciEnv + config.jvmciEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0) {
+        if (jvmciEnv == 0 || UNSAFE.getByte(jvmciEnv + config.jvmciEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0) {
             return true;
         }
         return false;

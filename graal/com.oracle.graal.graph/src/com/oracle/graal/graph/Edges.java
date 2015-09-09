@@ -24,7 +24,7 @@ package com.oracle.graal.graph;
 
 import static com.oracle.graal.graph.Graph.*;
 import static com.oracle.graal.graph.Node.*;
-import static jdk.internal.jvmci.common.UnsafeAccess.*;
+import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
 
 import java.util.*;
 import java.util.function.*;
@@ -62,20 +62,20 @@ public abstract class Edges extends Fields {
     }
 
     private static Node getNodeUnsafe(Node node, long offset) {
-        return (Node) unsafe.getObject(node, offset);
+        return (Node) UNSAFE.getObject(node, offset);
     }
 
     @SuppressWarnings("unchecked")
     private static NodeList<Node> getNodeListUnsafe(Node node, long offset) {
-        return (NodeList<Node>) unsafe.getObject(node, offset);
+        return (NodeList<Node>) UNSAFE.getObject(node, offset);
     }
 
     private static void putNodeUnsafe(Node node, long offset, Node value) {
-        unsafe.putObject(node, offset, value);
+        UNSAFE.putObject(node, offset, value);
     }
 
     private static void putNodeListUnsafe(Node node, long offset, NodeList<?> value) {
-        unsafe.putObject(node, offset, value);
+        UNSAFE.putObject(node, offset, value);
     }
 
     /**

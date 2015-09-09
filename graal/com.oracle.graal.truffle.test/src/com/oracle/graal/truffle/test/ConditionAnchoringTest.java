@@ -22,39 +22,50 @@
  */
 package com.oracle.graal.truffle.test;
 
-import static com.oracle.graal.graph.test.matchers.NodeIterableCount.*;
-import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.*;
-import static org.hamcrest.core.IsInstanceOf.*;
-import static org.junit.Assert.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.graph.test.matchers.NodeIterableCount.hasCount;
+import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
+import static org.hamcrest.core.IsInstanceOf.instanceOf;
+import static org.junit.Assert.assertThat;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Test;
 
-import sun.misc.*;
+import sun.misc.Unsafe;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.BeginNode;
+import com.oracle.graal.nodes.ConditionAnchorNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.memory.FloatingReadNode;
+import com.oracle.graal.nodes.memory.ReadNode;
 import com.oracle.graal.nodes.spi.LoweringTool.StandardLoweringStage;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.truffle.nodes.*;
-import com.oracle.graal.truffle.substitutions.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
+import com.oracle.graal.phases.common.FloatingReadPhase;
+import com.oracle.graal.phases.common.LoweringPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
+import com.oracle.graal.truffle.nodes.ObjectLocationIdentity;
+import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
 
 public class ConditionAnchoringTest extends GraalCompilerTest {
     private static final long offset;
     private static final Object location = new Object();
 
     static {
-        Unsafe unsafe = jdk.internal.jvmci.common.UnsafeAccess.unsafe;
         long fieldOffset = 0;
         try {
-            fieldOffset = unsafe.objectFieldOffset(CheckedObject.class.getDeclaredField("field"));
+            fieldOffset = UNSAFE.objectFieldOffset(CheckedObject.class.getDeclaredField("field"));
         } catch (NoSuchFieldException | SecurityException e) {
             e.printStackTrace();
         }
@@ -69,7 +80,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
 
     public int checkedAccess(CheckedObject o) {
         if (o.id == 42) {
-            return UnsafeAccess.unsafeGetInt(o, offset, o.id == 42, location);
+            return MyUnsafeAccess.unsafeGetInt(o, offset, o.id == 42, location);
         }
         return -1;
     }
@@ -77,7 +88,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     // test with a different kind of condition (not a comparison against a constant)
     public int checkedAccess2(CheckedObject o) {
         if (o.id == o.iid) {
-            return UnsafeAccess.unsafeGetInt(o, offset, o.id == o.iid, location);
+            return MyUnsafeAccess.unsafeGetInt(o, offset, o.id == o.iid, location);
         }
         return -1;
     }
@@ -135,7 +146,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         // get UnsafeAccessImpl.unsafeGetInt intrinsified
-        Registration r = new Registration(conf.getPlugins().getInvocationPlugins(), UnsafeAccess.class);
+        Registration r = new Registration(conf.getPlugins().getInvocationPlugins(), MyUnsafeAccess.class);
         TruffleGraphBuilderPlugins.registerUnsafeLoadStorePlugins(r, JavaKind.Int);
         // get UnsafeAccess.getInt inlined
         conf.getPlugins().appendInlineInvokePlugin(new InlineEverythingPlugin());
@@ -151,15 +162,15 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     }
 
     @SuppressWarnings({"unused", "hiding"})
-    private static final class UnsafeAccess {
-        private static final Unsafe UNSAFE = jdk.internal.jvmci.common.UnsafeAccess.unsafe;
+    private static final class MyUnsafeAccess {
+        private static final Unsafe MY_UNSAFE = UNSAFE;
 
         static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-            return UNSAFE.getInt(receiver, offset);
+            return MY_UNSAFE.getInt(receiver, offset);
         }
 
         static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
-            UNSAFE.putInt(receiver, offset, value);
+            MY_UNSAFE.putInt(receiver, offset, value);
         }
     }
 }

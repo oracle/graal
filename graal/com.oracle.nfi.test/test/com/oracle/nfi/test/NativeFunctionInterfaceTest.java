@@ -25,7 +25,6 @@ package com.oracle.nfi.test;
 import static java.io.File.separatorChar;
 import static java.lang.System.getProperty;
 import static java.lang.System.mapLibraryName;
-import static jdk.internal.jvmci.common.UnsafeAccess.unsafe;
 import static jdk.internal.jvmci.common.UnsafeUtil.writeCString;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -34,6 +33,7 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,6 +43,8 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+import sun.misc.Unsafe;
+
 import com.oracle.nfi.NativeFunctionInterfaceRuntime;
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.nfi.api.NativeFunctionInterface;
@@ -50,6 +52,18 @@ import com.oracle.nfi.api.NativeFunctionPointer;
 import com.oracle.nfi.api.NativeLibraryHandle;
 
 public class NativeFunctionInterfaceTest {
+
+    private static final Unsafe unsafe = initUnsafe();
+
+    private static Unsafe initUnsafe() {
+        try {
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            return (Unsafe) theUnsafe.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe", e);
+        }
+    }
 
     public final NativeFunctionInterface nfi;
 

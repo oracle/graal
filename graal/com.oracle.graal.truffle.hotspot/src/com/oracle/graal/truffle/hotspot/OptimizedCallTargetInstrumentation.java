@@ -22,20 +22,25 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import java.lang.reflect.*;
+import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
+import java.lang.reflect.Field;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.truffle.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.CompilationResult.Mark;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.hotspot.HotSpotGraalRuntime;
+import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.asm.FrameContext;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.truffle.OptimizedCallTarget;
 
 /**
  * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .
@@ -62,7 +67,7 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
         try {
             declaringClass.getDeclaredField(name).setAccessible(true);
             Field field = declaringClass.getDeclaredField(name);
-            return (int) UnsafeAccess.unsafe.objectFieldOffset(field);
+            return (int) UNSAFE.objectFieldOffset(field);
         } catch (NoSuchFieldException | SecurityException e) {
             throw JVMCIError.shouldNotReachHere();
         }

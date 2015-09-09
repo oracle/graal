@@ -22,19 +22,18 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import jdk.internal.jvmci.common.*;
+import org.junit.Test;
 
-import org.junit.*;
-
-import sun.misc.*;
+import sun.misc.Unsafe;
 
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.java.LoadIndexedNode;
+import com.oracle.graal.nodes.java.StoreIndexedNode;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.inlining.InliningPhase;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 
 public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
@@ -121,10 +120,10 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
     private static final long offsetInt2 = Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_INT_INDEX_SCALE * 2;
 
     public static int testUnsafe1Snippet(int v, int[] array) {
-        int s = UnsafeAccess.unsafe.getInt(array, offsetInt1);
-        UnsafeAccess.unsafe.putInt(array, offsetInt1, v);
-        UnsafeAccess.unsafe.putInt(array, offsetInt2, v);
-        return s + UnsafeAccess.unsafe.getInt(array, offsetInt1) + UnsafeAccess.unsafe.getInt(array, offsetInt2);
+        int s = UNSAFE.getInt(array, offsetInt1);
+        UNSAFE.putInt(array, offsetInt1, v);
+        UNSAFE.putInt(array, offsetInt2, v);
+        return s + UNSAFE.getInt(array, offsetInt1) + UNSAFE.getInt(array, offsetInt2);
     }
 
     @Test
@@ -134,10 +133,10 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
     }
 
     public static int testUnsafe2Snippet(int v, Object array) {
-        int s = UnsafeAccess.unsafe.getInt(array, offsetInt1);
-        UnsafeAccess.unsafe.putInt(array, offsetInt1, v);
-        UnsafeAccess.unsafe.putInt(array, offsetInt2, v);
-        return s + UnsafeAccess.unsafe.getInt(array, offsetInt1) + UnsafeAccess.unsafe.getInt(array, offsetInt2);
+        int s = UNSAFE.getInt(array, offsetInt1);
+        UNSAFE.putInt(array, offsetInt1, v);
+        UNSAFE.putInt(array, offsetInt2, v);
+        return s + UNSAFE.getInt(array, offsetInt1) + UNSAFE.getInt(array, offsetInt2);
     }
 
     @Test
@@ -150,10 +149,10 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
     private static final long offsetObject2 = Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * 2;
 
     public static int testUnsafe3Snippet(int v, Object[] array) {
-        int s = (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject1);
-        UnsafeAccess.unsafe.putObject(array, offsetObject1, v);
-        UnsafeAccess.unsafe.putObject(array, offsetObject2, v);
-        return s + (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject1) + (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject2);
+        int s = (Integer) UNSAFE.getObject(array, offsetObject1);
+        UNSAFE.putObject(array, offsetObject1, v);
+        UNSAFE.putObject(array, offsetObject2, v);
+        return s + (Integer) UNSAFE.getObject(array, offsetObject1) + (Integer) UNSAFE.getObject(array, offsetObject2);
     }
 
     @Test
@@ -163,11 +162,11 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
     }
 
     public static int testUnsafe4Snippet(int v, Object[] array) {
-        int s = (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject1);
-        UnsafeAccess.unsafe.putObject(array, offsetObject1, v);
-        UnsafeAccess.unsafe.putObject(array, offsetObject2, v);
+        int s = (Integer) UNSAFE.getObject(array, offsetObject1);
+        UNSAFE.putObject(array, offsetObject1, v);
+        UNSAFE.putObject(array, offsetObject2, v);
         array[v] = null;
-        return s + (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject1) + (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject2);
+        return s + (Integer) UNSAFE.getObject(array, offsetObject1) + (Integer) UNSAFE.getObject(array, offsetObject2);
     }
 
     @Test
@@ -180,10 +179,10 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
     private static final long offsetLong2 = Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_LONG_INDEX_SCALE * 2;
 
     public static int testUnsafe5Snippet(int v, long[] array) {
-        int s = UnsafeAccess.unsafe.getInt(array, offsetLong1);
-        UnsafeAccess.unsafe.putInt(array, offsetLong1, v);
-        UnsafeAccess.unsafe.putInt(array, offsetLong2, v);
-        return s + UnsafeAccess.unsafe.getInt(array, offsetLong1) + UnsafeAccess.unsafe.getInt(array, offsetLong2);
+        int s = UNSAFE.getInt(array, offsetLong1);
+        UNSAFE.putInt(array, offsetLong1, v);
+        UNSAFE.putInt(array, offsetLong2, v);
+        return s + UNSAFE.getInt(array, offsetLong1) + UNSAFE.getInt(array, offsetLong2);
     }
 
     @Test

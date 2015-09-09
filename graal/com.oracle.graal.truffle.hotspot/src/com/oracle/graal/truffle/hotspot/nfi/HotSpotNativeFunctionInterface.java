@@ -24,9 +24,11 @@ package com.oracle.graal.truffle.hotspot.nfi;
 
 import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.getGraph;
 import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
-import static jdk.internal.jvmci.common.UnsafeAccess.unsafe;
 import static jdk.internal.jvmci.common.UnsafeUtil.createCString;
 import static jdk.internal.jvmci.common.UnsafeUtil.writeCString;
+
+import java.lang.reflect.Field;
+
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CallingConvention.Type;
 import jdk.internal.jvmci.code.CompilationResult;
@@ -34,6 +36,7 @@ import jdk.internal.jvmci.code.InstalledCode;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.DefaultProfilingInfo;
 import jdk.internal.jvmci.meta.TriState;
+import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.target.Backend;
@@ -82,9 +85,9 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         int ebufLen = 1024;
         // Allocating a single chunk for both the error message buffer and the
         // file name simplifies deallocation below.
-        long buffer = unsafe.allocateMemory(ebufLen + libPath.length() + 1);
+        long buffer = UNSAFE.allocateMemory(ebufLen + libPath.length() + 1);
         long ebuf = buffer;
-        long libPathCString = writeCString(unsafe, libPath, buffer + ebufLen);
+        long libPathCString = writeCString(UNSAFE, libPath, buffer + ebufLen);
         try {
             long handle = (long) libraryLookupFunctionHandle.call(libPathCString, ebuf, ebufLen);
             if (handle == 0) {
@@ -92,7 +95,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
             }
             return new HotSpotNativeLibraryHandle(libPath, handle);
         } finally {
-            unsafe.freeMemory(buffer);
+            UNSAFE.freeMemory(buffer);
         }
     }
 
@@ -132,7 +135,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
             dllLookupFunctionHandle = createHandle(functionLookupFunctionPointer, long.class, long.class, long.class);
         }
 
-        long nameCString = createCString(unsafe, name);
+        long nameCString = createCString(UNSAFE, name);
         try {
             long functionPointer = (long) dllLookupFunctionHandle.call(((HotSpotNativeLibraryHandle) library).value, nameCString);
             if (functionPointer == 0L) {
@@ -143,7 +146,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
             }
             return new HotSpotNativeFunctionPointer(functionPointer, name);
         } finally {
-            unsafe.freeMemory(nameCString);
+            UNSAFE.freeMemory(nameCString);
         }
     }
 
@@ -208,5 +211,21 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
     @Override
     public NativeFunctionPointer getNativeFunctionPointerFromRawValue(long rawValue) {
         return new HotSpotNativeFunctionPointer(rawValue, null);
+    }
+
+    private static final Unsafe UNSAFE = initUnsafe();
+
+    private static Unsafe initUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            try {
+                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
+        }
     }
 }

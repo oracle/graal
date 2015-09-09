@@ -29,10 +29,23 @@ import java.util.*;
 import org.junit.*;
 import org.junit.internal.*;
 
+import sun.misc.Unsafe;
+
 /**
  * Base class that contains common utility methods and classes useful in unit tests.
  */
 public class GraalTest {
+
+    public static final Unsafe UNSAFE;
+    static {
+        try {
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            UNSAFE = (Unsafe) theUnsafe.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe", e);
+        }
+    }
 
     protected Method getMethod(String methodName) {
         return getMethod(getClass(), methodName);

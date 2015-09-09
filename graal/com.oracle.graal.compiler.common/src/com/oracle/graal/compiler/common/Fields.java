@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.compiler.common;
 
-import static jdk.internal.jvmci.common.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.UNSAFE;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
 
-import jdk.internal.jvmci.common.*;
-import sun.misc.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import sun.misc.Unsafe;
 
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.
@@ -120,27 +121,27 @@ public class Fields {
             Class<?> type = types[index];
             if (type.isPrimitive()) {
                 if (type == Integer.TYPE) {
-                    unsafe.putInt(to, offset, unsafe.getInt(from, offset));
+                    UNSAFE.putInt(to, offset, UNSAFE.getInt(from, offset));
                 } else if (type == Long.TYPE) {
-                    unsafe.putLong(to, offset, unsafe.getLong(from, offset));
+                    UNSAFE.putLong(to, offset, UNSAFE.getLong(from, offset));
                 } else if (type == Boolean.TYPE) {
-                    unsafe.putBoolean(to, offset, unsafe.getBoolean(from, offset));
+                    UNSAFE.putBoolean(to, offset, UNSAFE.getBoolean(from, offset));
                 } else if (type == Float.TYPE) {
-                    unsafe.putFloat(to, offset, unsafe.getFloat(from, offset));
+                    UNSAFE.putFloat(to, offset, UNSAFE.getFloat(from, offset));
                 } else if (type == Double.TYPE) {
-                    unsafe.putDouble(to, offset, unsafe.getDouble(from, offset));
+                    UNSAFE.putDouble(to, offset, UNSAFE.getDouble(from, offset));
                 } else if (type == Short.TYPE) {
-                    unsafe.putShort(to, offset, unsafe.getShort(from, offset));
+                    UNSAFE.putShort(to, offset, UNSAFE.getShort(from, offset));
                 } else if (type == Character.TYPE) {
-                    unsafe.putChar(to, offset, unsafe.getChar(from, offset));
+                    UNSAFE.putChar(to, offset, UNSAFE.getChar(from, offset));
                 } else if (type == Byte.TYPE) {
-                    unsafe.putByte(to, offset, unsafe.getByte(from, offset));
+                    UNSAFE.putByte(to, offset, UNSAFE.getByte(from, offset));
                 } else {
                     assert false : "unhandled property type: " + type;
                 }
             } else {
-                Object obj = unsafe.getObject(from, offset);
-                unsafe.putObject(to, offset, trans == null ? obj : trans.apply(index, obj));
+                Object obj = UNSAFE.getObject(from, offset);
+                UNSAFE.putObject(to, offset, trans == null ? obj : trans.apply(index, obj));
             }
         }
     }
@@ -158,26 +159,26 @@ public class Fields {
         Object value = null;
         if (type.isPrimitive()) {
             if (type == Integer.TYPE) {
-                value = unsafe.getInt(object, offset);
+                value = UNSAFE.getInt(object, offset);
             } else if (type == Long.TYPE) {
-                value = unsafe.getLong(object, offset);
+                value = UNSAFE.getLong(object, offset);
             } else if (type == Boolean.TYPE) {
-                value = unsafe.getBoolean(object, offset);
+                value = UNSAFE.getBoolean(object, offset);
             } else if (type == Float.TYPE) {
-                value = unsafe.getFloat(object, offset);
+                value = UNSAFE.getFloat(object, offset);
             } else if (type == Double.TYPE) {
-                value = unsafe.getDouble(object, offset);
+                value = UNSAFE.getDouble(object, offset);
             } else if (type == Short.TYPE) {
-                value = unsafe.getShort(object, offset);
+                value = UNSAFE.getShort(object, offset);
             } else if (type == Character.TYPE) {
-                value = unsafe.getChar(object, offset);
+                value = UNSAFE.getChar(object, offset);
             } else if (type == Byte.TYPE) {
-                value = unsafe.getByte(object, offset);
+                value = UNSAFE.getByte(object, offset);
             } else {
                 assert false : "unhandled property type: " + type;
             }
         } else {
-            value = unsafe.getObject(object, offset);
+            value = UNSAFE.getObject(object, offset);
         }
         return value;
     }
@@ -194,21 +195,21 @@ public class Fields {
         Class<?> type = types[index];
 
         if (type == Integer.TYPE) {
-            return unsafe.getInt(object, offset);
+            return UNSAFE.getInt(object, offset);
         } else if (type == Long.TYPE) {
-            return unsafe.getLong(object, offset);
+            return UNSAFE.getLong(object, offset);
         } else if (type == Boolean.TYPE) {
-            return unsafe.getBoolean(object, offset) ? 1 : 0;
+            return UNSAFE.getBoolean(object, offset) ? 1 : 0;
         } else if (type == Float.TYPE) {
-            return Float.floatToRawIntBits(unsafe.getFloat(object, offset));
+            return Float.floatToRawIntBits(UNSAFE.getFloat(object, offset));
         } else if (type == Double.TYPE) {
-            return Double.doubleToRawLongBits(unsafe.getDouble(object, offset));
+            return Double.doubleToRawLongBits(UNSAFE.getDouble(object, offset));
         } else if (type == Short.TYPE) {
-            return unsafe.getShort(object, offset);
+            return UNSAFE.getShort(object, offset);
         } else if (type == Character.TYPE) {
-            return unsafe.getChar(object, offset);
+            return UNSAFE.getChar(object, offset);
         } else if (type == Byte.TYPE) {
-            return unsafe.getByte(object, offset);
+            return UNSAFE.getByte(object, offset);
         } else {
             throw JVMCIError.shouldNotReachHere();
         }
@@ -265,27 +266,27 @@ public class Fields {
         Class<?> type = types[index];
         if (type.isPrimitive()) {
             if (type == Integer.TYPE) {
-                unsafe.putInt(object, offset, (Integer) value);
+                UNSAFE.putInt(object, offset, (Integer) value);
             } else if (type == Long.TYPE) {
-                unsafe.putLong(object, offset, (Long) value);
+                UNSAFE.putLong(object, offset, (Long) value);
             } else if (type == Boolean.TYPE) {
-                unsafe.putBoolean(object, offset, (Boolean) value);
+                UNSAFE.putBoolean(object, offset, (Boolean) value);
             } else if (type == Float.TYPE) {
-                unsafe.putFloat(object, offset, (Float) value);
+                UNSAFE.putFloat(object, offset, (Float) value);
             } else if (type == Double.TYPE) {
-                unsafe.putDouble(object, offset, (Double) value);
+                UNSAFE.putDouble(object, offset, (Double) value);
             } else if (type == Short.TYPE) {
-                unsafe.putShort(object, offset, (Short) value);
+                UNSAFE.putShort(object, offset, (Short) value);
             } else if (type == Character.TYPE) {
-                unsafe.putChar(object, offset, (Character) value);
+                UNSAFE.putChar(object, offset, (Character) value);
             } else if (type == Byte.TYPE) {
-                unsafe.putByte(object, offset, (Byte) value);
+                UNSAFE.putByte(object, offset, (Byte) value);
             } else {
                 assert false : "unhandled property type: " + type;
             }
         } else {
             assert checkAssignableFrom(object, index, value);
-            unsafe.putObject(object, offset, value);
+            UNSAFE.putObject(object, offset, value);
         }
     }
 
@@ -293,21 +294,21 @@ public class Fields {
         long offset = offsets[index];
         Class<?> type = types[index];
         if (type == Integer.TYPE) {
-            unsafe.putInt(object, offset, (int) value);
+            UNSAFE.putInt(object, offset, (int) value);
         } else if (type == Long.TYPE) {
-            unsafe.putLong(object, offset, value);
+            UNSAFE.putLong(object, offset, value);
         } else if (type == Boolean.TYPE) {
-            unsafe.putBoolean(object, offset, value != 0);
+            UNSAFE.putBoolean(object, offset, value != 0);
         } else if (type == Float.TYPE) {
-            unsafe.putFloat(object, offset, Float.intBitsToFloat((int) value));
+            UNSAFE.putFloat(object, offset, Float.intBitsToFloat((int) value));
         } else if (type == Double.TYPE) {
-            unsafe.putDouble(object, offset, Double.longBitsToDouble(value));
+            UNSAFE.putDouble(object, offset, Double.longBitsToDouble(value));
         } else if (type == Short.TYPE) {
-            unsafe.putShort(object, offset, (short) value);
+            UNSAFE.putShort(object, offset, (short) value);
         } else if (type == Character.TYPE) {
-            unsafe.putChar(object, offset, (char) value);
+            UNSAFE.putChar(object, offset, (char) value);
         } else if (type == Byte.TYPE) {
-            unsafe.putByte(object, offset, (byte) value);
+            UNSAFE.putByte(object, offset, (byte) value);
         } else {
             throw JVMCIError.shouldNotReachHere();
         }
@@ -328,51 +329,51 @@ public class Fields {
 
     public boolean getBoolean(Object n, int i) {
         assert types[i] == boolean.class;
-        return unsafe.getBoolean(n, offsets[i]);
+        return UNSAFE.getBoolean(n, offsets[i]);
     }
 
     public byte getByte(Object n, int i) {
         assert types[i] == byte.class;
-        return unsafe.getByte(n, offsets[i]);
+        return UNSAFE.getByte(n, offsets[i]);
     }
 
     public short getShort(Object n, int i) {
         assert types[i] == short.class;
-        return unsafe.getShort(n, offsets[i]);
+        return UNSAFE.getShort(n, offsets[i]);
     }
 
     public char getChar(Object n, int i) {
         assert types[i] == char.class;
-        return unsafe.getChar(n, offsets[i]);
+        return UNSAFE.getChar(n, offsets[i]);
     }
 
     public int getInt(Object n, int i) {
         assert types[i] == int.class;
-        return unsafe.getInt(n, offsets[i]);
+        return UNSAFE.getInt(n, offsets[i]);
     }
 
     public long getLong(Object n, int i) {
         assert types[i] == long.class;
-        return unsafe.getLong(n, offsets[i]);
+        return UNSAFE.getLong(n, offsets[i]);
     }
 
     public float getFloat(Object n, int i) {
         assert types[i] == float.class;
-        return unsafe.getFloat(n, offsets[i]);
+        return UNSAFE.getFloat(n, offsets[i]);
     }
 
     public double getDouble(Object n, int i) {
         assert types[i] == double.class;
-        return unsafe.getDouble(n, offsets[i]);
+        return UNSAFE.getDouble(n, offsets[i]);
     }
 
     public Object getObject(Object object, int i) {
         assert !types[i].isPrimitive();
-        return unsafe.getObject(object, offsets[i]);
+        return UNSAFE.getObject(object, offsets[i]);
     }
 
     public void putObject(Object object, int i, Object value) {
         assert checkAssignableFrom(object, i, value);
-        unsafe.putObject(object, offsets[i], value);
+        UNSAFE.putObject(object, offsets[i], value);
     }
 }

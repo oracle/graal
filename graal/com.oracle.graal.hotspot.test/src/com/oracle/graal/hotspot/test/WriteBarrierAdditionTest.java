@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static jdk.internal.jvmci.common.UnsafeAccess.*;
-
 import java.lang.ref.*;
 
 import com.oracle.graal.debug.*;
@@ -162,7 +160,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     public static Object test5Snippet() throws Exception {
-        return unsafe.getObject(wr, config.useCompressedOops ? 12L : 16L);
+        return UNSAFE.getObject(wr, config.useCompressedOops ? 12L : 16L);
     }
 
     /**
@@ -171,7 +169,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test6() throws Exception {
-        test2("testUnsafeLoad", unsafe, wr, new Long(referentOffset), null);
+        test2("testUnsafeLoad", UNSAFE, wr, new Long(referentOffset), null);
     }
 
     /**
@@ -180,7 +178,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test7() throws Exception {
-        test2("testUnsafeLoad", unsafe, con, new Long(referentOffset), null);
+        test2("testUnsafeLoad", UNSAFE, con, new Long(referentOffset), null);
     }
 
     /**
@@ -190,7 +188,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test8() throws Exception {
-        test2("testUnsafeLoad", unsafe, wr, new Long(config.useCompressedOops ? 20 : 32), null);
+        test2("testUnsafeLoad", UNSAFE, wr, new Long(config.useCompressedOops ? 20 : 32), null);
     }
 
     /**
@@ -200,7 +198,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test10() throws Exception {
-        test2("testUnsafeLoad", unsafe, wr, new Long(config.useCompressedOops ? 6 : 8), new Integer(config.useCompressedOops ? 6 : 8));
+        test2("testUnsafeLoad", UNSAFE, wr, new Long(config.useCompressedOops ? 6 : 8), new Integer(config.useCompressedOops ? 6 : 8));
     }
 
     /**
@@ -210,7 +208,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test9() throws Exception {
-        test2("testUnsafeLoad", unsafe, wr, new Long(config.useCompressedOops ? 10 : 16), new Integer(config.useCompressedOops ? 10 : 16));
+        test2("testUnsafeLoad", UNSAFE, wr, new Long(config.useCompressedOops ? 10 : 16), new Integer(config.useCompressedOops ? 10 : 16));
     }
 
     static Object[] src = new Object[1];

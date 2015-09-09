@@ -22,29 +22,30 @@
  */
 package com.oracle.graal.compiler.common;
 
-public abstract class FieldIntrospection<T> {
+import java.lang.reflect.Field;
 
-    private final Class<T> clazz;
+import sun.misc.Unsafe;
 
-    /**
-     * The set of fields in {@link #clazz} that do long belong to a more specific category.
-     */
-    protected Fields data;
+/**
+ * Package private access to the {@link Unsafe} capability.
+ */
+class UnsafeAccess {
 
-    public FieldIntrospection(Class<T> clazz) {
-        this.clazz = clazz;
+    static final Unsafe UNSAFE = initUnsafe();
+
+    private static Unsafe initUnsafe() {
+        try {
+            // Fast path when we are trusted.
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            // Slow path when we are not trusted.
+            try {
+                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
+        }
     }
-
-    public Class<T> getClazz() {
-        return clazz;
-    }
-
-    /**
-     * Gets the fields in {@link #getClazz()} that do long belong to specific category.
-     */
-    public Fields getData() {
-        return data;
-    }
-
-    public abstract Fields[] getAllFields();
 }

@@ -22,33 +22,52 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static jdk.internal.jvmci.common.UnsafeAccess.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.runtime;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.IDENTITY_HASHCODE;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
+import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectTypeImpl;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.Assumptions;
 import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.hotspot.nodes.CompressionNode;
+import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
+import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodes.CanonicalizableLocation;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.extended.LoadHubNode;
+import com.oracle.graal.nodes.extended.StoreHubNode;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.memory.Access;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.replacements.ReplacementsUtil;
+import com.oracle.graal.replacements.nodes.ReadRegisterNode;
+import com.oracle.graal.replacements.nodes.WriteRegisterNode;
+import com.oracle.graal.word.Word;
 
 //JaCoCo Exclude
 
@@ -326,7 +345,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int pageSize() {
-        return unsafe.pageSize();
+        return UNSAFE.pageSize();
     }
 
     @Fold
@@ -949,7 +968,7 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static long referentOffset() {
         try {
-            return unsafe.objectFieldOffset(java.lang.ref.Reference.class.getDeclaredField("referent"));
+            return UNSAFE.objectFieldOffset(java.lang.ref.Reference.class.getDeclaredField("referent"));
         } catch (Exception e) {
             throw new JVMCIError(e);
         }

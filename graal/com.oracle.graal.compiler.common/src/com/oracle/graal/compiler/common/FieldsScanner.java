@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.compiler.common;
 
-import static jdk.internal.jvmci.common.UnsafeAccess.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.UNSAFE;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 
-import sun.misc.*;
+import sun.misc.Unsafe;
 
 /**
  * Scans the fields in a class hierarchy.
@@ -49,7 +50,7 @@ public class FieldsScanner {
 
         @Override
         public long getOffset(Field field) {
-            return unsafe.objectFieldOffset(field);
+            return UNSAFE.objectFieldOffset(field);
         }
     }
 

@@ -22,29 +22,45 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.compiler.common.Fields.*;
-import static com.oracle.graal.graph.Edges.*;
-import static com.oracle.graal.graph.InputEdges.*;
-import static com.oracle.graal.graph.Node.*;
-import static jdk.internal.jvmci.common.JVMCIError.*;
+import static com.oracle.graal.compiler.common.Fields.translateInto;
+import static com.oracle.graal.graph.Edges.translateInto;
+import static com.oracle.graal.graph.InputEdges.translateInto;
+import static com.oracle.graal.graph.Node.WithAllEdges;
+import static com.oracle.graal.graph.Node.newIdentityMap;
+import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
+import static jdk.internal.jvmci.common.JVMCIError.shouldNotReachHere;
 
-import java.lang.annotation.*;
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.FieldIntrospection;
+import com.oracle.graal.compiler.common.Fields;
+import com.oracle.graal.compiler.common.FieldsScanner;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.OptionalInput;
 import com.oracle.graal.graph.Node.Successor;
-import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.graph.spi.Simplifiable;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.Verbosity;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -681,7 +697,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     @SuppressWarnings("unchecked")
     public Node allocateInstance() {
         try {
-            Node node = (Node) UnsafeAccess.unsafe.allocateInstance(getJavaClass());
+            Node node = (Node) UNSAFE.allocateInstance(getJavaClass());
             node.init((NodeClass<? extends Node>) this);
             return node;
         } catch (InstantiationException ex) {

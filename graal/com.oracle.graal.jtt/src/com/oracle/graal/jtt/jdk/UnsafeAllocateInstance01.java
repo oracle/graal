@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.jtt.jdk;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.util.AbstractList;
+import java.util.List;
 
-import org.junit.*;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import sun.misc.*;
-
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 /*
  */
@@ -38,24 +37,12 @@ public class UnsafeAllocateInstance01 extends JTTTest {
     int field01 = 42;
 
     public static int testInstance() throws SecurityException, InstantiationException {
-        final Unsafe unsafe = getUnsafe();
-        UnsafeAllocateInstance01 newObject = (UnsafeAllocateInstance01) unsafe.allocateInstance(UnsafeAllocateInstance01.class);
+        UnsafeAllocateInstance01 newObject = (UnsafeAllocateInstance01) UNSAFE.allocateInstance(UnsafeAllocateInstance01.class);
         return newObject.field01;
     }
 
     public static void testClassForException(Class<?> clazz) throws SecurityException, InstantiationException {
-        final Unsafe unsafe = getUnsafe();
-        unsafe.allocateInstance(clazz);
-    }
-
-    static Unsafe getUnsafe() {
-        try {
-            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            return (Unsafe) unsafeField.get(null);
-        } catch (Exception e) {
-            throw new Error(e);
-        }
+        UNSAFE.allocateInstance(clazz);
     }
 
     @Test
