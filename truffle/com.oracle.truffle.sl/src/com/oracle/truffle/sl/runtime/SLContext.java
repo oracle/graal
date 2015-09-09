@@ -53,6 +53,7 @@ import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.parser.*;
+import java.math.BigInteger;
 
 /**
  * The run-time state of SL during execution. One context is instantiated before any source code is
@@ -197,5 +198,14 @@ public final class SLContext extends ExecutionContext {
 
     public static DynamicObject castSLObject(Object value) {
         return LAYOUT.getType().cast(value);
+    }
+
+    public static Object fromForeignValue(Object a) {
+        if (a instanceof Long || a instanceof BigInteger) {
+            return a;
+        } else if (a instanceof Number) {
+            return ((Number) a).longValue();
+        }
+        return a;
     }
 }

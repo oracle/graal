@@ -110,6 +110,7 @@ public abstract class SLInvokeNode extends SLExpressionNode {
         if (crossLanguageCall == null) {
             crossLanguageCall = insert(Message.createExecute(argumentValues.length).createNode());
         }
-        return ForeignAccess.execute(crossLanguageCall, frame, function, argumentValues);
+        Object res = ForeignAccess.execute(crossLanguageCall, frame, function, argumentValues);
+        return SLContext.fromForeignValue(res);
     }
 }

@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
-import java.math.BigInteger;
+import static com.oracle.truffle.sl.runtime.SLContext.fromForeignValue;
 import java.util.List;
 
 /**
@@ -102,20 +102,10 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
                 arr = args.toArray();
             }
             for (int i = 0; i < arr.length; i++) {
-                Object a = arr[i];
-                if (a instanceof Long) {
-                    continue;
-                }
-                if (a instanceof BigInteger) {
-                    continue;
-                }
-                if (a instanceof Number) {
-                    arr[i] = ((Number) a).longValue();
-                }
+                arr[i] = fromForeignValue(arr[i]);
             }
             return dispatch.executeDispatch(frame, function, arr);
         }
-
     }
 
     private static class SLForeignNullCheckNode extends RootNode {

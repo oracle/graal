@@ -347,6 +347,72 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testPrimitiveReturnTypeByte() throws Exception {
+        TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
+
+        byte value = (byte) RANDOM.nextInt(100);
+
+        TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
+        Number n = apply.invoke(null, fn).as(Number.class);
+        assertEquals("The same value returned", value + 10, n.byteValue());
+    }
+
+    @Test
+    public void testPrimitiveReturnTypeShort() throws Exception {
+        TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
+
+        short value = (short) RANDOM.nextInt(100);
+
+        TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
+        Number n = apply.invoke(null, fn).as(Number.class);
+        assertEquals("The same value returned", value + 10, n.shortValue());
+    }
+
+    @Test
+    public void testPrimitiveReturnTypeInt() throws Exception {
+        TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
+
+        int value = RANDOM.nextInt(100);
+
+        TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
+        Number n = apply.invoke(null, fn).as(Number.class);
+        assertEquals("The same value returned", value + 10, n.intValue());
+    }
+
+    @Test
+    public void testPrimitiveReturnTypeLong() throws Exception {
+        TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
+
+        long value = RANDOM.nextInt(1000);
+
+        TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
+        Number n = apply.invoke(null, fn).as(Number.class);
+        assertEquals("The same value returned", value + 10, n.longValue());
+    }
+
+    @Test
+    public void testPrimitiveReturnTypeFloat() throws Exception {
+        TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
+
+        float value = RANDOM.nextInt(1000) + RANDOM.nextFloat();
+
+        TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
+        Number n = apply.invoke(null, fn).as(Number.class);
+        assertEquals("The same value returned", value + 10, n.floatValue(), 0.01);
+    }
+
+    @Test
+    public void testPrimitiveReturnTypeDouble() throws Exception {
+        TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
+
+        double value = RANDOM.nextInt(1000) + RANDOM.nextDouble();
+
+        TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
+        Number n = apply.invoke(null, fn).as(Number.class);
+        assertEquals("The same value returned", value + 10, n.doubleValue(), 0.01);
+    }
+
+    @Test
     public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
         final String countMethod = countInvocations();
         TruffleVM.Symbol count1 = findGlobalSymbol(countMethod);
