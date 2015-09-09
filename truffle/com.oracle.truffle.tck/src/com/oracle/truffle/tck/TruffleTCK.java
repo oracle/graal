@@ -96,7 +96,25 @@ public abstract class TruffleTCK {
      *
      * @return name of globally exported symbol
      */
-    protected abstract String plusInt();
+    protected String plusInt() {
+        throw new UnsupportedOperationException("Override plus(Class,Class) method!");
+    }
+
+    /**
+     * Name of function to add two numbers together. The symbol will be invoked with two parameters
+     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number} 
+     * which's {@link Number#intValue()} is equivalent of <code>param1 + param2</code>. As some
+     * languages may have different operations for different types of numbers, the actual types are
+     * passed to the method and the implementation can decide to return different symbol based on
+     * the parameters.
+     *
+     * @param type1 one of byte, short, int, long, float, double class
+     * @param type2 one of byte, short, int, long, float, double class
+     * @return name of globally exported symbol
+     */
+    protected String plus(Class<?> type1, Class<?> type2) {
+        return plusInt();
+    }
 
     /**
      * Name of a function in your language to perform a callback to foreign function. Your function
@@ -213,10 +231,65 @@ public abstract class TruffleTCK {
         int a = RANDOM.nextInt(100);
         int b = RANDOM.nextInt(100);
 
-        TruffleVM.Symbol plus = findGlobalSymbol(plusInt());
+        TruffleVM.Symbol plus = findGlobalSymbol(plus(int.class, int.class));
 
         Number n = plus.invoke(null, a, b).as(Number.class);
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+    }
+
+    @Test
+    public void testPlusWithBytes() throws Exception {
+        int a = RANDOM.nextInt(100);
+        int b = RANDOM.nextInt(100);
+
+        TruffleVM.Symbol plus = findGlobalSymbol(plus(byte.class, byte.class));
+
+        Number n = plus.invoke(null, (byte) a, (byte) b).as(Number.class);
+        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+    }
+
+    @Test
+    public void testPlusWithShort() throws Exception {
+        int a = RANDOM.nextInt(100);
+        int b = RANDOM.nextInt(100);
+
+        TruffleVM.Symbol plus = findGlobalSymbol(plus(short.class, short.class));
+
+        Number n = plus.invoke(null, (short) a, (short) b).as(Number.class);
+        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+    }
+
+    @Test
+    public void testPlusWithLong() throws Exception {
+        long a = RANDOM.nextInt(100);
+        long b = RANDOM.nextInt(100);
+
+        TruffleVM.Symbol plus = findGlobalSymbol(plus(long.class, long.class));
+
+        Number n = plus.invoke(null, a, b).as(Number.class);
+        assert a + b == n.longValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.longValue();
+    }
+
+    @Test
+    public void testPlusWithFloat() throws Exception {
+        float a = RANDOM.nextFloat();
+        float b = RANDOM.nextFloat();
+
+        TruffleVM.Symbol plus = findGlobalSymbol(plus(float.class, float.class));
+
+        Number n = plus.invoke(null, a, b).as(Number.class);
+        assertEquals("Correct value computed", a + b, n.floatValue(), 0.01f);
+    }
+
+    @Test
+    public void testPlusWithDouble() throws Exception {
+        double a = RANDOM.nextDouble();
+        double b = RANDOM.nextDouble();
+
+        TruffleVM.Symbol plus = findGlobalSymbol(plus(float.class, float.class));
+
+        Number n = plus.invoke(null, a, b).as(Number.class);
+        assertEquals("Correct value computed", a + b, n.doubleValue(), 0.01);
     }
 
     @Test

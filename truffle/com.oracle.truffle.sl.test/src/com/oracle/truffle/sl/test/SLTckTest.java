@@ -107,7 +107,7 @@ public class SLTckTest extends TruffleTCK {
     }
 
     @Override
-    protected String plusInt() {
+    protected String plus(Class<?> type1, Class<?> type2) {
         return "plus";
     }
 
@@ -139,5 +139,17 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected String countInvocations() {
         return "count";
+    }
+
+    //
+    // Ignore tests working on floats and double
+    //
+
+    @Override
+    public void testPlusWithDouble() throws Exception {
+    }
+
+    @Override
+    public void testPlusWithFloat() throws Exception {
     }
 }
