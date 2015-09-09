@@ -79,6 +79,7 @@ public class NodeBenchmark extends GraalBenchmark {
         }
     }
 
+    // Checkstyle: stop method name check
     @Benchmark
     @Warmup(iterations = 20)
     public int valueEquals_STRING_EQUALS(StringEquals s) {
@@ -126,4 +127,5 @@ public class NodeBenchmark extends GraalBenchmark {
         }
         return result;
     }
+    // Checkstyle: resume method name check
 }
