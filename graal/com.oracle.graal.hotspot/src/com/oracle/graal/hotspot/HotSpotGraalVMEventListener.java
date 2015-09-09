@@ -22,15 +22,23 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Map;
+import java.util.TreeMap;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.logging.*;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.hotspot.HotSpotVMEventListener;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.service.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.TTY;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
@@ -51,31 +59,73 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
     }
 
     @Override
-    public CompilerToVM completeInitialization(HotSpotJVMCIRuntime runtime, CompilerToVM compilerToVM) {
-        CompilerToVM toVM = compilerToVM;
-        if (CountingProxy.ENABLED) {
-            toVM = CountingProxy.getProxy(CompilerToVM.class, toVM);
-        }
-
-        if (Boolean.valueOf(System.getProperty("jvmci.printconfig"))) {
+    public void completeInitialization(HotSpotJVMCIRuntime runtime) {
+        if (Boolean.valueOf(System.getProperty("jvmci.printconfig")) || Boolean.valueOf(System.getProperty("graal.printconfig"))) {
             printConfig(runtime.getConfig());
         }
-
-        return toVM;
     }
 
     private static void printConfig(HotSpotVMConfig config) {
         Field[] fields = config.getClass().getDeclaredFields();
         Map<String, Field> sortedFields = new TreeMap<>();
         for (Field f : fields) {
-            f.setAccessible(true);
-            sortedFields.put(f.getName(), f);
+            if (!f.isSynthetic() && !Modifier.isStatic(f.getModifiers())) {
+                f.setAccessible(true);
+                sortedFields.put(f.getName(), f);
+            }
         }
         for (Field f : sortedFields.values()) {
             try {
-                Logger.info(String.format("%9s %-40s = %s", f.getType().getSimpleName(), f.getName(), Logger.pretty(f.get(config))));
+                TTY.print("%9s %-40s = %s%n", f.getType().getSimpleName(), f.getName(), pretty(f.get(config)));
             } catch (Exception e) {
             }
         }
+    }
+
+    private static String pretty(Object value) {
+        if (value == null) {
+            return "null";
+        }
+
+        Class<?> klass = value.getClass();
+        if (value instanceof String) {
+            return "\"" + value + "\"";
+        } else if (value instanceof Method) {
+            return "method \"" + ((Method) value).getName() + "\"";
+        } else if (value instanceof Class<?>) {
+            return "class \"" + ((Class<?>) value).getSimpleName() + "\"";
+        } else if (value instanceof Integer) {
+            if ((Integer) value < 10) {
+                return value.toString();
+            }
+            return value + " (0x" + Integer.toHexString((Integer) value) + ")";
+        } else if (value instanceof Long) {
+            if ((Long) value < 10 && (Long) value > -10) {
+                return value + "l";
+            }
+            return value + "l (0x" + Long.toHexString((Long) value) + "l)";
+        } else if (klass.isArray()) {
+            StringBuilder str = new StringBuilder();
+            int dimensions = 0;
+            while (klass.isArray()) {
+                dimensions++;
+                klass = klass.getComponentType();
+            }
+            int length = Array.getLength(value);
+            str.append(klass.getSimpleName()).append('[').append(length).append(']');
+            for (int i = 1; i < dimensions; i++) {
+                str.append("[]");
+            }
+            str.append(" {");
+            for (int i = 0; i < length; i++) {
+                str.append(pretty(Array.get(value, i)));
+                if (i < length - 1) {
+                    str.append(", ");
+                }
+            }
+            str.append('}');
+            return str.toString();
+        }
+        return value.toString();
     }
 }

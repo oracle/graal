@@ -20,10 +20,5 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-/**
- * Package containing the runtime interface (defined in the CRI project) implementation for HotSpot.
- * There is a class that bridges from the C++ to the Java side (VMToCompilerImpl.java) and one that bridges
- * from the Java to the C++ side (CompilerToVMImpl.java).
- */
 package com.oracle.graal.hotspot;
 

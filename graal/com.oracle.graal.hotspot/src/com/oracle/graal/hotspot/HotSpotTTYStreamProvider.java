@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.logging;
+package com.oracle.graal.hotspot;
 
-import java.util.*;
+import java.io.PrintStream;
 
-public final class ProxyUtil {
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-    public static Class<?>[] getAllInterfaces(Class<?> clazz) {
-        HashSet<Class<?>> interfaces = new HashSet<>();
-        getAllInterfaces(clazz, interfaces);
-        return interfaces.toArray(new Class<?>[interfaces.size()]);
+import com.oracle.graal.debug.TTYStreamProvider;
+
+@ServiceProvider(TTYStreamProvider.class)
+class HotSpotTTYStreamProvider implements TTYStreamProvider {
+
+    public static class Options {
+
+        // @formatter:off
+        @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying the process, usually the process id.", type = OptionType.Expert)
+        public static final PrintStreamOption LogFile = new PrintStreamOption();
+        // @formatter:on
     }
 
-    private static void getAllInterfaces(Class<?> clazz, HashSet<Class<?>> interfaces) {
-        for (Class<?> iface : clazz.getInterfaces()) {
-            if (!interfaces.contains(iface)) {
-                interfaces.add(iface);
-                getAllInterfaces(iface, interfaces);
-            }
-        }
-        if (clazz.getSuperclass() != null) {
-            getAllInterfaces(clazz.getSuperclass(), interfaces);
-        }
+    public PrintStream getStream() {
+        return Options.LogFile.getStream();
     }
 }
