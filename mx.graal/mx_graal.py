@@ -144,6 +144,8 @@ def scaladacapo(args):
 def microbench(args):
     """run JMH microbenchmark projects"""
     vmArgs, jmhArgs = mx.extract_VM_args(args, useDoubleDash=True)
+    if isJVMCIEnabled(get_vm()) and  '-XX:-UseJVMCIClassLoader' not in vmArgs:
+        vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
 
     # look for -f in JMH arguments
     containsF = False
