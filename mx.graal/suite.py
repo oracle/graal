@@ -604,6 +604,20 @@ suite = {
       "workingSets" : "Graal,Bench",
     },
 
+    "com.oracle.graal.microbenchmarks" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JMH",
+        "com.oracle.graal.java",
+        "com.oracle.graal.runtime",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["JMH"],
+      "workingSets" : "Graal,Bench",
+    },
+
     "com.oracle.graal.loop" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
