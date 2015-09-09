@@ -68,7 +68,7 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
 
     @Benchmark
     @Warmup(iterations = 20)
-    public void nullness(Nullness s, GraalState g) {
+    public void nullness(Nullness s, @SuppressWarnings("unused") GraalState g) {
         new ConditionalEliminationPhase().apply(s.graph);
     }
 
@@ -119,7 +119,7 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    public void search(Search s, GraalState g) {
+    public void search(Search s, @SuppressWarnings("unused") GraalState g) {
         new ConditionalEliminationPhase().apply(s.graph);
     }
 }

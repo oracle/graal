@@ -30,9 +30,9 @@ public class FrameStateAssignmentState extends GraphState {
     public FrameStateAssignmentPhase phase;
 
     @Override
-    protected StructuredGraph preprocessOriginal(StructuredGraph graph) {
-        new GuardLoweringPhase().apply(graph, null);
-        return graph;
+    protected StructuredGraph preprocessOriginal(StructuredGraph structuredGraph) {
+        new GuardLoweringPhase().apply(structuredGraph, null);
+        return structuredGraph;
     }
 
     @Override

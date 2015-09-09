@@ -72,7 +72,7 @@ public class GraphCopyBenchmark extends GraalBenchmark {
 
     @Benchmark
     @Warmup(iterations = 20)
-    public StructuredGraph nullness(Nullness s, GraalState g) {
+    public StructuredGraph nullness(Nullness s, @SuppressWarnings("unused") GraalState g) {
         return (StructuredGraph) s.graph.copy();
     }
 
@@ -124,7 +124,7 @@ public class GraphCopyBenchmark extends GraalBenchmark {
 
     @Benchmark
     @Warmup(iterations = 20)
-    public StructuredGraph search(Search s, GraalState g) {
+    public StructuredGraph search(Search s, @SuppressWarnings("unused") GraalState g) {
         return (StructuredGraph) s.graph.copy();
     }
 }

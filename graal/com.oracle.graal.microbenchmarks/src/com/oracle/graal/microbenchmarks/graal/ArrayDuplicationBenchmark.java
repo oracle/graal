@@ -91,6 +91,7 @@ public class ArrayDuplicationBenchmark {
         return dummy;
     }
 
+    @SuppressWarnings("cast")
     public Object[] arraysClone(Object[] cache) {
         return (Object[]) cache.clone();
     }

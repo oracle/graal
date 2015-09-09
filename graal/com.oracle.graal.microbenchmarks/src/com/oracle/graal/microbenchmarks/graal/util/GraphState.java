@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.*;
 @State(Scope.Thread)
 public abstract class GraphState {
 
+    @SuppressWarnings("try")
     public GraphState() {
         // Ensure a debug configuration for this thread is initialized
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
@@ -47,17 +48,17 @@ public abstract class GraphState {
 
         GraalState graal = new GraalState();
         ResolvedJavaMethod method = graal.metaAccess.lookupJavaMethod(getMethodFromMethodSpec(getClass()));
-        StructuredGraph graph = null;
+        StructuredGraph structuredGraph = null;
         try (Debug.Scope s = Debug.scope("GraphState", method)) {
-            graph = preprocessOriginal(getGraph(graal, method));
+            structuredGraph = preprocessOriginal(getGraph(graal, method));
         } catch (Throwable t) {
             Debug.handle(t);
         }
-        this.originalGraph = graph;
+        this.originalGraph = structuredGraph;
     }
 
-    protected StructuredGraph preprocessOriginal(StructuredGraph graph) {
-        return graph;
+    protected StructuredGraph preprocessOriginal(StructuredGraph structuredGraph) {
+        return structuredGraph;
     }
 
     /**
