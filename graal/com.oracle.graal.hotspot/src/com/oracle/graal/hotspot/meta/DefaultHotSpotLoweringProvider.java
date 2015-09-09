@@ -553,7 +553,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected int arrayLengthOffset() {
-        return runtime.getConfig().arrayLengthOffset;
+        return runtime.getConfig().arrayOopDescLengthOffset();
     }
 
     @Override

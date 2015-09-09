@@ -516,7 +516,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int arrayLengthOffset() {
-        return config().arrayLengthOffset;
+        return config().arrayOopDescLengthOffset();
     }
 
     @Fold
