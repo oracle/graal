@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.java.BytecodeParser.Options.*;
+import static sun.misc.Version.*;
 
 import java.lang.invoke.*;
 import java.util.zip.*;
@@ -122,7 +123,10 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isArray", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isPrimitive", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
-        r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
+
+        if (jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8) {
+            r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
+        }
 
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
