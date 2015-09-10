@@ -127,6 +127,28 @@ public abstract class TruffleTCK {
     protected abstract String applyNumbers();
 
     /**
+     * Name of identity function. The identity function accepts one argument and returns it. The
+     * argument should go through without any modification, e.g. the input should result in
+     * identical output.
+     *
+     * @return name of globally exported symbol
+     */
+    protected String identity() {
+        final long introduced = 1441894042844L;
+        long wait = (System.currentTimeMillis() - introduced) / 3600;
+        if (wait < 100) {
+            wait = 100;
+        }
+        LOG.log(Level.SEVERE, "identity() method not overriden. Waiting for {0} ms", wait);
+        try {
+            Thread.sleep(wait);
+        } catch (InterruptedException ex) {
+            LOG.log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+
+    /**
      * Name of a function that counts number of its invocations in current {@link TruffleVM}
      * context. Your function should somehow keep a counter to remember number of its invocations
      * and always increment it. The first invocation should return <code>1</code>, the second
@@ -413,6 +435,103 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testPrimitiveidentityByte() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        TruffleVM.Symbol apply = findGlobalSymbol(id);
+
+        byte value = (byte) RANDOM.nextInt(100);
+
+        Number n = (Number) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, n.byteValue());
+    }
+
+    @Test
+    public void testPrimitiveidentityShort() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        TruffleVM.Symbol apply = findGlobalSymbol(id);
+
+        short value = (short) RANDOM.nextInt(100);
+        Number n = (Number) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, n.shortValue());
+    }
+
+    @Test
+    public void testPrimitiveidentityInt() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        TruffleVM.Symbol apply = findGlobalSymbol(id);
+
+        int value = RANDOM.nextInt(100);
+
+        Number n = (Number) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, n.intValue());
+    }
+
+    @Test
+    public void testPrimitiveidentityLong() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        TruffleVM.Symbol apply = findGlobalSymbol(id);
+
+        long value = RANDOM.nextInt(1000);
+
+        Number n = (Number) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, n.longValue());
+    }
+
+    @Test
+    public void testPrimitiveidentityFloat() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        TruffleVM.Symbol apply = findGlobalSymbol(id);
+
+        float value = RANDOM.nextInt(1000) + RANDOM.nextFloat();
+
+        Number n = (Number) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, n.floatValue(), 0.01);
+    }
+
+    @Test
+    public void testPrimitiveidentityDouble() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        TruffleVM.Symbol apply = findGlobalSymbol(id);
+
+        double value = RANDOM.nextInt(1000) + RANDOM.nextDouble();
+
+        Number n = (Number) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, n.doubleValue(), 0.01);
+    }
+
+    @Test
+    public void testPrimitiveIdentityForeignObject() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        TruffleVM.Symbol apply = findGlobalSymbol(id);
+
+        TruffleObject fn = JavaInterop.asTruffleFunction(LongBinaryOperation.class, new MaxMinObject(true));
+
+        Object ret = apply.invoke(null, fn).get();
+        assertSame("The same value returned", fn, ret);
+    }
+
+    @Test
     public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
         final String countMethod = countInvocations();
         TruffleVM.Symbol count1 = findGlobalSymbol(countMethod);
@@ -454,7 +573,7 @@ public abstract class TruffleTCK {
         final String compoundObjectName = compoundObject();
         if (compoundObjectName == null) {
             final long introduced = 1441616302340L;
-            long wait = (System.currentTimeMillis() - introduced) / 3600;
+            long wait = (System.currentTimeMillis() - introduced) / 36000;
             if (wait < 100) {
                 wait = 100;
             }

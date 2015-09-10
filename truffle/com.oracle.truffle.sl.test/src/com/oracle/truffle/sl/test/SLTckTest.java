@@ -69,6 +69,9 @@ public class SLTckTest extends TruffleTCK {
                 "function plus(a, b) {\n" +
                 "  return a + b;\n" +
                 "}\n" +
+                "function identity(x) {\n" +
+                "  return x;\n" +
+                "}\n" +
                 "function apply(f) {\n" +
                 "  return f(18, 32) + 10;\n" +
                 "}\n" +
@@ -104,6 +107,11 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected String fourtyTwo() {
         return "fourtyTwo";
+    }
+
+    @Override
+    protected String identity() {
+        return "identity";
     }
 
     @Override
@@ -159,5 +167,13 @@ public class SLTckTest extends TruffleTCK {
 
     @Override
     public void testPrimitiveReturnTypeFloat() throws Exception {
+    }
+
+    @Override
+    public void testPrimitiveidentityDouble() throws Exception {
+    }
+
+    @Override
+    public void testPrimitiveidentityFloat() throws Exception {
     }
 }
