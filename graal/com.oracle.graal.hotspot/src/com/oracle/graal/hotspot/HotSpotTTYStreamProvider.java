@@ -31,7 +31,7 @@ import jdk.internal.jvmci.service.ServiceProvider;
 import com.oracle.graal.debug.TTYStreamProvider;
 
 @ServiceProvider(TTYStreamProvider.class)
-class HotSpotTTYStreamProvider implements TTYStreamProvider {
+public class HotSpotTTYStreamProvider implements TTYStreamProvider {
 
     public static class Options {
 

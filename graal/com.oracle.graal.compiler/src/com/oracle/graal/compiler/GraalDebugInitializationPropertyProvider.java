@@ -30,7 +30,7 @@ import jdk.internal.jvmci.service.*;
  * for various {@link GraalDebugConfig} options.
  */
 @ServiceProvider(DebugInitializationPropertyProvider.class)
-class GraalDebugInitializationPropertyProvider implements DebugInitializationPropertyProvider {
+public class GraalDebugInitializationPropertyProvider implements DebugInitializationPropertyProvider {
 
     @Override
     public void apply() {
