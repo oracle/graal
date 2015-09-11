@@ -516,4 +516,8 @@ public final class CompileTheWorld {
         return true;
     }
 
+    public static void main(String[] args) throws Throwable {
+        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
+        compiler.compileTheWorld();
+    }
 }

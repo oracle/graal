@@ -72,7 +72,6 @@ public class HotSpotGraalCompiler implements Compiler {
         }
     }
 
-    @Override
     public void compileTheWorld() throws Throwable {
         CompilerToVM compilerToVM = jvmciRuntime.getCompilerToVM();
         int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();

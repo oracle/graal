@@ -219,7 +219,7 @@ def ctw(args):
     if isJVMCIEnabled(vm_):
         if vm_ == 'jvmci':
             vmargs += ['-XX:+BootstrapJVMCI']
-        vmargs += ['-G:CompileTheWorldClasspath=' + jar, '-XX:-UseJVMCIClassLoader', 'jdk.internal.jvmci.hotspot.CompileTheWorldMain']
+        vmargs += ['-G:CompileTheWorldClasspath=' + jar, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld']
     else:
         vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + jar]
 
