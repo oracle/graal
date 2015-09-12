@@ -116,12 +116,12 @@ public class ShapeProfiler {
 
         public void profile(Shape shape) {
             jsObjects++;
-            oac += shape.getObjectArrayCapacity();
-            oas += shape.getObjectArraySize();
-            ofs += shape.getObjectFieldSize();
-            pac += shape.getPrimitiveArrayCapacity();
-            pas += shape.getPrimitiveArraySize();
-            pfs += shape.getPrimitiveFieldSize();
+            oac += ((ShapeImpl) shape).getObjectArrayCapacity();
+            oas += ((ShapeImpl) shape).getObjectArraySize();
+            ofs += ((ShapeImpl) shape).getObjectFieldSize();
+            pac += ((ShapeImpl) shape).getPrimitiveArrayCapacity();
+            pas += ((ShapeImpl) shape).getPrimitiveArraySize();
+            pfs += ((ShapeImpl) shape).getPrimitiveFieldSize();
         }
 
         public void add(ShapeStats stats) {

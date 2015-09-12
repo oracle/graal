@@ -225,20 +225,6 @@ public abstract class Shape {
      */
     public abstract Object getMutex();
 
-    public abstract int getObjectArraySize();
-
-    public abstract int getObjectFieldSize();
-
-    public abstract int getPrimitiveArraySize();
-
-    public abstract int getPrimitiveFieldSize();
-
-    public abstract int getObjectArrayCapacity();
-
-    public abstract int getPrimitiveArrayCapacity();
-
-    public abstract boolean hasPrimitiveArray();
-
     /**
      * Are these two shapes related, i.e. do they have the same root?
      *

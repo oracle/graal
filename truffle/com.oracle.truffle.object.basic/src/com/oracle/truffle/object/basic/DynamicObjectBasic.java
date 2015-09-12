@@ -91,8 +91,8 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
     @Override
     protected final void growPrimitiveStore(Shape oldShape, Shape newShape) {
         assert ((ShapeImpl) newShape).hasPrimitiveArray();
-        int oldPrimitiveCapacity = oldShape.getPrimitiveArrayCapacity();
-        int newPrimitiveCapacity = newShape.getPrimitiveArrayCapacity();
+        int oldPrimitiveCapacity = ((ShapeImpl) oldShape).getPrimitiveArrayCapacity();
+        int newPrimitiveCapacity = ((ShapeImpl) newShape).getPrimitiveArrayCapacity();
         if (newPrimitiveCapacity == 0) {
             // due to obsolescence, we might have to reserve an empty primitive array slot
             this.setPrimitiveStore(null, newShape);
@@ -116,10 +116,10 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
     @Override
     protected final void resizeObjectStore(Shape oldShape, Shape newShape) {
         Object[] newObjectStore = null;
-        int destinationCapacity = newShape.getObjectArrayCapacity();
+        int destinationCapacity = ((ShapeImpl) newShape).getObjectArrayCapacity();
         if (destinationCapacity != 0) {
             newObjectStore = new Object[destinationCapacity];
-            int sourceCapacity = oldShape.getObjectArrayCapacity();
+            int sourceCapacity = ((ShapeImpl) oldShape).getObjectArrayCapacity();
             if (sourceCapacity != 0) {
                 Object[] oldObjectStore = getObjectStore(newShape);
                 for (int i = 0; i < Math.min(sourceCapacity, destinationCapacity); ++i) {
@@ -148,12 +148,12 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
 
     @Override
     protected final void resizePrimitiveStore(Shape oldShape, Shape newShape) {
-        assert newShape.hasPrimitiveArray();
+        assert ((ShapeImpl) newShape).hasPrimitiveArray();
         long[] newPrimitiveArray = null;
-        int destinationCapacity = newShape.getPrimitiveArrayCapacity();
+        int destinationCapacity = ((ShapeImpl) newShape).getPrimitiveArrayCapacity();
         if (destinationCapacity != 0) {
             newPrimitiveArray = new long[destinationCapacity];
-            int sourceCapacity = oldShape.getPrimitiveArrayCapacity();
+            int sourceCapacity = ((ShapeImpl) oldShape).getPrimitiveArrayCapacity();
             if (sourceCapacity != 0) {
                 long[] oldPrimitiveArray = this.getPrimitiveStore(newShape);
                 for (int i = 0; i < Math.min(sourceCapacity, destinationCapacity); ++i) {
@@ -184,11 +184,11 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
     @Override
     protected final boolean checkExtensionArrayInvariants(Shape newShape) {
         assert getShape() == newShape;
-        assert (getObjectStore(newShape) == null && newShape.getObjectArrayCapacity() == 0) ||
-                        (getObjectStore(newShape) != null && getObjectStore(newShape).length == newShape.getObjectArrayCapacity());
-        if (newShape.hasPrimitiveArray()) {
-            assert (getPrimitiveStore(newShape) == null && newShape.getPrimitiveArrayCapacity() == 0) ||
-                            (getPrimitiveStore(newShape) != null && getPrimitiveStore(newShape).length == newShape.getPrimitiveArrayCapacity());
+        assert (getObjectStore(newShape) == null && ((ShapeImpl) newShape).getObjectArrayCapacity() == 0) ||
+                        (getObjectStore(newShape) != null && getObjectStore(newShape).length == ((ShapeImpl) newShape).getObjectArrayCapacity());
+        if (((ShapeImpl) newShape).hasPrimitiveArray()) {
+            assert (getPrimitiveStore(newShape) == null && ((ShapeImpl) newShape).getPrimitiveArrayCapacity() == 0) ||
+                            (getPrimitiveStore(newShape) != null && getPrimitiveStore(newShape).length == ((ShapeImpl) newShape).getPrimitiveArrayCapacity());
         }
         return true;
     }
@@ -200,7 +200,7 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
         if (this.getObjectStore(currentShape) != null) {
             clone.setObjectStore(this.getObjectStore(currentShape).clone(), currentShape);
         }
-        if (currentShape.hasPrimitiveArray() && this.getPrimitiveStore(currentShape) != null) {
+        if (((ShapeImpl) currentShape).hasPrimitiveArray() && this.getPrimitiveStore(currentShape) != null) {
             clone.setPrimitiveStore(this.getPrimitiveStore(currentShape).clone(), currentShape);
         }
         return clone;
