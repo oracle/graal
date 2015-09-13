@@ -22,32 +22,55 @@
  */
 package com.oracle.graal.replacements;
 
-import static jdk.internal.jvmci.meta.MetaUtil.*;
+import static jdk.internal.jvmci.meta.MetaUtil.resolveJavaTypes;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.PrimitiveConstant;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
-
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.InjectedNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.LogicConstantNode;
+import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValueProxyNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
+import com.oracle.graal.nodes.extended.UnboxNode;
+import com.oracle.graal.nodes.extended.UnsafeStoreNode;
+import com.oracle.graal.nodes.extended.ValueAnchorNode;
+import com.oracle.graal.nodes.java.CheckCastNode;
+import com.oracle.graal.nodes.java.LoadFieldNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.Phase;
 
 /**
  * Replaces calls to {@link NodeIntrinsic}s with nodes and calls to methods annotated with
@@ -145,15 +168,6 @@ public class NodeIntrinsificationPhase extends Phase {
         return target.invoke(receiver, reflectArgs);
     }
 
-    private static boolean areAllConstant(List<ValueNode> arguments) {
-        for (ValueNode arg : arguments) {
-            if (!arg.isConstant()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     /**
      * Attempts to create a node to replace a call to a {@link NodeIntrinsic} annotated method.
      *
@@ -161,22 +175,14 @@ public class NodeIntrinsificationPhase extends Phase {
      * @param stamp the stamp to use for the returned node
      * @param method the method annotated with {@link NodeIntrinsic}
      * @param graph the graph into which the created node will be added
-     * @return a {@link ConstantNode} if the intrinsic could be
-     *         {@linkplain NodeIntrinsic#foldable() folded}, {@code null} if intrinsification could
-     *         not (yet) be performed, otherwise the node representing the intrinsic
+     * @return {@code null} if intrinsification could not (yet) be performed, otherwise the node
+     *         representing the intrinsic
      */
     public ValueNode createIntrinsicNode(List<ValueNode> arguments, Stamp stamp, ResolvedJavaMethod method, StructuredGraph graph, NodeIntrinsic intrinsic) {
         assert method.getAnnotation(Fold.class) == null;
         assert method.isStatic() : "node intrinsic must be static: " + method;
 
         ResolvedJavaType[] parameterTypes = resolveJavaTypes(method.toParameterTypes(), method.getDeclaringClass());
-
-        if (intrinsic.foldable() && areAllConstant(arguments)) {
-            JavaConstant res = tryFold(arguments, parameterTypes, method);
-            if (!res.equals(COULD_NOT_FOLD)) {
-                return ConstantNode.forConstant(res, metaAccess);
-            }
-        }
 
         // Prepare the arguments for the reflective constructor call on the node class.
         Object[] nodeConstructorArguments = prepareArguments(arguments, parameterTypes, method, false);
