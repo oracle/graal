@@ -126,7 +126,7 @@ public abstract class Message {
      * otherwise. This is the way to send the <code>IS_EXECUTABLE</code> message:
      * 
      * <pre>
-     * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.execute(
      *   {@link Message#IS_EXECUTABLE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver
      * );
      * </pre>
@@ -170,7 +170,7 @@ public abstract class Message {
      * this message is a way to recognize such <code>null</code> representing values:
      * 
      * <pre>
-     * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.execute(
      *   {@link Message#IS_NULL}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheckForNull
      * );
      * </pre>
@@ -209,7 +209,7 @@ public abstract class Message {
      * object is boxed is:
      * 
      * <pre>
-     * {@link Boolean} isBoxed = ({@link Boolean}) {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     * {@link Boolean} isBoxed = ({@link Boolean}) {@link ForeignAccess}.execute(
      *   {@link Message#IS_BOXED}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheck
      * );
      * </pre>
