@@ -99,6 +99,7 @@ public abstract class ShapeImpl extends Shape {
      *
      * @param parent predecessor shape
      * @param transitionFromParent direct transition from parent shape
+     *
      * @see #ShapeImpl(Layout, ShapeImpl, ObjectType, Object, PropertyMap, Transition,
      *      BaseAllocator, int)
      */
@@ -109,7 +110,7 @@ public abstract class ShapeImpl extends Shape {
         this.propertyMap = Objects.requireNonNull(propertyMap);
         this.root = parent != null ? parent.getRoot() : this;
         this.parent = parent;
-        this.transitionFromParent = transitionFromParent;
+
         this.objectArraySize = objectArraySize;
         this.objectArrayCapacity = capacityFromSize(objectArraySize);
         this.objectFieldSize = objectFieldSize;
@@ -129,11 +130,11 @@ public abstract class ShapeImpl extends Shape {
         this.validAssumption = createValidAssumption();
 
         this.id = id;
-        shapeCount.inc();
-
+        this.transitionFromParent = transitionFromParent;
         this.sharedData = sharedData;
         this.extraData = objectType.createShapeData(this);
 
+        shapeCount.inc();
         debugRegisterShape(this);
     }
 
@@ -150,7 +151,13 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static int makePropertyCount(ShapeImpl parent, PropertyMap propertyMap) {
-        return parent.propertyCount + ((propertyMap.size() > parent.propertyMap.size() && !propertyMap.getLastProperty().isHidden() && !propertyMap.getLastProperty().isShadow()) ? 1 : 0);
+        if (propertyMap.size() > parent.propertyMap.size()) {
+            Property lastProperty = propertyMap.getLastProperty();
+            if (!lastProperty.isHidden() && !lastProperty.isShadow()) {
+                return parent.propertyCount + 1;
+            }
+        }
+        return parent.propertyCount;
     }
 
     @Override
@@ -432,7 +439,9 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Property> getPropertyList(Pred<Property> filter) {
         LinkedList<Property> props = new LinkedList<>();
-        next: for (Property currentProperty : this.propertyMap.reverseOrderValues()) {
+        next: for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property currentProperty = it.next();
+
             if (!currentProperty.isHidden() && filter.test(currentProperty)) {
                 if (currentProperty.getLocation() instanceof DeclaredLocation) {
                     for (Iterator<Property> iter = props.iterator(); iter.hasNext();) {
@@ -464,7 +473,8 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Property> getPropertyListInternal(boolean ascending) {
         LinkedList<Property> props = new LinkedList<>();
-        for (Property current : this.propertyMap.reverseOrderValues()) {
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property current = it.next();
             if (ascending) {
                 props.addFirst(current);
             } else {
@@ -483,7 +493,8 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Object> getKeyList(Pred<Property> filter) {
         LinkedList<Object> keys = new LinkedList<>();
-        for (Property currentProperty : this.propertyMap.reverseOrderValues()) {
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property currentProperty = it.next();
             if (!currentProperty.isHidden() && filter.test(currentProperty) && !currentProperty.isShadow()) {
                 keys.addFirst(currentProperty.getKey());
             }
@@ -569,7 +580,7 @@ public abstract class ShapeImpl extends Shape {
         }
 
         sb.append("{");
-        for (Iterator<Property> iterator = propertyMap.reverseOrderValues().iterator(); iterator.hasNext();) {
+        for (Iterator<Property> iterator = propertyMap.reverseOrderedValueIterator(); iterator.hasNext();) {
             Property p = iterator.next();
             sb.append(p);
             if (iterator.hasNext()) {
