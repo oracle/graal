@@ -26,7 +26,7 @@ import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.object.*;
 
 public class DefaultLayoutFactory implements LayoutFactory {
-    public Layout createLayout(LayoutBuilder layoutBuilder) {
+    public Layout createLayout(Layout.Builder layoutBuilder) {
         return BasicLayout.createLayoutImpl(layoutBuilder.getAllowedImplicitCasts(), new DefaultStrategy());
     }
 
