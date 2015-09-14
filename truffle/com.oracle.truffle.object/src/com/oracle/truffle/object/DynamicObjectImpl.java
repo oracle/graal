@@ -184,30 +184,11 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         }
     }
 
-    @Override
     @TruffleBoundary
     public boolean changeFlags(Object id, int newFlags) {
         Shape oldShape = getShape();
         Property existing = oldShape.getProperty(id);
         if (existing != null) {
-            if (existing.getFlags() != newFlags) {
-                Property newProperty = existing.copyWithFlags(newFlags);
-                Shape newShape = oldShape.replaceProperty(existing, newProperty);
-                this.setShape(newShape);
-            }
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    @TruffleBoundary
-    public boolean changeFlags(Object id, FlagsFunction updateFunction) {
-        Shape oldShape = getShape();
-        Property existing = oldShape.getProperty(id);
-        if (existing != null) {
-            int newFlags = updateFunction.apply(existing.getFlags());
             if (existing.getFlags() != newFlags) {
                 Property newProperty = existing.copyWithFlags(newFlags);
                 Shape newShape = oldShape.replaceProperty(existing, newProperty);

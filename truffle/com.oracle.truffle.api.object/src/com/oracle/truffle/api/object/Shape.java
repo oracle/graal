@@ -225,20 +225,6 @@ public abstract class Shape {
      */
     public abstract Object getMutex();
 
-    public abstract int getObjectArraySize();
-
-    public abstract int getObjectFieldSize();
-
-    public abstract int getPrimitiveArraySize();
-
-    public abstract int getPrimitiveFieldSize();
-
-    public abstract int getObjectArrayCapacity();
-
-    public abstract int getPrimitiveArrayCapacity();
-
-    public abstract boolean hasPrimitiveArray();
-
     /**
      * Are these two shapes related, i.e. do they have the same root?
      *
@@ -247,15 +233,35 @@ public abstract class Shape {
      */
     public abstract boolean isRelated(Shape other);
 
+    /**
+     * Try to merge two related shapes to a more general shape that has the same properties and can
+     * store at least the values of both shapes.
+     *
+     * @return this, other, or a new shape that is compatible with both shapes
+     */
     public abstract Shape tryMerge(Shape other);
 
+    /**
+     * Utility class to allocate locations in an object layout.
+     */
     public abstract static class Allocator {
         protected abstract Location locationForValue(Object value, boolean useFinal, boolean nonNull);
 
+        /**
+         * Create a new location compatible with the given initial value.
+         *
+         * @param value the initial value this location is going to be assigned
+         */
         public final Location locationForValue(Object value) {
             return locationForValue(value, false, value != null);
         }
 
+        /**
+         * Create a new location compatible with the given initial value.
+         *
+         * @param value the initial value this location is going to be assigned
+         * @param modifiers additional restrictions and semantics
+         */
         public final Location locationForValue(Object value, EnumSet<LocationModifier> modifiers) {
             assert value != null || !modifiers.contains(LocationModifier.NonNull);
             return locationForValue(value, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
@@ -263,22 +269,45 @@ public abstract class Shape {
 
         protected abstract Location locationForType(Class<?> type, boolean useFinal, boolean nonNull);
 
+        /**
+         * Create a new location for a fixed type. It can only be assigned to values of this type.
+         *
+         * @param type the Java type this location must be compatible with (may be primitive)
+         */
         public final Location locationForType(Class<?> type) {
             return locationForType(type, false, false);
         }
 
+        /**
+         * Create a new location for a fixed type.
+         *
+         * @param type the Java type this location must be compatible with (may be primitive)
+         * @param modifiers additional restrictions and semantics
+         */
         public final Location locationForType(Class<?> type, EnumSet<LocationModifier> modifiers) {
             return locationForType(type, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
         }
 
+        /**
+         * Creates a new location from a constant value. The value is stored in the shape rather
+         * than in the object.
+         */
         public abstract Location constantLocation(Object value);
 
+        /**
+         * Creates a new declared location with a default value. A declared location only assumes a
+         * type after the first set (initialization).
+         */
         public abstract Location declaredLocation(Object value);
 
+        /**
+         * Reserves space for the given location, so that it will not be available to subsequently
+         * allocated locations.
+         */
         public abstract Allocator addLocation(Location location);
 
         /**
-         * Creates an copy of this allocator.
+         * Creates an copy of this allocator state.
          */
         public abstract Allocator copy();
     }

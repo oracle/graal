@@ -103,24 +103,6 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
     public abstract void define(Object key, Object value, int flags, LocationFactory locationFactory);
 
     /**
-     * Change property flags.
-     *
-     * @param key property identifier
-     * @param newFlags flags to be set
-     * @return {@code true} if successful or {@code false} if property not found
-     */
-    public abstract boolean changeFlags(Object key, int newFlags);
-
-    /**
-     * Change property flags.
-     *
-     * @param key property identifier
-     * @param flagsUpdateFunction function updating old flags to new flags
-     * @return {@code true} if successful or {@code false} if property not found
-     */
-    public abstract boolean changeFlags(Object key, FlagsFunction flagsUpdateFunction);
-
-    /**
      * Delete property.
      *
      * @param key property identifier
@@ -167,14 +149,4 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
      * @param currentShape the object's current shape (must equal {@link #getShape()})
      */
     public abstract DynamicObject copy(Shape currentShape);
-
-    /**
-     * Represents an operation on a single {@code int}-valued operand that produces an {@code int}
-     * -valued result.
-     *
-     * For Java 7 compatibility (equivalent to IntUnaryOperator).
-     */
-    public interface FlagsFunction {
-        int apply(int t);
-    }
 }

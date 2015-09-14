@@ -178,37 +178,30 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
-    @Override
     public final int getObjectArraySize() {
         return objectArraySize;
     }
 
-    @Override
     public final int getObjectFieldSize() {
         return objectFieldSize;
     }
 
-    @Override
     public final int getPrimitiveFieldSize() {
         return primitiveFieldSize;
     }
 
-    @Override
     public final int getObjectArrayCapacity() {
         return objectArrayCapacity;
     }
 
-    @Override
     public final int getPrimitiveArrayCapacity() {
         return primitiveArrayCapacity;
     }
 
-    @Override
     public final int getPrimitiveArraySize() {
         return primitiveArraySize;
     }
 
-    @Override
     public final boolean hasPrimitiveArray() {
         return hasPrimitiveArray;
     }

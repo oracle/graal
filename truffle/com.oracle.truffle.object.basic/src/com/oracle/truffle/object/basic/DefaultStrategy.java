@@ -41,8 +41,8 @@ class DefaultStrategy implements LayoutStrategy {
 
     private static boolean assertLocationInRange(Shape shape, Location location) {
         BasicLayout layout = (BasicLayout) shape.getLayout();
-        assert (shape.getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
-        assert (shape.getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
+        assert (((ShapeImpl) shape).getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
+        assert (((ShapeImpl) shape).getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
         return true;
     }
 
