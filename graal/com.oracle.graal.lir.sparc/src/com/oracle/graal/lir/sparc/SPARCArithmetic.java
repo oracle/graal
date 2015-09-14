@@ -721,22 +721,22 @@ public enum SPARCArithmetic {
                 masm.signx(asRegister(src, JavaKind.Long), asRegister(dst, JavaKind.Int));
                 break;
             case B2L:
-                masm.sll(asRegister(src, JavaKind.Int), 24, asRegister(dst, JavaKind.Long));
+                masm.sll(asRegister(src), 24, asRegister(dst, JavaKind.Long));
                 delaySlotLir.emitControlTransfer(crb, masm);
                 masm.sra(asRegister(dst, JavaKind.Long), 24, asRegister(dst, JavaKind.Long));
                 break;
             case B2I:
-                masm.sll(asRegister(src, JavaKind.Int), 24, asRegister(dst, JavaKind.Int));
+                masm.sll(asRegister(src), 24, asRegister(dst, JavaKind.Int));
                 delaySlotLir.emitControlTransfer(crb, masm);
                 masm.sra(asRegister(dst, JavaKind.Int), 24, asRegister(dst, JavaKind.Int));
                 break;
             case S2L:
-                masm.sll(asRegister(src, JavaKind.Int), 16, asRegister(dst, JavaKind.Long));
+                masm.sll(asRegister(src), 16, asRegister(dst, JavaKind.Long));
                 delaySlotLir.emitControlTransfer(crb, masm);
                 masm.sra(asRegister(dst, JavaKind.Long), 16, asRegister(dst, JavaKind.Long));
                 break;
             case S2I:
-                masm.sll(asRegister(src, JavaKind.Int), 16, asRegister(dst, JavaKind.Int));
+                masm.sll(asRegister(src), 16, asRegister(dst, JavaKind.Int));
                 delaySlotLir.emitControlTransfer(crb, masm);
                 masm.sra(asRegister(dst, JavaKind.Int), 16, asRegister(dst, JavaKind.Int));
                 break;

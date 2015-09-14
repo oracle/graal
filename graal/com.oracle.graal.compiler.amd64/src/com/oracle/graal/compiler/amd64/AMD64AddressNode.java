@@ -28,6 +28,7 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.address.*;
@@ -61,7 +62,7 @@ public class AMD64AddressNode extends AddressNode implements LIRLowerable {
     }
 
     public void generate(NodeLIRBuilderTool gen) {
-        AMD64LIRGenerator tool = (AMD64LIRGenerator) gen.getLIRGeneratorTool();
+        LIRGeneratorTool tool = gen.getLIRGeneratorTool();
 
         AllocatableValue baseValue = base == null ? Value.ILLEGAL : tool.asAllocatable(gen.operand(base));
         AllocatableValue indexValue = index == null ? Value.ILLEGAL : tool.asAllocatable(gen.operand(index));

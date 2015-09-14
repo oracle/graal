@@ -56,6 +56,15 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         // @formatter:on
     }
 
+    protected static LIRKind toStackKind(LIRKind kind) {
+        if (kind.getPlatformKind() instanceof JavaKind) {
+            JavaKind stackKind = ((JavaKind) kind.getPlatformKind()).getStackKind();
+            return kind.changeType(stackKind);
+        } else {
+            return kind;
+        }
+    }
+
     private final LIRKindTool lirKindTool;
 
     private final CodeGenProviders providers;

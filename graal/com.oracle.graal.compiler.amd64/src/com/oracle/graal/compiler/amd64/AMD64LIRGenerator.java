@@ -264,15 +264,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         return result;
     }
 
-    private static LIRKind toStackKind(LIRKind kind) {
-        if (kind.getPlatformKind() instanceof JavaKind) {
-            JavaKind stackKind = ((JavaKind) kind.getPlatformKind()).getStackKind();
-            return kind.changeType(stackKind);
-        } else {
-            return kind;
-        }
-    }
-
     @Override
     public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
         AMD64AddressValue loadAddress = asAddressValue(address);
