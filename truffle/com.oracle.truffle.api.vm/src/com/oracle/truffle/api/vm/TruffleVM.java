@@ -34,6 +34,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.*;
 import java.io.*;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.file.*;
 import java.util.*;
@@ -586,7 +588,8 @@ public final class TruffleVM {
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
             }
-            return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+            T wrapper = JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+            return JavaWrapper.create(representation, wrapper, this);
         }
 
         /**
@@ -611,6 +614,32 @@ public final class TruffleVM {
                 @Override
                 public void run() {
                     invokeImpl(fillIn, thiz, args, res, done);
+                }
+            });
+            exceptionCheck(res);
+            return new Symbol(language, res, done);
+        }
+
+        @SuppressWarnings("try")
+        final Symbol invokeProxy(final InvocationHandler chain, final Object wrapper, final Method method, final Object[] args) throws IOException {
+            final Debugger[] fillIn = {debugger};
+            final CountDownLatch done = new CountDownLatch(1);
+            final Object[] res = {null, null};
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try (final Closeable c = SPI.executionStart(TruffleVM.this, fillIn, null)) {
+                        if (debugger == null) {
+                            debugger = fillIn[0];
+                        }
+                        res[0] = chain.invoke(wrapper, method, args);
+                    } catch (IOException ex) {
+                        res[1] = ex;
+                    } catch (Throwable ex) {
+                        res[1] = ex;
+                    } finally {
+                        done.countDown();
+                    }
                 }
             });
             exceptionCheck(res);

@@ -583,10 +583,13 @@ public abstract class TruffleTCK {
         }
         TruffleVM.Symbol s = vm().findGlobalSymbol(compoundObjectName);
         assert s != null : "Symbol " + compoundObjectName + " is not found!";
-        CompoundObject obj = s.invoke(null).as(CompoundObject.class);
+        final TruffleVM.Symbol value = s.invoke(null);
+        CompoundObject obj = value.as(CompoundObject.class);
+        assertNotNull("Compound object for " + value + " found", obj);
         int traverse = RANDOM.nextInt(10);
-        while (traverse-- >= 0) {
+        for (int i = 1; i <= traverse; i++) {
             obj = obj.returnsThis();
+            assertNotNull("Remains non-null even after " + i + " iteration", obj);
         }
         return obj;
     }
