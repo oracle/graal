@@ -426,15 +426,19 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
-        Value scratchValue = newVariable(key.getLIRKind());
+        AllocatableValue scratchValue = newVariable(key.getLIRKind());
         AllocatableValue base = AllocatableValue.ILLEGAL;
-        for (JavaConstant c : strategy.keyConstants) {
-            if (!canInlineConstant(c)) {
+        for (Constant c : strategy.getKeyConstants()) {
+            if (!(c instanceof JavaConstant) || !canInlineConstant((JavaConstant) c)) {
                 base = getConstantTableBase();
                 break;
             }
         }
-        append(new StrategySwitchOp(base, strategy, keyTargets, defaultTarget, key, scratchValue));
+        append(createStrategySwitchOp(base, strategy, keyTargets, defaultTarget, key, scratchValue));
+    }
+
+    protected StrategySwitchOp createStrategySwitchOp(AllocatableValue base, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue scratchValue) {
+        return new StrategySwitchOp(base, strategy, keyTargets, defaultTarget, key, scratchValue);
     }
 
     @Override

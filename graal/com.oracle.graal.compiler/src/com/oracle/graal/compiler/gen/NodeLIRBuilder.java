@@ -626,23 +626,32 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 LIRKind kind = gen.getLIRKind(x.value().stamp());
                 Value key = gen.emitConstant(kind, x.keyAt(0));
                 gen.emitCompareBranch(kind.getPlatformKind(), gen.load(operand(x.value())), key, Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
-            } else {
+            } else if (x instanceof IntegerSwitchNode && x.isSorted()) {
+                IntegerSwitchNode intSwitch = (IntegerSwitchNode) x;
                 LabelRef[] keyTargets = new LabelRef[keyCount];
                 JavaConstant[] keyConstants = new JavaConstant[keyCount];
                 double[] keyProbabilities = new double[keyCount];
-                JavaKind keyKind = x.keyAt(0).getJavaKind();
+                JavaKind keyKind = intSwitch.keyAt(0).getJavaKind();
+                for (int i = 0; i < keyCount; i++) {
+                    keyTargets[i] = getLIRBlock(intSwitch.keySuccessor(i));
+                    keyConstants[i] = intSwitch.keyAt(i);
+                    keyProbabilities[i] = intSwitch.keyProbability(i);
+                    assert keyConstants[i].getJavaKind() == keyKind;
+                }
+                gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
+            } else {
+                // keyKind != JavaKind.Int || !x.isSorted()
+                LabelRef[] keyTargets = new LabelRef[keyCount];
+                Constant[] keyConstants = new Constant[keyCount];
+                double[] keyProbabilities = new double[keyCount];
                 for (int i = 0; i < keyCount; i++) {
                     keyTargets[i] = getLIRBlock(x.keySuccessor(i));
                     keyConstants[i] = x.keyAt(i);
                     keyProbabilities[i] = x.keyProbability(i);
-                    assert keyConstants[i].getJavaKind() == keyKind;
                 }
-                if (keyKind != JavaKind.Int || !x.isSorted()) {
-                    // hopefully only a few entries
-                    gen.emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
-                } else {
-                    gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
-                }
+
+                // hopefully only a few entries
+                gen.emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
             }
         }
     }

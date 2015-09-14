@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -151,8 +151,8 @@ public abstract class SwitchStrategy {
 
         private int defaultEffort;
         private int defaultCount;
-        private final int[] keyEfforts = new int[keyConstants.length];
-        private final int[] keyCounts = new int[keyConstants.length];
+        private final int[] keyEfforts = new int[keyProbabilities.length];
+        private final int[] keyCounts = new int[keyProbabilities.length];
         private final LabelRef[] keyTargets;
 
         public EffortClosure(LabelRef[] keyTargets) {
@@ -183,7 +183,7 @@ public abstract class SwitchStrategy {
         public double getAverageEffort() {
             double defaultProbability = 1;
             double effort = 0;
-            for (int i = 0; i < keyConstants.length; i++) {
+            for (int i = 0; i < keyProbabilities.length; i++) {
                 effort += keyEfforts[i] * keyProbabilities[i] / keyCounts[i];
                 defaultProbability -= keyProbabilities[i];
             }
@@ -192,31 +192,19 @@ public abstract class SwitchStrategy {
     }
 
     public final double[] keyProbabilities;
-    public final JavaConstant[] keyConstants;
     private double averageEffort = -1;
     private EffortClosure effortClosure;
 
-    public SwitchStrategy(double[] keyProbabilities, JavaConstant[] keyConstants) {
-        assert keyConstants.length == keyProbabilities.length && keyConstants.length >= 2;
+    public SwitchStrategy(double[] keyProbabilities) {
+        assert keyProbabilities.length >= 2;
         this.keyProbabilities = keyProbabilities;
-        this.keyConstants = keyConstants;
     }
+
+    public abstract Constant[] getKeyConstants();
 
     public double getAverageEffort() {
         assert averageEffort >= 0 : "average effort was not calculated yet for this strategy";
         return averageEffort;
-    }
-
-    /**
-     * Looks for the end of a stretch of key constants that are successive numbers and have the same
-     * target.
-     */
-    protected int getSliceEnd(SwitchClosure closure, int pos) {
-        int slice = pos;
-        while (slice < (keyConstants.length - 1) && keyConstants[slice + 1].asLong() == keyConstants[slice].asLong() + 1 && closure.isSameTarget(slice, slice + 1)) {
-            slice++;
-        }
-        return slice;
     }
 
     /**
@@ -254,10 +242,13 @@ public abstract class SwitchStrategy {
      */
     public static class SequentialStrategy extends SwitchStrategy {
         private final Integer[] indexes;
+        private final Constant[] keyConstants;
 
-        public SequentialStrategy(final double[] keyProbabilities, JavaConstant[] keyConstants) {
-            super(keyProbabilities, keyConstants);
+        public SequentialStrategy(final double[] keyProbabilities, Constant[] keyConstants) {
+            super(keyProbabilities);
+            assert keyProbabilities.length == keyConstants.length;
 
+            this.keyConstants = keyConstants;
             int keyCount = keyConstants.length;
             indexes = new Integer[keyCount];
             for (int i = 0; i < keyCount; i++) {
@@ -269,6 +260,11 @@ public abstract class SwitchStrategy {
                     return keyProbabilities[o1] < keyProbabilities[o2] ? 1 : keyProbabilities[o1] > keyProbabilities[o2] ? -1 : 0;
                 }
             });
+        }
+
+        @Override
+        public Constant[] getKeyConstants() {
+            return keyConstants;
         }
 
         @Override
@@ -284,10 +280,40 @@ public abstract class SwitchStrategy {
     }
 
     /**
+     * Base class for strategies that rely on primitive integer keys.
+     */
+    private abstract static class PrimitiveStrategy extends SwitchStrategy {
+        protected final JavaConstant[] keyConstants;
+
+        protected PrimitiveStrategy(double[] keyProbabilities, JavaConstant[] keyConstants) {
+            super(keyProbabilities);
+            assert keyProbabilities.length == keyConstants.length;
+            this.keyConstants = keyConstants;
+        }
+
+        @Override
+        public JavaConstant[] getKeyConstants() {
+            return keyConstants;
+        }
+
+        /**
+         * Looks for the end of a stretch of key constants that are successive numbers and have the
+         * same target.
+         */
+        protected int getSliceEnd(SwitchClosure closure, int pos) {
+            int slice = pos;
+            while (slice < (keyConstants.length - 1) && keyConstants[slice + 1].asLong() == keyConstants[slice].asLong() + 1 && closure.isSameTarget(slice, slice + 1)) {
+                slice++;
+            }
+            return slice;
+        }
+    }
+
+    /**
      * This strategy divides the keys into ranges of successive keys with the same target and
      * creates comparisons for these ranges.
      */
-    public static class RangesStrategy extends SwitchStrategy {
+    public static class RangesStrategy extends PrimitiveStrategy {
         private final Integer[] indexes;
 
         public RangesStrategy(final double[] keyProbabilities, JavaConstant[] keyConstants) {
@@ -348,7 +374,7 @@ public abstract class SwitchStrategy {
      * This strategy recursively subdivides the list of keys to create a binary search based on
      * probabilities.
      */
-    public static class BinaryStrategy extends SwitchStrategy {
+    public static class BinaryStrategy extends PrimitiveStrategy {
 
         private static final double MIN_PROBABILITY = 0.00001;
 

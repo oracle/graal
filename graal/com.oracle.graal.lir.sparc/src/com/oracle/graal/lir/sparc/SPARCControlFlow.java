@@ -307,7 +307,7 @@ public class SPARCControlFlow {
         }
     }
 
-    private static boolean isShortBranch(SPARCAssembler asm, int position, LabelHint hint, Label label) {
+    public static boolean isShortBranch(SPARCAssembler asm, int position, LabelHint hint, Label label) {
         int disp = 0;
         boolean dispValid = true;
         if (label.isBound()) {
@@ -395,9 +395,9 @@ public class SPARCControlFlow {
         return true;
     }
 
-    public static final class StrategySwitchOp extends SPARCBlockEndOp {
+    public static class StrategySwitchOp extends SPARCBlockEndOp {
         public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
-        protected JavaConstant[] keyConstants;
+        protected Constant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;
@@ -408,9 +408,14 @@ public class SPARCControlFlow {
         private final List<Label> conditionalLabels = new ArrayList<>();
 
         public StrategySwitchOp(Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
-            super(TYPE);
+            this(TYPE, constantTableBase, strategy, keyTargets, defaultTarget, key, scratch);
+        }
+
+        protected StrategySwitchOp(LIRInstructionClass<? extends StrategySwitchOp> c, Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key,
+                        Value scratch) {
+            super(c);
             this.strategy = strategy;
-            this.keyConstants = strategy.keyConstants;
+            this.keyConstants = strategy.getKeyConstants();
             this.keyTargets = keyTargets;
             this.defaultTarget = defaultTarget;
             this.constantTableBase = constantTableBase;
@@ -425,89 +430,103 @@ public class SPARCControlFlow {
         public void emitCode(final CompilationResultBuilder crb, final SPARCMacroAssembler masm) {
             final Register keyRegister = asRegister(key);
             final Register constantBaseRegister = AllocatableValue.ILLEGAL.equals(constantTableBase) ? g0 : asRegister(constantTableBase);
-            BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
-                int conditionalLabelPointer = 0;
-
-                /**
-                 * This method caches the generated labels over two assembly passes to get
-                 * information about branch lengths.
-                 */
-                @Override
-                public Label conditionalJump(int index, Condition condition) {
-                    Label label;
-                    if (conditionalLabelPointer <= conditionalLabels.size()) {
-                        label = new Label();
-                        conditionalLabels.add(label);
-                        conditionalLabelPointer = conditionalLabels.size();
-                    } else {
-                        // TODO: (sa) We rely here on the order how the labels are generated during
-                        // code generation; if the order is not stable ower two assembly passes, the
-                        // result can be wrong
-                        label = conditionalLabels.get(conditionalLabelPointer++);
-                    }
-                    conditionalJump(index, condition, label);
-                    return label;
-                }
-
-                @Override
-                protected void conditionalJump(int index, Condition condition, Label target) {
-                    JavaConstant constant = keyConstants[index];
-                    CC conditionCode;
-                    Long bits;
-                    switch (constant.getJavaKind()) {
-                        case Char:
-                        case Byte:
-                        case Short:
-                        case Int:
-                            conditionCode = CC.Icc;
-                            bits = constant.asLong();
-                            break;
-                        case Long: {
-                            conditionCode = CC.Xcc;
-                            bits = constant.asLong();
-                            break;
-                        }
-                        case Object: {
-                            conditionCode = crb.codeCache.getTarget().wordKind == JavaKind.Long ? CC.Xcc : CC.Icc;
-                            bits = constant.isDefaultForKind() ? 0L : null;
-                            break;
-                        }
-                        default:
-                            throw new JVMCIError("switch only supported for int, long and object");
-                    }
-                    ConditionFlag conditionFlag = fromCondition(conditionCode, condition, false);
-                    LabelHint hint = requestHint(masm, target);
-                    boolean isShortConstant = isSimm5(constant);
-                    int cbCondPosition = masm.position();
-                    if (!isShortConstant) { // Load constant takes one instruction
-                        cbCondPosition += SPARC.INSTRUCTION_SIZE;
-                    }
-                    boolean canUseShortBranch = masm.hasFeature(CPUFeature.CBCOND) && isShortBranch(masm, cbCondPosition, hint, target);
-                    if (bits != null && canUseShortBranch) {
-                        if (isShortConstant) {
-                            CBCOND.emit(masm, conditionFlag, conditionCode == Xcc, keyRegister, (int) (long) bits, target);
-                        } else {
-                            Register scratchRegister = asRegister(scratch);
-                            const2reg(crb, masm, scratch, constantBaseRegister, keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
-                            CBCOND.emit(masm, conditionFlag, conditionCode == Xcc, keyRegister, scratchRegister, target);
-                        }
-                    } else {
-                        if (bits != null && isSimm13(constant)) {
-                            masm.cmp(keyRegister, (int) (long) bits); // Cast is safe
-                        } else {
-                            Register scratchRegister = asRegister(scratch);
-                            const2reg(crb, masm, scratch, constantBaseRegister, keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
-                            masm.cmp(keyRegister, scratchRegister);
-                        }
-                        masm.bpcc(conditionFlag, ANNUL, target, conditionCode, PREDICT_TAKEN);
-                        masm.nop();  // delay slot
-                    }
-                }
-            };
-            strategy.run(closure);
+            strategy.run(new SwitchClosure(keyRegister, constantBaseRegister, crb, masm));
         }
 
-        private LabelHint requestHint(SPARCMacroAssembler masm, Label label) {
+        public class SwitchClosure extends BaseSwitchClosure {
+            private int conditionalLabelPointer = 0;
+
+            protected final Register keyRegister;
+            protected final Register constantBaseRegister;
+            protected final CompilationResultBuilder crb;
+            protected final SPARCMacroAssembler masm;
+
+            protected SwitchClosure(Register keyRegister, Register constantBaseRegister, CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+                super(crb, masm, keyTargets, defaultTarget);
+                this.keyRegister = keyRegister;
+                this.constantBaseRegister = constantBaseRegister;
+                this.crb = crb;
+                this.masm = masm;
+            }
+
+            /**
+             * This method caches the generated labels over two assembly passes to get information
+             * about branch lengths.
+             */
+            @Override
+            public Label conditionalJump(int index, Condition condition) {
+                Label label;
+                if (conditionalLabelPointer <= conditionalLabels.size()) {
+                    label = new Label();
+                    conditionalLabels.add(label);
+                    conditionalLabelPointer = conditionalLabels.size();
+                } else {
+                    // TODO: (sa) We rely here on the order how the labels are generated during
+                    // code generation; if the order is not stable ower two assembly passes, the
+                    // result can be wrong
+                    label = conditionalLabels.get(conditionalLabelPointer++);
+                }
+                conditionalJump(index, condition, label);
+                return label;
+            }
+
+            @Override
+            protected void conditionalJump(int index, Condition condition, Label target) {
+                JavaConstant constant = (JavaConstant) keyConstants[index];
+                CC conditionCode;
+                Long bits;
+                switch (constant.getJavaKind()) {
+                    case Char:
+                    case Byte:
+                    case Short:
+                    case Int:
+                        conditionCode = CC.Icc;
+                        bits = constant.asLong();
+                        break;
+                    case Long: {
+                        conditionCode = CC.Xcc;
+                        bits = constant.asLong();
+                        break;
+                    }
+                    case Object: {
+                        conditionCode = crb.codeCache.getTarget().wordKind == JavaKind.Long ? CC.Xcc : CC.Icc;
+                        bits = constant.isDefaultForKind() ? 0L : null;
+                        break;
+                    }
+                    default:
+                        throw new JVMCIError("switch only supported for int, long and object");
+                }
+                ConditionFlag conditionFlag = fromCondition(conditionCode, condition, false);
+                LabelHint hint = requestHint(masm, target);
+                boolean isShortConstant = isSimm5(constant);
+                int cbCondPosition = masm.position();
+                if (!isShortConstant) { // Load constant takes one instruction
+                    cbCondPosition += SPARC.INSTRUCTION_SIZE;
+                }
+                boolean canUseShortBranch = masm.hasFeature(CPUFeature.CBCOND) && isShortBranch(masm, cbCondPosition, hint, target);
+                if (bits != null && canUseShortBranch) {
+                    if (isShortConstant) {
+                        CBCOND.emit(masm, conditionFlag, conditionCode == Xcc, keyRegister, (int) (long) bits, target);
+                    } else {
+                        Register scratchRegister = asRegister(scratch);
+                        const2reg(crb, masm, scratch, constantBaseRegister, (JavaConstant) keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
+                        CBCOND.emit(masm, conditionFlag, conditionCode == Xcc, keyRegister, scratchRegister, target);
+                    }
+                } else {
+                    if (bits != null && isSimm13(constant)) {
+                        masm.cmp(keyRegister, (int) (long) bits); // Cast is safe
+                    } else {
+                        Register scratchRegister = asRegister(scratch);
+                        const2reg(crb, masm, scratch, constantBaseRegister, (JavaConstant) keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
+                        masm.cmp(keyRegister, scratchRegister);
+                    }
+                    masm.bpcc(conditionFlag, ANNUL, target, conditionCode, PREDICT_TAKEN);
+                    masm.nop();  // delay slot
+                }
+            }
+        }
+
+        protected LabelHint requestHint(SPARCMacroAssembler masm, Label label) {
             LabelHint hint = labelHints.get(label);
             if (hint == null) {
                 hint = masm.requestLabelHint(label);
@@ -516,13 +535,20 @@ public class SPARCControlFlow {
             return hint;
         }
 
+        protected int estimateEmbeddedSize(Constant c) {
+            JavaConstant v = (JavaConstant) c;
+            if (!SPARCAssembler.isSimm13(v)) {
+                return v.getJavaKind().getByteCount();
+            } else {
+                return 0;
+            }
+        }
+
         @Override
         public SizeEstimate estimateSize() {
             int constantBytes = 0;
-            for (JavaConstant v : keyConstants) {
-                if (!SPARCAssembler.isSimm13(v)) {
-                    constantBytes += v.getJavaKind().getByteCount();
-                }
+            for (Constant c : keyConstants) {
+                constantBytes += estimateEmbeddedSize(c);
             }
             return new SizeEstimate(4 * keyTargets.length, constantBytes);
         }

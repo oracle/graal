@@ -1469,11 +1469,15 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         append(new ReturnOp(operand));
     }
 
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue temp) {
+        return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
+    }
+
     @Override
     public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         // a temp is needed for loading object constants
         boolean needsTemp = key.getPlatformKind() == JavaKind.Object;
-        append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, needsTemp ? newVariable(key.getLIRKind()) : Value.ILLEGAL));
+        append(createStrategySwitchOp(strategy, keyTargets, defaultTarget, key, needsTemp ? newVariable(key.getLIRKind()) : Value.ILLEGAL));
     }
 
     @Override

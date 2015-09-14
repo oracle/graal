@@ -85,7 +85,7 @@ public final class KlassLayoutHelperNode extends FloatingGuardedNode implements 
         } else {
             if (klass.isConstant()) {
                 if (!klass.asConstant().isDefaultForKind()) {
-                    Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), klass.asJavaConstant(), config.klassLayoutHelperOffset);
+                    Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), klass.asConstant(), config.klassLayoutHelperOffset);
                     return ConstantNode.forConstant(stamp(), constant, tool.getMetaAccess());
                 }
             }

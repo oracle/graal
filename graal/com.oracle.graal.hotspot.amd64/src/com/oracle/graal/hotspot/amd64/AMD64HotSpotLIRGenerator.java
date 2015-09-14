@@ -22,43 +22,88 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.amd64.AMD64.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
+import static com.oracle.graal.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
+import static com.oracle.graal.hotspot.HotSpotBackend.UNCOMMON_TRAP;
+import static com.oracle.graal.lir.LIRValueUtil.asConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
+import static jdk.internal.jvmci.amd64.AMD64.cpuxmmRegisters;
+import static jdk.internal.jvmci.amd64.AMD64.rbp;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.RegisterValue;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.code.VirtualStackSlot;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotCompressedNullConstant;
+import jdk.internal.jvmci.hotspot.HotSpotConstant;
+import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
+import jdk.internal.jvmci.meta.PrimitiveConstant;
+import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
-import com.oracle.graal.compiler.amd64.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.compiler.amd64.AMD64LIRGenerator;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotLIRGenerator;
+import com.oracle.graal.hotspot.HotSpotLockStack;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreRbpOp;
-import com.oracle.graal.hotspot.debug.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.hotspot.debug.BenchmarkCounters;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.lir.ConstantValue;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.SwitchStrategy;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.amd64.AMD64AddressValue;
+import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
+import com.oracle.graal.lir.amd64.AMD64CCall;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
+import com.oracle.graal.lir.amd64.AMD64FrameMapBuilder;
+import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
+import com.oracle.graal.lir.amd64.AMD64Move;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.amd64.AMD64RestoreRegistersOp;
+import com.oracle.graal.lir.amd64.AMD64SaveRegistersOp;
+import com.oracle.graal.lir.amd64.AMD64ZapRegistersOp;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import com.oracle.graal.lir.gen.DefaultLIRKindTool;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -672,4 +717,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         append(new AMD64PrefetchOp(asAddressValue(address), config.allocatePrefetchInstr));
     }
 
+    @Override
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue temp) {
+        return new AMD64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
+    }
 }

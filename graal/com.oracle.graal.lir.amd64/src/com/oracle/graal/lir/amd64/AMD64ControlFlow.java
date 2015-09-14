@@ -125,19 +125,23 @@ public class AMD64ControlFlow {
         }
     }
 
-    public static final class StrategySwitchOp extends AMD64BlockEndOp {
+    public static class StrategySwitchOp extends AMD64BlockEndOp {
         public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
-        protected final JavaConstant[] keyConstants;
+        protected final Constant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;
         @Temp({REG, ILLEGAL}) protected Value scratch;
-        private final SwitchStrategy strategy;
+        protected final SwitchStrategy strategy;
 
         public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
-            super(TYPE);
+            this(TYPE, strategy, keyTargets, defaultTarget, key, scratch);
+        }
+
+        protected StrategySwitchOp(LIRInstructionClass<? extends StrategySwitchOp> c, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+            super(c);
             this.strategy = strategy;
-            this.keyConstants = strategy.keyConstants;
+            this.keyConstants = strategy.getKeyConstants();
             this.keyTargets = keyTargets;
             this.defaultTarget = defaultTarget;
             this.key = key;
@@ -149,35 +153,50 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(final CompilationResultBuilder crb, final AMD64MacroAssembler masm) {
-            final Register keyRegister = asRegister(key);
+            strategy.run(new SwitchClosure(asRegister(key), crb, masm));
+        }
 
-            BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
-                @Override
-                protected void conditionalJump(int index, Condition condition, Label target) {
-                    switch (keyConstants[index].getJavaKind()) {
-                        case Int:
-                            if (crb.codeCache.needsDataPatch(keyConstants[index])) {
-                                crb.recordInlineDataInCode(keyConstants[index]);
-                            }
-                            long lc = keyConstants[index].asLong();
-                            assert NumUtil.isInt(lc);
-                            masm.cmpl(keyRegister, (int) lc);
-                            break;
-                        case Long:
-                            masm.cmpq(keyRegister, (AMD64Address) crb.asLongConstRef(keyConstants[index]));
-                            break;
-                        case Object:
-                            assert condition == Condition.EQ || condition == Condition.NE;
-                            AMD64Move.const2reg(crb, masm, scratch, keyConstants[index]);
-                            masm.cmpptr(keyRegister, asRegister(scratch));
-                            break;
-                        default:
-                            throw new JVMCIError("switch only supported for int, long and object");
-                    }
-                    masm.jcc(intCond(condition), target);
+        public class SwitchClosure extends BaseSwitchClosure {
+
+            protected final Register keyRegister;
+            protected final CompilationResultBuilder crb;
+            protected final AMD64MacroAssembler masm;
+
+            protected SwitchClosure(Register keyRegister, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+                super(crb, masm, keyTargets, defaultTarget);
+                this.keyRegister = keyRegister;
+                this.crb = crb;
+                this.masm = masm;
+            }
+
+            protected void emitComparison(Constant c) {
+                JavaConstant jc = (JavaConstant) c;
+                switch (jc.getJavaKind()) {
+                    case Int:
+                        if (crb.codeCache.needsDataPatch(jc)) {
+                            crb.recordInlineDataInCode(jc);
+                        }
+                        long lc = jc.asLong();
+                        assert NumUtil.isInt(lc);
+                        masm.cmpl(keyRegister, (int) lc);
+                        break;
+                    case Long:
+                        masm.cmpq(keyRegister, (AMD64Address) crb.asLongConstRef(jc));
+                        break;
+                    case Object:
+                        AMD64Move.const2reg(crb, masm, scratch, jc);
+                        masm.cmpptr(keyRegister, asRegister(scratch));
+                        break;
+                    default:
+                        throw new JVMCIError("switch only supported for int, long and object");
                 }
-            };
-            strategy.run(closure);
+            }
+
+            @Override
+            protected void conditionalJump(int index, Condition condition, Label target) {
+                emitComparison(keyConstants[index]);
+                masm.jcc(intCond(condition), target);
+            }
         }
     }
 

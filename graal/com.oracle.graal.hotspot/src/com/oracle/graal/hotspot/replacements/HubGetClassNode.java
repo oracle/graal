@@ -59,7 +59,7 @@ public final class HubGetClassNode extends FloatingGuardedNode implements Lowera
         } else {
             MetaAccessProvider metaAccess = tool.getMetaAccess();
             if (metaAccess != null && hub.isConstant()) {
-                ResolvedJavaType exactType = tool.getConstantReflection().asJavaType(hub.asJavaConstant());
+                ResolvedJavaType exactType = tool.getConstantReflection().asJavaType(hub.asConstant());
                 if (exactType != null) {
                     return ConstantNode.forConstant(exactType.getJavaClass(), metaAccess);
                 }

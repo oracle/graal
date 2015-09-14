@@ -99,7 +99,7 @@ public abstract class SwitchNode extends ControlSplitNode {
     /**
      * The key at the specified position, encoded in a Constant.
      */
-    public abstract JavaConstant keyAt(int i);
+    public abstract Constant keyAt(int i);
 
     public boolean structureEquals(SwitchNode switchNode) {
         return Arrays.equals(keySuccessors, switchNode.keySuccessors) && equalKeys(switchNode);

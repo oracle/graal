@@ -114,8 +114,9 @@ public class AMD64AddressLowering extends AddressLowering {
             return null;
         }
 
-        if (node.isConstant()) {
-            return improveConstDisp(address, node, node.asJavaConstant(), null, shift);
+        JavaConstant c = node.asJavaConstant();
+        if (c != null) {
+            return improveConstDisp(address, node, c, null, shift);
         } else {
             if (node.stamp() instanceof IntegerStamp && ((IntegerStamp) node.stamp()).getBits() == 64) {
                 if (node instanceof ZeroExtendNode) {

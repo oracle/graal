@@ -71,20 +71,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public boolean isSorted() {
-        JavaKind kind = value().getStackKind();
-        if (kind.isNumericInteger()) {
-            JavaConstant lastKey = null;
-            for (int i = 0; i < keyCount(); i++) {
-                JavaConstant key = keyAt(i);
-                if (lastKey != null && key.asLong() <= lastKey.asLong()) {
-                    return false;
-                }
-                lastKey = key;
-            }
-            return true;
-        } else {
-            return false;
-        }
+        return false;
     }
 
     @Override
@@ -93,8 +80,8 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     }
 
     @Override
-    public JavaConstant keyAt(int index) {
-        return (JavaConstant) keys[index].getObjectHub();
+    public Constant keyAt(int index) {
+        return keys[index].getObjectHub();
     }
 
     @Override
@@ -118,12 +105,11 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     @Override
     public void simplify(SimplifierTool tool) {
         if (value() instanceof ConstantNode) {
-            JavaConstant constant = value().asJavaConstant();
+            Constant constant = value().asConstant();
 
             int survivingEdge = keySuccessorIndex(keyCount());
             for (int i = 0; i < keyCount(); i++) {
-                JavaConstant typeHub = keyAt(i);
-                assert constant.getJavaKind() == typeHub.getJavaKind();
+                Constant typeHub = keyAt(i);
                 Boolean equal = tool.getConstantReflection().constantEquals(constant, typeHub);
                 if (equal == null) {
                     /* We don't know if this key is a match or not, so we cannot simplify. */
