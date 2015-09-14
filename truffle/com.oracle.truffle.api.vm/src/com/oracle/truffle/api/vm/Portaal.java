@@ -290,7 +290,7 @@ public class Portaal {
      * @return an immutable map with keys being MIME types and values the {@link Language
      *         descriptions} of associated languages
      */
-    public Map<String, Language> getLanguages() {
+    public Map<String, ? extends Language> getLanguages() {
         return Collections.unmodifiableMap(langs);
     }
 

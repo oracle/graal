@@ -62,6 +62,42 @@ public final class TruffleVM extends Portaal {
 
         @Deprecated
         @Override
+        public Builder executor(Executor executor) {
+            return (Builder) super.executor(executor);
+        }
+
+        @Deprecated
+        @Override
+        public Builder globalSymbol(String name, Object obj) {
+            return (Builder) super.globalSymbol(name, obj);
+        }
+
+        @Deprecated
+        @Override
+        public Builder onEvent(EventConsumer<?> handler) {
+            return (Builder) super.onEvent(handler);
+        }
+
+        @Deprecated
+        @Override
+        public Builder stdIn(Reader r) {
+            return (Builder) super.stdIn(r);
+        }
+
+        @Deprecated
+        @Override
+        public Builder stdErr(Writer w) {
+            return (Builder) super.stdErr(w);
+        }
+
+        @Deprecated
+        @Override
+        public Builder stdOut(Writer w) {
+            return (Builder) super.stdOut(w);
+        }
+
+        @Deprecated
+        @Override
         public TruffleVM build() {
             return (TruffleVM) super.build();
         }
@@ -75,6 +111,12 @@ public final class TruffleVM extends Portaal {
     @Override
     Language createLanguage(Map.Entry<String, LanguageCache> en) {
         return new Language(en.getValue());
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, Language> getLanguages() {
+        return (Map<String, Language>) super.getLanguages();
     }
 
     @Override
