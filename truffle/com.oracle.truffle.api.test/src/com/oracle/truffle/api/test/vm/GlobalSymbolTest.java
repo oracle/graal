@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 public class GlobalSymbolTest {
     @Test
     public void globalSymbolFoundByLanguage() throws IOException {
-        TruffleVM vm = TruffleVM.newVM().globalSymbol("ahoj", "42").executor(Executors.newSingleThreadExecutor()).build();
+        Portaal vm = Portaal.createNew().globalSymbol("ahoj", "42").executor(Executors.newSingleThreadExecutor()).build();
         // @formatter:off
         Object ret = vm.eval(
             Source.fromText("return=ahoj", "Return").withMimeType(L3)
@@ -44,8 +44,8 @@ public class GlobalSymbolTest {
 
     @Test
     public void globalSymbolFoundByVMUser() throws IOException {
-        TruffleVM vm = TruffleVM.newVM().globalSymbol("ahoj", "42").build();
-        TruffleVM.Symbol ret = vm.findGlobalSymbol("ahoj");
+        Portaal vm = Portaal.createNew().globalSymbol("ahoj", "42").build();
+        Portaal.Value ret = vm.findGlobalSymbol("ahoj");
         assertNotNull("Symbol found", ret);
         assertEquals("42", ret.get());
     }

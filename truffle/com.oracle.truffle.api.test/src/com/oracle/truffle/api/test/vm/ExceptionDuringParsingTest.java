@@ -25,7 +25,7 @@ package com.oracle.truffle.api.test.vm;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.Portaal;
 import java.io.IOException;
 import static org.junit.Assert.*;
 import org.junit.Test;
@@ -35,8 +35,8 @@ public class ExceptionDuringParsingTest {
 
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
-        TruffleVM vm = TruffleVM.newVM().build();
-        TruffleVM.Language language = vm.getLanguages().get(L1);
+        Portaal vm = Portaal.createNew().build();
+        Portaal.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 
         try {

@@ -50,7 +50,7 @@ import java.util.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
-import com.oracle.truffle.api.vm.TruffleVM.Language;
+import com.oracle.truffle.api.vm.Portaal.Language;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.instrument.SLDefaultVisualizer;
 import com.oracle.truffle.tools.debug.shell.*;
@@ -85,7 +85,7 @@ public final class SLREPLServer extends REPLServer {
     }
 
     private final Language language;
-    private final TruffleVM vm;
+    private final Portaal vm;
     private Debugger db;
     private final String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
@@ -135,7 +135,7 @@ public final class SLREPLServer extends REPLServer {
             }
         };
 
-        TruffleVM newVM = TruffleVM.newVM().onEvent(onHalted).onEvent(onExec).build();
+        Portaal newVM = Portaal.createNew().onEvent(onHalted).onEvent(onExec).build();
         this.language = newVM.getLanguages().get("application/x-sl");
         assert language != null;
 
@@ -210,7 +210,7 @@ public final class SLREPLServer extends REPLServer {
         }
 
         @Override
-        public TruffleVM vm() {
+        public Portaal vm() {
             return vm;
         }
 

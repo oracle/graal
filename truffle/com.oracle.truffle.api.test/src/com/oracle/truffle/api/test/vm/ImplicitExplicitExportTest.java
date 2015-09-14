@@ -38,12 +38,12 @@ import static org.junit.Assert.*;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
-    private TruffleVM vm;
+    private Portaal vm;
 
     @Before
     public void initializeVM() {
         mainThread = Thread.currentThread();
-        vm = TruffleVM.newVM().executor(Executors.newSingleThreadExecutor()).build();
+        vm = Portaal.createNew().executor(Executors.newSingleThreadExecutor()).build();
         assertTrue("Found " + L1 + " language", vm.getLanguages().containsKey(L1));
         assertTrue("Found " + L2 + " language", vm.getLanguages().containsKey(L2));
         assertTrue("Found " + L3 + " language", vm.getLanguages().containsKey(L3));

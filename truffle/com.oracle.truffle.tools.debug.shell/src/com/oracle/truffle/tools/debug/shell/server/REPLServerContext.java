@@ -32,7 +32,7 @@ import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.impl.DefaultVisualizer;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.vm.*;
-import com.oracle.truffle.api.vm.TruffleVM.Language;
+import com.oracle.truffle.api.vm.Portaal.Language;
 import com.oracle.truffle.tools.debug.shell.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,7 +75,7 @@ public abstract class REPLServerContext {
         return new DefaultVisualizer();
     }
 
-    public abstract TruffleVM vm();
+    public abstract Portaal vm();
 
     protected abstract Debugger db();
 

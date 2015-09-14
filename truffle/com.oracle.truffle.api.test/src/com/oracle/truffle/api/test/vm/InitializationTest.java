@@ -39,7 +39,7 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.EventConsumer;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.Portaal;
 import java.io.IOException;
 
 /**
@@ -56,7 +56,7 @@ public class InitializationTest {
     @Test
     public void accessProbeForAbstractLanguage() throws IOException {
         final Debugger[] arr = {null};
-        TruffleVM vm = TruffleVM.newVM().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+        Portaal vm = Portaal.createNew().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
                 arr[0] = event.getDebugger();

@@ -127,9 +127,9 @@ public abstract class SLREPLHandler extends REPLHandler {
             if (!file.canRead()) {
                 return finishReplyFailed(reply, "can't find file \"" + fileName + "\"");
             }
-            final TruffleVM vm = serverContext.vm();
+            final Portaal vm = serverContext.vm();
             vm.eval(Source.fromFileName(file.getPath()));
-            TruffleVM.Symbol main = vm.findGlobalSymbol("main");
+            Portaal.Value main = vm.findGlobalSymbol("main");
             if (main != null) {
                 main.invoke(null);
             }

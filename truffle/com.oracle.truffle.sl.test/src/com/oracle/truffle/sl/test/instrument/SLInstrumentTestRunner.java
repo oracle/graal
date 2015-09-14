@@ -227,7 +227,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
-                TruffleVM vm = TruffleVM.newVM().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
+                Portaal vm = Portaal.createNew().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
 
                 final String src = readAllLines(testCase.path);
                 vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));
@@ -238,7 +238,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
                     probe.attach(Instrument.create(slPrintAssigmentValueListener, "SL print assignment value"));
                 }
 
-                TruffleVM.Symbol main = vm.findGlobalSymbol("main");
+                Portaal.Value main = vm.findGlobalSymbol("main");
                 main.invoke(null);
             } else {
                 notifier.fireTestFailure(new Failure(testCase.name, new UnsupportedOperationException("No instrumentation found.")));
