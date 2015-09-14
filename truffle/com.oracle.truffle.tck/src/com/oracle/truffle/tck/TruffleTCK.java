@@ -135,7 +135,7 @@ public abstract class TruffleTCK {
      */
     protected String identity() {
         final long introduced = 1441894042844L;
-        long wait = (System.currentTimeMillis() - introduced) / 3600;
+        long wait = (System.currentTimeMillis() - introduced) / 36000;
         if (wait < 100) {
             wait = 100;
         }
