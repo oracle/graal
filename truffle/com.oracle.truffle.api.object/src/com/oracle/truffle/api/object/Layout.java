@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.ServiceLoader;
 
-import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
 import com.oracle.truffle.api.object.Shape.Allocator;
 
 /**
@@ -51,16 +51,28 @@ public abstract class Layout {
         IntToLong,
     }
 
+    /**
+     * Create a new {@link LayoutBuilder}.
+     */
+    @SuppressWarnings("deprecation")
+    public static LayoutBuilder newLayout() {
+        return new LayoutBuilder();
+    }
+
+    /**
+     * Equivalent to {@code Layout.newLayout().build()}.
+     */
     public static Layout createLayout() {
         return createLayout(NONE);
     }
 
+    /**
+     * Equivalent to
+     * {@code Layout.newLayout().setAllowedImplicitCasts(allowedImplicitCasts).build()}.
+     */
+    @Deprecated
     public static Layout createLayout(EnumSet<ImplicitCast> allowedImplicitCasts) {
-        return new LayoutBuilder().setAllowedImplicitCasts(allowedImplicitCasts).build();
-    }
-
-    public static Layout createLayout(EnumSet<ImplicitCast> allowedImplicitCasts, FieldOffsetProvider fieldOffsetProvider) {
-        return new LayoutBuilder().setAllowedImplicitCasts(allowedImplicitCasts).setFieldOffsetProvider(fieldOffsetProvider).build();
+        return newLayout().setAllowedImplicitCasts(allowedImplicitCasts).build();
     }
 
     public abstract DynamicObject newInstance(Shape shape);

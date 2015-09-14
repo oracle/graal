@@ -38,20 +38,35 @@ public class LayoutBuilder {
     private EnumSet<ImplicitCast> allowedImplicitCasts;
     private FieldOffsetProvider fieldOffsetProvider;
 
+    /**
+     * Use {@link Layout#newLayout()} instead.
+     */
+    @Deprecated
     public LayoutBuilder() {
         this.allowedImplicitCasts = Layout.NONE;
         this.fieldOffsetProvider = null;
     }
 
+    /**
+     * Build {@link Layout} from the configuration in this builder.
+     */
     public Layout build() {
         return Layout.getFactory().createLayout(this);
     }
 
+    /**
+     * Set the allowed implicit casts in this layout.
+     *
+     * @see Layout.ImplicitCast
+     */
     public LayoutBuilder setAllowedImplicitCasts(EnumSet<ImplicitCast> allowedImplicitCasts) {
         this.allowedImplicitCasts = allowedImplicitCasts;
         return this;
     }
 
+    /**
+     * Set a custom field offset provider for this layout.
+     */
     public LayoutBuilder setFieldOffsetProvider(FieldOffsetProvider fieldOffsetProvider) {
         this.fieldOffsetProvider = fieldOffsetProvider;
         return this;
