@@ -197,7 +197,7 @@ public abstract class RootNode extends Node {
 
     /**
      * Helper method to create a root node that always returns the same value. Certain operations
-     * (expecially {@link com.oracle.api.truffle.api.interop inter-operability} API) require return
+     * (expecially {@link com.oracle.truffle.api.interop inter-operability} API) require return
      * of stable {@link RootNode root nodes}. To simplify creation of such nodes, here is a factory
      * method that can create {@link RootNode} that returns always the same value.
      *
