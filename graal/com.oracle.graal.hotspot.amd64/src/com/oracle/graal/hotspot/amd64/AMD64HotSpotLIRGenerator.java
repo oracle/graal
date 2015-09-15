@@ -77,6 +77,7 @@ import com.oracle.graal.hotspot.HotSpotLockStack;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreRbpOp;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.type.DefaultHotSpotLIRKindTool;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
@@ -102,7 +103,6 @@ import com.oracle.graal.lir.amd64.AMD64SaveRegistersOp;
 import com.oracle.graal.lir.amd64.AMD64ZapRegistersOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.gen.DefaultLIRKindTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 /**
@@ -114,7 +114,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private HotSpotLockStack lockStack;
 
     protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(new DefaultLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, config, cc, lirGenRes);
+        this(new DefaultHotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, config, cc, lirGenRes);
     }
 
     protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {

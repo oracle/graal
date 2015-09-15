@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package com.oracle.graal.hotspot.nodes.type;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
 
-/**
- * This interface can be used to access platform and VM specific kinds.
- */
-public interface LIRKindTool {
+import com.oracle.graal.lir.gen.DefaultLIRKindTool;
 
-    /**
-     * Get an architecture specific integer kind of a certain size.
-     */
-    LIRKind getIntegerKind(int bits);
+public class DefaultHotSpotLIRKindTool extends DefaultLIRKindTool implements HotSpotLIRKindTool {
 
-    /**
-     * Get an architecture specific floating point kind of a certain size.
-     */
-    LIRKind getFloatingKind(int bits);
+    public DefaultHotSpotLIRKindTool(PlatformKind wordKind) {
+        super(wordKind);
+    }
 
-    /**
-     * Get the architecture specific kind used to represent Java objects.
-     */
-    LIRKind getObjectKind();
+    public LIRKind getNarrowOopKind() {
+        return LIRKind.reference(JavaKind.Int);
+    }
 
-    /**
-     * Get the architecture specific kind pointer-sized integer kind.
-     */
-    LIRKind getWordKind();
+    public LIRKind getNarrowPointerKind() {
+        return LIRKind.value(JavaKind.Int);
+    }
 }

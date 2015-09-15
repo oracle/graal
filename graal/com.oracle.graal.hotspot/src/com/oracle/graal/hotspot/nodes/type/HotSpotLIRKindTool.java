@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package com.oracle.graal.hotspot.nodes.type;
 
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.compiler.common.spi.*;
+
 /**
- * This interface can be used to access platform and VM specific kinds.
+ * Extension of {@link LIRKindTool} that includes support for compressed pointer kinds.
  */
-public interface LIRKindTool {
+public interface HotSpotLIRKindTool extends LIRKindTool {
 
     /**
-     * Get an architecture specific integer kind of a certain size.
+     * Get the platform specific kind used to represent compressed oops.
      */
-    LIRKind getIntegerKind(int bits);
+    LIRKind getNarrowOopKind();
 
     /**
-     * Get an architecture specific floating point kind of a certain size.
+     * Gets the platform specific kind used to represent compressed metaspace pointers.
      */
-    LIRKind getFloatingKind(int bits);
-
-    /**
-     * Get the architecture specific kind used to represent Java objects.
-     */
-    LIRKind getObjectKind();
-
-    /**
-     * Get the architecture specific kind pointer-sized integer kind.
-     */
-    LIRKind getWordKind();
+    LIRKind getNarrowPointerKind();
 }

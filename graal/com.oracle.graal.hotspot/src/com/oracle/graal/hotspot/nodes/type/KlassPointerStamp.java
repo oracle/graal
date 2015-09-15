@@ -111,7 +111,7 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
     @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
         if (isCompressed()) {
-            return LIRKind.value(JavaKind.Int);
+            return ((HotSpotLIRKindTool) tool).getNarrowPointerKind();
         } else {
             return super.getLIRKind(tool);
         }

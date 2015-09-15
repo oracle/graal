@@ -22,38 +22,109 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.hotspot.HotSpotCompressedNullConstant.*;
-import static jdk.internal.jvmci.sparc.SPARC.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
+import static com.oracle.graal.hotspot.HotSpotBackend.UNCOMMON_TRAP;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.getHostWordKind;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.runtime;
+import static com.oracle.graal.lir.LIRValueUtil.asConstant;
+import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
+import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static jdk.internal.jvmci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
+import static jdk.internal.jvmci.meta.JavaConstant.INT_0;
+import static jdk.internal.jvmci.sparc.SPARC.d32;
+import static jdk.internal.jvmci.sparc.SPARC.d34;
+import static jdk.internal.jvmci.sparc.SPARC.d36;
+import static jdk.internal.jvmci.sparc.SPARC.d38;
+import static jdk.internal.jvmci.sparc.SPARC.d40;
+import static jdk.internal.jvmci.sparc.SPARC.d42;
+import static jdk.internal.jvmci.sparc.SPARC.d44;
+import static jdk.internal.jvmci.sparc.SPARC.d46;
+import static jdk.internal.jvmci.sparc.SPARC.d48;
+import static jdk.internal.jvmci.sparc.SPARC.d50;
+import static jdk.internal.jvmci.sparc.SPARC.d52;
+import static jdk.internal.jvmci.sparc.SPARC.d54;
+import static jdk.internal.jvmci.sparc.SPARC.d56;
+import static jdk.internal.jvmci.sparc.SPARC.d58;
+import static jdk.internal.jvmci.sparc.SPARC.d60;
+import static jdk.internal.jvmci.sparc.SPARC.d62;
+import static jdk.internal.jvmci.sparc.SPARC.f0;
+import static jdk.internal.jvmci.sparc.SPARC.f10;
+import static jdk.internal.jvmci.sparc.SPARC.f12;
+import static jdk.internal.jvmci.sparc.SPARC.f14;
+import static jdk.internal.jvmci.sparc.SPARC.f16;
+import static jdk.internal.jvmci.sparc.SPARC.f18;
+import static jdk.internal.jvmci.sparc.SPARC.f2;
+import static jdk.internal.jvmci.sparc.SPARC.f20;
+import static jdk.internal.jvmci.sparc.SPARC.f22;
+import static jdk.internal.jvmci.sparc.SPARC.f24;
+import static jdk.internal.jvmci.sparc.SPARC.f26;
+import static jdk.internal.jvmci.sparc.SPARC.f28;
+import static jdk.internal.jvmci.sparc.SPARC.f30;
+import static jdk.internal.jvmci.sparc.SPARC.f4;
+import static jdk.internal.jvmci.sparc.SPARC.f6;
+import static jdk.internal.jvmci.sparc.SPARC.f8;
+import static jdk.internal.jvmci.sparc.SPARC.g1;
+import static jdk.internal.jvmci.sparc.SPARC.g3;
+import static jdk.internal.jvmci.sparc.SPARC.g4;
+import static jdk.internal.jvmci.sparc.SPARC.g5;
 
-import java.util.*;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterValue;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.code.VirtualStackSlot;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotCompressedNullConstant;
+import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.sparc.*;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
+import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.sparc.SPARC;
 
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.sparc.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.debug.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.compiler.sparc.SPARCLIRGenerator;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotLIRGenerator;
+import com.oracle.graal.hotspot.HotSpotLockStack;
+import com.oracle.graal.hotspot.debug.BenchmarkCounters;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.hotspot.nodes.type.DefaultHotSpotLIRKindTool;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.lir.SwitchStrategy;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.sparc.SPARCAddressValue;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
+import com.oracle.graal.lir.sparc.SPARCFrameMapBuilder;
+import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
+import com.oracle.graal.lir.sparc.SPARCMove;
 import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
+import com.oracle.graal.lir.sparc.SPARCSaveRegistersOp;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
@@ -62,7 +133,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private LIRFrameState currentRuntimeCallInfo;
 
     public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(new DefaultLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, config, cc, lirGenRes);
+        this(new DefaultHotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, config, cc, lirGenRes);
     }
 
     protected SPARCHotSpotLIRGenerator(LIRKindTool lirKindTool, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
