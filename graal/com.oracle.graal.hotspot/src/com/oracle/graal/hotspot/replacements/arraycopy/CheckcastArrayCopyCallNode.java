@@ -23,24 +23,34 @@
 //JaCoCo Exclude
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
+import com.oracle.graal.hotspot.nodes.GetObjectAddressNode;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.AddNode;
+import com.oracle.graal.nodes.calc.IntegerConvertNode;
+import com.oracle.graal.nodes.calc.LeftShiftNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.word.Word;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value})
 public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
@@ -100,10 +110,9 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
         FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
 
-        HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime.getJVMCIRuntime();
-        int shift = CodeUtil.log2(jvmciRuntime.getArrayIndexScale(JavaKind.Object));
+        int shift = CodeUtil.log2(getArrayIndexScale(JavaKind.Object));
         ValueNode scaledIndex = graph().unique(new LeftShiftNode(pos, ConstantNode.forInt(shift, graph())));
-        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forInt(jvmciRuntime.getArrayBaseOffset(JavaKind.Object), graph())));
+        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forInt(getArrayBaseOffset(JavaKind.Object), graph())));
         return graph().unique(new OffsetAddressNode(basePtr, offset));
     }
 

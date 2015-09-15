@@ -29,6 +29,7 @@ import static com.oracle.graal.debug.GraalDebugConfig.Log;
 import static com.oracle.graal.debug.GraalDebugConfig.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Verify;
 import static com.oracle.graal.debug.GraalDebugConfig.areScopedMetricsOrTimersEnabled;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import static jdk.internal.jvmci.inittimer.InitTimer.timer;
 
 import java.util.Collections;
@@ -121,15 +122,15 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return jvmciRuntime;
     }
 
-    private boolean checkArrayIndexScaleInvariants() {
-        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Byte) == 1;
-        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Boolean) == 1;
-        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Char) == 2;
-        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Short) == 2;
-        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Int) == 4;
-        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Long) == 8;
-        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Float) == 4;
-        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Double) == 8;
+    private static boolean checkArrayIndexScaleInvariants() {
+        assert getArrayIndexScale(JavaKind.Byte) == 1;
+        assert getArrayIndexScale(JavaKind.Boolean) == 1;
+        assert getArrayIndexScale(JavaKind.Char) == 2;
+        assert getArrayIndexScale(JavaKind.Short) == 2;
+        assert getArrayIndexScale(JavaKind.Int) == 4;
+        assert getArrayIndexScale(JavaKind.Long) == 8;
+        assert getArrayIndexScale(JavaKind.Float) == 4;
+        assert getArrayIndexScale(JavaKind.Double) == 8;
         return true;
     }
 

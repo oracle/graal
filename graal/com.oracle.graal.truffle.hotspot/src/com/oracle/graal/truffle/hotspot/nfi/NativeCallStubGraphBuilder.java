@@ -22,23 +22,36 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.ResolvedJavaField;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.word.nodes.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.BoxNode;
+import com.oracle.graal.nodes.java.LoadFieldNode;
+import com.oracle.graal.nodes.java.LoadIndexedNode;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.virtual.EscapeObjectState;
+import com.oracle.graal.word.nodes.WordCastNode;
 
 /**
  * Utility creating a graph for a stub used to call a native function.
@@ -119,8 +132,7 @@ public class NativeCallStubGraphBuilder {
             if (kind == JavaKind.Object) {
                 // array value
                 JavaKind arrayElementKind = getElementKind(type);
-                HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime().getJVMCIRuntime();
-                int displacement = jvmciRuntime.getArrayBaseOffset(arrayElementKind);
+                int displacement = getArrayBaseOffset(arrayElementKind);
                 AddressNode arrayAddress = g.unique(new OffsetAddressNode(boxedElement, ConstantNode.forLong(displacement, g)));
                 WordCastNode cast = g.add(WordCastNode.addressToWord(arrayAddress, providers.getWordTypes().getWordKind()));
                 last.setNext(cast);

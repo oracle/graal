@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.lang.ref.*;
@@ -138,7 +139,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
         } else if (n instanceof NewArrayNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                newObjectSnippets.lower((NewArrayNode) n, registers, runtime, tool);
+                newObjectSnippets.lower((NewArrayNode) n, registers, tool);
             }
         } else if (n instanceof DynamicNewArrayNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
@@ -548,7 +549,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected int arrayBaseOffset(JavaKind kind) {
-        return runtime.getJVMCIRuntime().getArrayBaseOffset(kind);
+        return getArrayBaseOffset(kind);
     }
 
     @Override

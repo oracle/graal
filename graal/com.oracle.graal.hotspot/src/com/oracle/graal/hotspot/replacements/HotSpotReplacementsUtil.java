@@ -28,6 +28,8 @@ import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.VERI
 import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import jdk.internal.jvmci.code.CodeUtil;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.common.JVMCIError;
@@ -540,12 +542,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int arrayBaseOffset(JavaKind elementKind) {
-        return runtime().getJVMCIRuntime().getArrayBaseOffset(elementKind);
+        return getArrayBaseOffset(elementKind);
     }
 
     @Fold
     public static int arrayIndexScale(JavaKind elementKind) {
-        return runtime().getJVMCIRuntime().getArrayIndexScale(elementKind);
+        return getArrayIndexScale(elementKind);
     }
 
     @Fold

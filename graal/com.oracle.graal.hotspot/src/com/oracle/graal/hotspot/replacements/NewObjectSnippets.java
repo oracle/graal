@@ -22,51 +22,107 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.replacements.ReplacementsUtil.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.nodes.CStringNode.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Options.*;
-import static com.oracle.graal.nodes.PiArrayNode.*;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.replacements.SnippetTemplate.*;
-import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
-import static jdk.internal.jvmci.code.UnsignedMath.*;
-import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
+import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
+import static com.oracle.graal.hotspot.nodes.CStringNode.cstring;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.TLAB_END_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.TLAB_TOP_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayKlassOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayLengthOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.initializeObjectHeader;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.instanceHeaderSize;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.isInstanceKlassFullyInitialized;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeMask;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeShift;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeMask;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeShift;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadKlassFromObject;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.prototypeMarkWordOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readLayoutHelper;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readTlabEnd;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readTlabTop;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useBiasedLocking;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useTLAB;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeTlabTop;
+import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Options.ProfileAllocations;
+import static com.oracle.graal.nodes.PiArrayNode.piArrayCast;
+import static com.oracle.graal.nodes.PiNode.piCast;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import static com.oracle.graal.replacements.ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED;
+import static com.oracle.graal.replacements.ReplacementsUtil.staticAssert;
+import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.explodeLoop;
+import static jdk.internal.jvmci.code.UnsignedMath.belowThan;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
+import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.computeArrayAllocationSize;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.debug.*;
-
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.nodes.type.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.debug.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.meta.HotSpotLoweringProvider;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.hotspot.nodes.DimensionsNode;
+import com.oracle.graal.hotspot.nodes.PrefetchAllocateNode;
+import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
+import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.debug.DynamicCounterNode;
+import com.oracle.graal.nodes.debug.VerifyHeapNode;
+import com.oracle.graal.nodes.extended.BranchProbabilityNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.java.DynamicNewArrayNode;
+import com.oracle.graal.nodes.java.DynamicNewInstanceNode;
+import com.oracle.graal.nodes.java.NewArrayNode;
+import com.oracle.graal.nodes.java.NewInstanceNode;
+import com.oracle.graal.nodes.java.NewMultiArrayNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.replacements.ReplacementsUtil;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
+import com.oracle.graal.replacements.SnippetCounter;
+import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.replacements.Snippets;
+import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
+import com.oracle.graal.word.Word;
 
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
@@ -472,13 +528,13 @@ public class NewObjectSnippets implements Snippets {
         /**
          * Lowers a {@link NewArrayNode}.
          */
-        public void lower(NewArrayNode newArrayNode, HotSpotRegistersProvider registers, HotSpotGraalRuntimeProvider runtime, LoweringTool tool) {
+        public void lower(NewArrayNode newArrayNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = newArrayNode.graph();
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             JavaKind elementKind = elementType.getJavaKind();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayType.klass(), providers.getMetaAccess(), graph);
-            final int headerSize = runtime.getJVMCIRuntime().getArrayBaseOffset(elementKind);
+            final int headerSize = getArrayBaseOffset(elementKind);
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
             int log2ElementSize = CodeUtil.log2(lowerer.arrayScalingFactor(elementKind));
 
