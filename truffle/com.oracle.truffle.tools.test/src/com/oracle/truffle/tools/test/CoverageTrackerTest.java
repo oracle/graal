@@ -36,10 +36,11 @@ import com.oracle.truffle.tools.*;
 public class CoverageTrackerTest {
 
     @Test
-    public void testNoExecution() {
+    public void testNoExecution() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final CoverageTracker tool = new CoverageTracker();
         assertEquals(tool.getCounts().entrySet().size(), 0);
-        tool.install();
+        tool.install(instrumenter);
         assertEquals(tool.getCounts().entrySet().size(), 0);
         tool.setEnabled(false);
         assertEquals(tool.getCounts().entrySet().size(), 0);
@@ -52,37 +53,40 @@ public class CoverageTrackerTest {
     }
 
     @Test
-    public void testToolCreatedTooLate() {
-        final RootNode expr13rootNode = createExpr13TestRootNode();
+    public void testToolCreatedTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
+        final RootNode expr13rootNode = TestNodes.createExpr13TestRootNode(instrumenter);
         final CoverageTracker tool = new CoverageTracker();
-        tool.install();
+        tool.install(instrumenter);
         assertEquals(13, expr13rootNode.execute(null));
         assertTrue(tool.getCounts().isEmpty());
         tool.dispose();
     }
 
     @Test
-    public void testToolInstalledcTooLate() {
+    public void testToolInstalledcTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final CoverageTracker tool = new CoverageTracker();
-        final RootNode expr13rootNode = createExpr13TestRootNode();
-        tool.install();
+        final RootNode expr13rootNode = createExpr13TestRootNode(instrumenter);
+        tool.install(instrumenter);
         assertEquals(13, expr13rootNode.execute(null));
         assertTrue(tool.getCounts().isEmpty());
         tool.dispose();
     }
 
     @Test
-    public void testCountingCoverage() {
+    public void testCountingCoverage() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final CoverageTracker tool = new CoverageTracker();
-        tool.install();
-        final RootNode expr13rootNode = createExpr13TestRootNode();
+        tool.install(instrumenter);
+        final RootNode expr13rootNode = createExpr13TestRootNode(instrumenter);
 
         // Not probed yet.
         assertEquals(13, expr13rootNode.execute(null));
         assertTrue(tool.getCounts().isEmpty());
 
         final Node addNode = expr13rootNode.getChildren().iterator().next();
-        final Probe probe = addNode.probe();
+        final Probe probe = instrumenter.probe(addNode);
 
         // Probed but not tagged yet.
         assertEquals(13, expr13rootNode.execute(null));

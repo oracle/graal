@@ -45,7 +45,7 @@ import com.oracle.truffle.api.source.*;
 public final class Debugger {
 
     private static final boolean TRACE = false;
-    private static final String TRACE_PREFIX = "DEBUG ENGINE: ";
+    private static final String TRACE_PREFIX = "Debugger: ";
 
     private static final PrintStream OUT = System.out;
 
@@ -58,6 +58,7 @@ public final class Debugger {
         }
     }
 
+    private final Instrumenter instrumenter;
     private final Object vm;
     private Source lastSource;
 
@@ -77,6 +78,9 @@ public final class Debugger {
         void addWarning(String warning);
     }
 
+    private final BreakpointCallback breakpointCallback;
+    private final WarningLog warningLog;
+
     /**
      * Implementation of line-oriented breakpoints.
      */
@@ -92,9 +96,9 @@ public final class Debugger {
      */
     private DebugExecutionContext debugContext;
 
-    Debugger(Object vm) {
+    Debugger(Object vm, Instrumenter instrumenter) {
         this.vm = vm;
-
+        this.instrumenter = instrumenter;
         Source.setFileCaching(true);
 
         // Initialize execution context stack
@@ -102,7 +106,7 @@ public final class Debugger {
         prepareContinue();
         debugContext.contextTrace("START EXEC DEFAULT");
 
-        final BreakpointCallback breakpointCallback = new BreakpointCallback() {
+        breakpointCallback = new BreakpointCallback() {
 
             @TruffleBoundary
             public void haltedAt(Node astNode, MaterializedFrame mFrame, String haltReason) {
@@ -110,7 +114,7 @@ public final class Debugger {
             }
         };
 
-        final WarningLog warningLog = new WarningLog() {
+        warningLog = new WarningLog() {
 
             public void addWarning(String warning) {
                 assert debugContext != null;
@@ -120,10 +124,6 @@ public final class Debugger {
 
         this.lineBreaks = new LineBreakpointFactory(this, breakpointCallback, warningLog);
         this.tagBreaks = new TagBreakpointFactory(this, breakpointCallback, warningLog);
-    }
-
-    Object vm() {
-        return vm;
     }
 
     /**
@@ -254,6 +254,7 @@ public final class Debugger {
         debugContext.setStrategy(new StepOver(stepCount));
     }
 
+    // TODO (mlvdv) used by the breakpoint factories; to be deprecated/replaced.
     /**
      * Creates a language-specific factory to produce instances of {@link AdvancedInstrumentRoot}
      * that, when executed, computes the result of a textual expression in the language; used to
@@ -269,15 +270,12 @@ public final class Debugger {
      */
     @SuppressWarnings("rawtypes")
     AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Probe probe, String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
-        try {
-            Class<? extends TruffleLanguage> langugageClass = ACCESSOR.findLanguage(probe);
-            TruffleLanguage.Env env = ACCESSOR.findLanguage(vm, langugageClass);
-            TruffleLanguage<?> l = ACCESSOR.findLanguage(env);
-            DebugSupportProvider dsp = ACCESSOR.getDebugSupport(l);
-            return dsp.createAdvancedInstrumentRootFactory(expr, resultListener);
-        } catch (DebugSupportException ex) {
-            throw new IOException(ex);
-        }
+        Class<? extends TruffleLanguage> languageClass = ACCESSOR.findLanguage(probe);
+        return ACCESSOR.createAdvancedInstrumentRootFactory(vm, languageClass, expr, resultListener);
+    }
+
+    Instrumenter getInstrumenter() {
+        return instrumenter;
     }
 
     /**
@@ -401,7 +399,7 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int stackDepth) {
-            Probe.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
+            instrumenter.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
                 @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
@@ -415,7 +413,7 @@ public final class Debugger {
                     strategyTrace("RESUME BEFORE", "");
                 }
             });
-            Probe.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
+            instrumenter.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
                 @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
@@ -434,8 +432,8 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
-            Probe.setBeforeTagTrap(null);
-            Probe.setAfterTagTrap(null);
+            instrumenter.setBeforeTagTrap(null);
+            instrumenter.setAfterTagTrap(null);
         }
     }
 
@@ -458,7 +456,7 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int stackDepth) {
-            Probe.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
+            instrumenter.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
 
                 @TruffleBoundary
                 @Override
@@ -476,7 +474,7 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
-            Probe.setAfterTagTrap(null);
+            instrumenter.setAfterTagTrap(null);
         }
     }
 
@@ -502,7 +500,7 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int stackDepth) {
-            Probe.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
+            instrumenter.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
                 @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
@@ -527,7 +525,7 @@ public final class Debugger {
                 }
             });
 
-            Probe.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
+            instrumenter.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
                 @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
@@ -548,8 +546,8 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
-            Probe.setBeforeTagTrap(null);
-            Probe.setAfterTagTrap(null);
+            instrumenter.setBeforeTagTrap(null);
+            instrumenter.setAfterTagTrap(null);
         }
     }
 
@@ -577,7 +575,7 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int stackDepth) {
-            Probe.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
+            instrumenter.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
                 @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
@@ -598,7 +596,7 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
-            Probe.setBeforeTagTrap(null);
+            instrumenter.setBeforeTagTrap(null);
         }
     }
 
@@ -798,7 +796,8 @@ public final class Debugger {
         protected Closeable executionStart(Object vm, Debugger[] fillIn, Source s) {
             final Debugger d;
             if (fillIn[0] == null) {
-                d = fillIn[0] = new Debugger(vm);
+                final Instrumenter instrumenter = ACCESSOR.getInstrumenter(vm);
+                d = fillIn[0] = new Debugger(vm, instrumenter);
             } else {
                 d = fillIn[0];
             }
@@ -827,8 +826,14 @@ public final class Debugger {
         }
 
         @Override
-        protected DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
-            return super.getDebugSupport(l);
+        protected Instrumenter getInstrumenter(Object vm) {
+            return super.getInstrumenter(vm);
+        }
+
+        @Override
+        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr,
+                        AdvancedInstrumentResultListener resultListener) throws IOException {
+            return super.createAdvancedInstrumentRootFactory(vm, languageClass, expr, resultListener);
         }
 
         @Override

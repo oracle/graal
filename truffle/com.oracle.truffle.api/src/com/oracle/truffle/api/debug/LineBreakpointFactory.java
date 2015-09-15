@@ -67,7 +67,7 @@ final class LineBreakpointFactory {
     private static final boolean TRACE = false;
     private static final PrintStream OUT = System.out;
 
-    private static final String BREAKPOINT_NAME = "LINE BREAKPOINT";
+    private static final String BREAKPOINT_NAME = "Line Breakpoints";
 
     @TruffleBoundary
     private static void trace(String format, Object... args) {
@@ -90,6 +90,7 @@ final class LineBreakpointFactory {
         }
     };
 
+    private final Debugger debugger;
     private final BreakpointCallback breakpointCallback;
     private final WarningLog warningLog;
 
@@ -111,17 +112,17 @@ final class LineBreakpointFactory {
      */
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
-    private final Debugger debugger;
 
     LineBreakpointFactory(Debugger debugger, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
         this.debugger = debugger;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
 
+        final Instrumenter instrumenter = debugger.getInstrumenter();
         lineToProbesMap = new LineToProbesMap();
-        lineToProbesMap.install();
+        lineToProbesMap.install(instrumenter);
 
-        Probe.addProbeListener(new DefaultProbeListener() {
+        instrumenter.addProbeListener(new DefaultProbeListener() {
 
             @Override
             public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {

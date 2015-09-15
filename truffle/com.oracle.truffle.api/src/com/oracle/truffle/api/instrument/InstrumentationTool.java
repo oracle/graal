@@ -24,13 +24,15 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.impl.Accessor;
+
 /**
  * {@linkplain Instrument Instrumentation}-based tools that gather data during Guest Language
  * program execution.
  * <p>
  * Tools share a common <em>life cycle</em>:
  * <ul>
- * <li>A newly created tool is inert until {@linkplain #install() installed}.</li>
+ * <li>A newly created tool is inert until {@linkplain #install(Instrumenter) installed}.</li>
  * <li>An installed tool becomes <em>enabled</em> and immediately begins installing
  * {@linkplain Instrument instrumentation} on subsequently created ASTs and collecting data from
  * those instruments</li>
@@ -83,6 +85,8 @@ public abstract class InstrumentationTool {
 
     private ToolState toolState = ToolState.UNINSTALLED;
 
+    private Instrumenter instrumenter;
+
     protected InstrumentationTool() {
     }
 
@@ -92,8 +96,11 @@ public abstract class InstrumentationTool {
      *
      * @throws IllegalStateException if the tool has previously been installed.
      */
-    public final void install() {
+    public final void install(Instrumenter inst) {
         checkUninstalled();
+        if (inst != null) {
+            this.instrumenter = inst;
+        }
         if (internalInstall()) {
             toolState = ToolState.ENABLED;
         }
@@ -157,6 +164,13 @@ public abstract class InstrumentationTool {
 
     protected abstract void internalDispose();
 
+    protected final Instrumenter getInstrumenter() {
+        if (instrumenter == null) {
+            instrumenter = ACCESSOR.getInstrumenter(null);
+        }
+        return instrumenter;
+    }
+
     /**
      * Ensure that the tool is currently installed.
      *
@@ -181,5 +195,15 @@ public abstract class InstrumentationTool {
             throw new IllegalStateException("Tool " + getClass().getSimpleName() + " has already been installed");
         }
     }
+
+    static final class AccessorTool extends Accessor {
+
+        @Override
+        protected Instrumenter getInstrumenter(Object vm) {
+            return super.getInstrumenter(null);
+        }
+    }
+
+    static final AccessorTool ACCESSOR = new AccessorTool();
 
 }

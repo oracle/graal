@@ -102,7 +102,7 @@ public final class CoverageTracker extends InstrumentationTool {
 
     @Override
     protected boolean internalInstall() {
-        Probe.addProbeListener(probeListener);
+        getInstrumenter().addProbeListener(probeListener);
         return true;
     }
 
@@ -113,7 +113,7 @@ public final class CoverageTracker extends InstrumentationTool {
 
     @Override
     protected void internalDispose() {
-        Probe.removeProbeListener(probeListener);
+        getInstrumenter().removeProbeListener(probeListener);
         for (Instrument instrument : instruments) {
             instrument.dispose();
         }

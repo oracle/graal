@@ -28,7 +28,8 @@ import com.oracle.truffle.api.instrument.ProbeFailure.Reason;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * An exception thrown when {@link Node#probe()} fails because of an implementation failure.
+ * An exception thrown when {@link Instrumenter#probe(Node)} fails because of an implementation
+ * failure.
  * <p>
  * Language and tool implementations should ensure that clients of tools never see this exception.
  */

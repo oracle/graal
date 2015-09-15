@@ -24,12 +24,15 @@
  */
 package com.oracle.truffle.tools.test;
 
+import java.lang.reflect.*;
+
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.vm.TruffleVM;
 
 /**
  * Nodes and an {@linkplain CallTarget executable ASTs} for testing.
@@ -46,19 +49,27 @@ class TestNodes {
     /**
      * An executable addition expression that evaluates to 13.
      */
-    static CallTarget createExpr13TestCallTarget() {
-        final RootNode rootNode = createExpr13TestRootNode();
+    static CallTarget createExpr13TestCallTarget(Instrumenter instrumenter) {
+        final RootNode rootNode = createExpr13TestRootNode(instrumenter);
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
 
     /**
      * Root holding an addition expression that evaluates to 13.
      */
-    static RootNode createExpr13TestRootNode() {
+    static RootNode createExpr13TestRootNode(Instrumenter instrumenter) {
         final TestLanguageNode ast = createExpr13AST();
-        final TestRootNode rootNode = new TestRootNode(ast);
+        final TestRootNode rootNode = new TestRootNode(ast, instrumenter);
         rootNode.adoptChildren();
         return rootNode;
+    }
+
+    static Instrumenter createInstrumenter() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        TruffleVM vm = TruffleVM.newVM().build();
+        final Field field = TruffleVM.class.getDeclaredField("instrumenter");
+        field.setAccessible(true);
+        final Instrumenter instrument = (Instrumenter) field.get(vm);
+        return instrument;
     }
 
     /**
@@ -156,13 +167,16 @@ class TestNodes {
     static class TestRootNode extends RootNode {
         @Child private TestLanguageNode body;
 
+        private final Instrumenter instrumenter;
+
         /**
          * This constructor emulates the global machinery that applies registered probers to every
          * newly created AST. Global registry is not used, since that would interfere with other
          * tests run in the same environment.
          */
-        public TestRootNode(TestLanguageNode body) {
+        public TestRootNode(TestLanguageNode body, Instrumenter instrumenter) {
             super(TruffleLanguage.class, null, null);
+            this.instrumenter = instrumenter;
             this.body = body;
         }
 
@@ -178,7 +192,14 @@ class TestNodes {
 
         @Override
         public void applyInstrumentation() {
-            Probe.applyASTProbers(body);
+            Method method;
+            try {
+                method = Instrumenter.class.getDeclaredMethod("applyInstrumentation", Node.class);
+                method.setAccessible(true);
+                method.invoke(instrumenter, body);
+            } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                throw new RuntimeException("TestNodes");
+            }
         }
     }
 

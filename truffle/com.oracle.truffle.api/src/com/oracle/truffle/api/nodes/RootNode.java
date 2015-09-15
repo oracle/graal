@@ -180,9 +180,10 @@ public abstract class RootNode extends Node {
     }
 
     /**
-     * Apply all registered instances of {@link ASTProber} to the AST, if any, held by this root
-     * node. This can only be done once the AST is complete, notably once all parent pointers are
-     * correctly assigned. But it also must be done before any AST cloning or execution.
+     * Apply to the AST all instances of {@link ASTProber} specified for the language, if any, held
+     * by this root node. This can only be done once the AST is complete, notably once all parent
+     * pointers are correctly assigned. But it also must be done before any AST cloning or
+     * execution.
      * <p>
      * If this is not done, then the AST will not be subject to debugging or any other
      * instrumentation-supported tooling.
@@ -190,7 +191,7 @@ public abstract class RootNode extends Node {
      * Implementations should ensure that instrumentation is never applied more than once to an AST,
      * as this is not guaranteed to be error-free.
      *
-     * @see Probe#registerASTProber(com.oracle.truffle.api.instrument.ASTProber)
+     * @see TruffleLanguage
      */
     public void applyInstrumentation() {
     }

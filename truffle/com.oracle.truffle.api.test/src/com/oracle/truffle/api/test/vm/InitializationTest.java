@@ -22,25 +22,43 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import org.junit.*;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
-import com.oracle.truffle.api.*;
+import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.DebugSupportException;
 import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.ExecutionEvent;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ProbeNode;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.TruffleVM;
-import java.io.IOException;
 
 /**
  * Bug report validating test.
@@ -90,12 +108,16 @@ public class InitializationTest {
             super(AbstractLanguage.class, ss, null);
             node = new ANode(42);
             adoptChildren();
-            node.probe().tagAs(StandardSyntaxTag.STATEMENT, this);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             return node.constant();
+        }
+
+        @Override
+        public void applyInstrumentation() {
+            super.applyInstrumentation(node);
         }
     }
 
@@ -118,34 +140,7 @@ public class InitializationTest {
 
         @Override
         public ProbeNode.WrapperNode createWrapperNode() {
-            class WN extends ANode implements ProbeNode.WrapperNode {
-                private ProbeNode probeNode;
-
-                public WN(int constant) {
-                    super(constant);
-                }
-
-                @Override
-                public Node getChild() {
-                    return ANode.this;
-                }
-
-                @Override
-                public Probe getProbe() {
-                    return probeNode.getProbe();
-                }
-
-                @Override
-                public void insertProbe(ProbeNode pn) {
-                    this.probeNode = pn;
-                }
-
-                @Override
-                public String instrumentationInfo() {
-                    throw new UnsupportedOperationException();
-                }
-            }
-            return new WN(constant);
+            return new ANodeWrapper(this);
         }
 
         Object constant() {
@@ -154,12 +149,58 @@ public class InitializationTest {
 
     }
 
+    private static class ANodeWrapper extends ANode implements ProbeNode.WrapperNode {
+        @Child ANode child;
+        private ProbeNode probeNode;
+
+        ANodeWrapper(ANode node) {
+            super(1);  // dummy
+            this.child = node;
+        }
+
+        @Override
+        public Node getChild() {
+            return child;
+        }
+
+        @Override
+        public Probe getProbe() {
+            return probeNode.getProbe();
+        }
+
+        @Override
+        public void insertProbe(ProbeNode pn) {
+            this.probeNode = pn;
+        }
+
+        @Override
+        public String instrumentationInfo() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
     private abstract static class AbstractLanguage extends TruffleLanguage<Object> {
     }
 
     @TruffleLanguage.Registration(mimeType = "application/x-abstrlang", name = "AbstrLang", version = "0.1")
     public static final class TestLanguage extends AbstractLanguage implements DebugSupportProvider {
         public static final TestLanguage INSTANCE = new TestLanguage();
+
+        private final ASTProber prober = new ASTProber() {
+
+            public void probeAST(final Instrumenter instrumenter, Node startNode) {
+                startNode.accept(new NodeVisitor() {
+
+                    public boolean visit(Node node) {
+
+                        if (node instanceof ANode) {
+                            instrumenter.probe(node).tagAs(StandardSyntaxTag.STATEMENT, null);
+                        }
+                        return true;
+                    }
+                });
+            }
+        };
 
         @Override
         protected Object createContext(Env env) {
@@ -187,23 +228,25 @@ public class InitializationTest {
             throw new UnsupportedOperationException();
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected ToolSupportProvider getToolSupport() {
             throw new UnsupportedOperationException();
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected DebugSupportProvider getDebugSupport() {
-            return this;
-        }
-
-        @Override
-        public Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws DebugSupportException {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws DebugSupportException {
+        public Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) {
             throw new InstrumentOKException();
         }
 
@@ -212,6 +255,12 @@ public class InitializationTest {
             throw new UnsupportedOperationException();
         }
 
+        @Override
+        protected List<ASTProber> getASTProbers() {
+            return Arrays.asList(prober);
+        }
+
+        @SuppressWarnings("deprecation")
         @Override
         public void enableASTProbing(ASTProber astProber) {
             throw new UnsupportedOperationException();

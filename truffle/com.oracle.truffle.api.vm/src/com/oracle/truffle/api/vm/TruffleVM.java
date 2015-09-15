@@ -33,6 +33,7 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.*;
+
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
@@ -85,6 +86,7 @@ public final class TruffleVM {
     private final Writer out;
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
+    private final Instrumenter instrumenter;
     private Debugger debugger;
 
     /**
@@ -99,6 +101,7 @@ public final class TruffleVM {
         this.handlers = null;
         this.globals = null;
         this.executor = null;
+        this.instrumenter = null;
     }
 
     /**
@@ -112,6 +115,7 @@ public final class TruffleVM {
         this.handlers = handlers;
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
+        this.instrumenter = SPI.createInstrumenter();
         this.langs = new HashMap<>();
         Enumeration<URL> en;
         try {
@@ -445,7 +449,6 @@ public final class TruffleVM {
         try (Closeable d = SPI.executionStart(this, fillIn, s)) {
             TruffleLanguage<?> langImpl = l.getImpl();
             fillLang[0] = langImpl;
-            TruffleVM.findDebuggerSupport(langImpl);
             if (debugger == null) {
                 debugger = fillIn[0];
             }
@@ -607,7 +610,7 @@ public final class TruffleVM {
          * delegates to
          * {@link JavaInterop#asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)}
          * just handles primitive types as well.
-         * 
+         *
          * @param <T> the type of the view one wants to obtain
          * @param representation the class of the view interface (it has to be an interface)
          * @return instance of the view wrapping the object of this symbol
@@ -773,6 +776,10 @@ public final class TruffleVM {
                 String n = props.getProperty(prefix + "className");
                 try {
                     impl = LanguageCache.find(n, loader());
+                    Instrumenter inst = TruffleVM.this.instrumenter;
+                    for (ASTProber prober : SPI.getASTProbers(TruffleVM.this, impl.getClass())) {
+                        inst.registerASTProber(prober);
+                    }
                     env = SPI.attachEnv(TruffleVM.this, impl, out, err, in);
                 } catch (Exception ex) {
                     throw new IllegalStateException("Cannot initialize " + getShortName() + " language with implementation " + n, ex);
@@ -798,6 +805,16 @@ public final class TruffleVM {
     // Accessor helper methods
     //
 
+    TruffleLanguage<?> findLanguage(Class<? extends TruffleLanguage> languageClazz) {
+        for (Map.Entry<String, Language> entrySet : langs.entrySet()) {
+            Language languageDescription = entrySet.getValue();
+            if (languageClazz.isInstance(languageDescription.impl)) {
+                return languageDescription.impl;
+            }
+        }
+        throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
+    }
+
     TruffleLanguage<?> findLanguage(Probe probe) {
         Class<? extends TruffleLanguage> languageClazz = SPI.findLanguage(probe);
         for (Map.Entry<String, Language> entrySet : langs.entrySet()) {
@@ -817,10 +834,6 @@ public final class TruffleVM {
             }
         }
         throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
-    }
-
-    static DebugSupportProvider findDebuggerSupport(TruffleLanguage<?> l) {
-        return SPI.getDebugSupport(l);
     }
 
     private static class SPIAccessor extends Accessor {
@@ -876,14 +889,32 @@ public final class TruffleVM {
             return super.languageGlobal(env);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public ToolSupportProvider getToolSupport(TruffleLanguage<?> l) {
-            return super.getToolSupport(l);
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
+            throw new UnsupportedOperationException();
         }
 
         @Override
-        public DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
-            return super.getDebugSupport(l);
+        protected Instrumenter createInstrumenter() {
+            return super.createInstrumenter();
+        }
+
+        @Override
+        protected List<ASTProber> getASTProbers(Object vm, Class<? extends TruffleLanguage> languageClass) {
+            return super.getASTProbers(vm, languageClass);
+        }
+
+        @Override
+        protected Instrumenter getInstrumenter(Object obj) {
+            final TruffleVM vm = (TruffleVM) obj;
+            return vm.instrumenter;
         }
 
         @Override
@@ -895,6 +926,12 @@ public final class TruffleVM {
         protected Env findLanguage(Object obj, Class<? extends TruffleLanguage> languageClass) {
             TruffleVM vm = (TruffleVM) obj;
             return vm.findEnv(languageClass);
+        }
+
+        @Override
+        protected TruffleLanguage findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz) {
+            final TruffleVM vm = (TruffleVM) obj;
+            return vm.findLanguage(languageClazz);
         }
 
         @Override

@@ -47,10 +47,10 @@ import com.oracle.truffle.api.utilities.*;
  * Support class for creating and managing "Tag Breakpoints". A Tag Breakpoint halts execution just
  * before reaching any node whose Probe carries a specified {@linkplain SyntaxTag Tag}.
  * <p>
- * The {@linkplain Probe#setBeforeTagTrap(SyntaxTagTrap) Tag Trap}, which is built directly into the
- * Instrumentation Framework, does the same thing more efficiently, but there may only be one Tag
- * Trap active at a time. Any number of tag breakpoints may coexist with the Tag Trap, but it would
- * be confusing to have a Tag Breakpoint set for the same Tag as the current Tag Trap.
+ * The {@linkplain Instrumenter#setBeforeTagTrap(SyntaxTagTrap) Tag Trap}, which is built directly
+ * into the Instrumentation Framework, does the same thing more efficiently, but there may only be
+ * one Tag Trap active at a time. Any number of tag breakpoints may coexist with the Tag Trap, but
+ * it would be confusing to have a Tag Breakpoint set for the same Tag as the current Tag Trap.
  * <p>
  * Notes:
  * <ol>
@@ -88,6 +88,7 @@ final class TagBreakpointFactory {
         }
     };
 
+    private final Debugger debugger;
     private final BreakpointCallback breakpointCallback;
     private final WarningLog warningLog;
 
@@ -102,14 +103,13 @@ final class TagBreakpointFactory {
      */
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
-    private final Debugger debugger;
 
     TagBreakpointFactory(Debugger debugger, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
         this.debugger = debugger;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
 
-        Probe.addProbeListener(new DefaultProbeListener() {
+        debugger.getInstrumenter().addProbeListener(new DefaultProbeListener() {
 
             @Override
             public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
@@ -180,7 +180,7 @@ final class TagBreakpointFactory {
 
             tagToBreakpoint.put(tag, breakpoint);
 
-            for (Probe probe : Probe.findProbesTaggedAs(tag)) {
+            for (Probe probe : debugger.getInstrumenter().findProbesTaggedAs(tag)) {
                 breakpoint.attach(probe);
             }
         } else {

@@ -155,7 +155,7 @@ public final class NodeExecCounter extends InstrumentationTool {
      * Create a per node-type execution counting tool for all nodes in subsequently created ASTs.
      */
     public NodeExecCounter() {
-        this.countingTag = null;
+        this(null);
     }
 
     /**
@@ -170,10 +170,10 @@ public final class NodeExecCounter extends InstrumentationTool {
     protected boolean internalInstall() {
         if (countingTag == null) {
             astProber = new ExecCounterASTProber();
-            Probe.registerASTProber(astProber);
+            getInstrumenter().registerASTProber(astProber);
         } else {
             probeListener = new NodeExecCounterProbeListener();
-            Probe.addProbeListener(probeListener);
+            getInstrumenter().addProbeListener(probeListener);
         }
         return true;
     }
@@ -187,10 +187,10 @@ public final class NodeExecCounter extends InstrumentationTool {
     @Override
     protected void internalDispose() {
         if (astProber != null) {
-            Probe.unregisterASTProber(astProber);
+            getInstrumenter().unregisterASTProber(astProber);
         }
         if (probeListener != null) {
-            Probe.removeProbeListener(probeListener);
+            getInstrumenter().removeProbeListener(probeListener);
         }
         for (Instrument instrument : instruments) {
             instrument.dispose();
@@ -274,24 +274,27 @@ public final class NodeExecCounter extends InstrumentationTool {
     /**
      * A prober that attempts to probe and instrument every node.
      */
-    private class ExecCounterASTProber implements ASTProber, NodeVisitor {
+    private class ExecCounterASTProber implements ASTProber {
 
-        public boolean visit(Node node) {
+        public void probeAST(final Instrumenter instrumenter, final Node startNode) {
 
-            if (node.isInstrumentable()) {
-                try {
-                    final Instrument instrument = Instrument.create(instrumentListener, "NodeExecCounter");
-                    instruments.add(instrument);
-                    node.probe().attach(instrument);
-                } catch (ProbeException ex) {
-                    failures.add(ex.getFailure());
+            startNode.accept(new NodeVisitor() {
+
+                public boolean visit(Node node) {
+
+                    if (node.isInstrumentable()) {
+                        try {
+                            final Instrument instrument = Instrument.create(instrumentListener, "NodeExecCounter");
+                            instruments.add(instrument);
+                            instrumenter.probe(node).attach(instrument);
+                        } catch (ProbeException ex) {
+                            failures.add(ex.getFailure());
+                        }
+                    }
+                    return true;
                 }
-            }
-            return true;
-        }
 
-        public void probeAST(Node node) {
-            node.accept(this);
+            });
         }
     }
 

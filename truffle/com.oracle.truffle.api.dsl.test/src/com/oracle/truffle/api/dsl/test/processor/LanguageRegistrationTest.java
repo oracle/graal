@@ -22,14 +22,22 @@
  */
 package com.oracle.truffle.api.dsl.test.processor;
 
-import java.io.*;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.dsl.test.*;
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.source.Source;
 
 public class LanguageRegistrationTest {
 
@@ -76,13 +84,41 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected ToolSupportProvider getToolSupport() {
+        protected Visualizer getVisualizer() {
             return null;
         }
 
         @Override
-        protected DebugSupportProvider getDebugSupport() {
+        protected List<ASTProber> getASTProbers() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
             return null;
+        }
+
+        @Override
+        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
+            return null;
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected ToolSupportProvider getToolSupport() {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected DebugSupportProvider getDebugSupport() {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected void enableASTProbing(ASTProber astProber) {
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -120,13 +156,41 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected ToolSupportProvider getToolSupport() {
+        protected Visualizer getVisualizer() {
             return null;
         }
 
         @Override
-        protected DebugSupportProvider getDebugSupport() {
+        protected List<ASTProber> getASTProbers() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
             return null;
+        }
+
+        @Override
+        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
+            return null;
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected ToolSupportProvider getToolSupport() {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected DebugSupportProvider getDebugSupport() {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected void enableASTProbing(ASTProber astProber) {
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -160,13 +224,41 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected ToolSupportProvider getToolSupport() {
+        protected Visualizer getVisualizer() {
             return null;
         }
 
         @Override
-        protected DebugSupportProvider getDebugSupport() {
+        protected List<ASTProber> getASTProbers() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
             return null;
+        }
+
+        @Override
+        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
+            return null;
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected ToolSupportProvider getToolSupport() {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected DebugSupportProvider getDebugSupport() {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected void enableASTProbing(ASTProber astProber) {
+            throw new UnsupportedOperationException();
         }
 
         @Override

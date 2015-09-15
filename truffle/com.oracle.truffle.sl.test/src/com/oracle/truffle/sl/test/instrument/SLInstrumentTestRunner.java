@@ -40,27 +40,46 @@
  */
 package com.oracle.truffle.sl.test.instrument;
 
-import java.io.*;
-import java.nio.charset.*;
-import java.nio.file.*;
-import java.nio.file.attribute.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringReader;
+import java.lang.reflect.Field;
+import java.nio.charset.Charset;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.junit.*;
-import org.junit.internal.*;
-import org.junit.runner.*;
-import org.junit.runner.manipulation.*;
-import org.junit.runner.notification.*;
-import org.junit.runners.*;
-import org.junit.runners.model.*;
+import org.junit.Assert;
+import org.junit.internal.TextListener;
+import org.junit.runner.Description;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
+import org.junit.runner.manipulation.Filter;
+import org.junit.runner.manipulation.NoTestsRemainException;
+import org.junit.runner.notification.Failure;
+import org.junit.runner.notification.RunNotifier;
+import org.junit.runners.ParentRunner;
+import org.junit.runners.model.InitializationError;
 
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.instrument.impl.*;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrument.impl.DefaultSimpleInstrumentListener;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.*;
-import com.oracle.truffle.sl.nodes.instrument.*;
-import com.oracle.truffle.sl.nodes.local.*;
-import com.oracle.truffle.sl.test.*;
+import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber;
+import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
+import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.instrument.SLInstrumentTestRunner.InstrumentTestCase;
 
 /**
@@ -80,7 +99,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
     private static final String LF = System.getProperty("line.separator");
 
-    static class InstrumentTestCase {
+    static final class InstrumentTestCase {
         protected final Description name;
         protected final Path path;
         protected final String baseName;
@@ -101,16 +120,12 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
     private final List<InstrumentTestCase> testCases;
 
-    public SLInstrumentTestRunner(Class<?> testClass) throws InitializationError {
+    public SLInstrumentTestRunner(Class<?> testClass) throws InitializationError, SecurityException, IllegalArgumentException {
         super(testClass);
-        final SLStandardASTProber prober = new SLStandardASTProber();
-        Probe.registerASTProber(prober);
         try {
             testCases = createTests(testClass);
         } catch (IOException e) {
             throw new InitializationError(e);
-        } finally {
-            Probe.unregisterASTProber(prober);
         }
     }
 
@@ -222,18 +237,23 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintWriter printer = new PrintWriter(out);
         final ASTProber prober = new SLStandardASTProber();
-        Probe.registerASTProber(prober);
+
         try {
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
                 TruffleVM vm = TruffleVM.newVM().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
 
+                final Field field = TruffleVM.class.getDeclaredField("instrumenter");
+                field.setAccessible(true);
+                final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+                instrumenter.registerASTProber(prober);
+
                 final String src = readAllLines(testCase.path);
                 vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));
 
                 // Attach an instrument to every probe tagged as an assignment
-                for (Probe probe : Probe.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
+                for (Probe probe : instrumenter.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
                     SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(printer);
                     probe.attach(Instrument.create(slPrintAssigmentValueListener, "SL print assignment value"));
                 }
@@ -250,13 +270,12 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         } catch (Throwable ex) {
             notifier.fireTestFailure(new Failure(testCase.name, ex));
         } finally {
-            Probe.unregisterASTProber(prober);
             notifier.fireTestFinished(testCase.name);
         }
 
     }
 
-    public static void runInMain(Class<?> testClass, String[] args) throws InitializationError, NoTestsRemainException {
+    public static void runInMain(Class<?> testClass, String[] args) throws InitializationError, NoTestsRemainException, SecurityException, IllegalArgumentException {
         JUnitCore core = new JUnitCore();
         core.addListener(new TextListener(System.out));
         SLInstrumentTestRunner suite = new SLInstrumentTestRunner(testClass);

@@ -61,7 +61,7 @@ final class LineToProbesMap extends InstrumentationTool {
 
     @Override
     protected boolean internalInstall() {
-        Probe.addProbeListener(probeListener);
+        getInstrumenter().addProbeListener(probeListener);
         return true;
     }
 
@@ -72,7 +72,7 @@ final class LineToProbesMap extends InstrumentationTool {
 
     @Override
     protected void internalDispose() {
-        Probe.removeProbeListener(probeListener);
+        getInstrumenter().removeProbeListener(probeListener);
     }
 
     /**
