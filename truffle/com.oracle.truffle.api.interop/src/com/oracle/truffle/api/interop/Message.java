@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
@@ -102,9 +103,46 @@ public abstract class Message {
     public static Message WRITE = Write.INSTANCE;
 
     /**
-     * Creates an execute message. All messages created by this method are
-     * {@link Object#equals(java.lang.Object) equal} to each other regardless of the value of
-     * <code>argumentsLength</code>.
+     * Creates a non-object oriented execution message. In contrast to {@link #createInvoke(int)}
+     * messages, which are more suitable for dealing with object oriented style of programming,
+     * messages created by this method are more suitable for execution where one can explicitly
+     * control all passed in arguments.
+     * <p>
+     * To inter-operate with a non-OOP language like <em>C</em> - for example to execute its
+     * function:
+     * 
+     * <pre>
+     * <b>double</b> add(<b>double</b> a, <b>double</b> b) {
+     *   <b>return</b> a + b;
+     * }
+     * </pre>
+     * 
+     * One can obtain reference to the <em>add</em> function (for example by
+     * {@link Env#importSymbol(java.lang.String) importing it as a global symbol}) and store it into
+     * variable <code>addFunction</code>. Then it's time to check the object is executable by
+     * sending it the {@link #IS_EXECUTABLE} message. If the answer is <code>true</code> one can:
+     *
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     *   {@link Message#createExecute(int) Message.createExecute}(2).{@link Message#createNode()}, {@link VirtualFrame currentFrame}, addFunction, valueOfA, valueOfB
+     * );
+     * </pre>
+     *
+     * The <code>valueOfA</code> and <code>valueOfB</code> should be <code>double</code> or
+     * {@link Double} or at least be {@link #UNBOX unboxable} to such type.
+     * <p>
+     * One can use this method to talk to object oriented language as well, however one needs to pay
+     * attention to provide all necessary arguments manually - usually an OOP language requires the
+     * first argument to represent <code>this</code> or <code>self</code> and only then pass in the
+     * additional arguments. It may be easier to use {@link #createInvoke(int)} message which is
+     * more suitable for object oriented languages and handles (if supported) the arguments
+     * manipulation automatically.
+     * <p>
+     *
+     *
+     * <p>
+     * All messages created by this method are {@link Object#equals(java.lang.Object) equal} to each
+     * other regardless of the value of <code>argumentsLength</code>.
      *
      * @param argumentsLength number of parameters to pass to the target
      * @return execute message
@@ -137,13 +175,68 @@ public abstract class Message {
     public static final Message IS_EXECUTABLE = IsExecutable.INSTANCE;
 
     /**
-     * Creates an execute message. All messages created by this method are
-     * {@link Object#equals(java.lang.Object) equal} to each other regardless of the value of
-     * <code>argumentsLength</code>. The expected behavior of this message is to perform
-     * {@link #READ} first and on the result invoke {@link #createExecute(int)}.
+     * Creates an object oriented execute message. Unlike {@link #createExecute(int)} the receiver
+     * of the message isn't the actual function to invoke, but an object. The object has the
+     * function as a field, or as a field of its class, or whatever is appropriate for an object
+     * oriented language.
+     * <p>
+     * Languages that don't support object oriented semantics do not and should not implement this
+     * message. When the invoke message isn't supported, the caller is expected to fall back into
+     * following basic operations:
+     * <ul>
+     * <li>sending {@link #READ} message to access the field</li>
+     * <li>verify the result {@link #IS_EXECUTABLE}, if so continue by</li>
+     * <li>sending {@link #createExecute(int) execute message}</li>
+     * </ul>
+     * <p>
+     * The last step is problematic, as it is not clear whether to pass just the execution
+     * arguments, or prefix them with the original receiver (aka <code>this</code> or
+     * <code>self</code>). Object oriented languages would in general welcome obtaining the
+     * receiving object as first argument, non-object languages like <em>C</em> would get confused
+     * by doing so. However it is not possible for the caller to find out what language one is
+     * sending message to - only the set of supported messages is known. As a result it is
+     * recommended for object oriented languages to support the {@link #createInvoke(int)} message
+     * and handle the semantics the way it is natural to them. Languages like <em>C</em> shouldn't
+     * implement {@link #createInvoke(int)} and just support primitive operations like
+     * {@link #createExecute(int)} and {@link #READ}.
+     * <p>
+     * When accessing a method of an object in an object oriented manner, one is supposed to send
+     * the {@link #createInvoke(int)} message first. Only when that fails, fallback to non-object
+     * oriented workflow with {@link #createExecute(int)}. Imagine there is a <em>Java</em> class
+     * with <code>add</code> method and its instance:
+     * 
+     * <pre>
+     * <b>public class</b> Arith {
+     *    <b>public double</b> add(double a, double b) {
+     *      <b>return</b> a + b;
+     *    }
+     * }
+     * Arith obj = <b>new</b> Arith();
+     * </pre>
+     * 
+     * To access <code>obj</code>'s <code>add</code> method one should use:
+     *
+     * <pre>
+     * <b>try</b> {
+     *   {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     *     {@link Message#createInvoke(int) Message.createInvoke}(2).{@link Message#createNode()}, {@link VirtualFrame currentFrame}, obj, "add", valueOfA, valueOfB
+     *   );
+     * } <b>catch</b> ({@link IllegalArgumentException} ex) {
+     *   // access the language via {@link #createExecute(int)}
+     * }
+     * </pre>
+     * 
+     * The <code>valueOfA</code> and <code>valueOfB</code> should be <code>double</code> or
+     * {@link Double} or at least be {@link #UNBOX unboxable} to such type.
+     * <p>
+     * All messages created by this method are {@link Object#equals(java.lang.Object) equal} to each
+     * other regardless of the value of <code>argumentsLength</code>. The expected behavior of this
+     * message is to perform {@link #READ} first and on the result invoke
+     * {@link #createExecute(int)}.
      *
      * @param argumentsLength number of parameters to pass to the target
-     * @return read & execute message
+     * @return message combining read & execute messages tailored for use with object oriented
+     *         languages
      */
     public static Message createInvoke(int argumentsLength) {
         return Execute.create(Execute.INVOKE, argumentsLength);
@@ -157,7 +250,7 @@ public abstract class Message {
      * receiver} and then perform its constructor with appropriate number of arguments.
      *
      * @param argumentsLength number of parameters to pass to the target
-     * @return read & execute message
+     * @return new instance message
      */
     public static Message createNew(int argumentsLength) {
         return Execute.create(Execute.NEW, argumentsLength);
