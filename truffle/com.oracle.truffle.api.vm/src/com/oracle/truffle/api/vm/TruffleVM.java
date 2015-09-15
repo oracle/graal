@@ -24,23 +24,51 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.impl.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.source.*;
-
-import java.io.*;
-import java.net.*;
-import java.nio.file.*;
-import java.util.*;
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.InterruptedIOException;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
-import java.util.logging.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * <em>Virtual machine</em> for Truffle based languages. Term virtual machine is a bit overloaded,
@@ -777,9 +805,8 @@ public final class TruffleVM {
                 try {
                     impl = LanguageCache.find(n, loader());
                     Instrumenter inst = TruffleVM.this.instrumenter;
-                    for (ASTProber prober : SPI.getASTProbers(TruffleVM.this, impl.getClass())) {
-                        inst.registerASTProber(prober);
-                    }
+                    final ASTProber prober = SPI.getDefaultASTProber(TruffleVM.this, impl.getClass());
+                    inst.registerASTProber(prober);
                     env = SPI.attachEnv(TruffleVM.this, impl, out, err, in);
                 } catch (Exception ex) {
                     throw new IllegalStateException("Cannot initialize " + getShortName() + " language with implementation " + n, ex);
@@ -907,8 +934,8 @@ public final class TruffleVM {
         }
 
         @Override
-        protected List<ASTProber> getASTProbers(Object vm, Class<? extends TruffleLanguage> languageClass) {
-            return super.getASTProbers(vm, languageClass);
+        protected ASTProber getDefaultASTProber(Object vm, Class<? extends TruffleLanguage> languageClass) {
+            return super.getDefaultASTProber(vm, languageClass);
         }
 
         @Override

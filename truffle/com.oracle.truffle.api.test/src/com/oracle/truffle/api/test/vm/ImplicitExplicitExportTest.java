@@ -28,10 +28,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
@@ -187,8 +185,8 @@ public class ImplicitExplicitExportTest {
         }
 
         @Override
-        protected List<ASTProber> getASTProbers() {
-            return Collections.emptyList();
+        protected ASTProber getDefaultASTProber() {
+            return null;
         }
 
         @Override

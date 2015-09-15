@@ -30,8 +30,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -106,8 +104,8 @@ public abstract class Accessor {
             }
 
             @Override
-            protected List<ASTProber> getASTProbers() {
-                return Collections.emptyList();
+            protected ASTProber getDefaultASTProber() {
+                return null;
             }
 
             @Override
@@ -212,8 +210,8 @@ public abstract class Accessor {
         throw new UnsupportedOperationException();
     }
 
-    protected List<ASTProber> getASTProbers(Object vm, Class<? extends TruffleLanguage> languageClass) {
-        return API.getASTProbers(vm, languageClass);
+    protected ASTProber getDefaultASTProber(Object vm, Class<? extends TruffleLanguage> languageClass) {
+        return API.getDefaultASTProber(vm, languageClass);
     }
 
     protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr, AdvancedInstrumentResultListener resultListener)

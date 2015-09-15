@@ -40,34 +40,75 @@
  */
 package com.oracle.truffle.sl;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.api.vm.*;
-import com.oracle.truffle.api.vm.TruffleVM.Symbol;
-import com.oracle.truffle.sl.builtins.*;
-import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.nodes.call.*;
-import com.oracle.truffle.sl.nodes.controlflow.*;
-import com.oracle.truffle.sl.nodes.expression.*;
-import com.oracle.truffle.sl.nodes.instrument.*;
-import com.oracle.truffle.sl.nodes.local.*;
-import com.oracle.truffle.sl.parser.*;
-import com.oracle.truffle.sl.runtime.*;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.nodes.GraphPrintVisitor;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.TruffleVM.Symbol;
+import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
+import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
+import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
+import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
+import com.oracle.truffle.sl.nodes.SLRootNode;
+import com.oracle.truffle.sl.nodes.SLTypes;
+import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
+import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
+import com.oracle.truffle.sl.nodes.call.SLUndefinedFunctionException;
+import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLIfNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLReturnNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLWhileNode;
+import com.oracle.truffle.sl.nodes.expression.SLAddNode;
+import com.oracle.truffle.sl.nodes.expression.SLBigIntegerLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLDivNode;
+import com.oracle.truffle.sl.nodes.expression.SLEqualNode;
+import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode;
+import com.oracle.truffle.sl.nodes.expression.SLLessThanNode;
+import com.oracle.truffle.sl.nodes.expression.SLLogicalAndNode;
+import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
+import com.oracle.truffle.sl.nodes.expression.SLMulNode;
+import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLSubNode;
+import com.oracle.truffle.sl.nodes.instrument.SLDefaultVisualizer;
+import com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber;
+import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
+import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
+import com.oracle.truffle.sl.parser.Parser;
+import com.oracle.truffle.sl.parser.SLNodeFactory;
+import com.oracle.truffle.sl.parser.Scanner;
+import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -156,11 +197,9 @@ import java.util.List;
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
     private static Visualizer visualizer = new SLDefaultVisualizer();
-    private List<ASTProber> astProbers;
+    private ASTProber astProber = new SLStandardASTProber();
 
     private SLLanguage() {
-        this.astProbers = new ArrayList<>();
-        astProbers.add(new SLStandardASTProber());
     }
 
     public static final SLLanguage INSTANCE = new SLLanguage();
@@ -444,8 +483,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     }
 
     @Override
-    protected List<ASTProber> getASTProbers() {
-        return astProbers;
+    protected ASTProber getDefaultASTProber() {
+        return astProber;
     }
 
     @SuppressWarnings("deprecation")
