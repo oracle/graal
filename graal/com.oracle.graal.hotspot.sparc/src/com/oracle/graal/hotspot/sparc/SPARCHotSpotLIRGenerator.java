@@ -264,7 +264,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         } else {
             usedSource = src;
         }
-        return super.createMoveConstant(dst, usedSource);
+        if (usedSource instanceof HotSpotMetaspaceConstant) {
+            return new SPARCMove.LoadConstantFromTable(usedSource, getConstantTableBase(), dst);
+        } else {
+            return super.createMoveConstant(dst, usedSource);
+        }
     }
 
     @Override

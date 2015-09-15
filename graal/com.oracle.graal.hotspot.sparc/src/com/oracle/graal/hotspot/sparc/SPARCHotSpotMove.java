@@ -22,22 +22,23 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import jdk.internal.jvmci.code.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.AllocatableValue;
 
-import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Annul;
 import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.SPARCAssembler.RCondition;
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
 
 public class SPARCHotSpotMove {
     public static final class CompressPointer extends SPARCLIRInstruction {

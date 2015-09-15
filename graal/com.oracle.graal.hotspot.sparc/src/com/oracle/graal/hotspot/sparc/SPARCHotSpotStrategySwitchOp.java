@@ -25,9 +25,12 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CBCOND;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
+import static com.oracle.graal.lir.sparc.SPARCMove.loadFromConstantTable;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.sparc.SPARC.g0;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
+import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.Constant;
 import jdk.internal.jvmci.meta.Value;
 import jdk.internal.jvmci.sparc.SPARC;
@@ -45,7 +48,6 @@ import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.sparc.SPARCControlFlow;
 import com.oracle.graal.lir.sparc.SPARCDelayedControlTransfer;
-import com.oracle.graal.lir.sparc.SPARCMove;
 
 final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitchOp {
     public static final LIRInstructionClass<SPARCHotSpotStrategySwitchOp> TYPE = LIRInstructionClass.create(SPARCHotSpotStrategySwitchOp.class);
@@ -74,7 +76,7 @@ final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitch
                 Register scratchRegister = asRegister(scratch);
                 final int byteCount = constant.isCompressed() ? 4 : 8;
                 Runnable recordReference = () -> crb.recordDataReferenceInCode(constant, byteCount);
-                SPARCMove.loadFromConstantTable(crb, masm, byteCount, asRegister(constantTableBase), scratchRegister, SPARCDelayedControlTransfer.DUMMY, recordReference);
+                loadFromConstantTable(crb, masm, byteCount, asRegister(constantTableBase), scratchRegister, SPARCDelayedControlTransfer.DUMMY, recordReference);
 
                 if (canUseShortBranch) {
                     CBCOND.emit(masm, conditionFlag, conditionCode == CC.Xcc, keyRegister, scratchRegister, target);
@@ -96,5 +98,12 @@ final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitch
         } else {
             return super.estimateEmbeddedSize(c);
         }
+    }
+
+    @Override
+    public void emitCode(final CompilationResultBuilder crb, final SPARCMacroAssembler masm) {
+        final Register keyRegister = asRegister(key);
+        final Register constantBaseRegister = AllocatableValue.ILLEGAL.equals(constantTableBase) ? g0 : asRegister(constantTableBase);
+        strategy.run(new HotSpotSwitchClosure(keyRegister, constantBaseRegister, crb, masm));
     }
 }

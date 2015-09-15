@@ -86,11 +86,11 @@ public class SPARCMove {
         public static final LIRInstructionClass<LoadConstantFromTable> TYPE = LIRInstructionClass.create(LoadConstantFromTable.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(1, 8);
 
-        private JavaConstant constant;
+        private Constant constant;
         @Def({REG, STACK}) AllocatableValue result;
         @Use({REG}) private AllocatableValue constantTableBase;
 
-        public LoadConstantFromTable(JavaConstant constant, AllocatableValue constantTableBase, AllocatableValue result) {
+        public LoadConstantFromTable(Constant constant, AllocatableValue constantTableBase, AllocatableValue result) {
             super(TYPE, SIZE);
             this.constant = constant;
             this.result = result;
