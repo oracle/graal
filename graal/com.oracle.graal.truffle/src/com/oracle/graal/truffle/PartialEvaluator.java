@@ -22,48 +22,79 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 
-import java.lang.invoke.*;
-import java.util.*;
+import java.lang.invoke.MethodHandle;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.code.Architecture;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.StableOptionValue;
+import jdk.internal.jvmci.service.Services;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.service.*;
-
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.Indent;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.graphbuilderconf.LoopExplosionPlugin;
+import com.oracle.graal.graphbuilderconf.ParameterPlugin;
+import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.truffle.debug.*;
-import com.oracle.graal.truffle.nodes.*;
-import com.oracle.graal.truffle.nodes.asserts.*;
-import com.oracle.graal.truffle.nodes.frame.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.java.CheckCastNode;
+import com.oracle.graal.nodes.java.InstanceOfNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
+import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.PhaseContext;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.replacements.CachingPEGraphDecoder;
+import com.oracle.graal.replacements.InlineDuringParsingPlugin;
+import com.oracle.graal.replacements.PEGraphDecoder;
+import com.oracle.graal.replacements.ReplacementsImpl;
+import com.oracle.graal.truffle.debug.HistogramInlineInvokePlugin;
+import com.oracle.graal.truffle.debug.TracePerformanceWarningsListener;
+import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
+import com.oracle.graal.truffle.nodes.asserts.NeverPartOfCompilationNode;
+import com.oracle.graal.truffle.nodes.frame.MaterializeFrameNode;
 import com.oracle.graal.truffle.nodes.frame.NewFrameNode.VirtualOnlyInstanceNode;
-import com.oracle.graal.truffle.phases.*;
-import com.oracle.graal.truffle.substitutions.*;
-import com.oracle.graal.virtual.phases.ea.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.truffle.phases.VerifyFrameDoesNotEscapePhase;
+import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
+import com.oracle.graal.truffle.substitutions.TruffleInvocationPluginProvider;
+import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -448,18 +479,29 @@ public class PartialEvaluator {
             }
         }
 
+        HashMap<String, ArrayList<ValueNode>> groupedByType;
+        groupedByType = new HashMap<>();
         for (CheckCastNode cast : graph.getNodes().filter(CheckCastNode.class)) {
             if (cast.type().findLeafConcreteSubtype() == null) {
-                TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("non-leaf type checkcast: %s (%s)", cast.type().getName(), cast), null);
                 warnings.add(cast);
+                groupedByType.putIfAbsent(cast.type().getName(), new ArrayList<>());
+                groupedByType.get(cast.type().getName()).add(cast);
             }
         }
+        for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
+            TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("non-leaf type checkcast: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+        }
 
+        groupedByType = new HashMap<>();
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
             if (instanceOf.type().findLeafConcreteSubtype() == null) {
-                TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("non-leaf type instanceof: %s (%s)", instanceOf.type().getName(), instanceOf), null);
                 warnings.add(instanceOf);
+                groupedByType.putIfAbsent(instanceOf.type().getName(), new ArrayList<>());
+                groupedByType.get(instanceOf.type().getName()).add(instanceOf);
             }
+        }
+        for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
+            TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("non-leaf type instanceof: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
         }
 
         if (Debug.isEnabled() && !warnings.isEmpty()) {

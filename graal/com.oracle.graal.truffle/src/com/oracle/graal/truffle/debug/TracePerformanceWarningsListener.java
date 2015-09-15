@@ -44,7 +44,7 @@ public final class TracePerformanceWarningsListener extends AbstractDebugCompila
     }
 
     public static void logPerformanceWarning(OptimizedCallTarget target, String details, Map<String, Object> properties) {
-        log(target, 0, "perf warn", details, properties);
+        log(target, 0, "perf warn", String.format("%-60s|%s", target, details), properties);
     }
 
 }
