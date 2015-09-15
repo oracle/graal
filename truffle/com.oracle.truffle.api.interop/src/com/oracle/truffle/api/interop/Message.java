@@ -36,6 +36,16 @@ import com.oracle.truffle.api.interop.ForeignAccess.Factory;
  */
 public abstract class Message {
     /**
+     * One can define their own extended message by subclassing. The expectation is that the
+     * subclass will have public constructor and its {@link #equals(java.lang.Object)} and
+     * {@link #hashCode()} methods will operate on the class equivalence. Only then the subclass
+     * will work properly with {@link #valueOf(java.lang.String)} and
+     * {@link #toString(com.oracle.truffle.api.interop.Message)} methods.
+     */
+    protected Message() {
+    }
+
+    /**
      * Message to read an object field. The
      * {@link Factory#access(com.oracle.truffle.api.interop.Message) target} created for this
      * message accepts (in addition to a
