@@ -2083,12 +2083,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
                 context.targetPeelIteration[context.targetPeelIteration.length - 1] = nextPeelIteration++;
                 if (nextPeelIteration > MaximumLoopExplosionCount.getValue()) {
-                    String message = "too many loop explosion iterations - does the explosion not terminate for method " + method + "?";
-                    if (FailedLoopExplosionIsFatal.getValue()) {
-                        throw new RuntimeException(message);
-                    } else {
-                        throw bailout(message);
-                    }
+                    throw tooManyLoopExplosionIterations();
                 }
 
                 // Operate on the target dimension.
@@ -2101,6 +2096,15 @@ public class BytecodeParser implements GraphBuilderContext {
 
         // No dimension found.
         return 0;
+    }
+
+    private RuntimeException tooManyLoopExplosionIterations() {
+        String message = "too many loop explosion iterations - does the explosion not terminate for method " + method + "?";
+        if (FailedLoopExplosionIsFatal.getValue()) {
+            throw new RuntimeException(message);
+        } else {
+            throw bailout(message);
+        }
     }
 
     /**

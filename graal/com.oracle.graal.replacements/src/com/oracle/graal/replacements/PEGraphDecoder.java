@@ -47,6 +47,7 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.common.inlining.*;
 
 /**
@@ -129,7 +130,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public BailoutException bailout(String string) {
-            throw new BailoutException(string);
+            BailoutException bailout = new BailoutException(string);
+            throw GraphUtil.createBailoutException(string, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getBytecodePosition()));
         }
 
         @Override
@@ -321,13 +323,14 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         if (loopScope.loopIteration > MaximumLoopExplosionCount.getValue()) {
-            String message = "too many loop explosion iterations - does the explosion not terminate for method " + methodScope.method + "?";
-            if (FailedLoopExplosionIsFatal.getValue()) {
-                throw new RuntimeException(message);
-            } else {
-                throw new BailoutException(message);
-            }
+            throw tooManyLoopExplosionIterations(methodScope);
         }
+    }
+
+    private static RuntimeException tooManyLoopExplosionIterations(PEMethodScope methodScope) {
+        String message = "too many loop explosion iterations - does the explosion not terminate for method " + methodScope.method + "?";
+        RuntimeException bailout = FailedLoopExplosionIsFatal.getValue() ? new RuntimeException(message) : new BailoutException(message);
+        throw GraphUtil.createBailoutException(message, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getBytecodePosition()));
     }
 
     @Override

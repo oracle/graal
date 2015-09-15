@@ -329,6 +329,22 @@ public class GraphUtil {
     }
 
     /**
+     * Gets approximate stack trace elements for a bytecode position.
+     */
+    public static StackTraceElement[] approxSourceStackTraceElement(BytecodePosition bytecodePosition) {
+        ArrayList<StackTraceElement> elements = new ArrayList<>();
+        BytecodePosition position = bytecodePosition;
+        while (position != null) {
+            ResolvedJavaMethod method = position.getMethod();
+            if (method != null) {
+                elements.add(method.asStackTraceElement(position.getBCI()));
+            }
+            position = position.getCaller();
+        }
+        return elements.toArray(new StackTraceElement[0]);
+    }
+
+    /**
      * Gets an approximate source code location for a node, encoded as an exception, if possible.
      *
      * @return the exception with the location
