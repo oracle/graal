@@ -6,7 +6,7 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "0a7b7c7274be8d61df6bf29098233d385a673f9b",
+               "version" : "9665bbd976c81d40e147a9ac14ce333b9b44db3e",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -14,7 +14,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "b59d064835806ad1131917e5e8fbfb367cd34372",
+               "version" : "50056a161d7f4c9374ab472c93d16059de952aa4",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
