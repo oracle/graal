@@ -806,7 +806,9 @@ public final class TruffleVM {
                     impl = LanguageCache.find(n, loader());
                     Instrumenter inst = TruffleVM.this.instrumenter;
                     final ASTProber prober = SPI.getDefaultASTProber(TruffleVM.this, impl.getClass());
-                    inst.registerASTProber(prober);
+                    if (prober != null) {
+                        inst.registerASTProber(prober);
+                    }
                     env = SPI.attachEnv(TruffleVM.this, impl, out, err, in);
                 } catch (Exception ex) {
                     throw new IllegalStateException("Cannot initialize " + getShortName() + " language with implementation " + n, ex);

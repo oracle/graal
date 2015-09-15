@@ -28,7 +28,10 @@ import java.io.PrintStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -65,7 +68,7 @@ public final class Instrumenter {
         return visitor.source;
     }
 
-    private final List<ASTProber> astProbers = new ArrayList<>();
+    private final Set<ASTProber> astProbers = Collections.synchronizedSet(new LinkedHashSet<ASTProber>());
 
     private final List<ProbeListener> probeListeners = new ArrayList<>();
 
@@ -257,9 +260,13 @@ public final class Instrumenter {
     }
 
     /**
-     * Enables instrumentation at selected nodes in all subsequently constructed ASTs.
+     * Enables instrumentation at selected nodes in all subsequently constructed ASTs. Ignored if
+     * the argument is already registered, runtime error if argument is {@code null}.
      */
     public void registerASTProber(ASTProber prober) {
+        if (prober == null) {
+            throw new IllegalArgumentException("Register non-null ASTProbers");
+        }
         astProbers.add(prober);
     }
 
