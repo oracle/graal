@@ -29,6 +29,7 @@ import static jdk.internal.jvmci.amd64.AMD64.rax;
 import static jdk.internal.jvmci.amd64.AMD64.rsp;
 import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCallee;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
 import java.lang.reflect.Field;
 import java.util.Set;
@@ -94,7 +95,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new AMD64HotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+        return new AMD64HotSpotLIRGenerator(getProviders(), config(), cc, lirGenRes);
     }
 
     @Override
@@ -104,7 +105,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        return new AMD64HotSpotNodeLIRBuilder(getRuntime(), graph, lirGen);
+        return new AMD64HotSpotNodeLIRBuilder(graph, lirGen);
     }
 
     @Override
@@ -252,7 +253,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
-        HotSpotVMConfig config = getRuntime().getConfig();
+        HotSpotVMConfig config = config();
         Label verifiedEntry = new Label();
 
         // Emit the prefix

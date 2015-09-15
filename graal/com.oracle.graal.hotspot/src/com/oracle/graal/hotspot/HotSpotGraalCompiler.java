@@ -186,7 +186,7 @@ public class HotSpotGraalCompiler implements Compiler {
     }
 
     protected PhaseSuite<HighTierContext> getGraphBuilderSuite(HotSpotProviders providers, boolean isOSR) {
-        PhaseSuite<HighTierContext> suite = HotSpotSuitesProvider.withSimpleDebugInfoIfRequested(providers.getSuites().getDefaultGraphBuilderSuite(), graalRuntime);
+        PhaseSuite<HighTierContext> suite = HotSpotSuitesProvider.withSimpleDebugInfoIfRequested(providers.getSuites().getDefaultGraphBuilderSuite());
         if (isOSR) {
             suite = suite.copy();
             suite.appendPhase(new OnStackReplacementPhase());

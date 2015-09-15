@@ -23,6 +23,7 @@
 
 package com.oracle.graal.hotspot.test;
 
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import jdk.internal.jvmci.hotspot.*;
 
 import org.junit.*;
@@ -71,7 +72,7 @@ public class DataPatchTest extends GraalCompilerTest {
         test("narrowOopSnippet");
     }
 
-    private static final HotSpotVMConfig config = HotSpotJVMCIRuntime.runtime().getConfig();
+    private static final HotSpotVMConfig config = config();
     private static boolean initReplacements = false;
 
     @Before

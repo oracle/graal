@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.replacements.arraycopy;
 
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import jdk.internal.jvmci.code.CodeUtil;
 import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaKind;
@@ -218,8 +219,8 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
         return uninitialized;
     }
 
-    boolean isHeapWordAligned(JavaConstant value, JavaKind kind) {
-        return (getArrayBaseOffset(kind) + (long) value.asInt() * getArrayIndexScale(kind)) % runtime.getConfig().heapWordSize == 0;
+    static boolean isHeapWordAligned(JavaConstant value, JavaKind kind) {
+        return (getArrayBaseOffset(kind) + (long) value.asInt() * getArrayIndexScale(kind)) % config().heapWordSize == 0;
     }
 
     public void updateAlignedDisjoint() {

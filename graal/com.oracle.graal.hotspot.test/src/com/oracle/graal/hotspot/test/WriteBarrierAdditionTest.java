@@ -71,7 +71,7 @@ import com.oracle.graal.phases.tiers.MidTierContext;
  */
 public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
-    private final HotSpotVMConfig config = runtime().getConfig();
+    private final HotSpotVMConfig config = config();
     private static final long referentOffset = referentOffset();
 
     public static class Container {

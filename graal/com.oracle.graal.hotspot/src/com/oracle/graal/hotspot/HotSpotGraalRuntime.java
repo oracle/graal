@@ -29,6 +29,7 @@ import static com.oracle.graal.debug.GraalDebugConfig.Log;
 import static com.oracle.graal.debug.GraalDebugConfig.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Verify;
 import static com.oracle.graal.debug.GraalDebugConfig.areScopedMetricsOrTimersEnabled;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import static jdk.internal.jvmci.inittimer.InitTimer.timer;
 
@@ -169,7 +170,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             }
         }
 
-        BenchmarkCounters.initialize(getCompilerToVM());
+        BenchmarkCounters.initialize(runtime().getCompilerToVM());
 
         assert checkArrayIndexScaleInvariants();
 
@@ -227,7 +228,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         final HotSpotResolvedJavaMethodImpl[] initialMetaMethods = toHotSpotResolvedJavaMethodImpls(initialMethods);
         final HotSpotResolvedJavaMethodImpl[] matchingMetaMethods = toHotSpotResolvedJavaMethodImpls(matchingMethods);
 
-        CompilerToVM compilerToVM = getCompilerToVM();
+        CompilerToVM compilerToVM = runtime().getCompilerToVM();
         HotSpotStackFrameReference current = compilerToVM.getNextStackFrame(null, initialMetaMethods, initialSkip);
         while (current != null) {
             T result = visitor.visitFrame(current);
@@ -271,6 +272,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         phaseTransition("final");
 
         SnippetCounter.printGroups(TTY.out().out());
-        BenchmarkCounters.shutdown(getCompilerToVM(), runtimeStartTime);
+        BenchmarkCounters.shutdown(runtime().getCompilerToVM(), runtimeStartTime);
     }
 }

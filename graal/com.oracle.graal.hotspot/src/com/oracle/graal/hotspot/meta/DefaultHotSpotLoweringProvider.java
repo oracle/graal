@@ -34,6 +34,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLAS
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.INIT_LOCATION;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import static jdk.internal.jvmci.meta.LocationIdentity.any;
 
 import java.lang.ref.Reference;
@@ -236,7 +237,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
         } else if (n instanceof VerifyHeapNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                newObjectSnippets.lower((VerifyHeapNode) n, registers, runtime, tool);
+                newObjectSnippets.lower((VerifyHeapNode) n, registers, tool);
             }
         } else if (n instanceof RawMonitorEnterNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
@@ -319,7 +320,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         }
         StructuredGraph graph = n.graph();
         assert !n.getHub().isConstant();
-        AddressNode address = createOffsetAddress(graph, n.getHub(), runtime.getConfig().klassLayoutHelperOffset);
+        AddressNode address = createOffsetAddress(graph, n.getHub(), config().klassLayoutHelperOffset);
         graph.replaceFloating(n, graph.unique(new FloatingReadNode(address, KLASS_LAYOUT_HELPER_LOCATION, null, n.stamp(), n.getGuard(), BarrierType.NONE)));
     }
 
@@ -330,7 +331,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
         StructuredGraph graph = n.graph();
         assert !n.getHub().isConstant();
-        AddressNode address = createOffsetAddress(graph, n.getHub(), runtime.getConfig().classMirrorOffset);
+        AddressNode address = createOffsetAddress(graph, n.getHub(), config().classMirrorOffset);
         FloatingReadNode read = graph.unique(new FloatingReadNode(address, CLASS_MIRROR_LOCATION, null, n.stamp(), n.getGuard(), BarrierType.NONE));
         graph.replaceFloating(n, read);
     }
@@ -342,7 +343,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
         StructuredGraph graph = n.graph();
         assert !n.getValue().isConstant();
-        AddressNode address = createOffsetAddress(graph, n.getValue(), runtime.getConfig().klassOffset);
+        AddressNode address = createOffsetAddress(graph, n.getValue(), config().klassOffset);
         FloatingReadNode read = graph.unique(new FloatingReadNode(address, CLASS_KLASS_LOCATION, null, n.stamp(), n.getGuard(), BarrierType.NONE));
         graph.replaceFloating(n, read);
     }
@@ -371,7 +372,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                     // We use LocationNode.ANY_LOCATION for the reads that access the
                     // compiled code entry as HotSpot does not guarantee they are final
                     // values.
-                    int methodCompiledEntryOffset = runtime.getConfig().methodCompiledEntryOffset;
+                    int methodCompiledEntryOffset = config().methodCompiledEntryOffset;
                     AddressNode address = createOffsetAddress(graph, metaspaceMethod, methodCompiledEntryOffset);
                     ReadNode compiledEntry = graph.add(new ReadNode(address, any(), StampFactory.forKind(wordKind), BarrierType.NONE));
 
@@ -393,16 +394,16 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected Stamp loadStamp(Stamp stamp, JavaKind kind, boolean compressible) {
-        if (kind == JavaKind.Object && compressible && runtime.getConfig().useCompressedOops) {
-            return NarrowOopStamp.compressed((ObjectStamp) stamp, runtime.getConfig().getOopEncoding());
+        if (kind == JavaKind.Object && compressible && config().useCompressedOops) {
+            return NarrowOopStamp.compressed((ObjectStamp) stamp, config().getOopEncoding());
         }
         return super.loadStamp(stamp, kind, compressible);
     }
 
     @Override
     protected ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
-        if (kind == JavaKind.Object && compressible && runtime.getConfig().useCompressedOops) {
-            return CompressionNode.uncompress(value, runtime.getConfig().getOopEncoding());
+        if (kind == JavaKind.Object && compressible && config().useCompressedOops) {
+            return CompressionNode.uncompress(value, config().getOopEncoding());
         }
         return super.implicitLoadConvert(graph, kind, value, compressible);
     }
@@ -416,8 +417,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
-        if (kind == JavaKind.Object && compressible && runtime.getConfig().useCompressedOops) {
-            return CompressionNode.compress(value, runtime.getConfig().getOopEncoding());
+        if (kind == JavaKind.Object && compressible && config().useCompressedOops) {
+            return CompressionNode.compress(value, config().getOopEncoding());
         }
         return super.implicitStoreConvert(graph, kind, value, compressible);
     }
@@ -428,7 +429,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
          * Anchor the read of the element klass to the cfg, because it is only valid when arrayClass
          * is an object class, which might not be the case in other parts of the compiled method.
          */
-        AddressNode address = createOffsetAddress(graph, arrayHub, runtime.getConfig().arrayClassElementOffset);
+        AddressNode address = createOffsetAddress(graph, arrayHub, config().arrayClassElementOffset);
         return graph.unique(new FloatingReadNode(address, OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, null, KlassPointerStamp.klassNonNull(), AbstractBeginNode.prevBegin(anchor)));
     }
 
@@ -465,12 +466,12 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected BarrierType fieldInitializationBarrier(JavaKind entryKind) {
-        return (entryKind == JavaKind.Object && !runtime.getConfig().useDeferredInitBarriers) ? BarrierType.IMPRECISE : BarrierType.NONE;
+        return (entryKind == JavaKind.Object && !config().useDeferredInitBarriers) ? BarrierType.IMPRECISE : BarrierType.NONE;
     }
 
     @Override
     protected BarrierType arrayInitializationBarrier(JavaKind entryKind) {
-        return (entryKind == JavaKind.Object && !runtime.getConfig().useDeferredInitBarriers) ? BarrierType.PRECISE : BarrierType.NONE;
+        return (entryKind == JavaKind.Object && !config().useDeferredInitBarriers) ? BarrierType.PRECISE : BarrierType.NONE;
     }
 
     private void lowerOSRStartNode(OSRStartNode osrStart) {
@@ -550,9 +551,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         }
     }
 
-    private boolean addReadBarrier(UnsafeLoadNode load) {
-        if (runtime.getConfig().useG1GC && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getStackKind() == JavaKind.Object &&
-                        load.accessKind() == JavaKind.Object && !StampTool.isPointerAlwaysNull(load.object())) {
+    private static boolean addReadBarrier(UnsafeLoadNode load) {
+        if (config().useG1GC && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getStackKind() == JavaKind.Object && load.accessKind() == JavaKind.Object &&
+                        !StampTool.isPointerAlwaysNull(load.object())) {
             ResolvedJavaType type = StampTool.typeOrNull(load.object());
             if (type != null && !type.isArray()) {
                 return true;
@@ -580,33 +581,31 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
             return graph.unique(new LoadHubNode(tool.getStampProvider(), object, guard != null ? guard.asNode() : null));
         }
-        HotSpotVMConfig config = runtime.getConfig();
         assert !object.isConstant() || object.isNullConstant();
 
         KlassPointerStamp hubStamp = KlassPointerStamp.klassNonNull();
-        if (config.useCompressedClassPointers) {
-            hubStamp = hubStamp.compressed(config.getKlassEncoding());
+        if (config().useCompressedClassPointers) {
+            hubStamp = hubStamp.compressed(config().getKlassEncoding());
         }
 
-        AddressNode address = createOffsetAddress(graph, object, config.hubOffset);
+        AddressNode address = createOffsetAddress(graph, object, config().hubOffset);
         FloatingReadNode memoryRead = graph.unique(new FloatingReadNode(address, HUB_LOCATION, null, hubStamp, guard, BarrierType.NONE));
-        if (config.useCompressedClassPointers) {
-            return CompressionNode.uncompress(memoryRead, config.getKlassEncoding());
+        if (config().useCompressedClassPointers) {
+            return CompressionNode.uncompress(memoryRead, config().getKlassEncoding());
         } else {
             return memoryRead;
         }
     }
 
     private WriteNode createWriteHub(StructuredGraph graph, ValueNode object, ValueNode value) {
-        HotSpotVMConfig config = runtime.getConfig();
         assert !object.isConstant() || object.asConstant().isDefaultForKind();
 
         ValueNode writeValue = value;
-        if (config.useCompressedClassPointers) {
-            writeValue = CompressionNode.compress(value, config.getKlassEncoding());
+        if (config().useCompressedClassPointers) {
+            writeValue = CompressionNode.compress(value, config().getKlassEncoding());
         }
 
-        AddressNode address = createOffsetAddress(graph, object, config.hubOffset);
+        AddressNode address = createOffsetAddress(graph, object, config().hubOffset);
         return graph.add(new WriteNode(address, HUB_WRITE_LOCATION, writeValue, BarrierType.NONE));
     }
 
@@ -614,7 +613,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected BarrierType fieldLoadBarrierType(ResolvedJavaField f) {
         HotSpotResolvedJavaField loadField = (HotSpotResolvedJavaField) f;
         BarrierType barrierType = BarrierType.NONE;
-        if (runtime.getConfig().useG1GC && loadField.getJavaKind() == JavaKind.Object && metaAccess.lookupJavaType(Reference.class).equals(loadField.getDeclaringClass()) &&
+        if (config().useG1GC && loadField.getJavaKind() == JavaKind.Object && metaAccess.lookupJavaType(Reference.class).equals(loadField.getDeclaringClass()) &&
                         loadField.getName().equals("referent")) {
             barrierType = BarrierType.PRECISE;
         }
@@ -629,7 +628,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     public int arrayScalingFactor(JavaKind kind) {
-        if (runtime.getConfig().useCompressedOops && kind == JavaKind.Object) {
+        if (config().useCompressedOops && kind == JavaKind.Object) {
             return super.arrayScalingFactor(JavaKind.Int);
         } else {
             return super.arrayScalingFactor(kind);
@@ -643,7 +642,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected int arrayLengthOffset() {
-        return runtime.getConfig().arrayOopDescLengthOffset();
+        return config().arrayOopDescLengthOffset();
     }
 
     @Override

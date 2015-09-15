@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import static jdk.internal.jvmci.compiler.Compiler.*;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
 import java.io.*;
 import java.lang.annotation.*;
@@ -499,7 +500,7 @@ public final class CompileTheWorld {
         if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
             return false;
         }
-        HotSpotVMConfig c = HotSpotJVMCIRuntime.runtime().getConfig();
+        HotSpotVMConfig c = config();
         if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > c.hugeMethodLimit) {
             return false;
         }

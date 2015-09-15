@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
+
 import java.util.List;
 import java.util.Map;
 
@@ -78,7 +80,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
 
     public static int barrierIndex;
 
-    private final HotSpotVMConfig config = runtime().getConfig();
+    private final HotSpotVMConfig config = config();
 
     public static class Container {
 

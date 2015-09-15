@@ -110,7 +110,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void narrowOopTest() {
-        Assume.assumeTrue("skipping narrow oop data patch test", runtime().getConfig().useCompressedOops);
+        Assume.assumeTrue("skipping narrow oop data patch test", config().useCompressedOops);
         test("narrowOopSnippet");
     }
 
@@ -131,7 +131,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void compareTest() {
-        Assume.assumeTrue("skipping narrow oop data patch test", runtime().getConfig().useCompressedOops);
+        Assume.assumeTrue("skipping narrow oop data patch test", config().useCompressedOops);
         test("compareSnippet");
     }
 

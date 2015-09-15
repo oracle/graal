@@ -30,6 +30,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.ZapStackOnMethodEntr
 import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCall;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import static jdk.internal.jvmci.sparc.SPARC.g0;
 import static jdk.internal.jvmci.sparc.SPARC.g5;
 import static jdk.internal.jvmci.sparc.SPARC.isGlobalRegister;
@@ -133,7 +134,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new SPARCHotSpotLIRGenerator(getProviders(), getRuntime().getConfig(), cc, lirGenRes);
+        return new SPARCHotSpotLIRGenerator(getProviders(), config(), cc, lirGenRes);
     }
 
     @Override
@@ -143,7 +144,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        return new SPARCHotSpotNodeLIRBuilder(getRuntime(), graph, lirGen);
+        return new SPARCHotSpotNodeLIRBuilder(graph, lirGen);
     }
 
     /**
@@ -321,7 +322,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         masm.setImmediateConstantLoad(canUseImmediateConstantLoad);
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
-        HotSpotVMConfig config = getRuntime().getConfig();
+        HotSpotVMConfig config = config();
         Label unverifiedStub = installedCodeOwner == null || installedCodeOwner.isStatic() ? null : new Label();
         boolean hasUnsafeAccess = crb.compilationResult.hasUnsafeAccess();
         int i = 0;

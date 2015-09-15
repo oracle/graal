@@ -24,13 +24,6 @@ package com.oracle.graal.hotspot;
 
 import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.code.stack.StackIntrospection;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -43,37 +36,8 @@ import com.oracle.graal.runtime.RuntimeProvider;
  */
 public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvider, StackIntrospection {
 
-    default HotSpotJVMCIRuntimeProvider getJVMCIRuntime() {
-        return HotSpotJVMCIRuntime.runtime();
-    }
-
-    default HotSpotVMConfig getConfig() {
-        return getJVMCIRuntime().getConfig();
-    }
-
     default TargetDescription getTarget() {
         return getHostBackend().getTarget();
-    }
-
-    default CompilerToVM getCompilerToVM() {
-        return getJVMCIRuntime().getCompilerToVM();
-    }
-
-    /**
-     * Converts a name to a Java type. This method attempts to resolve {@code name} to a
-     * {@link ResolvedJavaType}.
-     *
-     * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
-     * @param accessingType the context of resolution which must be non-null
-     * @param resolve specifies whether resolution failure results in an unresolved type being
-     *            return or a {@link LinkageError} being thrown
-     * @return a Java type for {@code name} which is guaranteed to be of type
-     *         {@link ResolvedJavaType} if {@code resolve == true}
-     * @throws LinkageError if {@code resolve == true} and the resolution failed
-     * @throws NullPointerException if {@code accessingClass} is {@code null}
-     */
-    default JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean resolve) {
-        return getJVMCIRuntime().lookupType(name, accessingType, resolve);
     }
 
     HotSpotProviders getHostProviders();

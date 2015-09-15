@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -54,8 +55,8 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
         HotSpotNmethod installedCode = new HotSpotNmethod(hsMethod, compResult.getName(), true);
         HotSpotCompiledNmethod compiledNmethod = new HotSpotCompiledNmethod(hsMethod, compResult);
-        int result = runtime().getCompilerToVM().installCode(getTarget(), compiledNmethod, installedCode, null);
-        HotSpotVMConfig config = runtime().getConfig();
+        int result = HotSpotJVMCIRuntime.runtime().getCompilerToVM().installCode(getTarget(), compiledNmethod, installedCode, null);
+        HotSpotVMConfig config = config();
         Assert.assertEquals("Error installing method " + method + ": " + config.getCodeInstallResultDescription(result), result, config.codeInstallResultOk);
 
         // HotSpotRuntime hsRuntime = (HotSpotRuntime) getCodeCache();
@@ -138,7 +139,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
                     Assert.assertNotNull(getCode(installedCodeOwner, graph, true));
                     atLeastOneCompiled = true;
                 } else {
-                    Assert.assertFalse(runtime().getConfig().useAESIntrinsics);
+                    Assert.assertFalse(config().useAESIntrinsics);
                 }
             }
         }

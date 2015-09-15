@@ -22,35 +22,47 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static jdk.internal.jvmci.sparc.SPARC.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
+import static jdk.internal.jvmci.sparc.SPARC.g5;
+import static jdk.internal.jvmci.sparc.SPARC.o7;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterValue;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.sparc.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.sparc.SPARCMove.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.CallTargetNode.*;
-import com.oracle.graal.nodes.spi.*;
-
-import jdk.internal.jvmci.code.*;
-
-import com.oracle.graal.debug.*;
-
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.gen.DebugInfoBuilder;
+import com.oracle.graal.compiler.sparc.SPARCNodeLIRBuilder;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
+import com.oracle.graal.hotspot.HotSpotLockStack;
+import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
+import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
+import com.oracle.graal.hotspot.nodes.HotSpotDirectCallTargetNode;
+import com.oracle.graal.hotspot.nodes.HotSpotIndirectCallTargetNode;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.DirectCallTargetNode;
+import com.oracle.graal.nodes.FullInfopointNode;
+import com.oracle.graal.nodes.IndirectCallTargetNode;
+import com.oracle.graal.nodes.SafepointNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.NodeValueMap;
 
 public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    private HotSpotGraalRuntimeProvider runtime;
-
-    public SPARCHotSpotNodeLIRBuilder(HotSpotGraalRuntimeProvider runtime, StructuredGraph graph, LIRGeneratorTool lirGen) {
+    public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         super(graph, lirGen);
-        this.runtime = runtime;
         assert gen instanceof SPARCHotSpotLIRGenerator;
         assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
         ((SPARCHotSpotLIRGenerator) gen).setLockStack(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
@@ -89,12 +101,12 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
         InvokeKind invokeKind = ((HotSpotDirectCallTargetNode) callTarget).invokeKind();
         if (invokeKind.isIndirect()) {
-            append(new SPARCHotspotDirectVirtualCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, runtime.getConfig()));
+            append(new SPARCHotspotDirectVirtualCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, config()));
         } else {
             assert invokeKind.isDirect();
             HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
             assert resolvedMethod.isConcrete() : "Cannot make direct call to abstract method.";
-            append(new SPARCHotspotDirectStaticCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, runtime.getConfig()));
+            append(new SPARCHotspotDirectStaticCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, config()));
         }
     }
 
@@ -107,7 +119,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
         Value targetAddressSrc = operand(callTarget.computedAddress());
         AllocatableValue targetAddress = o7.asValue(targetAddressSrc.getLIRKind());
         gen.emitMove(targetAddress, targetAddressSrc);
-        append(new SPARCIndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethod, targetAddress, callState, runtime.getConfig()));
+        append(new SPARCIndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethod, targetAddress, callState, config()));
     }
 
     @Override

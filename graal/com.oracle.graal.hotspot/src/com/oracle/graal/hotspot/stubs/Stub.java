@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.compiler.GraalCompiler.emitBackEnd;
 import static com.oracle.graal.compiler.GraalCompiler.emitFrontEnd;
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,6 +43,7 @@ import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
 import jdk.internal.jvmci.hotspot.HotSpotCompiledCode;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
@@ -49,10 +51,8 @@ import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotCompiledRuntimeStub;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRuntimeStub;
 import com.oracle.graal.hotspot.nodes.StubStartNode;
@@ -213,9 +213,8 @@ public abstract class Stub {
                     HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
                     HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(compResult);
 
-                    HotSpotGraalRuntimeProvider runtime = ((HotSpotBackend) backend).getRuntime();
-                    int result = runtime.getCompilerToVM().installCode(backend.getTarget(), hsCompResult, installedCode, null);
-                    HotSpotVMConfig config = runtime.getConfig();
+                    int result = HotSpotJVMCIRuntime.runtime().getCompilerToVM().installCode(backend.getTarget(), hsCompResult, installedCode, null);
+                    HotSpotVMConfig config = config();
                     if (result != config.codeInstallResultOk) {
                         throw new JVMCIError("Error installing stub %s: %s", Stub.this, config.getCodeInstallResultDescription(result));
                     }

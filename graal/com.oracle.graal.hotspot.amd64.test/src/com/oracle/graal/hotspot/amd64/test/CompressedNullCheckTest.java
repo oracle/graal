@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64.test;
 
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 import jdk.internal.jvmci.options.OptionValue;
 import jdk.internal.jvmci.options.OptionValue.OverrideScope;
@@ -52,7 +53,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
 
     @SuppressWarnings("try")
     private void testImplicit(Integer i) {
-        Assume.assumeTrue(runtime().getConfig().useCompressedOops);
+        Assume.assumeTrue(config().useCompressedOops);
 
         Container c = new Container();
         c.i = i;
@@ -71,7 +72,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
 
     @SuppressWarnings("try")
     private void testExplicit(Integer i) {
-        Assume.assumeTrue(runtime().getConfig().useCompressedOops);
+        Assume.assumeTrue(config().useCompressedOops);
 
         Container c = new Container();
         c.i = i;

@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static jdk.internal.jvmci.amd64.AMD64.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.spi.*;
@@ -51,11 +52,8 @@ import jdk.internal.jvmci.meta.*;
  */
 public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    private final HotSpotGraalRuntimeProvider runtime;
-
-    public AMD64HotSpotNodeLIRBuilder(HotSpotGraalRuntimeProvider runtime, StructuredGraph graph, LIRGeneratorTool gen) {
+    public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         super(graph, gen);
-        this.runtime = runtime;
         assert gen instanceof AMD64HotSpotLIRGenerator;
         assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
         ((AMD64HotSpotLIRGenerator) gen).setLockStack(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
@@ -111,12 +109,12 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
         InvokeKind invokeKind = ((HotSpotDirectCallTargetNode) callTarget).invokeKind();
         if (invokeKind.isIndirect()) {
-            append(new AMD64HotspotDirectVirtualCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, runtime.getConfig()));
+            append(new AMD64HotspotDirectVirtualCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, config()));
         } else {
             assert invokeKind.isDirect();
             HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
             assert resolvedMethod.isConcrete() : "Cannot make direct call to abstract method.";
-            append(new AMD64HotSpotDirectStaticCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, runtime.getConfig()));
+            append(new AMD64HotSpotDirectStaticCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, config()));
         }
     }
 
@@ -129,7 +127,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             AllocatableValue targetAddressDst = AMD64.rax.asValue(targetAddressSrc.getLIRKind());
             gen.emitMove(metaspaceMethodDst, metaspaceMethodSrc);
             gen.emitMove(targetAddressDst, targetAddressSrc);
-            append(new AMD64IndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethodDst, targetAddressDst, callState, runtime.getConfig()));
+            append(new AMD64IndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethodDst, targetAddressDst, callState, config()));
         } else {
             super.emitIndirectCall(callTarget, result, parameters, temps, callState);
         }

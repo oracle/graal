@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
@@ -68,8 +69,9 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         if (type.isInstance(runtime)) {
             return runtime;
         }
-        if (type.isInstance(runtime.getConfig())) {
-            return runtime.getConfig();
+        HotSpotVMConfig config = config();
+        if (type.isInstance(config)) {
+            return config;
         }
         return null;
     }
@@ -82,11 +84,12 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     public Object getInjectedNodeIntrinsicParameter(ResolvedJavaType type) {
         // Need to test all fields since there no guarantee under the JMM
         // about the order in which these fields are written.
+        HotSpotVMConfig config = config();
         if (configType == null || wordTypesType == null || configType == null) {
             MetaAccessProvider metaAccess = runtime.getHostProviders().getMetaAccess();
             wordTypesType = metaAccess.lookupJavaType(runtime.getHostProviders().getWordTypes().getClass());
             runtimeType = metaAccess.lookupJavaType(runtime.getClass());
-            configType = metaAccess.lookupJavaType(runtime.getConfig().getClass());
+            configType = metaAccess.lookupJavaType(config.getClass());
         }
 
         if (type.isAssignableFrom(wordTypesType)) {
@@ -96,7 +99,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
             return runtime;
         }
         if (type.isAssignableFrom(configType)) {
-            return runtime.getConfig();
+            return config;
         }
         return null;
     }
