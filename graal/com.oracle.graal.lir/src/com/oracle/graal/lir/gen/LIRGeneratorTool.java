@@ -158,7 +158,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
      * Emits a return instruction. Implementations need to insert a move if the input is not in the
      * correct location.
      */
-    void emitReturn(Value input);
+    void emitReturn(JavaKind javaKind, Value input);
 
     AllocatableValue asAllocatable(Value value);
 
@@ -174,11 +174,12 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
     /**
      * Gets the ABI specific operand used to return a value of a given kind from a method.
      *
-     * @param kind the kind of value being returned
+     * @param javaKind the {@link JavaKind} of value being returned
+     * @param lirKind the backend type of the value being returned
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
-    AllocatableValue resultOperandFor(LIRKind kind);
+    AllocatableValue resultOperandFor(JavaKind javaKind, LIRKind lirKind);
 
     <I extends LIRInstruction> I append(I op);
 

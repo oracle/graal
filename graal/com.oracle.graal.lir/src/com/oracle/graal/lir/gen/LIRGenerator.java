@@ -192,12 +192,15 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     /**
      * Gets the ABI specific operand used to return a value of a given kind from a method.
      *
-     * @param kind the kind of value being returned
+     * @param javaKind the kind of value being returned
+     * @param lirKind the backend type of the value being returned
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
-    public AllocatableValue resultOperandFor(LIRKind kind) {
-        return res.getFrameMapBuilder().getRegisterConfig().getReturnRegister((JavaKind) kind.getPlatformKind()).asValue(kind);
+    public AllocatableValue resultOperandFor(JavaKind javaKind, LIRKind lirKind) {
+        Register reg = res.getFrameMapBuilder().getRegisterConfig().getReturnRegister(javaKind);
+        assert target().arch.canStoreValue(reg.getRegisterCategory(), lirKind.getPlatformKind());
+        return reg.asValue(lirKind);
     }
 
     public <I extends LIRInstruction> I append(I op) {

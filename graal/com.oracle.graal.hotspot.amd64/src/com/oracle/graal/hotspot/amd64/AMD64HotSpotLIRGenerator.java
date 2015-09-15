@@ -255,10 +255,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private Register pollOnReturnScratchRegister;
 
     @Override
-    public void emitReturn(Value input) {
+    public void emitReturn(JavaKind kind, Value input) {
         AllocatableValue operand = Value.ILLEGAL;
         if (input != null) {
-            operand = resultOperandFor(input.getLIRKind());
+            operand = resultOperandFor(kind, input.getLIRKind());
             emitMove(operand, input);
         }
         if (pollOnReturnScratchRegister == null) {

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
@@ -51,10 +53,10 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        if (this.result() == null) {
-            gen.getLIRGeneratorTool().emitReturn(null);
+        if (result == null) {
+            gen.getLIRGeneratorTool().emitReturn(JavaKind.Void, null);
         } else {
-            gen.getLIRGeneratorTool().emitReturn(gen.operand(this.result()));
+            gen.getLIRGeneratorTool().emitReturn(result.getStackKind(), gen.operand(result));
         }
     }
 
@@ -65,5 +67,15 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
 
     public MemoryMapNode getMemoryMap() {
         return memoryMap;
+    }
+
+    @Override
+    public boolean verify() {
+        if (graph().method() != null) {
+            JavaKind actual = result == null ? JavaKind.Void : result.getStackKind();
+            JavaKind expected = graph().method().getSignature().getReturnKind().getStackKind();
+            assertTrue(actual == expected, "return kind doesn't match: actual " + actual + ", expected: " + expected);
+        }
+        return super.verify();
     }
 }
