@@ -22,36 +22,51 @@
  */
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.NamedLocationIdentity.*;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.replacements.SnippetTemplate.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayIndexScale;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeMask;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeShift;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeMask;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeShift;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.runtime;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
+import static com.oracle.graal.nodes.NamedLocationIdentity.any;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.asm.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.phases.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.phases.WriteBarrierAdditionPhase;
+import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.extended.UnsafeCopyNode;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.replacements.Snippets;
+import com.oracle.graal.replacements.nodes.DirectObjectStoreNode;
+import com.oracle.graal.word.ObjectAccess;
+import com.oracle.graal.word.Unsigned;
+import com.oracle.graal.word.Word;
 
 /**
  * As opposed to {@link ArrayCopySnippets}, these Snippets do <b>not</b> perform store checks.
  */
 public class UnsafeArrayCopySnippets implements Snippets {
-    private static final boolean supportsUnalignedMemoryAccess = runtime().getTarget().arch.supportsUnalignedMemoryAccess();
+
+    private static final boolean supportsUnalignedMemoryAccess = runtime().getHostJVMCIBackend().getTarget().arch.supportsUnalignedMemoryAccess();
 
     private static final JavaKind VECTOR_KIND = JavaKind.Long;
-    private static final long VECTOR_SIZE = arrayIndexScale(VECTOR_KIND);
+    private static final long VECTOR_SIZE = getArrayIndexScale(VECTOR_KIND);
 
     private static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, JavaKind baseKind, LocationIdentity locationIdentity) {
         int arrayBaseOffset = arrayBaseOffset(baseKind);

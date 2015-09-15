@@ -23,23 +23,33 @@
 
 package com.oracle.graal.hotspot.phases;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import java.util.Iterator;
 
-import java.util.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 
-import jdk.internal.jvmci.common.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeFlood;
+import com.oracle.graal.hotspot.nodes.ArrayRangeWriteBarrier;
+import com.oracle.graal.hotspot.nodes.G1PostWriteBarrier;
+import com.oracle.graal.hotspot.nodes.ObjectWriteBarrier;
+import com.oracle.graal.hotspot.nodes.SerialWriteBarrier;
+import com.oracle.graal.nodes.DeoptimizingNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.ArrayRangeWriteNode;
+import com.oracle.graal.nodes.java.LoweredAtomicReadAndWriteNode;
+import com.oracle.graal.nodes.java.LoweredCompareAndSwapNode;
+import com.oracle.graal.nodes.memory.FixedAccessNode;
+import com.oracle.graal.nodes.memory.HeapAccess;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.nodes.memory.ReadNode;
+import com.oracle.graal.nodes.memory.WriteNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.phases.Phase;
 
 /**
  * Verification phase that checks if, for every write, at least one write barrier is present at all
@@ -50,12 +60,18 @@ import com.oracle.graal.phases.*;
  */
 public class WriteBarrierVerificationPhase extends Phase {
 
+    private final HotSpotVMConfig config;
+
+    public WriteBarrierVerificationPhase(HotSpotVMConfig config) {
+        this.config = config;
+    }
+
     @Override
     protected void run(StructuredGraph graph) {
         processWrites(graph);
     }
 
-    private static void processWrites(StructuredGraph graph) {
+    private void processWrites(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (isObjectWrite(node) || isObjectArrayRangeWrite(node)) {
                 validateWrite(node);
@@ -63,7 +79,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         }
     }
 
-    private static void validateWrite(Node write) {
+    private void validateWrite(Node write) {
         /*
          * The currently validated write is checked in order to discover if it has an appropriate
          * attached write barrier.
@@ -92,10 +108,14 @@ public class WriteBarrierVerificationPhase extends Phase {
         }
     }
 
-    private static boolean hasAttachedBarrier(FixedWithNextNode node) {
+    private boolean useG1GC() {
+        return config.useG1GC;
+    }
+
+    private boolean hasAttachedBarrier(FixedWithNextNode node) {
         final Node next = node.next();
         final Node previous = node.predecessor();
-        final boolean validatePreBarrier = HotSpotReplacementsUtil.useG1GC() && (isObjectWrite(node) || !((ArrayRangeWriteNode) node).isInitialization());
+        final boolean validatePreBarrier = useG1GC() && (isObjectWrite(node) || !((ArrayRangeWriteNode) node).isInitialization());
         if (isObjectWrite(node)) {
             return (isObjectBarrier(node, next) || StampTool.isPointerAlwaysNull(getValueWritten(node))) && (!validatePreBarrier || isObjectBarrier(node, previous));
         } else if (isObjectArrayRangeWrite(node)) {

@@ -22,23 +22,25 @@
  */
 package com.oracle.graal.hotspot.amd64.test;
 
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionValue.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.hotspot.nodes.CompressionNode;
+import com.oracle.graal.hotspot.test.HotSpotGraalCompilerTest;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
 
 /**
  * Ensures that frame omission works in cases where it is expected to.
  */
-public class CompressedNullCheckTest extends GraalCompilerTest {
+public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
 
     private static final class Container {
         Integer i;
@@ -50,7 +52,7 @@ public class CompressedNullCheckTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     private void testImplicit(Integer i) {
-        Assume.assumeTrue(HotSpotGraalRuntime.runtime().getConfig().useCompressedOops);
+        Assume.assumeTrue(runtime().getConfig().useCompressedOops);
 
         Container c = new Container();
         c.i = i;
@@ -69,7 +71,7 @@ public class CompressedNullCheckTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     private void testExplicit(Integer i) {
-        Assume.assumeTrue(HotSpotGraalRuntime.runtime().getConfig().useCompressedOops);
+        Assume.assumeTrue(runtime().getConfig().useCompressedOops);
 
         Container c = new Container();
         c.i = i;

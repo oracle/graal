@@ -22,31 +22,50 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.compiler.GraalCompiler.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.compiler.GraalCompiler.emitBackEnd;
+import static com.oracle.graal.compiler.GraalCompiler.emitFrontEnd;
+import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Set;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.hotspot.HotSpotCompiledCode;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotCompiledRuntimeStub;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.meta.HotSpotRuntimeStub;
+import com.oracle.graal.hotspot.nodes.StubStartNode;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.phases.LIRPhase;
+import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.profiling.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.lir.profiling.MoveProfiling;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.phases.tiers.Suites;
 
 //JaCoCo Exclude
 
@@ -194,7 +213,7 @@ public abstract class Stub {
                     HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
                     HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(compResult);
 
-                    HotSpotGraalRuntime runtime = runtime();
+                    HotSpotGraalRuntimeProvider runtime = ((HotSpotBackend) backend).getRuntime();
                     int result = runtime.getCompilerToVM().installCode(backend.getTarget(), hsCompResult, installedCode, null);
                     HotSpotVMConfig config = runtime.getConfig();
                     if (result != config.codeInstallResultOk) {

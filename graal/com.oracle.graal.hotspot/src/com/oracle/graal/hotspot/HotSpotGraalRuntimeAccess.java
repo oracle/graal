@@ -22,17 +22,20 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.runtime.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.api.runtime.GraalRuntime;
+import com.oracle.graal.api.runtime.GraalRuntimeAccess;
 
 @ServiceProvider(GraalRuntimeAccess.class)
 public class HotSpotGraalRuntimeAccess implements GraalRuntimeAccess {
 
     @Override
     public GraalRuntime getRuntime() {
-        JVMCI.initialize();
-        return HotSpotGraalRuntime.runtime();
+        HotSpotJVMCIRuntimeProvider jvmciRuntime = HotSpotJVMCIRuntime.runtime();
+        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
+        return compiler.getGraalRuntime();
     }
 }

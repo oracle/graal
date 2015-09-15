@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.runtime;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.IDENTITY_HASHCODE;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
@@ -33,6 +32,8 @@ import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayInd
 import jdk.internal.jvmci.code.CodeUtil;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectTypeImpl;
@@ -130,6 +131,10 @@ public class HotSpotReplacementsUtil {
             }
             return read;
         }
+    }
+
+    public static HotSpotJVMCIRuntimeProvider runtime() {
+        return HotSpotJVMCIRuntime.runtime();
     }
 
     @Fold
@@ -337,12 +342,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static JavaKind getWordKind() {
-        return runtime().getTarget().wordKind;
+        return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordKind;
     }
 
     @Fold
     public static int wordSize() {
-        return runtime().getTarget().wordSize;
+        return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordSize;
     }
 
     @Fold

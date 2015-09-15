@@ -22,24 +22,37 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.StackStoreOp;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
+import com.oracle.graal.lir.amd64.AMD64Move;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public class AMD64HotSpotMove {
 
@@ -102,11 +115,13 @@ public class AMD64HotSpotMove {
 
         @Def({REG, STACK}) private AllocatableValue result;
         private final HotSpotMetaspaceConstant input;
+        private final JavaKind wordKind;
 
-        public HotSpotLoadMetaspaceConstantOp(AllocatableValue result, HotSpotMetaspaceConstant input) {
+        public HotSpotLoadMetaspaceConstantOp(AllocatableValue result, HotSpotMetaspaceConstant input, JavaKind wordKind) {
             super(TYPE);
             this.result = result;
             this.input = input;
+            this.wordKind = wordKind;
         }
 
         @Override
@@ -118,8 +133,7 @@ public class AMD64HotSpotMove {
             if (isRegister(result)) {
                 if (compressed) {
                     if (isImmutable && generatePIC) {
-                        JavaKind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
-                        int alignment = hostWordKind.getBitCount() / Byte.SIZE;
+                        int alignment = wordKind.getBitCount() / Byte.SIZE;
                         // recordDataReferenceInCode forces the mov to be rip-relative
                         masm.movl(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
                     } else {
@@ -128,8 +142,7 @@ public class AMD64HotSpotMove {
                     }
                 } else {
                     if (isImmutable && generatePIC) {
-                        JavaKind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
-                        int alignment = hostWordKind.getBitCount() / Byte.SIZE;
+                        int alignment = wordKind.getBitCount() / Byte.SIZE;
                         // recordDataReferenceInCode forces the mov to be rip-relative
                         masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
                     } else {

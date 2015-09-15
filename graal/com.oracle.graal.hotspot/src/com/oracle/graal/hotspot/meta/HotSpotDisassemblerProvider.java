@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.graal.code.*;
+import com.oracle.graal.code.DisassemblerProvider;
 
 /**
  * HotSpot implementation of {@link DisassemblerProvider}.
@@ -41,11 +42,7 @@ public class HotSpotDisassemblerProvider implements DisassemblerProvider {
 
     @Override
     public String disassembleInstalledCode(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode code) {
-        if (code.isValid()) {
-            long codeBlob = ((HotSpotInstalledCode) code).getAddress();
-            return runtime().getCompilerToVM().disassembleCodeBlob(codeBlob);
-        }
-        return null;
+        return ((HotSpotCodeCacheProvider) codeCache).disassemble(code);
     }
 
     public String getName() {

@@ -157,8 +157,10 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * Performs any remaining initialization that was deferred until the {@linkplain #getRuntime()
      * runtime} object was initialized and this backend was registered with it.
+     *
+     * @param jvmciRuntime
      */
-    public void completeInitialization() {
+    public void completeInitialization(HotSpotJVMCIRuntime jvmciRuntime) {
     }
 
     /**

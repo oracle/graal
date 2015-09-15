@@ -22,19 +22,29 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.ImmutableCodeLazy.*;
-import static com.oracle.graal.hotspot.stubs.SnippetStub.*;
+import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
+import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.ImmutableCodeLazy.isCalledForSnippets;
+import static com.oracle.graal.hotspot.stubs.SnippetStub.SnippetGraphUnderConstruction;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaField;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaField;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaField;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.runtime.JVMCI;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.replacements.ReplacementsImpl;
+import com.oracle.graal.replacements.SnippetCounter;
+import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
 /**
@@ -49,7 +59,8 @@ public class HotSpotGraalConstantReflectionProvider extends HotSpotConstantRefle
 
     @Override
     public JavaConstant readConstantFieldValue(JavaField field, JavaConstant receiver) {
-        assert !ImmutableCode.getValue() || isCalledForSnippets() || SnippetGraphUnderConstruction.get() != null || FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
+        MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
+        assert !ImmutableCode.getValue() || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null || FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
         return super.readConstantFieldValue(field, receiver);
     }
 
@@ -108,9 +119,8 @@ public class HotSpotGraalConstantReflectionProvider extends HotSpotConstantRefle
          * {@link #readConstantFieldValue(JavaField, JavaConstant)} should be only called for
          * snippets or replacements.
          */
-        static boolean isCalledForSnippets() {
+        static boolean isCalledForSnippets(MetaAccessProvider metaAccess) {
             assert ImmutableCode.getValue();
-            MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
             ResolvedJavaMethod makeGraphMethod = null;
             ResolvedJavaMethod initMethod = null;
             try {
@@ -145,7 +155,7 @@ public class HotSpotGraalConstantReflectionProvider extends HotSpotConstantRefle
         private static final List<ResolvedJavaField> embeddableFields = new ArrayList<>();
         static {
             try {
-                MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
+                MetaAccessProvider metaAccess = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess();
                 embeddableFields.add(metaAccess.lookupJavaField(Boolean.class.getDeclaredField("TRUE")));
                 embeddableFields.add(metaAccess.lookupJavaField(Boolean.class.getDeclaredField("FALSE")));
 

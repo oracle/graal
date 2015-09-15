@@ -22,15 +22,25 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
+import com.oracle.graal.hotspot.nodes.EnterUnpackFramesStackFrameNode;
+import com.oracle.graal.hotspot.nodes.LeaveCurrentStackFrameNode;
+import com.oracle.graal.hotspot.nodes.LeaveDeoptimizedStackFrameNode;
+import com.oracle.graal.hotspot.nodes.LeaveUnpackFramesStackFrameNode;
+import com.oracle.graal.hotspot.nodes.PushInterpreterFrameNode;
+import com.oracle.graal.hotspot.nodes.SaveAllRegistersNode;
+import com.oracle.graal.hotspot.nodes.UncommonTrapCallNode;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGenerator;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 /**
  * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition

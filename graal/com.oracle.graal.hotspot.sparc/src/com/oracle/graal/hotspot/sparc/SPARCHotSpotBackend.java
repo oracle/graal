@@ -100,8 +100,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     private static final SizeEstimateStatistics CONSTANT_ESTIMATED_STATS = new SizeEstimateStatistics("ESTIMATE");
     private static final SizeEstimateStatistics CONSTANT_ACTUAL_STATS = new SizeEstimateStatistics("ACTUAL");
 
-    public SPARCHotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
-        super(runtime, providers);
+    public SPARCHotSpotBackend(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
+        super(config, runtime, providers);
     }
 
     private static class SizeEstimateStatistics {

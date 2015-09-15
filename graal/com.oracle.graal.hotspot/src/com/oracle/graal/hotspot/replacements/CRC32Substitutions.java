@@ -22,20 +22,20 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
 
-import java.util.zip.*;
+import java.util.zip.CRC32;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.word.Word;
 
 // JaCoCo Exclude
 
@@ -49,7 +49,7 @@ public class CRC32Substitutions {
      */
     @Fold
     private static long crcTableAddress() {
-        return runtime().getConfig().crcTableAddress;
+        return config().crcTableAddress;
     }
 
     static int update(int crc, int b) {

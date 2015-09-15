@@ -60,25 +60,24 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
      */
     protected final int pagesToBang;
 
-    public HotSpotHostBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
+    public HotSpotHostBackend(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);
-        this.pagesToBang = runtime.getConfig().useStackBanging ? runtime.getConfig().stackShadowPages : 0;
+        this.pagesToBang = config.useStackBanging ? config.stackShadowPages : 0;
     }
 
     @Override
     @SuppressWarnings("try")
-    public void completeInitialization() {
+    public void completeInitialization(HotSpotJVMCIRuntime jvmciRuntime) {
         final HotSpotProviders providers = getProviders();
-        HotSpotVMConfig config = getRuntime().getConfig();
         HotSpotHostForeignCallsProvider foreignCalls = (HotSpotHostForeignCallsProvider) providers.getForeignCalls();
         final HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
         HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
 
         try (InitTimer st = timer("foreignCalls.initialize")) {
-            foreignCalls.initialize(providers, config);
+            foreignCalls.initialize(providers);
         }
         try (InitTimer st = timer("lowerer.initialize")) {
-            lowerer.initialize(providers, config);
+            lowerer.initialize(providers, jvmciRuntime.getConfig());
         }
 
         // Install intrinsics.

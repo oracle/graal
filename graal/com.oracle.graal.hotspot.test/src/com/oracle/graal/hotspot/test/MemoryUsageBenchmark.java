@@ -133,7 +133,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         long graalEnv = 0L;
 
         try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
-            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
             CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), method, jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI, graalEnv, id, false);
             task.runCompilation();
         }
@@ -150,7 +150,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             int id = method.allocateCompileId(jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
             long graalEnv = 0L;
             try (AllocSpy as = AllocSpy.open(methodName)) {
-                HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+                HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
                 CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), method, jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI, graalEnv, id,
                                 false);
                 task.runCompilation();
@@ -177,7 +177,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         compileAndTime("simple");
         compileAndTime("complex");
         if (CompileTheWorld.Options.CompileTheWorldClasspath.getValue() != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
-            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
             CompileTheWorld ctw = new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler());
             try {
                 ctw.compile();

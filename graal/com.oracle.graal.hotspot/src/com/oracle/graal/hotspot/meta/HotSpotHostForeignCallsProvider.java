@@ -64,8 +64,8 @@ import com.oracle.graal.word.*;
  */
 public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl {
 
-    public HotSpotHostForeignCallsProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
-        super(runtime, metaAccess, codeCache);
+    public HotSpotHostForeignCallsProvider(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
+        super(jvmciRuntime, runtime, metaAccess, codeCache);
     }
 
     protected static void link(Stub stub) {
@@ -166,8 +166,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    public void initialize(HotSpotProviders providers, HotSpotVMConfig c) {
-
+    public void initialize(HotSpotProviders providers) {
+        HotSpotVMConfig c = jvmciRuntime.getConfig();
         if (!PreferGraalStubs.getValue()) {
             registerForeignCall(DEOPTIMIZATION_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
             registerForeignCall(UNCOMMON_TRAP_HANDLER, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);

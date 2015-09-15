@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
 import static com.oracle.graal.hotspot.HotSpotBackend.UNCOMMON_TRAP;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.getHostWordKind;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.runtime;
 import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
@@ -232,7 +230,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             operand = resultOperandFor(javaKind, input.getLIRKind());
             emitMove(operand, input);
         }
-        append(new SPARCHotSpotReturnOp(operand, getStub() != null, runtime().getConfig(), getSafepointAddressValue()));
+        append(new SPARCHotSpotReturnOp(operand, getStub() != null, config, getSafepointAddressValue()));
     }
 
     @Override
@@ -256,7 +254,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     private void moveValueToThread(Value v, int offset) {
-        LIRKind wordKind = LIRKind.value(getProviders().getCodeCache().getTarget().wordKind);
+        LIRKind wordKind = LIRKind.value(target().wordKind);
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         SPARCAddressValue pendingDeoptAddress = new SPARCImmediateAddressValue(wordKind, thread, offset);
         append(new StoreOp(v.getPlatformKind(), pendingDeoptAddress, load(v), null));
@@ -471,7 +469,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Register thread = getProviders().getRegisters().getThreadRegister();
         Variable framePcVariable = load(framePc);
         Variable senderSpVariable = load(senderSp);
-        Variable scratchVariable = newVariable(LIRKind.value(getHostWordKind()));
+        Variable scratchVariable = newVariable(LIRKind.value(target().wordKind));
         append(new SPARCHotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), framePcVariable, senderSpVariable, scratchVariable,
                         target().wordKind));
     }

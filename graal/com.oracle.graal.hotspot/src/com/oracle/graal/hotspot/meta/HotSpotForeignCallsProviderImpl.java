@@ -22,21 +22,30 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
-import static jdk.internal.jvmci.code.CallingConvention.Type.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.NOT_LEAF;
+import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCall;
+import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCallee;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.stubs.ForeignCallStub;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.word.Word;
 
 /**
  * HotSpot implementation of {@link HotSpotForeignCallsProvider}.
@@ -50,13 +59,15 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     public static final ForeignCallDescriptor TEST_DEOPTIMIZE_CALL_INT = new ForeignCallDescriptor("test_deoptimize_call_int", int.class, int.class);
 
+    protected final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     protected final HotSpotGraalRuntimeProvider runtime;
 
     protected final Map<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = new HashMap<>();
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
 
-    public HotSpotForeignCallsProviderImpl(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
+    public HotSpotForeignCallsProviderImpl(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
+        this.jvmciRuntime = jvmciRuntime;
         this.runtime = runtime;
         this.metaAccess = metaAccess;
         this.codeCache = codeCache;
@@ -82,7 +93,8 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      * @param killedLocations the memory locations killed by the stub call
      */
     public HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor, boolean reexecutable, Transition transition, LocationIdentity... killedLocations) {
-        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
+        CompilerToVM vm = jvmciRuntime.getCompilerToVM();
+        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, vm, descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
     }
 
     /**
@@ -104,7 +116,8 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         Class<?> resultType = descriptor.getResultType();
         assert address != 0;
         assert transition != NOT_LEAF || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
-        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
+        CompilerToVM vm = jvmciRuntime.getCompilerToVM();
+        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, vm, descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
     }
 
     /**
@@ -122,7 +135,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      */
     public void linkForeignCall(HotSpotProviders providers, ForeignCallDescriptor descriptor, long address, boolean prependThread, Transition transition, boolean reexecutable,
                     LocationIdentity... killedLocations) {
-        ForeignCallStub stub = new ForeignCallStub(runtime, providers, address, descriptor, prependThread, transition, reexecutable, killedLocations);
+        ForeignCallStub stub = new ForeignCallStub(jvmciRuntime, providers, address, descriptor, prependThread, transition, reexecutable, killedLocations);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);

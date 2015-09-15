@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.phases.tiers.*;
-
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.compiler.*;
+import static jdk.internal.jvmci.inittimer.InitTimer.timer;
+import jdk.internal.jvmci.code.Architecture;
+import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.runtime.*;
+import jdk.internal.jvmci.compiler.CompilerFactory;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.inittimer.InitTimer;
+import jdk.internal.jvmci.runtime.JVMCIRuntime;
+
+import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public abstract class HotSpotGraalCompilerFactory implements CompilerFactory {
 
@@ -46,10 +48,13 @@ public abstract class HotSpotGraalCompilerFactory implements CompilerFactory {
         return backend.initializeArchitecture(arch);
     }
 
+    @SuppressWarnings("try")
     @Override
     public Compiler createCompiler(JVMCIRuntime runtime) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
-        HotSpotGraalRuntime.initialize(jvmciRuntime, this);
-        return new HotSpotGraalCompiler(jvmciRuntime);
+        try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
+            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, this);
+            return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime);
+        }
     }
 }

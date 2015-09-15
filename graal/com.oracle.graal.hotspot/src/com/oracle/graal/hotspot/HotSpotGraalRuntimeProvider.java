@@ -22,14 +22,19 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.runtime.*;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.code.stack.StackIntrospection;
+import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.stack.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import com.oracle.graal.api.runtime.GraalRuntime;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.runtime.RuntimeProvider;
 
 //JaCoCo Exclude
 
@@ -38,7 +43,9 @@ import jdk.internal.jvmci.meta.*;
  */
 public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvider, StackIntrospection {
 
-    HotSpotJVMCIRuntimeProvider getJVMCIRuntime();
+    default HotSpotJVMCIRuntimeProvider getJVMCIRuntime() {
+        return HotSpotJVMCIRuntime.runtime();
+    }
 
     default HotSpotVMConfig getConfig() {
         return getJVMCIRuntime().getConfig();

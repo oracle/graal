@@ -20,18 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package com.oracle.graal.truffle.hotspot;
 
-import com.oracle.graal.lir.asm.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+
+import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.truffle.OptimizedCallTarget;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
  * {@link OptimizedCallTarget#call(Object[])}.
  */
-public interface OptimizedCallTargetInstrumentationFactory extends CompilationResultBuilderFactory {
+public abstract class OptimizedCallTargetInstrumentationFactory implements CompilationResultBuilderFactory {
+
+    protected HotSpotVMConfig config;
+    protected HotSpotRegistersProvider registers;
+
+    @SuppressWarnings("hiding")
+    public final void init(HotSpotVMConfig config, HotSpotRegistersProvider registers) {
+        this.config = config;
+        this.registers = registers;
+    }
 
     /**
      * Gets the architecture supported by this factory.
      */
-    String getArchitecture();
+    public abstract String getArchitecture();
 }

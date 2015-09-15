@@ -35,7 +35,6 @@ import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.FrameContext;
@@ -46,10 +45,14 @@ import com.oracle.graal.truffle.OptimizedCallTarget;
  * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .
  */
 public abstract class OptimizedCallTargetInstrumentation extends CompilationResultBuilder {
+    protected final HotSpotVMConfig config;
+    protected final HotSpotRegistersProvider registers;
 
     public OptimizedCallTargetInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
-                    CompilationResult compilationResult) {
+                    CompilationResult compilationResult, HotSpotVMConfig config, HotSpotRegistersProvider registers) {
         super(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
+        this.config = config;
+        this.registers = registers;
     }
 
     @Override
@@ -57,8 +60,7 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
         Mark mark = super.recordMark(id);
         HotSpotCodeCacheProvider hsCodeCache = (HotSpotCodeCacheProvider) codeCache;
         if ((int) id == hsCodeCache.config.MARKID_VERIFIED_ENTRY) {
-            HotSpotRegistersProvider registers = HotSpotGraalRuntime.runtime().getHostProviders().getRegisters();
-            injectTailCallCode(HotSpotGraalRuntime.runtime().getConfig(), registers);
+            injectTailCallCode();
         }
         return mark;
     }
@@ -76,5 +78,5 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
     /**
      * Injects code into the verified entry point of that makes a tail-call to the target callee.
      */
-    protected abstract void injectTailCallCode(HotSpotVMConfig config, HotSpotRegistersProvider registers);
+    protected abstract void injectTailCallCode();
 }

@@ -22,31 +22,35 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CallingConvention.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.hotspot.*;
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.asm.amd64.AMD64Address;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.asm.FrameContext;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentation;
+import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentationFactory;
 
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
-public class AMD64OptimizedCallTargetInstrumentationFactory implements OptimizedCallTargetInstrumentationFactory {
+public class AMD64OptimizedCallTargetInstrumentationFactory extends OptimizedCallTargetInstrumentationFactory {
 
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult) {
+        return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult, config, registers) {
             @Override
-            protected void injectTailCallCode(HotSpotVMConfig config, HotSpotRegistersProvider registers) {
+            protected void injectTailCallCode() {
                 @SuppressWarnings("hiding")
                 AMD64MacroAssembler asm = (AMD64MacroAssembler) this.asm;
                 Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(Type.JavaCall, JavaKind.Object)[0];
@@ -67,6 +71,7 @@ public class AMD64OptimizedCallTargetInstrumentationFactory implements Optimized
         };
     }
 
+    @Override
     public String getArchitecture() {
         return "AMD64";
     }

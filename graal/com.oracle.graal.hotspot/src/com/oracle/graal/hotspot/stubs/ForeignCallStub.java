@@ -22,25 +22,44 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.graal.debug.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
+import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCall;
+import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCallee;
+import static jdk.internal.jvmci.code.CallingConvention.Type.NativeCall;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.hotspot.HotSpotSignature;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Signature;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
-import static jdk.internal.jvmci.code.CallingConvention.Type.*;
-
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.JavaMethodContext;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
+import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.InvokeNode;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.replacements.GraphKit;
+import com.oracle.graal.replacements.nodes.ReadRegisterNode;
+import com.oracle.graal.word.Word;
+import com.oracle.graal.word.WordTypes;
 
 /**
  * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from
@@ -53,7 +72,7 @@ import com.oracle.graal.word.*;
  */
 public class ForeignCallStub extends Stub {
 
-    private final HotSpotGraalRuntimeProvider runtime;
+    private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
 
     /**
      * The target of the call.
@@ -78,16 +97,16 @@ public class ForeignCallStub extends Stub {
      *            be re-executed.
      * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition,
+    public ForeignCallStub(HotSpotJVMCIRuntimeProvider runtime, HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition,
                     boolean reexecutable, LocationIdentity... killedLocations) {
-        super(providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getForeignCalls(), descriptor, 0L, PRESERVES_REGISTERS, JavaCall,
-                        JavaCallee, transition, reexecutable, killedLocations));
-        this.runtime = runtime;
+        super(providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getForeignCalls(), runtime.getCompilerToVM(), descriptor, 0L,
+                        PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
+        this.jvmciRuntime = runtime;
         this.prependThread = prependThread;
         Class<?>[] targetParameterTypes = createTargetParameters(descriptor);
         ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
-        target = HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getForeignCalls(), targetSig, address, DESTROYS_REGISTERS, NativeCall, NativeCall,
-                        transition, reexecutable, killedLocations);
+        target = HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getForeignCalls(), runtime.getCompilerToVM(), targetSig, address,
+                        DESTROYS_REGISTERS, NativeCall, NativeCall, transition, reexecutable, killedLocations);
     }
 
     /**
@@ -126,7 +145,7 @@ public class ForeignCallStub extends Stub {
             for (int i = 0; i < arguments.length; i++) {
                 parameters[i] = metaAccess.lookupJavaType(arguments[i]);
             }
-            return new HotSpotSignature(runtime.getJVMCIRuntime(), metaAccess.lookupJavaType(d.getResultType()), parameters);
+            return new HotSpotSignature(jvmciRuntime, metaAccess.lookupJavaType(d.getResultType()), parameters);
         }
 
         public String getName() {

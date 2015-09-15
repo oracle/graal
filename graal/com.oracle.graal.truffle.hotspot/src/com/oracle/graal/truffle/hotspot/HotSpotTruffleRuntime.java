@@ -72,7 +72,8 @@ import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
@@ -94,7 +95,6 @@ import com.oracle.graal.truffle.DefaultTruffleCompiler;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.InterpreterOnlyCompilationPolicy;
 import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.graal.truffle.OptimizedCallTargetInstrumentationFactory;
 import com.oracle.graal.truffle.TruffleCallBoundary;
 import com.oracle.graal.truffle.TruffleCompiler;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
@@ -123,7 +123,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     private HotSpotTruffleRuntime() {
         setDontInlineCallBoundaryMethod();
-        lookupCallMethods(getGraalProviders().getMetaAccess());
+        lookupCallMethods(getHotSpotProviders().getMetaAccess());
 
         installDefaultListeners();
 
@@ -191,7 +191,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     public static void setDontInlineCallBoundaryMethod() {
-        Providers providers = getGraalProviders();
+        Providers providers = getHotSpotProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
         for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
@@ -203,7 +203,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @SuppressWarnings("try")
     public static void installOptimizedCallTargetCallMethod() {
-        Providers providers = getGraalProviders();
+        Providers providers = getHotSpotProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
         for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
@@ -222,6 +222,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
         for (OptimizedCallTargetInstrumentationFactory factory : Services.load(OptimizedCallTargetInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
+                factory.init(getHotSpotGraalRuntime().getConfig(), getHotSpotProviders().getRegisters());
                 return factory;
             }
         }
@@ -230,7 +231,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private static CompilationResult compileMethod(ResolvedJavaMethod javaMethod) {
-        HotSpotProviders providers = getGraalProviders();
+        HotSpotProviders providers = getHotSpotProviders();
         SuitesProvider suitesProvider = providers.getSuites();
         Suites suites = suitesProvider.createSuites();
         LIRSuites lirSuites = suitesProvider.createLIRSuites();
@@ -239,25 +240,33 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
-        boolean infoPoints = HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints();
+        boolean infoPoints = getHotSpotGraalRuntime().getCompilerToVM().shouldDebugNonSafepoints();
         GraphBuilderConfiguration config = infoPoints ? GraphBuilderConfiguration.getInfopointEagerDefault(plugins) : GraphBuilderConfiguration.getEagerDefault(plugins);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.ALL, null).apply(graph);
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-        Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
+        Backend backend = getHotSpotBackend();
         CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName());
         return compileGraph(graph, cc, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), suites, lirSuites, new CompilationResult(), factory);
     }
 
-    private static HotSpotProviders getGraalProviders() {
+    private static HotSpotBackend getHotSpotBackend() {
         RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
-        return (HotSpotProviders) runtimeProvider.getHostBackend().getProviders();
+        return (HotSpotBackend) runtimeProvider.getHostBackend();
+    }
+
+    private static HotSpotGraalRuntimeProvider getHotSpotGraalRuntime() {
+        return getHotSpotBackend().getRuntime();
+    }
+
+    private static HotSpotProviders getHotSpotProviders() {
+        return getHotSpotBackend().getProviders();
     }
 
     private static PhaseSuite<HighTierContext> getGraphBuilderSuite(SuitesProvider suitesProvider) {
         PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
-        return withSimpleDebugInfoIfRequested(graphBuilderSuite);
+        return withSimpleDebugInfoIfRequested(graphBuilderSuite, getHotSpotGraalRuntime());
     }
 
     private static void removeInliningPhase(Suites suites) {
@@ -344,7 +353,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        HotSpotGraalRuntime.runtime().getCompilerToVM().invalidateInstalledCode(optimizedCallTarget);
+        getHotSpotGraalRuntime().getCompilerToVM().invalidateInstalledCode(optimizedCallTarget);
         getCompilationNotify().notifyCompilationInvalidated(optimizedCallTarget, source, reason);
     }
 
@@ -355,7 +364,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public boolean platformEnableInfopoints() {
-        return HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints();
+        return getHotSpotGraalRuntime().getCompilerToVM().shouldDebugNonSafepoints();
     }
 
     @Override
@@ -382,13 +391,13 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     public static NativeFunctionInterface createNativeFunctionInterface() {
-        HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
-        Backend backend = HotSpotGraalRuntime.runtime().getHostBackend();
+        HotSpotVMConfig config = getHotSpotGraalRuntime().getConfig();
+        Backend backend = getHotSpotBackend();
         RawNativeCallNodeFactory factory = getRawNativeCallNodeFactory(backend.getTarget().arch.getName());
         if (factory == null) {
             return null;
         }
-        return new HotSpotNativeFunctionInterface(HotSpotGraalRuntime.runtime().getHostProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
+        return new HotSpotNativeFunctionInterface(getHotSpotProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
     }
 
     private static class TraceTraceTransferToInterpreterHelper {
@@ -404,7 +413,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
         static void traceTransferToInterpreter() {
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset;
+            long pendingTransferToInterpreterAddress = thread + getHotSpotGraalRuntime().getConfig().pendingTransferToInterpreterOffset;
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
             if (deoptimized) {
                 UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);

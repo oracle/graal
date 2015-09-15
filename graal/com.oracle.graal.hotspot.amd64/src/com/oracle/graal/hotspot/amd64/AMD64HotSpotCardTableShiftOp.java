@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.ValueUtil;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.asm.amd64.AMD64Address;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public final class AMD64HotSpotCardTableShiftOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64HotSpotCardTableShiftOp> TYPE = LIRInstructionClass.create(AMD64HotSpotCardTableShiftOp.class);
@@ -39,17 +41,19 @@ public final class AMD64HotSpotCardTableShiftOp extends AMD64LIRInstruction {
 
     private final HotSpotVMConfig config;
 
-    public AMD64HotSpotCardTableShiftOp(AllocatableValue result, HotSpotVMConfig config) {
+    private final JavaKind wordKind;
+
+    public AMD64HotSpotCardTableShiftOp(AllocatableValue result, HotSpotVMConfig config, JavaKind wordKind) {
         super(TYPE);
         this.result = result;
         this.config = config;
+        this.wordKind = wordKind;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-        JavaKind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
         int alignment = JavaKind.Int.getBitCount() / Byte.SIZE;
-        JavaConstant shift = JavaConstant.forIntegerKind(hostWordKind, 0);
+        JavaConstant shift = JavaConstant.forIntegerKind(wordKind, 0);
         // recordDataReferenceInCode forces the mov to be rip-relative
         asm.movq(ValueUtil.asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(shift, alignment));
         crb.recordMark(config.MARKID_CARD_TABLE_SHIFT);

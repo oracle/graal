@@ -22,33 +22,37 @@
  */
 package com.oracle.graal.truffle.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
-import static jdk.internal.jvmci.code.CallingConvention.Type.*;
-import static jdk.internal.jvmci.meta.JavaKind.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.service.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
+import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCall;
+import static jdk.internal.jvmci.meta.JavaKind.Object;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.asm.sparc.SPARCAddress;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.hotspot.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.asm.FrameContext;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentation;
+import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentationFactory;
 
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
-public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedCallTargetInstrumentationFactory {
+public class SPARCOptimizedCallTargetInstumentationFactory extends OptimizedCallTargetInstrumentationFactory {
 
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult) {
+        return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult, config, registers) {
             @Override
-            protected void injectTailCallCode(HotSpotVMConfig config, HotSpotRegistersProvider registers) {
+            protected void injectTailCallCode() {
                 @SuppressWarnings("hiding")
                 SPARCMacroAssembler asm = (SPARCMacroAssembler) this.asm;
                 try (ScratchRegister scratch = asm.getScratchRegister()) {
@@ -69,6 +73,7 @@ public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedC
         };
     }
 
+    @Override
     public String getArchitecture() {
         return "SPARC";
     }

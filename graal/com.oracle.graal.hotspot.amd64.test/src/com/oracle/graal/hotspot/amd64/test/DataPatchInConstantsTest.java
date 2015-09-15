@@ -23,28 +23,36 @@
 
 package com.oracle.graal.hotspot.amd64.test;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Constant;
 
-import org.junit.*;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.asm.amd64.AMD64Address;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
-import com.oracle.graal.hotspot.nodes.type.*;
-import com.oracle.graal.hotspot.test.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.hotspot.nodes.type.NarrowOopStamp;
+import com.oracle.graal.hotspot.test.HotSpotGraalCompilerTest;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
@@ -102,7 +110,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void narrowOopTest() {
-        Assume.assumeTrue("skipping narrow oop data patch test", config.useCompressedOops);
+        Assume.assumeTrue("skipping narrow oop data patch test", runtime().getConfig().useCompressedOops);
         test("narrowOopSnippet");
     }
 
@@ -123,11 +131,10 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void compareTest() {
-        Assume.assumeTrue("skipping narrow oop data patch test", config.useCompressedOops);
+        Assume.assumeTrue("skipping narrow oop data patch test", runtime().getConfig().useCompressedOops);
         test("compareSnippet");
     }
 
-    private static final HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
     private static boolean initReplacements = false;
 
     @Before
@@ -148,9 +155,9 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
         @MethodSubstitution
         public static Object loadThroughCompressedPatch(Object obj) {
-            Object compressed = CompressionNode.compression(CompressionOp.Compress, obj, config.getOopEncoding());
+            Object compressed = CompressionNode.compression(CompressionOp.Compress, obj, config().getOopEncoding());
             Object patch = LoadThroughPatchNode.load(compressed);
-            return CompressionNode.compression(CompressionOp.Uncompress, patch, config.getOopEncoding());
+            return CompressionNode.compression(CompressionOp.Uncompress, patch, config().getOopEncoding());
         }
     }
 

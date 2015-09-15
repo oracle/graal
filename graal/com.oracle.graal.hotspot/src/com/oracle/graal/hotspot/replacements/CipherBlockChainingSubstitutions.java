@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT;
 import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
 import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LocationIdentity;
@@ -103,10 +103,10 @@ public class CipherBlockChainingSubstitutions {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, JavaKind.Object, LocationIdentity.any());
         Object rObject = UnsafeLoadNode.load(realReceiver, rOffset, JavaKind.Object, LocationIdentity.any());
-        Pointer kAddr = Word.objectToTrackedPointer(kObject).add(arrayBaseOffset(JavaKind.Byte));
-        Pointer rAddr = Word.objectToTrackedPointer(rObject).add(arrayBaseOffset(JavaKind.Byte));
-        Word inAddr = Word.unsigned(ComputeObjectAddressNode.get(in, arrayBaseOffset(JavaKind.Byte) + inOffset));
-        Word outAddr = Word.unsigned(ComputeObjectAddressNode.get(out, arrayBaseOffset(JavaKind.Byte) + outOffset));
+        Pointer kAddr = Word.objectToTrackedPointer(kObject).add(getArrayBaseOffset(JavaKind.Byte));
+        Pointer rAddr = Word.objectToTrackedPointer(rObject).add(getArrayBaseOffset(JavaKind.Byte));
+        Word inAddr = Word.unsigned(ComputeObjectAddressNode.get(in, getArrayBaseOffset(JavaKind.Byte) + inOffset));
+        Word outAddr = Word.unsigned(ComputeObjectAddressNode.get(out, getArrayBaseOffset(JavaKind.Byte) + outOffset));
         if (encrypt) {
             encryptAESCryptStub(ENCRYPT, inAddr, outAddr, kAddr, rAddr, inLength);
         } else {

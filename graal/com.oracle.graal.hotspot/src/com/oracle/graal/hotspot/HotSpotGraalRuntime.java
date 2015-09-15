@@ -42,7 +42,6 @@ import jdk.internal.jvmci.code.stack.StackIntrospection;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotProxified;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethodImpl;
 import jdk.internal.jvmci.hotspot.HotSpotStackFrameReference;
@@ -50,7 +49,6 @@ import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.inittimer.InitTimer;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.runtime.JVMCI;
 import jdk.internal.jvmci.runtime.JVMCIBackend;
 
 import com.oracle.graal.api.collections.CollectionsProvider;
@@ -75,53 +73,6 @@ import com.oracle.graal.runtime.RuntimeProvider;
  */
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, HotSpotProxified {
 
-    @SuppressWarnings("try")
-    private static class Instance {
-        private static final HotSpotGraalRuntime instance;
-
-        static {
-            try (InitTimer t0 = timer("HotSpotGraalRuntime.<clinit>")) {
-                // initJvmciRuntime and initCompilerFactory are set by the JVMCI initialization code
-                JVMCI.initialize();
-                assert initJvmciRuntime != null && initCompilerFactory != null;
-
-                try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-                    instance = new HotSpotGraalRuntime(initJvmciRuntime, initCompilerFactory);
-                }
-
-                try (InitTimer t = timer("HotSpotGraalRuntime.completeInitialization")) {
-                    // Why deferred initialization? See comment in completeInitialization().
-                    instance.completeInitialization();
-                }
-            }
-        }
-
-        private static void forceStaticInitializer() {
-        }
-    }
-
-    private static HotSpotJVMCIRuntime initJvmciRuntime;
-    private static HotSpotGraalCompilerFactory initCompilerFactory;
-
-    public static void initialize(HotSpotJVMCIRuntime runtime, HotSpotGraalCompilerFactory factory) {
-        initJvmciRuntime = runtime;
-        initCompilerFactory = factory;
-        Instance.forceStaticInitializer();
-    }
-
-    /**
-     * Gets the singleton {@link HotSpotGraalRuntime} object.
-     */
-    public static HotSpotGraalRuntime runtime() {
-        assert Instance.instance != null;
-        return Instance.instance;
-    }
-
-    @Override
-    public HotSpotJVMCIRuntimeProvider getJVMCIRuntime() {
-        return jvmciRuntime;
-    }
-
     private static boolean checkArrayIndexScaleInvariants() {
         assert getArrayIndexScale(JavaKind.Byte) == 1;
         assert getArrayIndexScale(JavaKind.Boolean) == 1;
@@ -134,26 +85,15 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return true;
     }
 
-    /**
-     * Gets the kind of a word value on the {@linkplain #getHostBackend() host} backend.
-     */
-    public static JavaKind getHostWordKind() {
-        return runtime().getHostBackend().getTarget().wordKind;
-    }
-
     private final HotSpotBackend hostBackend;
     private DebugValuesPrinter debugValuesPrinter;
 
     private final Map<Class<? extends Architecture>, HotSpotBackend> backends = new HashMap<>();
 
-    private final HotSpotJVMCIRuntime jvmciRuntime;
-
     @SuppressWarnings("try")
-    private HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompilerFactory compilerFactory) {
+    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompilerFactory compilerFactory) {
 
-        this.jvmciRuntime = jvmciRuntime;
-
-        HotSpotVMConfig config = getConfig();
+        HotSpotVMConfig config = jvmciRuntime.getConfig();
         CompileTheWorld.Options.overrideWithNativeOptions(config);
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
@@ -170,10 +110,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             if (factory == null) {
                 throw new JVMCIError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
-            hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime.getHostJVMCIBackend(), null));
+            hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime, null));
         }
 
-        for (JVMCIBackend jvmciBackend : jvmciRuntime.getBackends().values()) {
+        for (JVMCIBackend jvmciBackend : jvmciRuntime.getJVMCIBackends().values()) {
             if (jvmciBackend == hostJvmciBackend) {
                 continue;
             }
@@ -187,13 +127,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
                 registerBackend(factory.createBackend(this, compilerConfiguration, null, hostBackend));
             }
         }
-    }
-
-    /**
-     * Do deferred initialization.
-     */
-    @SuppressWarnings("try")
-    private void completeInitialization() {
 
         if (Log.getValue() == null && !areScopedMetricsOrTimersEnabled() && Dump.getValue() == null && Verify.getValue() == null) {
             if (MethodFilter.getValue() != null) {
@@ -226,12 +159,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
 
         // Complete initialization of backends
         try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
-            hostBackend.completeInitialization();
+            hostBackend.completeInitialization(jvmciRuntime);
         }
         for (HotSpotBackend backend : backends.values()) {
             if (backend != hostBackend) {
                 try (InitTimer st = timer(backend.getTarget().arch.getName(), ".completeInitialization")) {
-                    backend.completeInitialization();
+                    backend.completeInitialization(jvmciRuntime);
                 }
             }
         }

@@ -42,7 +42,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         boolean originalSetting = ExitVMOnException.getValue();
         // Compile a couple classes in rt.jar
         String file = System.getProperty("java.home") + "/lib/rt.jar";
-        HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+        HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
         new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), file, new Config(null), 1, 5, null, null, false).compile();
         assert ExitVMOnException.getValue() == originalSetting;
     }

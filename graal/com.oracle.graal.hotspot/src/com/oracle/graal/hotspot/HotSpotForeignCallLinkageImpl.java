@@ -22,21 +22,31 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
 
-import java.util.*;
+import java.util.Set;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CallingConvention.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotForeignCallTarget;
+import jdk.internal.jvmci.hotspot.HotSpotProxified;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.word.WordBase;
 
 /**
  * The details required to link a HotSpot runtime or stub call.
@@ -80,6 +90,8 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
 
     private final boolean reexecutable;
 
+    private final CompilerToVM vm;
+
     /**
      * Creates a {@link HotSpotForeignCallLinkage}.
      *
@@ -95,11 +107,12 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
      *            re-executed.
      * @param killedLocations the memory locations killed by the call
      */
-    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, HotSpotForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor,
-                    long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, boolean reexecutable, LocationIdentity... killedLocations) {
+    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, HotSpotForeignCallsProvider foreignCalls, CompilerToVM vm,
+                    ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, boolean reexecutable,
+                    LocationIdentity... killedLocations) {
         CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, descriptor, outgoingCcType);
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, descriptor, incomingCcType);
-        HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
+        HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(vm, descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
         if (outgoingCcType == Type.NativeCall) {
             linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
         }
@@ -130,9 +143,10 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         }
     }
 
-    public HotSpotForeignCallLinkageImpl(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention outgoingCallingConvention,
+    public HotSpotForeignCallLinkageImpl(CompilerToVM vm, ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention outgoingCallingConvention,
                     CallingConvention incomingCallingConvention, boolean reexecutable, LocationIdentity... killedLocations) {
         super(address);
+        this.vm = vm;
         this.descriptor = descriptor;
         this.address = address;
         this.effect = effect;
@@ -182,7 +196,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     public long getMaxCallTargetOffset() {
-        return runtime().getCompilerToVM().getMaxCallTargetOffset(address);
+        return vm.getMaxCallTargetOffset(address);
     }
 
     public ForeignCallDescriptor getDescriptor() {

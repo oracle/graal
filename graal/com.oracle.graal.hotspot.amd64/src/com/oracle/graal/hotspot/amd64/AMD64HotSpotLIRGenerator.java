@@ -313,14 +313,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Value emitCardTableShift() {
         Variable result = newVariable(LIRKind.value(JavaKind.Long));
-        append(new AMD64HotSpotCardTableShiftOp(result, config));
+        append(new AMD64HotSpotCardTableShiftOp(result, config, target().wordKind));
         return result;
     }
 
     @Override
     public Value emitCardTableAddress() {
         Variable result = newVariable(LIRKind.value(JavaKind.Long));
-        append(new AMD64HotSpotCardTableAddressOp(result, config));
+        append(new AMD64HotSpotCardTableAddressOp(result, config, target().wordKind));
         return result;
     }
 
@@ -505,7 +505,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     private void moveValueToThread(Value v, int offset) {
-        LIRKind wordKind = LIRKind.value(getProviders().getCodeCache().getTarget().wordKind);
+        LIRKind wordKind = LIRKind.value(target().wordKind);
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AMD64AddressValue address = new AMD64AddressValue(wordKind, thread, offset);
         emitStore(v.getLIRKind(), address, v, null);
@@ -622,7 +622,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         } else if (src instanceof HotSpotObjectConstant) {
             return new AMD64HotSpotMove.HotSpotLoadObjectConstantOp(dst, (HotSpotObjectConstant) src);
         } else if (src instanceof HotSpotMetaspaceConstant) {
-            return new AMD64HotSpotMove.HotSpotLoadMetaspaceConstantOp(dst, (HotSpotMetaspaceConstant) src);
+            return new AMD64HotSpotMove.HotSpotLoadMetaspaceConstantOp(dst, (HotSpotMetaspaceConstant) src, target().wordKind);
         } else {
             return super.createMoveConstant(dst, src);
         }

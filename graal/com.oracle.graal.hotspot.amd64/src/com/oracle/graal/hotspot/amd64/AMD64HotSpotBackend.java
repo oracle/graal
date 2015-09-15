@@ -77,8 +77,8 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  */
 public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
-    public AMD64HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
-        super(runtime, providers);
+    public AMD64HotSpotBackend(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
+        super(config, runtime, providers);
     }
 
     @Override
