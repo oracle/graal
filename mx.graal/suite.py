@@ -6,7 +6,7 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "c345ad3a1cbb33587482209d5a0b106948c06f4e",
+               "version" : "94a604f431d35ab5c0f6b3632d94c3b98d35e2ef",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
