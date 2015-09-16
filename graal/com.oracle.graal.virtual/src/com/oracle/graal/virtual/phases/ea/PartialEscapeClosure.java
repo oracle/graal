@@ -340,7 +340,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     /**
      * @return true if materialization happened, false if not.
      */
-    private boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, DebugMetric metric) {
+    protected boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, DebugMetric metric) {
         if (state.getObjectState(object).isVirtual()) {
             metric.increment();
             VirtualObjectNode virtual = virtualObjects.get(object);

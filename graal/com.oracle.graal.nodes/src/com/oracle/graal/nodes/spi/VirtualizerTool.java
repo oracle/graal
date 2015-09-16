@@ -145,4 +145,11 @@ public interface VirtualizerTool {
      */
     void replaceWith(ValueNode value);
 
+    /**
+     *
+     * If state is virtual, materialization is performed for the given state.
+     *
+     * @return true if materialization happened, false if not.
+     */
+    boolean ensureMaterialized(VirtualObjectNode virtualObject);
 }

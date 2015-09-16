@@ -180,6 +180,11 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         }
     }
 
+    @Override
+    public boolean ensureMaterialized(VirtualObjectNode virtualObject) {
+        return closure.ensureMaterialized(state, virtualObject.getObjectId(), position, effects, PartialEscapeClosure.METRIC_MATERIALIZATIONS_UNHANDLED);
+    }
+
     public void addLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId) {
         int id = virtualObject.getObjectId();
         state.addLock(id, monitorId);
