@@ -199,7 +199,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     public AllocatableValue resultOperandFor(JavaKind javaKind, LIRKind lirKind) {
         Register reg = res.getFrameMapBuilder().getRegisterConfig().getReturnRegister(javaKind);
-        assert target().arch.canStoreValue(reg.getRegisterCategory(), lirKind.getPlatformKind());
+        assert target().arch.canStoreValue(reg.getRegisterCategory(), lirKind.getPlatformKind()) : reg.getRegisterCategory() + " " + lirKind.getPlatformKind();
         return reg.asValue(lirKind);
     }
 
