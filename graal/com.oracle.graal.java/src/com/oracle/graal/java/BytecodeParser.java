@@ -231,11 +231,11 @@ import static com.oracle.graal.compiler.common.GraalOptions.ResolveClassBeforeSt
 import static com.oracle.graal.compiler.common.GraalOptions.StressInvokeWithExceptionNode;
 import static com.oracle.graal.compiler.common.type.StampFactory.objectNonNull;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
-import static com.oracle.graal.java.BytecodeParser.Options.DumpDuringGraphBuilding;
-import static com.oracle.graal.java.BytecodeParser.Options.FailedLoopExplosionIsFatal;
-import static com.oracle.graal.java.BytecodeParser.Options.MaximumLoopExplosionCount;
-import static com.oracle.graal.java.BytecodeParser.Options.TraceInlineDuringParsing;
-import static com.oracle.graal.java.BytecodeParser.Options.TraceParserPlugins;
+import static com.oracle.graal.java.BytecodeParserOptions.DumpDuringGraphBuilding;
+import static com.oracle.graal.java.BytecodeParserOptions.FailedLoopExplosionIsFatal;
+import static com.oracle.graal.java.BytecodeParserOptions.MaximumLoopExplosionCount;
+import static com.oracle.graal.java.BytecodeParserOptions.TraceInlineDuringParsing;
+import static com.oracle.graal.java.BytecodeParserOptions.TraceParserPlugins;
 import static com.oracle.graal.nodes.type.StampTool.isPointerNonNull;
 import static java.lang.String.format;
 import static jdk.internal.jvmci.common.JVMCIError.guarantee;
@@ -288,10 +288,6 @@ import jdk.internal.jvmci.meta.ResolvedJavaField;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 import jdk.internal.jvmci.meta.ResolvedJavaType;
 import jdk.internal.jvmci.meta.TriState;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.options.StableOptionValue;
 
 import com.oracle.graal.bytecode.BytecodeLookupSwitch;
 import com.oracle.graal.bytecode.BytecodeStream;
@@ -422,47 +418,15 @@ import com.oracle.graal.phases.OptimisticOptimizations;
  */
 public class BytecodeParser implements GraphBuilderContext {
 
-    public static class Options {
-        @Option(help = "The trace level for the bytecode parser used when building a graph from bytecode", type = OptionType.Debug)//
-        public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
-
-        @Option(help = "Inlines trivial methods during bytecode parsing.", type = OptionType.Expert)//
-        public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(true);
-
-        @Option(help = "Inlines intrinsic methods during bytecode parsing.", type = OptionType.Expert)//
-        public static final StableOptionValue<Boolean> InlineIntrinsicsDuringParsing = new StableOptionValue<>(true);
-
-        @Option(help = "Traces inlining performed during bytecode parsing.", type = OptionType.Debug)//
-        public static final StableOptionValue<Boolean> TraceInlineDuringParsing = new StableOptionValue<>(false);
-
-        @Option(help = "Traces use of plugins during bytecode parsing.", type = OptionType.Debug)//
-        public static final StableOptionValue<Boolean> TraceParserPlugins = new StableOptionValue<>(false);
-
-        @Option(help = "Maximum depth when inlining during bytecode parsing.", type = OptionType.Debug)//
-        public static final StableOptionValue<Integer> InlineDuringParsingMaxDepth = new StableOptionValue<>(10);
-
-        @Option(help = "Dump graphs after non-trivial changes during bytecode parsing.", type = OptionType.Debug)//
-        public static final StableOptionValue<Boolean> DumpDuringGraphBuilding = new StableOptionValue<>(false);
-
-        @Option(help = "Max number of loop explosions per method.", type = OptionType.Debug)//
-        public static final OptionValue<Integer> MaximumLoopExplosionCount = new OptionValue<>(10000);
-
-        @Option(help = "Do not bail out but throw an exception on failed loop explosion.", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> FailedLoopExplosionIsFatal = new OptionValue<>(false);
-
-        @Option(help = "When creating info points hide the methods of the substitutions.", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> HideSubstitutionStates = new OptionValue<>(false);
-    }
-
     /**
-     * The minimum value to which {@link Options#TraceBytecodeParserLevel} must be set to trace the
-     * bytecode instructions as they are parsed.
+     * The minimum value to which {@link BytecodeParserOptions#TraceBytecodeParserLevel} must be set
+     * to trace the bytecode instructions as they are parsed.
      */
     public static final int TRACELEVEL_INSTRUCTIONS = 1;
 
     /**
-     * The minimum value to which {@link Options#TraceBytecodeParserLevel} must be set to trace the
-     * frame state before each bytecode instruction as it is parsed.
+     * The minimum value to which {@link BytecodeParserOptions#TraceBytecodeParserLevel} must be set
+     * to trace the frame state before each bytecode instruction as it is parsed.
      */
     public static final int TRACELEVEL_STATE = 2;
 
@@ -2769,7 +2733,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private boolean traceState() {
-        if (Debug.isEnabled() && Options.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
+        if (Debug.isEnabled() && BytecodeParserOptions.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
             frameState.traceState();
         }
         return true;
@@ -3988,7 +3952,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected boolean traceInstruction(int bci, int opcode, boolean blockStart) {
-        if (Debug.isEnabled() && Options.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
+        if (Debug.isEnabled() && BytecodeParserOptions.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
             traceInstructionHelper(bci, opcode, blockStart);
         }
         return true;

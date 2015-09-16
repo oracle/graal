@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.java.BytecodeParser.Options.DumpDuringGraphBuilding;
-import static com.oracle.graal.java.BytecodeParser.Options.FailedLoopExplosionIsFatal;
-import static com.oracle.graal.java.BytecodeParser.Options.MaximumLoopExplosionCount;
+import static com.oracle.graal.java.BytecodeParserOptions.DumpDuringGraphBuilding;
+import static com.oracle.graal.java.BytecodeParserOptions.FailedLoopExplosionIsFatal;
+import static com.oracle.graal.java.BytecodeParserOptions.MaximumLoopExplosionCount;
 import static jdk.internal.jvmci.common.JVMCIError.unimplemented;
 
 import java.util.ArrayList;

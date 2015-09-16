@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
-import static com.oracle.graal.hotspot.replacements.InstanceOfSnippets.Options.TypeCheckMaxHints;
-import static com.oracle.graal.hotspot.replacements.InstanceOfSnippets.Options.TypeCheckMinProfileHitProbability;
+import static com.oracle.graal.hotspot.replacements.InstanceOfSnippetsOptions.TypeCheckMaxHints;
+import static com.oracle.graal.hotspot.replacements.InstanceOfSnippetsOptions.TypeCheckMinProfileHitProbability;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.checkSecondarySubType;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.checkUnknownSubType;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.createHints;
@@ -51,9 +51,6 @@ import jdk.internal.jvmci.meta.DeoptimizationAction;
 import jdk.internal.jvmci.meta.DeoptimizationReason;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.TriState;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -86,9 +83,9 @@ import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
  * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
  * floating node, it is lowered separately for each of its usages.
  *
- * The type tests implemented are described in the paper
- * <a href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a>
- * by Cliff Click and John Rose.
+ * The type tests implemented are described in the paper <a
+ * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
+ * Cliff Click and John Rose.
  */
 public class InstanceOfSnippets implements Snippets {
 
@@ -230,19 +227,6 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         return trueValue;
-    }
-
-    static class Options {
-
-        // @formatter:off
-        @Option(help = "If the probability that a type check will hit one the profiled types (up to " +
-                       "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info", type = OptionType.Expert)
-        static final OptionValue<Double> TypeCheckMinProfileHitProbability = new OptionValue<>(0.5);
-
-        @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
-                        "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Expert)
-        static final OptionValue<Integer> TypeCheckMaxHints = new OptionValue<>(2);
-        // @formatter:on
     }
 
     public static class Templates extends InstanceOfSnippetsTemplates {

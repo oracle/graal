@@ -34,6 +34,7 @@ import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.hotspot.CompilationTask;
 import com.oracle.graal.hotspot.CompileTheWorld;
+import com.oracle.graal.hotspot.CompileTheWorldOptions;
 import com.oracle.graal.hotspot.HotSpotGraalCompiler;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
@@ -181,7 +182,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
     public void run() {
         compileAndTime("simple");
         compileAndTime("complex");
-        if (CompileTheWorld.Options.CompileTheWorldClasspath.getValue() != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
+        if (CompileTheWorldOptions.CompileTheWorldClasspath.getValue() != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
             CompileTheWorld ctw = new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler());
             try {

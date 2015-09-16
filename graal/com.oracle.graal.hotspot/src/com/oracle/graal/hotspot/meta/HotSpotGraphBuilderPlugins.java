@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_MILLIS;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_NANOS;
-import static com.oracle.graal.java.BytecodeParser.Options.InlineDuringParsing;
+import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
 import static sun.misc.Version.jdkMajorVersion;
 import static sun.misc.Version.jdkMinorVersion;
 

@@ -33,7 +33,7 @@ import static com.oracle.graal.bytecode.Bytecodes.POP2;
 import static com.oracle.graal.bytecode.Bytecodes.SWAP;
 import static com.oracle.graal.graph.iterators.NodePredicates.isA;
 import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
-import static com.oracle.graal.java.BytecodeParser.Options.HideSubstitutionStates;
+import static com.oracle.graal.java.BytecodeParserOptions.HideSubstitutionStates;
 import static com.oracle.graal.nodes.FrameState.TWO_SLOT_MARKER;
 import static jdk.internal.jvmci.common.JVMCIError.shouldNotReachHere;
 

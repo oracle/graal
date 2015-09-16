@@ -23,7 +23,7 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;
-import static com.oracle.graal.java.BytecodeParser.Options.InlineDuringParsingMaxDepth;
+import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 import jdk.internal.jvmci.meta.JavaType;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 

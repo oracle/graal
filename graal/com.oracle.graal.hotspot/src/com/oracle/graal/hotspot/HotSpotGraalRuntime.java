@@ -95,7 +95,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
     HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompilerFactory compilerFactory) {
 
         HotSpotVMConfig config = jvmciRuntime.getConfig();
-        CompileTheWorld.Options.overrideWithNativeOptions(config);
+        CompileTheWorldOptions.overrideWithNativeOptions(config);
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
         if (HotSpotPrintInlining.getValue() == false) {

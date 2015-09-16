@@ -93,7 +93,7 @@ public class HotSpotGraalCompiler implements Compiler {
 
     public void compileTheWorld() throws Throwable {
         CompilerToVM compilerToVM = jvmciRuntime.getCompilerToVM();
-        int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();
+        int iterations = CompileTheWorldOptions.CompileTheWorldIterations.getValue();
         for (int i = 0; i < iterations; i++) {
             compilerToVM.resetCompilationStatistics();
             TTY.println("CompileTheWorld : iteration " + i);
