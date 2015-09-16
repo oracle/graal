@@ -35,7 +35,6 @@ import re
 import mx
 import mx_jvmci
 from mx_jvmci import JvmciJDKDeployedDist, run_vm, VM, Task, get_vm, isJVMCIEnabled, get_jvmci_jdk, get_jvmci_jdk_dir, buildvms
-import mx_unittest
 from mx_unittest import unittest
 import mx_gate
 
@@ -82,17 +81,6 @@ mx_jvmci.jdkDeployedDists += [
 
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
-
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # Unconditionally prepend truffle.jar to the boot class path.
-    # This used to be done by the VM itself but was removed to
-    # separate the VM from Truffle.
-    truffle_jar = mx.distribution('truffle:TRUFFLE_API').path
-    vmArgs = ['-Xbootclasspath/p:' + truffle_jar] + vmArgs
-    return (vmArgs, mainClass, mainClassArgs)
-
-mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _run_benchmark(args, availableBenchmarks, runBenchmark):
 
@@ -490,3 +478,7 @@ mx.update_commands(_suite, {
     'deoptalot' : [deoptalot, '[n]'],
     'longtests' : [longtests, ''],
 })
+
+
+def mx_post_parse_cmd_line(opts):
+    mx_jvmci.add_bootclasspath_prepend(mx.distribution('truffle:TRUFFLE_API'))
