@@ -489,7 +489,7 @@ public class SPARCControlFlow {
                         break;
                     }
                     case Object: {
-                        conditionCode = crb.codeCache.getTarget().wordKind == JavaKind.Long ? CC.Xcc : CC.Icc;
+                        conditionCode = crb.codeCache.getTarget().arch.getWordKind() == JavaKind.Long ? CC.Xcc : CC.Icc;
                         bits = constant.isDefaultForKind() ? 0L : null;
                         break;
                     }

@@ -129,7 +129,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected AddressNode createOffsetAddress(StructuredGraph graph, ValueNode object, long offset) {
-        ValueNode o = ConstantNode.forIntegerKind(target.wordKind, offset, graph);
+        ValueNode o = ConstantNode.forIntegerKind(target.wordJavaKind, offset, graph);
         return graph.unique(new OffsetAddressNode(object, o));
     }
 
@@ -201,7 +201,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode scaledIndex = graph.unique(new LeftShiftNode(wordIndex, ConstantNode.forInt(shift, graph)));
 
         int base = arrayBaseOffset(elementKind);
-        ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forIntegerKind(target.wordKind, base, graph)));
+        ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forIntegerKind(target.wordJavaKind, base, graph)));
 
         return graph.unique(new OffsetAddressNode(array, offset));
     }

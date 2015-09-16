@@ -124,8 +124,8 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
             ValueNode srcAddr = computeBase(getSource(), getSourcePosition());
             ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
             ValueNode len = getLength();
-            if (len.stamp().getStackKind() != runtime.getTarget().wordKind) {
-                len = IntegerConvertNode.convert(len, StampFactory.forKind(runtime.getTarget().wordKind), graph());
+            if (len.stamp().getStackKind() != runtime.getTarget().wordJavaKind) {
+                len = IntegerConvertNode.convert(len, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
             }
             ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len, superCheckOffset, destElemKlass));
             call.setStateAfter(stateAfter());

@@ -141,7 +141,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
         FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
-        Stamp wordStamp = StampFactory.forKind(runtime.getTarget().wordKind);
+        Stamp wordStamp = StampFactory.forKind(runtime.getTarget().wordJavaKind);
         ValueNode wordPos = IntegerConvertNode.convert(pos, wordStamp, graph());
         int shift = CodeUtil.log2(getArrayIndexScale(elementKind));
         ValueNode scaledIndex = graph().unique(new LeftShiftNode(wordPos, ConstantNode.forInt(shift, graph())));

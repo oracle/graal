@@ -342,7 +342,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static JavaKind getWordKind() {
-        return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordKind;
+        return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordJavaKind;
     }
 
     @Fold

@@ -114,7 +114,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private HotSpotLockStack lockStack;
 
     protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(new DefaultHotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, config, cc, lirGenRes);
+        this(new DefaultHotSpotLIRKindTool(providers.getCodeCache().getTarget().arch.getWordKind()), providers, config, cc, lirGenRes);
     }
 
     protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
@@ -313,14 +313,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Value emitCardTableShift() {
         Variable result = newVariable(LIRKind.value(JavaKind.Long));
-        append(new AMD64HotSpotCardTableShiftOp(result, config, target().wordKind));
+        append(new AMD64HotSpotCardTableShiftOp(result, config));
         return result;
     }
 
     @Override
     public Value emitCardTableAddress() {
         Variable result = newVariable(LIRKind.value(JavaKind.Long));
-        append(new AMD64HotSpotCardTableAddressOp(result, config, target().wordKind));
+        append(new AMD64HotSpotCardTableAddressOp(result, config));
         return result;
     }
 
@@ -505,7 +505,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     private void moveValueToThread(Value v, int offset) {
-        LIRKind wordKind = LIRKind.value(target().wordKind);
+        LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AMD64AddressValue address = new AMD64AddressValue(wordKind, thread, offset);
         emitStore(v.getLIRKind(), address, v, null);
@@ -622,7 +622,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         } else if (src instanceof HotSpotObjectConstant) {
             return new AMD64HotSpotMove.HotSpotLoadObjectConstantOp(dst, (HotSpotObjectConstant) src);
         } else if (src instanceof HotSpotMetaspaceConstant) {
-            return new AMD64HotSpotMove.HotSpotLoadMetaspaceConstantOp(dst, (HotSpotMetaspaceConstant) src, target().wordKind);
+            return new AMD64HotSpotMove.HotSpotLoadMetaspaceConstantOp(dst, (HotSpotMetaspaceConstant) src);
         } else {
             return super.createMoveConstant(dst, src);
         }
@@ -634,7 +634,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed;
             if (encoding.shift <= 3) {
-                LIRKind wordKind = LIRKind.unknownReference(target().wordKind);
+                LIRKind wordKind = LIRKind.unknownReference(target().arch.getWordKind());
                 uncompressed = new AMD64AddressValue(wordKind, getProviders().getRegisters().getHeapBaseRegister().asValue(wordKind), asAllocatable(address), Scale.fromInt(1 << encoding.shift), 0);
             } else {
                 uncompressed = emitUncompress(address, encoding, false);

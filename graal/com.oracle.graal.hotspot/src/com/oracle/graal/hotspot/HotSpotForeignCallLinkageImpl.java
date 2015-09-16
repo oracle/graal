@@ -137,7 +137,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
 
     private static JavaType asJavaType(Class<?> type, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
         if (WordBase.class.isAssignableFrom(type)) {
-            return metaAccess.lookupJavaType(codeCache.getTarget().wordKind.toJavaClass());
+            return metaAccess.lookupJavaType(codeCache.getTarget().wordJavaKind.toJavaClass());
         } else {
             return metaAccess.lookupJavaType(type);
         }

@@ -259,7 +259,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     @Override
     public Variable emitAddress(StackSlotValue address) {
-        Variable result = newVariable(LIRKind.value(target().wordKind));
+        Variable result = newVariable(LIRKind.value(target().arch.getWordKind()));
         append(new StackLeaOp(result, address));
         return result;
     }
@@ -1473,7 +1473,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, key, newVariable(LIRKind.value(target().wordKind)), newVariable(key.getLIRKind())));
+        append(new TableSwitchOp(lowKey, defaultTarget, targets, key, newVariable(LIRKind.value(target().arch.getWordKind())), newVariable(key.getLIRKind())));
     }
 
 }

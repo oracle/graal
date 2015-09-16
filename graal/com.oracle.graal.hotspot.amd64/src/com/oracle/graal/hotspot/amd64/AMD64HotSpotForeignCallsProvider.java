@@ -44,9 +44,9 @@ import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.PlatformKind;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
@@ -68,7 +68,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     public void initialize(HotSpotProviders providers) {
         HotSpotVMConfig config = jvmciRuntime.getConfig();
         TargetDescription target = providers.getCodeCache().getTarget();
-        JavaKind word = target.wordKind;
+        PlatformKind word = target.arch.getWordKind();
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()

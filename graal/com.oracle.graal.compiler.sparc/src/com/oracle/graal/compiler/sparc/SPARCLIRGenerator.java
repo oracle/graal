@@ -198,7 +198,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitAddress(StackSlotValue address) {
-        Variable result = newVariable(LIRKind.value(target().wordKind));
+        Variable result = newVariable(LIRKind.value(target().arch.getWordKind()));
         append(new StackLoadAddressOp(result, address));
         return result;
     }
@@ -447,7 +447,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         // value
         Variable tmp = newVariable(key.getLIRKind());
         emitMove(tmp, key);
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(LIRKind.value(target().wordKind))));
+        append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(LIRKind.value(target().arch.getWordKind()))));
     }
 
     @Override

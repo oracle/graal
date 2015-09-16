@@ -402,11 +402,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     protected LIRKind getAddressKind(Value base, long displacement, Value index) {
         if (base.getLIRKind().isValue() && (index.equals(Value.ILLEGAL) || index.getLIRKind().isValue())) {
-            return LIRKind.value(target().wordKind);
+            return LIRKind.value(target().arch.getWordKind());
         } else if (base.getLIRKind().isReference(0) && displacement == 0L && index.equals(Value.ILLEGAL)) {
-            return LIRKind.reference(target().wordKind);
+            return LIRKind.reference(target().arch.getWordKind());
         } else {
-            return LIRKind.unknownReference(target().wordKind);
+            return LIRKind.unknownReference(target().arch.getWordKind());
         }
     }
 

@@ -111,7 +111,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         OffsetAddressNode address = (OffsetAddressNode) read.getAddress();
         Assert.assertEquals(cast, address.getBase());
         Assert.assertEquals(graph.getParameter(0), cast.getInput());
-        Assert.assertEquals(target.wordKind, cast.stamp().getStackKind());
+        Assert.assertEquals(target.wordJavaKind, cast.stamp().getStackKind());
 
         Assert.assertEquals(locationIdentity, read.getLocationIdentity());
 
@@ -138,7 +138,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         OffsetAddressNode address = (OffsetAddressNode) write.getAddress();
         Assert.assertEquals(cast, address.getBase());
         Assert.assertEquals(graph.getParameter(0), cast.getInput());
-        Assert.assertEquals(target.wordKind, cast.stamp().getStackKind());
+        Assert.assertEquals(target.wordJavaKind, cast.stamp().getStackKind());
 
         Assert.assertEquals(locationIdentity, write.getLocationIdentity());
 

@@ -115,13 +115,11 @@ public class AMD64HotSpotMove {
 
         @Def({REG, STACK}) private AllocatableValue result;
         private final HotSpotMetaspaceConstant input;
-        private final JavaKind wordKind;
 
-        public HotSpotLoadMetaspaceConstantOp(AllocatableValue result, HotSpotMetaspaceConstant input, JavaKind wordKind) {
+        public HotSpotLoadMetaspaceConstantOp(AllocatableValue result, HotSpotMetaspaceConstant input) {
             super(TYPE);
             this.result = result;
             this.input = input;
-            this.wordKind = wordKind;
         }
 
         @Override
@@ -133,7 +131,7 @@ public class AMD64HotSpotMove {
             if (isRegister(result)) {
                 if (compressed) {
                     if (isImmutable && generatePIC) {
-                        int alignment = wordKind.getBitCount() / Byte.SIZE;
+                        int alignment = crb.target.wordSize;
                         // recordDataReferenceInCode forces the mov to be rip-relative
                         masm.movl(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
                     } else {
@@ -142,9 +140,9 @@ public class AMD64HotSpotMove {
                     }
                 } else {
                     if (isImmutable && generatePIC) {
-                        int alignment = wordKind.getBitCount() / Byte.SIZE;
+                        int alignment = crb.target.wordSize;
                         // recordDataReferenceInCode forces the mov to be rip-relative
-                        masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
+                        masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.LONG_0, alignment));
                     } else {
                         masm.movq(asRegister(result), input.rawValue());
                     }

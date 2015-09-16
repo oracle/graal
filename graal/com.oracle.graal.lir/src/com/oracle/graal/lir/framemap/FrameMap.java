@@ -298,7 +298,7 @@ public abstract class FrameMap {
                     if (objectSlot != null) {
                         result = objectSlot;
                     } else {
-                        result = allocateNewSpillSlot(LIRKind.value(getTarget().wordKind), 0);
+                        result = allocateNewSpillSlot(LIRKind.value(getTarget().arch.getWordKind()), 0);
                     }
                 }
             }
@@ -306,7 +306,7 @@ public abstract class FrameMap {
             return result;
 
         } else {
-            return allocateNewSpillSlot(LIRKind.value(getTarget().wordKind), 0);
+            return allocateNewSpillSlot(LIRKind.value(getTarget().arch.getWordKind()), 0);
         }
     }
 

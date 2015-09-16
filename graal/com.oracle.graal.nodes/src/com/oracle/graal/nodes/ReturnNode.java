@@ -78,7 +78,7 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
         if (graph().method() != null) {
             JavaKind actual = result == null ? JavaKind.Void : result.getStackKind();
             JavaKind expected = graph().method().getSignature().getReturnKind().getStackKind();
-            if (actual == target.wordKind && expected == JavaKind.Object) {
+            if (actual == target.wordJavaKind && expected == JavaKind.Object) {
                 // OK, we're compiling a snippet that returns a Word
                 return true;
             }

@@ -46,6 +46,7 @@ import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.PlatformKind;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
@@ -66,13 +67,13 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     @Override
     public void initialize(HotSpotProviders providers) {
         TargetDescription target = providers.getCodeCache().getTarget();
-        JavaKind word = target.wordKind;
+        PlatformKind word = target.arch.getWordKind();
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
         // in templateInterpreter_sparc.cpp around line 1925
         RegisterValue outgoingException = o0.asValue(target.getLIRKind(JavaKind.Object));
-        RegisterValue outgoingExceptionPc = o1.asValue(target.getLIRKind(word));
+        RegisterValue outgoingExceptionPc = o1.asValue(LIRKind.value(word));
         RegisterValue incomingException = i0.asValue(target.getLIRKind(JavaKind.Object));
         RegisterValue incomingExceptionPc = i1.asValue(LIRKind.value(word));
         CallingConvention outgoingExceptionCc = new CallingConvention(0, ILLEGAL, outgoingException, outgoingExceptionPc);

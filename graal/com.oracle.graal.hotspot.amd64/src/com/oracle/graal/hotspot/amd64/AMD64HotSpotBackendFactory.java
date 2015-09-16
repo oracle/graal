@@ -97,7 +97,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, Startu
                 replacements = createReplacements(config, p, snippetReflection);
             }
             try (InitTimer rt = timer("create WordTypes")) {
-                wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
+                wordTypes = new HotSpotWordTypes(metaAccess, target.wordJavaKind);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
                 plugins = createGraphBuilderPlugins(config, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, stampProvider);

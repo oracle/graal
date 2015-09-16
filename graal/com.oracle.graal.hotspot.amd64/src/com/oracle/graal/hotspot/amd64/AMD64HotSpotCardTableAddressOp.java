@@ -26,7 +26,7 @@ import jdk.internal.jvmci.code.ValueUtil;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.PlatformKind;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -41,19 +41,17 @@ public final class AMD64HotSpotCardTableAddressOp extends AMD64LIRInstruction {
 
     private final HotSpotVMConfig config;
 
-    private final JavaKind wordKind;
-
-    public AMD64HotSpotCardTableAddressOp(AllocatableValue result, HotSpotVMConfig config, JavaKind wordKind) {
+    public AMD64HotSpotCardTableAddressOp(AllocatableValue result, HotSpotVMConfig config) {
         super(TYPE);
         this.result = result;
         this.config = config;
-        this.wordKind = wordKind;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-        int alignment = wordKind.getBitCount() / Byte.SIZE;
-        JavaConstant address = JavaConstant.forIntegerKind(wordKind, 0);
+        PlatformKind wordKind = crb.target.arch.getWordKind();
+        int alignment = wordKind.getSizeInBytes();
+        JavaConstant address = JavaConstant.forPrimitiveInt(wordKind.getSizeInBytes() * 8, 0);
         // recordDataReferenceInCode forces the mov to be rip-relative
         asm.movq(ValueUtil.asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(address, alignment));
         crb.recordMark(config.MARKID_CARD_TABLE_ADDRESS);
