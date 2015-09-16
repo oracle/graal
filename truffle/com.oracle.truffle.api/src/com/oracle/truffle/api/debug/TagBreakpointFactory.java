@@ -24,15 +24,24 @@
  */
 package com.oracle.truffle.api.debug;
 
+import static com.oracle.truffle.api.debug.Breakpoint.State.DISABLED;
+import static com.oracle.truffle.api.debug.Breakpoint.State.DISPOSED;
+import static com.oracle.truffle.api.debug.Breakpoint.State.ENABLED;
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import static com.oracle.truffle.api.debug.Breakpoint.State.DISABLED;
-import static com.oracle.truffle.api.debug.Breakpoint.State.DISABLED_UNRESOLVED;
-import static com.oracle.truffle.api.debug.Breakpoint.State.DISPOSED;
-import static com.oracle.truffle.api.debug.Breakpoint.State.ENABLED;
-import static com.oracle.truffle.api.debug.Breakpoint.State.ENABLED_UNRESOLVED;
 import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
 import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -46,15 +55,6 @@ import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 // TODO (mlvdv) some common functionality could be factored out of this and LineBreakpointSupport
 
