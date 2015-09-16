@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.lir.dfa;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.BitSet;
+import java.util.Collection;
 
-import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 
 /**
  * Ensures that an element is only in the worklist once.

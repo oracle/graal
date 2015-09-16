@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.NodeInterface;
+import com.oracle.graal.nodes.ValueNode;
 
 /**
  * Interface implemented by nodes that can replace themselves with lower level nodes during a phase

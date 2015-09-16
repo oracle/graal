@@ -22,17 +22,20 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaConstant;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.loop.phases.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.loop.phases.LoopFullUnrollPhase;
+import com.oracle.graal.loop.phases.LoopPeelingPhase;
+import com.oracle.graal.nodes.extended.ValueAnchorNode;
+import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
+import com.oracle.graal.nodes.virtual.CommitAllocationNode;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 
 /**
  * The PartialEscapeAnalysisPhase is expected to remove all allocations and return the correct

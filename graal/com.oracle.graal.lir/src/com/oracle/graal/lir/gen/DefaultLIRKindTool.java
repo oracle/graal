@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
 
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 /**
  * Default implementation of {@link LIRKindTool}. Returns the normal Java kind for primitive types.

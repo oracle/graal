@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.phases.graph;
 
-import java.util.*;
+import java.util.List;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.LoopEndNode;
 
 public abstract class MergeableState<T> {
 

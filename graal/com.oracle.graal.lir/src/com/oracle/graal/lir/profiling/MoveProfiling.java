@@ -22,23 +22,33 @@
  */
 package com.oracle.graal.lir.profiling;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.ConstantValue;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInsertionBuffer;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
 public class MoveProfiling extends PostAllocationOptimizationPhase {
 

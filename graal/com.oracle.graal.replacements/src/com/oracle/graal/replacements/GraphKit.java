@@ -22,30 +22,52 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Signature;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.java.FrameStateBuilder;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.BeginNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.EndNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.InvokeNode;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.MergeNode;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.word.WordTypes;
 
 /**
  * A utility for manually creating a graph. This will be expanded as necessary to support all

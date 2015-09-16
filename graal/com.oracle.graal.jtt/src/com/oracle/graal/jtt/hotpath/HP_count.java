@@ -23,9 +23,9 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.hotpath;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 /*
  * Runs: 10 = 55; 20 = 210; 30 = 465; 40 = 820;

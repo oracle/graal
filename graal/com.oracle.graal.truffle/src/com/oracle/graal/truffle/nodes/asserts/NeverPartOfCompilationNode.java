@@ -22,11 +22,17 @@
  */
 package com.oracle.graal.truffle.nodes.asserts;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.IterableNodeType;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.VerificationError;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.ControlSinkNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.util.GraphUtil;
 
 @NodeInfo
 public final class NeverPartOfCompilationNode extends ControlSinkNode implements StateSplit, IterableNodeType {

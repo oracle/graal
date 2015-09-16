@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.jtt.threads;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public final class Thread_sleep01 extends JTTTest {
 

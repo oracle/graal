@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionValue.*;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.jtt.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.compiler.phases.HighTier;
+import com.oracle.graal.jtt.JTTTest;
+import com.oracle.graal.phases.tiers.Suites;
 
 /**
  * Tests the instanceof works, when casting an array of interface.

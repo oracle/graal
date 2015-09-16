@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common.spi;
 
-import java.util.*;
+import java.util.Arrays;
 
 /**
  * The name and signature of a foreign call. A foreign call differs from a normal compiled Java call

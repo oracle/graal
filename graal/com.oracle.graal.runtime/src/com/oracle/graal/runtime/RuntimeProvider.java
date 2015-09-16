@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.runtime;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.Architecture;
 
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.compiler.target.Backend;
 
 /**
  * A runtime supporting a host backend as well, zero or more additional backends.

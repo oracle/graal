@@ -22,18 +22,27 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.spi.Simplifiable;
+import com.oracle.graal.graph.spi.SimplifierTool;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.LoadHubNode;
+import com.oracle.graal.nodes.extended.SwitchNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.nodes.util.GraphUtil;
 
 /**
  * The {@code TypeSwitchNode} performs a lookup based on the type of the input value. The type

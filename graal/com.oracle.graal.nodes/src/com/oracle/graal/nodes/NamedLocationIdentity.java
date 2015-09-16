@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.HashSet;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.JavaKind.FormatWithToString;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
 /**
  * A {@link LocationIdentity} with a name.

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import com.oracle.nfi.api.*;
+import com.oracle.nfi.api.NativeFunctionPointer;
 
 public class HotSpotNativeFunctionPointer implements NativeFunctionPointer {
 

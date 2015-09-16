@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.phases.common.inlining.policy;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.common.inlining.walker.*;
+import com.oracle.graal.nodes.CallTargetNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
 
 /**
  * Inline every method which would be replaced by a substitution. Useful for testing purposes.

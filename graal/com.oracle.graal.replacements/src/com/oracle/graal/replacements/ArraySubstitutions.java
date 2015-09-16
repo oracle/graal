@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.java.ArrayLengthNode;
 
 // JaCoCo Exclude
 

@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.compiler.common;
 
-import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import jdk.internal.jvmci.options.*;
+import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.LIREagerSSADestruction;
+import jdk.internal.jvmci.options.DerivedOptionValue;
 import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
 /**
  * Options to control the backend configuration.
@@ -48,7 +50,7 @@ public final class BackendOptions {
         private static final long serialVersionUID = -7375589337502162545L;
 
         public Boolean get() {
-            return LIROptSSILinearScan.getValue() || TraceRA.getValue();
+            return UserOptions.LIROptSSILinearScan.getValue() || UserOptions.TraceRA.getValue();
         }
     });
 
@@ -57,7 +59,7 @@ public final class BackendOptions {
         private static final long serialVersionUID = 7657622005438210681L;
 
         public Boolean get() {
-            return SSA_LIR.getValue() || EnableSSIConstruction.getValue();
+            return GraalOptions.SSA_LIR.getValue() || EnableSSIConstruction.getValue();
         }
     });
 
@@ -71,10 +73,10 @@ public final class BackendOptions {
         private static final long serialVersionUID = 364925071685235153L;
 
         public LSRAVariant get() {
-            if (LIROptSSILinearScan.getValue()) {
+            if (UserOptions.LIROptSSILinearScan.getValue()) {
                 return LSRAVariant.SSI_LSRA;
             }
-            if (SSA_LIR.getValue() && !LIREagerSSADestruction.getValue()) {
+            if (GraalOptions.SSA_LIR.getValue() && !LIREagerSSADestruction.getValue()) {
                 return LSRAVariant.SSA_LSRA;
             }
             return LSRAVariant.NONSSA_LSAR;
@@ -91,7 +93,7 @@ public final class BackendOptions {
                 case SSI_LSRA:
                     return true;
             }
-            if (TraceRA.getValue()) {
+            if (UserOptions.TraceRA.getValue()) {
                 return true;
             }
             return false;

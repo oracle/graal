@@ -22,20 +22,26 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Collection;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaField;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.compiler.test.tutorial.StaticAnalysis.MethodState;
 import com.oracle.graal.compiler.test.tutorial.StaticAnalysis.TypeFlow;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.runtime.RuntimeProvider;
 
 public class StaticAnalysisTests {
 

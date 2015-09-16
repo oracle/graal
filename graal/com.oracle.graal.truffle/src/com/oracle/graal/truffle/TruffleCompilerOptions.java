@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.truffle;
 
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.StableOptionValue;
 
 /**
  * Options for the Truffle compiler.

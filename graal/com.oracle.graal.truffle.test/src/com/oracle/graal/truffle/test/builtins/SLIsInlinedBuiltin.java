@@ -22,14 +22,18 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
-import java.util.*;
+import java.util.List;
 
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.OptimizedDirectCallNode;
+import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
+import com.oracle.graal.truffle.TruffleInliningDecision;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.runtime.SLFunction;
 
 /**
  * Returns <code>true</code> if a function got inlined for all calls from a given {@link SLFunction}

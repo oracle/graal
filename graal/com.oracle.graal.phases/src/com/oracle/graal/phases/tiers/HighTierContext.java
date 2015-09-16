@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.util.Providers;
 
 public class HighTierContext extends PhaseContext {
 

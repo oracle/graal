@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.NodeBitMap;
+import com.oracle.graal.nodes.FixedNode;
 
 public class LoopFragmentInsideBefore extends LoopFragmentInside {
 

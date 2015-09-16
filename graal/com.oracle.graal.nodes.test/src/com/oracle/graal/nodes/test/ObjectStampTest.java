@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.nodes.test;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.TrustedInterface;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
 
 public class ObjectStampTest extends AbstractObjectStampTest {
     @Test

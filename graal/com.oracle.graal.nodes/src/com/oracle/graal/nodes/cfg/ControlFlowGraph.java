@@ -22,14 +22,32 @@
  */
 package com.oracle.graal.nodes.cfg;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
 
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
+import com.oracle.graal.compiler.common.cfg.CFGVerifier;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeMap;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.LoopEndNode;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StartNode;
+import com.oracle.graal.nodes.StructuredGraph;
 
 public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     /**

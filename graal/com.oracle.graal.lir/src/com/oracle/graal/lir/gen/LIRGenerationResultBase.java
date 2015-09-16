@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.lir.gen;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import com.oracle.graal.lir.stackslotalloc.StackSlotAllocator;
 
 public class LIRGenerationResultBase implements LIRGenerationResult {
     private final LIR lir;

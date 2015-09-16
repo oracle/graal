@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.jtt.except;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public class BC_putfield extends JTTTest {
 

@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.lir;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * A buffer to enqueue updates to a list. This avoids frequent re-sizing of the list and copying of

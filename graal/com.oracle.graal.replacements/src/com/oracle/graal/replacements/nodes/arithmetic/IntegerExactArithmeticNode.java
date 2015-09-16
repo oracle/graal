@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements.nodes.arithmetic;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.spi.Lowerable;
 
 interface IntegerExactArithmeticNode extends Lowerable {
 

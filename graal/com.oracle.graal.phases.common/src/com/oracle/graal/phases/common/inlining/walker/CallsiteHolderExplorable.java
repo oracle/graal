@@ -22,15 +22,22 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.Set;
+import java.util.function.ToDoubleFunction;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.inlining.policy.*;
-import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.phases.common.inlining.policy.AbstractInliningPolicy;
+import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 
 /**
  * <p>

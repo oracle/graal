@@ -22,42 +22,73 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.replacements.InstanceOfSnippets.Options.*;
-import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
+import static com.oracle.graal.hotspot.replacements.InstanceOfSnippets.Options.TypeCheckMaxHints;
+import static com.oracle.graal.hotspot.replacements.InstanceOfSnippets.Options.TypeCheckMinProfileHitProbability;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.checkSecondarySubType;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.checkUnknownSubType;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.createHints;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.displayHit;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.displayMiss;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.exactHit;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.exactMiss;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.hintsHit;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.hintsMiss;
+import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.isNull;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.internal.jvmci.meta.DeoptimizationReason.OptimizedTypeCheckViolated;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.meta.Assumptions;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.TriState;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.nodes.type.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
+import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.Hints;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.TypeCheckHints;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.BranchProbabilityNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.java.ClassIsAssignableFromNode;
+import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
+import com.oracle.graal.nodes.java.InstanceOfNode;
+import com.oracle.graal.nodes.java.TypeCheckNode;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.replacements.InstanceOfSnippetsTemplates;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.replacements.Snippets;
+import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
 
 /**
  * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
  * floating node, it is lowered separately for each of its usages.
  *
- * The type tests implemented are described in the paper <a
- * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
- * Cliff Click and John Rose.
+ * The type tests implemented are described in the paper
+ * <a href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a>
+ * by Cliff Click and John Rose.
  */
 public class InstanceOfSnippets implements Snippets {
 

@@ -22,19 +22,23 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static jdk.internal.jvmci.amd64.AMD64.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.internal.jvmci.amd64.AMD64.rsp;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterValue;
+import jdk.internal.jvmci.meta.AllocatableValue;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import com.oracle.graal.asm.amd64.AMD64Address;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.amd64.AMD64Call;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 /**
  * Removes the current frame and jumps to the {@link UnwindExceptionToCallerStub}.

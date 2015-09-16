@@ -22,19 +22,26 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static jdk.internal.jvmci.amd64.AMD64.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.internal.jvmci.amd64.AMD64.rax;
+import static jdk.internal.jvmci.amd64.AMD64.rbp;
+import static jdk.internal.jvmci.amd64.AMD64.rip;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.RegisterSaveLayout;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.amd64.AMD64Address;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.framemap.FrameMap;
 
 /**
  * Emits code that enters a stack frame which is tailored to call the C++ method

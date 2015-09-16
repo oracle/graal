@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug;
 
-import java.io.*;
+import java.io.PrintStream;
 
 /**
  * Provides a {@link PrintStream} that writes to the underlying log stream of the VM.

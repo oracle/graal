@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
-import org.junit.*;
+import org.junit.Test;
 
 public class BoxingTest extends GraalCompilerTest {
 

@@ -22,28 +22,45 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.OptImplicitNullChecks;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaConstant;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.BeginNode;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.GuardNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.memory.Access;
+import com.oracle.graal.nodes.memory.FixedAccessNode;
+import com.oracle.graal.nodes.memory.FloatingAccessNode;
+import com.oracle.graal.nodes.memory.MemoryNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.graph.ScheduledNodeIterator;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.tiers.MidTierContext;
 
 /**
  * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and

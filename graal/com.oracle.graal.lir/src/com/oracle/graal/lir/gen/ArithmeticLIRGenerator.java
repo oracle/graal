@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.calc.FloatConvert;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.lir.LIRFrameState;
 
 /**
  * This interface can be used to generate LIR for arithmetic operations.

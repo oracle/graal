@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.StandardOp.BranchOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 

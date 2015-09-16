@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public final class Object_wait02 extends JTTTest {
 

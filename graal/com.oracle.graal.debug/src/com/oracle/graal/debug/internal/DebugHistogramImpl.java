@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.debug.internal;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.DebugHistogram;
 
 public class DebugHistogramImpl implements DebugHistogram {
 

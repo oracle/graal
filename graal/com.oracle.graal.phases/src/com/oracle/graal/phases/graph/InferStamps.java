@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.phases.graph;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValuePhiNode;
 
 public class InferStamps {
 

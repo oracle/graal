@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.replacements.test;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 /**
  * Tests the implementation of {@code [A]NEWARRAY}.

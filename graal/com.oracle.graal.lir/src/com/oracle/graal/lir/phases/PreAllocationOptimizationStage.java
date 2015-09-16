@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.lir.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.BackendOptions.*;
+import static com.oracle.graal.compiler.common.BackendOptions.EnableSSIConstruction;
+import static com.oracle.graal.compiler.common.GraalOptions.SSA_LIR;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.constopt.*;
+import com.oracle.graal.compiler.common.BackendOptions;
+import com.oracle.graal.lir.constopt.ConstantLoadOptimization;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.lir.ssi.*;
+import com.oracle.graal.lir.ssa.SSADestructionPhase;
+import com.oracle.graal.lir.ssi.SSIConstructionPhase;
 
 public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
     public PreAllocationOptimizationStage() {

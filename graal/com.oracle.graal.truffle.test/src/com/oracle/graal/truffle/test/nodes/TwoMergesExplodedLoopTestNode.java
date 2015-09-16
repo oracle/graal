@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.NodeInfo;
 
 @NodeInfo
 public class TwoMergesExplodedLoopTestNode extends AbstractTestNode {

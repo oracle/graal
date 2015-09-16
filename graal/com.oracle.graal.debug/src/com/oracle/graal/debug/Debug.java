@@ -22,17 +22,32 @@
  */
 package com.oracle.graal.debug;
 
-import static java.util.FormattableFlags.*;
-import static com.oracle.graal.debug.Debug.Initialization.*;
-import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
+import static com.oracle.graal.debug.Debug.Initialization.INITIALIZER_PROPERTY_NAME;
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
+import static java.util.FormattableFlags.LEFT_JUSTIFY;
+import static java.util.FormattableFlags.UPPERCASE;
 
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.ConcurrentModificationException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
-import com.oracle.graal.debug.DelegatingDebugConfig.*;
-import com.oracle.graal.debug.internal.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.service.Services;
+
+import com.oracle.graal.debug.DelegatingDebugConfig.Level;
+import com.oracle.graal.debug.internal.DebugHistogramImpl;
+import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.debug.internal.MemUseTrackerImpl;
+import com.oracle.graal.debug.internal.MetricImpl;
+import com.oracle.graal.debug.internal.TimerImpl;
 
 /**
  * Scope based debugging facility. This facility is {@link #isEnabled()} if assertions are enabled

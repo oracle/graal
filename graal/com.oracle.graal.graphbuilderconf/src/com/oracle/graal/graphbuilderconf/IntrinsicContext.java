@@ -22,11 +22,18 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
-import static jdk.internal.jvmci.code.BytecodeFrame.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
+import static jdk.internal.jvmci.code.BytecodeFrame.AFTER_BCI;
+import static jdk.internal.jvmci.code.BytecodeFrame.BEFORE_BCI;
+import static jdk.internal.jvmci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * An intrinsic is a substitute implementation of a Java method (or a bytecode in the case of

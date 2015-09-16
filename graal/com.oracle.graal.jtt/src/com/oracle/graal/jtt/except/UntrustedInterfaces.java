@@ -22,11 +22,15 @@
  */
 package com.oracle.graal.jtt.except;
 
-import jdk.internal.org.objectweb.asm.*;
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.internal.org.objectweb.asm.Type;
 
-import org.junit.*;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public class UntrustedInterfaces extends JTTTest {
 

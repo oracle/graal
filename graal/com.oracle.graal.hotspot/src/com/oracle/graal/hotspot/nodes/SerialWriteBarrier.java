@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.memory.address.AddressNode;
 
 @NodeInfo
 public class SerialWriteBarrier extends ObjectWriteBarrier {

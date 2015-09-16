@@ -22,10 +22,15 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Signature;
 
-import com.oracle.truffle.api.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.JavaMethodContext;
+import com.oracle.truffle.api.RootCallTarget;
 
 /**
  * Enables a Truffle compilable to masquerade as a {@link JavaMethod} for use as a context value in

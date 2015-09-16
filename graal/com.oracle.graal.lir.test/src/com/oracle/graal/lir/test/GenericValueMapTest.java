@@ -22,15 +22,18 @@
  */
 package com.oracle.graal.lir.test;
 
-import static org.junit.Assert.*;
-import jdk.internal.jvmci.code.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.Register.RegisterCategory;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.RegisterValue;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.util.*;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.util.GenericValueMap;
 
 public class GenericValueMapTest {
 

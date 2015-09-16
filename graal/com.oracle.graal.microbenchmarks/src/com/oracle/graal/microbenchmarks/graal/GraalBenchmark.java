@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.microbenchmarks.graal;
 
-import static com.oracle.graal.microbenchmarks.graal.GraalBenchmark.Defaults.*;
+import static com.oracle.graal.microbenchmarks.graal.GraalBenchmark.Defaults.FORKS;
+import static com.oracle.graal.microbenchmarks.graal.GraalBenchmark.Defaults.MEASUREMENT_ITERATIONS;
+import static com.oracle.graal.microbenchmarks.graal.GraalBenchmark.Defaults.WARMUP_ITERATIONS;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Warmup;
 
 /**
  * All classes defining Graal benchmarks must subclass this class as it defines the default value

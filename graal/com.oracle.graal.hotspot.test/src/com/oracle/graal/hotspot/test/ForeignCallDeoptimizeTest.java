@@ -22,18 +22,19 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.runtime.RuntimeProvider;
 
 /**
  * Tests that deoptimization upon exception handling works.

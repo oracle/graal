@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.api.replacements;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Denotes a class that substitutes methods of another specified class. The substitute methods are

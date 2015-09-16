@@ -22,17 +22,22 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.util.*;
+import java.util.HashMap;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.calc.AbsNode;
+import com.oracle.graal.nodes.calc.ReinterpretNode;
+import com.oracle.graal.replacements.nodes.BitCountNode;
+import com.oracle.graal.replacements.nodes.BitScanForwardNode;
+import com.oracle.graal.replacements.nodes.BitScanReverseNode;
+import com.oracle.graal.replacements.nodes.ReverseBytesNode;
 
 /**
  * Tests the VM independent {@link MethodSubstitution}s.

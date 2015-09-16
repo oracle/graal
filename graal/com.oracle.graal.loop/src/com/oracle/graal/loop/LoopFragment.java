@@ -22,18 +22,38 @@
  */
 package com.oracle.graal.loop;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
 
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeBitMap;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.EndNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.GuardPhiNode;
+import com.oracle.graal.nodes.GuardProxyNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.MergeNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValuePhiNode;
+import com.oracle.graal.nodes.ValueProxyNode;
+import com.oracle.graal.nodes.VirtualState;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.java.MonitorEnterNode;
+import com.oracle.graal.nodes.spi.NodeWithState;
+import com.oracle.graal.nodes.virtual.CommitAllocationNode;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 public abstract class LoopFragment {
 

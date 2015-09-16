@@ -22,18 +22,28 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
+import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.FieldReadEnabledInImmutableCode;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaTypeProfile;
+import jdk.internal.jvmci.meta.ResolvedJavaField;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.Node.*;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.graphbuilderconf.NodePlugin;
+import com.oracle.graal.graphbuilderconf.ParameterPlugin;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.replacements.NodeIntrinsificationPlugin;
+import com.oracle.graal.replacements.WordOperationPlugin;
+import com.oracle.graal.word.Word;
 
 /**
  * This plugin handles the HotSpot-specific customizations of bytecode parsing:

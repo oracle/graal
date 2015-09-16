@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common.cfg;
 
-import java.util.function.*;
+import java.util.function.BiConsumer;
 
 public interface PropertyConsumable {
 

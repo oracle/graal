@@ -22,9 +22,15 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import java.util.*;
+import java.util.AbstractList;
+import java.util.Objects;
+import java.util.RandomAccess;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
 /**
  * Type describing all pointers to Java objects.

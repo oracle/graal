@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.truffle.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.runtime.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.impl.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.runtime.RuntimeProvider;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 
 public class TruffleRuntimeTest {
 

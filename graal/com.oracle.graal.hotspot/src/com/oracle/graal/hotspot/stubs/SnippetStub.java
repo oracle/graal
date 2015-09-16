@@ -22,31 +22,37 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Local;
+import jdk.internal.jvmci.meta.LocalVariableTable;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.LoweringPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
+import com.oracle.graal.replacements.ConstantBindingParameterPlugin;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.SnippetTemplate;
+import com.oracle.graal.replacements.Snippets;
 
 /**
  * Base class for a stub defined by a snippet.

@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.phases;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * A compiler phase that can apply an ordered collection of phases to a graph.

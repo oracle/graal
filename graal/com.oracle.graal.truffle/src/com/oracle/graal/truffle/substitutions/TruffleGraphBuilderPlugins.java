@@ -22,32 +22,71 @@
  */
 package com.oracle.graal.truffle.substitutions;
 
-import static java.lang.Character.*;
+import static java.lang.Character.toUpperCase;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.replacements.nodes.arithmetic.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.nodes.*;
-import com.oracle.graal.truffle.nodes.asserts.*;
-import com.oracle.graal.truffle.nodes.frame.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.graal.nodes.ConditionAnchorNode;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.InvokeNode;
+import com.oracle.graal.nodes.LogicConstantNode;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.PiArrayNode;
+import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValuePhiNode;
+import com.oracle.graal.nodes.calc.CompareNode;
+import com.oracle.graal.nodes.extended.BoxNode;
+import com.oracle.graal.nodes.extended.BranchProbabilityNode;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.extended.UnsafeStoreNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.virtual.EnsureVirtualizedNode;
+import com.oracle.graal.replacements.nodes.arithmetic.IntegerAddExactNode;
+import com.oracle.graal.replacements.nodes.arithmetic.IntegerMulExactNode;
+import com.oracle.graal.replacements.nodes.arithmetic.IntegerMulHighNode;
+import com.oracle.graal.replacements.nodes.arithmetic.IntegerSubExactNode;
+import com.oracle.graal.replacements.nodes.arithmetic.UnsignedMulHighNode;
+import com.oracle.graal.truffle.FrameWithBoxing;
+import com.oracle.graal.truffle.FrameWithoutBoxing;
+import com.oracle.graal.truffle.OptimizedAssumption;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
+import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
+import com.oracle.graal.truffle.nodes.IsCompilationConstantNode;
+import com.oracle.graal.truffle.nodes.ObjectLocationIdentity;
+import com.oracle.graal.truffle.nodes.asserts.NeverPartOfCompilationNode;
+import com.oracle.graal.truffle.nodes.frame.ForceMaterializeNode;
+import com.oracle.graal.truffle.nodes.frame.MaterializeFrameNode;
+import com.oracle.graal.truffle.nodes.frame.NewFrameNode;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes.

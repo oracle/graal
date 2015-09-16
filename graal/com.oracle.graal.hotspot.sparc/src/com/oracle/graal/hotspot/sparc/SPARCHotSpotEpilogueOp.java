@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.sparc.SPARCBlockEndOp;
 
 /**
  * Superclass for operations that leave a method's frame.

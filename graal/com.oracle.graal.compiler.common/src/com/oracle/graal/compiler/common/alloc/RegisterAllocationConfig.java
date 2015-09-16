@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.compiler.common.alloc;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.meta.PlatformKind;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.GraalOptions;
 
 /**
  * Configuration for register allocation. This is different to {@link RegisterConfig} as it only

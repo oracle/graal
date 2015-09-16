@@ -22,16 +22,18 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Method;
+import java.util.EnumMap;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.api.directives.*;
-import com.oracle.graal.hotspot.replacements.arraycopy.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyCallNode;
+import com.oracle.graal.nodes.java.DynamicNewArrayNode;
+import com.oracle.graal.nodes.java.NewArrayNode;
+import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.replacements.Snippets;
 
 public class ObjectCloneSnippets implements Snippets {
 

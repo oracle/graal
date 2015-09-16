@@ -22,19 +22,22 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
-import java.util.*;
+import java.util.HashSet;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.ValueUtil;
+import jdk.internal.jvmci.meta.Value;
 
-import org.junit.*;
+import org.junit.Assert;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.lir.ValueProcedure;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 public class AllocatorTest extends BackendTest {

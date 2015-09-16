@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.compiler.common.util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Mimic a set implementation with an ArrayList. Beneficial for small sets (compared to

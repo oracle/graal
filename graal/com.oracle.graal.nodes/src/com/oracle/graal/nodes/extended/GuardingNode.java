@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.NodeInterface;
+import com.oracle.graal.nodes.ValueNode;
 
 public interface GuardingNode extends NodeInterface {
 

@@ -22,16 +22,19 @@
  */
 package com.oracle.graal.compiler.amd64.test;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
-import static org.junit.Assume.*;
+import static org.junit.Assume.assumeTrue;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.PrimitiveConstant;
 
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.jtt.*;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.lir.jtt.LIRTest;
+import com.oracle.graal.lir.jtt.LIRTestSpecification;
 
 public class ConstantStackMoveTest extends LIRTest {
     @Before

@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.compiler.sparc.test;
 
-import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static org.junit.Assume.*;
-import jdk.internal.jvmci.sparc.*;
+import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceRA;
+import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
+import static org.junit.Assume.assumeTrue;
+import jdk.internal.jvmci.sparc.SPARC;
 
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.backend.*;
+import com.oracle.graal.compiler.test.backend.AllocatorTest;
 
 public class SPARCAllocatorTest extends AllocatorTest {
 

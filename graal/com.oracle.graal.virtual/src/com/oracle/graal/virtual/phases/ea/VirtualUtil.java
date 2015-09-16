@@ -22,17 +22,21 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.TraceEscapeAnalysis;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeFlood;
+import com.oracle.graal.nodes.AbstractEndNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.StructuredGraph;
 
 public final class VirtualUtil {
 

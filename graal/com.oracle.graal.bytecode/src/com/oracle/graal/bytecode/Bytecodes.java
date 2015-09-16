@@ -22,9 +22,20 @@
  */
 package com.oracle.graal.bytecode;
 
-import static com.oracle.graal.bytecode.Bytecodes.Flags.*;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.ASSOCIATIVE;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.BRANCH;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.COMMUTATIVE;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.FALL_THROUGH;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.FIELD_READ;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.FIELD_WRITE;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.INVOKE;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.LOAD;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.STOP;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.STORE;
+import static com.oracle.graal.bytecode.Bytecodes.Flags.TRAP;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 /**
  * Definitions of the standard Java bytecodes defined by <a href=

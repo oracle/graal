@@ -22,13 +22,20 @@
  */
 package com.oracle.graal.phases.graph;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.AbstractEndNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.cfg.Block;
 
 public final class ReentrantBlockIterator {
 

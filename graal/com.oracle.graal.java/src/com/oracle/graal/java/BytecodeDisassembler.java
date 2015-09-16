@@ -22,10 +22,71 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.bytecode.Bytecodes.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.bytecode.Bytecodes.ALOAD;
+import static com.oracle.graal.bytecode.Bytecodes.ANEWARRAY;
+import static com.oracle.graal.bytecode.Bytecodes.ASTORE;
+import static com.oracle.graal.bytecode.Bytecodes.BIPUSH;
+import static com.oracle.graal.bytecode.Bytecodes.CHECKCAST;
+import static com.oracle.graal.bytecode.Bytecodes.DLOAD;
+import static com.oracle.graal.bytecode.Bytecodes.DSTORE;
+import static com.oracle.graal.bytecode.Bytecodes.FLOAD;
+import static com.oracle.graal.bytecode.Bytecodes.FSTORE;
+import static com.oracle.graal.bytecode.Bytecodes.GETFIELD;
+import static com.oracle.graal.bytecode.Bytecodes.GETSTATIC;
+import static com.oracle.graal.bytecode.Bytecodes.GOTO;
+import static com.oracle.graal.bytecode.Bytecodes.GOTO_W;
+import static com.oracle.graal.bytecode.Bytecodes.IFEQ;
+import static com.oracle.graal.bytecode.Bytecodes.IFGE;
+import static com.oracle.graal.bytecode.Bytecodes.IFGT;
+import static com.oracle.graal.bytecode.Bytecodes.IFLE;
+import static com.oracle.graal.bytecode.Bytecodes.IFLT;
+import static com.oracle.graal.bytecode.Bytecodes.IFNE;
+import static com.oracle.graal.bytecode.Bytecodes.IFNONNULL;
+import static com.oracle.graal.bytecode.Bytecodes.IFNULL;
+import static com.oracle.graal.bytecode.Bytecodes.IF_ACMPEQ;
+import static com.oracle.graal.bytecode.Bytecodes.IF_ACMPNE;
+import static com.oracle.graal.bytecode.Bytecodes.IF_ICMPEQ;
+import static com.oracle.graal.bytecode.Bytecodes.IF_ICMPGE;
+import static com.oracle.graal.bytecode.Bytecodes.IF_ICMPGT;
+import static com.oracle.graal.bytecode.Bytecodes.IF_ICMPLE;
+import static com.oracle.graal.bytecode.Bytecodes.IF_ICMPLT;
+import static com.oracle.graal.bytecode.Bytecodes.IF_ICMPNE;
+import static com.oracle.graal.bytecode.Bytecodes.ILOAD;
+import static com.oracle.graal.bytecode.Bytecodes.INSTANCEOF;
+import static com.oracle.graal.bytecode.Bytecodes.INVOKEDYNAMIC;
+import static com.oracle.graal.bytecode.Bytecodes.INVOKEINTERFACE;
+import static com.oracle.graal.bytecode.Bytecodes.INVOKESPECIAL;
+import static com.oracle.graal.bytecode.Bytecodes.INVOKESTATIC;
+import static com.oracle.graal.bytecode.Bytecodes.INVOKEVIRTUAL;
+import static com.oracle.graal.bytecode.Bytecodes.ISTORE;
+import static com.oracle.graal.bytecode.Bytecodes.JSR;
+import static com.oracle.graal.bytecode.Bytecodes.JSR_W;
+import static com.oracle.graal.bytecode.Bytecodes.LDC;
+import static com.oracle.graal.bytecode.Bytecodes.LDC2_W;
+import static com.oracle.graal.bytecode.Bytecodes.LDC_W;
+import static com.oracle.graal.bytecode.Bytecodes.LLOAD;
+import static com.oracle.graal.bytecode.Bytecodes.LOOKUPSWITCH;
+import static com.oracle.graal.bytecode.Bytecodes.LSTORE;
+import static com.oracle.graal.bytecode.Bytecodes.MULTIANEWARRAY;
+import static com.oracle.graal.bytecode.Bytecodes.NEW;
+import static com.oracle.graal.bytecode.Bytecodes.NEWARRAY;
+import static com.oracle.graal.bytecode.Bytecodes.PUTFIELD;
+import static com.oracle.graal.bytecode.Bytecodes.PUTSTATIC;
+import static com.oracle.graal.bytecode.Bytecodes.RET;
+import static com.oracle.graal.bytecode.Bytecodes.SIPUSH;
+import static com.oracle.graal.bytecode.Bytecodes.TABLESWITCH;
+import jdk.internal.jvmci.meta.ConstantPool;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaField;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.bytecode.*;
+import com.oracle.graal.bytecode.BytecodeLookupSwitch;
+import com.oracle.graal.bytecode.BytecodeStream;
+import com.oracle.graal.bytecode.BytecodeSwitch;
+import com.oracle.graal.bytecode.BytecodeTableSwitch;
+import com.oracle.graal.bytecode.Bytecodes;
 
 /**
  * Utility for producing a {@code javap}-like disassembly of bytecode.

@@ -22,7 +22,11 @@
  */
 package com.oracle.graal.compiler.common.util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Creates an array of T objects order by the occurrence frequency of each object. The most

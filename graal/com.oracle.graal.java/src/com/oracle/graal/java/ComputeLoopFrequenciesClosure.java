@@ -22,13 +22,20 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.nodes.cfg.ControlFlowGraph.*;
+import static com.oracle.graal.nodes.cfg.ControlFlowGraph.MIN_PROBABILITY;
 
-import java.util.*;
-import java.util.stream.*;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.graph.ReentrantNodeIterator;
 
 public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<Double> {
 

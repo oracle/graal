@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.lir.framemap.FrameMap;
 
 /**
  * AMD64 specific frame map.

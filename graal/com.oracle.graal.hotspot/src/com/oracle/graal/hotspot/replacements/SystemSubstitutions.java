@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.computeHashCode;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 
 /**
  * Substitutions for {@link java.lang.System} methods.

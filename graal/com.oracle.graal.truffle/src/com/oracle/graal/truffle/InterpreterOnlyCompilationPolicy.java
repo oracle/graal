@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerOptions;
 
 public class InterpreterOnlyCompilationPolicy implements CompilationPolicy {
 

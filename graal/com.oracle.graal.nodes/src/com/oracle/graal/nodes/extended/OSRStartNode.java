@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.StartNode;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringTool;
 
 @NodeInfo
 public final class OSRStartNode extends StartNode implements Lowerable {

@@ -22,13 +22,17 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.INSTANCE_KLASS_CONSTANTS;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.constantPoolLengthOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.constantPoolSize;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.instanceKlassConstantsOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
+import sun.reflect.ConstantPool;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.word.*;
-
-import sun.reflect.*;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.word.Word;
 
 /**
  * Substitutions for {@link sun.reflect.ConstantPool} methods.

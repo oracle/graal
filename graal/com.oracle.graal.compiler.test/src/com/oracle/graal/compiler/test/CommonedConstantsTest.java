@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Array;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.AbstractInliningPhase;
 
 /**
  * Tests any optimization that commons loads of non-inlineable constants.

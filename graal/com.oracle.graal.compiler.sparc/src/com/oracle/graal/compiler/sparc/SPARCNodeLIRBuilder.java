@@ -23,19 +23,29 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.match.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+import com.oracle.graal.compiler.match.ComplexMatchResult;
+import com.oracle.graal.compiler.match.MatchRule;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.lir.sparc.SPARCBreakpointOp;
+import com.oracle.graal.lir.sparc.SPARCJumpOp;
+import com.oracle.graal.nodes.BreakpointNode;
+import com.oracle.graal.nodes.DeoptimizingNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.SignExtendNode;
+import com.oracle.graal.nodes.calc.ZeroExtendNode;
+import com.oracle.graal.nodes.memory.Access;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.

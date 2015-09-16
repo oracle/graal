@@ -22,23 +22,42 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.debug.GraalDebugConfig.*;
+import static com.oracle.graal.compiler.common.GraalOptions.DumpPath;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintBinaryGraphPort;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintBinaryGraphs;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraph;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphAddress;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphFile;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphPort;
+import static com.oracle.graal.debug.GraalDebugConfig.asJavaMethod;
 
-import java.io.*;
-import java.net.*;
-import java.nio.channels.*;
-import java.nio.file.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugDumpHandler;
+import com.oracle.graal.debug.DebugDumpScope;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 
 //JaCoCo Exclude
 

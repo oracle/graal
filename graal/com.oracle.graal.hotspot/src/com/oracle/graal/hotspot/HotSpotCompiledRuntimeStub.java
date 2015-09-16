@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
-import jdk.internal.jvmci.hotspot.*;
+import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.CompilationResult.Call;
+import jdk.internal.jvmci.code.CompilationResult.ConstantReference;
+import jdk.internal.jvmci.code.CompilationResult.DataPatch;
+import jdk.internal.jvmci.code.CompilationResult.Infopoint;
+import jdk.internal.jvmci.hotspot.HotSpotCompiledCode;
+import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
 
 /**
  * {@link HotSpotCompiledCode} destined for installation as a RuntimeStub.

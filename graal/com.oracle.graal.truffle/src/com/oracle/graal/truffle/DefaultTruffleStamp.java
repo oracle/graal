@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.truffle;
 
-import java.util.*;
+import java.util.Arrays;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.TypedObject;
+import com.oracle.truffle.api.nodes.NodeInfo;
 
 public final class DefaultTruffleStamp {
 

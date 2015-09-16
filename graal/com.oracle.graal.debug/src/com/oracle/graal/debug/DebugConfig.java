@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.debug;
 
-import java.io.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.util.Collection;
 
 public interface DebugConfig {
 

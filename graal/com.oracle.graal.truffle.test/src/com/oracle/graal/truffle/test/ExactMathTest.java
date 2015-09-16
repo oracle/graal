@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.truffle.test;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.truffle.substitutions.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
+import com.oracle.truffle.api.ExactMath;
 
 public class ExactMathTest extends GraalCompilerTest {
 

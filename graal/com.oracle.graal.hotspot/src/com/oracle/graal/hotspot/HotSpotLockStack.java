@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 
-import java.util.*;
+import java.util.Arrays;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.meta.LIRKind;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
 
 /**
  * Manages allocation and re-use of lock slots in a scoped manner. The slots are used in HotSpot's

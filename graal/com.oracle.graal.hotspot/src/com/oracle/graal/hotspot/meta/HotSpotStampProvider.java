@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.nodes.type.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
+import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
+import com.oracle.graal.nodes.spi.StampProvider;
 
 public class HotSpotStampProvider implements StampProvider {
 

@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.test;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 
-import org.junit.*;
-import org.junit.internal.*;
+import org.junit.Assert;
+import org.junit.internal.ComparisonCriteria;
+import org.junit.internal.ExactComparisonCriteria;
 
 import sun.misc.Unsafe;
 

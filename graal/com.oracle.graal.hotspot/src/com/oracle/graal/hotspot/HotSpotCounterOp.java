@@ -22,20 +22,27 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.hotspot.debug.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.hotspot.debug.BenchmarkCounters;
+import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRInstructionClass;
 
 public abstract class HotSpotCounterOp extends LIRInstruction {
     public static final LIRInstructionClass<HotSpotCounterOp> TYPE = LIRInstructionClass.create(HotSpotCounterOp.class);

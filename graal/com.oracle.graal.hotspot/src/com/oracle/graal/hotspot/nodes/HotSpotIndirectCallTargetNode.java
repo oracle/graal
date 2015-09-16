@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.code.CallingConvention.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.IndirectCallTargetNode;
+import com.oracle.graal.nodes.ValueNode;
 
 @NodeInfo
 public final class HotSpotIndirectCallTargetNode extends IndirectCallTargetNode {

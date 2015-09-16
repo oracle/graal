@@ -22,18 +22,23 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import static jdk.internal.jvmci.sparc.SPARC.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.sparc.SPARC.g0;
+import jdk.internal.jvmci.code.InfopointReason;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.ValueUtil;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.AllocatableValue;
 
-import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAddress;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
 
 /**
  * Emits a safepoint poll.

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
+import java.util.Set;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Assumptions;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.NodeClass;
 
 /**
  * A {@link StructuredGraph} encoded in a compact binary representation as a byte[] array. See

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
 
-import java.util.*;
+import java.util.Map;
 
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
 
 public final class TracePerformanceWarningsListener extends AbstractDebugCompilationListener {
 

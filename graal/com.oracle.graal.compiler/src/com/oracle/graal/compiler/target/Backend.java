@@ -22,23 +22,35 @@
  */
 package com.oracle.graal.compiler.target;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.stack.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.code.stack.StackIntrospection;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.alloc.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.compiler.gen.BytecodeLIRBuilder;
+import com.oracle.graal.compiler.gen.BytecodeParserTool;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.phases.tiers.SuitesProvider;
+import com.oracle.graal.phases.tiers.TargetProvider;
+import com.oracle.graal.phases.util.Providers;
 
 /**
  * Represents a compiler backend for Graal.

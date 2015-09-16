@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.StartNode;
 
 /**
  * Start node for a {@link Stub}'s graph.

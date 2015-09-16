@@ -22,25 +22,54 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompileOnly;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.stack.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.stack.InspectedFrame;
+import jdk.internal.jvmci.code.stack.InspectedFrameVisitor;
+import jdk.internal.jvmci.code.stack.StackIntrospection;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.service.Services;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.debug.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.truffle.debug.CompilationStatisticsListener;
+import com.oracle.graal.truffle.debug.PrintCallTargetProfiling;
+import com.oracle.graal.truffle.debug.TraceCompilationCallTreeListener;
+import com.oracle.graal.truffle.debug.TraceCompilationFailureListener;
+import com.oracle.graal.truffle.debug.TraceCompilationListener;
+import com.oracle.graal.truffle.debug.TraceCompilationPolymorphismListener;
+import com.oracle.graal.truffle.debug.TraceInliningListener;
+import com.oracle.graal.truffle.debug.TracePerformanceWarningsListener;
+import com.oracle.graal.truffle.debug.TraceSplittingListener;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CompilerOptions;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 

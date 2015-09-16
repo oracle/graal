@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.Virtualizable;
+import com.oracle.graal.nodes.spi.VirtualizerTool;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 /**
  * A helper class to allow elimination of byte code instrumentation that could interfere with escape

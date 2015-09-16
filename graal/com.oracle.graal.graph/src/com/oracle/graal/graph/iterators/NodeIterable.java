@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.graph.iterators;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 
 public interface NodeIterable<T extends Node> extends Iterable<T> {
 

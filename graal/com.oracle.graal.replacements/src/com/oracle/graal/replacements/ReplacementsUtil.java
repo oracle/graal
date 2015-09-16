@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.replacements.nodes.AssertionNode;
 
 // JaCoCo Exclude
 public final class ReplacementsUtil {

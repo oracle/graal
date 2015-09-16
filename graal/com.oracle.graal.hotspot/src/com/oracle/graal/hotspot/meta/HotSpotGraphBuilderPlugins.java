@@ -22,36 +22,67 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
-import static com.oracle.graal.java.BytecodeParser.Options.*;
-import static sun.misc.Version.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
+import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_MILLIS;
+import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_NANOS;
+import static com.oracle.graal.java.BytecodeParser.Options.InlineDuringParsing;
+import static sun.misc.Version.jdkMajorVersion;
+import static sun.misc.Version.jdkMinorVersion;
 
-import java.lang.invoke.*;
-import java.util.zip.*;
+import java.lang.invoke.ConstantCallSite;
+import java.lang.invoke.MutableCallSite;
+import java.lang.invoke.VolatileCallSite;
+import java.util.zip.CRC32;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import sun.reflect.*;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstantImpl;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.options.StableOptionValue;
+import sun.reflect.Reflection;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.graphbuilderconf.ForeignCallPlugin;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.hotspot.replacements.arraycopy.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graphbuilderconf.MethodSubstitutionPlugin;
+import com.oracle.graal.hotspot.nodes.ClassCastNode;
+import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
+import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
+import com.oracle.graal.hotspot.replacements.CRC32Substitutions;
+import com.oracle.graal.hotspot.replacements.CallSiteTargetNode;
+import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
+import com.oracle.graal.hotspot.replacements.HotSpotClassSubstitutions;
+import com.oracle.graal.hotspot.replacements.IdentityHashCodeNode;
+import com.oracle.graal.hotspot.replacements.ObjectCloneNode;
+import com.oracle.graal.hotspot.replacements.ObjectSubstitutions;
+import com.oracle.graal.hotspot.replacements.ReflectionGetCallerClassNode;
+import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyNode;
+import com.oracle.graal.hotspot.word.HotSpotWordTypes;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.replacements.InlineDuringParsingPlugin;
+import com.oracle.graal.replacements.MethodHandlePlugin;
+import com.oracle.graal.replacements.NodeIntrinsificationPhase;
+import com.oracle.graal.replacements.NodeIntrinsificationPlugin;
+import com.oracle.graal.replacements.ReplacementsImpl;
+import com.oracle.graal.replacements.StandardGraphBuilderPlugins;
+import com.oracle.graal.replacements.WordOperationPlugin;
+import com.oracle.graal.word.WordTypes;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.

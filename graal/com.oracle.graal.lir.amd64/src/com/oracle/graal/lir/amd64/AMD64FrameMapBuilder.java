@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.StackSlot;
 
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.framemap.FrameMapBuilderImpl;
 
 public class AMD64FrameMapBuilder extends FrameMapBuilderImpl {
 

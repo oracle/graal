@@ -22,28 +22,52 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static jdk.internal.jvmci.inittimer.InitTimer.*;
+import static jdk.internal.jvmci.inittimer.InitTimer.timer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.amd64.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.amd64.*;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.Architecture;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.compiler.StartupEventListener;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.inittimer.InitTimer;
+import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.runtime.JVMCIBackend;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.compiler.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.inittimer.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.runtime.*;
-import jdk.internal.jvmci.service.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.amd64.AMD64SuitesProvider;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotBackendFactory;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.HotSpotReplacementsImpl;
+import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
+import com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider;
+import com.oracle.graal.hotspot.meta.HotSpotGraphBuilderPlugins;
+import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
+import com.oracle.graal.hotspot.meta.HotSpotLoweringProvider;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.meta.HotSpotRegisters;
+import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.hotspot.meta.HotSpotSnippetReflectionProvider;
+import com.oracle.graal.hotspot.meta.HotSpotStampProvider;
+import com.oracle.graal.hotspot.meta.HotSpotSuitesProvider;
+import com.oracle.graal.hotspot.word.HotSpotWordTypes;
+import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.replacements.amd64.AMD64GraphBuilderPlugins;
 
 @ServiceProvider(StartupEventListener.class)
 public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, StartupEventListener {

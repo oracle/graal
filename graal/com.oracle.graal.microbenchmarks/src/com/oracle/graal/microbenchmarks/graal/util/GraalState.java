@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.microbenchmarks.graal.util;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.runtime.RuntimeProvider;
 
 /**
  * Read-only, benchmark-wide state providing Graal runtime context.

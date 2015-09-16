@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.debug;
 
-import java.io.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.Map;
 
-import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.debug.internal.DebugScope;
 
 public class DelegatingDebugConfig implements DebugConfig {
 

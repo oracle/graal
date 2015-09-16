@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.asm;
 
-import java.util.*;
+import java.util.Arrays;
 
 /**
  * Code buffer management for the assembler. Support for little endian and big endian architectures

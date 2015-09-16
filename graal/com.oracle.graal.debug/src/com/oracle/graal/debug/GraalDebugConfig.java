@@ -22,12 +22,18 @@
  */
 package com.oracle.graal.debug;
 
-import java.io.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
 public class GraalDebugConfig implements DebugConfig {
     @SuppressWarnings("all")

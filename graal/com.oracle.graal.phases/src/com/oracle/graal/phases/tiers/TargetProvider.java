@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.TargetDescription;
 
 public interface TargetProvider {
 

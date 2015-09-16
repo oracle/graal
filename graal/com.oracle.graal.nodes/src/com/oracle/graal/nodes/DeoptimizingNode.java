@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.NodeWithState;
 
 /**
  * Interface implemented by nodes which may need {@linkplain FrameState deoptimization information}.

@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.nodes.ConstantNode.*;
+import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.phases.VerifyPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * Checks for {@link #isIllegalObjectConstant(ConstantNode) illegal} object constants in a graph

@@ -22,17 +22,28 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
+import static jdk.internal.jvmci.code.ValueUtil.asStackSlotValue;
+import static jdk.internal.jvmci.code.ValueUtil.asVirtualStackSlot;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
 
-import java.util.*;
+import java.util.Arrays;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.code.VirtualStackSlot;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.alloc.lsra.Interval;
+import com.oracle.graal.lir.alloc.lsra.LinearScan;
+import com.oracle.graal.lir.alloc.lsra.MoveResolver;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 
 public final class SSAMoveResolver extends MoveResolver {
 

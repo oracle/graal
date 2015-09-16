@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.graph.iterators;
 
-import java.util.*;
+import java.util.Iterator;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 
 public class DistinctFilteredNodeIterable<T extends Node> extends FilteredNodeIterable<T> {
 

@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.jtt.hotspot;
 
-import java.util.*;
+import java.util.ArrayList;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 // @formatter:off
 public class Test6186134 extends JTTTest {

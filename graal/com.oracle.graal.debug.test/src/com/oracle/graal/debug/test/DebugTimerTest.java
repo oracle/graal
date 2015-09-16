@@ -22,13 +22,22 @@
  */
 package com.oracle.graal.debug.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import java.lang.management.*;
+import java.lang.management.ThreadMXBean;
 
-import com.oracle.graal.debug.*;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
-import org.junit.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugConfig;
+import com.oracle.graal.debug.DebugConfigScope;
+import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.debug.Management;
 
 @SuppressWarnings("try")
 public class DebugTimerTest {

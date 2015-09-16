@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.alloc.trace.FixedInterval.FixedList;
 import com.oracle.graal.lir.alloc.trace.TraceInterval.AnyList;
 import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterBinding;

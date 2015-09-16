@@ -22,12 +22,17 @@
  */
 package com.oracle.graal.loop;
 
-import static com.oracle.graal.loop.MathUtil.*;
-import jdk.internal.jvmci.common.*;
+import static com.oracle.graal.loop.MathUtil.add;
+import static com.oracle.graal.loop.MathUtil.sub;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.AddNode;
+import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
+import com.oracle.graal.nodes.calc.IntegerConvertNode;
+import com.oracle.graal.nodes.calc.NegateNode;
+import com.oracle.graal.nodes.calc.SubNode;
 
 public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 

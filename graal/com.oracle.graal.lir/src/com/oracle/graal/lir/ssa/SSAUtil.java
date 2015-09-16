@@ -22,16 +22,18 @@
  */
 package com.oracle.graal.lir.ssa;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.ValueConsumer;
 
 /**
  * Utilities for working with Static-Single-Assignment LIR form.

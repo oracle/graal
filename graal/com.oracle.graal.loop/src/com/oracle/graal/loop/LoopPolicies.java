@@ -22,18 +22,28 @@
  */
 package com.oracle.graal.loop;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.LoopMaxUnswitch;
+import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
+import static com.oracle.graal.compiler.common.GraalOptions.MinimumPeelProbability;
 
-import java.util.*;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.MergeNode;
+import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.VirtualState.VirtualClosure;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.debug.*;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 
 public abstract class LoopPolicies {
     @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> LoopUnswitchMaxIncrease = new OptionValue<>(500);

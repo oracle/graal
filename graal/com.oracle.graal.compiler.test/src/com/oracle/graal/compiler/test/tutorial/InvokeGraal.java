@@ -22,28 +22,35 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import java.lang.reflect.*;
-import java.util.concurrent.atomic.*;
+import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ProfilingInfo;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.GraalCompiler;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.DebugDumpScope;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.Suites;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.runtime.RuntimeProvider;
 
 /**
  * Sample code that shows how to invoke Graal from an application.

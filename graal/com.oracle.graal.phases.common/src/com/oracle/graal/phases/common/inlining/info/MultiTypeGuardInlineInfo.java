@@ -22,27 +22,48 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.JavaTypeProfile.ProfiledType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import java.util.*;
-
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.BeginNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.common.inlining.info.elem.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.EndNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.GuardedValueNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.InvokeWithExceptionNode;
+import com.oracle.graal.nodes.MergeNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValuePhiNode;
+import com.oracle.graal.nodes.extended.LoadHubNode;
+import com.oracle.graal.nodes.java.ExceptionObjectNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.java.TypeSwitchNode;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import com.oracle.graal.phases.util.Providers;
 
 /**
  * Polymorphic inlining of m methods with n type checks (n &ge; m) in case that the profiling

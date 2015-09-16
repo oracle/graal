@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.lir.debug;
 
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.lir.LIR;
 
 /**
  * Provides information about {@link LIR} generation for debugging purposes.

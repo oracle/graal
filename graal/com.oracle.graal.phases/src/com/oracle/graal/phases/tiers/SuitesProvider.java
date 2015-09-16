@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.phases.PhaseSuite;
 
 public interface SuitesProvider {
 

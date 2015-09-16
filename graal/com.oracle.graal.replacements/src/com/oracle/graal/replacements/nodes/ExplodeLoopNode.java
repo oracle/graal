@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import java.util.*;
+import java.util.ArrayList;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 
 /**

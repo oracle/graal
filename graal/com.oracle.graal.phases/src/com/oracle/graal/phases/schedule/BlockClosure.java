@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.schedule;
 
-import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.cfg.Block;
 
 /**
  * The {@code BlockClosure} interface represents a closure for iterating over blocks.

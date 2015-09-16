@@ -22,29 +22,55 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.nodes.ConstantNode.*;
-import static jdk.internal.jvmci.meta.LocationIdentity.*;
+import static com.oracle.graal.nodes.ConstantNode.forInt;
+import static com.oracle.graal.nodes.ConstantNode.forIntegerKind;
+import static jdk.internal.jvmci.meta.LocationIdentity.any;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaTypeProfile;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.ResolvedJavaField;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.graphbuilderconf.NodePlugin;
+import com.oracle.graal.graphbuilderconf.ParameterPlugin;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.CompareNode;
+import com.oracle.graal.nodes.calc.ConditionalNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.calc.IntegerBelowNode;
+import com.oracle.graal.nodes.calc.IntegerEqualsNode;
+import com.oracle.graal.nodes.calc.IntegerLessThanNode;
+import com.oracle.graal.nodes.calc.NarrowNode;
+import com.oracle.graal.nodes.calc.SignExtendNode;
+import com.oracle.graal.nodes.calc.XorNode;
+import com.oracle.graal.nodes.calc.ZeroExtendNode;
+import com.oracle.graal.nodes.extended.JavaReadNode;
+import com.oracle.graal.nodes.extended.JavaWriteNode;
+import com.oracle.graal.nodes.java.LoadFieldNode;
+import com.oracle.graal.nodes.java.LoadIndexedNode;
+import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.word.Word;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
-import com.oracle.graal.word.nodes.*;
+import com.oracle.graal.word.WordTypes;
+import com.oracle.graal.word.nodes.WordCastNode;
 
 /**
  * A plugin for calls to {@linkplain Operation word operations}, as well as all other nodes that

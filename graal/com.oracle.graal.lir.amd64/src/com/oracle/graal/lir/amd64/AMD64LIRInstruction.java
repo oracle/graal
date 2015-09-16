@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 /**
  * Convenience class to provide AMD64MacroAssembler for the {@link #emitCode} method.

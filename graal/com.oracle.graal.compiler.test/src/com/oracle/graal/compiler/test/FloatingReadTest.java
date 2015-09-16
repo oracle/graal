@@ -22,19 +22,23 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.junit.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugDumpScope;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.extended.MonitorExit;
+import com.oracle.graal.nodes.memory.FloatingReadNode;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.FloatingReadPhase;
+import com.oracle.graal.phases.common.LoweringPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 public class FloatingReadTest extends GraphScheduleTest {
 

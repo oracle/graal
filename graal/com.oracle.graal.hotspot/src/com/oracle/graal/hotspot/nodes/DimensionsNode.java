@@ -22,20 +22,22 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.asm.NumUtil.*;
+import static com.oracle.graal.asm.NumUtil.roundUp;
 
-import java.util.*;
+import java.util.BitSet;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.VirtualStackSlot;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.word.Word;
+import com.oracle.graal.word.WordTypes;
 
 /**
  * Intrinsic for allocating an on-stack array of integers to hold the dimensions of a multianewarray

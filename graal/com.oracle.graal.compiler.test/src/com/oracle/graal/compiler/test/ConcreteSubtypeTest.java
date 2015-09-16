@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.compiler.test;
 
-import jdk.internal.jvmci.meta.Assumptions.*;
+import jdk.internal.jvmci.meta.Assumptions.Assumption;
+import jdk.internal.jvmci.meta.Assumptions.ConcreteSubtype;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * Ensure that abstract classes with a single implementor are properly optimized and that loading a

@@ -23,16 +23,19 @@
 
 package com.oracle.graal.compiler.amd64;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.lir.amd64.AMD64AddressValue;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Represents an address of the form [base + index*scale + displacement]. Both base and index are

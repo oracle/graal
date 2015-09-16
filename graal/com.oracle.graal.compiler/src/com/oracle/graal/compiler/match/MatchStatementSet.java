@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.match;
 
-import java.util.*;
+import java.util.List;
 
-import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 
 public interface MatchStatementSet {
     /**

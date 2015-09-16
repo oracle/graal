@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.test;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import org.junit.*;
+import org.junit.Assert;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 public abstract class AbstractObjectStampTest extends GraalCompilerTest {
 

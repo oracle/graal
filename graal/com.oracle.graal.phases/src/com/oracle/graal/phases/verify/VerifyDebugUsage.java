@@ -22,13 +22,17 @@
  */
 package com.oracle.graal.phases.verify;
 
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.nodes.CallTargetNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.phases.VerifyPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * Verifies that no argument to one of the {@link Debug#log(String)} methods is the result of

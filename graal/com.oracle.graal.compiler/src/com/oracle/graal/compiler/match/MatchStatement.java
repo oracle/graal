@@ -22,18 +22,20 @@
  */
 package com.oracle.graal.compiler.match;
 
-import static com.oracle.graal.debug.GraalDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.LogVerbose;
 
-import java.util.*;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.graph.GraalGraphJVMCIError;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodeinfo.Verbosity;
 
 /**
  * A named {@link MatchPattern} along with a {@link MatchGenerator} that can be evaluated to replace

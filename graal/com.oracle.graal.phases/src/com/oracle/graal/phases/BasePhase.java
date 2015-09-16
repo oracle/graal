@@ -22,12 +22,17 @@
  */
 package com.oracle.graal.phases;
 
-import java.util.regex.*;
+import java.util.regex.Pattern;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugMemUseTracker;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.debug.Fingerprint;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * Base class for all compiler phases. Subclasses should be stateless. There will be one global

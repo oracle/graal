@@ -24,11 +24,11 @@
  */
 package com.oracle.graal.jtt.reflect;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Array;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public class Array_setDouble01 extends JTTTest {
 

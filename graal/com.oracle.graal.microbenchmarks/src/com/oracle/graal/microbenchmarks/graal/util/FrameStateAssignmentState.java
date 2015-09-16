@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.microbenchmarks.graal.util;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.common.FrameStateAssignmentPhase;
+import com.oracle.graal.phases.common.GuardLoweringPhase;
 
 public class FrameStateAssignmentState extends GraphState {
 

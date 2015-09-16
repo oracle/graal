@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import java.util.*;
+import java.util.Random;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaConstant;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.calc.Condition;
 
 public class ConditionTest {
 

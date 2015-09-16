@@ -22,12 +22,27 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.function.ToDoubleFunction;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.SuppressFBWarnings;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeWorkList;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ControlSinkNode;
+import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.EndNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.LoopEndNode;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.MergeNode;
+import com.oracle.graal.nodes.StartNode;
+import com.oracle.graal.nodes.StructuredGraph;
 
 public class ComputeInliningRelevance {
 

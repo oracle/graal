@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.meta.JavaTypeProfile.*;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.meta.JavaTypeProfile;
+import jdk.internal.jvmci.meta.JavaTypeProfile.ProfiledType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.TriState;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * Base class for checkcast and instanceof test classes.

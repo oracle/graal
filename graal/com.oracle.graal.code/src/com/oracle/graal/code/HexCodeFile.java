@@ -22,12 +22,20 @@
  */
 package com.oracle.graal.code;
 
-import java.io.*;
-import java.util.*;
-import java.util.regex.*;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.code.CompilationResult.CodeAnnotation;
+import jdk.internal.jvmci.code.CompilationResult.CodeComment;
+import jdk.internal.jvmci.code.CompilationResult.JumpTable;
 
 /**
  * A HexCodeFile is a textual format for representing a chunk of machine code along with extra

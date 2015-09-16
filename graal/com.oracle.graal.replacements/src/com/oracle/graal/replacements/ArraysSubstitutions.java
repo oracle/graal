@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.replacements.nodes.ArrayEqualsNode;
 
 // JaCoCo Exclude
 

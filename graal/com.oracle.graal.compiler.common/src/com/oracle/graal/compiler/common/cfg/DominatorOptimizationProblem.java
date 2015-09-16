@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.compiler.common.cfg;
 
-import java.util.*;
-import java.util.stream.*;
+import java.util.BitSet;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * This class represents a dominator tree problem, i.e. a problem which can be solved by traversing

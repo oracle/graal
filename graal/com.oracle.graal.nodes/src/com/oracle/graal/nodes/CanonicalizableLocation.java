@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodes.memory.address.AddressNode;
 
 public interface CanonicalizableLocation {
     ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool);

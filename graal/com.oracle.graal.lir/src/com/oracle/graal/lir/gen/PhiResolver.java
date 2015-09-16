@@ -22,17 +22,22 @@
  */
 package com.oracle.graal.lir.gen;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import static jdk.internal.jvmci.meta.Value.*;
+import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static jdk.internal.jvmci.code.ValueUtil.isIllegal;
+import static jdk.internal.jvmci.code.ValueUtil.isLegal;
+import static jdk.internal.jvmci.meta.Value.ILLEGAL;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.LIRInsertionBuffer;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 
 /**

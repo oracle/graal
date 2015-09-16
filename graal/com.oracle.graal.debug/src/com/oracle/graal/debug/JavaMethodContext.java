@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaMethod;
 
 /**
  * Interface for objects used in Debug {@linkplain Debug#context() context} that can provide a

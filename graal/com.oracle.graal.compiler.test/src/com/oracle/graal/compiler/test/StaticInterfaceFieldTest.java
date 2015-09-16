@@ -22,27 +22,33 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import jdk.internal.jvmci.meta.*;
+import org.junit.Assume;
+import org.junit.Test;
 
-import org.junit.*;
-
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugConfigScope;
+import com.oracle.graal.debug.DelegatingDebugConfig;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.runtime.*;
-import com.oracle.graal.test.*;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.VerifyPhase;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.runtime.RuntimeProvider;
+import com.oracle.graal.test.GraalTest;
 
 /**
  * Test that interfaces are correctly initialized by a static field resolution during eager graph

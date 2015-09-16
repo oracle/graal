@@ -22,26 +22,42 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static java.lang.Double.*;
-import static java.lang.Float.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
+import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static java.lang.Double.doubleToRawLongBits;
+import static java.lang.Float.floatToRawIntBits;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public class AMD64Move {
 

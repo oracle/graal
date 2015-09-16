@@ -23,9 +23,10 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.hotpath;
 
-import org.junit.*;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 /*
  */

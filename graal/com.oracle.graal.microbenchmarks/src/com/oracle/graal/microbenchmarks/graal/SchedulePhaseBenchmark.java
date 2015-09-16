@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.microbenchmarks.graal;
 
-import java.util.*;
+import java.util.Arrays;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.microbenchmarks.graal.util.*;
+import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
+import com.oracle.graal.microbenchmarks.graal.util.ScheduleState;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 @Warmup(iterations = 15)

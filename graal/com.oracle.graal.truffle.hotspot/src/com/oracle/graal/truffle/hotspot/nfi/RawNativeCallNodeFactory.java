@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.ValueNode;
 
 /**
  * Factory for creating a node that makes a direct call to a native function pointer.

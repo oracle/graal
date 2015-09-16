@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.printer;
 
-import java.io.*;
-import java.nio.charset.*;
-import java.util.*;
+import java.io.BufferedOutputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
+import java.util.Map;
 import java.util.Map.Entry;
 
 /**

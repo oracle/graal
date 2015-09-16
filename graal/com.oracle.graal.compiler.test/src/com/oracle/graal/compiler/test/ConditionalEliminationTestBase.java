@@ -22,16 +22,19 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.debug.*;
+import org.junit.Assert;
 
-import org.junit.*;
-
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
+import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
+import com.oracle.graal.phases.common.LoweringPhase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * Collection of tests for

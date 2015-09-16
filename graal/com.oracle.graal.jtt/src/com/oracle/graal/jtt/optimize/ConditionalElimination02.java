@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import java.util.*;
+import java.util.EnumSet;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public class ConditionalElimination02 extends JTTTest {
 

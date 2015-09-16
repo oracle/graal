@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.Phase;
 
 /**
  * Modifies the stamp of all object {@linkplain ParameterNode parameters} in a graph to denote they

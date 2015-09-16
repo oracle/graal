@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.compiler.amd64;
 
-import static com.oracle.graal.compiler.common.BackendOptions.*;
+import static com.oracle.graal.compiler.common.BackendOptions.ShouldOptimizeStackToStackMoves;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.lir.amd64.phases.*;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.java.DefaultSuitesProvider;
+import com.oracle.graal.lir.amd64.phases.StackMoveOptimizationPhase;
+import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public class AMD64SuitesProvider extends DefaultSuitesProvider {
 

@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
+import java.util.Collections;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * LoopEnd nodes represent a loop back-edge. When a LoopEnd is reached, execution continues at the

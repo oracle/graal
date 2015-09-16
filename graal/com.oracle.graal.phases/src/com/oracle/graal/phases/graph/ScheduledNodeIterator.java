@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.phases.graph;
 
-import java.util.*;
+import java.util.ListIterator;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 
 /**
  * Iterates over a list of nodes, which usually comes from

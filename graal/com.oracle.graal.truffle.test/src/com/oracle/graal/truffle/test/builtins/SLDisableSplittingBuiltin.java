@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.sl.nodes.SLRootNode;
+import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * Disables splitting for a given {@link SLFunction} instance. If no function is given the splitting

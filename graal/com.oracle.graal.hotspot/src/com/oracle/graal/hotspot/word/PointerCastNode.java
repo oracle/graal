@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Cast between Word and metaspace pointers exposed by the {@link HotspotOpcode#FROM_POINTER} and

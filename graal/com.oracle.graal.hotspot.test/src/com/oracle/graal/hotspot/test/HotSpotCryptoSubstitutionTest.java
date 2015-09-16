@@ -22,28 +22,41 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.security.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.security.AlgorithmParameters;
+import java.security.SecureRandom;
 
-import javax.crypto.*;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.hotspot.HotSpotCompiledNmethod;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotNmethod;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.OptimisticOptimizations;
 
 /**
  * Tests the intrinsification of certain crypto methods.

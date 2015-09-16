@@ -22,19 +22,37 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static java.lang.String.*;
+import static java.lang.String.format;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.nio.file.*;
-import java.util.*;
-import java.util.zip.*;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
-import jdk.internal.jvmci.options.*;
-import jdk.internal.org.objectweb.asm.*;
+import jdk.internal.jvmci.options.OptionDescriptor;
+import jdk.internal.jvmci.options.OptionDescriptors;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.org.objectweb.asm.ClassReader;
+import jdk.internal.org.objectweb.asm.ClassVisitor;
+import jdk.internal.org.objectweb.asm.Label;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.internal.org.objectweb.asm.Type;
 
-import org.junit.*;
+import org.junit.Test;
 
 /**
  * Verifies a class declaring one or more {@linkplain OptionValue options} has a class initializer

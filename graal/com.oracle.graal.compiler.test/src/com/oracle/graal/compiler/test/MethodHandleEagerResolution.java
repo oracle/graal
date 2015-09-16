@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.lang.invoke.*;
-import java.lang.reflect.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.*;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 public final class MethodHandleEagerResolution extends GraalCompilerTest {
     private static final MethodHandle FIELD_HANDLE;

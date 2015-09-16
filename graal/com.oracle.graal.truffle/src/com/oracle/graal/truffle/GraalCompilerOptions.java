@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 
 public class GraalCompilerOptions extends DefaultCompilerOptions {
 

@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 /*
  * Tests optimization of switches.

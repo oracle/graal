@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common.util;
 
-import java.util.*;
+import java.util.BitSet;
 
 /**
  * This class implements a two-dimensional bitmap.

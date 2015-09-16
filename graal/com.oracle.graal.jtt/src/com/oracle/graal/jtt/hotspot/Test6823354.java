@@ -32,7 +32,7 @@ package com.oracle.graal.jtt.hotspot;
  * @run main/othervm -Xcomp -XX:CompileOnly=Test6823354.lzcomp,Test6823354.tzcomp,.dolzcomp,.dotzcomp Test6823354
  */
 
-import java.net.*;
+import java.net.URLClassLoader;
 
 // Checkstyle: stop
 public class Test6823354 {

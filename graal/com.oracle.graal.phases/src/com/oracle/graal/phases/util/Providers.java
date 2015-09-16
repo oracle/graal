@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.phases.util;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.compiler.common.spi.CodeGenProviders;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.nodes.spi.LoweringProvider;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * A set of providers, some of which may not be present (i.e., null).

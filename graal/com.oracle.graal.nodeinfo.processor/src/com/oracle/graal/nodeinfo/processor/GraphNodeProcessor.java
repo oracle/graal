@@ -22,19 +22,30 @@
  */
 package com.oracle.graal.nodeinfo.processor;
 
-import static java.util.Collections.*;
+import static java.util.Collections.reverse;
 
-import java.io.*;
-import java.util.*;
-import java.util.stream.*;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-import javax.annotation.processing.*;
-import javax.lang.model.*;
-import javax.lang.model.element.*;
-import javax.lang.model.util.*;
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.FilerException;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.annotation.processing.SupportedSourceVersion;
+import javax.lang.model.SourceVersion;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodeinfo.NodeInfo;
 
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SupportedAnnotationTypes({"com.oracle.graal.nodeinfo.NodeInfo"})

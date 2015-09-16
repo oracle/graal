@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
 
-import com.oracle.graal.api.collections.*;
+import com.oracle.graal.api.collections.DefaultCollectionsProvider;
 
 /**
  * A default implementation of {@link NodeCollectionsProvider} that creates standard JDK collection

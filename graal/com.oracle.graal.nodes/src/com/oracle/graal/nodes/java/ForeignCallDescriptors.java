@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 
 /**
  * The foreign call descriptors used by nodes in this package.

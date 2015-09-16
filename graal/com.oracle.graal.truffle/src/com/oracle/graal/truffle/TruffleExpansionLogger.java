@@ -22,16 +22,22 @@
  */
 package com.oracle.graal.truffle;
 
-import java.io.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeMap;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.phases.util.Providers;
 
 public class TruffleExpansionLogger {
 

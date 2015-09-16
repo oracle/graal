@@ -22,25 +22,34 @@
  */
 package com.oracle.graal.replacements.test;
 
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import jdk.internal.jvmci.meta.*;
+import org.junit.Test;
 
-import org.junit.*;
-
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.nodes.memory.ReadNode;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
+import com.oracle.graal.replacements.CachingPEGraphDecoder;
 
 public class PEGraphDecoderTest extends GraalCompilerTest {
 

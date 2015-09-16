@@ -22,35 +22,78 @@
  */
 package com.oracle.graal.phases.common.inlining;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
+import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
+import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.internal.jvmci.meta.DeoptimizationReason.NullCheckException;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Constructor;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.BytecodePosition;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Assumptions;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.debug.Fingerprint;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.graph.GraalGraphJVMCIError;
+import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.graph.NodeWorkList;
+import com.oracle.graal.nodeinfo.Verbosity;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractEndNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.BeginNode;
+import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.common.inlining.info.*;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.EndNode;
+import com.oracle.graal.nodes.FixedGuardNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.GuardedValueNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.InvokeNode;
+import com.oracle.graal.nodes.InvokeWithExceptionNode;
+import com.oracle.graal.nodes.KillingBeginNode;
+import com.oracle.graal.nodes.MergeNode;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.SimpleInfopointNode;
+import com.oracle.graal.nodes.StartNode;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.UnwindNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValuePhiNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.java.ExceptionObjectNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.java.MonitorIdNode;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 
 public class InliningUtil {
 

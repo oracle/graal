@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.jtt.jdk;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 
-import org.junit.*;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 /*
  */

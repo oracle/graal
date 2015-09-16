@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
+import java.util.Arrays;
 
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.meta.Assumptions.*;
-import jdk.internal.jvmci.meta.JavaTypeProfile.*;
+import jdk.internal.jvmci.meta.Assumptions;
+import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
+import jdk.internal.jvmci.meta.JavaTypeProfile;
+import jdk.internal.jvmci.meta.JavaTypeProfile.ProfiledType;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
 /**
  * Utility for deriving hint types for a type check instruction (e.g. checkcast or instanceof) based

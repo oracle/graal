@@ -22,21 +22,35 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.nodes.calc.CompareNode.*;
+import static com.oracle.graal.nodes.calc.CompareNode.createCompareNode;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.TargetDescription;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.ConditionAnchorNode;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedGuardNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.LogicConstantNode;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.ShortCircuitOrNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.CompareNode;
+import com.oracle.graal.nodes.calc.ConditionalNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.java.ClassIsAssignableFromNode;
+import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
+import com.oracle.graal.nodes.java.InstanceOfNode;
+import com.oracle.graal.nodes.java.TypeCheckNode;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.UsageReplacer;

@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class TruffleInliningProfile {
 

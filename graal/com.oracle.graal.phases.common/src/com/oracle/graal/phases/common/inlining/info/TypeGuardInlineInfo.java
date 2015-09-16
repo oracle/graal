@@ -22,19 +22,27 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
-import java.util.*;
+import java.util.Collection;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.common.inlining.info.elem.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedGuardNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.CompareNode;
+import com.oracle.graal.nodes.extended.LoadHubNode;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import com.oracle.graal.phases.util.Providers;
 
 /**
  * Represents an inlining opportunity for which profiling information suggests a monomorphic

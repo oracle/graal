@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.nodes.ArithmeticOperation;
 
 public interface ArithmeticLIRLowerable extends ArithmeticOperation {
 

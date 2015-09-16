@@ -22,14 +22,25 @@
  */
 package com.oracle.graal.truffle.test;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.truffle.test.nodes.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.instrument.impl.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
+import com.oracle.graal.truffle.test.nodes.ConstantTestNode;
+import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.impl.DefaultSimpleInstrumentListener;
+import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 
 /**
  * Tests for a single simple PE test with various combinations of instrumentation attached. None of

@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.debug;
 
-import java.util.*;
-import java.util.regex.*;
+import java.util.Arrays;
+import java.util.regex.Pattern;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.Signature;
 
 /**
  * This class implements a method filter that can filter based on class name, method name and

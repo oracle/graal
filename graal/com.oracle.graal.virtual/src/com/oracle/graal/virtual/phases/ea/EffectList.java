@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * An {@link EffectList} can be used to maintain a list of {@link Effect}s and backtrack to a

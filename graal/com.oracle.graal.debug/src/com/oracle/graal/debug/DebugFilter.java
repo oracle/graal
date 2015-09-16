@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.debug;
 
-import java.util.*;
-import java.util.regex.*;
+import java.util.Arrays;
+import java.util.regex.Pattern;
 
-import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.debug.internal.DebugScope;
 
 /**
  * Implements the filter specified by the {@link GraalDebugConfig#Dump},

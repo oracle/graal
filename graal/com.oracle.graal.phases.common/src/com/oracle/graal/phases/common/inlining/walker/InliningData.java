@@ -22,31 +22,52 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.Intrinsify;
+import static com.oracle.graal.compiler.common.GraalOptions.MaximumRecursiveInlining;
+import static com.oracle.graal.compiler.common.GraalOptions.MegamorphicInliningMinMethodProbability;
+import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Set;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
+import jdk.internal.jvmci.meta.JavaTypeProfile;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.debug.*;
-
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.meta.Assumptions.*;
-
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.common.inlining.info.*;
-import com.oracle.graal.phases.common.inlining.info.elem.*;
-import com.oracle.graal.phases.common.inlining.policy.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.CallTargetNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.AbstractNewObjectNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.common.inlining.info.AssumptionInlineInfo;
+import com.oracle.graal.phases.common.inlining.info.ExactInlineInfo;
+import com.oracle.graal.phases.common.inlining.info.InlineInfo;
+import com.oracle.graal.phases.common.inlining.info.MultiTypeGuardInlineInfo;
+import com.oracle.graal.phases.common.inlining.info.TypeGuardInlineInfo;
+import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
+import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.util.Providers;
 
 /**
  * <p>

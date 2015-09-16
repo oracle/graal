@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import java.io.*;
-import java.nio.*;
-import java.util.zip.*;
+import java.io.DataInputStream;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.zip.CRC32;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 /**
  * Tests compiled call to {@link CRC32#update(int, int)}.

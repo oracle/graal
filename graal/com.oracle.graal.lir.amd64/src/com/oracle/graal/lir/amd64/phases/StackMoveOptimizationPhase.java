@@ -22,21 +22,32 @@
  */
 package com.oracle.graal.lir.amd64.phases;
 
-import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
+import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.options.NestedBooleanOptionValue;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.RedundantMoveElimination;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64MultiStackMove;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
 /**
  * Replaces sequential {@link AMD64StackMove}s of the same type with a single

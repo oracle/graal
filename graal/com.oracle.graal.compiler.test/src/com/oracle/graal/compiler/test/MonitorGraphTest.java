@@ -22,20 +22,27 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
+import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.java.MonitorExitNode;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.common.inlining.InliningPhase;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant

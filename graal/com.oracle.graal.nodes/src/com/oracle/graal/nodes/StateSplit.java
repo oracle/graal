@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.NodeWithState;
 
 /**
  * A state split is a node that may have a frame state associated with it.

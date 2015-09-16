@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.nodes.java.ExceptionObjectNode;
+import com.oracle.graal.phases.common.AbstractInliningPhase;
 
 /**
  * Tests compilation of a hot exception handler.

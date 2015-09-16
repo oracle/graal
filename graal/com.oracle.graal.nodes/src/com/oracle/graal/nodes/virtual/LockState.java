@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MonitorIdNode;
 
 /**
  * The class implements a simple linked list of MonitorIdNodes, which can be used to describe the

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.nodes.ValueNode;
 
 public class ReadEliminationBlockState extends EffectsBlockState<ReadEliminationBlockState> {
 

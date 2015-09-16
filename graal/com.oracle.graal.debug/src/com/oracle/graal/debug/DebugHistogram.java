@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug;
 
-import java.util.*;
+import java.util.List;
 
 /**
  * Facility for recording value frequencies.

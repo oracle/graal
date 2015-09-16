@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph;
 
-import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graph.iterators.NodeIterable;
 
 /**
  * The iterator returned by this iterable can be used to access {@link Position positions} during

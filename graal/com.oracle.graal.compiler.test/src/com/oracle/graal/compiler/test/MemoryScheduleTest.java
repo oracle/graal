@@ -22,36 +22,48 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.graph.test.matchers.NodeIterableCount.*;
-import static org.hamcrest.core.IsInstanceOf.*;
-import static org.junit.Assert.*;
+import static com.oracle.graal.compiler.common.GraalOptions.OptImplicitNullChecks;
+import static com.oracle.graal.compiler.common.GraalOptions.OptScheduleOutOfLoops;
+import static com.oracle.graal.graph.test.matchers.NodeIterableCount.hasCount;
+import static org.hamcrest.core.IsInstanceOf.instanceOf;
+import static org.junit.Assert.assertThat;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionValue.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.junit.*;
-
-import com.oracle.graal.api.directives.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.schedule.SchedulePhase.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StartNode;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.memory.FloatingReadNode;
+import com.oracle.graal.nodes.memory.WriteNode;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.FloatingReadPhase;
+import com.oracle.graal.phases.common.GuardLoweringPhase;
+import com.oracle.graal.phases.common.LoweringPhase;
+import com.oracle.graal.phases.common.RemoveValueProxyPhase;
+import com.oracle.graal.phases.common.inlining.InliningPhase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.MidTierContext;
 
 /**
  * In these test the FrameStates are explicitly cleared out, so that the scheduling of

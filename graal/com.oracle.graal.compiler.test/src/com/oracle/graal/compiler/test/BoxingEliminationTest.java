@@ -22,15 +22,20 @@
  */
 package com.oracle.graal.compiler.test;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.graal.loop.phases.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.loop.phases.LoopPeelingPhase;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.common.inlining.InliningPhase;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant

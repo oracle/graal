@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeInterface;
 
 /**
  * This interface marks nodes whose result is the same as one of their inputs. Such nodes are used

@@ -23,7 +23,8 @@
 package com.oracle.graal.graph;
 
 import java.util.AbstractMap.SimpleEntry;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Map.Entry;
 
 public class NodeMap<T> extends NodeIdAccessor {

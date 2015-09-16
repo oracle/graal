@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.nodes.cfg;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
 public class LocationSet {
     private LocationIdentity firstLocation;

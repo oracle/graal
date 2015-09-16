@@ -22,20 +22,22 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.api.directives.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.replacements.Snippets;
+import com.oracle.graal.word.Word;
 
 public class PointerTrackingTest extends GraalCompilerTest implements Snippets {
 

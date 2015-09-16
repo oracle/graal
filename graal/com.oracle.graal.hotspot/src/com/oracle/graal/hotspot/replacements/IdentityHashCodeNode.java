@@ -22,15 +22,18 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.replacements.nodes.PureFunctionMacroNode;
 
 @NodeInfo
 public final class IdentityHashCodeNode extends PureFunctionMacroNode {

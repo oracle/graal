@@ -23,10 +23,10 @@
 
 package com.oracle.graal.nodes.spi;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.ValueNode;
 
 public interface NodeValueMap {
 

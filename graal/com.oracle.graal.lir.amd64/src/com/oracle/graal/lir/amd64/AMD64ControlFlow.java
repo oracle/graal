@@ -22,23 +22,39 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.CompilationResult.JumpTable;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Address.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.asm.amd64.AMD64Address;
+import com.oracle.graal.asm.amd64.AMD64Address.Scale;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.LabelRef;
+import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public class AMD64ControlFlow {
 

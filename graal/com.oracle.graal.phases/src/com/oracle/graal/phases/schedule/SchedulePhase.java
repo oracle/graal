@@ -22,22 +22,54 @@
  */
 package com.oracle.graal.phases.schedule;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
+import static com.oracle.graal.compiler.common.GraalOptions.OptScheduleOutOfLoops;
+import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.dominates;
+import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.strictlyDominates;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Formatter;
+import java.util.List;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.Graph.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.compiler.common.SuppressFBWarnings;
+import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
+import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Graph.NodeEvent;
+import com.oracle.graal.graph.Graph.NodeEventListener;
+import com.oracle.graal.graph.Graph.NodeEventScope;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeBitMap;
+import com.oracle.graal.graph.NodeMap;
+import com.oracle.graal.graph.NodeStack;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractEndNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ControlSinkNode;
+import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.GuardNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StartNode;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.VirtualState;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.nodes.cfg.HIRLoop;
+import com.oracle.graal.nodes.cfg.LocationSet;
+import com.oracle.graal.nodes.memory.FloatingReadNode;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
+import com.oracle.graal.nodes.memory.MemoryNode;
+import com.oracle.graal.nodes.memory.MemoryPhiNode;
+import com.oracle.graal.phases.Phase;
 
 public final class SchedulePhase extends Phase {
 

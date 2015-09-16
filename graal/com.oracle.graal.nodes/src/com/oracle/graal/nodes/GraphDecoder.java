@@ -22,17 +22,34 @@
  */
 package com.oracle.graal.nodes;
 
-import static jdk.internal.jvmci.common.JVMCIError.*;
+import static jdk.internal.jvmci.common.JVMCIError.shouldNotReachHere;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.Architecture;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.util.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.Fields;
+import com.oracle.graal.compiler.common.util.TypeReader;
+import com.oracle.graal.compiler.common.util.UnsafeArrayTypeReader;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Edges;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeBitMap;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.graph.NodeList;
+import com.oracle.graal.graph.NodeSuccessorList;
 
 /**
  * Decoder for {@link EncodedGraph encoded graphs} produced by {@link GraphEncoder}. Support for

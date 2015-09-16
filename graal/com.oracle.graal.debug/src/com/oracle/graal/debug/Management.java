@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.debug;
 
-import static java.lang.Thread.*;
+import static java.lang.Thread.currentThread;
 
-import java.lang.management.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 
-import javax.management.*;
+import javax.management.ObjectName;
 
 public class Management {
 

@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleInlining;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.TruffleInlining;
+import com.oracle.graal.truffle.TruffleInliningDecision;
+import com.oracle.graal.truffle.TruffleInliningProfile;
 
 public final class TraceInliningListener extends AbstractDebugCompilationListener {
 

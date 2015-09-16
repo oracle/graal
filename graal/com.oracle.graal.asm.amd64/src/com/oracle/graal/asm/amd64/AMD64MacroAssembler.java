@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.asm.amd64;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseIncDec;
+import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
+import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.asm.*;
-
-import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
+import com.oracle.graal.asm.NumUtil;
 
 /**
  * This class implements commonly used X86 code patterns.

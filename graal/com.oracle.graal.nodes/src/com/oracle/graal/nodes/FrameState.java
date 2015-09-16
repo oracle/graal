@@ -22,21 +22,35 @@
  */
 package com.oracle.graal.nodes;
 
-import static jdk.internal.jvmci.code.BytecodeFrame.*;
+import static jdk.internal.jvmci.code.BytecodeFrame.getPlaceholderBciName;
+import static jdk.internal.jvmci.code.BytecodeFrame.isPlaceholderBci;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.BytecodePosition;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.MetaUtil;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.bytecode.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.bytecode.Bytecodes;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.graph.IterableNodeType;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.Verbosity;
+import com.oracle.graal.nodes.java.MonitorIdNode;
+import com.oracle.graal.nodes.virtual.EscapeObjectState;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and operand

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler;
 
-import java.util.concurrent.*;
+import java.util.concurrent.ThreadFactory;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.GraalDebugConfig;
 
 /**
  * Facility for creating {@linkplain CompilerThread compiler threads}.

@@ -22,10 +22,61 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.bytecode.Bytecodes.*;
-import com.oracle.graal.debug.*;
+import static com.oracle.graal.bytecode.Bytecodes.ALOAD;
+import static com.oracle.graal.bytecode.Bytecodes.ALOAD_0;
+import static com.oracle.graal.bytecode.Bytecodes.ALOAD_1;
+import static com.oracle.graal.bytecode.Bytecodes.ALOAD_2;
+import static com.oracle.graal.bytecode.Bytecodes.ALOAD_3;
+import static com.oracle.graal.bytecode.Bytecodes.ASTORE;
+import static com.oracle.graal.bytecode.Bytecodes.ASTORE_0;
+import static com.oracle.graal.bytecode.Bytecodes.ASTORE_1;
+import static com.oracle.graal.bytecode.Bytecodes.ASTORE_2;
+import static com.oracle.graal.bytecode.Bytecodes.ASTORE_3;
+import static com.oracle.graal.bytecode.Bytecodes.DLOAD;
+import static com.oracle.graal.bytecode.Bytecodes.DLOAD_0;
+import static com.oracle.graal.bytecode.Bytecodes.DLOAD_1;
+import static com.oracle.graal.bytecode.Bytecodes.DLOAD_2;
+import static com.oracle.graal.bytecode.Bytecodes.DLOAD_3;
+import static com.oracle.graal.bytecode.Bytecodes.DSTORE;
+import static com.oracle.graal.bytecode.Bytecodes.DSTORE_0;
+import static com.oracle.graal.bytecode.Bytecodes.DSTORE_1;
+import static com.oracle.graal.bytecode.Bytecodes.DSTORE_2;
+import static com.oracle.graal.bytecode.Bytecodes.DSTORE_3;
+import static com.oracle.graal.bytecode.Bytecodes.FLOAD;
+import static com.oracle.graal.bytecode.Bytecodes.FLOAD_0;
+import static com.oracle.graal.bytecode.Bytecodes.FLOAD_1;
+import static com.oracle.graal.bytecode.Bytecodes.FLOAD_2;
+import static com.oracle.graal.bytecode.Bytecodes.FLOAD_3;
+import static com.oracle.graal.bytecode.Bytecodes.FSTORE;
+import static com.oracle.graal.bytecode.Bytecodes.FSTORE_0;
+import static com.oracle.graal.bytecode.Bytecodes.FSTORE_1;
+import static com.oracle.graal.bytecode.Bytecodes.FSTORE_2;
+import static com.oracle.graal.bytecode.Bytecodes.FSTORE_3;
+import static com.oracle.graal.bytecode.Bytecodes.IINC;
+import static com.oracle.graal.bytecode.Bytecodes.ILOAD;
+import static com.oracle.graal.bytecode.Bytecodes.ILOAD_0;
+import static com.oracle.graal.bytecode.Bytecodes.ILOAD_1;
+import static com.oracle.graal.bytecode.Bytecodes.ILOAD_2;
+import static com.oracle.graal.bytecode.Bytecodes.ILOAD_3;
+import static com.oracle.graal.bytecode.Bytecodes.ISTORE;
+import static com.oracle.graal.bytecode.Bytecodes.ISTORE_0;
+import static com.oracle.graal.bytecode.Bytecodes.ISTORE_1;
+import static com.oracle.graal.bytecode.Bytecodes.ISTORE_2;
+import static com.oracle.graal.bytecode.Bytecodes.ISTORE_3;
+import static com.oracle.graal.bytecode.Bytecodes.LLOAD;
+import static com.oracle.graal.bytecode.Bytecodes.LLOAD_0;
+import static com.oracle.graal.bytecode.Bytecodes.LLOAD_1;
+import static com.oracle.graal.bytecode.Bytecodes.LLOAD_2;
+import static com.oracle.graal.bytecode.Bytecodes.LLOAD_3;
+import static com.oracle.graal.bytecode.Bytecodes.LSTORE;
+import static com.oracle.graal.bytecode.Bytecodes.LSTORE_0;
+import static com.oracle.graal.bytecode.Bytecodes.LSTORE_1;
+import static com.oracle.graal.bytecode.Bytecodes.LSTORE_2;
+import static com.oracle.graal.bytecode.Bytecodes.LSTORE_3;
+import static com.oracle.graal.bytecode.Bytecodes.RET;
 
-import com.oracle.graal.bytecode.*;
+import com.oracle.graal.bytecode.BytecodeStream;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
 /**

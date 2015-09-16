@@ -22,27 +22,56 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.*;
+import static com.oracle.graal.compiler.common.GraalOptions.OptEliminateGuards;
+import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_ENTER;
+import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_ENTER_ALWAYS_REACHED;
+import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_LEAVE;
+import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_PROCESS;
+import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_PROCESS_ALWAYS_REACHED;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Graph.Mark;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeBitMap;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.BeginNode;
+import com.oracle.graal.nodes.FixedGuardNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.GuardNode;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.extended.AnchoringNode;
+import com.oracle.graal.nodes.extended.GuardedNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringProvider;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.Phase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * Processes all {@link Lowerable} nodes to do their lowering.

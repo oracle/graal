@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.lir.gen;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 
-import java.util.*;
+import java.util.EnumSet;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;

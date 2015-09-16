@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.api.directives.test;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.api.directives.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.StructuredGraph;
 
 public class ProbabilityDirectiveTest extends GraalCompilerTest {
 

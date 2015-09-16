@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.debug.internal;
 
-import static com.oracle.graal.debug.DebugCloseable.*;
+import static com.oracle.graal.debug.DebugCloseable.VOID_CLOSEABLE;
 
-import java.lang.management.*;
-import java.util.concurrent.*;
+import java.lang.management.ThreadMXBean;
+import java.util.concurrent.TimeUnit;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.debug.Management;
 
 public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer {
 

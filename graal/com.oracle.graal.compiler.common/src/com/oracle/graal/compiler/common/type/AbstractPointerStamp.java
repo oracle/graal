@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
 
 /**
  * Abstract base class of all pointer types.

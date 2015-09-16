@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodeinfo.processor;
 
-import javax.lang.model.element.*;
+import javax.lang.model.element.Element;
 
 /**
  * Denotes an error encountered while processing an element.

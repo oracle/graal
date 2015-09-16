@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 
 /**
  * A Graal compiler test that needs access to the {@link HotSpotGraalRuntimeProvider}.

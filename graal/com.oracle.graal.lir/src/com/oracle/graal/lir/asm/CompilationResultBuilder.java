@@ -22,27 +22,49 @@
  */
 package com.oracle.graal.lir.asm;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.function.Consumer;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.AbstractAddress;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.code.CompilationResult.ConstantReference;
 import jdk.internal.jvmci.code.CompilationResult.DataSectionReference;
 import jdk.internal.jvmci.code.DataSection.Data;
 import jdk.internal.jvmci.code.DataSection.DataBuilder;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.code.DebugInfo;
+import jdk.internal.jvmci.code.InfopointReason;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.InvokeTarget;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.VMConstant;
+import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LabelRef;
+import com.oracle.graal.lir.framemap.FrameMap;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.

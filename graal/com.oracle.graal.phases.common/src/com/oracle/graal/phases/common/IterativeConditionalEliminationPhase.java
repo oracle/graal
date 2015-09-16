@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.phases.common;
 
-import jdk.internal.jvmci.code.*;
-import static com.oracle.graal.graph.Graph.NodeEvent.*;
+import static com.oracle.graal.graph.Graph.NodeEvent.NODE_ADDED;
+import static com.oracle.graal.graph.Graph.NodeEvent.ZERO_USAGES;
+import jdk.internal.jvmci.code.BailoutException;
 
 import com.oracle.graal.graph.Graph.NodeEventScope;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.util.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.spi.Simplifiable;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext> {
 

@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.UnsignedMath;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 /**
  * Tests the substitutions for the {@link UnsignedMath} class.

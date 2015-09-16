@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.microbenchmarks.graal;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.microbenchmarks.graal.util.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.microbenchmarks.graal.util.GraalState;
+import com.oracle.graal.microbenchmarks.graal.util.GraphState;
+import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
+import com.oracle.graal.phases.common.ConditionalEliminationPhase;
 
 public class ConditionalEliminationBenchmark extends GraalBenchmark {
 

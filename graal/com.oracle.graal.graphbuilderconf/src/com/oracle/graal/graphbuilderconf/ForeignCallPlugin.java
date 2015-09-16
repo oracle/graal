@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
 
 /**
  * {@link InvocationPlugin} for converting a method call directly to a foreign call.

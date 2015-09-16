@@ -22,11 +22,24 @@
  */
 package com.oracle.graal.truffle.test;
 
-import org.junit.*;
-import org.junit.runner.*;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.oracle.graal.truffle.test.builtins.*;
-import com.oracle.truffle.sl.test.*;
+import com.oracle.graal.truffle.test.builtins.SLCallFunctionsWithBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLCallUntilOptimizedBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLDeoptimizeWhenCompiledBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLDisableSplittingBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLGenerateDummyNodesBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLGetOptionBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLIsCompilationConstantBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLIsInlinedBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLIsOptimizedBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLSetOptionBuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLTestTruffleBoundary01BuiltinFactory;
+import com.oracle.graal.truffle.test.builtins.SLWaitForOptimizationBuiltinFactory;
+import com.oracle.truffle.sl.test.SLTestRunner;
+import com.oracle.truffle.sl.test.SLTestSuite;
 
 @RunWith(SLTestRunner.class)
 @SLTestSuite({"graal/com.oracle.graal.truffle.test/sl", "sl"})

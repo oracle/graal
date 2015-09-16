@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.jtt.jdk;
 
-import org.junit.*;
+import org.junit.Test;
 
-import sun.misc.*;
+import sun.misc.Unsafe;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 

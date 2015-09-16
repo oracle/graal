@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.GenLoopSafepoints;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.nodes.LoopEndNode;
+import com.oracle.graal.nodes.SafepointNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.Phase;
 
 /**
  * Adds safepoints to loops.

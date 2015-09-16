@@ -22,21 +22,29 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.code.CompilationResult.Call;
+import jdk.internal.jvmci.code.CompilationResult.Mark;
+import jdk.internal.jvmci.code.CompilationResult.Site;
+import jdk.internal.jvmci.meta.JavaTypeProfile;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import org.junit.Test;
 
-import jdk.internal.jvmci.meta.*;
-
-import org.junit.*;
-
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.java.InstanceOfNode;
+import com.oracle.graal.nodes.java.TypeCheckNode;
+import com.oracle.graal.phases.common.AbstractInliningPhase;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth12;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth13;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth14;

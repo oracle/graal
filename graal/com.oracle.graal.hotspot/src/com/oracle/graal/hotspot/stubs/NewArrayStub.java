@@ -22,27 +22,42 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
-import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
-import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayPrototypeMarkWord;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperElementTypeMask;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperElementTypeShift;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeMask;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeShift;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeMask;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeShift;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadKlassLayoutHelperIntrinsic;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
+import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH;
+import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.formatArray;
+import static com.oracle.graal.hotspot.stubs.NewInstanceStub.refillAllocate;
+import static com.oracle.graal.hotspot.stubs.StubUtil.handlePendingException;
+import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
+import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
+import static com.oracle.graal.hotspot.stubs.StubUtil.verifyObject;
+import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.computeArrayAllocationSize;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.nodes.type.*;
-import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
+import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
+import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
+import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.word.*;
+import com.oracle.graal.word.Word;
 
 /**
  * Stub implementing the fast path for TLAB refill during instance class allocation. This stub is

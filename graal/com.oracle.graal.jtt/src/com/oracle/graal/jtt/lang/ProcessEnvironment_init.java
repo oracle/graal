@@ -24,11 +24,13 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public final class ProcessEnvironment_init extends JTTTest {
 

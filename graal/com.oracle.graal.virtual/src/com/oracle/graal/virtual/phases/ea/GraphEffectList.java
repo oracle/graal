@@ -22,14 +22,22 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import java.util.*;
+import java.util.ArrayList;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.debug.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.ControlSinkNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.debug.DynamicCounterNode;
+import com.oracle.graal.nodes.debug.WeakCounterNode;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.nodes.virtual.EscapeObjectState;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
 public class GraphEffectList extends EffectList {
 

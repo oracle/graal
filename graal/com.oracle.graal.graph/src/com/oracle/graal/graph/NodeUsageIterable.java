@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.Graph.*;
+import static com.oracle.graal.graph.Graph.MODIFICATION_COUNTS_ENABLED;
 
-import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graph.iterators.NodeIterable;
 
 class NodeUsageIterable implements NodeIterable<Node> {
 

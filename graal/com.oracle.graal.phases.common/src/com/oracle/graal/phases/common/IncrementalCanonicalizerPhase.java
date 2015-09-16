@@ -23,10 +23,11 @@
 package com.oracle.graal.phases.common;
 
 import com.oracle.graal.graph.Graph.NodeEventScope;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.util.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * A phase suite that applies {@linkplain CanonicalizerPhase canonicalization} to a graph after all

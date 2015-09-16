@@ -22,19 +22,28 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import java.lang.ref.*;
+import java.lang.ref.SoftReference;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.graal.api.directives.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.compiler.test.TypeSystemTest;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.nodes.extended.BoxNode;
+import com.oracle.graal.nodes.extended.UnboxNode;
+import com.oracle.graal.nodes.java.LoadFieldNode;
+import com.oracle.graal.nodes.java.LoadIndexedNode;
+import com.oracle.graal.nodes.java.NewArrayNode;
+import com.oracle.graal.nodes.java.NewInstanceNode;
+import com.oracle.graal.nodes.java.StoreFieldNode;
+import com.oracle.graal.nodes.virtual.CommitAllocationNode;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
 /**
  * The PartialEscapeAnalysisPhase is expected to remove all allocations and return the correct

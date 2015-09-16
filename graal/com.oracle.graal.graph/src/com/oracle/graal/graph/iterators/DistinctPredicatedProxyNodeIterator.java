@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.graph.iterators;
 
-import java.util.*;
+import java.util.Iterator;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeBitMap;
 
 public class DistinctPredicatedProxyNodeIterator<T extends Node> extends PredicatedProxyNodeIterator<T> {
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 
 /**
  * Denotes monitor unlocking transition.

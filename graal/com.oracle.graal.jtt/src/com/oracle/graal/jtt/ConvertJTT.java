@@ -24,10 +24,14 @@
  */
 package com.oracle.graal.jtt;
 
-import java.io.*;
-import java.nio.charset.*;
-import java.nio.file.*;
-import java.util.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Simple Utility to convert java tester tests from the proprietary test format into JUnit - tests.

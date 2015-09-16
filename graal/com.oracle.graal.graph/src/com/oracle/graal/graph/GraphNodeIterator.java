@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
+import java.util.Iterator;
 
 /**
  * Iterates over the nodes in a given graph.

@@ -22,13 +22,17 @@
  */
 package com.oracle.graal.java;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 /**
  * Parses the bytecodes of a method and builds the IR graph.

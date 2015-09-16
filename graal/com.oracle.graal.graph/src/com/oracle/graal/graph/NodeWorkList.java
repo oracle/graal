@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Queue;
 
 public abstract class NodeWorkList implements Iterable<Node> {
 

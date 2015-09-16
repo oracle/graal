@@ -22,20 +22,21 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.util.function.*;
+import java.util.function.Function;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.runtime.RuntimeProvider;
 
 /**
  * Tests for expected behavior when parsing snippets and intrinsics.

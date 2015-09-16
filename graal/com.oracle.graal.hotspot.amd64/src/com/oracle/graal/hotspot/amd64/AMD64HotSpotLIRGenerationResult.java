@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import java.util.*;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.StackSlot;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import com.oracle.graal.lir.gen.LIRGenerationResultBase;
 
 public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
 

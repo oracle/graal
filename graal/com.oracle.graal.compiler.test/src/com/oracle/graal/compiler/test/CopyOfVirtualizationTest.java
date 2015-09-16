@@ -23,12 +23,12 @@
 
 package com.oracle.graal.compiler.test;
 
-import java.util.*;
+import java.util.Arrays;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.java.NewArrayNode;
 
 public class CopyOfVirtualizationTest extends GraalCompilerTest {
 

@@ -22,18 +22,22 @@
  */
 package com.oracle.graal.compiler.test;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaConstant;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.debug.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.AddNode;
+import com.oracle.graal.nodes.debug.OpaqueNode;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 public class LongNodeChainTest extends GraalCompilerTest {
 

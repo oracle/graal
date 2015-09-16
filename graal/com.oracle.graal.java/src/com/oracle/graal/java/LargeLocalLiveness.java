@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.java;
 
-import java.util.*;
+import java.util.BitSet;
 
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 

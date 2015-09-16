@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PiNode;
 
 /**
  * This interface marks nodes, which are able to be pushed through a PiNode.

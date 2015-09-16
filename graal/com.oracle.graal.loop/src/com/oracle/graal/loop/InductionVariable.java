@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.loop;
 
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
 
 /**
  * This class describes a value node that is an induction variable in a counted loop.

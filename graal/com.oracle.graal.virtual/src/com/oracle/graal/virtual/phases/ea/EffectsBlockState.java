@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.Map;
 
 public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 

@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.debug.test;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.junit.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugHistogram;
+import com.oracle.graal.debug.internal.DebugHistogramAsciiPrinter;
+import com.oracle.graal.debug.internal.DebugHistogramRPrinter;
 
 public class DebugHistogramTest {
 

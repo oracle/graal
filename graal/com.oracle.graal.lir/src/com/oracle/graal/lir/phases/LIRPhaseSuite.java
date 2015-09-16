@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.lir.phases;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.TargetDescription;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 public class LIRPhaseSuite<C> extends LIRPhase<C> {
     private final List<LIRPhase<C>> phases;

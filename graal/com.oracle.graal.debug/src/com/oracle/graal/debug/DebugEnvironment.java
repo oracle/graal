@@ -22,12 +22,19 @@
  */
 package com.oracle.graal.debug;
 
-import static com.oracle.graal.debug.GraalDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.Dump;
+import static com.oracle.graal.debug.GraalDebugConfig.Log;
+import static com.oracle.graal.debug.GraalDebugConfig.Meter;
+import static com.oracle.graal.debug.GraalDebugConfig.MethodFilter;
+import static com.oracle.graal.debug.GraalDebugConfig.Time;
+import static com.oracle.graal.debug.GraalDebugConfig.TrackMemUse;
+import static com.oracle.graal.debug.GraalDebugConfig.Verify;
 
-import java.io.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
 
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.service.Services;
 
 public class DebugEnvironment {
 

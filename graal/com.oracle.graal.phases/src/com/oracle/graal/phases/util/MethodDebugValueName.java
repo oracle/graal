@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.phases.util;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaMethod;
 
-import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.LazyName;
 
 /**
  * Lazily computed debug value name composed of a prefix and a {@linkplain JavaMethod#getName()

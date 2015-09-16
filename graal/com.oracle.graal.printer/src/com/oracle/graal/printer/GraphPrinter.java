@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.printer;
 
-import java.io.*;
+import java.io.Closeable;
+import java.io.IOException;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 
 interface GraphPrinter extends Closeable {
 

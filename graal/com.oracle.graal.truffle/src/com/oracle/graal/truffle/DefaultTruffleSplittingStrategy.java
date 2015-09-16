@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 public class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy {

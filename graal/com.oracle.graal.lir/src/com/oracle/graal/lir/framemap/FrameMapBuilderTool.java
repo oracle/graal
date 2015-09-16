@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.framemap;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.VirtualStackSlot;
 
 /**
  * A {@link FrameMapBuilder} that allows access to the underlying {@link FrameMap}.

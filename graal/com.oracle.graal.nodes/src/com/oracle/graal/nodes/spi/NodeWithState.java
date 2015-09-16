@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.NodeInterface;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodes.FrameState;
 
 /**
  * Interface for nodes which have {@link FrameState} nodes as input.

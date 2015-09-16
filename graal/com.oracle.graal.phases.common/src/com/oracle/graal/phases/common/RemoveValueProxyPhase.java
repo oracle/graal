@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueProxyNode;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.Phase;
 
 public class RemoveValueProxyPhase extends Phase {
 

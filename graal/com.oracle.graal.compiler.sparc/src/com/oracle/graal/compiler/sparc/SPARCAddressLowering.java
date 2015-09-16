@@ -23,13 +23,13 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.meta.JavaConstant;
 
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.AddNode;
+import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
 
 public class SPARCAddressLowering extends AddressLowering {

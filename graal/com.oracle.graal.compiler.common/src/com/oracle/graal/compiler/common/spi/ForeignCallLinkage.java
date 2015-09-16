@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.compiler.common.spi;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.meta.InvokeTarget;
+import jdk.internal.jvmci.meta.Value;
 
 /**
  * The runtime specific details of a {@linkplain ForeignCallDescriptor foreign} call.

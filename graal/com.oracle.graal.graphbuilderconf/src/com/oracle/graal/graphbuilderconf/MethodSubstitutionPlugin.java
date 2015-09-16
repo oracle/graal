@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.stream.*;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
-import sun.misc.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import sun.misc.Launcher;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.ValueNode;
 
 /**
  * An {@link InvocationPlugin} for a method where the implementation of the method is provided by a

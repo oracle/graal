@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Array;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 /**
  * Tests the implementation of Array.createInstance.

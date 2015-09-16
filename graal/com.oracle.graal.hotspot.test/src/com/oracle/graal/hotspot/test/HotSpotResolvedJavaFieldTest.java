@@ -22,12 +22,17 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaField;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectTypeImpl;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ModifiersProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaField;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * Tests {@link HotSpotResolvedJavaField} functionality.

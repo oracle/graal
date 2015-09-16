@@ -22,19 +22,28 @@
  */
 package com.oracle.graal.asm.test;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.runtime.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.InvalidInstalledCodeException;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.runtime.JVMCI;
+import jdk.internal.jvmci.runtime.JVMCIBackend;
+import jdk.internal.jvmci.service.Services;
 
-import org.junit.*;
+import org.junit.Assert;
 
-import com.oracle.graal.code.*;
-import com.oracle.graal.test.*;
+import com.oracle.graal.code.DisassemblerProvider;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.test.GraalTest;
 
 public abstract class AssemblerTest extends GraalTest {
 

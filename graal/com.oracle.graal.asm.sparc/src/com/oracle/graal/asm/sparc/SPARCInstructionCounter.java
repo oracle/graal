@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import java.util.*;
+import java.util.TreeMap;
 
-import com.oracle.graal.asm.Assembler.*;
+import com.oracle.graal.asm.Assembler.InstructionCounter;
 
 public class SPARCInstructionCounter implements InstructionCounter {
     // Use a treemap to keep the order in the output

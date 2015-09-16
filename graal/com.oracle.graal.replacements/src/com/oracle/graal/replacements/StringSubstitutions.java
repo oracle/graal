@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.compiler.common.SuppressFBWarnings;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.java.LoadFieldNode;
+import com.oracle.graal.replacements.nodes.ArrayEqualsNode;
 
 // JaCoCo Exclude
 

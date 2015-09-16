@@ -22,19 +22,24 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Value;
+
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.util.ArrayMap;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.common.util.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.debug.Indent;
+import com.oracle.graal.lir.InstructionValueConsumer;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 

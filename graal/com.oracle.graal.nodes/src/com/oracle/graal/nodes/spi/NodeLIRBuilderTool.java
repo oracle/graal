@@ -22,20 +22,33 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractEndNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.BreakpointNode;
+import com.oracle.graal.nodes.DeoptimizingNode;
+import com.oracle.graal.nodes.FullInfopointNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.LoopEndNode;
+import com.oracle.graal.nodes.SafepointNode;
+import com.oracle.graal.nodes.SimpleInfopointNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.ConditionalNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.extended.SwitchNode;
 
 public interface NodeLIRBuilderTool extends NodeValueMap {
 

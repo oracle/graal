@@ -22,13 +22,23 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static jdk.internal.jvmci.sparc.SPARC.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.sparc.*;
+import static jdk.internal.jvmci.sparc.SPARC.g1;
+import static jdk.internal.jvmci.sparc.SPARC.g3;
+import static jdk.internal.jvmci.sparc.SPARC.g4;
+import static jdk.internal.jvmci.sparc.SPARC.g5;
+import static jdk.internal.jvmci.sparc.SPARC.o0;
+import static jdk.internal.jvmci.sparc.SPARC.o1;
+import static jdk.internal.jvmci.sparc.SPARC.o2;
+import static jdk.internal.jvmci.sparc.SPARC.o3;
+import static jdk.internal.jvmci.sparc.SPARC.o4;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.hotspot.sparc.SPARCHotSpotRegisterConfig;
 
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
 
 final class SPARCDeoptimizationStub extends DeoptimizationStub {
 

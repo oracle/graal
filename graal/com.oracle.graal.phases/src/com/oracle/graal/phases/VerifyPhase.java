@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /***
  * This phase serves as a verification, in order to check the graph for certain properties. The

@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 
 /**
  * Temporary node for legacy loop count reporting support as it was most likely done in other

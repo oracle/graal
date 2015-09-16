@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common.util;
 
-import java.util.*;
+import java.util.Arrays;
 
 /**
  * An expandable and indexable list of {@code int}s.

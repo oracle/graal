@@ -22,19 +22,22 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 
-import java.util.*;
+import java.util.BitSet;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.code.TargetDescription;
 
-import com.oracle.graal.compiler.common.alloc.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Indent;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.StandardOp;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
-import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.phases.AllocationPhase;
 
 /**
  * Phase 6: resolve data flow

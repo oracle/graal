@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.runtime.SLFunction;
 
 /**
  * Checks whether or not a function is optimized by the Graal runtime.

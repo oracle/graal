@@ -23,11 +23,16 @@
 package com.oracle.graal.hotspot.meta;
 
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstantImpl;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 
 public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvider {
 

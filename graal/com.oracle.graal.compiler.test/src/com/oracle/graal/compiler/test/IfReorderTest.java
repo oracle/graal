@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.io.*;
-import java.util.*;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.junit.*;
+import org.junit.Test;
 
 public class IfReorderTest extends GraalCompilerTest {
 

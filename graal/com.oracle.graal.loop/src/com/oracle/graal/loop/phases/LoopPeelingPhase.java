@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.loop.phases;
 
-import com.oracle.graal.debug.*;
-
-import com.oracle.graal.loop.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.loop.LoopEx;
+import com.oracle.graal.loop.LoopPolicies;
+import com.oracle.graal.loop.LoopTransformations;
+import com.oracle.graal.loop.LoopsData;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.Phase;
 
 public class LoopPeelingPhase extends Phase {
 

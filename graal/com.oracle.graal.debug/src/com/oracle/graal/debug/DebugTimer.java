@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug;
 
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A timer for some activity of interest. A timer should be deployed using the try-with-resources

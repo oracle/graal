@@ -22,18 +22,26 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 
-import java.util.*;
+import java.util.ArrayList;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.Location;
+import jdk.internal.jvmci.code.ReferenceMap;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotReferenceMap;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 
 public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
 

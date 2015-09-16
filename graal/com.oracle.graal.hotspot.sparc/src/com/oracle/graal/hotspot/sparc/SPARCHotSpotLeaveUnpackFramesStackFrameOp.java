@@ -22,14 +22,19 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import jdk.internal.jvmci.code.*;
-import static jdk.internal.jvmci.sparc.SPARC.*;
+import static jdk.internal.jvmci.sparc.SPARC.g0;
+import static jdk.internal.jvmci.sparc.SPARC.i0;
+import static jdk.internal.jvmci.sparc.SPARC.l7;
+import jdk.internal.jvmci.code.Register;
 
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAddress;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
+import com.oracle.graal.lir.sparc.SPARCSaveRegistersOp;
 
 /**
  * Emits code that leaves a stack frame which is tailored to call the C++ method

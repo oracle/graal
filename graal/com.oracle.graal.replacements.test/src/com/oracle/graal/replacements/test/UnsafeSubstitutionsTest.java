@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import sun.misc.*;
+import sun.misc.Unsafe;
 
 /**
  * Tests the VM independent intrinsification of {@link Unsafe} methods.

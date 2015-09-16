@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.debug;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.regex.*;
+import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.service.Services;
 
 /**
  * A collection of static methods for printing debug and informational output to a global

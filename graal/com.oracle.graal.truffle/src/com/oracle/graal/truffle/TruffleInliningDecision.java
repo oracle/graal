@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
 
 public final class TruffleInliningDecision extends TruffleInlining implements Comparable<TruffleInliningDecision> {
 

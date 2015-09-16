@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.virtual.nodes;
 
-import java.util.*;
+import java.util.List;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.virtual.EscapeObjectState;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 /**
  * This class encapsulated the virtual state of an escape analyzed object.

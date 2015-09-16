@@ -22,24 +22,26 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.Architecture;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.debug.*;
-
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.nodes.EncodedGraph;
+import com.oracle.graal.nodes.GraphEncoder;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
+import com.oracle.graal.phases.util.Providers;
 
 /**
  * A graph decoder that provides all necessary encoded graphs on-the-fly (by parsing the methods and

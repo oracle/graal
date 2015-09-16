@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.asm;
 
-import java.util.*;
+import java.util.ArrayList;
 
 /**
  * This class represents a label within assembly code.

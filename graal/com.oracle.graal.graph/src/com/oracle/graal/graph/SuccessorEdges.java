@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.Edges.Type.*;
+import static com.oracle.graal.graph.Edges.Type.Successors;
 
-import java.util.*;
+import java.util.ArrayList;
 
 import com.oracle.graal.graph.NodeClass.EdgeInfo;
 

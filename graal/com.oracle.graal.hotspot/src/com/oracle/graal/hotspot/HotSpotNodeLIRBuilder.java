@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.compiler.match.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.compiler.match.MatchableNode;
+import com.oracle.graal.hotspot.nodes.CompressionNode;
+import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
+import com.oracle.graal.lir.gen.LIRGenerator;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition

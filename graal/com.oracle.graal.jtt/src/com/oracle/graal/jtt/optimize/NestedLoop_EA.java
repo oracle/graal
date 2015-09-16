@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import java.util.*;
+import java.util.ListIterator;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.graal.jtt.JTTTest;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.virtual.CommitAllocationNode;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.Suites;
+import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 
 public class NestedLoop_EA extends JTTTest {
 

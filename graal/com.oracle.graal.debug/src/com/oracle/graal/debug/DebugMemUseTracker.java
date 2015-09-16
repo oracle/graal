@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug;
 
-import com.sun.management.*;
+import com.sun.management.ThreadMXBean;
 
 /**
  * Tracks memory usage within a scope using {@link ThreadMXBean}. This facility should be employed

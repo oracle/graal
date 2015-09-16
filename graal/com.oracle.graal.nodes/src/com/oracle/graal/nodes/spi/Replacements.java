@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Type;
+import java.util.Collection;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.api.replacements.SnippetTemplateCache;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * Interface for managing replacements.

@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node.ValueNumberable;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
 
 /**
  * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not

@@ -22,13 +22,18 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.FROM_POINTER;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.IS_NULL;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.word.*;
+import com.oracle.graal.word.Pointer;
+import com.oracle.graal.word.Signed;
+import com.oracle.graal.word.Unsigned;
+import com.oracle.graal.word.Word;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
+import com.oracle.graal.word.WordBase;
 
 /**
  * Marker type for a metaspace pointer.

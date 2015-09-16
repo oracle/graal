@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.phases.AllocationPhase.*;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.VirtualStackSlot;
 
-import jdk.internal.jvmci.code.*;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 
 public class LIRSuites {
 

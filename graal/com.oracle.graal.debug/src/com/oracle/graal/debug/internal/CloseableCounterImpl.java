@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug.internal;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.DebugCloseable;
 
 /**
  * A helper class for DebugValues that can nest and need to split out accumulated and flat values

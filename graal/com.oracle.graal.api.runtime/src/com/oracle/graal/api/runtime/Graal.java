@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.api.runtime;
 
-import java.util.*;
+import java.util.Formatter;
 
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.service.Services;
 
 /**
  * Access point for {@linkplain #getRuntime() retrieving} the single {@link GraalRuntime} instance.

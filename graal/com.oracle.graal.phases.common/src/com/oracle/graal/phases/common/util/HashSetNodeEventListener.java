@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.phases.common.util;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.oracle.graal.graph.Graph.NodeEvent;
 import com.oracle.graal.graph.Graph.NodeEventListener;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 
 /**
  * A simple {@link NodeEventListener} implementation that accumulates event nodes in a

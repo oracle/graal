@@ -22,10 +22,17 @@
  */
 package com.oracle.graal.lir.constopt;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
-import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
+import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.compiler.common.cfg.PrintableDominatorOptimizationProblem;
+import com.oracle.graal.compiler.common.cfg.PropertyConsumable;
 
 /**
  * Represents a dominator (sub-)tree for a constant definition.

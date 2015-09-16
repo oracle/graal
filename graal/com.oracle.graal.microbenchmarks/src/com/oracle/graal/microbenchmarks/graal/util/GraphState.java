@@ -22,14 +22,19 @@
  */
 package com.oracle.graal.microbenchmarks.graal.util;
 
-import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getGraph;
+import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getMethodFromMethodSpec;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * State providing a new copy of a graph for each invocation of a benchmark. Subclasses of this

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.InvalidInstalledCodeException;
+import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.hotspot.stubs.Stub;
 
 /**
  * Implementation of {@link InstalledCode} for code installed as a RuntimeStub.

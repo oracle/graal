@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import java.util.*;
+import java.util.HashMap;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 public abstract class LIRTestSpecification {
     private Value result;

@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.microbenchmarks.graal;
 
-import java.util.*;
+import java.util.HashMap;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.microbenchmarks.graal.util.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
+import com.oracle.graal.microbenchmarks.graal.util.NodesState;
 import com.oracle.graal.microbenchmarks.graal.util.NodesState.NodePair;
 
 public class NodeBenchmark extends GraalBenchmark {

@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.debug;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 
 /**
  * A utility for printing compiler debug and informational output to an output stream.

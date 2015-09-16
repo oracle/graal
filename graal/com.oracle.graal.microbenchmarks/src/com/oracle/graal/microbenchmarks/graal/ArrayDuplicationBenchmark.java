@@ -22,9 +22,15 @@
  */
 package com.oracle.graal.microbenchmarks.graal;
 
-import java.util.*;
+import java.util.Arrays;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.OperationsPerInvocation;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
 @State(Scope.Thread)
 public class ArrayDuplicationBenchmark {

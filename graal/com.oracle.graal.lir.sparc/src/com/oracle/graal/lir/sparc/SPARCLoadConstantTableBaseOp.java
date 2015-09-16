@@ -22,15 +22,18 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.meta.AllocatableValue;
 
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.StandardOp.NoOp;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 /**
  * Loads the constant section base into a register.

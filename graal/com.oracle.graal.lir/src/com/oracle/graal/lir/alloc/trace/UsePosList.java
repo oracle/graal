@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import com.oracle.graal.compiler.common.util.*;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.*;
+import com.oracle.graal.compiler.common.util.IntList;
+import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterPriority;
 
 /**
  * List of use positions. Each entry in the list records the use position and register priority

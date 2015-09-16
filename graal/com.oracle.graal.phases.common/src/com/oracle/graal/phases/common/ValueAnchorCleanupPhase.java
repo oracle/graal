@@ -22,13 +22,19 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.StartNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.ValueAnchorNode;
+import com.oracle.graal.phases.Phase;
+import com.oracle.graal.phases.graph.MergeableState;
+import com.oracle.graal.phases.graph.SinglePassNodeIterator;
 
 /**
  * This phase performs a bit of hygiene on {@link ValueAnchorNode} by removing inputs that have

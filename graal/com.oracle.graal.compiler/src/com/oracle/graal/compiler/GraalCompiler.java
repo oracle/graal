@@ -22,44 +22,68 @@
  */
 package com.oracle.graal.compiler;
 
-import static com.oracle.graal.compiler.GraalCompiler.Options.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.*;
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
+import static com.oracle.graal.compiler.GraalCompiler.Options.EmitLIRRepeatCount;
+import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
+import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.ALL_REGISTERS;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
-
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionValue.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.CompilationResult.ConstantReference;
+import jdk.internal.jvmci.code.CompilationResult.DataPatch;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.Assumptions;
+import jdk.internal.jvmci.meta.DefaultProfilingInfo;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.ProfilingInfo;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.TriState;
+import jdk.internal.jvmci.meta.VMConstant;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
-import com.oracle.graal.compiler.common.alloc.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.alloc.lsra.OutOfRegistersException;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.LowTierContext;
+import com.oracle.graal.phases.tiers.MidTierContext;
+import com.oracle.graal.phases.tiers.Suites;
+import com.oracle.graal.phases.tiers.TargetProvider;
+import com.oracle.graal.phases.util.Providers;
 
 /**
  * Static methods for orchestrating the compilation of a {@linkplain StructuredGraph graph}.

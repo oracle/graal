@@ -22,21 +22,25 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssi;
 
-import static com.oracle.graal.lir.alloc.lsra.ssa.SSALinearScanLifetimeAnalysisPhase.*;
+import static com.oracle.graal.lir.alloc.lsra.ssa.SSALinearScanLifetimeAnalysisPhase.setHint;
 
-import java.util.*;
+import java.util.EnumSet;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.ValueConsumer;
+import com.oracle.graal.lir.alloc.lsra.Interval;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
-import com.oracle.graal.lir.ssi.*;
+import com.oracle.graal.lir.alloc.lsra.LinearScan;
+import com.oracle.graal.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
+import com.oracle.graal.lir.ssi.SSIUtil;
 
 public class SSILinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalysisPhase {
 

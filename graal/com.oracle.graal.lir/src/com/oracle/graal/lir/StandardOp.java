@@ -22,19 +22,29 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.lir.LIRValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterSaveLayout;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.Value;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.framemap.FrameMap;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for

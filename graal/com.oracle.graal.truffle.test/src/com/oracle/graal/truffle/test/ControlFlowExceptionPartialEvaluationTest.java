@@ -22,13 +22,20 @@
  */
 package com.oracle.graal.truffle.test;
 
-import org.junit.*;
+import org.junit.Assume;
+import org.junit.Test;
 
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.test.nodes.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
+import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
+import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.SlowPathException;
 
 public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {

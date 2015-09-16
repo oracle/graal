@@ -22,14 +22,18 @@
  */
 package com.oracle.graal.nodes.test;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graph.iterators.NodePredicate;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
 

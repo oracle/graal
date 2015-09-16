@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.compiler.amd64.test;
 
-import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static org.junit.Assume.*;
-import jdk.internal.jvmci.amd64.*;
+import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceRA;
+import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
+import static org.junit.Assume.assumeTrue;
+import jdk.internal.jvmci.amd64.AMD64;
 
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.backend.*;
+import com.oracle.graal.compiler.test.backend.AllocatorTest;
 
 public class AMD64AllocatorTest extends AllocatorTest {
 

@@ -22,11 +22,18 @@
  */
 package com.oracle.graal.debug.internal;
 
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.PrintStream;
+import java.util.Iterator;
+import java.util.concurrent.Callable;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugConfig;
+import com.oracle.graal.debug.DebugDumpHandler;
+import com.oracle.graal.debug.DebugVerifyHandler;
+import com.oracle.graal.debug.DelegatingDebugConfig;
+import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.debug.TopLevelDebugConfig;
 
 public final class DebugScope implements Debug.Scope {
 

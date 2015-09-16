@@ -22,13 +22,19 @@
  */
 package com.oracle.graal.microbenchmarks.graal.util;
 
-import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.*;
+import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getGraphFromMethodSpec;
+import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getNodes;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
 
 /**
  * State providing the nodes in a graph. Subclasses of this class are annotated with

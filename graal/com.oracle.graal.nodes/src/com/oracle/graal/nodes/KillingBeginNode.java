@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class KillingBeginNode extends AbstractBeginNode implements MemoryCheckpoint.Single {

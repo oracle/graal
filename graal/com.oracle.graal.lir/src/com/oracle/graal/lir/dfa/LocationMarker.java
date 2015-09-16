@@ -22,22 +22,30 @@
  */
 package com.oracle.graal.lir.dfa;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.isIllegal;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.debug.*;
-
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Indent;
+import com.oracle.graal.lir.InstructionStateProcedure;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.util.*;
+import com.oracle.graal.lir.ValueConsumer;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.util.ValueSet;
 
 public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends ValueSet<S>> {
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph.iterators;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodePredicates.AndPredicate;
 import com.oracle.graal.graph.iterators.NodePredicates.NotPredicate;
 import com.oracle.graal.graph.iterators.NodePredicates.OrPredicate;

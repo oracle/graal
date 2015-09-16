@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * Base class for compiler phases that don't need a context object.

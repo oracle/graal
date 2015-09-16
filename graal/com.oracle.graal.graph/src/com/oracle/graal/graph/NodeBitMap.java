@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
 
-import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graph.iterators.NodeIterable;
 
 public final class NodeBitMap implements NodeIterable<Node> {
     private static final int SHIFT = 6;

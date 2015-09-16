@@ -22,46 +22,82 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
-import static com.oracle.graal.java.BytecodeParser.Options.*;
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
-import static java.lang.String.*;
-import static jdk.internal.jvmci.meta.MetaUtil.*;
+import static com.oracle.graal.compiler.common.GraalOptions.DeoptALot;
+import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static com.oracle.graal.java.BytecodeParser.Options.InlineDuringParsing;
+import static com.oracle.graal.java.BytecodeParser.Options.InlineIntrinsicsDuringParsing;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
+import static java.lang.String.format;
+import static jdk.internal.jvmci.meta.MetaUtil.toInternalName;
 
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Signature;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import sun.misc.Launcher;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionValue.*;
-import sun.misc.*;
-
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.api.replacements.SnippetTemplateCache;
+import com.oracle.graal.api.replacements.SubstitutionGuard;
+import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.graphbuilderconf.MethodSubstitutionPlugin;
+import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.java.GraphBuilderPhase.Instance;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.word.Word;
 
 public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 

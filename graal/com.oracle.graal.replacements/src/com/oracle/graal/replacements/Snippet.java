@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.replacements;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
 
 /**
  * A snippet is a Graal graph expressed as a Java source method. Snippets are used for lowering

@@ -22,15 +22,19 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintBackendCFG;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintBinaryGraphs;
+import static com.oracle.graal.compiler.common.GraalOptions.PrintCFG;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.graal.debug.*;
-
-import jdk.internal.jvmci.service.*;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugConfig;
+import com.oracle.graal.debug.DebugConfigCustomizer;
+import com.oracle.graal.debug.DebugDumpHandler;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodeinfo.Verbosity;
+import com.oracle.graal.nodes.util.GraphUtil;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {

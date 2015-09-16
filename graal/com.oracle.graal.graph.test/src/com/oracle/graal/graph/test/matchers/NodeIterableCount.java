@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.graph.test.matchers;
 
-import org.hamcrest.*;
+import org.hamcrest.Description;
+import org.hamcrest.TypeSafeDiagnosingMatcher;
 
-import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graph.iterators.NodeIterable;
 
 public class NodeIterableCount extends TypeSafeDiagnosingMatcher<NodeIterable<?>> {
     private int count;

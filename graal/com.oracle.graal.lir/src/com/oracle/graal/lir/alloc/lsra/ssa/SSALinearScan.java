@@ -22,18 +22,22 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.TargetDescription;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-import com.oracle.graal.compiler.common.alloc.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.lir.alloc.lsra.LinearScan;
+import com.oracle.graal.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
+import com.oracle.graal.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
+import com.oracle.graal.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
+import com.oracle.graal.lir.alloc.lsra.MoveResolver;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
-import com.oracle.graal.lir.ssa.*;
+import com.oracle.graal.lir.ssa.SSAUtil;
 
 public final class SSALinearScan extends LinearScan {
 

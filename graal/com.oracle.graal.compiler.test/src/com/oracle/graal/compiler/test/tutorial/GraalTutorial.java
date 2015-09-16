@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.InvalidInstalledCodeException;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.java.*;
+import com.oracle.graal.java.BytecodeDisassembler;
 
 /**
  * Examples for the Graal tutorial. Run them using the unittest harness of the mx script. To look at

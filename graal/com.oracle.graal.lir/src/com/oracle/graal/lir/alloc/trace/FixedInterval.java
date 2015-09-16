@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import jdk.internal.jvmci.meta.*;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction;
 
 /**
  * Represents a fixed interval.

@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.lir.phases;
 
-import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.*;
+import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceRA;
 
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.alloc.trace.*;
-import com.oracle.graal.lir.dfa.*;
+import com.oracle.graal.lir.alloc.lsra.LinearScanPhase;
+import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase;
+import com.oracle.graal.lir.dfa.LocationMarkerPhase;
+import com.oracle.graal.lir.dfa.MarkBasePointersPhase;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.graal.lir.stackslotalloc.LSStackSlotAllocator;
+import com.oracle.graal.lir.stackslotalloc.SimpleStackSlotAllocator;
 
 public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
     public AllocationStage() {

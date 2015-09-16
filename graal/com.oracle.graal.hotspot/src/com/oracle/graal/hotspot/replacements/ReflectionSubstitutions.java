@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.jvmAccWrittenFlags;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Modifier;
 
-import com.oracle.graal.api.directives.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.hotspot.word.KlassPointer;
 
 /**
  * Substitutions for {@link sun.reflect.Reflection} methods.

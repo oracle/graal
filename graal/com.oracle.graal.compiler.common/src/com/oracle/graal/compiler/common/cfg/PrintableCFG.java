@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.common.cfg;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.List;
+import java.util.function.BiConsumer;
 
 /**
  * Represents a control-flow graph where each node can be annotated with arbitrary property pairs of

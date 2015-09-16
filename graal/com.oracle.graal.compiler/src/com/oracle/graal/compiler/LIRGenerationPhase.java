@@ -22,21 +22,23 @@
  */
 package com.oracle.graal.compiler;
 
-import static com.oracle.graal.compiler.common.BackendOptions.*;
+import static com.oracle.graal.compiler.common.BackendOptions.ConstructionSSAlirDuringLirBuilding;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.TargetDescription;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.lir.phases.LIRPhase;
+import com.oracle.graal.lir.ssa.SSAUtil;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 
 public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGenerationContext> {
 

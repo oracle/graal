@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction;
 
 public interface BenchmarkCounterFactory {
     LIRInstruction createBenchmarkCounter(String name, String group, Value increment);

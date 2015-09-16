@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.util.*;
+import java.util.Random;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.phases.common.AbstractInliningPhase;
 
 /**
  * Tests that deoptimization upon exception handling works.

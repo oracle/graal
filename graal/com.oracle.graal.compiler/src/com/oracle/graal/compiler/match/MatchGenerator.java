@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.match;
 
-import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 
 /**
  * Code generator for complex match patterns.

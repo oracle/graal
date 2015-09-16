@@ -22,20 +22,29 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.*;
-import static jdk.internal.jvmci.sparc.SPARC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Icc;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Always;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.Rc_z;
+import static jdk.internal.jvmci.sparc.SPARC.g0;
+import static jdk.internal.jvmci.sparc.SPARC.g3;
+import static jdk.internal.jvmci.sparc.SPARC.i7;
+import static jdk.internal.jvmci.sparc.SPARC.isCPURegister;
+import static jdk.internal.jvmci.sparc.SPARC.o7;
 
-import java.util.function.*;
+import java.util.function.Consumer;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.sparc.*;
+import jdk.internal.jvmci.code.AbstractAddress;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.sparc.SPARC;
 import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 
-import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.Label;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 

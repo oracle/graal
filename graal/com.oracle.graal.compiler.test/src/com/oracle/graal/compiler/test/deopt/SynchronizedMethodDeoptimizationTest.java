@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.compiler.test.ea.EATestBase.TestClassObject;
 
 /**

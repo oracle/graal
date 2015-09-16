@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.microbenchmarks.graal;
 
-import java.util.*;
+import java.util.StringTokenizer;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.microbenchmarks.graal.util.*;
+import com.oracle.graal.microbenchmarks.graal.util.FrameStateAssignmentState;
+import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
 
 @Warmup(iterations = 15)
 public class FrameStateAssigmentPhaseBenchmark extends GraalBenchmark {

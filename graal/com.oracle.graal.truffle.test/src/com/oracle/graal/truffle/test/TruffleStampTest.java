@@ -22,15 +22,20 @@
  */
 package com.oracle.graal.truffle.test;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.junit.Assert.assertThat;
 
-import org.junit.*;
-import org.junit.experimental.theories.*;
-import org.junit.runner.*;
+import org.junit.Before;
+import org.junit.experimental.theories.DataPoints;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
 
-import com.oracle.graal.truffle.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.truffle.DefaultTruffleStamp;
+import com.oracle.graal.truffle.TruffleStamp;
+import com.oracle.truffle.api.TypedObject;
 
 @RunWith(Theories.class)
 public class TruffleStampTest {

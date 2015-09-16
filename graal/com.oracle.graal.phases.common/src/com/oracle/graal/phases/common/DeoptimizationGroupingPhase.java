@@ -22,14 +22,28 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.nodes.AbstractDeoptimizeNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.DynamicDeoptimizeNode;
+import com.oracle.graal.nodes.EndNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.MergeNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValuePhiNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.tiers.MidTierContext;
 
 /**
  * This phase tries to find {@link AbstractDeoptimizeNode DeoptimizeNodes} which use the same

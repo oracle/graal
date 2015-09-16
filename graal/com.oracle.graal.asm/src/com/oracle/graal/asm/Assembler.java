@@ -22,10 +22,16 @@
  */
 package com.oracle.graal.asm;
 
-import java.nio.*;
-import java.util.*;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.AbstractAddress;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.TargetDescription;
 
 /**
  * The platform-independent base class for the assembler.

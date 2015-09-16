@@ -22,18 +22,22 @@
  */
 package com.oracle.graal.compiler.match;
 
-import static com.oracle.graal.debug.GraalDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.LogVerbose;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 /**
  * Container for state captured during a match.

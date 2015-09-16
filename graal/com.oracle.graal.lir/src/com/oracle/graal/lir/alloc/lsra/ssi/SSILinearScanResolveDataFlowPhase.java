@@ -22,20 +22,28 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssi;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.asConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
+import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
 
-import java.util.*;
+import java.util.HashMap;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.alloc.lsra.Interval;
+import com.oracle.graal.lir.alloc.lsra.LinearScan;
+import com.oracle.graal.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
+import com.oracle.graal.lir.alloc.lsra.MoveResolver;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
-import com.oracle.graal.lir.ssi.*;
+import com.oracle.graal.lir.ssi.SSIUtil;
 
 public class SSILinearScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 

@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationThreshold;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleMinInvokeThreshold;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleReplaceReprofileCount;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class CompilationProfile {
 

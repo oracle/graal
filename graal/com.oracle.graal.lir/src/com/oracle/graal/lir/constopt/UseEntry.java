@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.lir.constopt;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.ValueProcedure;
 
 /**
  * Represents a usage of a constant.

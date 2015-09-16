@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static jdk.internal.jvmci.compiler.Compiler.*;
+import static jdk.internal.jvmci.compiler.Compiler.ExitVMOnException;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.CompileTheWorld.*;
-
-import jdk.internal.jvmci.hotspot.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.hotspot.CompileTheWorld;
+import com.oracle.graal.hotspot.CompileTheWorld.Config;
+import com.oracle.graal.hotspot.HotSpotGraalCompiler;
 
 /**
  * Tests {@link CompileTheWorld} functionality.

@@ -22,28 +22,42 @@
  */
 package com.oracle.graal.printer;
 
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.service.Services;
 
-import com.oracle.graal.code.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.debug.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.code.DisassemblerProvider;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugDumpHandler;
+import com.oracle.graal.debug.DebugDumpScope;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.java.BciBlockMapping;
+import com.oracle.graal.java.BytecodeDisassembler;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.debug.IntervalDumper;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the

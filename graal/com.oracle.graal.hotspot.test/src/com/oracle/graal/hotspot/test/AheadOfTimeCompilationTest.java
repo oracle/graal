@@ -22,32 +22,42 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.compiler.GraalCompiler.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.nodes.ConstantNode.*;
-import static jdk.internal.jvmci.code.CodeUtil.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CallingConvention.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionValue.*;
+import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
+import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
+import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
+import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
+import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstantImpl;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.hotspot.nodes.type.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.graal.nodes.memory.FloatingReadNode;
+import com.oracle.graal.nodes.memory.ReadNode;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.tiers.Suites;
+import com.oracle.graal.phases.tiers.SuitesProvider;
+import com.oracle.graal.runtime.RuntimeProvider;
 
 /**
  * use

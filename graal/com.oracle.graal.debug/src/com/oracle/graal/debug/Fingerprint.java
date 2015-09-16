@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.debug;
 
-import java.util.*;
-import java.util.stream.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Facility for fingerprinting execution.

@@ -22,32 +22,68 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
-import static jdk.internal.jvmci.compiler.Compiler.*;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.CompileTheWorldClasspath;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.CompileTheWorldConfig;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.CompileTheWorldExcludeMethodFilter;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.CompileTheWorldMethodFilter;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.CompileTheWorldStartAt;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.CompileTheWorldStopAt;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.CompileTheWorldVerbose;
+import static jdk.internal.jvmci.compiler.Compiler.ExitVMOnException;
+import static jdk.internal.jvmci.compiler.Compiler.PrintBailout;
+import static jdk.internal.jvmci.compiler.Compiler.PrintStackTraceOnException;
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
-import java.io.*;
-import java.lang.annotation.*;
-import java.lang.reflect.*;
-import java.net.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import java.util.jar.*;
-import java.util.stream.*;
+import java.io.File;
+import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.hotspot.HotSpotConstantPool;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethodImpl;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectTypeImpl;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.ConstantPool;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionDescriptor;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import jdk.internal.jvmci.options.OptionsParser;
 import jdk.internal.jvmci.options.OptionsParser.OptionConsumer;
-import jdk.internal.jvmci.runtime.*;
+import jdk.internal.jvmci.runtime.JVMCI;
 
-import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.CompilerThreadFactory;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.GraalDebugConfig;
+import com.oracle.graal.debug.MethodFilter;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.debug.internal.MemUseTrackerImpl;
 
 /**
  * This class implements compile-the-world functionality with JVMCI.
@@ -113,7 +149,7 @@ public final class CompileTheWorld {
      * </pre>
      */
     @SuppressWarnings("serial")
-    public static class Config extends HashMap<OptionValue<?>, Object> implements OptionConsumer {
+    public static class Config extends HashMap<OptionValue<?>, Object>implements OptionConsumer {
         /**
          * Creates a {@link Config} object by parsing a set of space separated override options.
          *

@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.cfg;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.nodes.LoopBeginNode;
 
 public final class HIRLoop extends Loop<Block> {
 

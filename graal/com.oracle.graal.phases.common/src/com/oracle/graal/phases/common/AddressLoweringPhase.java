@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.nodes.memory.address.RawAddressNode;
+import com.oracle.graal.phases.Phase;
 
 public class AddressLoweringPhase extends Phase {
 

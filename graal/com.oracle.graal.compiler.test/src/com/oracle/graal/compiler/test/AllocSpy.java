@@ -22,15 +22,21 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static java.lang.Boolean.*;
-import static java.lang.Integer.*;
-import static java.lang.System.*;
+import static java.lang.Boolean.parseBoolean;
+import static java.lang.Integer.getInteger;
+import static java.lang.System.getProperty;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import com.google.monitoring.runtime.instrumentation.*;
+import com.google.monitoring.runtime.instrumentation.AllocationRecorder;
+import com.google.monitoring.runtime.instrumentation.Sampler;
 
 /**
  * Tool for analyzing allocations within a scope using the <a

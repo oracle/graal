@@ -22,18 +22,21 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.printer.NoDeadCodeVerifyHandler.Options.*;
+import static com.oracle.graal.printer.NoDeadCodeVerifyHandler.Options.NDCV;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.debug.DebugVerifyHandler;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
 /**
  * Verifies that graphs have no dead code.

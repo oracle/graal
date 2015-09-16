@@ -22,15 +22,20 @@
  */
 package com.oracle.graal.phases.common.inlining;
 
-import java.util.*;
+import java.util.Map;
 
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.policy.*;
-import com.oracle.graal.phases.common.inlining.walker.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.common.AbstractInliningPhase;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.inlining.policy.GreedyInliningPolicy;
+import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
+import com.oracle.graal.phases.common.inlining.walker.InliningData;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 public class InliningPhase extends AbstractInliningPhase {
 

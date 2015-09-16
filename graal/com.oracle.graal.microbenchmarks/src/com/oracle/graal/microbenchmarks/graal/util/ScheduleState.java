@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.microbenchmarks.graal.util;
 
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 public class ScheduleState extends GraphState {

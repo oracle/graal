@@ -22,18 +22,25 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static sun.misc.Version.*;
+import static sun.misc.Version.jdkMajorVersion;
+import static sun.misc.Version.jdkMicroVersion;
+import static sun.misc.Version.jdkMinorVersion;
+import static sun.misc.Version.jdkUpdateVersion;
 
-import java.lang.invoke.*;
+import java.lang.invoke.MethodHandle;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * A call target that replaces itself in the graph when being lowered by restoring the original

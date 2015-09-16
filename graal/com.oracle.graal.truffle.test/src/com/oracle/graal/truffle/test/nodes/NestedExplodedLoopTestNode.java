@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.NodeInfo;
 
 @NodeInfo
 public class NestedExplodedLoopTestNode extends AbstractTestNode {

@@ -22,12 +22,20 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayKlassComponentMirrorOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassIsArray;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassModifierFlagsOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassSuperKlassOffset;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Modifier;
 
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodes.PiNode;
 
 // JaCoCo Exclude
 

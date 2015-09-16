@@ -22,9 +22,10 @@
  */
 package com.oracle.nfi;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 
-import com.oracle.nfi.api.*;
+import com.oracle.nfi.api.NativeFunctionInterface;
+import com.oracle.nfi.api.NativeFunctionInterfaceAccess;
 
 /**
  * Class for obtaining the {@link NativeFunctionInterface} (if any) provided by the VM.

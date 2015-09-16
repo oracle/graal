@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.compiler.test;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * This class tests some specific patterns the stamp system should be able to canonicalize away

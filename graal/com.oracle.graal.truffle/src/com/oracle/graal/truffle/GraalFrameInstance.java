@@ -22,15 +22,19 @@
  */
 package com.oracle.graal.truffle;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.code.stack.*;
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.code.stack.InspectedFrame;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 
 public abstract class GraalFrameInstance implements FrameInstance {
 

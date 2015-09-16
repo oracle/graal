@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.MemoryNode;
 
 public interface MemoryProxy extends Proxy, MemoryNode {
 

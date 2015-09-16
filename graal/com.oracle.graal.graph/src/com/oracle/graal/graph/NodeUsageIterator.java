@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 class NodeUsageIterator implements Iterator<Node> {
 

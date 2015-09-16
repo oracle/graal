@@ -22,18 +22,28 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.Edges.Type.*;
+import static com.oracle.graal.graph.Edges.Type.Successors;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.function.Consumer;
 
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Node.ValueNumberable;
-import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graph.iterators.NodeIterable;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.

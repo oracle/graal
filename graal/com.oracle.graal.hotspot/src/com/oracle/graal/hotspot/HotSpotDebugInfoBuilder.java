@@ -22,15 +22,18 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.code.BytecodeFrame.*;
+import static jdk.internal.jvmci.code.BytecodeFrame.isPlaceholderBci;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.StackLockValue;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.code.VirtualObject;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaValue;
 
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import com.oracle.graal.compiler.gen.DebugInfoBuilder;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.NodeValueMap;
 
 /**
  * Extends {@link DebugInfoBuilder} to allocate the extra debug information required for locks.

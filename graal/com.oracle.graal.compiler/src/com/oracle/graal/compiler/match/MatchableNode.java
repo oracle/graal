@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.compiler.match;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.ValueNode;
 
 /**
  * Describes the properties of a node for use when building a {@link MatchPattern}. These

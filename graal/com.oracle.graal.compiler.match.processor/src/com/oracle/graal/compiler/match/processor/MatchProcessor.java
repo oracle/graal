@@ -22,25 +22,60 @@
  */
 package com.oracle.graal.compiler.match.processor;
 
-import java.io.*;
-import java.util.*;
-import java.util.regex.*;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import javax.annotation.processing.*;
-import javax.lang.model.*;
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-import javax.lang.model.util.*;
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.Filer;
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.lang.model.SourceVersion;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.Name;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.MirroredTypeException;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.AbstractAnnotationValueVisitor7;
+import javax.lang.model.util.ElementFilter;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
-import javax.tools.*;
+import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardLocation;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.match.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+import com.oracle.graal.compiler.match.ComplexMatchResult;
+import com.oracle.graal.compiler.match.MatchRule;
+import com.oracle.graal.compiler.match.MatchRules;
+import com.oracle.graal.compiler.match.MatchStatement;
+import com.oracle.graal.compiler.match.MatchStatementSet;
+import com.oracle.graal.compiler.match.MatchableNode;
+import com.oracle.graal.compiler.match.MatchableNodes;
+import com.oracle.graal.graph.Position;
+import com.oracle.graal.nodes.ValueNode;
 
 /**
  * Processes classes annotated with {@link MatchRule}. A {@link MatchStatementSet} service is

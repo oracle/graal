@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 
 /**
  * HotSpot extension of {@link ForeignCallsProvider}.

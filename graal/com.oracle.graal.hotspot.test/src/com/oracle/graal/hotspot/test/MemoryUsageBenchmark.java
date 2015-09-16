@@ -22,14 +22,19 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
-import jdk.internal.jvmci.hotspot.*;
+import static com.oracle.graal.debug.internal.MemUseTrackerImpl.getCurrentThreadAllocatedBytes;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.test.AllocSpy;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.hotspot.CompilationTask;
+import com.oracle.graal.hotspot.CompileTheWorld;
+import com.oracle.graal.hotspot.HotSpotGraalCompiler;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 /**

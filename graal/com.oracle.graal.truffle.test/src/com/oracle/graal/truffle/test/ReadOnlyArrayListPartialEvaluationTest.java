@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.truffle.test;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.truffle.test.nodes.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
+import com.oracle.graal.truffle.test.nodes.ReadOnlyArrayListConstantNode;
+import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 
 public class ReadOnlyArrayListPartialEvaluationTest extends PartialEvaluationTest {
 

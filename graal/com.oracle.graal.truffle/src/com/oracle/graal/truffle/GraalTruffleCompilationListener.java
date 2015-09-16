@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.truffle;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CompilationResult;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Enables implementations of this interface to listen to compilation related events of the Graal

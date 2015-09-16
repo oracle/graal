@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import static com.oracle.graal.compiler.target.Backend.*;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_COS;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
 
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation;
 
 // JaCoCo Exclude

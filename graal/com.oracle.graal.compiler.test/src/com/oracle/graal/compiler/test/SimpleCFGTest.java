@@ -22,15 +22,24 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.junit.*;
-
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.BeginNode;
+import com.oracle.graal.nodes.EndNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.MergeNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 
 public class SimpleCFGTest extends GraalCompilerTest {
 

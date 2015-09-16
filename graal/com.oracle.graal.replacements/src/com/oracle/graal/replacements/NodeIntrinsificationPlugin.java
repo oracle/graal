@@ -22,24 +22,39 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.replacements.NodeIntrinsificationPhase.*;
-import static jdk.internal.jvmci.meta.MetaUtil.*;
+import static com.oracle.graal.replacements.NodeIntrinsificationPhase.COULD_NOT_FOLD;
+import static jdk.internal.jvmci.meta.MetaUtil.resolveJavaTypes;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Signature;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.MethodFilter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.NodePlugin;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.StructuralInput;
 import com.oracle.graal.nodeinfo.StructuralInput.MarkerType;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.extended.UnsafeCopyNode;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.extended.UnsafeStoreNode;
+import com.oracle.graal.word.WordTypes;
 
 /**
  * An {@link NodePlugin} that handles methods annotated by {@link Fold} and {@link NodeIntrinsic}.

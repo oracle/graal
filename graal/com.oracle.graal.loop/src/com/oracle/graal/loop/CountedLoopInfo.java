@@ -22,15 +22,26 @@
  */
 package com.oracle.graal.loop;
 
-import static com.oracle.graal.loop.MathUtil.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.loop.MathUtil.add;
+import static com.oracle.graal.loop.MathUtil.divBefore;
+import static com.oracle.graal.loop.MathUtil.sub;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaConstant;
 
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.loop.InductionVariable.Direction;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.GuardNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.CompareNode;
+import com.oracle.graal.nodes.calc.ConditionalNode;
+import com.oracle.graal.nodes.calc.IntegerLessThanNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
 
 public class CountedLoopInfo {
 

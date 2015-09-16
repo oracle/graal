@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.phases.common.inlining.info.elem;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 public interface Inlineable {
 

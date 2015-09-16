@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
 
 public abstract class AbstractTestNode extends Node {
 

@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.READ_KLASS_POINTER;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.TO_KLASS_POINTER;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.word.*;
+import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
 

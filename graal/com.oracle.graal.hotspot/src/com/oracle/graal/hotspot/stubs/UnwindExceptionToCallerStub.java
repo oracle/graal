@@ -22,23 +22,28 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import jdk.internal.jvmci.code.*;
-import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerInCallerNode.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
+import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerInCallerNode.jumpToExceptionHandlerInCaller;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.checkExceptionNotNull;
+import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.checkNoExceptionInThread;
+import static com.oracle.graal.hotspot.stubs.StubUtil.cAssertionsEnabled;
+import static com.oracle.graal.hotspot.stubs.StubUtil.decipher;
+import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
+import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
+import jdk.internal.jvmci.code.Register;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
+import com.oracle.graal.nodes.UnwindNode;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.word.*;
+import com.oracle.graal.word.Pointer;
+import com.oracle.graal.word.Word;
 
 /**
  * Stub called by an {@link UnwindNode}. This stub executes in the frame of the method throwing an

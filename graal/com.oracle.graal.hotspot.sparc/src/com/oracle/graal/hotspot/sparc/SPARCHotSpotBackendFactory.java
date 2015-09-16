@@ -22,26 +22,49 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
-import com.oracle.graal.compiler.sparc.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.sparc.*;
+import jdk.internal.jvmci.code.Architecture;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.compiler.StartupEventListener;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.runtime.JVMCIBackend;
+import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.internal.jvmci.sparc.SPARC;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.compiler.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.runtime.*;
-import jdk.internal.jvmci.service.*;
-import jdk.internal.jvmci.sparc.*;
+import com.oracle.graal.compiler.sparc.SPARCAddressLowering;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotBackendFactory;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.HotSpotReplacementsImpl;
+import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
+import com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider;
+import com.oracle.graal.hotspot.meta.HotSpotGraphBuilderPlugins;
+import com.oracle.graal.hotspot.meta.HotSpotLoweringProvider;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.meta.HotSpotRegisters;
+import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.hotspot.meta.HotSpotSnippetReflectionProvider;
+import com.oracle.graal.hotspot.meta.HotSpotStampProvider;
+import com.oracle.graal.hotspot.meta.HotSpotSuitesProvider;
+import com.oracle.graal.hotspot.word.HotSpotWordTypes;
+import com.oracle.graal.java.DefaultSuitesProvider;
+import com.oracle.graal.nodes.spi.LoweringProvider;
+import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.replacements.sparc.SPARCGraphBuilderPlugins;
 
 @ServiceProvider(StartupEventListener.class)
 public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory, StartupEventListener {

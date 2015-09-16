@@ -22,16 +22,18 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.debug.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.junit.*;
-
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
 
 public class NestedLoopTest extends GraalCompilerTest {
 

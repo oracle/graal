@@ -22,15 +22,27 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import static com.oracle.graal.compiler.common.calc.FloatConvert.*;
+import static com.oracle.graal.compiler.common.calc.FloatConvert.D2F;
+import static com.oracle.graal.compiler.common.calc.FloatConvert.D2I;
+import static com.oracle.graal.compiler.common.calc.FloatConvert.D2L;
+import static com.oracle.graal.compiler.common.calc.FloatConvert.F2D;
+import static com.oracle.graal.compiler.common.calc.FloatConvert.F2I;
+import static com.oracle.graal.compiler.common.calc.FloatConvert.F2L;
 
-import java.nio.*;
-import java.util.function.*;
+import java.nio.ByteBuffer;
+import java.util.function.DoubleBinaryOperator;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.PrimitiveConstant;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.SerializableConstant;
 
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;

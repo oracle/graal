@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.truffle;
 
-import java.util.*;
+import java.util.Map;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 
 public class DefaultTruffleSplittingStrategyNew implements TruffleSplittingStrategy {
 

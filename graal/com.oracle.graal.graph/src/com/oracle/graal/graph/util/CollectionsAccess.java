@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.graph.util;
 
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
 
-import com.oracle.graal.api.collections.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.api.collections.CollectionsProvider;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.runtime.GraalRuntime;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeCollectionsProvider;
 
 /**
  * Static methods for accessing the methods in the installed {@link GraalRuntime}'s

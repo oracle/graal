@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * Base class of the derived induction variables.

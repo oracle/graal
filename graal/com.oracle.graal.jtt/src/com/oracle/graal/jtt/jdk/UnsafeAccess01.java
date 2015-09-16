@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.jtt.jdk;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
 
-import org.junit.*;
+import org.junit.Test;
 
-import sun.misc.*;
+import sun.misc.Unsafe;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 /*
  */

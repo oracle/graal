@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static jdk.internal.jvmci.compiler.Compiler.*;
+import static jdk.internal.jvmci.compiler.Compiler.PrintBailout;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.BailoutException;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
 
 public final class TraceCompilationFailureListener extends AbstractDebugCompilationListener {
 

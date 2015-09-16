@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Assumptions;
 
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.OptimizedAssumption;
 
 public final class AssumptionValidAssumption extends Assumptions.Assumption {
 

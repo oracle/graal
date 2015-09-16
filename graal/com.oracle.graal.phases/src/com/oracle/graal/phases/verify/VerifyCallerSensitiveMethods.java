@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.phases.verify;
 
-import jdk.internal.jvmci.meta.*;
-import sun.reflect.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import sun.reflect.CallerSensitive;
+import sun.reflect.Reflection;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.phases.VerifyPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * Verifies a method is annotated with {@link CallerSensitive} iff it calls

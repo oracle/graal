@@ -22,26 +22,54 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleArgumentTypeSpeculation;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
-import java.util.stream.*;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Spliterators;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.SpeculationLog;
 
-import com.oracle.graal.truffle.debug.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CompilerOptions;
+import com.oracle.truffle.api.ExecutionContext;
+import com.oracle.truffle.api.LoopCountReceiver;
+import com.oracle.truffle.api.OptimizationFailedException;
+import com.oracle.truffle.api.ReplaceObserver;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.DefaultCompilerOptions;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
+import com.oracle.truffle.api.utilities.ValueProfile;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.

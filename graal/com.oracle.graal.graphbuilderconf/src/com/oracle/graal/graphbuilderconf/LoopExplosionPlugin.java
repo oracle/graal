@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
 public interface LoopExplosionPlugin extends GraphBuilderPlugin {
     boolean shouldExplodeLoops(ResolvedJavaMethod method);

@@ -22,22 +22,32 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.compiler.target.Backend.*;
-import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.*;
-import sun.misc.*;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_EXP;
+import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.LOG;
+import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.LOG10;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.graphbuilderconf.ForeignCallPlugin;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.StandardGraphBuilderPlugins.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.AtomicReadAndAddNode;
+import com.oracle.graal.nodes.java.AtomicReadAndWriteNode;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.replacements.IntegerSubstitutions;
+import com.oracle.graal.replacements.LongSubstitutions;
+import com.oracle.graal.replacements.StandardGraphBuilderPlugins.UnsafeGetPlugin;
+import com.oracle.graal.replacements.StandardGraphBuilderPlugins.UnsafePutPlugin;
 
 public class AMD64GraphBuilderPlugins {
 

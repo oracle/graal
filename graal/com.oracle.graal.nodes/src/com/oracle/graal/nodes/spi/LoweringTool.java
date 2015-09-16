@@ -22,10 +22,17 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.extended.AnchoringNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
 
 public interface LoweringTool {
 

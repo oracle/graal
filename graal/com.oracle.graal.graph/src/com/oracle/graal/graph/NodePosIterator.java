@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
+import java.util.Iterator;
 
 /**
  * Describes an edge slot for a {@link NodeClass}.

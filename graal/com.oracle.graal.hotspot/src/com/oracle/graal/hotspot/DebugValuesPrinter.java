@@ -22,17 +22,23 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.debug.GraalDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.DebugValueSummary;
+import static com.oracle.graal.debug.GraalDebugConfig.DebugValueThreadFilter;
+import static com.oracle.graal.debug.GraalDebugConfig.SuppressZeroDebugValues;
 
-import java.io.*;
-import java.util.*;
-import java.util.regex.*;
-import java.util.stream.*;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.common.JVMCIError;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.debug.internal.DebugValue;
+import com.oracle.graal.debug.internal.DebugValueMap;
+import com.oracle.graal.debug.internal.KeyRegistry;
 
 /**
  * Facility for printing the {@linkplain KeyRegistry#getDebugValues() values} collected across all

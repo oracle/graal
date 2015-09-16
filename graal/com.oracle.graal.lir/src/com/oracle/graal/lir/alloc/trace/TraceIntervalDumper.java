@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import jdk.internal.jvmci.meta.*;
+import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.lir.debug.*;
+import com.oracle.graal.lir.debug.IntervalDumper;
 
 final class TraceIntervalDumper implements IntervalDumper {
     private final FixedInterval[] fixedIntervals;

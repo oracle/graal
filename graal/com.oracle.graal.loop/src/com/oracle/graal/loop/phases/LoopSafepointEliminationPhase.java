@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.loop.phases;
 
-import com.oracle.graal.loop.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.loop.LoopEx;
+import com.oracle.graal.loop.LoopsData;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.LoopEndNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.tiers.MidTierContext;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 

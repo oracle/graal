@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph;
 
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodeinfo.InputType;
 
 /**
  * Describes an edge slot for a {@link NodeClass}.

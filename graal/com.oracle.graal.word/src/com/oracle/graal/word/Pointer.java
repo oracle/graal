@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.word;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 

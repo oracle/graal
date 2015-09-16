@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.truffle.substitutions;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 
 public interface TruffleInvocationPluginProvider {
     void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection);

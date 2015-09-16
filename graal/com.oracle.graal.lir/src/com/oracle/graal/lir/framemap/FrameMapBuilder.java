@@ -22,13 +22,17 @@
  */
 package com.oracle.graal.lir.framemap;
 
-import java.util.*;
+import java.util.BitSet;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.VirtualStackSlot;
+import jdk.internal.jvmci.meta.LIRKind;
 
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.stackslotalloc.StackSlotAllocator;
 
 /**
  * A {@link FrameMapBuilder} is used to collect all information necessary to

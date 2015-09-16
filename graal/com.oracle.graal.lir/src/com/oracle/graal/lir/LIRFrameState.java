@@ -22,17 +22,27 @@
  */
 package com.oracle.graal.lir;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.asStackSlotValue;
+import static jdk.internal.jvmci.code.ValueUtil.isConstantJavaValue;
+import static jdk.internal.jvmci.code.ValueUtil.isIllegalJavaValue;
+import static jdk.internal.jvmci.code.ValueUtil.isVirtualObject;
+import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.EnumSet;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.DebugInfo;
+import jdk.internal.jvmci.code.StackLockValue;
+import jdk.internal.jvmci.code.VirtualObject;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.JavaValue;
+import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.util.*;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.util.IndexedValueMap;
 
 /**
  * This class represents garbage collection and deoptimization information attached to a LIR

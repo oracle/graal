@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug.internal;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.DebugMetric;
 
 public final class MetricImpl extends DebugValue implements DebugMetric {
 

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.memory;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.NodeInterface;
+import com.oracle.graal.nodes.ValueNode;
 
 /**
  * This interface marks nodes that are part of the memory graph.

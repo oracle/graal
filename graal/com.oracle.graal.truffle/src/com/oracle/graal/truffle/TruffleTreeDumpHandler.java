@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.graal.debug.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.debug.DebugDumpHandler;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.nodes.GraphPrintVisitor;
 
 public class TruffleTreeDumpHandler implements DebugDumpHandler {
 

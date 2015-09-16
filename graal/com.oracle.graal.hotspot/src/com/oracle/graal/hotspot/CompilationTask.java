@@ -22,23 +22,45 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.compiler.Compiler.*;
+import static jdk.internal.jvmci.compiler.Compiler.ExitVMOnBailout;
+import static jdk.internal.jvmci.compiler.Compiler.ExitVMOnException;
+import static jdk.internal.jvmci.compiler.Compiler.PrintAfterCompilation;
+import static jdk.internal.jvmci.compiler.Compiler.PrintBailout;
+import static jdk.internal.jvmci.compiler.Compiler.PrintCompilation;
+import static jdk.internal.jvmci.compiler.Compiler.PrintFilter;
+import static jdk.internal.jvmci.compiler.Compiler.PrintStackTraceOnException;
 
 import java.lang.reflect.Field;
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
 
+import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.compiler.Compiler;
+import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.internal.jvmci.hotspot.HotSpotNmethod;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethodImpl;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.hotspot.events.EmptyEventProvider;
+import jdk.internal.jvmci.hotspot.events.EventProvider;
+import jdk.internal.jvmci.hotspot.events.EventProvider.CompilationEvent;
+import jdk.internal.jvmci.hotspot.events.EventProvider.CompilerFailureEvent;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.service.Services;
 import sun.misc.Unsafe;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.hotspot.events.*;
-import jdk.internal.jvmci.hotspot.events.EventProvider.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.service.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugDumpScope;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.debug.Management;
+import com.oracle.graal.debug.TTY;
 
 //JaCoCo Exclude
 

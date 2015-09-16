@@ -22,20 +22,29 @@
  */
 package com.oracle.graal.asm.amd64.test;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.test.*;
+import static org.junit.Assume.assumeTrue;
 
-import static org.junit.Assume.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
-import java.nio.*;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.CompilationResult.DataSectionReference;
+import jdk.internal.jvmci.code.DataSection.Data;
+import jdk.internal.jvmci.code.DataSection.DataBuilder;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
-import jdk.internal.jvmci.code.DataSection.*;
-import jdk.internal.jvmci.meta.*;
+import org.junit.Before;
+import org.junit.Test;
 
-import org.junit.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.asm.test.AssemblerTest;
 
 public class SimpleAssemblerTest extends AssemblerTest {
 

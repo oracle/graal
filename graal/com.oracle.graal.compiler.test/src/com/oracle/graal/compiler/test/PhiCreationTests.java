@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.debug.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.junit.*;
-
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.ValuePhiNode;
 
 /**
  * In the following tests, the correct removal of redundant phis during graph building is tested.

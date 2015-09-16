@@ -22,14 +22,18 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
-
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.virtual.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.MonitorIdNode;
+import com.oracle.graal.nodes.virtual.EscapeObjectState;
+import com.oracle.graal.nodes.virtual.LockState;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.virtual.nodes.MaterializedObjectState;
+import com.oracle.graal.virtual.nodes.VirtualObjectState;
 
 /**
  * This class describes the state of a virtual object while iterating over the graph. It describes

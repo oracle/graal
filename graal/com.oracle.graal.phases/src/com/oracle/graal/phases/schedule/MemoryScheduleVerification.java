@@ -22,17 +22,26 @@
  */
 package com.oracle.graal.phases.schedule;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.cfg.HIRLoop;
+import com.oracle.graal.nodes.memory.FloatingReadNode;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
+import com.oracle.graal.nodes.memory.MemoryNode;
+import com.oracle.graal.nodes.memory.MemoryPhiNode;
+import com.oracle.graal.phases.graph.ReentrantBlockIterator;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 
 public final class MemoryScheduleVerification extends BlockIteratorClosure<Set<FloatingReadNode>> {

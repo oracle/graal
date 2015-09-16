@@ -22,30 +22,46 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static jdk.internal.jvmci.amd64.AMD64.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
+import static jdk.internal.jvmci.amd64.AMD64.rbp;
+import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
+import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterValue;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.ValueUtil;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.amd64.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.AMD64Move.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.CallTargetNode.*;
-import com.oracle.graal.nodes.spi.*;
-
-import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
-
-import com.oracle.graal.debug.*;
-
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import com.oracle.graal.compiler.amd64.AMD64NodeLIRBuilder;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.gen.DebugInfoBuilder;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
+import com.oracle.graal.hotspot.HotSpotLockStack;
+import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
+import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
+import com.oracle.graal.hotspot.nodes.HotSpotDirectCallTargetNode;
+import com.oracle.graal.hotspot.nodes.HotSpotIndirectCallTargetNode;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.DirectCallTargetNode;
+import com.oracle.graal.nodes.FullInfopointNode;
+import com.oracle.graal.nodes.IndirectCallTargetNode;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.SafepointNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.NodeValueMap;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.

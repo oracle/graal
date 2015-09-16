@@ -22,25 +22,39 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.UNPACK_FRAMES;
+import static com.oracle.graal.hotspot.HotSpotBackend.Options.PreferGraalStubs;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readPendingDeoptimization;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writePendingDeoptimization;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeRegisterAsWord;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.EnterUnpackFramesStackFrameNode;
+import com.oracle.graal.hotspot.nodes.LeaveCurrentStackFrameNode;
+import com.oracle.graal.hotspot.nodes.LeaveDeoptimizedStackFrameNode;
+import com.oracle.graal.hotspot.nodes.LeaveUnpackFramesStackFrameNode;
+import com.oracle.graal.hotspot.nodes.PushInterpreterFrameNode;
+import com.oracle.graal.hotspot.nodes.SaveAllRegistersNode;
+import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
+import com.oracle.graal.hotspot.nodes.UncommonTrapCallNode;
+import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.word.*;
+import com.oracle.graal.word.Word;
 
 /**
  * Uncommon trap stub.

@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
 
-import com.oracle.graal.api.collections.*;
+import com.oracle.graal.api.collections.CollectionsProvider;
 
 /**
  * Extends {@link CollectionsProvider} with support for creating {@link Node} based collections.

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.util;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
 public abstract class ValueSet<S extends ValueSet<S>> {
 

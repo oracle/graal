@@ -22,19 +22,20 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleAssumptions;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 
-import java.lang.ref.*;
-import java.util.*;
-import java.util.stream.*;
+import java.lang.ref.WeakReference;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.InstalledCode;
 
-import com.oracle.graal.debug.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.debug.TTY;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.impl.AbstractAssumption;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 
 public final class OptimizedAssumption extends AbstractAssumption {
 

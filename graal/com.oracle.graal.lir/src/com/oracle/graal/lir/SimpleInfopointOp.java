@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.lir;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.BytecodePosition;
+import jdk.internal.jvmci.code.DebugInfo;
+import jdk.internal.jvmci.code.InfopointReason;
 
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 @Opcode("SIMPLE_INFOPOINT")
 public final class SimpleInfopointOp extends LIRInstruction {

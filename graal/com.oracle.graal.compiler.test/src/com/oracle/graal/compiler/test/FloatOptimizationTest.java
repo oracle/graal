@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * Check for incorrect elimination of 0.0 and -0.0 from computations. They can affect the sign of

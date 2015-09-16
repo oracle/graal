@@ -22,14 +22,21 @@
  */
 package com.oracle.graal.phases.verify;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Signature;
+import jdk.internal.jvmci.meta.TrustedInterface;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.ObjectEqualsNode;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.phases.VerifyPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 /**
  * For certain types, object identity should not be used for object equality check. This phase

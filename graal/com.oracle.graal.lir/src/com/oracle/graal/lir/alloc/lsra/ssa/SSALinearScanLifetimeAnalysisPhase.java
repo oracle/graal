@@ -22,19 +22,22 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
-import java.util.*;
+import java.util.EnumSet;
 
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.Value;
 
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.lir.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.ValueConsumer;
+import com.oracle.graal.lir.alloc.lsra.Interval;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
-import com.oracle.graal.lir.ssa.*;
+import com.oracle.graal.lir.alloc.lsra.LinearScan;
+import com.oracle.graal.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
+import com.oracle.graal.lir.ssa.SSAUtil;
 
 public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalysisPhase {
 

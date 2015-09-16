@@ -22,17 +22,19 @@
  */
 package com.oracle.graal.truffle;
 
-import java.util.*;
+import java.util.ListIterator;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.*;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.Suites;
+import com.oracle.graal.runtime.RuntimeProvider;
 
 public final class DefaultTruffleCompiler extends TruffleCompiler {
 

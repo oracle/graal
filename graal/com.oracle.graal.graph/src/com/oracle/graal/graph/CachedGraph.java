@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * This class is a container of a graph that needs to be readonly and optionally a lazily created

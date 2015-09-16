@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.dfa.*;
+import com.oracle.graal.lir.alloc.lsra.LinearScanPhase;
+import com.oracle.graal.lir.dfa.LocationMarkerPhase;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.graal.lir.stackslotalloc.SimpleStackSlotAllocator;
 
 public class EconomyAllocationStage extends LIRPhaseSuite<AllocationContext> {
     public EconomyAllocationStage() {

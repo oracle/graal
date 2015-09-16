@@ -22,15 +22,21 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static jdk.internal.jvmci.meta.LocationIdentity.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OSTHREAD_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.osThreadInterruptedOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.osThreadOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.threadObjectOffset;
+import static jdk.internal.jvmci.meta.LocationIdentity.any;
+
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.word.Word;
 
 /**
  * Substitutions for {@link java.lang.Thread} methods.

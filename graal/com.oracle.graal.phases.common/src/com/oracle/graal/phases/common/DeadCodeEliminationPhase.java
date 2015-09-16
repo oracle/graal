@@ -22,16 +22,21 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Options.*;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Options.ReduceDCE;
 
-import java.util.function.*;
+import java.util.function.BiConsumer;
 
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeFlood;
+import com.oracle.graal.nodes.AbstractEndNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.Phase;
 
 public class DeadCodeEliminationPhase extends Phase {
 

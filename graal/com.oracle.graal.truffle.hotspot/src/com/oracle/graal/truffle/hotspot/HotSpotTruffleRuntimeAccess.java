@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleRuntimeAccess;
 
 @ServiceProvider(TruffleRuntimeAccess.class)
 public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {

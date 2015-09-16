@@ -23,7 +23,8 @@
 package com.oracle.graal.compiler;
 
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.DebugDumpHandler;
+import com.oracle.graal.debug.GraalDebugConfig;
 
 /**
  * A compiler thread is a daemon thread that runs at {@link Thread#MAX_PRIORITY} and executes in the

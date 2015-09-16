@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public class BC_frem extends JTTTest {
 

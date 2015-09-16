@@ -22,16 +22,20 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.Value;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.ConstantValue;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 /**
  * Tests move from a constant to a wider stack slot (e.g. byte constant to integer stack slot).

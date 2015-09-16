@@ -22,14 +22,28 @@
  */
 package com.oracle.graal.printer;
 
-import java.io.*;
-import java.util.*;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.BytecodePosition;
+import jdk.internal.jvmci.code.ReferenceMap;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterSaveLayout;
+import jdk.internal.jvmci.code.VirtualObject;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.JavaValue;
+import jdk.internal.jvmci.meta.MetaUtil;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.lir.util.*;
+import com.oracle.graal.debug.LogStream;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.lir.util.IndexedValueMap;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases. The

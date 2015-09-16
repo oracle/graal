@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
+import com.oracle.graal.nodes.calc.IntegerDivNode;
 
 /**
  * Utility methods to perform integer math with some obvious constant folding first.

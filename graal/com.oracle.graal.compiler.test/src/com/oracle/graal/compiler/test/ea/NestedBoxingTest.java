@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import org.junit.*;
+import org.junit.Test;
 
 public class NestedBoxingTest extends EATestBase {
 

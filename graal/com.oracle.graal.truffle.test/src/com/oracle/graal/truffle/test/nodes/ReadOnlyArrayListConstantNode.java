@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 import java.util.List;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 
 public class ReadOnlyArrayListConstantNode extends AbstractTestNode {
 

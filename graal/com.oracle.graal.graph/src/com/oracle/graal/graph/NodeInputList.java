@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.Edges.Type.*;
+import static com.oracle.graal.graph.Edges.Type.Inputs;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
 
 import com.oracle.graal.graph.Edges.Type;
 

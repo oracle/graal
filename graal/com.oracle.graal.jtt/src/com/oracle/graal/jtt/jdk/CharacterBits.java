@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.jtt.jdk;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public class CharacterBits extends JTTTest {
     @SuppressWarnings("unused") private static char init = Character.reverseBytes((char) 42);

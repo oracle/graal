@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug;
 
-import java.io.*;
+import java.io.Closeable;
 
 public interface DebugDumpHandler extends Closeable {
 

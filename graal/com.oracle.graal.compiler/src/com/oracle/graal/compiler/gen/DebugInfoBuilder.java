@@ -22,20 +22,34 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Queue;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.VirtualObject;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaValue;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.virtual.nodes.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LabelRef;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.nodes.virtual.EscapeObjectState;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.virtual.nodes.MaterializedObjectState;
+import com.oracle.graal.virtual.nodes.VirtualObjectState;
 
 /**
  * Builds {@link LIRFrameState}s from {@link FrameState}s.

@@ -22,7 +22,12 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public final class NodeNodeMap extends NodeMap<Node> implements Map<Node, Node> {
 

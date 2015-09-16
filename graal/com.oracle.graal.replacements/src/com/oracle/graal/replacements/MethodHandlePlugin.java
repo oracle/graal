@@ -22,14 +22,20 @@
  */
 package com.oracle.graal.replacements;
 
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.meta.MethodHandleAccessProvider.*;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.MethodHandleAccessProvider;
+import jdk.internal.jvmci.meta.MethodHandleAccessProvider.IntrinsicMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.NodePlugin;
+import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.nodes.InvokeNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.replacements.nodes.MethodHandleNode;
 
 public class MethodHandlePlugin implements NodePlugin {
     private final MethodHandleAccessProvider methodHandleAccess;

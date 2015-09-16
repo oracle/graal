@@ -22,23 +22,30 @@
  */
 package com.oracle.graal.phases.common.inlining.info.elem;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
+import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 /**
  * <p>

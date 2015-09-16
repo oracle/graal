@@ -22,21 +22,49 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.debug.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.AbstractEndNode;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.CallTargetNode;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.SafepointNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.UnwindNode;
+import com.oracle.graal.nodes.VirtualState;
+import com.oracle.graal.nodes.calc.BinaryNode;
+import com.oracle.graal.nodes.calc.ConvertNode;
+import com.oracle.graal.nodes.calc.DivNode;
+import com.oracle.graal.nodes.calc.IntegerDivNode;
+import com.oracle.graal.nodes.calc.IntegerRemNode;
+import com.oracle.graal.nodes.calc.MulNode;
+import com.oracle.graal.nodes.calc.NotNode;
+import com.oracle.graal.nodes.calc.ReinterpretNode;
+import com.oracle.graal.nodes.calc.RemNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.nodes.debug.DynamicCounterNode;
+import com.oracle.graal.nodes.extended.SwitchNode;
+import com.oracle.graal.nodes.java.AbstractNewObjectNode;
+import com.oracle.graal.nodes.java.AccessMonitorNode;
+import com.oracle.graal.nodes.java.MonitorIdNode;
+import com.oracle.graal.nodes.memory.Access;
+import com.oracle.graal.nodes.spi.ValueProxy;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.phases.Phase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 
 /**
  * This phase add counters for the dynamically executed number of nodes. Incrementing the counter

@@ -22,33 +22,55 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
+import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.stack.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.code.DebugInfo;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterSaveLayout;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.code.ValueUtil;
+import jdk.internal.jvmci.code.stack.StackIntrospection;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
+import com.oracle.graal.hotspot.nodes.UncommonTrapCallNode;
+import com.oracle.graal.hotspot.nodes.VMErrorNode;
+import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
+import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
+import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
+import com.oracle.graal.hotspot.stubs.ExceptionHandlerStub;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.lir.ValueConsumer;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
+import com.oracle.graal.nodes.UnwindNode;
+import com.oracle.graal.phases.tiers.SuitesProvider;
+import com.oracle.graal.word.Pointer;
+import com.oracle.graal.word.Word;
 
 /**
  * HotSpot specific backend.

@@ -22,16 +22,23 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 
-import com.oracle.graal.truffle.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.builtins.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+import com.oracle.truffle.sl.runtime.SLContext;
 
 public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
 

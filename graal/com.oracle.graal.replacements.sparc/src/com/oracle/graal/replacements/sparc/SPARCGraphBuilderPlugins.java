@@ -22,14 +22,22 @@
  */
 package com.oracle.graal.replacements.sparc;
 
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.compiler.target.Backend.*;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_COS;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_EXP;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG10;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.graphbuilderconf.ForeignCallPlugin;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.IntegerSubstitutions;
+import com.oracle.graal.replacements.LongSubstitutions;
 
 public class SPARCGraphBuilderPlugins {
 

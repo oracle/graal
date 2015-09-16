@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.jtt.backend;
 
-import static com.oracle.graal.api.directives.GraalDirectives.*;
+import static com.oracle.graal.api.directives.GraalDirectives.LIKELY_PROBABILITY;
+import static com.oracle.graal.api.directives.GraalDirectives.injectBranchProbability;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.OptionValue;
 import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.jtt.JTTTest;
 
 public class ConstantPhiTest extends JTTTest {
 

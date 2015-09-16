@@ -22,12 +22,18 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.phases.AllocationPhase.*;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
+import com.oracle.graal.lir.phases.AllocationStage;
+import com.oracle.graal.lir.phases.LIRPhaseSuite;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationStage;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationStage;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.LowTierContext;
+import com.oracle.graal.phases.tiers.MidTierContext;
 
 public class BasicCompilerConfiguration implements CompilerConfiguration {
 

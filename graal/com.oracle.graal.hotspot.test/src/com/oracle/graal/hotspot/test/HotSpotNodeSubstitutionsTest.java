@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.replacements.test.*;
+import com.oracle.graal.replacements.test.MethodSubstitutionTest;
 
 /**
  * Tests HotSpot specific substitutions for {@link Node}.

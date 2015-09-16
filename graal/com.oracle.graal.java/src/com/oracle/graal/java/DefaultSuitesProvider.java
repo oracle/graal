@@ -22,14 +22,17 @@
  */
 package com.oracle.graal.java;
 
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.DerivedOptionValue.*;
+import jdk.internal.jvmci.options.DerivedOptionValue;
+import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
 
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.Suites;
+import com.oracle.graal.phases.tiers.SuitesProvider;
 
 public class DefaultSuitesProvider implements SuitesProvider {
 

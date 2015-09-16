@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.nodes.spi.LoweringProvider;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.phases.util.Providers;
 
 public class PhaseContext {
 

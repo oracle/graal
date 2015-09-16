@@ -22,13 +22,18 @@
  */
 package com.oracle.graal.truffle.test;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.test.nodes.*;
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
+import com.oracle.graal.truffle.test.nodes.AssumptionCutsBranchTestNode;
+import com.oracle.graal.truffle.test.nodes.ConstantWithAssumptionTestNode;
+import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 
 public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.OptionDescriptor;
 
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
+import com.oracle.graal.truffle.TruffleCompilerOptions_OptionDescriptors;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
  * Looks up the value of an option in {@link TruffleCompilerOptions}. In the future this builtin

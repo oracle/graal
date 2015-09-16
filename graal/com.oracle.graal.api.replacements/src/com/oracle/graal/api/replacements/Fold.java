@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.api.replacements;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Annotates a method replaced by a compile-time constant. A (resolved) call to the annotated method

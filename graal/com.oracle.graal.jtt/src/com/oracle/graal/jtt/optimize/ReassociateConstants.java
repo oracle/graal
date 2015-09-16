@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class ReassociateConstants {
 

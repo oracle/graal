@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.api.collections;
 
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A factory for creating collections.

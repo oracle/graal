@@ -22,20 +22,35 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static java.util.function.Function.*;
-import static java.util.stream.Collectors.*;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
 
-import java.util.*;
-import java.util.function.*;
-import java.util.stream.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.IntSummaryStatistics;
+import java.util.List;
+import java.util.LongSummaryStatistics;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CompilationResult;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.OptimizedDirectCallNode;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
+import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.truffle.TruffleInliningDecision;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
 
 public final class CompilationStatisticsListener extends AbstractDebugCompilationListener {
 

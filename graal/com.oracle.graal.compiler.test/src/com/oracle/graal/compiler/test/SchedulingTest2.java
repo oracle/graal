@@ -22,25 +22,34 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.util.*;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
+import org.junit.Test;
 
-import org.junit.*;
-
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeMap;
+import com.oracle.graal.nodes.BeginNode;
 import com.oracle.graal.nodes.DeoptimizingNode.DeoptDuring;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.nodes.calc.AddNode;
+import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.FrameStateAssignmentPhase;
+import com.oracle.graal.phases.common.GuardLoweringPhase;
+import com.oracle.graal.phases.common.LoweringPhase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.tiers.MidTierContext;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 public class SchedulingTest2 extends GraphScheduleTest {
 

@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.java.AccessMonitorNode;
+import com.oracle.graal.nodes.java.MonitorEnterNode;
+import com.oracle.graal.nodes.java.MonitorExitNode;
+import com.oracle.graal.nodes.java.RawMonitorEnterNode;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.Phase;
 
 public class LockEliminationPhase extends Phase {
 

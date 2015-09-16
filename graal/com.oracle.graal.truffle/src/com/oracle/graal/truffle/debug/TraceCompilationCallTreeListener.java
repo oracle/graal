@@ -22,16 +22,23 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleCompilationCallTree;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CompilationResult;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.OptimizedDirectCallNode;
+import com.oracle.graal.truffle.OptimizedIndirectCallNode;
+import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.truffle.TruffleInliningDecision;
+import com.oracle.truffle.api.nodes.Node;
 
 public final class TraceCompilationCallTreeListener extends AbstractDebugCompilationListener {
 

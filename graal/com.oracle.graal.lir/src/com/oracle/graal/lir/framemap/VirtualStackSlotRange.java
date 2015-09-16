@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.lir.framemap;
 
-import java.util.*;
+import java.util.BitSet;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.code.VirtualStackSlot;
+import jdk.internal.jvmci.meta.LIRKind;
 
 /**
  * Represents a {@link #getSlots() numbered} range of {@link VirtualStackSlot virtual stack slot} of

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.InvokeTarget;
+import jdk.internal.jvmci.meta.LocationIdentity;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.hotspot.stubs.Stub;
 
 /**
  * The details required to link a HotSpot runtime or stub call.

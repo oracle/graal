@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.lir.constopt;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.Variable;
 
 /**
  * Maps variables to a generic type.

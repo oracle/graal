@@ -22,12 +22,18 @@
  */
 package com.oracle.graal.lir.phases;
 
-import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
-import jdk.internal.jvmci.options.*;
+import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
+import jdk.internal.jvmci.options.NestedBooleanOptionValue;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.ControlFlowOptimizer;
+import com.oracle.graal.lir.EdgeMoveOptimizer;
+import com.oracle.graal.lir.NullCheckOptimizer;
+import com.oracle.graal.lir.RedundantMoveElimination;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.profiling.*;
+import com.oracle.graal.lir.profiling.MoveProfiling;
 
 public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public static class Options {

@@ -22,9 +22,14 @@
  */
 package com.oracle.graal.compiler.test;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.common.util.*;
+import com.oracle.graal.compiler.common.util.TypeConversion;
+import com.oracle.graal.compiler.common.util.TypeReader;
+import com.oracle.graal.compiler.common.util.TypeWriter;
+import com.oracle.graal.compiler.common.util.UnsafeArrayTypeReader;
+import com.oracle.graal.compiler.common.util.UnsafeArrayTypeWriter;
 
 public class TypeWriterTest extends GraalCompilerTest {
 

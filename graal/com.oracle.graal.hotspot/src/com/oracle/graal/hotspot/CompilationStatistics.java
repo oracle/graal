@@ -22,18 +22,29 @@
  */
 package com.oracle.graal.hotspot;
 
-import static java.lang.Thread.*;
+import static java.lang.Thread.currentThread;
 
-import java.io.*;
-import java.lang.annotation.*;
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Deque;
+import java.util.Locale;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
-import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 
-import com.oracle.graal.debug.*;
-import com.sun.management.*;
+import com.oracle.graal.debug.Management;
+import com.sun.management.ThreadMXBean;
 
 @SuppressWarnings("unused")
 public final class CompilationStatistics {

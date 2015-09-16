@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.hotspot.word.HotSpotWordTypes;
+import com.oracle.graal.nodes.spi.LoweringProvider;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.phases.tiers.SuitesProvider;
+import com.oracle.graal.phases.util.Providers;
 
 /**
  * Extends {@link Providers} to include a number of extra capabilities used by the HotSpot parts of

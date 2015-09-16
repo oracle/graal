@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import java.io.*;
+import java.io.Serializable;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public final class Class_getModifiers01 extends JTTTest {
 

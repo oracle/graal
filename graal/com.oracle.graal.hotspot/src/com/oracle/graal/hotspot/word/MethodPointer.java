@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.TO_METHOD_POINTER;
 
-import com.oracle.graal.word.*;
+import com.oracle.graal.word.Pointer;
 
 /**
  * Marker type for a metaspace pointer to a method.

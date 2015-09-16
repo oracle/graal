@@ -22,28 +22,57 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.bytecode.Bytecodes.*;
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
-import static com.oracle.graal.java.BytecodeParser.Options.*;
-import static com.oracle.graal.nodes.FrameState.*;
-import static jdk.internal.jvmci.common.JVMCIError.*;
+import static com.oracle.graal.bytecode.Bytecodes.DUP;
+import static com.oracle.graal.bytecode.Bytecodes.DUP2;
+import static com.oracle.graal.bytecode.Bytecodes.DUP2_X1;
+import static com.oracle.graal.bytecode.Bytecodes.DUP2_X2;
+import static com.oracle.graal.bytecode.Bytecodes.DUP_X1;
+import static com.oracle.graal.bytecode.Bytecodes.DUP_X2;
+import static com.oracle.graal.bytecode.Bytecodes.POP;
+import static com.oracle.graal.bytecode.Bytecodes.POP2;
+import static com.oracle.graal.bytecode.Bytecodes.SWAP;
+import static com.oracle.graal.graph.iterators.NodePredicates.isA;
+import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
+import static com.oracle.graal.java.BytecodeParser.Options.HideSubstitutionStates;
+import static com.oracle.graal.nodes.FrameState.TWO_SLOT_MARKER;
+import static jdk.internal.jvmci.common.JVMCIError.shouldNotReachHere;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
 
-import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.BytecodeFrame;
+import jdk.internal.jvmci.code.BytecodePosition;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Signature;
 
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodeinfo.Verbosity;
+import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValuePhiNode;
+import com.oracle.graal.nodes.ValueProxyNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.java.MonitorIdNode;
+import com.oracle.graal.nodes.util.GraphUtil;
 
 public final class FrameStateBuilder implements SideEffectsState {
 

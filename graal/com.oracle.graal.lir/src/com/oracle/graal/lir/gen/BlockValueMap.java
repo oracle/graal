@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 
 public interface BlockValueMap {
 

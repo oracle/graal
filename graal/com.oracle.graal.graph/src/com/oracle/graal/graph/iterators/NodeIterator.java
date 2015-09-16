@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.graph.iterators;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 
 public abstract class NodeIterator<T extends Node> implements Iterator<T> {
 

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.lir.LIRInstruction;
 
 /**
  * Implementors of this interface are able to place its last instruction into the delay slot of a

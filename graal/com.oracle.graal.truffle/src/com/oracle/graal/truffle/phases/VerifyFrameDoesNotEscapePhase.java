@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.truffle.phases;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.truffle.nodes.frame.*;
+import com.oracle.graal.graph.VerificationError;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.phases.Phase;
+import com.oracle.graal.truffle.nodes.frame.NewFrameNode;
 
 /**
  * Compiler phase for verifying that the Truffle virtual frame does not escape and can therefore be

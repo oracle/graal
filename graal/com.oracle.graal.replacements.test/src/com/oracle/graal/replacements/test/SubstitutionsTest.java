@@ -22,24 +22,31 @@
  */
 package com.oracle.graal.replacements.test;
 
-import static com.oracle.graal.nodeinfo.InputType.*;
-import static org.hamcrest.CoreMatchers.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.nodeinfo.InputType.Guard;
+import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.StructuralInput.Guard;
 import com.oracle.graal.nodeinfo.StructuralInput.Memory;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.memory.MemoryNode;
 
 public class SubstitutionsTest extends GraalCompilerTest {
 

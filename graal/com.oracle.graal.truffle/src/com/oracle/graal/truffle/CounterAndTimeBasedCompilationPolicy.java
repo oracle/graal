@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleTimeThreshold;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerOptions;
 
 public class CounterAndTimeBasedCompilationPolicy extends CounterBasedCompilationPolicy {
 

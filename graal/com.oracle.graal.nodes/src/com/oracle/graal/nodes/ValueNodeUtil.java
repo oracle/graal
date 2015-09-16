@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodeinfo.Verbosity;
+import com.oracle.graal.nodes.memory.MemoryNode;
 
 public class ValueNodeUtil {
 

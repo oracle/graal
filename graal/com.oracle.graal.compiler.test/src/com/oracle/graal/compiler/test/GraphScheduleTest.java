@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.util.*;
+import java.util.List;
 
-import org.junit.*;
+import org.junit.Assert;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeMap;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 
 public class GraphScheduleTest extends GraalCompilerTest {
 

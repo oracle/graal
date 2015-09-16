@@ -22,11 +22,16 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.io.*;
-import java.lang.management.*;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.lang.management.ManagementFactory;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.options.OptionValue;
 
 /**
  * An option that encapsulates and configures a print stream.

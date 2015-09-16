@@ -22,13 +22,24 @@
  */
 package com.oracle.graal.code;
 
-import java.lang.invoke.*;
-import java.util.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.util.Arrays;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CodeUtil.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CodeUtil;
+import jdk.internal.jvmci.code.CodeUtil.DefaultRefMapFormatter;
+import jdk.internal.jvmci.code.CodeUtil.RefMapFormatter;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.CompilationResult.Call;
+import jdk.internal.jvmci.code.CompilationResult.DataPatch;
+import jdk.internal.jvmci.code.CompilationResult.Infopoint;
+import jdk.internal.jvmci.code.CompilationResult.Mark;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.service.ServiceProvider;
 
 /**
  * {@link HexCodeFile} based implementation of {@link DisassemblerProvider}.

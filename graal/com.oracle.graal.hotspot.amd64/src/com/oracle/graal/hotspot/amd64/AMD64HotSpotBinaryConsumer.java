@@ -22,15 +22,19 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
+import jdk.internal.jvmci.hotspot.HotSpotConstant;
+import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
+import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
+import jdk.internal.jvmci.meta.AllocatableValue;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.amd64.AMD64AddressValue;
+import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public class AMD64HotSpotBinaryConsumer {
 

@@ -22,11 +22,16 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeBitMap;
+import com.oracle.graal.nodes.EndNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.cfg.Block;
 
 public class LoopFragmentWhole extends LoopFragment {
 

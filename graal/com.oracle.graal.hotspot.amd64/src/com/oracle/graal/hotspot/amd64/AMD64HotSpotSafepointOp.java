@@ -22,18 +22,28 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.asm.NumUtil.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static jdk.internal.jvmci.amd64.AMD64.*;
+import static com.oracle.graal.asm.NumUtil.isInt;
+import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
+import static jdk.internal.jvmci.amd64.AMD64.rax;
+import static jdk.internal.jvmci.amd64.AMD64.rip;
+import jdk.internal.jvmci.code.InfopointReason;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterValue;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.asm.amd64.AMD64Address;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Emits a safepoint poll.

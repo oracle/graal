@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.graal.truffle.hotspot.*;
-import com.oracle.nfi.api.*;
+import com.oracle.graal.truffle.hotspot.HotSpotTruffleRuntime;
+import com.oracle.nfi.api.NativeFunctionInterface;
+import com.oracle.nfi.api.NativeFunctionInterfaceAccess;
 
 @ServiceProvider(NativeFunctionInterfaceAccess.class)
 public class HotSpotNativeFunctionInterfaceAccess implements NativeFunctionInterfaceAccess {

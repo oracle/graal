@@ -23,9 +23,9 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.loop;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 /*
  * Tests exiting 2 loops at the same time with escape-analysed values flowing out of loops

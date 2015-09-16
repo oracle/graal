@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.sparc.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.StackSlot;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.sparc.SPARC;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.lir.framemap.FrameMap;
 
 /**
  * SPARC specific frame map.

@@ -22,19 +22,20 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.EnumSet;
+import java.util.function.IntBinaryOperator;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionValue.*;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.nodes.StructuredGraph;
 
 public class LambdaEagerTest extends GraalCompilerTest {
 

@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.Edges.Type.*;
+import static com.oracle.graal.graph.Edges.Type.Inputs;
 
-import java.util.*;
+import java.util.ArrayList;
 
 import com.oracle.graal.graph.NodeClass.InputInfo;
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodeinfo.InputType;
 
 public final class InputEdges extends Edges {
 

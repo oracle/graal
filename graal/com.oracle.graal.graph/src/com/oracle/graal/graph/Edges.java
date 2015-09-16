@@ -22,14 +22,17 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.Graph.*;
-import static com.oracle.graal.graph.Node.*;
+import static com.oracle.graal.graph.Graph.MODIFICATION_COUNTS_ENABLED;
+import static com.oracle.graal.graph.Node.NOT_ITERABLE;
 import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.function.BiConsumer;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.Fields;
+import com.oracle.graal.compiler.common.FieldsScanner;
 import com.oracle.graal.graph.NodeClass.EdgeInfo;
 
 /**

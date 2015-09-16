@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.truffle.test;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.BailoutException;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.api.directives.*;
-import com.oracle.graal.truffle.test.nodes.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
+import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
 

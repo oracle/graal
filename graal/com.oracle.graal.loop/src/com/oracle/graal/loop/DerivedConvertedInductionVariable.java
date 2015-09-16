@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.IntegerConvertNode;
 
 public class DerivedConvertedInductionVariable extends DerivedInductionVariable {
 

@@ -22,19 +22,29 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.hotspot.nodes.G1ArrayRangePostWriteBarrier;
+import com.oracle.graal.hotspot.nodes.G1ArrayRangePreWriteBarrier;
+import com.oracle.graal.hotspot.nodes.G1PostWriteBarrier;
+import com.oracle.graal.hotspot.nodes.G1PreWriteBarrier;
+import com.oracle.graal.hotspot.nodes.G1ReferentFieldReadBarrier;
+import com.oracle.graal.hotspot.nodes.SerialArrayRangeWriteBarrier;
+import com.oracle.graal.hotspot.nodes.SerialWriteBarrier;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.ArrayRangeWriteNode;
+import com.oracle.graal.nodes.java.LoweredAtomicReadAndWriteNode;
+import com.oracle.graal.nodes.java.LoweredCompareAndSwapNode;
+import com.oracle.graal.nodes.memory.FixedAccessNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.nodes.memory.ReadNode;
+import com.oracle.graal.nodes.memory.WriteNode;
+import com.oracle.graal.nodes.memory.address.AddressNode;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.phases.Phase;
 
 public class WriteBarrierAdditionPhase extends Phase {
 

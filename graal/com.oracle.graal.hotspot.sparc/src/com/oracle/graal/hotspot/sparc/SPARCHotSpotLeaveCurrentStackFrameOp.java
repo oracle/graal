@@ -22,12 +22,22 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static jdk.internal.jvmci.sparc.SPARC.*;
+import static jdk.internal.jvmci.sparc.SPARC.i0;
+import static jdk.internal.jvmci.sparc.SPARC.i1;
+import static jdk.internal.jvmci.sparc.SPARC.i2;
+import static jdk.internal.jvmci.sparc.SPARC.i3;
+import static jdk.internal.jvmci.sparc.SPARC.i4;
+import static jdk.internal.jvmci.sparc.SPARC.o0;
+import static jdk.internal.jvmci.sparc.SPARC.o1;
+import static jdk.internal.jvmci.sparc.SPARC.o2;
+import static jdk.internal.jvmci.sparc.SPARC.o3;
+import static jdk.internal.jvmci.sparc.SPARC.o4;
 
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
 
 /**
  * Pops the current frame off the stack.

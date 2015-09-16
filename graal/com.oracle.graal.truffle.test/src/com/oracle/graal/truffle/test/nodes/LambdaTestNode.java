@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
-import java.util.function.*;
+import java.util.function.Supplier;
 
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class LambdaTestNode extends AbstractTestNode {
     @Override

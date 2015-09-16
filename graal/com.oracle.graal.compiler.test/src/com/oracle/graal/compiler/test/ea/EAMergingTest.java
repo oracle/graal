@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.ValuePhiNode;
 
 public class EAMergingTest extends EATestBase {
 

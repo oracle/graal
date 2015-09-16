@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import java.lang.invoke.*;
+import java.lang.invoke.ConstantCallSite;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.api.directives.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.replacements.test.*;
+import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.replacements.test.MethodSubstitutionTest;
 
 /**
  * Tests HotSpot specific {@link MethodSubstitution}s.

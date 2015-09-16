@@ -22,23 +22,25 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
-import static com.oracle.graal.debug.Debug.*;
+import static com.oracle.graal.debug.Debug.isEnabled;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
-import java.util.*;
+import java.util.Set;
 
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Graph.NodeEventScope;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.util.*;
-import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.spi.Simplifiable;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
+import com.oracle.graal.phases.graph.ReentrantBlockIterator;
+import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends BasePhase<PhaseContextT> {
 

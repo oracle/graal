@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssi;
 
-import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.alloc.lsra.LinearScan;
+import com.oracle.graal.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
 
 public class SSILinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 

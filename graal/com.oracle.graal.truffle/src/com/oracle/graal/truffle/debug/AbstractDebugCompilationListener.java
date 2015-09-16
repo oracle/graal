@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import java.util.*;
+import java.util.Map;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CompilationResult;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.truffle.GraalTruffleCompilationListener;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.OptimizedDirectCallNode;
+import com.oracle.graal.truffle.TruffleInlining;
 
 public abstract class AbstractDebugCompilationListener implements GraalTruffleCompilationListener {
 

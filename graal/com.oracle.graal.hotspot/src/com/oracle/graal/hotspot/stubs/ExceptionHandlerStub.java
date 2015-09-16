@@ -22,23 +22,32 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerNode.*;
-import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
+import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerNode.jumpToExceptionHandler;
+import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.patchReturnAddress;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readExceptionOop;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readExceptionPc;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionOop;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionPc;
+import static com.oracle.graal.hotspot.stubs.StubUtil.cAssertionsEnabled;
+import static com.oracle.graal.hotspot.stubs.StubUtil.decipher;
+import static com.oracle.graal.hotspot.stubs.StubUtil.fatal;
+import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
+import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.word.*;
+import com.oracle.graal.word.Word;
 
 /**
  * Stub called by the {@linkplain HotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler

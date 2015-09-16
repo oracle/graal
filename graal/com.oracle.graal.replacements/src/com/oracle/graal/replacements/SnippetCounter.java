@@ -24,8 +24,10 @@ package com.oracle.graal.replacements;
 
 //JaCoCo Exclude
 
-import java.io.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * A counter that can be safely {@linkplain #inc() incremented} from within a snippet for gathering

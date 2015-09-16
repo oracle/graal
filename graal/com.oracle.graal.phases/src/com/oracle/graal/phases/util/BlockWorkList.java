@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.util;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.AbstractMergeNode;
 
 /**
  * This class implements a worklist for dealing with blocks. The worklist can operate either as a

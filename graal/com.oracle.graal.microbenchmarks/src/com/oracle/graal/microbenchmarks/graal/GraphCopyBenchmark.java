@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.microbenchmarks.graal;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.microbenchmarks.graal.util.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.microbenchmarks.graal.util.GraalState;
+import com.oracle.graal.microbenchmarks.graal.util.GraphState;
+import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * Benchmarks the performance of {@link Graph#copy()}.

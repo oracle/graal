@@ -24,12 +24,12 @@
  */
 package com.oracle.graal.jtt.lang;
 
-import java.time.*;
-import java.util.*;
+import java.time.DayOfWeek;
+import java.util.HashMap;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 public final class Object_hashCode02 extends JTTTest {
 

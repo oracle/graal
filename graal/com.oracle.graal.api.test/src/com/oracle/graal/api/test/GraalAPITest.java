@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.api.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.api.runtime.Graal;
 
 public class GraalAPITest {
 

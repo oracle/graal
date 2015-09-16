@@ -22,14 +22,19 @@
  */
 package com.oracle.graal.replacements.verifier;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Annotation;
 
-import javax.annotation.processing.*;
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.replacements.ClassSubstitution;
 
 public final class ClassSubstitutionVerifier extends AbstractVerifier {
 

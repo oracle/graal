@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.lir.util;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.lir.LIRValueUtil.asVariable;
+import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static jdk.internal.jvmci.code.ValueUtil.asVirtualStackSlot;
+import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.Value;
 
 public class VariableVirtualStackValueMap<K extends Value, T> extends ValueMap<K, T> {
 

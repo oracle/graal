@@ -22,15 +22,31 @@
  */
 package com.oracle.graal.truffle.test;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.SourceStackTrace;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.test.nodes.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.replacements.PEGraphDecoder;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
+import com.oracle.graal.truffle.test.nodes.AddTestNode;
+import com.oracle.graal.truffle.test.nodes.BlockTestNode;
+import com.oracle.graal.truffle.test.nodes.ConstantTestNode;
+import com.oracle.graal.truffle.test.nodes.LambdaTestNode;
+import com.oracle.graal.truffle.test.nodes.LoadLocalTestNode;
+import com.oracle.graal.truffle.test.nodes.LoopTestNode;
+import com.oracle.graal.truffle.test.nodes.NestedExplodedLoopTestNode;
+import com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode;
+import com.oracle.graal.truffle.test.nodes.ObjectEqualsNode;
+import com.oracle.graal.truffle.test.nodes.RecursionTestNode;
+import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import com.oracle.graal.truffle.test.nodes.StoreLocalTestNode;
+import com.oracle.graal.truffle.test.nodes.StringEqualsNode;
+import com.oracle.graal.truffle.test.nodes.TwoMergesExplodedLoopTestNode;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import java.util.*;
+import java.util.Arrays;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.nodes.FullInfopointNode;
+import com.oracle.graal.nodes.SimpleInfopointNode;
 
 public class GraphBuilderConfiguration {
 

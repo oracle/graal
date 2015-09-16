@@ -22,14 +22,17 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
 
-import java.util.*;
-import java.util.function.*;
-import java.util.stream.*;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import com.oracle.graal.truffle.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.TraceCompilationProfile;
+import com.oracle.truffle.api.Truffle;
 
 public final class PrintCallTargetProfiling extends AbstractDebugCompilationListener {
 

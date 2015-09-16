@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.replacements;
 
-import java.io.*;
+import java.io.PrintStream;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaKind;
 
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
 
 //JaCoCo Exclude
 

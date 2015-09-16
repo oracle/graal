@@ -22,12 +22,18 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleSplitting;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleSplittingNew;
 
-import java.util.*;
+import java.util.Map;
 
-import com.oracle.graal.truffle.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.OptimizedDirectCallNode;
+import com.oracle.graal.truffle.TruffleStamp;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 public final class TraceSplittingListener extends AbstractDebugCompilationListener {

@@ -25,9 +25,10 @@
  */
 package com.oracle.graal.jtt.micro;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.jtt.JTTTest;
 
 /**
  * Tests different alignment on the stack with extended parameters (index > 5).

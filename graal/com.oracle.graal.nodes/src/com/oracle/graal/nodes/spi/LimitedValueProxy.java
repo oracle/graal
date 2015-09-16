@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.ValueNode;
 
 /**
  * This interface is like the derived {@link ValueProxy}. The difference is that only the graph

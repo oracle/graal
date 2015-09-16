@@ -22,17 +22,24 @@
  */
 package com.oracle.graal.hotspot.amd64.test;
 
-import static jdk.internal.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.amd64.AMD64.rax;
 
-import java.util.*;
+import java.util.Arrays;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 /**
  * Ensures that frame omission works in cases where it is expected to.

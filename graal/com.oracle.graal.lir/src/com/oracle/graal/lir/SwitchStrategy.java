@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.lir;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Comparator;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.JavaConstant;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 /**
  * This class encapsulates different strategies on how to generate code for switch instructions.

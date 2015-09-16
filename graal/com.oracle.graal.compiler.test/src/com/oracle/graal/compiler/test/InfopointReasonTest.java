@@ -22,23 +22,29 @@
  */
 package com.oracle.graal.compiler.test;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CallingConvention.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.compiler.GraalCompiler.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static jdk.internal.jvmci.code.CodeUtil.*;
-import static org.junit.Assert.*;
+import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
+import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
+import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
+import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
+import static org.junit.Assert.assertNotNull;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.CompilationResult.Call;
+import jdk.internal.jvmci.code.CompilationResult.Infopoint;
+import jdk.internal.jvmci.code.InfopointReason;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.nodes.FullInfopointNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 /**
  * Test that infopoints in {@link CompilationResult}s have correctly assigned reasons.

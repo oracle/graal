@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.InfopointReason;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.spi.Simplifiable;
+import com.oracle.graal.graph.spi.SimplifierTool;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.nodes.spi.NodeWithState;
 
 /**
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.

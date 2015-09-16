@@ -22,20 +22,34 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
+import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_ELEMENT_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayBaseOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayLengthOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.secondarySuperCacheOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.secondarySupersOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.superCheckOffsetOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 
-import java.util.*;
+import java.util.Arrays;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.hotspot.nodes.type.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
+import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.TypeCheckHints;
+import com.oracle.graal.replacements.SnippetCounter;
+import com.oracle.graal.word.Word;
 
 //JaCoCo Exclude
 

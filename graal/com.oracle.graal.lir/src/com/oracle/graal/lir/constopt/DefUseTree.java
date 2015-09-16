@@ -22,14 +22,17 @@
  */
 package com.oracle.graal.lir.constopt;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
+import com.oracle.graal.lir.Variable;
 
 /**
  * Represents def-use tree of a constant.

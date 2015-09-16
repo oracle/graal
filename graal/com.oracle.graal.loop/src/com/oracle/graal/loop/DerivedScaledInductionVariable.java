@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.loop;
 
-import static com.oracle.graal.loop.MathUtil.*;
+import static com.oracle.graal.loop.MathUtil.mul;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.IntegerConvertNode;
+import com.oracle.graal.nodes.calc.NegateNode;
+import com.oracle.graal.nodes.util.GraphUtil;
 
 public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 

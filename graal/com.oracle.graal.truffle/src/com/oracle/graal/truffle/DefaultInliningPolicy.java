@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInliningMaxCallerSize;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerOptions;
 
 public class DefaultInliningPolicy implements TruffleInliningPolicy {
 

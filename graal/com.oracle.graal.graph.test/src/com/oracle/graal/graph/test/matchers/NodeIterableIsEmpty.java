@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.graph.test.matchers;
 
-import org.hamcrest.*;
-import org.hamcrest.core.*;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeDiagnosingMatcher;
+import org.hamcrest.core.IsNot;
 
-import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graph.iterators.NodeIterable;
 
 public class NodeIterableIsEmpty extends TypeSafeDiagnosingMatcher<NodeIterable<?>> {
 

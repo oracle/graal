@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.debug.internal;
 
-import java.io.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.util.List;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.DebugHistogram.*;
+import com.oracle.graal.debug.DebugHistogram;
+import com.oracle.graal.debug.DebugHistogram.CountedValue;
+import com.oracle.graal.debug.DebugHistogram.Printer;
 
 /**
  * Renders a histogram as an R script to a given print stream. The R script emitted for a histogram

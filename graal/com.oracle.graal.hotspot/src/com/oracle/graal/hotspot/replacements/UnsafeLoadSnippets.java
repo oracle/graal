@@ -22,19 +22,21 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.internal.jvmci.code.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.replacements.SnippetTemplate.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
+import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import jdk.internal.jvmci.code.TargetDescription;
 
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.word.*;
+import com.oracle.graal.replacements.Snippets;
+import com.oracle.graal.word.Word;
 
 public class UnsafeLoadSnippets implements Snippets {
 

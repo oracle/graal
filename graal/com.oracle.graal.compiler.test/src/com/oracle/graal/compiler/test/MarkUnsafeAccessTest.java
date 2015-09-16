@@ -22,25 +22,33 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static java.nio.file.StandardOpenOption.*;
+import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.WRITE;
 
-import java.io.*;
-import java.nio.*;
-import java.nio.channels.*;
-import java.nio.channels.FileChannel.*;
-import java.nio.file.*;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-import org.junit.*;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.code.InvalidInstalledCodeException;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.common.inlining.policy.*;
-import com.oracle.graal.phases.tiers.*;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
-import sun.misc.*;
+import sun.misc.Unsafe;
+
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.inlining.InliningPhase;
+import com.oracle.graal.phases.common.inlining.policy.InlineEverythingPolicy;
+import com.oracle.graal.phases.tiers.HighTierContext;
 
 public class MarkUnsafeAccessTest extends GraalCompilerTest {
 

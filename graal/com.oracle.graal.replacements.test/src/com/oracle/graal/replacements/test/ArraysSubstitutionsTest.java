@@ -22,19 +22,22 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.util.*;
+import java.util.Arrays;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.ReturnNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.inlining.InliningPhase;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.PhaseContext;
+import com.oracle.graal.replacements.ArraysSubstitutions;
+import com.oracle.graal.replacements.nodes.ArrayEqualsNode;
+import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 
 /**
  * Tests {@link ArraysSubstitutions}.

@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.lir;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.Value;
 
 /**
  * Represents an inlined {@link Constant} value.

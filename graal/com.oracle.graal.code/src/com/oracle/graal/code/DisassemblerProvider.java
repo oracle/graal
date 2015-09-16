@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.code;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CodeCacheProvider;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
 
 /**
  * Interface providing capability for disassembling machine code.

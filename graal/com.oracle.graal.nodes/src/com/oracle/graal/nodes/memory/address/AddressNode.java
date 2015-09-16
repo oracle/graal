@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.nodes.memory.address;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.StructuralInput;
+import com.oracle.graal.nodes.calc.FloatingNode;
 
 /**
  * Base class for nodes that deal with addressing calculation.

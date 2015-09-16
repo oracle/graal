@@ -22,19 +22,27 @@
  */
 package com.oracle.graal.loop;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.BailoutException;
 
 import com.oracle.graal.graph.Graph.Mark;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graph.NodePosIterator;
+import com.oracle.graal.graph.Position;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.BeginNode;
+import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.IfNode;
+import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.SwitchNode;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 public abstract class LoopTransformations {
 

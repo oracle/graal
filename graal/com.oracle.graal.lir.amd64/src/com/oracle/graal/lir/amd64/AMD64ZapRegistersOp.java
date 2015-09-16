@@ -22,18 +22,23 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.lir.amd64.AMD64SaveRegistersOp.*;
+import static com.oracle.graal.lir.amd64.AMD64SaveRegistersOp.prune;
 
-import java.util.*;
+import java.util.Set;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.Register;
+import jdk.internal.jvmci.code.RegisterSaveLayout;
+import jdk.internal.jvmci.code.RegisterValue;
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
 
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.framemap.FrameMap;
 
 /**
  * Writes well known garbage values to registers.

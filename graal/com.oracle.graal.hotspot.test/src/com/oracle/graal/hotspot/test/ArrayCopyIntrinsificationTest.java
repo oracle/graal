@@ -22,18 +22,24 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.HashMap;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.replacements.arraycopy.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopySnippets;
+import com.oracle.graal.nodes.DirectCallTargetNode;
+import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.LoweredCallTargetNode;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * Tests intrinsification of {@link System#arraycopy(Object, int, Object, int, int)}.

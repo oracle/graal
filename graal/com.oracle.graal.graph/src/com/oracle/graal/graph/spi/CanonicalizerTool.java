@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.graph.spi;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 
 public interface CanonicalizerTool {
 

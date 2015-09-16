@@ -22,20 +22,24 @@
  */
 package com.oracle.graal.compiler.match;
 
-import static com.oracle.graal.debug.GraalDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.LogVerbose;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.service.Services;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-
-import jdk.internal.jvmci.service.*;
-
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graph.Edges;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.Position;
 
 public class MatchRuleRegistry {
 

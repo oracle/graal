@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.compiler.match;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.ConstantNode;
 
 /**
  * This annotation declares a textual pattern for matching an HIR tree. The format is a LISP style

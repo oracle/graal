@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.test;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.api.directives.*;
+import com.oracle.graal.api.directives.GraalDirectives;
 
 /**
  * Collection of tests for

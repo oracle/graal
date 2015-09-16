@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaTypeProfile;
 
-import org.junit.*;
+import org.junit.Test;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.CheckCastNode;
 
 /**
  * Tests the implementation of checkcast, allowing profiling information to be manually specified.
