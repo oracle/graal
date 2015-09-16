@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.Node;
  * not yet executed) AST.
  *
  * @see Probe
- * @see Probe#addProbeListener(ProbeListener)
+ * @see Instrumenter#addProbeListener(ProbeListener)
  */
 public interface ASTProber {
 
@@ -40,6 +40,6 @@ public interface ASTProber {
      * {@linkplain Probe Probes} to them. Ignore {@linkplain Node#isInstrumentable()
      * non-instrumentable} nodes.
      */
-    void probeAST(Node node);
+    void probeAST(Instrumenter instrumenter, Node node);
 
 }

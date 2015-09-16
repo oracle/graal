@@ -22,20 +22,23 @@
  */
 package com.oracle.truffle.api.test.instrument;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdvancedInstrumentCounterRoot;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestRootNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 /**
  * Tests the kind of instrumentation where a client can provide an AST fragment to be
@@ -44,20 +47,22 @@ import org.junit.Test;
 public class AdvancedInstrumentTest {
 
     @Test
-    public void testAdvancedInstrumentListener() {
+    public void testAdvancedInstrumentListener() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = InstrumentationTestNodes.createInstrumenter();
+
         // Create a simple addition AST
         final TruffleRuntime runtime = Truffle.getRuntime();
         final TestValueNode leftValueNode = new TestValueNode(6);
         final TestValueNode rightValueNode = new TestValueNode(7);
         final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
-        final TestRootNode rootNode = new TestRootNode(addNode);
+        final TestRootNode rootNode = new TestRootNode(addNode, instrumenter);
         final CallTarget callTarget1 = runtime.createCallTarget(rootNode);
 
         // Ensure it executes correctly
         assertEquals(13, callTarget1.call());
 
         // Probe the addition node
-        final Probe probe = addNode.probe();
+        final Probe probe = instrumenter.probe(addNode);
 
         assertEquals(13, callTarget1.call());
 

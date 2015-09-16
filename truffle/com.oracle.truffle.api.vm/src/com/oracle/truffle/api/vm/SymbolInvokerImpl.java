@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -82,6 +83,11 @@ final class SymbolInvokerImpl {
             Object tmp = ForeignAccess.execute(foreignAccess, frame, function, args);
             return convert.convert(frame, tmp);
         }
+
+        @Override
+        public void applyInstrumentation() {
+            SymbolInvokerImpl.ACCESSOR_INTEROP.applyInstrumentation(foreignAccess);
+        }
     }
 
     private static final class ConvertNode extends Node {
@@ -125,4 +131,14 @@ final class SymbolInvokerImpl {
             return obj;
         }
     }
+
+    static final class AccessorInterop extends Accessor {
+
+        @Override
+        protected void applyInstrumentation(Node node) {
+            super.applyInstrumentation(node);
+        }
+    }
+
+    static final AccessorInterop ACCESSOR_INTEROP = new AccessorInterop();
 }

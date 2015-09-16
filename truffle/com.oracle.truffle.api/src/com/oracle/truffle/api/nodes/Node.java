@@ -24,6 +24,15 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.Callable;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -34,20 +43,9 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.Instrument;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeException;
-import com.oracle.truffle.api.instrument.ProbeFailure;
-import com.oracle.truffle.api.instrument.ProbeNode;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.JSONHelper;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.Callable;
 
 /**
  * Abstract base class for all Truffle nodes.
@@ -449,57 +447,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Enables {@linkplain Instrument instrumentation} of a node, where the node is presumed to be
-     * part of a well-formed Truffle AST that is not being executed. If this node has not already
-     * been probed, modifies the AST by inserting a {@linkplain WrapperNode wrapper node} between
-     * the node and its parent; the wrapper node must be provided by implementations of
-     * {@link #createWrapperNode()}. No more than one {@link Probe} may be associated with a node,
-     * so a {@linkplain WrapperNode wrapper} may not wrap another {@linkplain WrapperNode wrapper}.
-     *
-     * @return a (possibly newly created) {@link Probe} associated with this node.
-     * @throws ProbeException (unchecked) when a probe cannot be created, leaving the AST unchanged
-     */
-    public final Probe probe() {
-
-        if (this instanceof WrapperNode) {
-            throw new ProbeException(ProbeFailure.Reason.WRAPPER_NODE, null, this, null);
-        }
-
-        if (parent == null) {
-            throw new ProbeException(ProbeFailure.Reason.NO_PARENT, null, this, null);
-        }
-
-        if (parent instanceof WrapperNode) {
-            return ((WrapperNode) parent).getProbe();
-        }
-
-        if (!isInstrumentable()) {
-            throw new ProbeException(ProbeFailure.Reason.NOT_INSTRUMENTABLE, parent, this, null);
-        }
-
-        // Create a new wrapper/probe with this node as its child.
-        final WrapperNode wrapper = createWrapperNode();
-
-        if (wrapper == null || !(wrapper instanceof Node)) {
-            throw new ProbeException(ProbeFailure.Reason.NO_WRAPPER, parent, this, wrapper);
-        }
-
-        final Node wrapperNode = (Node) wrapper;
-
-        if (!this.isSafelyReplaceableBy(wrapperNode)) {
-            throw new ProbeException(ProbeFailure.Reason.WRAPPER_TYPE, parent, this, wrapper);
-        }
-
-        // Connect it to a Probe
-        final Probe probe = ProbeNode.insertProbe(wrapper);
-
-        // Replace this node in the AST with the wrapper
-        this.replace(wrapperNode);
-
-        return probe;
-    }
-
-    /**
      * Converts this node to a textual representation useful for debugging.
      */
     @Override
@@ -576,6 +523,10 @@ public abstract class Node implements NodeInterface, Cloneable {
         return "";
     }
 
+    protected void applyInstrumentation(Node node) {
+        ACCESSOR.applyInstrumentation(node);
+    }
+
     private static final Object GIL = new Object();
 
     private static final ThreadLocal<Integer> IN_ATOMIC_BLOCK = new ThreadLocal<Integer>() {
@@ -605,8 +556,13 @@ public abstract class Node implements NodeInterface, Cloneable {
         protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
             return n.language;
         }
+
+        @Override
+        protected void applyInstrumentation(Node node) {
+            super.applyInstrumentation(node);
+        }
     }
 
     // registers into Accessor.NODES
-    @SuppressWarnings("unused") private static final AccessorNodes ACCESSOR = new AccessorNodes();
+    private static final AccessorNodes ACCESSOR = new AccessorNodes();
 }

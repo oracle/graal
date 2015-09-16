@@ -41,10 +41,11 @@ public interface ProbeListener {
     void startASTProbing(Source source);
 
     /**
-     * Notifies that a {@link Probe} has been newly attached to an AST via {@link Node#probe()}.
+     * Notifies that a {@link Probe} has been newly attached to an AST via
+     * {@link Instrumenter#probe(Node)}.
      * <p>
      * There can be no more than one {@link Probe} at a node; this notification will only be
-     * delivered the first time {@linkplain Node#probe() probe()} is called at a particular AST
+     * delivered the first time {@linkplain Instrumenter#probe(Node)} is called at a particular AST
      * node. There will also be no notification when the AST to which the Probe is attached is
      * cloned.
      */

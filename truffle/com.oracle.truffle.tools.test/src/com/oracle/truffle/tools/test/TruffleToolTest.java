@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.tools.test;
 
-import com.oracle.truffle.api.instrument.InstrumentationTool;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.instrument.InstrumentationTool;
+import com.oracle.truffle.api.instrument.Instrumenter;
 
 /**
  * Test the basic life cycle properties shared by all instances of {@link InstrumentationTool}.
@@ -35,10 +38,11 @@ import org.junit.Test;
 public class TruffleToolTest {
 
     @Test
-    public void testEmptyLifeCycle() {
+    public void testEmptyLifeCycle() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
         assertFalse(tool.isEnabled());
-        tool.install();
+        tool.install(instrumenter);
         assertTrue(tool.isEnabled());
         tool.reset();
         assertTrue(tool.isEnabled());
@@ -73,40 +77,45 @@ public class TruffleToolTest {
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testAlreadyInstalled() {
+    public void testAlreadyInstalled() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install();
-        tool.install();
+        tool.install(instrumenter);
+        tool.install(instrumenter);
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testAlreadyDisposed1() {
+    public void testAlreadyDisposed1() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install();
+        tool.install(instrumenter);
         tool.dispose();
-        tool.install();
+        tool.install(instrumenter);
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testAlreadyDisposed2() {
+    public void testAlreadyDisposed2() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install();
+        tool.install(instrumenter);
         tool.dispose();
         tool.reset();
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testAlreadyDisposed3() {
+    public void testAlreadyDisposed3() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install();
+        tool.install(instrumenter);
         tool.dispose();
         tool.setEnabled(true);
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testAlreadyDisposed4() {
+    public void testAlreadyDisposed4() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install();
+        tool.install(instrumenter);
         tool.dispose();
         tool.dispose();
     }

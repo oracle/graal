@@ -24,30 +24,34 @@
  */
 package com.oracle.truffle.tools.test;
 
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.LineLocation;
-import com.oracle.truffle.tools.LineToProbesMap;
 import static com.oracle.truffle.tools.test.TestNodes.createExpr13TestRootNode;
 import static com.oracle.truffle.tools.test.TestNodes.expr13Line1;
 import static com.oracle.truffle.tools.test.TestNodes.expr13Line2;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.LineLocation;
+import com.oracle.truffle.tools.LineToProbesMap;
 
 public class LineToProbesMapTest {
 
     @Test
-    public void testToolCreatedTooLate() {
-        final RootNode expr13rootNode = createExpr13TestRootNode();
+    public void testToolCreatedTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
+        final RootNode expr13rootNode = createExpr13TestRootNode(instrumenter);
         final Node addNode = expr13rootNode.getChildren().iterator().next();
-        final Probe probe = addNode.probe();
+        final Probe probe = instrumenter.probe(addNode);
         final LineLocation lineLocation = probe.getProbedSourceSection().getLineLocation();
         assertEquals(lineLocation, expr13Line2);
 
         final LineToProbesMap tool = new LineToProbesMap();
-        tool.install();
+        tool.install(instrumenter);
 
         assertNull(tool.findFirstProbe(expr13Line1));
         assertNull(tool.findFirstProbe(expr13Line2));
@@ -55,16 +59,17 @@ public class LineToProbesMapTest {
     }
 
     @Test
-    public void testToolInstalledTooLate() {
+    public void testToolInstalledTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final LineToProbesMap tool = new LineToProbesMap();
 
-        final RootNode expr13rootNode = createExpr13TestRootNode();
+        final RootNode expr13rootNode = createExpr13TestRootNode(instrumenter);
         final Node addNode = expr13rootNode.getChildren().iterator().next();
-        final Probe probe = addNode.probe();
+        final Probe probe = instrumenter.probe(addNode);
         final LineLocation lineLocation = probe.getProbedSourceSection().getLineLocation();
         assertEquals(lineLocation, expr13Line2);
 
-        tool.install();
+        tool.install(instrumenter);
 
         assertNull(tool.findFirstProbe(expr13Line1));
         assertNull(tool.findFirstProbe(expr13Line2));
@@ -72,13 +77,14 @@ public class LineToProbesMapTest {
     }
 
     @Test
-    public void testMapping() {
+    public void testMapping() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final LineToProbesMap tool = new LineToProbesMap();
-        tool.install();
+        tool.install(instrumenter);
 
-        final RootNode expr13rootNode = createExpr13TestRootNode();
+        final RootNode expr13rootNode = createExpr13TestRootNode(instrumenter);
         final Node addNode = expr13rootNode.getChildren().iterator().next();
-        final Probe probe = addNode.probe();
+        final Probe probe = instrumenter.probe(addNode);
         final LineLocation lineLocation = probe.getProbedSourceSection().getLineLocation();
         assertEquals(lineLocation, expr13Line2);
 

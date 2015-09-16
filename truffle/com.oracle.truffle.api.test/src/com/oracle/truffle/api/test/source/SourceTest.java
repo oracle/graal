@@ -91,7 +91,8 @@ public class SourceTest {
             w.write(text);
         }
 
-        Source s1 = Source.fromFileName(file.getPath());
+        // JDK8 default fails on OS X: https://bugs.openjdk.java.net/browse/JDK-8129632
+        Source s1 = Source.fromFileName(file.getPath()).withMimeType("text/x-java");
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = s1.withMimeType("text/x-c");
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
@@ -107,7 +108,8 @@ public class SourceTest {
 
         String text = "// Hello";
 
-        Source s1 = Source.fromFileName(text, file.getPath());
+        // JDK8 default fails on OS X: https://bugs.openjdk.java.net/browse/JDK-8129632
+        Source s1 = Source.fromFileName(text, file.getPath()).withMimeType("text/x-java");
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = s1.withMimeType("text/x-c");
         assertEquals("They have the same content", s1.getCode(), s2.getCode());

@@ -22,13 +22,19 @@
  */
 package com.oracle.truffle.api.test;
 
+import java.io.IOException;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import java.io.IOException;
 
 public final class TestingLanguage extends TruffleLanguage<Object> {
     public static final TestingLanguage INSTANCE = new TestingLanguage();
@@ -57,13 +63,41 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
     }
 
     @Override
-    protected ToolSupportProvider getToolSupport() {
+    protected Visualizer getVisualizer() {
         return null;
     }
 
     @Override
-    protected DebugSupportProvider getDebugSupport() {
+    protected ASTProber getDefaultASTProber() {
         return null;
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void enableASTProbing(ASTProber astProber) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        return null;
+    }
+
+    @Override
+    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
+        return null;
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected ToolSupportProvider getToolSupport() {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected DebugSupportProvider getDebugSupport() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

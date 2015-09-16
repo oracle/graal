@@ -24,18 +24,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.debug.DebugSupportProvider;
-import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ToolSupportProvider;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.Reader;
@@ -43,15 +31,36 @@ import java.io.Writer;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+
 /**
- * Communication between TruffleVM and TruffleLanguage API/SPI.
+ * Communication between TruffleVM, TruffleLanguage API/SPI, and other services.
  */
 @SuppressWarnings("rawtypes")
 public abstract class Accessor {
     private static Accessor API;
     private static Accessor SPI;
     private static Accessor NODES;
+    private static Accessor INTEROP;
     private static Accessor INSTRUMENT;
+    private static Accessor TOOL;
     private static Accessor DEBUG;
     private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
 
@@ -72,11 +81,13 @@ public abstract class Accessor {
                 return false;
             }
 
+            @SuppressWarnings("deprecation")
             @Override
             protected ToolSupportProvider getToolSupport() {
-                return null;
+                throw new UnsupportedOperationException();
             }
 
+            @SuppressWarnings("deprecation")
             @Override
             protected DebugSupportProvider getDebugSupport() {
                 return null;
@@ -91,12 +102,39 @@ public abstract class Accessor {
             protected Object createContext(TruffleLanguage.Env env) {
                 return null;
             }
+
+            @Override
+            protected ASTProber getDefaultASTProber() {
+                return null;
+            }
+
+            @Override
+            protected Visualizer getVisualizer() {
+                return null;
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            protected void enableASTProbing(ASTProber astProber) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+                return null;
+            }
+
+            @Override
+            protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
+                return null;
+            }
         };
         lng.hashCode();
         new Node(null) {
         }.getRootNode();
 
         try {
+            Class.forName(Instrumenter.class.getName(), true, Instrumenter.class.getClassLoader());
             Class.forName(Debugger.class.getName(), true, Debugger.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             throw new IllegalStateException(ex);
@@ -114,6 +152,11 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             NODES = this;
+        } else if (this.getClass().getSimpleName().endsWith("Interop")) {
+            if (INTEROP != null) {
+                throw new IllegalStateException();
+            }
+            INTEROP = this;
         } else if (this.getClass().getSimpleName().endsWith("Instrument")) {
             if (INSTRUMENT != null) {
                 throw new IllegalStateException();
@@ -124,6 +167,11 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             DEBUG = this;
+        } else if (this.getClass().getSimpleName().endsWith("Tool")) {
+            if (TOOL != null) {
+                throw new IllegalStateException();
+            }
+            TOOL = this;
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
@@ -152,12 +200,23 @@ public abstract class Accessor {
         return API.languageGlobal(env);
     }
 
-    protected ToolSupportProvider getToolSupport(TruffleLanguage<?> l) {
-        return API.getToolSupport(l);
+    @Deprecated
+    protected ToolSupportProvider getToolSupport(@SuppressWarnings("unused") TruffleLanguage<?> l) {
+        throw new UnsupportedOperationException();
     }
 
-    protected DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
-        return API.getDebugSupport(l);
+    @Deprecated
+    protected DebugSupportProvider getDebugSupport(@SuppressWarnings("unused") TruffleLanguage<?> l) {
+        throw new UnsupportedOperationException();
+    }
+
+    protected ASTProber getDefaultASTProber(TruffleLanguage language) {
+        return API.getDefaultASTProber(language);
+    }
+
+    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr, AdvancedInstrumentResultListener resultListener)
+                    throws IOException {
+        return API.createAdvancedInstrumentRootFactory(vm, languageClass, expr, resultListener);
     }
 
     protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
@@ -182,6 +241,36 @@ public abstract class Accessor {
             vm = known;
         }
         return SPI.findLanguage(vm, languageClass);
+    }
+
+    protected TruffleLanguage findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass) {
+        Object vm;
+        if (known == null) {
+            vm = CURRENT_VM.get();
+            if (vm == null) {
+                throw new IllegalStateException();
+            }
+        } else {
+            vm = known;
+        }
+        return SPI.findLanguageImpl(vm, languageClass);
+    }
+
+    protected Instrumenter getInstrumenter(Object known) {
+        Object vm;
+        if (known == null) {
+            vm = CURRENT_VM.get();
+            if (vm == null) {
+                throw new IllegalStateException();
+            }
+        } else {
+            vm = known;
+        }
+        return SPI.getInstrumenter(vm);
+    }
+
+    protected Instrumenter createInstrumenter() {
+        return INSTRUMENT.createInstrumenter();
     }
 
     private static Reference<Object> previousVM = new WeakReference<>(null);
@@ -236,5 +325,9 @@ public abstract class Accessor {
 
     protected TruffleLanguage<?> findLanguage(Env env) {
         return API.findLanguage(env);
+    }
+
+    protected void applyInstrumentation(Node node) {
+        INSTRUMENT.applyInstrumentation(node);
     }
 }

@@ -28,6 +28,7 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeException;
 import com.oracle.truffle.api.instrument.ProbeFailure.Reason;
@@ -47,11 +48,14 @@ import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestLangu
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestLanguageWrapperNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestRootNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
+
 import java.util.Iterator;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
 import org.junit.Test;
 
 /**
@@ -101,7 +105,9 @@ public class InstrumentationTest {
     };
 
     @Test
-    public void testInstrumentationStructure() {
+    public void testInstrumentationStructure() throws IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchFieldException {
+
+        final Instrumenter instrumenter = InstrumentationTestNodes.createInstrumenter();
         // Create a simple addition AST
         final TruffleRuntime runtime = Truffle.getRuntime();
         final TestValueNode leftValueNode = new TestValueNode(6);
@@ -109,11 +115,11 @@ public class InstrumentationTest {
         final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
 
         try {
-            addNode.probe();
+            instrumenter.probe(addNode);
         } catch (ProbeException e) {
             assertEquals(e.getFailure().getReason(), Reason.NO_PARENT);
         }
-        final TestRootNode rootNode = new TestRootNode(addNode);
+        final TestRootNode rootNode = new TestRootNode(addNode, instrumenter);
 
         // Creating a call target sets the parent pointers in this tree and is necessary prior to
         // checking any parent/child relationships
@@ -135,7 +141,7 @@ public class InstrumentationTest {
         assertEquals(13, callTarget1.call());
 
         // Probe the addition node
-        addNode.probe();
+        instrumenter.probe(addNode);
 
         // Check the modified tree structure
         assertEquals(addNode, leftValueNode.getParent());
@@ -162,7 +168,7 @@ public class InstrumentationTest {
         // Check that you can't probe the WrapperNodes
         TestLanguageWrapperNode wrapper = (TestLanguageWrapperNode) wrapperNode;
         try {
-            wrapper.probe();
+            instrumenter.probe(wrapper);
             fail();
         } catch (ProbeException e) {
             assertEquals(e.getFailure().getReason(), Reason.WRAPPER_NODE);
@@ -173,20 +179,22 @@ public class InstrumentationTest {
     }
 
     @Test
-    public void testListeners() {
+    public void testListeners() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+
+        final Instrumenter instrumenter = InstrumentationTestNodes.createInstrumenter();
 
         // Create a simple addition AST
         final TruffleRuntime runtime = Truffle.getRuntime();
         final TestValueNode leftValueNode = new TestValueNode(6);
         final TestValueNode rightValueNode = new TestValueNode(7);
         final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
-        final TestRootNode rootNode = new TestRootNode(addNode);
+        final TestRootNode rootNode = new TestRootNode(addNode, instrumenter);
 
         // Creating a call target sets the parent pointers in this tree and is necessary prior to
         // checking any parent/child relationships
         final CallTarget callTarget = runtime.createCallTarget(rootNode);
         // Probe the addition node
-        final Probe probe = addNode.probe();
+        final Probe probe = instrumenter.probe(addNode);
 
         // Check instrumentation with the simplest kind of counters.
         // They should all be removed when the check is finished.
@@ -294,14 +302,16 @@ public class InstrumentationTest {
     }
 
     @Test
-    public void testTagging() {
+    public void testTagging() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final Instrumenter instrumenter = InstrumentationTestNodes.createInstrumenter();
+
         // Applies appropriate tags
-        final TestASTProber astProber = new TestASTProber();
-        Probe.registerASTProber(astProber);
+        final TestASTProber astProber = new TestASTProber(instrumenter);
+        instrumenter.registerASTProber(astProber);
 
         // Listens for probes and tags being added
         final TestProbeListener probeListener = new TestProbeListener();
-        Probe.addProbeListener(probeListener);
+        instrumenter.addProbeListener(probeListener);
 
         // Counts all entries to all instances of addition nodes
         final TestMultiCounter additionCounter = new TestMultiCounter();
@@ -315,7 +325,7 @@ public class InstrumentationTest {
         final TestValueNode rightValueNode = new TestValueNode(7);
         final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
 
-        final TestRootNode rootNode = new TestRootNode(addNode);
+        final TestRootNode rootNode = new TestRootNode(addNode, instrumenter);
 
         final CallTarget callTarget = runtime.createCallTarget(rootNode);
 
@@ -323,18 +333,18 @@ public class InstrumentationTest {
         assertEquals(probeListener.probeCount, 3);
         assertEquals(probeListener.tagCount, 3);
 
-        assertEquals(Probe.findProbesTaggedAs(ADD_TAG).size(), 1);
-        assertEquals(Probe.findProbesTaggedAs(VALUE_TAG).size(), 2);
+        assertEquals(instrumenter.findProbesTaggedAs(ADD_TAG).size(), 1);
+        assertEquals(instrumenter.findProbesTaggedAs(VALUE_TAG).size(), 2);
 
         // Check that it executes correctly
         assertEquals(13, callTarget.call());
 
         // Dynamically attach a counter for all executions of all Addition nodes
-        for (Probe probe : Probe.findProbesTaggedAs(ADD_TAG)) {
+        for (Probe probe : instrumenter.findProbesTaggedAs(ADD_TAG)) {
             additionCounter.attachCounter(probe);
         }
         // Dynamically attach a counter for all executions of all Value nodes
-        for (Probe probe : Probe.findProbesTaggedAs(VALUE_TAG)) {
+        for (Probe probe : instrumenter.findProbesTaggedAs(VALUE_TAG)) {
             valueCounter.attachCounter(probe);
         }
 
@@ -349,7 +359,7 @@ public class InstrumentationTest {
         assertEquals(additionCounter.count, 1);
         assertEquals(valueCounter.count, 2);
 
-        Probe.unregisterASTProber(astProber);
+        instrumenter.unregisterASTProber(astProber);
     }
 
     private interface TestCounter {
@@ -472,6 +482,12 @@ public class InstrumentationTest {
      */
     private static final class TestASTProber implements NodeVisitor, ASTProber {
 
+        private final Instrumenter instrumenter;
+
+        TestASTProber(Instrumenter instrumenter) {
+            this.instrumenter = instrumenter;
+        }
+
         @Override
         public boolean visit(Node node) {
             if (node instanceof TestLanguageNode) {
@@ -479,10 +495,10 @@ public class InstrumentationTest {
                 final TestLanguageNode testNode = (TestLanguageNode) node;
 
                 if (node instanceof TestValueNode) {
-                    testNode.probe().tagAs(VALUE_TAG, null);
+                    instrumenter.probe(testNode).tagAs(VALUE_TAG, null);
 
                 } else if (node instanceof TestAdditionNode) {
-                    testNode.probe().tagAs(ADD_TAG, null);
+                    instrumenter.probe(testNode).tagAs(ADD_TAG, null);
 
                 }
             }
@@ -490,7 +506,7 @@ public class InstrumentationTest {
         }
 
         @Override
-        public void probeAST(Node node) {
+        public void probeAST(Instrumenter inst, Node node) {
             node.accept(this);
         }
     }

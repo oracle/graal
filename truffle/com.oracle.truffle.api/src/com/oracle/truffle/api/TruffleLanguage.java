@@ -24,12 +24,6 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.debug.DebugSupportProvider;
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.impl.FindContextNode;
-import com.oracle.truffle.api.instrument.ToolSupportProvider;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -40,6 +34,20 @@ import java.lang.annotation.Target;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
+
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.FindContextNode;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing an
@@ -179,9 +187,56 @@ public abstract class TruffleLanguage<C> {
      */
     protected abstract boolean isObjectOfLanguage(Object object);
 
+    @Deprecated
     protected abstract ToolSupportProvider getToolSupport();
 
+    @Deprecated
     protected abstract DebugSupportProvider getDebugSupport();
+
+    /**
+     * Gets visualization services for language-specific information.
+     */
+    protected abstract Visualizer getVisualizer();
+
+    /**
+     * Enables AST probing on all subsequently created ASTs (sources parsed).
+     *
+     * @param astProber optional AST prober to enable; the default for the language used if
+     *            {@code null}
+     */
+    @Deprecated
+    protected abstract void enableASTProbing(ASTProber astProber);
+
+    /**
+     * Gets the current specification for AST instrumentation for the language.
+     */
+    protected abstract ASTProber getDefaultASTProber();
+
+    /**
+     * Runs source code in a halted execution context, or at top level.
+     *
+     * @param source the code to run
+     * @param node node where execution halted, {@code null} if no execution context
+     * @param mFrame frame where execution halted, {@code null} if no execution context
+     * @return result of running the code in the context, or at top level if no execution context.
+     * @throws IOException if the evaluation cannot be performed
+     */
+    protected abstract Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException;
+
+    /**
+     * Creates a language-specific factory to produce instances of {@link AdvancedInstrumentRoot}
+     * that, when executed, computes the result of a textual expression in the language; used to
+     * create an
+     * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
+     * Advanced Instrument}.
+     *
+     * @param expr a guest language expression
+     * @param resultListener optional listener for the result of each evaluation.
+     * @return a new factory
+     * @throws IOException if the factory cannot be created, for example if the expression is badly
+     *             formed.
+     */
+    protected abstract AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException;
 
     /**
      * Allows a language implementor to create a node that can effectively lookup up the context
@@ -338,6 +393,14 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr,
+                        AdvancedInstrumentResultListener resultListener) throws IOException {
+
+            final TruffleLanguage language = findLanguageImpl(vm, languageClass);
+            return language.createAdvancedInstrumentRootFactory(expr, resultListener);
+        }
+
+        @Override
         protected Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
             return env.langCtx.findExportedSymbol(globalName, onlyExplicit);
         }
@@ -363,10 +426,17 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        protected ASTProber getDefaultASTProber(TruffleLanguage language) {
+            return language.getDefaultASTProber();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
         protected ToolSupportProvider getToolSupport(TruffleLanguage<?> l) {
             return l.getToolSupport();
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
             return l.getDebugSupport();

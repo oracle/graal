@@ -26,14 +26,12 @@ package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Instrument.AbstractInstrumentNode;
 import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Implementation class & interface for enabling the attachment of {@linkplain Probe Probes} to
@@ -114,20 +112,6 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
          * Implementation support for completing a newly created wrapper node.
          */
         void insertProbe(ProbeNode probeNode);
-    }
-
-    /**
-     * Create a new {@link Probe} associated with, and attached to, a Guest Language specific
-     * instance of {@link WrapperNode}.
-     */
-    @SuppressWarnings("rawtypes")
-    public static Probe insertProbe(WrapperNode wrapper) {
-        final SourceSection sourceSection = wrapper.getChild().getSourceSection();
-        final ProbeNode probeNode = new ProbeNode(); // private constructor
-        Class<? extends TruffleLanguage> l = Probe.ACCESSOR.findLanguage(wrapper.getChild().getRootNode());
-        probeNode.probe = new Probe(l, probeNode, sourceSection);  // package private access
-        wrapper.insertProbe(probeNode);
-        return probeNode.probe;
     }
 
     // Never changed once set.

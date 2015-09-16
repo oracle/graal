@@ -24,20 +24,32 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import static com.oracle.truffle.api.debug.Breakpoint.State.DISABLED;
 import static com.oracle.truffle.api.debug.Breakpoint.State.DISABLED_UNRESOLVED;
 import static com.oracle.truffle.api.debug.Breakpoint.State.DISPOSED;
 import static com.oracle.truffle.api.debug.Breakpoint.State.ENABLED;
 import static com.oracle.truffle.api.debug.Breakpoint.State.ENABLED_UNRESOLVED;
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
 import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.SyntaxTag;
@@ -48,15 +60,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 //TODO (mlvdv) some common functionality could be factored out of this and TagBreakpointSupport
 
@@ -83,7 +86,7 @@ final class LineBreakpointFactory {
     private static final boolean TRACE = false;
     private static final PrintStream OUT = System.out;
 
-    private static final String BREAKPOINT_NAME = "LINE BREAKPOINT";
+    private static final String BREAKPOINT_NAME = "Line Breakpoints";
 
     @TruffleBoundary
     private static void trace(String format, Object... args) {
@@ -106,6 +109,7 @@ final class LineBreakpointFactory {
         }
     };
 
+    private final Debugger debugger;
     private final BreakpointCallback breakpointCallback;
     private final WarningLog warningLog;
 
@@ -127,17 +131,17 @@ final class LineBreakpointFactory {
      */
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
-    private final Debugger debugger;
 
     LineBreakpointFactory(Debugger debugger, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
         this.debugger = debugger;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
 
+        final Instrumenter instrumenter = debugger.getInstrumenter();
         lineToProbesMap = new LineToProbesMap();
-        lineToProbesMap.install();
+        lineToProbesMap.install(instrumenter);
 
-        Probe.addProbeListener(new DefaultProbeListener() {
+        instrumenter.addProbeListener(new DefaultProbeListener() {
 
             @Override
             public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {

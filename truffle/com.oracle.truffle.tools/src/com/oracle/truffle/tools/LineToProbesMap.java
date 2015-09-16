@@ -24,6 +24,13 @@
  */
 package com.oracle.truffle.tools;
 
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.instrument.InstrumentationTool;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeListener;
@@ -31,12 +38,6 @@ import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * An {@link InstrumentationTool} that builds a map of every {@link Probe} attached to some AST,
@@ -68,7 +69,7 @@ public final class LineToProbesMap extends InstrumentationTool {
 
     @Override
     protected boolean internalInstall() {
-        Probe.addProbeListener(probeListener);
+        getInstrumenter().addProbeListener(probeListener);
         return true;
     }
 
@@ -79,7 +80,7 @@ public final class LineToProbesMap extends InstrumentationTool {
 
     @Override
     protected void internalDispose() {
-        Probe.removeProbeListener(probeListener);
+        getInstrumenter().removeProbeListener(probeListener);
     }
 
     /**

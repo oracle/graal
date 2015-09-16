@@ -78,7 +78,7 @@ public final class ProbeFailure {
     private final Object wrapper;
 
     /**
-     * Description of an internal failure of {@link Node#probe()}.
+     * Description of an internal failure of {@link Instrumenter#probe(Node)}.
      *
      * @param reason what caused the failure
      * @param parent the parent, if known, of the child being probed
