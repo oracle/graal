@@ -22,39 +22,71 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.zip.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
-import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.Register.RegisterCategory;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaField;
+import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.internal.jvmci.meta.JavaType;
+import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Value;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.CompilerThreadFactory;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugConfigScope;
+import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.DelegatingDebugConfig;
+import com.oracle.graal.debug.GraalDebugConfig;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.PhiNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.VerifyPhase;
 import com.oracle.graal.phases.VerifyPhase.VerificationError;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.phases.verify.*;
-import com.oracle.graal.runtime.*;
-import com.oracle.graal.test.*;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.phases.verify.VerifyCallerSensitiveMethods;
+import com.oracle.graal.phases.verify.VerifyDebugUsage;
+import com.oracle.graal.phases.verify.VerifyUsageWithEquals;
+import com.oracle.graal.runtime.RuntimeProvider;
+import com.oracle.graal.test.GraalTest;
 
 /**
  * Checks that all classes in *graal*.jar and *jvmci*.jar entries on the boot class path comply with
@@ -134,48 +166,47 @@ public class CheckGraalInvariants extends GraalTest {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
 
         List<String> errors = Collections.synchronizedList(new ArrayList<>());
-        for (String className : classNames) {
-            try {
-                Class<?> c = Class.forName(className, false, CheckGraalInvariants.class.getClassLoader());
-                executor.execute(() -> {
-                    try {
-                        checkClass(c, metaAccess);
-                    } catch (Throwable e) {
-                        errors.add(String.format("Error while checking %s:%n%s", className, printStackTraceToString(e)));
-                    }
-                });
+        // Order outer classes before the inner classes
+        classNames.sort((String a, String b) -> a.compareTo(b));
+        // Initialize classes in single thread to avoid deadlocking issues during initialization
+        List<Class<?>> classes = initializeClasses(classNames);
+        for (Class<?> c : classes) {
+            String className = c.getName();
+            executor.execute(() -> {
+                try {
+                    checkClass(c, metaAccess);
+                } catch (Throwable e) {
+                    errors.add(String.format("Error while checking %s:%n%s", className, printStackTraceToString(e)));
+                }
+            });
 
-                for (Method m : c.getDeclaredMethods()) {
-                    if (Modifier.isNative(m.getModifiers()) || Modifier.isAbstract(m.getModifiers())) {
-                        // ignore
-                    } else {
-                        String methodName = className + "." + m.getName();
-                        if (matches(filters, methodName)) {
-                            executor.execute(() -> {
-                                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                                StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
-                                try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
-                                    graphBuilderSuite.apply(graph, context);
-                                    // update phi stamps
-                                    graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
-                                    checkGraph(context, graph);
-                                } catch (VerificationError e) {
-                                    errors.add(e.getMessage());
-                                } catch (LinkageError e) {
-                                    // suppress linkages errors resulting from eager resolution
-                                } catch (BailoutException e) {
-                                    // Graal bail outs on certain patterns in Java bytecode (e.g.,
-                                    // unbalanced monitors introduced by jacoco).
-                                } catch (Throwable e) {
-                                    errors.add(String.format("Error while checking %s:%n%s", methodName, printStackTraceToString(e)));
-                                }
-                            });
-                        }
+            for (Method m : c.getDeclaredMethods()) {
+                if (Modifier.isNative(m.getModifiers()) || Modifier.isAbstract(m.getModifiers())) {
+                    // ignore
+                } else {
+                    String methodName = className + "." + m.getName();
+                    if (matches(filters, methodName)) {
+                        executor.execute(() -> {
+                            ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
+                            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
+                            try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
+                                graphBuilderSuite.apply(graph, context);
+                                // update phi stamps
+                                graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
+                                checkGraph(context, graph);
+                            } catch (VerificationError e) {
+                                errors.add(e.getMessage());
+                            } catch (LinkageError e) {
+                                // suppress linkages errors resulting from eager resolution
+                            } catch (BailoutException e) {
+                                // Graal bail outs on certain patterns in Java bytecode (e.g.,
+                                // unbalanced monitors introduced by jacoco).
+                            } catch (Throwable e) {
+                                errors.add(String.format("Error while checking %s:%n%s", methodName, printStackTraceToString(e)));
+                            }
+                        });
                     }
                 }
-
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
             }
         }
         executor.shutdown();
@@ -196,6 +227,19 @@ public class CheckGraalInvariants extends GraalTest {
             }
             Assert.fail(msg.toString());
         }
+    }
+
+    private static List<Class<?>> initializeClasses(List<String> classNames) {
+        List<Class<?>> classes = new ArrayList<>(classNames.size());
+        for (String className : classNames) {
+            try {
+                Class<?> c = Class.forName(className, true, CheckGraalInvariants.class.getClassLoader());
+                classes.add(c);
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        return classes;
     }
 
     /**
