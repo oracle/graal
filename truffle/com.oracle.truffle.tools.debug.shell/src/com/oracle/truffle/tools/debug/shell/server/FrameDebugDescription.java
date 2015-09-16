@@ -24,8 +24,9 @@
  */
 package com.oracle.truffle.tools.debug.shell.server;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.nodes.Node;
 
 public final class FrameDebugDescription {
     private final int index;

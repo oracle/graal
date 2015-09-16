@@ -24,8 +24,9 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 
 /**

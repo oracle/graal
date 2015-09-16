@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
  * This annotation is internally known by the dsl processor and used to expect errors for testing

@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.util.*;
-
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.Assumption;
+import java.util.EnumSet;
+import java.util.List;
 
 /**
  * Shape objects create a mapping of Property objects to Locations. Shapes are immutable; adding or

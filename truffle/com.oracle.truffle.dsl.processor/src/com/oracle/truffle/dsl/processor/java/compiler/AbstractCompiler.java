@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 public abstract class AbstractCompiler implements Compiler {
 

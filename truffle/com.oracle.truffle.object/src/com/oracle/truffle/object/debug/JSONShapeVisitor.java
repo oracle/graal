@@ -22,15 +22,19 @@
  */
 package com.oracle.truffle.object.debug;
 
-import java.util.*;
-import java.util.Map.Entry;
-
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.TypedLocation;
+import com.oracle.truffle.api.utilities.JSONHelper;
 import com.oracle.truffle.api.utilities.JSONHelper.JSONArrayBuilder;
 import com.oracle.truffle.api.utilities.JSONHelper.JSONObjectBuilder;
-import com.oracle.truffle.object.*;
+import com.oracle.truffle.object.DebugShapeVisitor;
+import com.oracle.truffle.object.Locations;
+import com.oracle.truffle.object.Transition;
 import com.oracle.truffle.object.Transition.PropertyTransition;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class JSONShapeVisitor extends DebugShapeVisitor<JSONObjectBuilder> {
     @Override

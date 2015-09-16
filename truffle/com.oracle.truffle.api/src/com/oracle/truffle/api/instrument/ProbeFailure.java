@@ -25,7 +25,9 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor;
+import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
  * Description of a failed attempt to instrument an AST node.

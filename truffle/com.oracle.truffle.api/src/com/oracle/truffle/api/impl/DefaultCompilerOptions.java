@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerOptions;
 
 public class DefaultCompilerOptions implements CompilerOptions {
 

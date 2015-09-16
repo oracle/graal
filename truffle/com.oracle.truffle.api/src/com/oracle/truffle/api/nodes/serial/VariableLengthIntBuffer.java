@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.nodes.serial;
 
-import java.nio.*;
+import java.nio.ByteBuffer;
 
 /**
  * Experimental API. May change without notice. Simple variable length unsigned int buffer backed by

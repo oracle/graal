@@ -24,18 +24,29 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import java.io.*;
-import java.lang.annotation.*;
-import java.lang.reflect.*;
-import java.util.*;
-
-import sun.misc.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.source.SourceSection;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import sun.misc.Unsafe;
 
 /**
  * Utility class that manages the special access methods for node instances.

@@ -22,9 +22,8 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.JustFrameTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.NoParameterTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.ObjectInterfaceNodeGen;
@@ -32,8 +31,11 @@ import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.ObjectPrimitiveTe
 import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.ObjectStringTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.PrimitiveTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.TypesNotInTypeSystemTestNodeGen;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class NoTypeSystemTest {
 

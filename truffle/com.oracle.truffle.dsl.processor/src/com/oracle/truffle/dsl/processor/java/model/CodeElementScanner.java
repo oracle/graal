@@ -22,10 +22,14 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.util.*;
+import java.util.List;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.ElementScanner7;
 
 public abstract class CodeElementScanner<R, P> extends ElementScanner7<R, P> {
 

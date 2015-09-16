@@ -26,8 +26,8 @@ package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Inter-operability is based on sending messages. Standard messages are defined as as constants

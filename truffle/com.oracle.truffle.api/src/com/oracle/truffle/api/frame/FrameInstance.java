@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.frame;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.nodes.Node;
 
 public interface FrameInstance {
 

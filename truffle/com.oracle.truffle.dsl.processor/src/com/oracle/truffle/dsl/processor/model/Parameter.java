@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 public final class Parameter {
 

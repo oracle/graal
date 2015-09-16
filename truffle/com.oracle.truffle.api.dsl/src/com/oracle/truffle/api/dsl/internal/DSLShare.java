@@ -24,11 +24,11 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
-import java.util.*;
-import java.util.concurrent.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
 
 /** Contains utility classes shared across generated DSLNode implementations. */
 public class DSLShare {

@@ -24,7 +24,8 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * An assumption is a global boolean flag that starts with the value true (i.e., the assumption is

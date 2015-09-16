@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.NodeCloneable;
 
 /**
  * Utility class to speculate on branches to be never visited. If the {@link #enter()} method is

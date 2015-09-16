@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import java.util.Collections;
+import java.util.List;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeMirror;
 
 public class NodeChildData extends MessageContainer {
 

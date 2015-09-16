@@ -22,13 +22,15 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.*;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.LocationFactory;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.Locations.ValueLocation;
-import com.oracle.truffle.object.debug.*;
+import com.oracle.truffle.object.debug.ShapeProfiler;
+import java.util.List;
 
 public abstract class DynamicObjectImpl extends DynamicObject implements Cloneable {
     private ShapeImpl shape;

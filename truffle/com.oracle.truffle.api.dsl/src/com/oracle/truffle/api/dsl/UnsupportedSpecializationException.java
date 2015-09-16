@@ -24,10 +24,10 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import java.util.*;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Thrown by the generated code of Truffle-DSL if no compatible Specialization could be found for

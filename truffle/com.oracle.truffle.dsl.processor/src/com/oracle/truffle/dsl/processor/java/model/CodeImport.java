@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import java.util.*;
+import java.util.Objects;
 
 public class CodeImport implements Comparable<CodeImport> {
 

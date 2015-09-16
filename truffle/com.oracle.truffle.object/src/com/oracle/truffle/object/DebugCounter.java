@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.object;
 
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class DebugCounter {
     private static final ArrayList<DebugCounter> allCounters = new ArrayList<>();

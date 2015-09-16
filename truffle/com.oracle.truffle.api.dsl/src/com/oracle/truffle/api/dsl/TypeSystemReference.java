@@ -24,9 +24,11 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import java.lang.annotation.*;
-
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * References a {@link TypeSystem} on a node. Must be applied on a {@link Node} class. At least one

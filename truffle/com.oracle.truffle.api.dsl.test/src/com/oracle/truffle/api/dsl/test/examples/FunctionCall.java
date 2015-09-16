@@ -22,16 +22,19 @@
  */
 package com.oracle.truffle.api.dsl.test.examples;
 
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createDummyTarget;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
 import com.oracle.truffle.api.dsl.test.examples.FunctionCallFactory.FunctionCallNodeGen;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  * This example illustrates how {@link Cached} can be used to implement function calls that use

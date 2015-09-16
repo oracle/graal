@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * Experimental API: may change significantly without notice.

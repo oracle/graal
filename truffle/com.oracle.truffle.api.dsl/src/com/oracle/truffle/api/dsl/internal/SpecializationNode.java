@@ -24,12 +24,10 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEvent0;
 import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEvent1;
 import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEvent2;
@@ -37,8 +35,19 @@ import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEvent3;
 import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEvent4;
 import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEvent5;
 import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEventN;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeClass;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
 
 /**
  * Internal implementation dependent base class for generated specialized nodes.

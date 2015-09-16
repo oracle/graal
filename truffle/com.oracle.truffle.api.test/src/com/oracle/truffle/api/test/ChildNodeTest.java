@@ -22,14 +22,16 @@
  */
 package com.oracle.truffle.api.test;
 
-import java.util.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.RootNode;
+import java.util.Iterator;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * <h3>Creating a Child Node</h3>

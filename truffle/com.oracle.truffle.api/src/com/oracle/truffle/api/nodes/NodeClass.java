@@ -24,13 +24,16 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import java.lang.reflect.*;
-import java.security.*;
-import java.util.*;
-
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Information about a {@link Node} class. A single instance of this class is allocated for every

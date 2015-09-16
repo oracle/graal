@@ -24,8 +24,10 @@
  */
 package com.oracle.truffle.api.instrument.impl;
 
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ProbeListener;
+import com.oracle.truffle.api.instrument.SyntaxTag;
+import com.oracle.truffle.api.source.Source;
 
 public abstract class DefaultProbeListener implements ProbeListener {
 

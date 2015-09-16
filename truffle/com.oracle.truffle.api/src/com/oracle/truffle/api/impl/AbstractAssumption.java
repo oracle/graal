@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.Assumption;
 
 public abstract class AbstractAssumption implements Assumption {
 

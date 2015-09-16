@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Creator of {@linkplain AdvancedInstrumentRoot AST fragments} suitable for efficient execution,

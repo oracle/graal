@@ -24,7 +24,10 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Annotate nodes or base classes of nodes to generate factory handlers implementing the

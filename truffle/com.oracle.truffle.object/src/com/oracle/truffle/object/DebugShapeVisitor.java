@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.*;
-
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.Shape;
+import java.util.Collections;
+import java.util.Map;
 
 public abstract class DebugShapeVisitor<R> implements ShapeVisitor<R> {
     public R visitShape(Shape shape) {

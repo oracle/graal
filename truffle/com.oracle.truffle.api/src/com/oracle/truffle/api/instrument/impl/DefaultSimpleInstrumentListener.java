@@ -24,7 +24,8 @@
  */
 package com.oracle.truffle.api.instrument.impl;
 
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
 
 /**
  * A listener for Truffle execution events that provides a no-op implementation of every event.

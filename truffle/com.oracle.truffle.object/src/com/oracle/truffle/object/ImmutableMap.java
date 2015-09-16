@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.*;
+import java.util.Map;
 
 /**
  * An immutable {@link Map}. Does not permit null keys or values.

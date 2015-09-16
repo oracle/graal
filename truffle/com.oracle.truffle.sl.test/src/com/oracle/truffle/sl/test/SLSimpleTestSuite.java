@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.sl.test;
 
-import org.junit.*;
-import org.junit.runner.*;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 @RunWith(SLTestRunner.class)
 @SLTestSuite({"truffle/com.oracle.truffle.sl.test/tests", "tests"})

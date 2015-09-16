@@ -40,26 +40,39 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.*;
-import java.net.*;
-import java.nio.charset.*;
-import java.nio.file.*;
-import java.nio.file.attribute.*;
-import java.util.*;
-
-import org.junit.*;
-import org.junit.internal.*;
-import org.junit.runner.*;
-import org.junit.runner.manipulation.*;
-import org.junit.runner.notification.*;
-import org.junit.runners.*;
-import org.junit.runners.model.*;
-
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.vm.*;
-import com.oracle.truffle.sl.*;
-import com.oracle.truffle.sl.builtins.*;
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringReader;
+import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.Assert;
+import org.junit.internal.TextListener;
+import org.junit.runner.Description;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
+import org.junit.runner.manipulation.Filter;
+import org.junit.runner.manipulation.NoTestsRemainException;
+import org.junit.runner.notification.Failure;
+import org.junit.runner.notification.RunNotifier;
+import org.junit.runners.ParentRunner;
+import org.junit.runners.model.InitializationError;
 
 public final class SLTestRunner extends ParentRunner<TestCase> {
 

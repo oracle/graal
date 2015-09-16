@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import javax.annotation.processing.*;
-import javax.lang.model.element.*;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
 import javax.tools.Diagnostic.Kind;
-
-import com.oracle.truffle.dsl.processor.java.model.*;
 
 /**
  * THIS IS NOT PUBLIC API.

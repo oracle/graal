@@ -22,11 +22,10 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import java.util.Collections;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 
 public final class GeneratedTypeMirror extends DeclaredCodeTypeMirror {
 

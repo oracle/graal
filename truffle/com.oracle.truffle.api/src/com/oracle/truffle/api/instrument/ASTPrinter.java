@@ -24,9 +24,8 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import java.io.*;
-
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import java.io.PrintWriter;
 
 /**
  * Access to AST-based debugging support, which is could be language implementation specific in the

@@ -22,12 +22,19 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
-import java.util.*;
-
-import javax.annotation.processing.*;
-import javax.lang.model.element.*;
-
-import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 
 public class JDTCompiler extends AbstractCompiler {
 

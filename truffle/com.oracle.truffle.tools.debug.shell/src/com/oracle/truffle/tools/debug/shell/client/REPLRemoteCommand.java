@@ -24,11 +24,11 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
-import java.io.*;
-import java.util.*;
-
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.tools.debug.shell.*;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 // TODO (mlvdv)  write a real command line parser
 public abstract class REPLRemoteCommand extends REPLCommand {

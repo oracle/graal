@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.Shape;
 
 public interface ShapeVisitor<R> {
     R visitShape(Shape shape);

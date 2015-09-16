@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
+import java.util.Set;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 
 public final class GeneratedTypeElement extends CodeTypeElement {
 

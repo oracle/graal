@@ -24,8 +24,9 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 
 /**
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use

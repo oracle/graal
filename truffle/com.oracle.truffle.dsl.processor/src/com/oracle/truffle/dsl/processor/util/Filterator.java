@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.util;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 public class Filterator<T> implements Iterator<T> {
 

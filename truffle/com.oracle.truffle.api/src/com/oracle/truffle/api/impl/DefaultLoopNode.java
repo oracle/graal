@@ -24,8 +24,9 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 
 public final class DefaultLoopNode extends LoopNode {
 

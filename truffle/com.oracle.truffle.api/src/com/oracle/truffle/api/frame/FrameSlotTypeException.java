@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.frame;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.SlowPathException;
 
 /**
  * Exception thrown if the frame slot type does not match the access type.

@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Property location.

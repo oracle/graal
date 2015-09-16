@@ -27,11 +27,11 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-
-import org.junit.*;
-
+import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.Test;
 
 public class ForeignAccessSingleThreadedTest implements ForeignAccess.Factory, TruffleObject {
     ForeignAccess fa;

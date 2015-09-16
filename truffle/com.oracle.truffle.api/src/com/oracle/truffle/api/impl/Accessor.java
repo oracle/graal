@@ -24,14 +24,22 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.*;
-import java.io.*;
+import com.oracle.truffle.api.source.Source;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 

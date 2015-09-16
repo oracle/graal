@@ -22,13 +22,22 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import java.io.*;
-import java.lang.annotation.*;
-import java.util.*;
-
-import javax.lang.model.element.*;
-
-import com.oracle.truffle.dsl.processor.java.transform.*;
+import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
+import java.io.CharArrayWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Set;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 
 public abstract class CodeElement<E extends Element> implements Element, GeneratedElement {
 

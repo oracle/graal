@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.interop.*;
+import com.oracle.truffle.api.TypedObject;
+import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * Represents an object members of which can be dynamically added and removed at run time.

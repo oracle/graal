@@ -22,11 +22,10 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.FallthroughTest0Factory;
 import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.FallthroughTest1Factory;
 import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.FallthroughTest2Factory;
@@ -34,8 +33,12 @@ import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.Fall
 import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.FallthroughTest4Factory;
 import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.FallthroughTest5Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
+import static com.oracle.truffle.api.dsl.test.TestHelper.array;
+import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class SpecializationFallthroughTest {
 

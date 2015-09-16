@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * This is NOT public API. Do not use directly. This code may change without notice.

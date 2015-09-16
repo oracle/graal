@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.api.test.nodes.serial;
 
-import java.util.*;
-
-import com.oracle.truffle.api.nodes.serial.*;
+import com.oracle.truffle.api.nodes.serial.SerializerConstantPool;
+import com.oracle.truffle.api.nodes.serial.UnsupportedConstantPoolTypeException;
+import java.util.HashMap;
+import java.util.Map;
 
 class TestSerializerConstantPool implements SerializerConstantPool {
 

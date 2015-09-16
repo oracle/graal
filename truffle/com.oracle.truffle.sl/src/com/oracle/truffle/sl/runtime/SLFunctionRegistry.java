@@ -40,10 +40,15 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import java.util.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.sl.nodes.SLRootNode;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Manages the mapping from function names to {@link SLFunction function objects}.

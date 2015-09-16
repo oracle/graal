@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class ShortCircuitData extends TemplateMethod {
 

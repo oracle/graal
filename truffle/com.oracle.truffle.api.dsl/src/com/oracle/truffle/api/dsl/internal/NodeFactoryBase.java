@@ -24,10 +24,11 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
-import java.util.*;
-
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.nodes.Node;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * This is NOT public API. Do not use directly. This code may change without notice.

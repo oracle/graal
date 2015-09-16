@@ -22,7 +22,11 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
 
 public interface LayoutStrategy {

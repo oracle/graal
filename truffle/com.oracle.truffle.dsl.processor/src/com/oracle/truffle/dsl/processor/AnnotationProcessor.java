@@ -22,17 +22,18 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.dsl.processor.generator.*;
-import com.oracle.truffle.dsl.processor.java.*;
-import com.oracle.truffle.dsl.processor.java.model.*;
-import com.oracle.truffle.dsl.processor.java.transform.*;
-import com.oracle.truffle.dsl.processor.model.*;
-import com.oracle.truffle.dsl.processor.parser.*;
+import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
+import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
+import com.oracle.truffle.dsl.processor.model.Template;
+import com.oracle.truffle.dsl.processor.parser.AbstractParser;
+import java.util.HashSet;
+import java.util.Set;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 
 /**
  * THIS IS NOT PUBLIC API.

@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.java.model.*;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 
 public abstract class CodeTypeElementFactory<M> {
 

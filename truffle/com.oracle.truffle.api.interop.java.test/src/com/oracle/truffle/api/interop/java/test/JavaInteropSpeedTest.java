@@ -28,10 +28,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import java.util.Random;
 import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 public class JavaInteropSpeedTest {
     private static final int REPEAT = 10000;

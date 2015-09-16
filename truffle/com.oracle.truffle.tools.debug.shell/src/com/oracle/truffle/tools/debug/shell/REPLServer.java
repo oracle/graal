@@ -25,7 +25,8 @@
 package com.oracle.truffle.tools.debug.shell;
 
 import com.oracle.truffle.api.debug.Breakpoint;
-import java.util.*;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * The server side of a simple message-based protocol for a possibly remote language

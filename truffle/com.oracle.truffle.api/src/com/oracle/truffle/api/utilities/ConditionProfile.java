@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.NodeCloneable;
 
 /**
  * Abstract utility class to speculate on conditions. Condition profiles are intended to be used as

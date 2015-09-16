@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.sl.nodes.expression.demo;
 
-import java.math.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.nodes.expression.*;
+import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.expression.SLAddNode;
+import java.math.BigInteger;
 
 /**
  * This is an example how the add operation would be implemented without specializations and without

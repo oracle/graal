@@ -22,16 +22,19 @@
  */
 package com.oracle.truffle.api.test.nodes.serial;
 
-import org.junit.*;
-
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.serial.*;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.serial.PostOrderSerializer;
+import com.oracle.truffle.api.nodes.serial.VariableLengthIntBuffer;
 import com.oracle.truffle.api.test.nodes.serial.TestNodes.EmptyNode;
 import com.oracle.truffle.api.test.nodes.serial.TestNodes.NodeWithArray;
 import com.oracle.truffle.api.test.nodes.serial.TestNodes.NodeWithFields;
 import com.oracle.truffle.api.test.nodes.serial.TestNodes.NodeWithThreeChilds;
 import com.oracle.truffle.api.test.nodes.serial.TestNodes.NodeWithTwoArray;
 import com.oracle.truffle.api.test.nodes.serial.TestNodes.StringNode;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 public class PostOrderSerializerTest {
 

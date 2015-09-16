@@ -24,10 +24,9 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
-import java.io.*;
-
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.tools.debug.shell.*;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import java.io.IOException;
 
 final class REPLineLocation {
 

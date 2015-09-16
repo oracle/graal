@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.sl.nodes.instrument;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.instrument.impl.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.instrument.ASTPrinter;
+import com.oracle.truffle.api.instrument.impl.DefaultVisualizer;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.sl.nodes.SLRootNode;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * SLDefaultVisualizer provides methods to get the names of SL's internal Truffle AST nodes.

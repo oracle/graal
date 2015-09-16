@@ -22,11 +22,15 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import java.util.*;
-
-import javax.annotation.processing.*;
-import javax.lang.model.element.*;
-import javax.tools.Diagnostic.*;
+import java.util.List;
+import java.util.Map;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic.Kind;
 
 public class ExpectError {
 

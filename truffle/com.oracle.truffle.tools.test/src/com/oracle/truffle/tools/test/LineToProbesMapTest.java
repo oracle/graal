@@ -24,15 +24,17 @@
  */
 package com.oracle.truffle.tools.test;
 
-import static com.oracle.truffle.tools.test.TestNodes.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.tools.*;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.LineLocation;
+import com.oracle.truffle.tools.LineToProbesMap;
+import static com.oracle.truffle.tools.test.TestNodes.createExpr13TestRootNode;
+import static com.oracle.truffle.tools.test.TestNodes.expr13Line1;
+import static com.oracle.truffle.tools.test.TestNodes.expr13Line2;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import org.junit.Test;
 
 public class LineToProbesMapTest {
 

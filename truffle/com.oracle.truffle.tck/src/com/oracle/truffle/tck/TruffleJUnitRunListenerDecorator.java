@@ -24,10 +24,10 @@
  */
 package com.oracle.truffle.tck;
 
-import java.io.*;
-
-import org.junit.runner.*;
-import org.junit.runner.notification.*;
+import java.io.PrintStream;
+import org.junit.runner.Description;
+import org.junit.runner.Result;
+import org.junit.runner.notification.Failure;
 
 class TruffleJUnitRunListenerDecorator implements TruffleJUnitRunListener {
 

@@ -22,16 +22,14 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.BinaryNodeTest.BinaryNode;
 import com.oracle.truffle.api.dsl.test.PolymorphicTest2Factory.Polymorphic1Factory;
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.NodeCost;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class PolymorphicTest2 {
 

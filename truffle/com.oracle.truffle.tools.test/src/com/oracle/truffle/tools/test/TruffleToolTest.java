@@ -24,11 +24,10 @@
  */
 package com.oracle.truffle.tools.test;
 
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.InstrumentationTool;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 /**
  * Test the basic life cycle properties shared by all instances of {@link InstrumentationTool}.

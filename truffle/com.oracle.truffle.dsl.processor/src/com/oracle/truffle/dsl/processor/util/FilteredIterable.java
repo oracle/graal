@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.util;
 
-import java.util.*;
+import java.util.Iterator;
 
 public class FilteredIterable<E> implements Iterable<E> {
 

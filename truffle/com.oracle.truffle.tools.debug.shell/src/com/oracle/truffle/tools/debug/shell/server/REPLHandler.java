@@ -25,14 +25,22 @@
 package com.oracle.truffle.tools.debug.shell.server;
 
 import com.oracle.truffle.api.debug.Breakpoint;
-import java.io.*;
-import java.util.*;
-
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.tools.debug.shell.*;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.instrument.ASTPrinter;
+import com.oracle.truffle.api.instrument.KillException;
+import com.oracle.truffle.api.instrument.QuitException;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Server-side REPL implementation of an {@linkplain REPLMessage "op"}.

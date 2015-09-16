@@ -22,8 +22,10 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeMirror;
 
 public class SpecializationThrowsData extends MessageContainer {
 

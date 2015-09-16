@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.tck;
 
-import org.junit.runner.*;
+import org.junit.runner.Description;
 
 final class GCAfterTestDecorator extends TruffleJUnitRunListenerDecorator {
 

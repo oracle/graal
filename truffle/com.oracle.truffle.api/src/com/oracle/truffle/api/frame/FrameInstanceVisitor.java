@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.frame;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.TruffleRuntime;
 
 /**
  * Callback interface for {@link TruffleRuntime#iterateFrames}. Implementations of
