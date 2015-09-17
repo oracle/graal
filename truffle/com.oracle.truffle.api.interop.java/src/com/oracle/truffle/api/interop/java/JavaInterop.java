@@ -346,10 +346,18 @@ public final class JavaInterop {
                     }
                     throw new IllegalStateException(attr + " cannot be invoked with " + args.length + " parameters");
                 }
-                List<Object> callArgs = new ArrayList<>(args.length + 1);
-                // callArgs.add(attr);
-                callArgs.addAll(Arrays.asList(args));
-                Object ret = message(Message.createExecute(callArgs.size()), attr, callArgs.toArray());
+                Object ret;
+                try {
+                    List<Object> callArgs = new ArrayList<>(args.length);
+                    callArgs.add(name);
+                    callArgs.addAll(Arrays.asList(args));
+                    ret = message(Message.createInvoke(callArgs.size()), obj, callArgs.toArray());
+                } catch (IllegalArgumentException ex) {
+                    List<Object> callArgs = new ArrayList<>(args.length + 1);
+                    // callArgs.add(attr);
+                    callArgs.addAll(Arrays.asList(args));
+                    ret = message(Message.createExecute(callArgs.size()), attr, callArgs.toArray());
+                }
                 return toJava(ret, method);
             }
             throw new IllegalStateException("Unknown message: " + message);

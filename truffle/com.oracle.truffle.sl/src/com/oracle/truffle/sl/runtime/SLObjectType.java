@@ -111,7 +111,7 @@ final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, 
 
     @Override
     public CallTarget accessInvoke(int argumentsLength) {
-        throw new UnsupportedOperationException();
+        return null;
     }
 
     @Override
