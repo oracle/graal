@@ -280,17 +280,14 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         ArrayList<LIRKind> values = new ArrayList<>(phi.valueCount());
         for (int i = 0; i < phi.valueCount(); i++) {
             ValueNode node = phi.valueAt(i);
-            if (node instanceof ConstantNode) {
-                values.add(gen.getLIRKind(node.stamp()));
+            Value value = getOperand(node);
+            if (value != null) {
+                values.add(value.getLIRKind());
             } else {
-                Value value = getOperand(node);
-                if (value != null) {
-                    values.add(value.getLIRKind());
-                } else {
-                    assert isPhiInputFromBackedge(phi, i) : String.format("Input %s to phi node %s is not yet available although it is not coming from a loop back edge", node, phi);
-                    // non-java constant -> get Kind from stamp.
-                    values.add(getLIRGeneratorTool().getLIRKind(node.stamp()));
-                }
+                assert isPhiInputFromBackedge(phi, i) : String.format("Input %s to phi node %s is not yet available although it is not coming from a loop back edge", node, phi);
+                // non-java constant -> get LIRKind from stamp.
+                LIRKind kind = gen.getLIRKind(node.stamp());
+                values.add(gen.toRegisterKind(kind));
             }
         }
         LIRKind derivedKind = LIRKind.merge(values);
@@ -298,10 +295,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return derivedKind;
     }
 
-    private static boolean verifyPHIKind(LIRKind derivedKind, LIRKind phiKind) {
-        assert derivedKind.getPlatformKind() != JavaKind.Object || !derivedKind.isUnknownReference();
-        PlatformKind phiPlatformKind = phiKind.getPlatformKind();
-        assert derivedKind.equals(phiKind) || derivedKind.getPlatformKind().equals(phiPlatformKind instanceof JavaKind ? ((JavaKind) phiPlatformKind).getStackKind() : phiPlatformKind);
+    private boolean verifyPHIKind(LIRKind derivedKind, LIRKind phiKind) {
+        PlatformKind derivedPlatformKind = derivedKind.getPlatformKind();
+        PlatformKind phiPlatformKind = gen.toRegisterKind(phiKind).getPlatformKind();
+        assert derivedPlatformKind.equals(phiPlatformKind) : "kinds don't match: " + derivedPlatformKind + " vs " + phiPlatformKind;
         return true;
     }
 

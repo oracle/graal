@@ -86,15 +86,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         // @formatter:on
     }
 
-    protected static LIRKind toStackKind(LIRKind kind) {
-        if (kind.getPlatformKind() instanceof JavaKind) {
-            JavaKind stackKind = ((JavaKind) kind.getPlatformKind()).getStackKind();
-            return kind.changeType(stackKind);
-        } else {
-            return kind;
-        }
-    }
-
     private final LIRKindTool lirKindTool;
 
     private final CodeGenProviders providers;
@@ -160,7 +151,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public Value emitConstant(LIRKind kind, Constant constant) {
         if (constant instanceof JavaConstant && canInlineConstant((JavaConstant) constant)) {
-            return new ConstantValue(kind, constant);
+            return new ConstantValue(toRegisterKind(kind), constant);
         } else {
             return emitLoadConstant(kind, constant);
         }
@@ -437,6 +428,15 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             return LIRKind.reference(target().arch.getWordKind());
         } else {
             return LIRKind.unknownReference(target().arch.getWordKind());
+        }
+    }
+
+    public LIRKind toRegisterKind(LIRKind kind) {
+        JavaKind stackKind = ((JavaKind) kind.getPlatformKind()).getStackKind();
+        if (stackKind != kind.getPlatformKind()) {
+            return kind.changeType(stackKind);
+        } else {
+            return kind;
         }
     }
 

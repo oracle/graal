@@ -277,7 +277,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
         SPARCAddressValue loadAddress = asAddressValue(address);
-        Variable result = newVariable(toStackKind(kind));
+        Variable result = newVariable(toRegisterKind(kind));
         append(new LoadOp(kind.getPlatformKind(), result, loadAddress, state));
         return result;
     }

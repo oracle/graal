@@ -345,7 +345,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     @Override
     public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
         AMD64AddressValue loadAddress = asAddressValue(address);
-        Variable result = newVariable(toStackKind(kind));
+        Variable result = newVariable(toRegisterKind(kind));
         switch ((JavaKind) kind.getPlatformKind()) {
             case Boolean:
                 append(new AMD64Unary.MemoryOp(MOVZXB, DWORD, result, loadAddress, state));
