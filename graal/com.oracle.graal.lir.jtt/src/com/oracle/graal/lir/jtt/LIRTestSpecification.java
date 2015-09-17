@@ -93,7 +93,6 @@ public abstract class LIRTestSpecification {
     }
 
     public Value getResult() {
-        assert result != null : "Result not set (using setResult())";
         return result;
     }
 }

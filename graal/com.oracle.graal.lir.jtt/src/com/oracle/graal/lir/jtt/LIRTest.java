@@ -86,7 +86,10 @@ public abstract class LIRTest extends JTTTest {
             Stream<Value> v = values().stream().map(node -> gen.operand(node));
 
             ops.generate(gen.getLIRGeneratorTool(), v.toArray(size -> new Value[size]));
-            gen.setResult(this, ops.getResult());
+            Value result = ops.getResult();
+            if (result != null) {
+                gen.setResult(this, result);
+            }
         }
 
         public LIRTestSpecification getLIROperations() {
@@ -137,32 +140,45 @@ public abstract class LIRTest extends JTTTest {
     private InvocationPlugin lirTestPlugin = new InvocationPlugin() {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec) {
             JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{}));
+            LIRTestNode node = new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{});
+            addNode(b, returnKind, node);
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0) {
             JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0}));
+            LIRTestNode node = new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0});
+            addNode(b, returnKind, node);
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1) {
             JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1}));
+            LIRTestNode node = new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1});
+            addNode(b, returnKind, node);
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2) {
             JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2}));
+            LIRTestNode node = new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2});
+            addNode(b, returnKind, node);
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
             JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2, arg3}));
+            LIRTestNode node = new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2, arg3});
+            addNode(b, returnKind, node);
             return true;
+        }
+
+        private void addNode(GraphBuilderContext b, JavaKind returnKind, LIRTestNode node) {
+            if (returnKind.equals(JavaKind.Void)) {
+                b.add(node);
+            } else {
+                b.addPush(returnKind, node);
+            }
         }
 
     };
