@@ -1562,7 +1562,7 @@ public abstract class SPARCAssembler extends Assembler {
                 bits = Float.floatToRawIntBits(constant.asFloat());
                 break;
             case Object:
-                return JavaConstant.NULL_POINTER.equals(constant);
+                return constant.isNull();
             default:
                 bits = constant.asLong();
                 break;

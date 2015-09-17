@@ -361,16 +361,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             default:
                 throw JVMCIError.shouldNotReachHere(actualCmpKind.toString());
         }
-        right = toDefaultConstantOfKind(cmpKind, right);
         append(new SPARCControlFlow.CompareBranchOp(opcode, left, right, actualCondition, trueDestination, falseDestination, actualCmpKind, unorderedIsTrue, trueDestinationProbability));
-    }
-
-    private static Value toDefaultConstantOfKind(PlatformKind forKind, Value value) {
-        if (isJavaConstant(value) && asJavaConstant(value).isDefaultForKind()) {
-            return new ConstantValue(LIRKind.value(forKind), forKind.getDefaultValue());
-        } else {
-            return value;
-        }
     }
 
     @Override
@@ -463,7 +454,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             right = loadNonConst(b);
             mirrored = false;
         }
-        right = toDefaultConstantOfKind(cmpKind, right);
         switch ((JavaKind) cmpKind) {
             case Short:
             case Char:

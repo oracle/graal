@@ -83,6 +83,7 @@ import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Assembler.LabelHint;
 import com.oracle.graal.asm.Label;
+import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
@@ -284,7 +285,8 @@ public class SPARCControlFlow {
             switch ((JavaKind) actualX.getLIRKind().getPlatformKind()) {
                 case Int:
                     if (isJavaConstant(actualY)) {
-                        int constantY = asJavaConstant(actualY).asInt();
+                        JavaConstant c = asJavaConstant(actualY);
+                        int constantY = c.isNull() ? 0 : c.asInt();
                         CBCOND.emit(masm, conditionFlag, false, asRegister(actualX, JavaKind.Int), constantY, actualTrueTarget);
                     } else {
                         CBCOND.emit(masm, conditionFlag, false, asRegister(actualX, JavaKind.Int), asRegister(actualY, JavaKind.Int), actualTrueTarget);
@@ -292,7 +294,9 @@ public class SPARCControlFlow {
                     break;
                 case Long:
                     if (isJavaConstant(actualY)) {
-                        int constantY = (int) asJavaConstant(actualY).asLong();
+                        JavaConstant c = asJavaConstant(actualY);
+                        assert NumUtil.is32bit(c.asLong());
+                        int constantY = c.isNull() ? 0 : (int) c.asLong();
                         CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, JavaKind.Long), constantY, actualTrueTarget);
                     } else {
                         CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, JavaKind.Long), asRegister(actualY, JavaKind.Long), actualTrueTarget);

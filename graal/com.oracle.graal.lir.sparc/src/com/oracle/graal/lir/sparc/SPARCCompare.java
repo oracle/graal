@@ -29,13 +29,14 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmps;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.Value;
 
+import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -108,28 +109,27 @@ public enum SPARCCompare {
                     throw JVMCIError.shouldNotReachHere();
             }
         } else {
-            assert isJavaConstant(y);
+            JavaConstant c = asJavaConstant(y);
+            int imm;
+            if (c.isNull()) {
+                imm = 0;
+            } else {
+                assert NumUtil.isInt(c.asLong());
+                imm = (int) c.asLong();
+            }
+
             switch (opcode) {
                 case LCMP:
-                    assert isSimm13(crb.asLongConst(y));
-                    masm.cmp(asRegister(x, JavaKind.Long), (int) crb.asLongConst(y));
+                    assert isSimm13(imm);
+                    masm.cmp(asRegister(x, JavaKind.Long), imm);
                     break;
                 case ICMP:
                     assert isSimm13(crb.asIntConst(y));
-                    masm.cmp(asRegister(x, JavaKind.Int), crb.asIntConst(y));
+                    masm.cmp(asRegister(x, JavaKind.Int), imm);
                     break;
                 case ACMP:
-                    if (asJavaConstant(y).isNull()) {
-                        masm.cmp(asRegister(x), 0);
-                        break;
-                    } else {
-                        throw JVMCIError.shouldNotReachHere("Only null object constants are allowed in comparisons");
-                    }
-                case FCMP:
-                    masm.fcmp(Fcc0, Fcmps, asRegister(x, JavaKind.Float), asRegister(y, JavaKind.Float));
-                    break;
-                case DCMP:
-                    masm.fcmp(Fcc0, Fcmpd, asRegister(x, JavaKind.Double), asRegister(y, JavaKind.Double));
+                    assert imm == 0 : "Only null object constants are allowed in comparisons";
+                    masm.cmp(asRegister(x), 0);
                     break;
                 default:
                     throw JVMCIError.shouldNotReachHere();
