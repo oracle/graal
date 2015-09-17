@@ -33,7 +33,6 @@ import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.StackSlot;
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
@@ -301,7 +300,7 @@ public abstract class FrameMap {
             for (int slotIndex = 0; slotIndex < slots; slotIndex++) {
                 StackSlot objectSlot = null;
                 if (objects.get(slotIndex)) {
-                    objectSlot = allocateNewSpillSlot(LIRKind.reference(JavaKind.Object), slotIndex * getTarget().wordSize);
+                    objectSlot = allocateNewSpillSlot(LIRKind.reference(getTarget().arch.getWordKind()), slotIndex * getTarget().wordSize);
                     addObjectStackSlot(objectSlot);
                 }
                 if (slotIndex == 0) {

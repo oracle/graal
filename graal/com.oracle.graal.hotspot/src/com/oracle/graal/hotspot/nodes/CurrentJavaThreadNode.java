@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
@@ -43,21 +44,19 @@ import com.oracle.graal.word.WordTypes;
 public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
     public static final NodeClass<CurrentJavaThreadNode> TYPE = NodeClass.create(CurrentJavaThreadNode.class);
 
-    protected LIRKind wordKind;
-
     public CurrentJavaThreadNode(@InjectedNodeParameter WordTypes wordTypes) {
         this(wordTypes.getWordKind());
     }
 
     public CurrentJavaThreadNode(JavaKind wordKind) {
         super(TYPE, StampFactory.forKind(wordKind));
-        this.wordKind = LIRKind.value(wordKind);
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         Register rawThread = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).getProviders().getRegisters().getThreadRegister();
-        gen.setResult(this, rawThread.asValue(wordKind));
+        PlatformKind wordKind = gen.getLIRGeneratorTool().target().arch.getWordKind();
+        gen.setResult(this, rawThread.asValue(LIRKind.value(wordKind)));
     }
 
     @NodeIntrinsic
