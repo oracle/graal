@@ -31,7 +31,7 @@ import java.util.List;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterAttributes;
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
@@ -73,7 +73,7 @@ public final class LocationMarkerPhase extends AllocationPhase {
 
         @Override
         protected boolean shouldProcessValue(Value operand) {
-            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && operand.getPlatformKind() != JavaKind.Illegal;
+            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && !operand.getLIRKind().equals(LIRKind.Illegal);
         }
 
         /**

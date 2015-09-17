@@ -28,7 +28,6 @@ import java.util.EnumSet;
 import java.util.List;
 
 import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.PlatformKind;
 import jdk.internal.jvmci.meta.Value;
@@ -175,7 +174,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
                 }
                 currentSet.remove(operand);
             } else {
-                assert isIllegal(operand) || operand.getPlatformKind() != JavaKind.Illegal || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
+                assert isIllegal(operand) || !operand.getLIRKind().equals(LIRKind.Illegal) || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
                                 operand, mode);
             }
         }
