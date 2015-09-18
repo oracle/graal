@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
+
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -30,7 +32,6 @@ import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 
 import jdk.internal.jvmci.hotspot.CompilerToVM;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.options.OptionValue;
 
 /**
@@ -104,7 +105,7 @@ public class PrintStreamOption extends OptionValue<String> {
 
                     private CompilerToVM vm() {
                         if (vm == null) {
-                            vm = HotSpotJVMCIRuntime.runtime().getCompilerToVM();
+                            vm = compilerToVM();
                         }
                         return vm;
                     }

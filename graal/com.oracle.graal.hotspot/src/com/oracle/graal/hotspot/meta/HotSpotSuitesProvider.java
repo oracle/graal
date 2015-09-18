@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.compiler.common.GraalOptions.VerifyPhases;
+import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
 import jdk.internal.jvmci.hotspot.CompilerToVM;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.options.DerivedOptionValue;
 import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
@@ -166,7 +166,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
      * @return a possibly modified graph builder suite
      */
     public static PhaseSuite<HighTierContext> withSimpleDebugInfoIfRequested(PhaseSuite<HighTierContext> gbs) {
-        if (HotSpotJVMCIRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints()) {
+        if (compilerToVM().shouldDebugNonSafepoints()) {
             PhaseSuite<HighTierContext> newGbs = gbs.copy();
             GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
             GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();

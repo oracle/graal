@@ -29,6 +29,7 @@ import static com.oracle.graal.debug.GraalDebugConfig.Log;
 import static com.oracle.graal.debug.GraalDebugConfig.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Verify;
 import static com.oracle.graal.debug.GraalDebugConfig.areScopedMetricsOrTimersEnabled;
+import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import static jdk.internal.jvmci.inittimer.InitTimer.timer;
@@ -170,7 +171,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             }
         }
 
-        BenchmarkCounters.initialize(runtime().getCompilerToVM());
+        BenchmarkCounters.initialize(jvmciRuntime.getCompilerToVM());
 
         assert checkArrayIndexScaleInvariants();
 
@@ -272,6 +273,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         phaseTransition("final");
 
         SnippetCounter.printGroups(TTY.out().out());
-        BenchmarkCounters.shutdown(runtime().getCompilerToVM(), runtimeStartTime);
+        BenchmarkCounters.shutdown(compilerToVM(), runtimeStartTime);
     }
 }
