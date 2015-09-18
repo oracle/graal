@@ -23,8 +23,8 @@
 package com.oracle.graal.lir.amd64;
 
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -54,11 +54,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         switch (opcode) {
-            case LOG:   masm.flog(asRegister(result, JavaKind.Double), asRegister(input, JavaKind.Double), false); break;
-            case LOG10: masm.flog(asRegister(result, JavaKind.Double), asRegister(input, JavaKind.Double), true); break;
-            case SIN:   masm.fsin(asRegister(result, JavaKind.Double), asRegister(input, JavaKind.Double)); break;
-            case COS:   masm.fcos(asRegister(result, JavaKind.Double), asRegister(input, JavaKind.Double)); break;
-            case TAN:   masm.ftan(asRegister(result, JavaKind.Double), asRegister(input, JavaKind.Double)); break;
+            case LOG:   masm.flog(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), false); break;
+            case LOG10: masm.flog(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), true); break;
+            case SIN:   masm.fsin(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE)); break;
+            case COS:   masm.fcos(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE)); break;
+            case TAN:   masm.ftan(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE)); break;
             default:    throw JVMCIError.shouldNotReachHere();
         }
     }

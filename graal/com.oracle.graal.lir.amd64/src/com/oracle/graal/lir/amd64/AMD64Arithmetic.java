@@ -24,8 +24,8 @@ package com.oracle.graal.lir.amd64;
 
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 
 import com.oracle.graal.asm.Label;
@@ -53,7 +53,7 @@ public enum AMD64Arithmetic {
             super(TYPE);
             this.opcode = opcode;
             this.result = result;
-            this.raxTemp = AMD64.rax.asValue(LIRKind.value(JavaKind.Int));
+            this.raxTemp = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
             this.x = x;
             this.y = y;
         }
@@ -98,8 +98,8 @@ public enum AMD64Arithmetic {
         @Override
         public void verify() {
             super.verify();
-            assert (opcode.name().startsWith("F") && result.getPlatformKind() == JavaKind.Float && x.getPlatformKind() == JavaKind.Float && y.getPlatformKind() == JavaKind.Float) ||
-                            (opcode.name().startsWith("D") && result.getPlatformKind() == JavaKind.Double && x.getPlatformKind() == JavaKind.Double && y.getPlatformKind() == JavaKind.Double);
+            assert (opcode.name().startsWith("F") && result.getPlatformKind() == AMD64Kind.SINGLE && x.getPlatformKind() == AMD64Kind.SINGLE && y.getPlatformKind() == AMD64Kind.SINGLE) ||
+                            (opcode.name().startsWith("D") && result.getPlatformKind() == AMD64Kind.DOUBLE && x.getPlatformKind() == AMD64Kind.DOUBLE && y.getPlatformKind() == AMD64Kind.DOUBLE);
         }
     }
 }

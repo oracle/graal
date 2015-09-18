@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.jtt;
 
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
@@ -184,7 +184,7 @@ public class StackMoveTest extends LIRTest {
     private static final LIRTestSpecification shortStackCopy = new StackCopySpec() {
         @Override
         protected LIRKind getLIRKind(Value value) {
-            return LIRKind.value(JavaKind.Short);
+            return LIRKind.value(AMD64Kind.WORD);
         }
     };
 
@@ -218,7 +218,7 @@ public class StackMoveTest extends LIRTest {
     private static final LIRTestSpecification byteStackCopy = new StackCopySpec() {
         @Override
         protected LIRKind getLIRKind(Value value) {
-            return LIRKind.value(JavaKind.Byte);
+            return LIRKind.value(AMD64Kind.BYTE);
         }
     };
 

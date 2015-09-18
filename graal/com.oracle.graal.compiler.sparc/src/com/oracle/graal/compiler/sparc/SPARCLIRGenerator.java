@@ -681,6 +681,11 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    protected boolean isNumericInteger(PlatformKind kind) {
+        return ((JavaKind) kind).isNumericInteger();
+    }
+
+    @Override
     public Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         switch (((JavaKind) a.getPlatformKind()).getStackKind()) {
             case Int:

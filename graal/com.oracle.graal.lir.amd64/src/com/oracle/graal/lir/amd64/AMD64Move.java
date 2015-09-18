@@ -36,13 +36,13 @@ import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
 import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
 import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.StackSlotValue;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.Constant;
 import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
@@ -64,16 +64,11 @@ public class AMD64Move {
     private abstract static class AbstractMoveOp extends AMD64LIRInstruction implements ValueMoveOp {
         public static final LIRInstructionClass<AbstractMoveOp> TYPE = LIRInstructionClass.create(AbstractMoveOp.class);
 
-        private JavaKind moveKind;
+        private AMD64Kind moveKind;
 
-        protected AbstractMoveOp(LIRInstructionClass<? extends AbstractMoveOp> c, JavaKind moveKind) {
+        protected AbstractMoveOp(LIRInstructionClass<? extends AbstractMoveOp> c, AMD64Kind moveKind) {
             super(c);
-            if (moveKind == JavaKind.Illegal) {
-                // unknown operand size, conservatively move the whole register
-                this.moveKind = JavaKind.Long;
-            } else {
-                this.moveKind = moveKind;
-            }
+            this.moveKind = moveKind;
         }
 
         @Override
@@ -89,7 +84,7 @@ public class AMD64Move {
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue input;
 
-        public MoveToRegOp(JavaKind moveKind, AllocatableValue result, AllocatableValue input) {
+        public MoveToRegOp(AMD64Kind moveKind, AllocatableValue result, AllocatableValue input) {
             super(TYPE, moveKind);
             this.result = result;
             this.input = input;
@@ -113,7 +108,7 @@ public class AMD64Move {
         @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, HINT}) protected AllocatableValue input;
 
-        public MoveFromRegOp(JavaKind moveKind, AllocatableValue result, AllocatableValue input) {
+        public MoveFromRegOp(AMD64Kind moveKind, AllocatableValue result, AllocatableValue input) {
             super(TYPE, moveKind);
             this.result = result;
             this.input = input;
@@ -200,14 +195,19 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            // backup scratch register
-            move((JavaKind) backupSlot.getPlatformKind(), crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
-            // move stack slot
-            move((JavaKind) getInput().getPlatformKind(), crb, masm, scratch.asValue(getInput().getLIRKind()), getInput());
-            move((JavaKind) getResult().getPlatformKind(), crb, masm, getResult(), scratch.asValue(getResult().getLIRKind()));
-            // restore scratch register
-            move((JavaKind) backupSlot.getPlatformKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
+            AMD64Kind backupKind = (AMD64Kind) backupSlot.getPlatformKind();
+            if (backupKind.isXMM()) {
+                // graal doesn't use vector values, so it's safe to backup using DOUBLE
+                backupKind = AMD64Kind.DOUBLE;
+            }
 
+            // backup scratch register
+            reg2stack(backupKind, crb, masm, backupSlot, scratch);
+            // move stack slot
+            stack2reg((AMD64Kind) getInput().getPlatformKind(), crb, masm, scratch, getInput());
+            reg2stack((AMD64Kind) getResult().getPlatformKind(), crb, masm, getResult(), scratch);
+            // restore scratch register
+            stack2reg(backupKind, crb, masm, scratch, backupSlot);
         }
     }
 
@@ -231,18 +231,23 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            AMD64Kind backupKind = (AMD64Kind) backupSlot.getPlatformKind();
+            if (backupKind.isXMM()) {
+                // graal doesn't use vector values, so it's safe to backup using DOUBLE
+                backupKind = AMD64Kind.DOUBLE;
+            }
+
             // backup scratch register
-            move((JavaKind) backupSlot.getPlatformKind(), crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
+            move(backupKind, crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
             for (int i = 0; i < results.length; i++) {
                 Value input = inputs[i];
                 AllocatableValue result = results[i];
                 // move stack slot
-                move((JavaKind) input.getPlatformKind(), crb, masm, scratch.asValue(input.getLIRKind()), input);
-                move((JavaKind) result.getPlatformKind(), crb, masm, result, scratch.asValue(result.getLIRKind()));
+                move((AMD64Kind) input.getPlatformKind(), crb, masm, scratch.asValue(input.getLIRKind()), input);
+                move((AMD64Kind) result.getPlatformKind(), crb, masm, result, scratch.asValue(result.getLIRKind()));
             }
             // restore scratch register
-            move((JavaKind) backupSlot.getPlatformKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
-
+            move(backupKind, crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
         }
     }
 
@@ -292,7 +297,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            masm.leaq(asRegister(result, JavaKind.Long), address.toAddress());
+            masm.leaq(asRegister(result, AMD64Kind.QWORD), address.toAddress());
         }
     }
 
@@ -329,7 +334,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            masm.leaq(asRegister(result, JavaKind.Long), (AMD64Address) crb.asAddress(slot));
+            masm.leaq(asRegister(result, AMD64Kind.QWORD), (AMD64Address) crb.asAddress(slot));
         }
     }
 
@@ -380,14 +385,14 @@ public class AMD64Move {
     public static final class CompareAndSwapOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
-        private final JavaKind accessKind;
+        private final AMD64Kind accessKind;
 
         @Def protected AllocatableValue result;
         @Use({COMPOSITE}) protected AMD64AddressValue address;
         @Use protected AllocatableValue cmpValue;
         @Use protected AllocatableValue newValue;
 
-        public CompareAndSwapOp(JavaKind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+        public CompareAndSwapOp(AMD64Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
             super(TYPE);
             this.accessKind = accessKind;
             this.result = result;
@@ -404,11 +409,10 @@ public class AMD64Move {
                 masm.lock();
             }
             switch (accessKind) {
-                case Int:
+                case DWORD:
                     masm.cmpxchgl(asRegister(newValue), address.toAddress());
                     break;
-                case Long:
-                case Object:
+                case QWORD:
                     masm.cmpxchgq(asRegister(newValue), address.toAddress());
                     break;
                 default:
@@ -421,13 +425,13 @@ public class AMD64Move {
     public static final class AtomicReadAndAddOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<AtomicReadAndAddOp> TYPE = LIRInstructionClass.create(AtomicReadAndAddOp.class);
 
-        private final JavaKind accessKind;
+        private final AMD64Kind accessKind;
 
         @Def protected AllocatableValue result;
         @Alive({COMPOSITE}) protected AMD64AddressValue address;
         @Use protected AllocatableValue delta;
 
-        public AtomicReadAndAddOp(JavaKind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue delta) {
+        public AtomicReadAndAddOp(AMD64Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue delta) {
             super(TYPE);
             this.accessKind = accessKind;
             this.result = result;
@@ -442,10 +446,10 @@ public class AMD64Move {
                 masm.lock();
             }
             switch (accessKind) {
-                case Int:
+                case DWORD:
                     masm.xaddl(address.toAddress(), asRegister(result));
                     break;
-                case Long:
+                case QWORD:
                     masm.xaddq(address.toAddress(), asRegister(result));
                     break;
                 default:
@@ -458,13 +462,13 @@ public class AMD64Move {
     public static final class AtomicReadAndWriteOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<AtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AtomicReadAndWriteOp.class);
 
-        private final JavaKind accessKind;
+        private final AMD64Kind accessKind;
 
         @Def protected AllocatableValue result;
         @Alive({COMPOSITE}) protected AMD64AddressValue address;
         @Use protected AllocatableValue newValue;
 
-        public AtomicReadAndWriteOp(JavaKind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue newValue) {
+        public AtomicReadAndWriteOp(AMD64Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue newValue) {
             super(TYPE);
             this.accessKind = accessKind;
             this.result = result;
@@ -476,11 +480,10 @@ public class AMD64Move {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             move(accessKind, crb, masm, result, newValue);
             switch (accessKind) {
-                case Int:
+                case DWORD:
                     masm.xchgl(asRegister(result), address.toAddress());
                     break;
-                case Long:
-                case Object:
+                case QWORD:
                     masm.xchgq(asRegister(result), address.toAddress());
                     break;
                 default:
@@ -490,21 +493,21 @@ public class AMD64Move {
     }
 
     public static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
-        move((JavaKind) result.getPlatformKind(), crb, masm, result, input);
+        move((AMD64Kind) result.getPlatformKind(), crb, masm, result, input);
     }
 
-    public static void move(JavaKind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+    public static void move(AMD64Kind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(moveKind, masm, result, input);
             } else if (isStackSlot(result)) {
-                reg2stack(moveKind, crb, masm, result, input);
+                reg2stack(moveKind, crb, masm, result, asRegister(input));
             } else {
                 throw JVMCIError.shouldNotReachHere();
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
-                stack2reg(moveKind, crb, masm, result, input);
+                stack2reg(moveKind, crb, masm, asRegister(result), input);
             } else {
                 throw JVMCIError.shouldNotReachHere();
             }
@@ -521,91 +524,76 @@ public class AMD64Move {
         }
     }
 
-    private static void reg2reg(JavaKind kind, AMD64MacroAssembler masm, Value result, Value input) {
+    private static void reg2reg(AMD64Kind kind, AMD64MacroAssembler masm, Value result, Value input) {
         if (asRegister(input).equals(asRegister(result))) {
             return;
         }
-        switch (kind.getStackKind()) {
-            case Int:
+        switch (kind) {
+            case BYTE:
+            case WORD:
+            case DWORD:
                 masm.movl(asRegister(result), asRegister(input));
                 break;
-            case Long:
+            case QWORD:
                 masm.movq(asRegister(result), asRegister(input));
                 break;
-            case Float:
-                masm.movflt(asRegister(result, JavaKind.Float), asRegister(input, JavaKind.Float));
+            case SINGLE:
+                masm.movflt(asRegister(result, AMD64Kind.SINGLE), asRegister(input, AMD64Kind.SINGLE));
                 break;
-            case Double:
-                masm.movdbl(asRegister(result, JavaKind.Double), asRegister(input, JavaKind.Double));
-                break;
-            case Object:
-                masm.movq(asRegister(result), asRegister(input));
+            case DOUBLE:
+                masm.movdbl(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE));
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere("kind=" + result.getPlatformKind());
+                throw JVMCIError.shouldNotReachHere("kind=" + kind);
         }
     }
 
-    private static void reg2stack(JavaKind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+    private static void reg2stack(AMD64Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Register input) {
         AMD64Address dest = (AMD64Address) crb.asAddress(result);
         switch (kind) {
-            case Boolean:
-            case Byte:
-                masm.movb(dest, asRegister(input));
+            case BYTE:
+                masm.movb(dest, input);
                 break;
-            case Short:
-            case Char:
-                masm.movw(dest, asRegister(input));
+            case WORD:
+                masm.movw(dest, input);
                 break;
-            case Int:
-                masm.movl(dest, asRegister(input));
+            case DWORD:
+                masm.movl(dest, input);
                 break;
-            case Long:
-                masm.movq(dest, asRegister(input));
+            case QWORD:
+                masm.movq(dest, input);
                 break;
-            case Float:
-                masm.movflt(dest, asRegister(input, JavaKind.Float));
+            case SINGLE:
+                masm.movflt(dest, input);
                 break;
-            case Double:
-                masm.movsd(dest, asRegister(input, JavaKind.Double));
-                break;
-            case Object:
-                masm.movq(dest, asRegister(input));
+            case DOUBLE:
+                masm.movsd(dest, input);
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
     }
 
-    private static void stack2reg(JavaKind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+    private static void stack2reg(AMD64Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, Value input) {
         AMD64Address src = (AMD64Address) crb.asAddress(input);
         switch (kind) {
-            case Boolean:
-                masm.movzbl(asRegister(result), src);
+            case BYTE:
+                masm.movsbl(result, src);
                 break;
-            case Byte:
-                masm.movsbl(asRegister(result), src);
+            case WORD:
+                masm.movswl(result, src);
                 break;
-            case Short:
-                masm.movswl(asRegister(result), src);
+            case DWORD:
+                masm.movl(result, src);
                 break;
-            case Char:
-                masm.movzwl(asRegister(result), src);
+            case QWORD:
+                masm.movq(result, src);
                 break;
-            case Int:
-                masm.movl(asRegister(result), src);
+            case SINGLE:
+                masm.movflt(result, src);
                 break;
-            case Long:
-                masm.movq(asRegister(result), src);
-                break;
-            case Float:
-                masm.movflt(asRegister(result, JavaKind.Float), src);
-                break;
-            case Double:
-                masm.movdbl(asRegister(result, JavaKind.Double), src);
-                break;
-            case Object:
-                masm.movq(asRegister(result), src);
+            case DOUBLE:
+                masm.movdbl(result, src);
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();
@@ -657,18 +645,18 @@ public class AMD64Move {
                 // This is *not* the same as 'constant == 0.0f' in the case where constant is -0.0f
                 if (Float.floatToRawIntBits(input.asFloat()) == Float.floatToRawIntBits(0.0f)) {
                     assert !crb.codeCache.needsDataPatch(input);
-                    masm.xorps(asRegister(result, JavaKind.Float), asRegister(result, JavaKind.Float));
+                    masm.xorps(asRegister(result, AMD64Kind.SINGLE), asRegister(result));
                 } else {
-                    masm.movflt(asRegister(result, JavaKind.Float), (AMD64Address) crb.asFloatConstRef(input));
+                    masm.movflt(asRegister(result, AMD64Kind.SINGLE), (AMD64Address) crb.asFloatConstRef(input));
                 }
                 break;
             case Double:
                 // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
                 if (Double.doubleToRawLongBits(input.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
                     assert !crb.codeCache.needsDataPatch(input);
-                    masm.xorpd(asRegister(result, JavaKind.Double), asRegister(result, JavaKind.Double));
+                    masm.xorpd(asRegister(result, AMD64Kind.DOUBLE), asRegister(result));
                 } else {
-                    masm.movdbl(asRegister(result, JavaKind.Double), (AMD64Address) crb.asDoubleConstRef(input));
+                    masm.movdbl(asRegister(result, AMD64Kind.DOUBLE), (AMD64Address) crb.asDoubleConstRef(input));
                 }
                 break;
             case Object:
@@ -716,27 +704,23 @@ public class AMD64Move {
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
-        switch ((JavaKind) result.getPlatformKind()) {
-            case Byte:
+
+        switch ((AMD64Kind) result.getPlatformKind()) {
+            case BYTE:
                 assert NumUtil.isByte(imm) : "Is not in byte range: " + imm;
                 AMD64MIOp.MOVB.emit(masm, OperandSize.BYTE, dest, (int) imm);
                 break;
-            case Short:
+            case WORD:
                 assert NumUtil.isShort(imm) : "Is not in short range: " + imm;
                 AMD64MIOp.MOV.emit(masm, OperandSize.WORD, dest, (int) imm);
                 break;
-            case Char:
-                assert NumUtil.isUShort(imm) : "Is not in char range: " + imm;
-                AMD64MIOp.MOV.emit(masm, OperandSize.WORD, dest, (int) imm);
-                break;
-            case Int:
-            case Float:
+            case DWORD:
+            case SINGLE:
                 assert NumUtil.isInt(imm) : "Is not in int range: " + imm;
                 masm.movl(dest, (int) imm);
                 break;
-            case Long:
-            case Double:
-            case Object:
+            case QWORD:
+            case DOUBLE:
                 masm.movlong(dest, imm);
                 break;
             default:

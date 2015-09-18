@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -47,12 +48,15 @@ public final class AMD64ByteSwapOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         AMD64Move.move(crb, masm, result, input);
-        switch ((JavaKind) input.getPlatformKind()) {
-            case Int:
-                masm.bswapl(ValueUtil.asRegister(result, JavaKind.Int));
+        switch ((AMD64Kind) input.getPlatformKind()) {
+            case DWORD:
+                masm.bswapl(ValueUtil.asRegister(result));
                 break;
-            case Long:
-                masm.bswapq(ValueUtil.asRegister(result, JavaKind.Long));
+            case QWORD:
+                masm.bswapq(ValueUtil.asRegister(result));
+                break;
+            default:
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 }

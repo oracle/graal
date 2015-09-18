@@ -462,9 +462,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     // automatic derived reference handling
 
-    protected boolean isNumericInteger(PlatformKind kind) {
-        return ((JavaKind) kind).isNumericInteger();
-    }
+    protected abstract boolean isNumericInteger(PlatformKind kind);
 
     protected abstract Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags);
 

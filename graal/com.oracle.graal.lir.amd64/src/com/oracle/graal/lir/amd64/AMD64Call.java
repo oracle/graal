@@ -28,12 +28,12 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterValue;
 import jdk.internal.jvmci.code.ValueUtil;
 import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.InvokeTarget;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 import jdk.internal.jvmci.meta.Value;
@@ -171,7 +171,7 @@ public class AMD64Call {
              * The register allocator does not support virtual registers that are used at the call
              * site, so use a fixed register.
              */
-            callTemp = AMD64.rax.asValue(LIRKind.value(JavaKind.Long));
+            callTemp = AMD64.rax.asValue(LIRKind.value(AMD64Kind.QWORD));
             assert ValueUtil.differentRegisters(parameters, callTemp);
         }
 

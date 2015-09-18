@@ -26,10 +26,10 @@ import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseIncDec;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
 import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaKind;
 
 import com.oracle.graal.asm.NumUtil;
 
@@ -309,7 +309,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     private AMD64Address trigPrologue(Register value) {
         assert value.getRegisterCategory().equals(AMD64.XMM);
         AMD64Address tmp = new AMD64Address(AMD64.rsp);
-        subq(AMD64.rsp, target.getSizeInBytes(JavaKind.Double));
+        subq(AMD64.rsp, AMD64Kind.DOUBLE.getSizeInBytes());
         movdbl(tmp, value);
         fldd(tmp);
         return tmp;
@@ -319,6 +319,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         assert dest.getRegisterCategory().equals(AMD64.XMM);
         fstpd(tmp);
         movdbl(dest, tmp);
-        addq(AMD64.rsp, target.getSizeInBytes(JavaKind.Double));
+        addq(AMD64.rsp, AMD64Kind.DOUBLE.getSizeInBytes());
     }
 }

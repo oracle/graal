@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 
 import jdk.internal.jvmci.amd64.AMD64;
 import jdk.internal.jvmci.amd64.AMD64.CPUFeature;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.meta.JavaKind;
@@ -92,8 +93,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
         // We only need the vector temporaries if we generate SSE code.
         if (supportsSSE41(tool.target())) {
-            this.vectorTemp1 = tool.newVariable(LIRKind.value(JavaKind.Double));
-            this.vectorTemp2 = tool.newVariable(LIRKind.value(JavaKind.Double));
+            this.vectorTemp1 = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+            this.vectorTemp2 = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
         } else {
             this.vectorTemp1 = Value.ILLEGAL;
             this.vectorTemp2 = Value.ILLEGAL;
@@ -161,8 +162,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     private void emitSSE41Compare(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
         assert supportsSSE41(crb.target);
 
-        Register vector1 = asRegister(vectorTemp1, JavaKind.Double);
-        Register vector2 = asRegister(vectorTemp2, JavaKind.Double);
+        Register vector1 = asRegister(vectorTemp1, AMD64Kind.DOUBLE);
+        Register vector2 = asRegister(vectorTemp2, AMD64Kind.DOUBLE);
 
         Label loop = new Label();
         Label compareTail = new Label();

@@ -24,10 +24,10 @@ package com.oracle.graal.lir.jtt;
 
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.StackSlotValue;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
@@ -70,8 +70,8 @@ public class ConstantStackCastTest extends LIRTest {
 
         private static ConstantValue getConstant(LIRKind srcKind, JavaConstant c) {
 
-            switch ((JavaKind) srcKind.getPlatformKind()) {
-                case Byte:
+            switch ((AMD64Kind) srcKind.getPlatformKind()) {
+                case BYTE:
                     JavaConstant byteConst = JavaConstant.forByte((byte) c.asInt());
                     return new ConstantValue(srcKind, byteConst);
                 default:
@@ -80,7 +80,7 @@ public class ConstantStackCastTest extends LIRTest {
         }
     }
 
-    private static final LoadConstantStackSpec stackCopyByte = new LoadConstantStackSpec(LIRKind.value(JavaKind.Int), LIRKind.value(JavaKind.Byte));
+    private static final LoadConstantStackSpec stackCopyByte = new LoadConstantStackSpec(LIRKind.value(AMD64Kind.DWORD), LIRKind.value(AMD64Kind.BYTE));
 
     @LIRIntrinsic
     public static byte testCopyByte(@SuppressWarnings("unused") LoadConstantStackSpec spec, byte value) {

@@ -27,7 +27,6 @@ import static org.junit.Assert.assertNull;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.Register.RegisterCategory;
 import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.PlatformKind;
 
@@ -57,10 +56,6 @@ public class GenericValueMapTest {
 
         public char getTypeChar() {
             return 'l';
-        }
-
-        public JavaConstant getDefaultValue() {
-            return null;
         }
     }
 

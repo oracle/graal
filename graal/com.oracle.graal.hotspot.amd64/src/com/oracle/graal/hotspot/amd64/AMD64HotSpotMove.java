@@ -29,6 +29,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.StackSlotValue;
 import jdk.internal.jvmci.common.JVMCIError;
@@ -38,7 +39,6 @@ import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.Constant;
 import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.Label;
@@ -192,7 +192,7 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Move.move(JavaKind.Long, crb, masm, result, input);
+            AMD64Move.move(AMD64Kind.QWORD, crb, masm, result, input);
 
             Register resReg = asRegister(result);
             if (encoding.base != 0) {
@@ -240,8 +240,7 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            assert result.getPlatformKind() instanceof JavaKind : "Can only deal with Kind: " + result.getLIRKind();
-            JavaKind kind = (JavaKind) result.getPlatformKind();
+            AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
             AMD64Move.move(kind, crb, masm, result, input);
             AMD64Move.move(kind, crb, masm, stackSlot, input);
         }
@@ -268,7 +267,7 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Move.move(JavaKind.Int, crb, masm, result, input);
+            AMD64Move.move(AMD64Kind.DWORD, crb, masm, result, input);
 
             Register resReg = asRegister(result);
             if (encoding.shift != 0) {

@@ -23,12 +23,12 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static jdk.internal.jvmci.amd64.AMD64.rbp;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.StackSlot;
 import jdk.internal.jvmci.code.ValueUtil;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaField;
 import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.ResolvedJavaField;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
@@ -64,7 +64,7 @@ public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
                 }
             }
         }
-        params[params.length - 1] = rbp.asValue(LIRKind.value(JavaKind.Long));
+        params[params.length - 1] = rbp.asValue(LIRKind.value(AMD64Kind.QWORD));
 
         gen.emitIncomingValues(params);
 

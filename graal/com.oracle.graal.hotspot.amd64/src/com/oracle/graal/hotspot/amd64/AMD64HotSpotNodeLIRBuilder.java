@@ -27,6 +27,7 @@ import static jdk.internal.jvmci.amd64.AMD64.rbp;
 import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.BytecodeFrame;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.Register;
@@ -35,7 +36,6 @@ import jdk.internal.jvmci.code.StackSlot;
 import jdk.internal.jvmci.code.ValueUtil;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
@@ -81,7 +81,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(JavaKind.Long));
+        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(AMD64Kind.QWORD));
         return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack);
     }
 
@@ -100,7 +100,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
                 }
             }
         }
-        params[params.length - 1] = rbp.asValue(LIRKind.value(JavaKind.Long));
+        params[params.length - 1] = rbp.asValue(LIRKind.value(AMD64Kind.QWORD));
 
         gen.emitIncomingValues(params);
 
@@ -187,7 +187,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         RegisterValue raxLocal = AMD64.rax.asValue(expected.getLIRKind());
         gen.emitMove(raxLocal, expected);
-        append(new CompareAndSwapOp((JavaKind) expected.getPlatformKind(), raxLocal, getGen().asAddressValue(operand(x.getAddress())), raxLocal, newVal));
+        append(new CompareAndSwapOp((AMD64Kind) expected.getPlatformKind(), raxLocal, getGen().asAddressValue(operand(x.getAddress())), raxLocal, newVal));
 
         setResult(x, gen.emitMove(raxLocal));
     }

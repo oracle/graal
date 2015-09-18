@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 import jdk.internal.jvmci.amd64.AMD64;
+import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.StackSlotValue;
 import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
@@ -50,7 +50,7 @@ public class StackStoreTest extends LIRTest {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
             StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(JavaKind.Short));
+            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
             // move stuff around
             gen.emitMove(s1, a);
             gen.emitMoveConstant(s2, JavaConstant.forShort(Short.MIN_VALUE));
@@ -66,10 +66,10 @@ public class StackStoreTest extends LIRTest {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
             StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(JavaKind.Short));
+            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
             // move stuff around
             gen.emitMove(s1, a);
-            Value v = gen.emitLoadConstant(LIRKind.value(JavaKind.Short), JavaConstant.forShort(Short.MIN_VALUE));
+            Value v = gen.emitLoadConstant(LIRKind.value(AMD64Kind.WORD), JavaConstant.forShort(Short.MIN_VALUE));
             gen.emitMove(s2, v);
             setResult(gen.emitMove(s1));
             gen.emitBlackhole(s1);
@@ -83,7 +83,7 @@ public class StackStoreTest extends LIRTest {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
             StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(JavaKind.Short));
+            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
             // move stuff around
             gen.emitMoveConstant(s2, JavaConstant.forShort(Short.MIN_VALUE));
             gen.emitMove(s1, a);
