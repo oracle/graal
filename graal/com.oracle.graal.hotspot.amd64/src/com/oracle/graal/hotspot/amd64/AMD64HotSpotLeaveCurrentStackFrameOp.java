@@ -26,7 +26,6 @@ import static jdk.internal.jvmci.amd64.AMD64.rdx;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.RegisterSaveLayout;
-import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.JavaKind;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
@@ -48,8 +47,8 @@ final class AMD64HotSpotLeaveCurrentStackFrameOp extends AMD64HotSpotEpilogueOp 
 
     private final SaveRegistersOp saveRegisterOp;
 
-    public AMD64HotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp, AllocatableValue savedRbp) {
-        super(TYPE, savedRbp);
+    public AMD64HotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp) {
+        super(TYPE);
         this.saveRegisterOp = saveRegisterOp;
     }
 

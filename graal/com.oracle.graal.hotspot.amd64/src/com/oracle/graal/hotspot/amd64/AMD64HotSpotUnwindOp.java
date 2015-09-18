@@ -29,7 +29,6 @@ import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -49,8 +48,8 @@ final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueBlockEndOp {
 
     @Use({REG}) protected RegisterValue exception;
 
-    AMD64HotSpotUnwindOp(RegisterValue exception, AllocatableValue savedRbp) {
-        super(TYPE, savedRbp);
+    AMD64HotSpotUnwindOp(RegisterValue exception) {
+        super(TYPE);
         this.exception = exception;
     }
 

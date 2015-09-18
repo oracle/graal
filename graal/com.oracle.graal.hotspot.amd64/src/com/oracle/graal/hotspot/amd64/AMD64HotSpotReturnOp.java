@@ -26,7 +26,6 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -46,8 +45,8 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueBlockEndOp {
     private final Register scratchForSafepointOnReturn;
     private final HotSpotVMConfig config;
 
-    AMD64HotSpotReturnOp(Value value, boolean isStub, Register scratchForSafepointOnReturn, HotSpotVMConfig config, AllocatableValue savedRbp) {
-        super(TYPE, savedRbp);
+    AMD64HotSpotReturnOp(Value value, boolean isStub, Register scratchForSafepointOnReturn, HotSpotVMConfig config) {
+        super(TYPE);
         this.value = value;
         this.isStub = isStub;
         this.scratchForSafepointOnReturn = scratchForSafepointOnReturn;

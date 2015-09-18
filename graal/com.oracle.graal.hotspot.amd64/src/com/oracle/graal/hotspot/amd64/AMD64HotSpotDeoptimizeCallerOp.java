@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
-import jdk.internal.jvmci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
@@ -39,8 +38,8 @@ final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueBlockEndO
 
     public static final LIRInstructionClass<AMD64HotSpotDeoptimizeCallerOp> TYPE = LIRInstructionClass.create(AMD64HotSpotDeoptimizeCallerOp.class);
 
-    protected AMD64HotSpotDeoptimizeCallerOp(AllocatableValue savedRbp) {
-        super(TYPE, savedRbp);
+    protected AMD64HotSpotDeoptimizeCallerOp() {
+        super(TYPE);
     }
 
     @Override

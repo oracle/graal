@@ -166,7 +166,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         gen.emitMove(exceptionPcFixed, operand(exceptionPc));
         Register thread = getGen().getProviders().getRegisters().getThreadRegister();
         AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed, getGen().config.threadIsMethodHandleReturnOffset,
-                        thread, getGen().getSaveRbp().getRbpRescueSlot());
+                        thread);
         append(op);
     }
 

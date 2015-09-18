@@ -33,6 +33,7 @@ import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static jdk.internal.jvmci.amd64.AMD64.cpuxmmRegisters;
 import static jdk.internal.jvmci.amd64.AMD64.rbp;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -75,7 +76,6 @@ import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotLockStack;
-import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreRbpOp;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -133,24 +133,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      */
     class SaveRbp {
 
-        private final NoOp placeholder;
+        final NoOp placeholder;
 
         /**
          * The slot reserved for saving RBP.
          */
-        private final StackSlot reservedSlot;
-        /**
-         * The variable reserved for saving RBP.
-         *
-         * This should be either allocated to RBP, or to {@link #reservedSlot}.
-         */
-        private final AllocatableValue rescueSlot;
+        final StackSlot reservedSlot;
 
-        public SaveRbp(NoOp placeholder0) {
-            this.placeholder = placeholder0;
+        public SaveRbp(NoOp placeholder) {
+            this.placeholder = placeholder;
             AMD64FrameMapBuilder frameMapBuilder = (AMD64FrameMapBuilder) getResult().getFrameMapBuilder();
             this.reservedSlot = frameMapBuilder.allocateRBPSpillSlot();
-            this.rescueSlot = newVariable(LIRKind.value(AMD64Kind.QWORD));
         }
 
         /**
@@ -158,21 +151,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          *
          * @param useStack specifies if rbp must be saved to the stack
          */
-        public void finalize(boolean useStack) {
-            RegisterValue rbpValue = rbp.asValue(LIRKind.value(AMD64Kind.QWORD));
-            LIRInstruction move;
+        public AllocatableValue finalize(boolean useStack) {
+            AllocatableValue dst;
             if (useStack) {
-                move = new StoreRbpOp(rescueSlot, rbpValue, reservedSlot);
+                dst = reservedSlot;
             } else {
                 ((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).freeRBPSpillSlot();
-                move = new MoveFromRegOp(AMD64Kind.QWORD, rescueSlot, rbpValue);
+                dst = newVariable(LIRKind.value(AMD64Kind.QWORD));
             }
-            placeholder.replace(getResult().getLIR(), move);
 
-        }
-
-        AllocatableValue getRbpRescueSlot() {
-            return rescueSlot;
+            placeholder.replace(getResult().getLIR(), new MoveFromRegOp(AMD64Kind.QWORD, dst, rbp.asValue(LIRKind.value(AMD64Kind.QWORD))));
+            return dst;
         }
     }
 
@@ -227,6 +216,20 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         return rescueSlotOp;
     }
 
+    /**
+     * List of epilogue operations that need to restore RBP.
+     */
+    List<AMD64HotSpotEpilogueOp> epilogueOps = new ArrayList<>(2);
+
+    @Override
+    public <I extends LIRInstruction> I append(I op) {
+        I ret = super.append(op);
+        if (op instanceof AMD64HotSpotEpilogueOp) {
+            epilogueOps.add((AMD64HotSpotEpilogueOp) op);
+        }
+        return ret;
+    }
+
     @Override
     public StackSlotValue getLockSlot(int lockDepth) {
         return getLockStack().makeLockSlot(lockDepth);
@@ -264,7 +267,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (pollOnReturnScratchRegister == null) {
             pollOnReturnScratchRegister = findPollOnReturnScratchRegister();
         }
-        append(new AMD64HotSpotReturnOp(operand, getStub() != null, pollOnReturnScratchRegister, config, saveRbp.getRbpRescueSlot()));
+        append(new AMD64HotSpotReturnOp(operand, getStub() != null, pollOnReturnScratchRegister, config));
     }
 
     @Override
@@ -287,13 +290,13 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     public void emitLeaveCurrentStackFrame(SaveRegistersOp saveRegisterOp) {
-        append(new AMD64HotSpotLeaveCurrentStackFrameOp(saveRegisterOp, saveRbp.getRbpRescueSlot()));
+        append(new AMD64HotSpotLeaveCurrentStackFrameOp(saveRegisterOp));
     }
 
     public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
         Variable frameSizeVariable = load(frameSize);
         Variable initialInfoVariable = load(initialInfo);
-        append(new AMD64HotSpotLeaveDeoptimizedStackFrameOp(frameSizeVariable, initialInfoVariable, saveRbp.getRbpRescueSlot()));
+        append(new AMD64HotSpotLeaveDeoptimizedStackFrameOp(frameSizeVariable, initialInfoVariable));
     }
 
     public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp, SaveRegistersOp saveRegisterOp) {
@@ -494,7 +497,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         assert outgoingCc.getArgumentCount() == 2;
         RegisterValue exceptionParameter = (RegisterValue) outgoingCc.getArgument(0);
         emitMove(exceptionParameter, exception);
-        append(new AMD64HotSpotUnwindOp(exceptionParameter, saveRbp.getRbpRescueSlot()));
+        append(new AMD64HotSpotUnwindOp(exceptionParameter));
     }
 
     private void moveDeoptValuesToThread(Value actionAndReason, Value speculation) {
@@ -520,18 +523,21 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Value actionAndReason = emitJavaConstant(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0));
         Value nullValue = emitConstant(LIRKind.reference(AMD64Kind.QWORD), JavaConstant.NULL_POINTER);
         moveDeoptValuesToThread(actionAndReason, nullValue);
-        append(new AMD64HotSpotDeoptimizeCallerOp(saveRbp.getRbpRescueSlot()));
+        append(new AMD64HotSpotDeoptimizeCallerOp());
     }
 
     @Override
     public void beforeRegisterAllocation() {
         super.beforeRegisterAllocation();
         boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
-        saveRbp.finalize(hasDebugInfo);
+        AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo);
         if (hasDebugInfo) {
             ((AMD64HotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
         }
 
+        for (AMD64HotSpotEpilogueOp op : epilogueOps) {
+            op.savedRbp = savedRbp;
+        }
         if (BenchmarkCounters.enabled) {
             // ensure that the rescue slot is available
             LIRInstruction op = getOrInitRescueSlotOp();
