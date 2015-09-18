@@ -205,12 +205,14 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     private void adoptHelper() {
-        Iterable<Node> children = this.getChildren();
-        for (Node child : children) {
-            if (child != null && child.getParent() != this) {
-                this.adoptHelper(child);
+        NodeUtil.forEachChild(this, new NodeVisitor() {
+            public boolean visit(Node child) {
+                if (child != null && child.getParent() != Node.this) {
+                    Node.this.adoptHelper(child);
+                }
+                return true;
             }
-        }
+        });
     }
 
     private void adoptUnadoptedHelper(final Node newChild) {
@@ -223,12 +225,14 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     private void adoptUnadoptedHelper() {
-        Iterable<Node> children = this.getChildren();
-        for (Node child : children) {
-            if (child != null && child.getParent() == null) {
-                this.adoptUnadoptedHelper(child);
+        NodeUtil.forEachChild(this, new NodeVisitor() {
+            public boolean visit(Node child) {
+                if (child != null && child.getParent() == null) {
+                    Node.this.adoptUnadoptedHelper(child);
+                }
+                return true;
             }
-        }
+        });
     }
 
     /**
