@@ -31,14 +31,12 @@ import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
 import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.StackSlotValue;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
 import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.amd64.AMD64Address;
@@ -47,7 +45,6 @@ import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.amd64.AMD64Move;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
@@ -205,42 +202,6 @@ public class AMD64HotSpotMove {
             if (encoding.shift != 0) {
                 masm.shrq(resReg, encoding.shift);
             }
-        }
-    }
-
-    public static final class StoreRbpOp extends AMD64LIRInstruction implements StackStoreOp {
-        public static final LIRInstructionClass<StoreRbpOp> TYPE = LIRInstructionClass.create(StoreRbpOp.class);
-
-        @Def({REG, HINT}) protected AllocatableValue result;
-        @Use({REG}) protected AllocatableValue input;
-        @Def({STACK}) protected StackSlotValue stackSlot;
-
-        protected StoreRbpOp(AllocatableValue result, AllocatableValue input, StackSlotValue stackSlot) {
-            super(TYPE);
-            assert result.getLIRKind().equals(input.getLIRKind()) && stackSlot.getLIRKind().equals(input.getLIRKind()) : String.format("result %s, input %s, stackSlot %s", result.getLIRKind(),
-                            input.getLIRKind(), stackSlot.getLIRKind());
-            this.result = result;
-            this.input = input;
-            this.stackSlot = stackSlot;
-        }
-
-        public Value getInput() {
-            return input;
-        }
-
-        public AllocatableValue getResult() {
-            return result;
-        }
-
-        public StackSlotValue getStackSlot() {
-            return stackSlot;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
-            AMD64Move.move(kind, crb, masm, result, input);
-            AMD64Move.move(kind, crb, masm, stackSlot, input);
         }
     }
 
