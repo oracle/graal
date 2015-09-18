@@ -93,7 +93,6 @@ import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.IPOPCNT;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.LBSR;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.LPOPCNT;
-import static com.oracle.graal.lir.sparc.SPARCCompare.ACMP;
 import static com.oracle.graal.lir.sparc.SPARCCompare.DCMP;
 import static com.oracle.graal.lir.sparc.SPARCCompare.FCMP;
 import static com.oracle.graal.lir.sparc.SPARCCompare.ICMP;
@@ -343,9 +342,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 actualCmpKind = JavaKind.Int;
                 opcode = ICMP;
                 break;
-            case Object:
-                opcode = ACMP;
-                break;
             case Long:
                 opcode = LCMP;
                 break;
@@ -467,9 +463,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 break;
             case Long:
                 append(new CompareOp(LCMP, left, right));
-                break;
-            case Object:
-                append(new CompareOp(ACMP, left, right));
                 break;
             case Float:
                 append(new CompareOp(FCMP, left, right));

@@ -46,7 +46,6 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.CompareBranchOp;
 public enum SPARCCompare {
     ICMP,
     LCMP,
-    ACMP,
     FCMP,
     DCMP;
 
@@ -96,9 +95,6 @@ public enum SPARCCompare {
                 case LCMP:
                     masm.cmp(asRegister(x, JavaKind.Long), asRegister(y, JavaKind.Long));
                     break;
-                case ACMP:
-                    masm.cmp(asRegister(x), asRegister(y));
-                    break;
                 case FCMP:
                     masm.fcmp(Fcc0, Fcmps, asRegister(x, JavaKind.Float), asRegister(y, JavaKind.Float));
                     break;
@@ -124,12 +120,8 @@ public enum SPARCCompare {
                     masm.cmp(asRegister(x, JavaKind.Long), imm);
                     break;
                 case ICMP:
-                    assert isSimm13(crb.asIntConst(y));
+                    assert isSimm13(imm);
                     masm.cmp(asRegister(x, JavaKind.Int), imm);
-                    break;
-                case ACMP:
-                    assert imm == 0 : "Only null object constants are allowed in comparisons";
-                    masm.cmp(asRegister(x), 0);
                     break;
                 default:
                     throw JVMCIError.shouldNotReachHere();

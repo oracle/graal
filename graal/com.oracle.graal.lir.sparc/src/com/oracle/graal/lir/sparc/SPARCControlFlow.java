@@ -92,6 +92,7 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.Opcode;
@@ -239,9 +240,6 @@ public class SPARCControlFlow {
          * @return true if the branch could be emitted
          */
         private boolean emitShortCompareBranch(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            Value tmpValue;
-            Value actualX = x;
-            Value actualY = y;
             ConditionFlag actualConditionFlag = conditionFlag;
             Label actualTrueTarget = trueDestination.label();
             Label actualFalseTarget = falseDestination.label();
@@ -266,14 +264,7 @@ public class SPARCControlFlow {
                     actualFalseTarget = tmpTarget;
                 }
             }
-            // Keep the constant on the right
-            if (isJavaConstant(actualX)) {
-                tmpValue = actualX;
-                actualX = actualY;
-                actualY = tmpValue;
-                actualConditionFlag = actualConditionFlag.mirror();
-            }
-            emitCBCond(masm, actualX, actualY, actualTrueTarget, actualConditionFlag);
+            emitCBCond(masm, x, y, actualTrueTarget, actualConditionFlag);
             if (needJump) {
                 masm.jmp(actualFalseTarget);
                 masm.nop();
@@ -295,20 +286,11 @@ public class SPARCControlFlow {
                 case Long:
                     if (isJavaConstant(actualY)) {
                         JavaConstant c = asJavaConstant(actualY);
-                        assert NumUtil.is32bit(c.asLong());
+                        assert c.isNull() || NumUtil.is32bit(c.asLong());
                         int constantY = c.isNull() ? 0 : (int) c.asLong();
                         CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, JavaKind.Long), constantY, actualTrueTarget);
                     } else {
                         CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, JavaKind.Long), asRegister(actualY, JavaKind.Long), actualTrueTarget);
-                    }
-                    break;
-                case Object:
-                    if (isJavaConstant(actualY)) {
-                        // Object constant valid can only be null
-                        assert asJavaConstant(actualY).isNull();
-                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX), 0, actualTrueTarget);
-                    } else { // this is already loaded
-                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX), asRegister(actualY), actualTrueTarget);
                     }
                     break;
                 default:
