@@ -68,6 +68,8 @@ public final class Instrumenter {
         return visitor.source;
     }
 
+    private final Object vm;
+
     private final Set<ASTProber> astProbers = Collections.synchronizedSet(new LinkedHashSet<ASTProber>());
 
     private final List<ProbeListener> probeListeners = new ArrayList<>();
@@ -103,7 +105,33 @@ public final class Instrumenter {
         }
     }
 
-    Instrumenter() {
+    Instrumenter(Object vm) {
+        this.vm = vm;
+    }
+
+    /**
+     * Returns {@code true} if the node can be "instrumented" by {@linkplain #probe(Node) probing}.
+     * <p>
+     * <b>Note:</b> instrumentation requires a appropriate {@linkplain #createWrapperNode(Node)
+     * WrapperNode}.
+     */
+    public boolean isInstrumentable(Node node) {
+        return ACCESSOR.isInstrumentable(vm, node);
+    }
+
+    /**
+     * For nodes that are {@linkplain #isInstrumentable() instrumentable}, this method must return
+     * an {@linkplain Node AST node} that:
+     * <ol>
+     * <li>implements {@link WrapperNode}</li>
+     * <li>has the node argument as it's child, and</li>
+     * <li>whose type is safe for replacement of the node in the parent.</li>
+     * </ol>
+     *
+     * @return an appropriately typed {@link WrapperNode}
+     */
+    public WrapperNode createWrapperNode(Node node) {
+        return ACCESSOR.createWrapperNode(vm, node);
     }
 
     /**
@@ -142,12 +170,12 @@ public final class Instrumenter {
             return wrapper.getProbe();
         }
 
-        if (!(node.isInstrumentable())) {
+        if (!isInstrumentable(node)) {
             throw new ProbeException(ProbeFailure.Reason.NOT_INSTRUMENTABLE, parent, node, null);
         }
 
         // Create a new wrapper/probe with this node as its child.
-        final WrapperNode wrapper = node.createWrapperNode();
+        final WrapperNode wrapper = createWrapperNode(node);
 
         if (wrapper == null || !(wrapper instanceof Node)) {
             throw new ProbeException(ProbeFailure.Reason.NO_WRAPPER, parent, node, wrapper);
@@ -327,8 +355,18 @@ public final class Instrumenter {
     static final class AccessorInstrument extends Accessor {
 
         @Override
-        protected Instrumenter createInstrumenter() {
-            return new Instrumenter();
+        protected Instrumenter createInstrumenter(Object vm) {
+            return new Instrumenter(vm);
+        }
+
+        @Override
+        protected boolean isInstrumentable(Object vm, Node node) {
+            return super.isInstrumentable(vm, node);
+        }
+
+        @Override
+        public WrapperNode createWrapperNode(Object vm, Node node) {
+            return super.createWrapperNode(vm, node);
         }
 
         @SuppressWarnings("rawtypes")

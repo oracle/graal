@@ -41,8 +41,6 @@ import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.Instrument;
-import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.JSONHelper;
@@ -418,30 +416,17 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Any node for which this is {@code true} can be "instrumented" by installing a {@link Probe}
-     * that intercepts execution events at the node and routes them to any {@link Instrument}s that
-     * have been attached to the {@link Probe}. Only one {@link Probe} may be installed at each
-     * node; subsequent calls return the one already installed.
-     * <p>
-     * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}, which must be
-     * provided by {@link #createWrapperNode()}.
-     *
-     * @see Instrument
+     * @see TruffleLanguage
      */
+    @Deprecated
     public boolean isInstrumentable() {
         return false;
     }
 
     /**
-     * For any node that {@link #isInstrumentable()}, this method must return a {@link Node} that:
-     * <ol>
-     * <li>implements {@link WrapperNode}</li>
-     * <li>has {@code this} as it's child, and</li>
-     * <li>whose type is safe for replacement of {@code this} in the parent.</li>
-     * </ol>
-     *
-     * @return an appropriately typed {@link WrapperNode} if {@link #isInstrumentable()}.
+     * @see TruffleLanguage
      */
+    @Deprecated
     public WrapperNode createWrapperNode() {
         return null;
     }

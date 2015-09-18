@@ -46,7 +46,6 @@ import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
 /**
@@ -97,12 +96,12 @@ public abstract class SLExpressionNode extends SLStatementNode {
 
     @Override
     public boolean isInstrumentable() {
-        return true;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public WrapperNode createWrapperNode() {
-        return new SLExpressionWrapperNode(this);
+        throw new UnsupportedOperationException();
     }
 
 }

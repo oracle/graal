@@ -44,6 +44,7 @@ import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
@@ -100,6 +101,16 @@ public abstract class Accessor {
 
             @Override
             protected Object createContext(TruffleLanguage.Env env) {
+                return null;
+            }
+
+            @Override
+            protected boolean isInstrumentable(Node node) {
+                return false;
+            }
+
+            @Override
+            protected WrapperNode createWrapperNode(Node node) {
                 return null;
             }
 
@@ -210,6 +221,28 @@ public abstract class Accessor {
         throw new UnsupportedOperationException();
     }
 
+    protected boolean isInstrumentable(Object vm, Node node) {
+        final RootNode rootNode = node.getRootNode();
+        Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
+        TruffleLanguage language = findLanguageImpl(vm, languageClazz);
+        return isInstrumentable(node, language);
+    }
+
+    protected boolean isInstrumentable(Node node, TruffleLanguage language) {
+        return API.isInstrumentable(node, language);
+    }
+
+    protected WrapperNode createWrapperNode(Object vm, Node node) {
+        final RootNode rootNode = node.getRootNode();
+        Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
+        TruffleLanguage language = findLanguageImpl(vm, languageClazz);
+        return createWrapperNode(node, language);
+    }
+
+    protected WrapperNode createWrapperNode(Node node, TruffleLanguage language) {
+        return API.createWrapperNode(node, language);
+    }
+
     protected ASTProber getDefaultASTProber(TruffleLanguage language) {
         return API.getDefaultASTProber(language);
     }
@@ -269,8 +302,8 @@ public abstract class Accessor {
         return SPI.getInstrumenter(vm);
     }
 
-    protected Instrumenter createInstrumenter() {
-        return INSTRUMENT.createInstrumenter();
+    protected Instrumenter createInstrumenter(Object vm) {
+        return INSTRUMENT.createInstrumenter(vm);
     }
 
     private static Reference<Object> previousVM = new WeakReference<>(null);
@@ -304,7 +337,7 @@ public abstract class Accessor {
         return oneVM;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
     static <C> C findContext(Class<? extends TruffleLanguage> type) {
         Env env = SPI.findLanguage(CURRENT_VM.get(), type);
         return (C) API.findContext(env);

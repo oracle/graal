@@ -47,6 +47,7 @@ import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeNode;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -79,7 +80,7 @@ public class InitializationTest {
             }
         }).build();
 
-        Source source = Source.fromText("any text", "any text").withMimeType("application/x-abstrlang");
+        Source source = Source.fromText("accessProbeForAbstractLanguage text", "accessProbeForAbstractLanguage").withMimeType("application/x-abstrlang");
 
         vm.eval(source);
 
@@ -131,14 +132,16 @@ public class InitializationTest {
             return getRootNode().getSourceSection();
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public boolean isInstrumentable() {
             return true;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public ProbeNode.WrapperNode createWrapperNode() {
-            return new ANodeWrapper(this);
+            throw new UnsupportedOperationException();
         }
 
         Object constant() {
@@ -181,7 +184,7 @@ public class InitializationTest {
     }
 
     @TruffleLanguage.Registration(mimeType = "application/x-abstrlang", name = "AbstrLang", version = "0.1")
-    public static final class TestLanguage extends AbstractLanguage implements DebugSupportProvider {
+    public static final class TestLanguage extends AbstractLanguage {
         public static final TestLanguage INSTANCE = new TestLanguage();
 
         private final ASTProber prober = new ASTProber() {
@@ -251,6 +254,16 @@ public class InitializationTest {
         @Override
         public Visualizer getVisualizer() {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        protected boolean isInstrumentable(Node node) {
+            return node instanceof ANode;
+        }
+
+        @Override
+        protected WrapperNode createWrapperNode(Node node) {
+            return node instanceof ANode ? new ANodeWrapper((ANode) node) : null;
         }
 
         @Override

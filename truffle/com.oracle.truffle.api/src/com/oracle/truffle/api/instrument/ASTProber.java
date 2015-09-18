@@ -37,7 +37,7 @@ public interface ASTProber {
 
     /**
      * Walk the AST starting at a node and enable instrumentation at selected nodes by attaching
-     * {@linkplain Probe Probes} to them. Ignore {@linkplain Node#isInstrumentable()
+     * {@linkplain Probe Probes} to them. Ignore {@linkplain Instrumenter#isInstrumentable(Node)
      * non-instrumentable} nodes.
      */
     void probeAST(Instrumenter instrumenter, Node node);

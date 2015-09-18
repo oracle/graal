@@ -53,7 +53,8 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
     /**
      * A node that can be inserted into a Truffle AST, and which enables {@linkplain Instrument
      * instrumentation} at a particular Guest Language (GL) node. Implementations must extend
-     * {@link Node} and should override {@link Node#isInstrumentable()} to return {@code false}.
+     * {@link Node} and should ensure that {@link TruffleLanguage#isInstrumentable(Node)} returns
+     * {@code false}.
      * <p>
      * The implementation must be GL-specific. A wrapper <em>decorates</em> a GL AST node (the
      * wrapper's <em>child</em>) by acting as a transparent <em>proxy</em> with respect to the GL's
@@ -121,6 +122,7 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
      */
     @Child protected AbstractInstrumentNode firstInstrumentNode;
 
+    @SuppressWarnings("deprecation")
     @Override
     public boolean isInstrumentable() {
         return false;

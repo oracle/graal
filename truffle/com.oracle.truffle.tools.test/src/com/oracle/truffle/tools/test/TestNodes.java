@@ -106,11 +106,13 @@ class TestNodes {
             super(srcSection);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public boolean isInstrumentable() {
             return true;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public WrapperNode createWrapperNode() {
             return new TestWrapperNode(this);

@@ -25,11 +25,16 @@
 package com.oracle.truffle.tools.test;
 
 import static com.oracle.truffle.tools.test.TestNodes.createExpr13TestRootNode;
+import static com.oracle.truffle.tools.test.ToolTestingLanguage.VALUE_TAG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.lang.reflect.Field;
+
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrument.Instrumenter;
@@ -37,13 +42,21 @@ import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.TruffleVM;
 import com.oracle.truffle.tools.CoverageTracker;
 
 public class CoverageTrackerTest {
 
+    @SuppressWarnings("unused") private static com.oracle.truffle.tools.test.ToolTestingLanguage DUMMY = null;
+    @SuppressWarnings("unused") private static ToolTestingLanguage INSTANCE = ToolTestingLanguage.INSTANCE;
+
     @Test
     public void testNoExecution() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        final Instrumenter instrumenter = TestNodes.createInstrumenter();
+        final TruffleVM vm = TruffleVM.newVM().build();
+        final Field field = TruffleVM.class.getDeclaredField("instrumenter");
+        field.setAccessible(true);
+        final Instrumenter instrumenter = (Instrumenter) field.get(vm);
         final CoverageTracker tool = new CoverageTracker();
         assertEquals(tool.getCounts().entrySet().size(), 0);
         tool.install(instrumenter);
@@ -59,27 +72,33 @@ public class CoverageTrackerTest {
     }
 
     @Test
-    public void testToolCreatedTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        final Instrumenter instrumenter = TestNodes.createInstrumenter();
-        final RootNode expr13rootNode = TestNodes.createExpr13TestRootNode(instrumenter);
-        final CoverageTracker tool = new CoverageTracker();
+    public void testToolCreatedTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
+        final TruffleVM vm = TruffleVM.newVM().build();
+        final Field field = TruffleVM.class.getDeclaredField("instrumenter");
+        field.setAccessible(true);
+        final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        final CoverageTracker tool = new CoverageTracker(VALUE_TAG);
         tool.install(instrumenter);
-        assertEquals(13, expr13rootNode.execute(null));
+        final Source source = Source.fromText("testToolCreatedTooLate text", "testToolCreatedTooLate").withMimeType("text/x-toolTest");
+        assertEquals(vm.eval(source).get(), 13);
         assertTrue(tool.getCounts().isEmpty());
         tool.dispose();
     }
 
+    @Ignore
     @Test
     public void testToolInstalledcTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Instrumenter instrumenter = TestNodes.createInstrumenter();
         final CoverageTracker tool = new CoverageTracker();
         final RootNode expr13rootNode = createExpr13TestRootNode(instrumenter);
+
         tool.install(instrumenter);
         assertEquals(13, expr13rootNode.execute(null));
         assertTrue(tool.getCounts().isEmpty());
         tool.dispose();
     }
 
+    @Ignore
     @Test
     public void testCountingCoverage() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Instrumenter instrumenter = TestNodes.createInstrumenter();

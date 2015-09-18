@@ -141,7 +141,7 @@ public final class TruffleVM {
         this.handlers = handlers;
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
-        this.instrumenter = SPI.createInstrumenter();
+        this.instrumenter = SPI.createInstrumenter(this);
         Map<String, Language> map = new HashMap<>();
         for (Map.Entry<String, LanguageCache> en : LanguageCache.languages().entrySet()) {
             map.put(en.getKey(), new Language(en.getValue()));
@@ -895,8 +895,8 @@ public final class TruffleVM {
         }
 
         @Override
-        protected Instrumenter createInstrumenter() {
-            return super.createInstrumenter();
+        protected Instrumenter createInstrumenter(Object vm) {
+            return super.createInstrumenter(vm);
         }
 
         @Override

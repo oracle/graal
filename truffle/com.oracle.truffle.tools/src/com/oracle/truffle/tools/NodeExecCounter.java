@@ -68,7 +68,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
  * <li>"Execution call" on a node is is defined as invocation of a node method that is instrumented
  * to produce the event {@link StandardInstrumentListener#enter(Probe, Node, VirtualFrame)};</li>
  * <li>Execution calls are tabulated only at <em>instrumented</em> nodes, i.e. those for which
- * {@linkplain Node#isInstrumentable() isInstrumentable() == true};</li>
+ * {@linkplain Instrumenter#isInstrumentable(Node) isInstrumentable() == true};</li>
  * <li>Execution calls are tabulated only at nodes present in the AST when originally created;
  * dynamically added nodes will not be instrumented.</li>
  * </ul>
@@ -299,7 +299,7 @@ public final class NodeExecCounter extends InstrumentationTool {
 
                 public boolean visit(Node node) {
 
-                    if (node.isInstrumentable()) {
+                    if (instrumenter.isInstrumentable(node)) {
                         try {
                             final Instrument instrument = Instrument.create(instrumentListener, "NodeExecCounter");
                             instruments.add(instrument);

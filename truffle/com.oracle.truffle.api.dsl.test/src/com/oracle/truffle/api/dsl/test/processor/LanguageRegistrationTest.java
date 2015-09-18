@@ -32,6 +32,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
@@ -83,6 +84,16 @@ public class LanguageRegistrationTest {
 
         @Override
         protected Visualizer getVisualizer() {
+            return null;
+        }
+
+        @Override
+        protected boolean isInstrumentable(Node node) {
+            return false;
+        }
+
+        @Override
+        protected WrapperNode createWrapperNode(Node node) {
             return null;
         }
 
@@ -159,6 +170,16 @@ public class LanguageRegistrationTest {
         }
 
         @Override
+        protected boolean isInstrumentable(Node node) {
+            return false;
+        }
+
+        @Override
+        protected WrapperNode createWrapperNode(Node node) {
+            return null;
+        }
+
+        @Override
         protected ASTProber getDefaultASTProber() {
             return null;
         }
@@ -223,6 +244,16 @@ public class LanguageRegistrationTest {
 
         @Override
         protected Visualizer getVisualizer() {
+            return null;
+        }
+
+        @Override
+        protected boolean isInstrumentable(Node node) {
+            return false;
+        }
+
+        @Override
+        protected WrapperNode createWrapperNode(Node node) {
             return null;
         }
 

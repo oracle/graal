@@ -44,6 +44,8 @@ import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
@@ -206,6 +208,29 @@ public abstract class TruffleLanguage<C> {
      */
     @Deprecated
     protected abstract void enableASTProbing(ASTProber astProber);
+
+    /**
+     * Returns {@code true} for a node can be "instrumented" by
+     * {@linkplain Instrumenter#probe(Node) probing}.
+     * <p>
+     * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
+     *
+     * @see Node#createWrapperNode()
+     */
+    protected abstract boolean isInstrumentable(Node node);
+
+    /**
+     * For nodes in this language that are {@linkplain #isInstrumentable() instrumentable}, this
+     * method returns an {@linkplain Node AST node} that:
+     * <ol>
+     * <li>implements {@link WrapperNode};</li>
+     * <li>has the node argument as it's child; and</li>
+     * <li>whose type is safe for replacement of the node in the parent.</li>
+     * </ol>
+     *
+     * @return an appropriately typed {@link WrapperNode}
+     */
+    protected abstract WrapperNode createWrapperNode(Node node);
 
     /**
      * Gets the current specification for AST instrumentation for the language.
@@ -423,6 +448,16 @@ public abstract class TruffleLanguage<C> {
         @Override
         protected Object findContext(Env env) {
             return env.langCtx.ctx;
+        }
+
+        @Override
+        protected boolean isInstrumentable(Node node, TruffleLanguage language) {
+            return language.isInstrumentable(node);
+        }
+
+        @Override
+        protected WrapperNode createWrapperNode(Node node, TruffleLanguage language) {
+            return language.createWrapperNode(node);
         }
 
         @Override

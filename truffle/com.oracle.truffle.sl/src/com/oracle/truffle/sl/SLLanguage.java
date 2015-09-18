@@ -60,6 +60,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.GraphPrintVisitor;
@@ -75,7 +76,9 @@ import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
+import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
@@ -99,7 +102,9 @@ import com.oracle.truffle.sl.nodes.expression.SLMulNode;
 import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.instrument.SLDefaultVisualizer;
+import com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode;
 import com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber;
+import com.oracle.truffle.sl.nodes.instrument.SLStatementWrapperNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.parser.Parser;
@@ -185,7 +190,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 
 /*
- *
+ * 
  * <p> <b>Tools:</b><br> The use of some of Truffle's support for developer tools (based on the
  * Truffle Instrumentation Framework) are demonstrated in this file, for example: <ul> <li>a
  * {@linkplain NodeExecCounter counter for node executions}, tabulated by node type; and</li> <li>a
@@ -480,6 +485,22 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             visualizer = new SLDefaultVisualizer();
         }
         return visualizer;
+    }
+
+    @Override
+    protected boolean isInstrumentable(Node node) {
+        return node instanceof SLStatementNode;
+    }
+
+    @Override
+    protected WrapperNode createWrapperNode(Node node) {
+        if (node instanceof SLExpressionNode) {
+            return new SLExpressionWrapperNode((SLExpressionNode) node);
+        }
+        if (node instanceof SLStatementNode) {
+            return new SLStatementWrapperNode((SLStatementNode) node);
+        }
+        return null;
     }
 
     @Override

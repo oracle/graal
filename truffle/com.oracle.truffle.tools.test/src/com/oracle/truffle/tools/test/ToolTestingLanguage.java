@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,37 +22,178 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.test.instrument;
+package com.oracle.truffle.tools.test;
 
-import java.lang.reflect.Field;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeNode;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
+import com.oracle.truffle.api.instrument.SyntaxTag;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.source.Source;
 
-/**
- * Tests instrumentation where a client can attach a node that gets attached into the AST.
- */
-class InstrumentationTestNodes {
+@TruffleLanguage.Registration(name = "toolTestLanguage", version = "0", mimeType = "text/x-toolTest")
+public final class ToolTestingLanguage extends TruffleLanguage<Object> {
 
-    static Instrumenter createInstrumenter() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        TruffleVM vm = TruffleVM.newVM().build();
-        final Field field = TruffleVM.class.getDeclaredField("instrumenter");
-        field.setAccessible(true);
-        final Instrumenter instrument = (Instrumenter) field.get(vm);
-        return instrument;
+    public static final ToolTestingLanguage INSTANCE = new ToolTestingLanguage();
+
+    static final SyntaxTag ADD_TAG = new SyntaxTag() {
+
+        @Override
+        public String name() {
+            return "Addition";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Test Language Addition Node";
+        }
+    };
+
+    static final SyntaxTag VALUE_TAG = new SyntaxTag() {
+
+        @Override
+        public String name() {
+            return "Value";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Test Language Value Node";
+        }
+    };
+
+    private final ASTProber prober = new TestASTProber();
+
+    private ToolTestingLanguage() {
+    }
+
+    @Override
+    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+        final TestValueNode leftValueNode = new TestValueNode(6);
+        final TestValueNode rightValueNode = new TestValueNode(7);
+        final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
+        final InstrumentationTestRootNode rootNode = new InstrumentationTestRootNode(addNode);
+        final TruffleRuntime runtime = Truffle.getRuntime();
+        final CallTarget callTarget = runtime.createCallTarget(rootNode);
+        return callTarget;
+    }
+
+    @Override
+    protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
+        return null;
+    }
+
+    @Override
+    protected Object getLanguageGlobal(Object context) {
+        return null;
+    }
+
+    @Override
+    protected boolean isObjectOfLanguage(Object object) {
+        return false;
+    }
+
+    @Override
+    protected Visualizer getVisualizer() {
+        return null;
+    }
+
+    @Override
+    protected ASTProber getDefaultASTProber() {
+        return prober;
+    }
+
+    @Override
+    protected boolean isInstrumentable(Node node) {
+        return node instanceof TestAdditionNode || node instanceof TestValueNode;
+    }
+
+    @Override
+    protected WrapperNode createWrapperNode(Node node) {
+        if (isInstrumentable(node)) {
+            return new TestLanguageWrapperNode((TestLanguageNode) node);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void enableASTProbing(ASTProber astProber) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        return null;
+    }
+
+    @Override
+    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
+        return null;
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected ToolSupportProvider getToolSupport() {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected DebugSupportProvider getDebugSupport() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected Object createContext(Env env) {
+        return null;
+    }
+
+    static final class TestASTProber implements ASTProber {
+
+        public void probeAST(final Instrumenter instrumenter, Node startNode) {
+            startNode.accept(new NodeVisitor() {
+
+                @Override
+                public boolean visit(Node node) {
+                    if (node instanceof TestLanguageNode) {
+
+                        final TestLanguageNode testNode = (TestLanguageNode) node;
+
+                        if (node instanceof TestValueNode) {
+                            instrumenter.probe(testNode).tagAs(VALUE_TAG, null);
+
+                        } else if (node instanceof TestAdditionNode) {
+                            instrumenter.probe(testNode).tagAs(ADD_TAG, null);
+
+                        }
+                    }
+                    return true;
+                }
+            });
+        }
     }
 
     abstract static class TestLanguageNode extends Node {
@@ -59,7 +202,7 @@ class InstrumentationTestNodes {
         @SuppressWarnings("deprecation")
         @Override
         public boolean isInstrumentable() {
-            return true;
+            throw new UnsupportedOperationException();
         }
 
         @SuppressWarnings("deprecation")
@@ -169,7 +312,7 @@ class InstrumentationTestNodes {
          * tests run in the same environment.
          */
         public InstrumentationTestRootNode(TestLanguageNode body) {
-            super(InstrumentationTestingLanguage.class, null, null);
+            super(ToolTestingLanguage.class, null, null);
             this.body = body;
         }
 
@@ -205,7 +348,7 @@ class InstrumentationTestNodes {
          * tests run in the same environment.
          */
         public TestRootNode(TestLanguageNode body, Instrumenter instrumenter) {
-            super(InstrumentationTestingLanguage.class, null, null);
+            super(ToolTestingLanguage.class, null, null);
             this.instrumenter = instrumenter;
             this.body = body;
         }
@@ -230,25 +373,6 @@ class InstrumentationTestNodes {
             } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                 throw new RuntimeException("InstrumentationTestNodes");
             }
-        }
-    }
-
-    static class TestAdvancedInstrumentCounterRoot extends AdvancedInstrumentRoot {
-
-        private long count;
-
-        @Override
-        public Object executeRoot(Node node, VirtualFrame vFrame) {
-            count++;
-            return null;
-        }
-
-        public long getCount() {
-            return count;
-        }
-
-        public String instrumentationInfo() {
-            return null;
         }
     }
 

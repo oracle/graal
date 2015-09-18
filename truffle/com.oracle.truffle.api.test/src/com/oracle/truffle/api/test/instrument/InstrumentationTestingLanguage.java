@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,78 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.test;
+package com.oracle.truffle.api.test.instrument;
 
 import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
+import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.InstrumentationTestRootNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestLanguageNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestLanguageWrapperNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
 
-public final class TestingLanguage extends TruffleLanguage<Object> {
-    public static final TestingLanguage INSTANCE = new TestingLanguage();
+@TruffleLanguage.Registration(name = "instrumentationTestLanguage", version = "0", mimeType = "text/x-instTest")
+public final class InstrumentationTestingLanguage extends TruffleLanguage<Object> {
 
-    private TestingLanguage() {
+    public static final InstrumentationTestingLanguage INSTANCE = new InstrumentationTestingLanguage();
+
+    public static final SyntaxTag ADD_TAG = new SyntaxTag() {
+
+        @Override
+        public String name() {
+            return "Addition";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Test Language Addition Node";
+        }
+    };
+
+    public static final SyntaxTag VALUE_TAG = new SyntaxTag() {
+
+        @Override
+        public String name() {
+            return "Value";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Test Language Value Node";
+        }
+    };
+
+    private final ASTProber prober = new TestASTProber();
+
+    private InstrumentationTestingLanguage() {
     }
 
     @Override
     protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-        throw new IOException();
+        final TestValueNode leftValueNode = new TestValueNode(6);
+        final TestValueNode rightValueNode = new TestValueNode(7);
+        final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
+        final InstrumentationTestRootNode rootNode = new InstrumentationTestRootNode(addNode);
+        final TruffleRuntime runtime = Truffle.getRuntime();
+        final CallTarget callTarget = runtime.createCallTarget(rootNode);
+        return callTarget;
     }
 
     @Override
@@ -70,16 +116,19 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
 
     @Override
     protected ASTProber getDefaultASTProber() {
-        return null;
+        return prober;
     }
 
     @Override
     protected boolean isInstrumentable(Node node) {
-        return false;
+        return node instanceof TestAdditionNode || node instanceof TestValueNode;
     }
 
     @Override
     protected WrapperNode createWrapperNode(Node node) {
+        if (isInstrumentable(node)) {
+            return new TestLanguageWrapperNode((TestLanguageNode) node);
+        }
         return null;
     }
 
@@ -114,6 +163,31 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
     @Override
     protected Object createContext(Env env) {
         return null;
+    }
+
+    static final class TestASTProber implements ASTProber {
+
+        public void probeAST(final Instrumenter instrumenter, Node startNode) {
+            startNode.accept(new NodeVisitor() {
+
+                @Override
+                public boolean visit(Node node) {
+                    if (node instanceof TestLanguageNode) {
+
+                        final TestLanguageNode testNode = (TestLanguageNode) node;
+
+                        if (node instanceof TestValueNode) {
+                            instrumenter.probe(testNode).tagAs(VALUE_TAG, null);
+
+                        } else if (node instanceof TestAdditionNode) {
+                            instrumenter.probe(testNode).tagAs(ADD_TAG, null);
+
+                        }
+                    }
+                    return true;
+                }
+            });
+        }
     }
 
 }
