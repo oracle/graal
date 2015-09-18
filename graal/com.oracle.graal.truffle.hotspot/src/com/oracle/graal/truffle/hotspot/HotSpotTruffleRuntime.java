@@ -31,6 +31,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleTransf
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
 import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
+import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -223,7 +224,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
         for (OptimizedCallTargetInstrumentationFactory factory : Services.load(OptimizedCallTargetInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
-                factory.init(getJVMCIRuntime().getConfig(), getHotSpotProviders().getRegisters());
+                factory.init(config(), getHotSpotProviders().getRegisters());
                 return factory;
             }
         }
@@ -255,10 +256,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private static HotSpotBackend getHotSpotBackend() {
         RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
         return (HotSpotBackend) runtimeProvider.getHostBackend();
-    }
-
-    private static HotSpotJVMCIRuntimeProvider getJVMCIRuntime() {
-        return HotSpotJVMCIRuntime.runtime();
     }
 
     private static HotSpotProviders getHotSpotProviders() {
@@ -392,7 +389,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     public static NativeFunctionInterface createNativeFunctionInterface() {
-        HotSpotVMConfig config = getJVMCIRuntime().getConfig();
+        HotSpotVMConfig config = config();
         Backend backend = getHotSpotBackend();
         RawNativeCallNodeFactory factory = getRawNativeCallNodeFactory(backend.getTarget().arch.getName());
         if (factory == null) {
@@ -414,7 +411,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
         static void traceTransferToInterpreter() {
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + getJVMCIRuntime().getConfig().pendingTransferToInterpreterOffset;
+            long pendingTransferToInterpreterAddress = thread + config().pendingTransferToInterpreterOffset;
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
             if (deoptimized) {
                 UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);

@@ -139,7 +139,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static HotSpotVMConfig config() {
-        return runtime().getConfig();
+        return HotSpotVMConfig.config();
     }
 
     @Fold
