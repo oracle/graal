@@ -29,11 +29,23 @@ import jdk.internal.jvmci.compiler.Compiler;
 import jdk.internal.jvmci.compiler.CompilerFactory;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.inittimer.InitTimer;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
 import jdk.internal.jvmci.runtime.JVMCIRuntime;
 
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public abstract class HotSpotGraalCompilerFactory implements CompilerFactory {
+
+    static class Options {
+
+        // @formatter:off
+        @Option(help = "In tiered mode compile the compiler itself using optimized first tier code.", type = OptionType.Expert)
+        public static final OptionValue<Boolean> CompileGraalWithC1Only = new OptionValue<>(true);
+        // @formatter:on
+
+    }
 
     protected abstract HotSpotBackendFactory getBackendFactory(Architecture arch);
 
@@ -56,5 +68,13 @@ public abstract class HotSpotGraalCompilerFactory implements CompilerFactory {
             HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, this);
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime);
         }
+    }
+
+    @Override
+    public String[] getTrivialPrefixes() {
+        if (Options.CompileGraalWithC1Only.getValue()) {
+            return new String[]{"jdk/internal/jvmci", "com/oracle/graal"};
+        }
+        return null;
     }
 }
