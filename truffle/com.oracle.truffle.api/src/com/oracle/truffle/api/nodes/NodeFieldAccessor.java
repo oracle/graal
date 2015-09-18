@@ -24,11 +24,12 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.lang.reflect.Field;
+
+import sun.misc.Unsafe;
+
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
-import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
-import java.lang.reflect.Field;
-import sun.misc.Unsafe;
 
 /**
  * Information about a field in a {@link Node} class.
@@ -92,41 +93,6 @@ public abstract class NodeFieldAccessor {
 
     public abstract Object loadValue(Node node);
 
-    private static final Unsafe unsafe = getUnsafe();
-
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
-    }
-
-    private static final FieldOffsetProvider unsafeFieldOffsetProvider = new FieldOffsetProvider() {
-
-        @Override
-        public long objectFieldOffset(Field field) {
-            return unsafe.objectFieldOffset(field);
-        }
-
-        @Override
-        public int getTypeSize(Class<?> clazz) {
-            if (!clazz.isPrimitive()) {
-                return Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-            } else if (clazz == int.class) {
-                return Unsafe.ARRAY_INT_INDEX_SCALE;
-            } else {
-                throw new UnsupportedOperationException("unsupported field type: " + clazz);
-            }
-        }
-    };
-
     public abstract static class AbstractUnsafeNodeFieldAccessor extends NodeFieldAccessor {
 
         protected AbstractUnsafeNodeFieldAccessor(NodeFieldKind kind, Class<?> declaringClass, String name, Class<?> type) {
@@ -175,6 +141,22 @@ public abstract class NodeFieldAccessor {
                 return unsafe.getObject(node, getOffset());
             }
         }
+
+        private static final Unsafe unsafe = getUnsafe();
+
+        private static Unsafe getUnsafe() {
+            try {
+                return Unsafe.getUnsafe();
+            } catch (SecurityException e) {
+            }
+            try {
+                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeInstance.setAccessible(true);
+                return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+            }
+        }
     }
 
     private static final class UnsafeNodeField extends AbstractUnsafeNodeFieldAccessor {
@@ -182,7 +164,7 @@ public abstract class NodeFieldAccessor {
 
         protected UnsafeNodeField(NodeFieldKind kind, Field field) {
             super(kind, field.getDeclaringClass(), field.getName(), field.getType());
-            this.offset = unsafeFieldOffsetProvider.objectFieldOffset(field);
+            this.offset = AbstractUnsafeNodeFieldAccessor.unsafe.objectFieldOffset(field);
         }
 
         @Override
