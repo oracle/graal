@@ -29,33 +29,23 @@ import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LIRKind;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 /**
  * Superclass for operations that use the value of RBP saved in a method's prologue.
  */
-abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction {
+abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction implements AMD64HotSpotRestoreRbpOp {
 
     protected AMD64HotSpotEpilogueOp(LIRInstructionClass<? extends AMD64HotSpotEpilogueOp> c) {
         super(c);
     }
 
-    /**
-     * The type of location (i.e., stack or register) in which RBP is saved is not known until
-     * initial LIR generation is finished. Until then, we use a placeholder variable so that LIR
-     * verification is successful.
-     */
-    private static final Variable PLACEHOLDER = new Variable(LIRKind.value(JavaKind.Long), Integer.MAX_VALUE);
-
-    @Use({REG, STACK}) protected AllocatableValue savedRbp = PLACEHOLDER;
+    @Use({REG, STACK}) private AllocatableValue savedRbp = PLACEHOLDER;
 
     protected void leaveFrameAndRestoreRbp(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(savedRbp, crb, masm);
@@ -72,5 +62,9 @@ abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction {
             }
         }
         crb.frameContext.leave(crb);
+    }
+
+    public void setSavedRbp(AllocatableValue value) {
+        savedRbp = value;
     }
 }

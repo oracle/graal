@@ -219,13 +219,13 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     /**
      * List of epilogue operations that need to restore RBP.
      */
-    List<AMD64HotSpotEpilogueOp> epilogueOps = new ArrayList<>(2);
+    List<AMD64HotSpotRestoreRbpOp> epilogueOps = new ArrayList<>(2);
 
     @Override
     public <I extends LIRInstruction> I append(I op) {
         I ret = super.append(op);
-        if (op instanceof AMD64HotSpotEpilogueOp) {
-            epilogueOps.add((AMD64HotSpotEpilogueOp) op);
+        if (op instanceof AMD64HotSpotRestoreRbpOp) {
+            epilogueOps.add((AMD64HotSpotRestoreRbpOp) op);
         }
         return ret;
     }
@@ -535,8 +535,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             ((AMD64HotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
         }
 
-        for (AMD64HotSpotEpilogueOp op : epilogueOps) {
-            op.savedRbp = savedRbp;
+        for (AMD64HotSpotRestoreRbpOp op : epilogueOps) {
+            op.setSavedRbp(savedRbp);
         }
         if (BenchmarkCounters.enabled) {
             // ensure that the rescue slot is available
