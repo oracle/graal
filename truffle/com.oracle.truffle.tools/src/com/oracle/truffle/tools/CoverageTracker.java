@@ -35,6 +35,7 @@ import java.util.TreeSet;
 
 import com.oracle.truffle.api.instrument.Instrument;
 import com.oracle.truffle.api.instrument.InstrumentationTool;
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeListener;
 import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
@@ -116,7 +117,11 @@ public final class CoverageTracker extends InstrumentationTool {
 
     @Override
     protected boolean internalInstall() {
-        getInstrumenter().addProbeListener(probeListener);
+        final Instrumenter instrumenter = getInstrumenter();
+        for (Probe probe : instrumenter.findProbesTaggedAs(countingTag)) {
+            addCoverageCounter(probe);
+        }
+        instrumenter.addProbeListener(probeListener);
         return true;
     }
 
@@ -274,34 +279,37 @@ public final class CoverageTracker extends InstrumentationTool {
         @Override
         public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
             if (countingTag == tag) {
-
-                final SourceSection srcSection = probe.getProbedSourceSection();
-                if (srcSection == null) {
-                    // TODO (mlvdv) report this?
-                    return;
-                }
-                // Get the source line where the
-                final LineLocation lineLocation = srcSection.getLineLocation();
-                CoverageRecord record = coverageMap.get(lineLocation);
-                if (record != null) {
-                    // Another node starts on same line; count only the first (textually)
-                    if (srcSection.getCharIndex() > record.srcSection.getCharIndex()) {
-                        // Existing record, corresponds to code earlier on line
-                        return;
-                    } else {
-                        // Existing record, corresponds to code at a later position; replace it
-                        record.instrument.dispose();
-                    }
-                }
-
-                final CoverageRecord coverage = new CoverageRecord(srcSection);
-                final Instrument instrument = Instrument.create(coverage, CoverageTracker.class.getSimpleName());
-                coverage.instrument = instrument;
-                instruments.add(instrument);
-                probe.attach(instrument);
-                coverageMap.put(lineLocation, coverage);
+                addCoverageCounter(probe);
             }
         }
+    }
+
+    private void addCoverageCounter(Probe probe) {
+        final SourceSection srcSection = probe.getProbedSourceSection();
+        if (srcSection == null) {
+            // TODO (mlvdv) report this?
+            return;
+        }
+        // Get the source line where the
+        final LineLocation lineLocation = srcSection.getLineLocation();
+        CoverageRecord record = coverageMap.get(lineLocation);
+        if (record != null) {
+            // Another node starts on same line; count only the first (textually)
+            if (srcSection.getCharIndex() > record.srcSection.getCharIndex()) {
+                // Existing record, corresponds to code earlier on line
+                return;
+            } else {
+                // Existing record, corresponds to code at a later position; replace it
+                record.instrument.dispose();
+            }
+        }
+
+        final CoverageRecord coverage = new CoverageRecord(srcSection);
+        final Instrument instrument = Instrument.create(coverage, CoverageTracker.class.getSimpleName());
+        coverage.instrument = instrument;
+        instruments.add(instrument);
+        probe.attach(instrument);
+        coverageMap.put(lineLocation, coverage);
     }
 
 }
