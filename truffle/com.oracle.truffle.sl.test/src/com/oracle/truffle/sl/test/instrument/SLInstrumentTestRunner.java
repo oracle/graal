@@ -70,7 +70,6 @@ import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.Instrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
@@ -255,7 +254,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
                 // Attach an instrument to every probe tagged as an assignment
                 for (Probe probe : instrumenter.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
                     SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(printer);
-                    probe.attach(Instrument.create(slPrintAssigmentValueListener, "SL print assignment value"));
+                    instrumenter.attach(probe, slPrintAssigmentValueListener, "SL print assignment value");
                 }
 
                 TruffleVM.Symbol main = vm.findGlobalSymbol("main");

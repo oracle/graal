@@ -304,12 +304,10 @@ public final class CoverageTracker extends InstrumentationTool {
             }
         }
 
-        final CoverageRecord coverage = new CoverageRecord(srcSection);
-        final Instrument instrument = Instrument.create(coverage, CoverageTracker.class.getSimpleName());
-        coverage.instrument = instrument;
+        final CoverageRecord coverageRecord = new CoverageRecord(srcSection);
+        final Instrument instrument = getInstrumenter().attach(probe, coverageRecord, CoverageTracker.class.getSimpleName());
+        coverageRecord.instrument = instrument;
         instruments.add(instrument);
-        probe.attach(instrument);
-        coverageMap.put(lineLocation, coverage);
+        coverageMap.put(lineLocation, coverageRecord);
     }
-
 }

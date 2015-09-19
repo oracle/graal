@@ -208,7 +208,7 @@ public final class Probe {
      * @param instrument an instrument not yet attached to a probe
      * @throws IllegalStateException if the instrument has ever been attached before
      */
-    public void attach(Instrument instrument) throws IllegalStateException {
+    void attach(Instrument instrument) throws IllegalStateException {
         if (instrument.isDisposed()) {
             throw new IllegalStateException("Attempt to attach disposed instrument");
         }

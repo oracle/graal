@@ -120,7 +120,7 @@ public final class NodeExecCounter extends InstrumentationTool {
                 /*
                  * Everything up to here is inlined by Truffle compilation. Delegate the next part
                  * to a method behind an inlining boundary.
-                 * 
+                 *
                  * Note that it is not permitted to pass a {@link VirtualFrame} across an inlining
                  * boundary; they are truly virtual in inlined code.
                  */
@@ -301,9 +301,10 @@ public final class NodeExecCounter extends InstrumentationTool {
 
                     if (instrumenter.isInstrumentable(node)) {
                         try {
-                            final Instrument instrument = Instrument.create(instrumentListener, "NodeExecCounter");
+
+                            final Probe probe = instrumenter.probe(node);
+                            final Instrument instrument = instrumenter.attach(probe, instrumentListener, "NodeExecCounter");
                             instruments.add(instrument);
-                            instrumenter.probe(node).attach(instrument);
                         } catch (ProbeException ex) {
                             failures.add(ex.getFailure());
                         }
@@ -324,9 +325,8 @@ public final class NodeExecCounter extends InstrumentationTool {
         @Override
         public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
             if (countingTag == tag) {
-                final Instrument instrument = Instrument.create(instrumentListener, NodeExecCounter.class.getSimpleName());
+                final Instrument instrument = getInstrumenter().attach(probe, instrumentListener, NodeExecCounter.class.getSimpleName());
                 instruments.add(instrument);
-                probe.attach(instrument);
             }
         }
     }

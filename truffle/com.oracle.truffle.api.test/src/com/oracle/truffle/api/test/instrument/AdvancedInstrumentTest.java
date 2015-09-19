@@ -33,7 +33,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
-import com.oracle.truffle.api.instrument.Instrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeListener;
@@ -82,26 +81,27 @@ public class AdvancedInstrumentTest {
         assertEquals(vm.eval(source).get(), 13);
         assertNotNull("Add node should be probed", addNodeProbe[0]);
 
-        // Attach a null factory; it never actually attaches a node.
-        final Instrument instrument = Instrument.create(null, new AdvancedInstrumentRootFactory() {
+        // Attach a factory that never actually attaches a node.
+        final AdvancedInstrumentRootFactory rootFactory1 = new AdvancedInstrumentRootFactory() {
 
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return null;
             }
-        }, null, "test AdvancedInstrument");
-        addNodeProbe[0].attach(instrument);
+        };
+        instrumenter.attach(addNodeProbe[0], null, rootFactory1, null, "test AdvancedInstrument");
 
         assertEquals(vm.eval(source).get(), 13);
 
-        final TestAdvancedInstrumentCounterRoot counter = new TestAdvancedInstrumentCounterRoot();
-
         // Attach a factory that splices an execution counter into the AST.
-        addNodeProbe[0].attach(Instrument.create(null, new AdvancedInstrumentRootFactory() {
+        final TestAdvancedInstrumentCounterRoot counter = new TestAdvancedInstrumentCounterRoot();
+        final AdvancedInstrumentRootFactory rootFactory2 = new AdvancedInstrumentRootFactory() {
 
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return counter;
             }
-        }, null, "test AdvancedInstrument"));
+        };
+        instrumenter.attach(addNodeProbe[0], null, rootFactory2, null, "test AdvancedInstrument");
+
         assertEquals(0, counter.getCount());
         assertEquals(vm.eval(source).get(), 13);
         assertEquals(1, counter.getCount());

@@ -116,10 +116,10 @@ public class InstrumentationTest {
         assertNotNull("Value nodes should be probed", probes[2]);
         // Check instrumentation with the simplest kind of counters.
         // They should all be removed when the check is finished.
-        checkCounters(probes[0], vm, source, new TestSimpleInstrumentCounter(), new TestSimpleInstrumentCounter(), new TestSimpleInstrumentCounter());
+        checkCounters(probes[0], vm, source, new TestSimpleInstrumentCounter(instrumenter), new TestSimpleInstrumentCounter(instrumenter), new TestSimpleInstrumentCounter(instrumenter));
 
         // Now try with the more complex flavor of listener
-        checkCounters(probes[0], vm, source, new TestStandardInstrumentCounter(), new TestStandardInstrumentCounter(), new TestStandardInstrumentCounter());
+        checkCounters(probes[0], vm, source, new TestStandardInstrumentCounter(instrumenter), new TestStandardInstrumentCounter(instrumenter), new TestStandardInstrumentCounter(instrumenter));
 
     }
 
@@ -230,28 +230,11 @@ public class InstrumentationTest {
 
         public int enterCount = 0;
         public int leaveCount = 0;
-        public final Instrument instrument;
+        public Instrumenter instrumenter;
+        private Instrument instrument;
 
-        public TestSimpleInstrumentCounter() {
-            this.instrument = Instrument.create(new SimpleInstrumentListener() {
-
-                public void enter(Probe probe) {
-                    enterCount++;
-                }
-
-                public void returnVoid(Probe probe) {
-                    leaveCount++;
-                }
-
-                public void returnValue(Probe probe, Object result) {
-                    leaveCount++;
-                }
-
-                public void returnExceptional(Probe probe, Exception exception) {
-                    leaveCount++;
-                }
-
-            }, "Instrumentation Test Counter");
+        public TestSimpleInstrumentCounter(Instrumenter instrumenter) {
+            this.instrumenter = instrumenter;
         }
 
         @Override
@@ -266,7 +249,25 @@ public class InstrumentationTest {
 
         @Override
         public void attach(Probe probe) {
-            probe.attach(instrument);
+            instrument = instrumenter.attach(probe, new SimpleInstrumentListener() {
+
+                public void enter(Probe p) {
+                    enterCount++;
+                }
+
+                public void returnVoid(Probe p) {
+                    leaveCount++;
+                }
+
+                public void returnValue(Probe p, Object result) {
+                    leaveCount++;
+                }
+
+                public void returnExceptional(Probe p, Exception exception) {
+                    leaveCount++;
+                }
+
+            }, "Instrumentation Test Counter");
         }
 
         @Override
@@ -282,28 +283,11 @@ public class InstrumentationTest {
 
         public int enterCount = 0;
         public int leaveCount = 0;
-        public final Instrument instrument;
+        public final Instrumenter instrumenter;
+        public Instrument instrument;
 
-        public TestStandardInstrumentCounter() {
-            this.instrument = Instrument.create(new StandardInstrumentListener() {
-
-                public void enter(Probe probe, Node node, VirtualFrame vFrame) {
-                    enterCount++;
-                }
-
-                public void returnVoid(Probe probe, Node node, VirtualFrame vFrame) {
-                    leaveCount++;
-                }
-
-                public void returnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
-                    leaveCount++;
-                }
-
-                public void returnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
-                    leaveCount++;
-                }
-
-            }, "Instrumentation Test Counter");
+        public TestStandardInstrumentCounter(Instrumenter instrumenter) {
+            this.instrumenter = instrumenter;
         }
 
         @Override
@@ -318,7 +302,25 @@ public class InstrumentationTest {
 
         @Override
         public void attach(Probe probe) {
-            probe.attach(instrument);
+            instrument = instrumenter.attach(probe, new StandardInstrumentListener() {
+
+                public void enter(Probe p, Node node, VirtualFrame vFrame) {
+                    enterCount++;
+                }
+
+                public void returnVoid(Probe p, Node node, VirtualFrame vFrame) {
+                    leaveCount++;
+                }
+
+                public void returnValue(Probe p, Node node, VirtualFrame vFrame, Object result) {
+                    leaveCount++;
+                }
+
+                public void returnExceptional(Probe p, Node node, VirtualFrame vFrame, Exception exception) {
+                    leaveCount++;
+                }
+
+            }, "Instrumentation Test Counter");
         }
 
         @Override

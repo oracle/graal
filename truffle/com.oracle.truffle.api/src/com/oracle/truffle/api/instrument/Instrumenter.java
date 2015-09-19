@@ -36,6 +36,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -307,6 +308,72 @@ public final class Instrumenter {
 
     public void unregisterASTProber(ASTProber prober) {
         astProbers.remove(prober);
+    }
+
+    /**
+     * <em>Attaches</em> a {@link SimpleInstrumentListener listener} to a {@link Probe}, creating a
+     * <em>binding</em> called an {@link Instrument}. Until the Instrument is
+     * {@linkplain Instrument#dispose() disposed}, it routes notification of
+     * {@linkplain TruffleEvents execution events} taking place at the Probe's AST location to the
+     * listener.
+     *
+     * @param probe source of execution events
+     * @param listener receiver of execution events
+     * @param instrumentInfo optional documentation about the Instrument
+     * @return a handle for access to the binding
+     */
+    @SuppressWarnings("static-method")
+    public Instrument attach(Probe probe, SimpleInstrumentListener listener, String instrumentInfo) {
+        final Instrument instrument = new Instrument.SimpleInstrument(listener, instrumentInfo);
+        probe.attach(instrument);
+        return instrument;
+    }
+
+    /**
+     * <em>Attaches</em> a {@link StandardInstrumentListener listener} to a {@link Probe}, creating
+     * a <em>binding</em> called an {@link Instrument}. Until the Instrument is
+     * {@linkplain Instrument#dispose() disposed}, it routes notification of
+     * {@linkplain TruffleEvents execution events} taking place at the Probe's AST location to the
+     * listener.
+     *
+     * @param probe source of execution events
+     * @param listener receiver of execution events
+     * @param instrumentInfo optional documentation about the Instrument
+     * @return a handle for access to the binding
+     */
+    @SuppressWarnings("static-method")
+    public Instrument attach(Probe probe, StandardInstrumentListener listener, String instrumentInfo) {
+        final Instrument instrument = new Instrument.StandardInstrument(listener, instrumentInfo);
+        probe.attach(instrument);
+        return instrument;
+    }
+
+    /**
+     * <em>Attaches</em> a {@link AdvancedInstrumentResultListener listener} to a {@link Probe},
+     * creating a <em>binding</em> called an {@link Instrument}. Until the Instrument is
+     * {@linkplain Instrument#dispose() disposed}, it routes notification of
+     * {@linkplain TruffleEvents execution events} taking place at the Probe's AST location to the
+     * listener.
+     * <p>
+     * This Instrument executes efficiently, subject to full Truffle optimization, a client-provided
+     * AST fragment every time the Probed node is entered.
+     * <p>
+     * Any {@link RuntimeException} thrown by execution of the fragment is caught by the framework
+     * and reported to the listener; there is no other notification.
+     *
+     * @param probe probe source of execution events
+     * @param listener optional client callback for results/failure notification
+     * @param rootFactory provider of AST fragments on behalf of the client
+     * @param requiredResultType optional requirement, any non-assignable result is reported to the
+     *            the listener, if any, as a failure
+     * @param instrumentInfo instrumentInfo optional documentation about the Instrument
+     * @return a handle for access to the binding
+     */
+    @SuppressWarnings("static-method")
+    public Instrument attach(Probe probe, AdvancedInstrumentResultListener listener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
+        final Instrument instrument = new Instrument.AdvancedInstrument(listener, rootFactory, requiredResultType, instrumentInfo);
+        probe.attach(instrument);
+        return instrument;
     }
 
     @SuppressWarnings("unused")

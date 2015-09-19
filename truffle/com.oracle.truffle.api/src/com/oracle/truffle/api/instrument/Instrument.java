@@ -33,9 +33,6 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
 
-// TODO (mlvdv) these statics should not be global.  Move them to some kind of context.
-// TODO (mlvdv) migrate factory (together with Probe)? break out nested classes?
-
 /**
  * A <em>binding</em> between:
  * <ol>
@@ -47,73 +44,13 @@ import com.oracle.truffle.api.source.SourceSection;
  * Client-oriented documentation for the use of Instruments is available online at <a
  * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events" >https://
  * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
- * <p>
- * The implementation of Instruments is complicated by the requirement that Truffle be able to clone
- * ASTs at any time. In particular, any instrumentation-supporting Nodes that have been attached to
- * an AST must be cloned along with the AST: AST clones are not permitted to share Nodes.
- * <p>
- * AST cloning is intended to be as <em>transparent</em> as possible to clients. This is encouraged
- * by providing the {@link SimpleInstrumentListener} for clients that need know nothing more than
- * the properties associated with a Probe: it's {@link SourceSection} and any associated instances
- * of {@link SyntaxTag}.
- * <p>
- * AST cloning is <em>not transparent</em> to clients that use the
- * {@link StandardInstrumentListener}, since those event methods identify the concrete Node instance
- * (and thus the AST instance) where the event takes place.
- * <p>
- * <h4>Implementation Notes: the Life Cycle of an {@link Instrument} at a {@link Probe}</h4>
- * <p>
- * <ul>
- * <li>A new Instrument is created in permanent association with a client-provided
- * <em>listener.</em></li>
- *
- * <li>Multiple Instruments may share a single listener.</li>
- *
- * <li>An Instrument does nothing until it is {@linkplain Probe#attach(Instrument) attached} to a
- * Probe, at which time the Instrument begins routing execution events from the Probe's AST location
- * to the Instrument's listener.</li>
- *
- * <li>Neither Instruments nor Probes are {@link Node}s.</li>
- *
- * <li>A Probe has a single source-based location in an AST, but manages a separate
- * <em>instrumentation chain</em> of Nodes at the equivalent location in each clone of the AST.</li>
- * <li>When a probed AST is cloned, the instrumentation chain associated with each Probe is cloned
- * along with the rest of the AST.</li>
- *
- * <li>When a new Instrument (for example an instance created by
- * {@link Instrument#create(com.oracle.truffle.api.instrument.SimpleInstrumentListener, java.lang.String)}
- * is attached to a Probe, the Instrument inserts a new instance of its private Node type into
- * <em>each of the instrument chains</em> managed by the Probe, i.e. one node instance per existing
- * clone of the AST.</li>
- *
- * <li>If an Instrument is attached to a Probe in an AST that subsequently gets cloned, then the
- * Instrument's private Node type will be cloned along with the rest of the the AST.</li>
- * <li>Each Instrument's private Node type is a dynamic inner class whose only state is in the
- * shared (outer) Instrument instance; that state includes a reference to the Instrument's listener.
- * </li>
- *
- * <li>When an Instrument that has been attached to a Probe is {@linkplain #dispose() disposed}, the
- * Instrument searches every instrument chain associated with the Probe and removes the instance of
- * its private Node type.</li>
- *
- * <li>Attaching and disposing an Instrument at a Probe <em>deoptimizes</em> any compilations of the
- * AST.</li>
- *
- * </ul>
  *
  * @see Probe
  * @see TruffleEvents
  */
 public abstract class Instrument {
 
-    /**
-     * Creates a <em>Simple Instrument</em>: this Instrument routes execution events to a
-     * client-provided listener.
-     *
-     * @param listener a listener for execution events
-     * @param instrumentInfo optional description of the instrument's role, intended for debugging.
-     * @return a new instrument, ready for attachment at a probe
-     */
+    @Deprecated
     public static Instrument create(SimpleInstrumentListener listener, String instrumentInfo) {
         return new SimpleInstrument(listener, instrumentInfo);
     }
@@ -126,6 +63,7 @@ public abstract class Instrument {
      * @param instrumentInfo optional description of the instrument's role, intended for debugging.
      * @return a new instrument, ready for attachment at a probe
      */
+    @Deprecated
     public static Instrument create(StandardInstrumentListener standardListener, String instrumentInfo) {
         return new StandardInstrument(standardListener, instrumentInfo);
     }
@@ -145,16 +83,9 @@ public abstract class Instrument {
      * @param instrumentInfo optional description of the instrument's role, intended for debugging.
      * @return a new instrument, ready for attachment at a probe
      */
+    @Deprecated
     public static Instrument create(AdvancedInstrumentResultListener resultListener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
         return new AdvancedInstrument(resultListener, rootFactory, requiredResultType, instrumentInfo);
-    }
-
-    // TODO (mlvdv) experimental
-    /**
-     * For implementation testing.
-     */
-    public static Instrument create(TruffleOptListener listener) {
-        return new TruffleOptInstrument(listener, null);
     }
 
     /**
@@ -169,6 +100,61 @@ public abstract class Instrument {
      */
     private final String instrumentInfo;
 
+    /**
+     * <h4>Implementation Notes</h4>
+     * <p>
+     * The implementation of Instruments is complicated by the requirement that Truffle be able to
+     * clone ASTs at any time. In particular, any instrumentation-supporting Nodes that have been
+     * attached to an AST must be cloned along with the AST: AST clones are not permitted to share
+     * Nodes.
+     * <p>
+     * AST cloning is intended to be as <em>transparent</em> as possible to clients. This is
+     * encouraged by providing the {@link SimpleInstrumentListener} for clients that need know
+     * nothing more than the properties associated with a Probe: its {@link SourceSection} and any
+     * associated instances of {@link SyntaxTag}.
+     * <p>
+     * AST cloning is <em>not transparent</em> to clients that use the
+     * {@link StandardInstrumentListener}, since those event methods identify the concrete Node
+     * instance (and thus the AST instance) where the event takes place.
+     * <p>
+     * <h4>Implementation Notes: the Life Cycle of an {@link Instrument} at a {@link Probe}</h4>
+     * <p>
+     * <ul>
+     * <li>A new Instrument is created in permanent association with a client-provided
+     * <em>listener.</em></li>
+     *
+     * <li>Multiple Instruments may share a single listener.</li>
+     *
+     * <li>An Instrument does nothing until it is {@linkplain Probe#attach(Instrument) attached} to
+     * a Probe, at which time the Instrument begins routing execution events from the Probe's AST
+     * location to the Instrument's listener.</li>
+     *
+     * <li>Neither Instruments nor Probes are {@link Node}s.</li>
+     *
+     * <li>A Probe has a single source-based location in an AST, but manages a separate
+     * <em>instrumentation chain</em> of Nodes at the equivalent location in each clone of the AST.</li>
+     * <li>When a probed AST is cloned, the instrumentation chain associated with each Probe is
+     * cloned along with the rest of the AST.</li>
+     *
+     * <li>When a new Instrument is attached to a Probe, the Instrument inserts a new instance of
+     * its private Node type into <em>each of the instrument chains</em> managed by the Probe, i.e.
+     * one node instance per existing clone of the AST.</li>
+     *
+     * <li>If an Instrument is attached to a Probe in an AST that subsequently gets cloned, then the
+     * Instrument's private Node type will be cloned along with the rest of the the AST.</li>
+     * <li>Each Instrument's private Node type is a dynamic inner class whose only state is in the
+     * shared (outer) Instrument instance; that state includes a reference to the Instrument's
+     * listener.</li>
+     *
+     * <li>When an Instrument that has been attached to a Probe is {@linkplain #dispose() disposed},
+     * the Instrument searches every instrument chain associated with the Probe and removes the
+     * instance of its private Node type.</li>
+     *
+     * <li>Attaching or disposing an Instrument at a Probe <em>deoptimizes</em> any compilations of
+     * the AST.</li>
+     *
+     * </ul>
+     */
     private Instrument(String instrumentInfo) {
         this.instrumentInfo = instrumentInfo;
     }
@@ -223,14 +209,14 @@ public abstract class Instrument {
     /**
      * An instrument that propagates events to an instance of {@link SimpleInstrumentListener}.
      */
-    private static final class SimpleInstrument extends Instrument {
+    static final class SimpleInstrument extends Instrument {
 
         /**
          * Tool-supplied listener for events.
          */
         private final SimpleInstrumentListener simpleListener;
 
-        private SimpleInstrument(SimpleInstrumentListener simpleListener, String instrumentInfo) {
+        SimpleInstrument(SimpleInstrumentListener simpleListener, String instrumentInfo) {
             super(instrumentInfo);
             this.simpleListener = simpleListener;
         }
@@ -305,14 +291,14 @@ public abstract class Instrument {
     /**
      * An instrument that propagates events to an instance of {@link StandardInstrumentListener}.
      */
-    private static final class StandardInstrument extends Instrument {
+    static final class StandardInstrument extends Instrument {
 
         /**
          * Tool-supplied listener for AST events.
          */
         private final StandardInstrumentListener standardListener;
 
-        private StandardInstrument(StandardInstrumentListener standardListener, String instrumentInfo) {
+        StandardInstrument(StandardInstrumentListener standardListener, String instrumentInfo) {
             super(instrumentInfo);
             this.standardListener = standardListener;
         }
@@ -389,13 +375,13 @@ public abstract class Instrument {
      * within a Probe's <em>instrumentation chain</em>, and thus directly in the executing Truffle
      * AST with potential for full optimization.
      */
-    private static final class AdvancedInstrument extends Instrument {
+    static final class AdvancedInstrument extends Instrument {
 
         private final AdvancedInstrumentResultListener resultListener;
         private final AdvancedInstrumentRootFactory rootFactory;
         private final Class<?> requiredResultType;
 
-        private AdvancedInstrument(AdvancedInstrumentResultListener resultListener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
+        AdvancedInstrument(AdvancedInstrumentResultListener resultListener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
             super(instrumentInfo);
             this.resultListener = resultListener;
             this.rootFactory = rootFactory;
@@ -516,10 +502,12 @@ public abstract class Instrument {
         }
     }
 
+    // TODO (mlvdv) experimental
     public interface TruffleOptListener {
         void notifyIsCompiled(boolean isCompiled);
     }
 
+    @SuppressWarnings("unused")
     private static final class TruffleOptInstrument extends Instrument {
 
         private final TruffleOptListener toolOptListener;
