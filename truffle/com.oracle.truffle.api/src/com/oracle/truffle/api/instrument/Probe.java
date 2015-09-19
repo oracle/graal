@@ -43,61 +43,21 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
 /**
  * A <em>binding</em> between:
  * <ol>
- * <li>A program location in an executing Truffle AST (corresponding to a {@link SourceSection}),
- * and</li>
- * <li>A dynamically managed collection of "attached" {@linkplain Instrument Instruments} that
- * receive event notifications on behalf of external clients.</li>
+ * <li>A <em>guest language program location</em> in an executing Truffle AST (corresponding to a
+ * {@link SourceSection}), and</li>
+ * <li>A dynamically managed collection of <em>attached</em> {@linkplain Instrument Instruments}
+ * that receive event notifications from the Probe's AST location on behalf of external clients.</li>
  * </ol>
+ * <strong>Note</strong>:The relationship must be with an AST <em>location</em>, not a specific
+ * {@link Node}, because ASTs are routinely <em>cloned</em> at runtime. An AST <em>location</em> is
+ * best represented as the {@link SourceSection} from which the original AST Node was created.
  * <p>
  * Client-oriented documentation for the use of Probes is available online at <a
  * HREF="https://wiki.openjdk.java.net/display/Graal/Finding+Probes" >https://wiki.openjdk.java.
  * net/display/Graal/Finding+Probes</a>
  * <p>
- * <h4>Implementation notes:</h4>
- * <p>
- * <ul>
- * <li>A Probe must be permanently associated with a <em>program location</em>, defined by a
- * particular {@link SourceSection}, even though:
- * <ul>
- * <li>that location is represented in an AST as a {@link Node}, which might be replaced through
- * optimizations such as specialization, and</li>
- * <li>Truffle may <em>clone</em> the AST so that the location is actually represented by multiple
- * Nodes in multiple ASTs.</li>
- * </ul>
- * </li>
  *
- * <li>The effect of the binding is to intercept {@linkplain TruffleEvents execution events}
- * arriving at the "probed" AST Node and notify each attached {@link Instrument} before execution is
- * allowed to proceed to the child and again after execution completes.</li>
- *
- * <li>The method {@link Instrumenter#probe(Node)} creates a Probe on an AST Node; redundant calls
- * return the same Probe.</li>
- *
- * <li>The "probing" of a Truffle AST must be done after the AST is complete (i.e. parent pointers
- * correctly assigned), but before any cloning or executions. This is done by applying instances of
- * {@link ASTProber} provided by each language implementation, combined with any instances
- * registered by tools via {@link Instrumenter#registerASTProber(ASTProber)}. Once registered, these
- * will be applied automatically to every newly created AST.</li>
- *
- * <li>The "probing" of an AST Node is implemented by insertion of a {@link ProbeNode.WrapperNode}
- * into the AST (as new parent of the Node being probed), together with an associated
- * {@link ProbeNode} that routes execution events at the probed Node to all the
- * {@linkplain Instrument Instruments} attached to the Probe's <em>instrument chain</em>.</li>
- *
- * <li>When Truffle clones an AST, any attached WrapperNodes and ProbeNodes are cloned as well,
- * together with their attached instrument chains. Each Probe instance intercepts cloning events and
- * keeps track of all AST copies.</li>
- *
- * <li>All attached {@link InstrumentationNode}s effectively become part of the running program:
- * <ul>
- * <li>Good News: instrumentation code implicitly benefits from every kind of Truffle optimization.</li>
- * <li>Bad News: instrumentation code must be implemented carefully to avoid interfering with any
- * Truffle optimizations.</li>
- * </ul>
- * </li>
- *
- * </ul>
- *
+ * @see Instrumenter
  * @see Instrument
  * @see ASTProber
  * @see ProbeListener
@@ -141,29 +101,57 @@ public final class Probe {
     @CompilationFinal private boolean isAfterTrapActive = false;
 
     /**
-     * Intended for use only by {@link ProbeNode}.
+     * Constructor for use only by {@link ProbeNode}.
+     * <p>
+     * <h4>Probe Implementation notes:</h4>
+     * <p>
+     * <ul>
+     * <li>A Probe must be permanently associated with a <em>program location</em>, defined by a
+     * particular {@link SourceSection}, even though:
+     * <ul>
+     * <li>that location is represented in an AST as a {@link Node}, which might be replaced through
+     * optimizations such as specialization, and</li>
+     * <li>Truffle may <em>clone</em> the AST so that the location is actually represented by
+     * multiple Nodes in multiple ASTs.</li>
+     * </ul>
+     * </li>
+     * <li>The effect of the binding is to intercept {@linkplain TruffleEvents execution events}
+     * arriving at the "probed" AST Node and notify each attached {@link Instrument} before
+     * execution is allowed to proceed to the child and again after execution completes.</li>
+     *
+     * <li>The method {@link Instrumenter#probe(Node)} creates a Probe on an AST Node; redundant
+     * calls return the same Probe.</li>
+     *
+     * <li>The "probing" of a Truffle AST must be done after the AST is complete (i.e. parent
+     * pointers correctly assigned), but before any cloning or executions. This is done by applying
+     * instances of {@link ASTProber} provided by each language implementation, combined with any
+     * instances registered by tools via {@link Instrumenter#registerASTProber(ASTProber)}. Once
+     * registered, these will be applied automatically to every newly created AST.</li>
+     *
+     * <li>The "probing" of an AST Node is implemented by insertion of a
+     * {@link ProbeNode.WrapperNode} into the AST (as new parent of the Node being probed), together
+     * with an associated {@link ProbeNode} that routes execution events at the probed Node to all
+     * the {@linkplain Instrument Instruments} attached to the Probe's <em>instrument chain</em>.</li>
+     *
+     * <li>When Truffle clones an AST, any attached WrapperNodes and ProbeNodes are cloned as well,
+     * together with their attached instrument chains. Each Probe instance intercepts cloning events
+     * and keeps track of all AST copies.</li>
+     *
+     * <li>All attached {@link InstrumentationNode}s effectively become part of the running program:
+     * <ul>
+     * <li>Good News: instrumentation code implicitly benefits from every kind of Truffle
+     * optimization.</li>
+     * <li>Bad News: instrumentation code must be implemented carefully to avoid interfering with
+     * any Truffle optimizations.</li>
+     * </ul>
+     * </li>
+     * </ul>
      */
     Probe(Instrumenter instrumenter, Class<? extends TruffleLanguage> l, ProbeNode probeNode, SourceSection sourceSection) {
         this.instrumenter = instrumenter;
         this.sourceSection = sourceSection;
         registerProbeNodeClone(probeNode);
         this.language = l;
-    }
-
-    /**
-     * Is this node tagged as belonging to a particular human-sensible category of language
-     * constructs?
-     */
-    public boolean isTaggedAs(SyntaxTag tag) {
-        assert tag != null;
-        return tags.contains(tag);
-    }
-
-    /**
-     * In which user-sensible categories has this node been tagged (<em>empty set</em> if none).
-     */
-    public Collection<SyntaxTag> getSyntaxTags() {
-        return Collections.unmodifiableCollection(tags);
     }
 
     /**
@@ -198,6 +186,23 @@ public final class Probe {
     }
 
     /**
+     * Is the <em>Probed node</em> tagged as belonging to a particular human-sensible category of
+     * language constructs?
+     */
+    public boolean isTaggedAs(SyntaxTag tag) {
+        assert tag != null;
+        return tags.contains(tag);
+    }
+
+    /**
+     * In which user-sensible categories has the <em>Probed node</em> been tagged (
+     * <em>empty set</em> if none).
+     */
+    public Collection<SyntaxTag> getSyntaxTags() {
+        return Collections.unmodifiableCollection(tags);
+    }
+
+    /**
      * Adds instrumentation at this Probe.
      *
      * @param instrument an instrument not yet attached to a probe
@@ -221,8 +226,8 @@ public final class Probe {
     }
 
     /**
-     * Gets the {@link SourceSection} associated with the Guest Language AST node being
-     * instrumented, possibly {@code null}.
+     * Gets the {@link SourceSection} associated with the <en>Probed AST node</em>, possibly
+     * {@code null}.
      */
     public SourceSection getProbedSourceSection() {
         return sourceSection;

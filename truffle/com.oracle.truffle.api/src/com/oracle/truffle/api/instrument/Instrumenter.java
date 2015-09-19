@@ -110,7 +110,8 @@ public final class Instrumenter {
     }
 
     /**
-     * Returns {@code true} if the node can be "instrumented" by {@linkplain #probe(Node) probing}.
+     * Returns {@code true} if the AST node can be "instrumented" by {@linkplain #probe(Node)
+     * Probing}.
      * <p>
      * <b>Note:</b> instrumentation requires a appropriate {@linkplain #createWrapperNode(Node)
      * WrapperNode}.
@@ -120,11 +121,11 @@ public final class Instrumenter {
     }
 
     /**
-     * For nodes that are {@linkplain #isInstrumentable() instrumentable}, this method must return
-     * an {@linkplain Node AST node} that:
+     * For AST nodes that are {@linkplain #isInstrumentable() instrumentable}, returns a
+     * <em>wrapper node</em> that:
      * <ol>
      * <li>implements {@link WrapperNode}</li>
-     * <li>has the node argument as it's child, and</li>
+     * <li>has the node as its single child, and</li>
      * <li>whose type is safe for replacement of the node in the parent.</li>
      * </ol>
      *
@@ -135,13 +136,19 @@ public final class Instrumenter {
     }
 
     /**
-     * Enables {@linkplain Instrument instrumentation} of a node, where the node is presumed to be
-     * part of a well-formed Truffle AST that is not being executed. If this node has not already
-     * been probed, modifies the AST by inserting a {@linkplain WrapperNode wrapper node} between
-     * the node and its parent; the wrapper node must be provided by implementations of
-     * {@link Node#createWrapperNode()}. No more than one {@link Probe} may be associated with a
-     * node, so a {@linkplain WrapperNode wrapper} may not wrap another {@linkplain WrapperNode
-     * wrapper}.
+     * Prepares an AST node for {@linkplain Instrument instrumentation}, where the node is presumed
+     * to be part of a well-formed Truffle AST that has not yet been executed.
+     * <p>
+     * <em>Probing</em> a node is idempotent:
+     * <ul>
+     * <li>If the node has not been Probed, modifies the AST by first inserting a
+     * {@linkplain #createWrapperNode(Node) wrapper node} between the node and its parent and then
+     * returning the newly created Probe associated with the wrapper.</li>
+     * <li>If the node has been Probed, returns the Probe associated with its existing wrapper.</li>
+     * <li>No more than one {@link Probe} may be associated with a node, so a wrapper may not wrap
+     * another wrapper.</li>
+     * </ul>
+     * It is a runtime error to attempt Probing an AST node with no parent.
      *
      * @return a (possibly newly created) {@link Probe} associated with this node.
      * @throws ProbeException (unchecked) when a probe cannot be created, leaving the AST unchanged
