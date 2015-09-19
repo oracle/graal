@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api.test.instrument;
 
-import static com.oracle.truffle.api.test.instrument.InstrumentationTestingLanguage.ADD_TAG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -42,6 +41,7 @@ import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdvancedInstrumentCounterRoot;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestingLanguage.InstrumentTestTag;
 import com.oracle.truffle.api.vm.TruffleVM;
 
 /**
@@ -69,7 +69,7 @@ public class AdvancedInstrumentTest {
             }
 
             public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
-                if (tag == ADD_TAG) {
+                if (tag == InstrumentTestTag.ADD_TAG) {
                     assertNull("only one add node", addNodeProbe[0]);
                     addNodeProbe[0] = probe;
                 }

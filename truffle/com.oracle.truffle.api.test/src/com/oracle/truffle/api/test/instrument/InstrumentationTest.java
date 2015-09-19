@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.api.test.instrument;
 
-import static com.oracle.truffle.api.test.instrument.InstrumentationTestingLanguage.ADD_TAG;
-import static com.oracle.truffle.api.test.instrument.InstrumentationTestingLanguage.VALUE_TAG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -53,6 +51,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestLanguageNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestingLanguage.InstrumentTestTag;
 import com.oracle.truffle.api.vm.TruffleVM;
 
 /**
@@ -93,10 +92,10 @@ public class InstrumentationTest {
             }
 
             public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
-                if (tag == ADD_TAG) {
+                if (tag == InstrumentTestTag.ADD_TAG) {
                     assertEquals(probes[0], null);
                     probes[0] = probe;
-                } else if (tag == VALUE_TAG) {
+                } else if (tag == InstrumentTestTag.VALUE_TAG) {
                     if (probes[1] == null) {
                         probes[1] = probe;
                     } else if (probes[2] == null) {
@@ -147,8 +146,8 @@ public class InstrumentationTest {
         assertEquals(probeListener.probeCount, 3);
         assertEquals(probeListener.tagCount, 3);
 
-        assertEquals(instrumenter.findProbesTaggedAs(InstrumentationTestingLanguage.ADD_TAG).size(), 1);
-        assertEquals(instrumenter.findProbesTaggedAs(VALUE_TAG).size(), 2);
+        assertEquals(instrumenter.findProbesTaggedAs(InstrumentTestTag.ADD_TAG).size(), 1);
+        assertEquals(instrumenter.findProbesTaggedAs(InstrumentTestTag.VALUE_TAG).size(), 2);
     }
 
     private static void checkCounters(Probe probe, TruffleVM vm, Source source, TestCounter counterA, TestCounter counterB, TestCounter counterC) throws IOException {
@@ -346,10 +345,10 @@ public class InstrumentationTest {
                 final TestLanguageNode testNode = (TestLanguageNode) node;
 
                 if (node instanceof TestValueNode) {
-                    instrumenter.probe(testNode).tagAs(VALUE_TAG, null);
+                    instrumenter.probe(testNode).tagAs(InstrumentTestTag.VALUE_TAG, null);
 
                 } else if (node instanceof TestAdditionNode) {
-                    instrumenter.probe(testNode).tagAs(ADD_TAG, null);
+                    instrumenter.probe(testNode).tagAs(InstrumentTestTag.ADD_TAG, null);
 
                 }
             }

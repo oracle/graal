@@ -52,31 +52,28 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
 
     public static final InstrumentationTestingLanguage INSTANCE = new InstrumentationTestingLanguage();
 
-    public static final SyntaxTag ADD_TAG = new SyntaxTag() {
+    static enum InstrumentTestTag implements SyntaxTag {
 
-        @Override
-        public String name() {
-            return "Addition";
+        ADD_TAG("addition", "test language addition node"),
+
+        VALUE_TAG("value", "test language value node");
+
+        private final String name;
+        private final String description;
+
+        private InstrumentTestTag(String name, String description) {
+            this.name = name;
+            this.description = description;
         }
 
-        @Override
+        public String getName() {
+            return name;
+        }
+
         public String getDescription() {
-            return "Test Language Addition Node";
+            return description;
         }
-    };
-
-    public static final SyntaxTag VALUE_TAG = new SyntaxTag() {
-
-        @Override
-        public String name() {
-            return "Value";
-        }
-
-        @Override
-        public String getDescription() {
-            return "Test Language Value Node";
-        }
-    };
+    }
 
     private final ASTProber prober = new TestASTProber();
 
@@ -177,10 +174,10 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
                         final TestLanguageNode testNode = (TestLanguageNode) node;
 
                         if (node instanceof TestValueNode) {
-                            instrumenter.probe(testNode).tagAs(VALUE_TAG, null);
+                            instrumenter.probe(testNode).tagAs(InstrumentTestTag.VALUE_TAG, null);
 
                         } else if (node instanceof TestAdditionNode) {
-                            instrumenter.probe(testNode).tagAs(ADD_TAG, null);
+                            instrumenter.probe(testNode).tagAs(InstrumentTestTag.ADD_TAG, null);
 
                         }
                     }

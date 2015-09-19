@@ -193,6 +193,7 @@ suite = {
           ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,Tools",
     },
 
