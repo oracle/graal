@@ -24,32 +24,23 @@
  */
 package com.oracle.truffle.tools.test;
 
-import static com.oracle.truffle.tools.test.TestNodes.createExpr13TestRootNode;
-import static com.oracle.truffle.tools.test.ToolTestingLanguage.VALUE_TAG;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Map;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.TruffleVM;
 import com.oracle.truffle.tools.CoverageTracker;
+import com.oracle.truffle.tools.test.ToolTestUtil.ToolTestTag;
 
 public class CoverageTrackerTest {
-
-    @SuppressWarnings("unused") private static com.oracle.truffle.tools.test.ToolTestingLanguage DUMMY = null;
-    @SuppressWarnings("unused") private static ToolTestingLanguage INSTANCE = ToolTestingLanguage.INSTANCE;
 
     @Test
     public void testNoExecution() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
@@ -71,75 +62,55 @@ public class CoverageTrackerTest {
         assertEquals(tool.getCounts().entrySet().size(), 0);
     }
 
+    void checkCounts(Source source, CoverageTracker coverage, Long[] expectedCounts) {
+        final Map<Source, Long[]> countMap = coverage.getCounts();
+        assertEquals(countMap.size(), 1);
+        final Long[] resultCounts = countMap.get(source);
+        assertTrue(Arrays.equals(resultCounts, expectedCounts));
+    }
+
     @Test
-    public void testToolCreatedTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
+    public void testCountingCoverage() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
         final TruffleVM vm = TruffleVM.newVM().build();
         final Field field = TruffleVM.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
-        final CoverageTracker tool = new CoverageTracker(VALUE_TAG);
-        tool.install(instrumenter);
-        final Source source = Source.fromText("testToolCreatedTooLate text", "testToolCreatedTooLate").withMimeType("text/x-toolTest");
+        final Source source = ToolTestUtil.createTestSource("testCountingCoverage");
+
+        final CoverageTracker valueCoverage = new CoverageTracker(ToolTestTag.VALUE_TAG);
+        final CoverageTracker addCoverage = new CoverageTracker(ToolTestTag.ADD_TAG);
+
+        valueCoverage.install(instrumenter);
+        assertTrue(valueCoverage.getCounts().isEmpty());
+
         assertEquals(vm.eval(source).get(), 13);
-        assertTrue(tool.getCounts().isEmpty());
-        tool.dispose();
+
+        checkCounts(source, valueCoverage, new Long[]{Long.valueOf(1), null, Long.valueOf(1), null});
+
+        addCoverage.install(instrumenter);
+
+        assertEquals(vm.eval(source).get(), 13);
+
+        checkCounts(source, valueCoverage, new Long[]{Long.valueOf(2), null, Long.valueOf(2), null});
+        checkCounts(source, addCoverage, new Long[]{null, Long.valueOf(1), null, null});
+
+        valueCoverage.setEnabled(false);
+        assertEquals(vm.eval(source).get(), 13);
+
+        checkCounts(source, valueCoverage, new Long[]{Long.valueOf(2), null, Long.valueOf(2), null});
+        checkCounts(source, addCoverage, new Long[]{null, Long.valueOf(2), null, null});
+
+        valueCoverage.setEnabled(true);
+        assertEquals(vm.eval(source).get(), 13);
+
+        checkCounts(source, valueCoverage, new Long[]{Long.valueOf(3), null, Long.valueOf(3), null});
+        checkCounts(source, addCoverage, new Long[]{null, Long.valueOf(3), null, null});
+
+        valueCoverage.dispose();
+        assertEquals(vm.eval(source).get(), 13);
+
+        checkCounts(source, addCoverage, new Long[]{null, Long.valueOf(4), null, null});
+
+        addCoverage.dispose();
     }
-
-    @Ignore
-    @Test
-    public void testToolInstalledcTooLate() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        final Instrumenter instrumenter = TestNodes.createInstrumenter();
-        final CoverageTracker tool = new CoverageTracker();
-        final RootNode expr13rootNode = createExpr13TestRootNode(instrumenter);
-
-        tool.install(instrumenter);
-        assertEquals(13, expr13rootNode.execute(null));
-        assertTrue(tool.getCounts().isEmpty());
-        tool.dispose();
-    }
-
-    @Ignore
-    @Test
-    public void testCountingCoverage() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        final Instrumenter instrumenter = TestNodes.createInstrumenter();
-        final CoverageTracker tool = new CoverageTracker();
-        tool.install(instrumenter);
-        final RootNode expr13rootNode = createExpr13TestRootNode(instrumenter);
-
-        // Not probed yet.
-        assertEquals(13, expr13rootNode.execute(null));
-        assertTrue(tool.getCounts().isEmpty());
-
-        final Node addNode = expr13rootNode.getChildren().iterator().next();
-        final Probe probe = instrumenter.probe(addNode);
-
-        // Probed but not tagged yet.
-        assertEquals(13, expr13rootNode.execute(null));
-        assertTrue(tool.getCounts().isEmpty());
-
-        probe.tagAs(StandardSyntaxTag.STATEMENT, "fake statement for testing");
-
-        // Counting now; execute once
-        assertEquals(13, expr13rootNode.execute(null));
-
-        final Long[] longs1 = tool.getCounts().get(addNode.getSourceSection().getSource());
-        assertNotNull(longs1);
-        assertEquals(longs1.length, 2);
-        assertNull(longs1[0]);  // Line 1 is empty (text lines are 1-based)
-        assertEquals(1L, longs1[1].longValue());  // Expression is on line 2
-
-        // Execute 99 more times
-        for (int i = 0; i < 99; i++) {
-            assertEquals(13, expr13rootNode.execute(null));
-        }
-
-        final Long[] longs100 = tool.getCounts().get(addNode.getSourceSection().getSource());
-        assertNotNull(longs100);
-        assertEquals(longs100.length, 2);
-        assertNull(longs100[0]);
-        assertEquals(100L, longs100[1].longValue());
-
-        tool.dispose();
-    }
-
 }

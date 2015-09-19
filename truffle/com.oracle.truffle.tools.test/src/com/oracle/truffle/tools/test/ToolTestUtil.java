@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,123 +52,131 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
-@TruffleLanguage.Registration(name = "toolTestLanguage", version = "0", mimeType = "text/x-toolTest")
-public final class ToolTestingLanguage extends TruffleLanguage<Object> {
+public class ToolTestUtil {
 
-    public static final ToolTestingLanguage INSTANCE = new ToolTestingLanguage();
+    static final String MIME_TYPE = "text/x-toolTest";
 
-    static final SyntaxTag ADD_TAG = new SyntaxTag() {
+    static enum ToolTestTag implements SyntaxTag {
 
-        @Override
-        public String name() {
-            return "Addition";
+        ADD_TAG("addition", "test language addition node"),
+
+        VALUE_TAG("value", "test language value node");
+
+        private final String name;
+        private final String description;
+
+        private ToolTestTag(String name, String description) {
+            this.name = name;
+            this.description = description;
         }
 
-        @Override
+        public String getName() {
+            return name;
+        }
+
         public String getDescription() {
-            return "Test Language Addition Node";
+            return description;
         }
-    };
+    }
 
-    static final SyntaxTag VALUE_TAG = new SyntaxTag() {
+    static Source createTestSource(String description) {
+        return Source.fromText("6\n+\n7\n" + description, description).withMimeType(MIME_TYPE);
+    }
+
+    @TruffleLanguage.Registration(name = "toolTestLanguage", version = "0", mimeType = MIME_TYPE)
+    public static final class ToolTestLang extends TruffleLanguage<Object> {
+
+        public static final ToolTestLang INSTANCE = new ToolTestLang();
+
+        private final ASTProber prober = new TestASTProber();
+
+        private ToolTestLang() {
+        }
 
         @Override
-        public String name() {
-            return "Value";
+        protected CallTarget parse(Source source, Node context, String... argumentNames) throws IOException {
+            final TestValueNode leftValueNode = new TestValueNode(6, source.createSection("6", 0, 1));
+            final TestValueNode rightValueNode = new TestValueNode(7, source.createSection("7", 4, 1));
+            final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode, source.createSection("+", 2, 1));
+            final InstrumentationTestRootNode rootNode = new InstrumentationTestRootNode(addNode);
+            final TruffleRuntime runtime = Truffle.getRuntime();
+            final CallTarget callTarget = runtime.createCallTarget(rootNode);
+            return callTarget;
         }
 
         @Override
-        public String getDescription() {
-            return "Test Language Value Node";
+        protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
+            return null;
         }
-    };
 
-    private final ASTProber prober = new TestASTProber();
-
-    private ToolTestingLanguage() {
-    }
-
-    @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-        final TestValueNode leftValueNode = new TestValueNode(6);
-        final TestValueNode rightValueNode = new TestValueNode(7);
-        final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
-        final InstrumentationTestRootNode rootNode = new InstrumentationTestRootNode(addNode);
-        final TruffleRuntime runtime = Truffle.getRuntime();
-        final CallTarget callTarget = runtime.createCallTarget(rootNode);
-        return callTarget;
-    }
-
-    @Override
-    protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
-        return null;
-    }
-
-    @Override
-    protected Object getLanguageGlobal(Object context) {
-        return null;
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
-    @Override
-    protected Visualizer getVisualizer() {
-        return null;
-    }
-
-    @Override
-    protected ASTProber getDefaultASTProber() {
-        return prober;
-    }
-
-    @Override
-    protected boolean isInstrumentable(Node node) {
-        return node instanceof TestAdditionNode || node instanceof TestValueNode;
-    }
-
-    @Override
-    protected WrapperNode createWrapperNode(Node node) {
-        if (isInstrumentable(node)) {
-            return new TestLanguageWrapperNode((TestLanguageNode) node);
+        @Override
+        protected Object getLanguageGlobal(Object context) {
+            return null;
         }
-        return null;
-    }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    protected void enableASTProbing(ASTProber astProber) {
-        throw new UnsupportedOperationException();
-    }
+        @Override
+        protected boolean isObjectOfLanguage(Object object) {
+            return false;
+        }
 
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        return null;
-    }
+        @Override
+        protected Visualizer getVisualizer() {
+            return null;
+        }
 
-    @Override
-    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
-        return null;
-    }
+        @Override
+        protected ASTProber getDefaultASTProber() {
+            return prober;
+        }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    protected ToolSupportProvider getToolSupport() {
-        throw new UnsupportedOperationException();
-    }
+        @Override
+        protected boolean isInstrumentable(Node node) {
+            return node instanceof TestAdditionNode || node instanceof TestValueNode;
+        }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    protected DebugSupportProvider getDebugSupport() {
-        throw new UnsupportedOperationException();
-    }
+        @Override
+        protected WrapperNode createWrapperNode(Node node) {
+            if (isInstrumentable(node)) {
+                return new ToolTestWrapperNode((ToolTestLangNode) node);
+            }
+            return null;
+        }
 
-    @Override
-    protected Object createContext(Env env) {
-        return null;
+        @SuppressWarnings("deprecation")
+        @Override
+        protected void enableASTProbing(ASTProber astProber) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+            return null;
+        }
+
+        @Override
+        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
+            return null;
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected ToolSupportProvider getToolSupport() {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected DebugSupportProvider getDebugSupport() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        protected Object createContext(Env env) {
+            return null;
+        }
+
     }
 
     static final class TestASTProber implements ASTProber {
@@ -178,15 +186,15 @@ public final class ToolTestingLanguage extends TruffleLanguage<Object> {
 
                 @Override
                 public boolean visit(Node node) {
-                    if (node instanceof TestLanguageNode) {
+                    if (node instanceof ToolTestLangNode) {
 
-                        final TestLanguageNode testNode = (TestLanguageNode) node;
+                        final ToolTestLangNode testNode = (ToolTestLangNode) node;
 
                         if (node instanceof TestValueNode) {
-                            instrumenter.probe(testNode).tagAs(VALUE_TAG, null);
+                            instrumenter.probe(testNode).tagAs(ToolTestTag.VALUE_TAG, null);
 
                         } else if (node instanceof TestAdditionNode) {
-                            instrumenter.probe(testNode).tagAs(ADD_TAG, null);
+                            instrumenter.probe(testNode).tagAs(ToolTestTag.ADD_TAG, null);
 
                         }
                     }
@@ -196,8 +204,12 @@ public final class ToolTestingLanguage extends TruffleLanguage<Object> {
         }
     }
 
-    abstract static class TestLanguageNode extends Node {
+    abstract static class ToolTestLangNode extends Node {
         public abstract Object execute(VirtualFrame vFrame);
+
+        protected ToolTestLangNode(SourceSection ss) {
+            super(ss);
+        }
 
         @SuppressWarnings("deprecation")
         @Override
@@ -213,12 +225,13 @@ public final class ToolTestingLanguage extends TruffleLanguage<Object> {
     }
 
     @NodeInfo(cost = NodeCost.NONE)
-    static class TestLanguageWrapperNode extends TestLanguageNode implements WrapperNode {
-        @Child private TestLanguageNode child;
+    static class ToolTestWrapperNode extends ToolTestLangNode implements WrapperNode {
+        @Child private ToolTestLangNode child;
         @Child private ProbeNode probeNode;
 
-        public TestLanguageWrapperNode(TestLanguageNode child) {
-            assert !(child instanceof TestLanguageWrapperNode);
+        public ToolTestWrapperNode(ToolTestLangNode child) {
+            super(null);
+            assert !(child instanceof ToolTestWrapperNode);
             this.child = child;
         }
 
@@ -267,10 +280,11 @@ public final class ToolTestingLanguage extends TruffleLanguage<Object> {
     /**
      * A simple node for our test language to store a value.
      */
-    static class TestValueNode extends TestLanguageNode {
+    static class TestValueNode extends ToolTestLangNode {
         private final int value;
 
-        public TestValueNode(int value) {
+        public TestValueNode(int value, SourceSection s) {
+            super(s);
             this.value = value;
         }
 
@@ -283,11 +297,12 @@ public final class ToolTestingLanguage extends TruffleLanguage<Object> {
     /**
      * A node for our test language that adds up two {@link TestValueNode}s.
      */
-    static class TestAdditionNode extends TestLanguageNode {
-        @Child private TestLanguageNode leftChild;
-        @Child private TestLanguageNode rightChild;
+    static class TestAdditionNode extends ToolTestLangNode {
+        @Child private ToolTestLangNode leftChild;
+        @Child private ToolTestLangNode rightChild;
 
-        public TestAdditionNode(TestValueNode leftChild, TestValueNode rightChild) {
+        public TestAdditionNode(TestValueNode leftChild, TestValueNode rightChild, SourceSection s) {
+            super(s);
             this.leftChild = insert(leftChild);
             this.rightChild = insert(rightChild);
         }
@@ -304,15 +319,15 @@ public final class ToolTestingLanguage extends TruffleLanguage<Object> {
      * completes an AST. The root nodes serves as our entry point into a program.
      */
     static class InstrumentationTestRootNode extends RootNode {
-        @Child private TestLanguageNode body;
+        @Child private ToolTestLangNode body;
 
         /**
          * This constructor emulates the global machinery that applies registered probers to every
          * newly created AST. Global registry is not used, since that would interfere with other
          * tests run in the same environment.
          */
-        public InstrumentationTestRootNode(TestLanguageNode body) {
-            super(ToolTestingLanguage.class, null, null);
+        public InstrumentationTestRootNode(ToolTestLangNode body) {
+            super(ToolTestLang.class, null, null);
             this.body = body;
         }
 
@@ -338,7 +353,7 @@ public final class ToolTestingLanguage extends TruffleLanguage<Object> {
      * completes an AST. The root nodes serves as our entry point into a program.
      */
     static class TestRootNode extends RootNode {
-        @Child private TestLanguageNode body;
+        @Child private ToolTestLangNode body;
 
         final Instrumenter instrumenter;
 
@@ -347,8 +362,8 @@ public final class ToolTestingLanguage extends TruffleLanguage<Object> {
          * newly created AST. Global registry is not used, since that would interfere with other
          * tests run in the same environment.
          */
-        public TestRootNode(TestLanguageNode body, Instrumenter instrumenter) {
-            super(ToolTestingLanguage.class, null, null);
+        public TestRootNode(ToolTestLangNode body, Instrumenter instrumenter) {
+            super(ToolTestLang.class, null, null);
             this.instrumenter = instrumenter;
             this.body = body;
         }
