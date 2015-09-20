@@ -32,15 +32,15 @@ import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
  */
 public class DefaultSimpleInstrumentListener implements SimpleInstrumentListener {
 
-    public void enter(Probe probe) {
+    public void onEnter(Probe probe) {
     }
 
-    public void returnVoid(Probe probe) {
+    public void onReturnVoid(Probe probe) {
     }
 
-    public void returnValue(Probe probe, Object result) {
+    public void onReturnValue(Probe probe, Object result) {
     }
 
-    public void returnExceptional(Probe probe, Exception exception) {
+    public void onReturnExceptional(Probe probe, Exception exception) {
     }
 }

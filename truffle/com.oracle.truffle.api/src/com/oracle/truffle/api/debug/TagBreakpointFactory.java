@@ -407,7 +407,7 @@ final class TagBreakpointFactory {
 
         }
 
-        public void notifyResult(Node node, VirtualFrame vFrame, Object result) {
+        public void onExecution(Node node, VirtualFrame vFrame, Object result) {
             final boolean condition = (Boolean) result;
             if (TRACE) {
                 trace("breakpoint condition = %b  %s", condition, getShortDescription());
@@ -417,7 +417,7 @@ final class TagBreakpointFactory {
             }
         }
 
-        public void notifyFailure(Node node, VirtualFrame vFrame, RuntimeException ex) {
+        public void onFailure(Node node, VirtualFrame vFrame, RuntimeException ex) {
             addExceptionWarning(ex);
             if (TRACE) {
                 trace("breakpoint failure = %s  %s", ex, getShortDescription());
@@ -444,7 +444,7 @@ final class TagBreakpointFactory {
         private final class UnconditionalTagBreakInstrumentListener extends DefaultStandardInstrumentListener {
 
             @Override
-            public void enter(Probe probe, Node node, VirtualFrame vFrame) {
+            public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
                 TagBreakpointImpl.this.nodeEnter(node, vFrame);
             }
         }

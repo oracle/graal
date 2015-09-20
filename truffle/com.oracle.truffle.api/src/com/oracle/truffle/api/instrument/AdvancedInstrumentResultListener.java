@@ -33,6 +33,9 @@ import com.oracle.truffle.api.nodes.Node;
  * fragment}, when executed by a
  * {@linkplain Instrumenter#attach(Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
  * Advanced Instrument}.
+ * <p>
+ * Notification is fully synchronous, so overrides have performance implications. Non-trivial
+ * methods should be coded with Truffle guidelines and cautions in mind.
  *
  * @see Instrument
  * @see AdvancedInstrumentRoot
@@ -54,7 +57,7 @@ public interface AdvancedInstrumentResultListener {
      * @param vFrame execution frame at the guest-language AST node
      * @param result the result of this AST fragment's execution
      */
-    void notifyResult(Node node, VirtualFrame vFrame, Object result);
+    void onExecution(Node node, VirtualFrame vFrame, Object result);
 
     /**
      * Notifies listener that execution of client-provided {@linkplain AdvancedInstrumentRoot AST
@@ -69,6 +72,6 @@ public interface AdvancedInstrumentResultListener {
      * @param vFrame execution frame at the guest-language AST node
      * @param ex the exception
      */
-    void notifyFailure(Node node, VirtualFrame vFrame, RuntimeException ex);
+    void onFailure(Node node, VirtualFrame vFrame, RuntimeException ex);
 
 }

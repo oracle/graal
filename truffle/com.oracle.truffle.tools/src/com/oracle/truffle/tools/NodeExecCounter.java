@@ -66,7 +66,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
  * <p>
  * <ul>
  * <li>"Execution call" on a node is is defined as invocation of a node method that is instrumented
- * to produce the event {@link StandardInstrumentListener#enter(Probe, Node, VirtualFrame)};</li>
+ * to produce the event {@link StandardInstrumentListener#onEnter(Probe, Node, VirtualFrame)};</li>
  * <li>Execution calls are tabulated only at <em>instrumented</em> nodes, i.e. those for which
  * {@linkplain Instrumenter#isInstrumentable(Node) isInstrumentable() == true};</li>
  * <li>Execution calls are tabulated only at nodes present in the AST when originally created;
@@ -114,7 +114,7 @@ public final class NodeExecCounter extends InstrumentationTool {
      */
     private final StandardInstrumentListener instrumentListener = new DefaultStandardInstrumentListener() {
         @Override
-        public void enter(Probe probe, Node node, VirtualFrame vFrame) {
+        public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
             if (isEnabled()) {
                 final Class<?> nodeClass = node.getClass();
                 /*

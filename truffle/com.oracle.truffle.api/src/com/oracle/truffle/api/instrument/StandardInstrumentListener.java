@@ -29,10 +29,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A receiver of Truffle execution events that can act on behalf of an external client.
+ * A receiver of Truffle AST execution events that can act on behalf of an external client.
  * <p>
  * The {@link Probe} argument provides access to the {@link SourceSection} associated with the
- * event, as well as any {@link SyntaxTag}s that have been applied at that AST node.
+ * event, as well as any {@link SyntaxTag}s that have been applied at that program's location.
  * <p>
  * This listener is designed for clients that also require access to the AST execution state at the
  * time of the event. Clients that do not require access to the AST execution state should use the
@@ -41,6 +41,9 @@ import com.oracle.truffle.api.source.SourceSection;
  * Clients are free, of course, to record additional information in the listener implementation that
  * carries additional information about the context and reason for the particular {@link Instrument}
  * that is to be created from the listener.
+ * <p>
+ * Notification is fully synchronous, so overrides have performance implications. Non-trivial
+ * methods should be coded with Truffle guidelines and cautions in mind.
  */
 public interface StandardInstrumentListener {
 
@@ -49,14 +52,14 @@ public interface StandardInstrumentListener {
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void enter(Probe probe, Node node, VirtualFrame vFrame);
+    void onEnter(Probe probe, Node node, VirtualFrame vFrame);
 
     /**
      * Receive notification that an AST Node's {@code void}-valued execute method has just returned.
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void returnVoid(Probe probe, Node node, VirtualFrame vFrame);
+    void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame);
 
     /**
      * Receive notification that an AST Node's execute method has just returned a value (boxed if
@@ -64,12 +67,12 @@ public interface StandardInstrumentListener {
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void returnValue(Probe probe, Node node, VirtualFrame vFrame, Object result);
+    void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result);
 
     /**
      * Receive notification that an AST Node's execute method has just thrown an exception.
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void returnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception);
+    void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception);
 }

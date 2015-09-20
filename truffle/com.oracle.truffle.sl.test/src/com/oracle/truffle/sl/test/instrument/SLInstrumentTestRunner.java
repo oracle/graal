@@ -320,7 +320,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         }
 
         @Override
-        public void returnValue(Probe probe, Object result) {
+        public void onReturnValue(Probe probe, Object result) {
             output.println(result);
         }
     }

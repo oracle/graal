@@ -311,7 +311,7 @@ public final class Instrumenter {
     /**
      * <em>Attaches</em> a {@link SimpleInstrumentListener listener} to a {@link Probe}, creating a
      * <em>binding</em> called an {@link Instrument}. Until the Instrument is
-     * {@linkplain Instrument#dispose() disposed}, it routes notification of
+     * {@linkplain Instrument#dispose() disposed}, it routes synchronous notification of
      * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
      * the listener.
      *
@@ -330,7 +330,7 @@ public final class Instrumenter {
     /**
      * <em>Attaches</em> a {@link StandardInstrumentListener listener} to a {@link Probe}, creating
      * a <em>binding</em> called an {@link Instrument}. Until the Instrument is
-     * {@linkplain Instrument#dispose() disposed}, it routes notification of
+     * {@linkplain Instrument#dispose() disposed}, it routes synchronous notification of
      * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
      * the listener.
      *
@@ -349,7 +349,7 @@ public final class Instrumenter {
     /**
      * <em>Attaches</em> a {@link AdvancedInstrumentResultListener listener} to a {@link Probe},
      * creating a <em>binding</em> called an {@link Instrument}. Until the Instrument is
-     * {@linkplain Instrument#dispose() disposed}, it routes notification of
+     * {@linkplain Instrument#dispose() disposed}, it routes synchronous notification of
      * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
      * the listener.
      * <p>

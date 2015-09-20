@@ -239,19 +239,19 @@ public class InstrumentationTest {
         public void attach(Probe probe) {
             instrument = instrumenter.attach(probe, new SimpleInstrumentListener() {
 
-                public void enter(Probe p) {
+                public void onEnter(Probe p) {
                     enterCount++;
                 }
 
-                public void returnVoid(Probe p) {
+                public void onReturnVoid(Probe p) {
                     leaveCount++;
                 }
 
-                public void returnValue(Probe p, Object result) {
+                public void onReturnValue(Probe p, Object result) {
                     leaveCount++;
                 }
 
-                public void returnExceptional(Probe p, Exception exception) {
+                public void onReturnExceptional(Probe p, Exception exception) {
                     leaveCount++;
                 }
 
@@ -292,19 +292,19 @@ public class InstrumentationTest {
         public void attach(Probe probe) {
             instrument = instrumenter.attach(probe, new StandardInstrumentListener() {
 
-                public void enter(Probe p, Node node, VirtualFrame vFrame) {
+                public void onEnter(Probe p, Node node, VirtualFrame vFrame) {
                     enterCount++;
                 }
 
-                public void returnVoid(Probe p, Node node, VirtualFrame vFrame) {
+                public void onReturnVoid(Probe p, Node node, VirtualFrame vFrame) {
                     leaveCount++;
                 }
 
-                public void returnValue(Probe p, Node node, VirtualFrame vFrame, Object result) {
+                public void onReturnValue(Probe p, Node node, VirtualFrame vFrame, Object result) {
                     leaveCount++;
                 }
 
-                public void returnExceptional(Probe p, Node node, VirtualFrame vFrame, Exception exception) {
+                public void onReturnExceptional(Probe p, Node node, VirtualFrame vFrame, Exception exception) {
                     leaveCount++;
                 }
 
@@ -359,7 +359,7 @@ public class InstrumentationTest {
         public int counter = 0;
 
         @Override
-        public void enter(Probe probe) {
+        public void onEnter(Probe probe) {
             counter++;
         }
     }
@@ -372,7 +372,7 @@ public class InstrumentationTest {
         public int counter = 0;
 
         @Override
-        public void enter(Probe probe, Node node, VirtualFrame vFrame) {
+        public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
             counter++;
         }
     }

@@ -216,7 +216,7 @@ public abstract class Instrument {
 
             @Override
             public void enter(Node node, VirtualFrame vFrame) {
-                SimpleInstrument.this.simpleListener.enter(SimpleInstrument.this.probe);
+                SimpleInstrument.this.simpleListener.onEnter(SimpleInstrument.this.probe);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.enter(node, vFrame);
                 }
@@ -224,7 +224,7 @@ public abstract class Instrument {
 
             @Override
             public void returnVoid(Node node, VirtualFrame vFrame) {
-                SimpleInstrument.this.simpleListener.returnVoid(SimpleInstrument.this.probe);
+                SimpleInstrument.this.simpleListener.onReturnVoid(SimpleInstrument.this.probe);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnVoid(node, vFrame);
                 }
@@ -232,7 +232,7 @@ public abstract class Instrument {
 
             @Override
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-                SimpleInstrument.this.simpleListener.returnValue(SimpleInstrument.this.probe, result);
+                SimpleInstrument.this.simpleListener.onReturnValue(SimpleInstrument.this.probe, result);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnValue(node, vFrame, result);
                 }
@@ -240,7 +240,7 @@ public abstract class Instrument {
 
             @Override
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-                SimpleInstrument.this.simpleListener.returnExceptional(SimpleInstrument.this.probe, exception);
+                SimpleInstrument.this.simpleListener.onReturnExceptional(SimpleInstrument.this.probe, exception);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
@@ -303,7 +303,7 @@ public abstract class Instrument {
 
             @Override
             public void enter(Node node, VirtualFrame vFrame) {
-                standardListener.enter(StandardInstrument.this.probe, node, vFrame);
+                standardListener.onEnter(StandardInstrument.this.probe, node, vFrame);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.enter(node, vFrame);
                 }
@@ -311,7 +311,7 @@ public abstract class Instrument {
 
             @Override
             public void returnVoid(Node node, VirtualFrame vFrame) {
-                standardListener.returnVoid(StandardInstrument.this.probe, node, vFrame);
+                standardListener.onReturnVoid(StandardInstrument.this.probe, node, vFrame);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnVoid(node, vFrame);
                 }
@@ -319,7 +319,7 @@ public abstract class Instrument {
 
             @Override
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-                standardListener.returnValue(StandardInstrument.this.probe, node, vFrame, result);
+                standardListener.onReturnValue(StandardInstrument.this.probe, node, vFrame, result);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnValue(node, vFrame, result);
                 }
@@ -327,7 +327,7 @@ public abstract class Instrument {
 
             @Override
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-                standardListener.returnExceptional(StandardInstrument.this.probe, node, vFrame, exception);
+                standardListener.onReturnExceptional(StandardInstrument.this.probe, node, vFrame, exception);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
@@ -405,7 +405,7 @@ public abstract class Instrument {
                         }
                     } catch (RuntimeException ex) {
                         if (resultListener != null) {
-                            resultListener.notifyFailure(node, vFrame, ex);
+                            resultListener.onFailure(node, vFrame, ex);
                         }
                     }
                 }
@@ -414,11 +414,11 @@ public abstract class Instrument {
                         final Object result = instrumentRoot.executeRoot(node, vFrame);
                         if (resultListener != null) {
                             checkResultType(result);
-                            resultListener.notifyResult(node, vFrame, result);
+                            resultListener.onExecution(node, vFrame, result);
                         }
                     } catch (RuntimeException ex) {
                         if (resultListener != null) {
-                            resultListener.notifyFailure(node, vFrame, ex);
+                            resultListener.onFailure(node, vFrame, ex);
                         }
                     }
                 }
