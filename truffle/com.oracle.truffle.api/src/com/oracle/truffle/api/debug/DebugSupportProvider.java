@@ -28,7 +28,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
-import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -52,7 +52,7 @@ public interface DebugSupportProvider extends ToolSupportProvider {
      * Creates a language-specific factory to produce instances of {@link AdvancedInstrumentRoot}
      * that, when executed, computes the result of a textual expression in the language; used to
      * create an
-     * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
+     * {@linkplain Instrumenter#attach(com.oracle.truffle.api.instrument.Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
      * Advanced Instrument}.
      *
      * @param expr a guest language expression

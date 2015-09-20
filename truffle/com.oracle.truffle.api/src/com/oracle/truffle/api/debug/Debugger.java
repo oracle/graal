@@ -41,7 +41,6 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
-import com.oracle.truffle.api.instrument.Instrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
@@ -276,7 +275,7 @@ public final class Debugger {
      * Creates a language-specific factory to produce instances of {@link AdvancedInstrumentRoot}
      * that, when executed, computes the result of a textual expression in the language; used to
      * create an
-     * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
+     * {@linkplain Instrumenter#attach(Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
      * Advanced Instrument}.
      *
      * @param expr a guest language expression

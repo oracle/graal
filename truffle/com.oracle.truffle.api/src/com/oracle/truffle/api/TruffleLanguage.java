@@ -43,7 +43,6 @@ import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
-import com.oracle.truffle.api.instrument.Instrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -252,8 +251,8 @@ public abstract class TruffleLanguage<C> {
      * Creates a language-specific factory to produce instances of {@link AdvancedInstrumentRoot}
      * that, when executed, computes the result of a textual expression in the language; used to
      * create an
-     * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
-     * Advanced Instrument}.
+     * {@linkplain Instrumenter#attach(com.oracle.truffle.api.instrument.Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)}
+     * .
      *
      * @param expr a guest language expression
      * @param resultListener optional listener for the result of each evaluation.

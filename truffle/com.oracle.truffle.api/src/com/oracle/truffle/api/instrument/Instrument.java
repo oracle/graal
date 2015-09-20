@@ -49,44 +49,6 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public abstract class Instrument {
 
-    @Deprecated
-    public static Instrument create(SimpleInstrumentListener listener, String instrumentInfo) {
-        return new SimpleInstrument(listener, instrumentInfo);
-    }
-
-    /**
-     * Creates a <em>Standard Instrument</em>: this Instrument routes execution events, together
-     * with access to Truffle execution state, to a client-provided listener.
-     *
-     * @param standardListener a listener for execution events and execution state
-     * @param instrumentInfo optional description of the instrument's role, intended for debugging.
-     * @return a new instrument, ready for attachment at a probe
-     */
-    @Deprecated
-    public static Instrument create(StandardInstrumentListener standardListener, String instrumentInfo) {
-        return new StandardInstrument(standardListener, instrumentInfo);
-    }
-
-    /**
-     * Creates an <em>Advanced Instrument</em>: this Instrument executes efficiently, subject to
-     * full Truffle optimization, a client-provided AST fragment every time the Probed node is
-     * entered.
-     * <p>
-     * Any {@link RuntimeException} thrown by execution of the fragment is caught by the framework
-     * and reported to the listener; there is no other notification.
-     *
-     * @param resultListener optional client callback for results/failure notification
-     * @param rootFactory provider of AST fragments on behalf of the client
-     * @param requiredResultType optional requirement, any non-assignable result is reported to the
-     *            the listener, if any, as a failure
-     * @param instrumentInfo optional description of the instrument's role, intended for debugging.
-     * @return a new instrument, ready for attachment at a probe
-     */
-    @Deprecated
-    public static Instrument create(AdvancedInstrumentResultListener resultListener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
-        return new AdvancedInstrument(resultListener, rootFactory, requiredResultType, instrumentInfo);
-    }
-
     /**
      * Has this instrument been disposed? stays true once set.
      */
