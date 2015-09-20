@@ -34,7 +34,6 @@ import java.util.List;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -115,7 +114,7 @@ public final class Probe {
      * multiple Nodes in multiple ASTs.</li>
      * </ul>
      * </li>
-     * <li>The effect of the binding is to intercept {@linkplain TruffleEvents execution events}
+     * <li>The effect of the binding is to intercept {@linkplain EventHandlerNode execution events}
      * arriving at the "probed" AST Node and notify each attached {@link Instrument} before
      * execution is allowed to proceed to the child and again after execution completes.</li>
      *

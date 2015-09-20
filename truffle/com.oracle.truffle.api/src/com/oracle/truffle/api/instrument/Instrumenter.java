@@ -36,8 +36,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -201,7 +199,7 @@ public final class Instrumenter {
         final Probe probe = new Probe(this, l, probeNode, sourceSection);
         probes.add(new WeakReference<>(probe));
         probeNode.probe = probe;  // package private access
-        wrapper.insertProbe(probeNode);
+        wrapper.insertEventHandlerNode(probeNode);
         node.replace(wrapperNode);
         if (TRACE) {
             final String location = sourceSection == null ? "<unknown>" : sourceSection.getShortDescription();
@@ -314,8 +312,8 @@ public final class Instrumenter {
      * <em>Attaches</em> a {@link SimpleInstrumentListener listener} to a {@link Probe}, creating a
      * <em>binding</em> called an {@link Instrument}. Until the Instrument is
      * {@linkplain Instrument#dispose() disposed}, it routes notification of
-     * {@linkplain TruffleEvents execution events} taking place at the Probe's AST location to the
-     * listener.
+     * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
+     * the listener.
      *
      * @param probe source of execution events
      * @param listener receiver of execution events
@@ -333,8 +331,8 @@ public final class Instrumenter {
      * <em>Attaches</em> a {@link StandardInstrumentListener listener} to a {@link Probe}, creating
      * a <em>binding</em> called an {@link Instrument}. Until the Instrument is
      * {@linkplain Instrument#dispose() disposed}, it routes notification of
-     * {@linkplain TruffleEvents execution events} taking place at the Probe's AST location to the
-     * listener.
+     * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
+     * the listener.
      *
      * @param probe source of execution events
      * @param listener receiver of execution events
@@ -352,8 +350,8 @@ public final class Instrumenter {
      * <em>Attaches</em> a {@link AdvancedInstrumentResultListener listener} to a {@link Probe},
      * creating a <em>binding</em> called an {@link Instrument}. Until the Instrument is
      * {@linkplain Instrument#dispose() disposed}, it routes notification of
-     * {@linkplain TruffleEvents execution events} taking place at the Probe's AST location to the
-     * listener.
+     * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
+     * the listener.
      * <p>
      * This Instrument executes efficiently, subject to full Truffle optimization, a client-provided
      * AST fragment every time the Probed node is entered.

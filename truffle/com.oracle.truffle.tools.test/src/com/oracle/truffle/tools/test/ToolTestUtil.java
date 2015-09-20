@@ -38,11 +38,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.EventHandlerNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeNode;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -227,7 +227,7 @@ public class ToolTestUtil {
     @NodeInfo(cost = NodeCost.NONE)
     static class ToolTestWrapperNode extends ToolTestLangNode implements WrapperNode {
         @Child private ToolTestLangNode child;
-        @Child private ProbeNode probeNode;
+        @Child private EventHandlerNode eventHandlerNode;
 
         public ToolTestWrapperNode(ToolTestLangNode child) {
             super(null);
@@ -245,14 +245,13 @@ public class ToolTestUtil {
             return false;
         }
 
-        @Override
-        public void insertProbe(ProbeNode newProbeNode) {
-            this.probeNode = newProbeNode;
+        public void insertEventHandlerNode(EventHandlerNode eventHandler) {
+            this.eventHandlerNode = eventHandler;
         }
 
         @Override
         public Probe getProbe() {
-            return probeNode.getProbe();
+            return eventHandlerNode.getProbe();
         }
 
         @Override
@@ -262,15 +261,15 @@ public class ToolTestUtil {
 
         @Override
         public Object execute(VirtualFrame vFrame) {
-            probeNode.enter(child, vFrame);
+            eventHandlerNode.enter(child, vFrame);
             Object result;
             try {
                 result = child.execute(vFrame);
-                probeNode.returnValue(child, vFrame, result);
+                eventHandlerNode.returnValue(child, vFrame, result);
             } catch (KillException e) {
                 throw (e);
             } catch (Exception e) {
-                probeNode.returnExceptional(child, vFrame, e);
+                eventHandlerNode.returnExceptional(child, vFrame, e);
                 throw (e);
             }
             return result;

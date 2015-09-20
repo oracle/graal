@@ -26,7 +26,7 @@ package com.oracle.truffle.api.instrument.impl;
 
 import com.oracle.truffle.api.instrument.ASTPrinter;
 import com.oracle.truffle.api.instrument.InstrumentationNode;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor;

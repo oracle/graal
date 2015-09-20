@@ -28,7 +28,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Instrument.AbstractInstrumentNode;
-import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -48,72 +47,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  * clones consistent.
  */
 @NodeInfo(cost = NodeCost.NONE)
-public final class ProbeNode extends Node implements TruffleEvents, InstrumentationNode {
-
-    /**
-     * A node that can be inserted into a Truffle AST, and which enables {@linkplain Instrument
-     * instrumentation} at a particular Guest Language (GL) node. Implementations must extend
-     * {@link Node} and should ensure that {@link TruffleLanguage#isInstrumentable(Node)} returns
-     * {@code false}.
-     * <p>
-     * The implementation must be GL-specific. A wrapper <em>decorates</em> a GL AST node (the
-     * wrapper's <em>child</em>) by acting as a transparent <em>proxy</em> with respect to the GL's
-     * execution semantics.
-     * <p>
-     * Instrumentation at the wrapped node is implemented by an instance of {@link ProbeNode}
-     * attached as a second child of the {@link WrapperNode}.
-     * <p>
-     * A wrapper is obliged to notify its attached {@link ProbeNode} when execution events occur at
-     * the wrapped AST node during program execution.
-     * <p>
-     * When a GL AST is cloned, the {@link WrapperNode}, its {@link ProbeNode} and any
-     * {@linkplain Instrument instrumentation} are also cloned; they are in effect part of the GL
-     * AST. An instance of {@link Probe} represents abstractly the instrumentation at a particular
-     * location in a GL AST; it tracks all the copies of the Wrapper and attached instrumentation,
-     * and acts as a single point of access for tools.
-     * <p>
-     * This interface is not intended to be visible as part of the API for tools (instrumentation
-     * clients).
-     * <p>
-     * Implementation guidelines:
-     * <ol>
-     * <li>Each GL implementation should include a WrapperNode implementation; usually only one is
-     * needed.</li>
-     * <li>The wrapper type should descend from the <em>GL-specific node class</em>.</li>
-     * <li>Must have a field: {@code @Child private <GL>Node child;}</li>
-     * <li>Must have a field: {@code @Child private ProbeNode probeNode;}</li>
-     * <li>The wrapper must act as a <em>proxy</em> for its child, which means implementing every
-     * possible <em>execute-</em> method that gets called on guest language AST node types by their
-     * parents, and passing along each call to its child.</li>
-     * <li>Method {@code Probe getProbe()} should be implemented as {@code probeNode.getProbe();}
-     * <li>Method {@code insertProbe(ProbeNode)} should be implemented as
-     * {@code this.probeNode=insert(newProbeNode);}</li>
-     * <li>Most importantly, Wrappers must be implemented so that Truffle optimization will reduce
-     * their runtime overhead to zero when there are no attached {@link Instrument}s.</li>
-     * </ol>
-     * <p>
-     *
-     * @see Instrument
-     */
-    public interface WrapperNode extends InstrumentationNode {
-
-        /**
-         * Gets the node being "wrapped", i.e. the AST node for which
-         * {@linkplain InstrumentationNode.TruffleEvents execution events} will be reported through
-         * the Instrumentation Framework.
-         */
-        Node getChild();
-
-        /**
-         * Gets the {@link Probe} responsible for installing this wrapper.
-         */
-        Probe getProbe();
-
-        /**
-         * Implementation support for completing a newly created wrapper node.
-         */
-        void insertProbe(ProbeNode probeNode);
-    }
+final class ProbeNode extends EventHandlerNode {
 
     // Never changed once set.
     @CompilationFinal Probe probe = null;
@@ -138,10 +72,12 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
     /**
      * @return the {@link Probe} permanently associated with this {@link ProbeNode}.
      */
+    @Override
     public Probe getProbe() {
         return probe;
     }
 
+    @Override
     public void enter(Node node, VirtualFrame vFrame) {
         this.probe.checkProbeUnchanged();
         final SyntaxTagTrap beforeTagTrap = probe.getBeforeTrap();
@@ -153,6 +89,7 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
         }
     }
 
+    @Override
     public void returnVoid(Node node, VirtualFrame vFrame) {
         this.probe.checkProbeUnchanged();
         if (firstInstrumentNode != null) {
@@ -164,6 +101,7 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
         }
     }
 
+    @Override
     public void returnValue(Node node, VirtualFrame vFrame, Object result) {
         this.probe.checkProbeUnchanged();
         if (firstInstrumentNode != null) {
@@ -175,6 +113,7 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
         }
     }
 
+    @Override
     public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
         this.probe.checkProbeUnchanged();
         if (firstInstrumentNode != null) {
@@ -186,6 +125,7 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
         }
     }
 
+    @Override
     public String instrumentationInfo() {
         return "Standard probe";
     }

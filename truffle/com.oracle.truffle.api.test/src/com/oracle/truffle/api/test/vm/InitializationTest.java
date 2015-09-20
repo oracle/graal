@@ -44,13 +44,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.EventHandlerNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeNode;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -140,7 +140,7 @@ public class InitializationTest {
 
         @SuppressWarnings("deprecation")
         @Override
-        public ProbeNode.WrapperNode createWrapperNode() {
+        public WrapperNode createWrapperNode() {
             throw new UnsupportedOperationException();
         }
 
@@ -150,9 +150,9 @@ public class InitializationTest {
 
     }
 
-    private static class ANodeWrapper extends ANode implements ProbeNode.WrapperNode {
+    private static class ANodeWrapper extends ANode implements WrapperNode {
         @Child ANode child;
-        private ProbeNode probeNode;
+        @Child private EventHandlerNode eventHandlerNode;
 
         ANodeWrapper(ANode node) {
             super(1);  // dummy
@@ -166,12 +166,12 @@ public class InitializationTest {
 
         @Override
         public Probe getProbe() {
-            return probeNode.getProbe();
+            return eventHandlerNode.getProbe();
         }
 
         @Override
-        public void insertProbe(ProbeNode pn) {
-            this.probeNode = pn;
+        public void insertEventHandlerNode(EventHandlerNode eventHandler) {
+            this.eventHandlerNode = eventHandler;
         }
 
         @Override

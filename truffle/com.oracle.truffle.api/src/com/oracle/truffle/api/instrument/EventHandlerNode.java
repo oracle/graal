@@ -24,18 +24,41 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * A marker interface for Truffle {@linkplain Node nodes} that internally implement the
- * <em>Instrumentation Framework</em>. Such nodes should not be part of any Guest Language execution
- * semantics, and should in general not be visible to ordinary Instrumentation clients.
+ * An Instrumentation-managed {@link Node} that synchronously propagates notification of AST
+ * Execution Events through the Instrumentation Framework.
  */
-public interface InstrumentationNode {
+public abstract class EventHandlerNode extends Node implements InstrumentationNode {
+
+    protected EventHandlerNode() {
+    }
 
     /**
-     * A short description of the particular role played by the node, intended to support debugging.
+     * An AST node's execute method is about to be called.
      */
-    String instrumentationInfo();
+    public abstract void enter(Node node, VirtualFrame vFrame);
+
+    /**
+     * An AST Node's {@code void}-valued execute method has just returned.
+     */
+    public abstract void returnVoid(Node node, VirtualFrame vFrame);
+
+    /**
+     * An AST Node's execute method has just returned a value (boxed if primitive).
+     */
+    public abstract void returnValue(Node node, VirtualFrame vFrame, Object result);
+
+    /**
+     * An AST Node's execute method has just thrown an exception.
+     */
+    public abstract void returnExceptional(Node node, VirtualFrame vFrame, Exception exception);
+
+    /**
+     * Gets the {@link Probe} that manages this chain of event handling.
+     */
+    public abstract Probe getProbe();
 
 }

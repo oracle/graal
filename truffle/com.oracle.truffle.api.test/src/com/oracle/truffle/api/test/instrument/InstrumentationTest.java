@@ -37,8 +37,7 @@ import com.oracle.truffle.api.instrument.Instrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeListener;
-import com.oracle.truffle.api.instrument.ProbeNode;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
 import com.oracle.truffle.api.instrument.StandardInstrumentListener;
 import com.oracle.truffle.api.instrument.SyntaxTag;
@@ -60,17 +59,6 @@ import com.oracle.truffle.api.vm.TruffleVM;
  * Instrumentation allows the insertion into Truffle ASTs language-specific instances of
  * {@link WrapperNode} that propagate execution events through a {@link Probe} to any instances of
  * {@link Instrument} that might be attached to the particular probe by tools.
- * <ol>
- * <li>Creates a simple add AST</li>
- * <li>Verifies its structure</li>
- * <li>"Probes" the add node by adding a {@link WrapperNode} and associated {@link Probe}</li>
- * <li>Attaches a simple {@link Instrument} to the node via the Probe's {@link ProbeNode}</li>
- * <li>Verifies the structure of the probed AST</li>
- * <li>Verifies the execution of the probed AST</li>
- * <li>Verifies the results observed by the instrument.</li>
- * </ol>
- * To do these tests, several required classes have been implemented in their most basic form, only
- * implementing the methods necessary for the tests to pass, with stubs elsewhere.
  */
 public class InstrumentationTest {
 

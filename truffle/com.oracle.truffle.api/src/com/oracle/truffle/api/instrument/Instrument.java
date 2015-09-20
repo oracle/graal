@@ -27,7 +27,6 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -46,7 +45,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  *
  * @see Probe
- * @see TruffleEvents
+ * @see EventHandlerNode
  */
 public abstract class Instrument {
 
@@ -253,6 +252,7 @@ public abstract class Instrument {
                 super(nextNode);
             }
 
+            @Override
             public void enter(Node node, VirtualFrame vFrame) {
                 SimpleInstrument.this.simpleListener.enter(SimpleInstrument.this.probe);
                 if (nextInstrumentNode != null) {
@@ -260,6 +260,7 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public void returnVoid(Node node, VirtualFrame vFrame) {
                 SimpleInstrument.this.simpleListener.returnVoid(SimpleInstrument.this.probe);
                 if (nextInstrumentNode != null) {
@@ -267,6 +268,7 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
                 SimpleInstrument.this.simpleListener.returnValue(SimpleInstrument.this.probe, result);
                 if (nextInstrumentNode != null) {
@@ -274,6 +276,7 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
                 SimpleInstrument.this.simpleListener.returnExceptional(SimpleInstrument.this.probe, exception);
                 if (nextInstrumentNode != null) {
@@ -281,6 +284,7 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
                 return info != null ? info : simpleListener.getClass().getSimpleName();
@@ -335,6 +339,7 @@ public abstract class Instrument {
                 super(nextNode);
             }
 
+            @Override
             public void enter(Node node, VirtualFrame vFrame) {
                 standardListener.enter(StandardInstrument.this.probe, node, vFrame);
                 if (nextInstrumentNode != null) {
@@ -342,6 +347,7 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public void returnVoid(Node node, VirtualFrame vFrame) {
                 standardListener.returnVoid(StandardInstrument.this.probe, node, vFrame);
                 if (nextInstrumentNode != null) {
@@ -349,6 +355,7 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
                 standardListener.returnValue(StandardInstrument.this.probe, node, vFrame, result);
                 if (nextInstrumentNode != null) {
@@ -356,6 +363,7 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
                 standardListener.returnExceptional(StandardInstrument.this.probe, node, vFrame, exception);
                 if (nextInstrumentNode != null) {
@@ -363,6 +371,7 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
                 return info != null ? info : standardListener.getClass().getSimpleName();
@@ -422,6 +431,7 @@ public abstract class Instrument {
                 super(nextNode);
             }
 
+            @Override
             public void enter(Node node, VirtualFrame vFrame) {
                 if (instrumentRoot == null) {
                     try {
@@ -477,24 +487,28 @@ public abstract class Instrument {
                 return new RuntimeException("Instrument result " + result.toString() + " not assignable to " + requiredResultType.getSimpleName());
             }
 
+            @Override
             public void returnVoid(Node node, VirtualFrame vFrame) {
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnVoid(node, vFrame);
                 }
             }
 
+            @Override
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnValue(node, vFrame, result);
                 }
             }
 
+            @Override
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
             }
 
+            @Override
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
                 return info != null ? info : rootFactory.getClass().getSimpleName();
@@ -549,6 +563,7 @@ public abstract class Instrument {
                 this.isCompiled = CompilerDirectives.inCompiledCode();
             }
 
+            @Override
             public void enter(Node node, VirtualFrame vFrame) {
                 if (this.isCompiled != CompilerDirectives.inCompiledCode()) {
                     this.isCompiled = CompilerDirectives.inCompiledCode();
@@ -559,24 +574,28 @@ public abstract class Instrument {
                 }
             }
 
+            @Override
             public void returnVoid(Node node, VirtualFrame vFrame) {
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnVoid(node, vFrame);
                 }
             }
 
+            @Override
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnValue(node, vFrame, result);
                 }
             }
 
+            @Override
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
             }
 
+            @Override
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
                 return info != null ? info : toolOptListener.getClass().getSimpleName();
@@ -585,7 +604,7 @@ public abstract class Instrument {
     }
 
     @NodeInfo(cost = NodeCost.NONE)
-    abstract class AbstractInstrumentNode extends Node implements TruffleEvents, InstrumentationNode {
+    abstract class AbstractInstrumentNode extends EventHandlerNode {
 
         @Child protected AbstractInstrumentNode nextInstrumentNode;
 
@@ -597,6 +616,11 @@ public abstract class Instrument {
         @Override
         public boolean isInstrumentable() {
             return false;
+        }
+
+        @Override
+        public Probe getProbe() {
+            return probe;
         }
 
         /**
