@@ -132,22 +132,9 @@ public class InitializationTest {
             return getRootNode().getSourceSection();
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isInstrumentable() {
-            return true;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public WrapperNode createWrapperNode() {
-            throw new UnsupportedOperationException();
-        }
-
         Object constant() {
             return constant;
         }
-
     }
 
     private static class ANodeWrapper extends ANode implements WrapperNode {

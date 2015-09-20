@@ -56,17 +56,6 @@ class InstrumentationTestNodes {
     abstract static class TestLanguageNode extends Node {
         public abstract Object execute(VirtualFrame vFrame);
 
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isInstrumentable() {
-            return true;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public WrapperNode createWrapperNode() {
-            throw new UnsupportedOperationException();
-        }
     }
 
     @NodeInfo(cost = NodeCost.NONE)
@@ -82,11 +71,6 @@ class InstrumentationTestNodes {
         @Override
         public String instrumentationInfo() {
             return "Wrapper node for testing";
-        }
-
-        @Override
-        public boolean isInstrumentable() {
-            return false;
         }
 
         @Override

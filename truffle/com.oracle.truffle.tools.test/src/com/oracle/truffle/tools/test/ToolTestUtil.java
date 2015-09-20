@@ -42,10 +42,10 @@ import com.oracle.truffle.api.instrument.EventHandlerNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -210,18 +210,6 @@ public class ToolTestUtil {
         protected ToolTestLangNode(SourceSection ss) {
             super(ss);
         }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isInstrumentable() {
-            throw new UnsupportedOperationException();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public WrapperNode createWrapperNode() {
-            throw new UnsupportedOperationException();
-        }
     }
 
     @NodeInfo(cost = NodeCost.NONE)
@@ -238,11 +226,6 @@ public class ToolTestUtil {
         @Override
         public String instrumentationInfo() {
             return "Wrapper node for testing";
-        }
-
-        @Override
-        public boolean isInstrumentable() {
-            return false;
         }
 
         public void insertEventHandlerNode(EventHandlerNode eventHandler) {

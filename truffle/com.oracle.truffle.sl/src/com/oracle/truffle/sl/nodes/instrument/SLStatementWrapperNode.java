@@ -74,11 +74,6 @@ public final class SLStatementWrapperNode extends SLStatementNode implements Wra
     }
 
     @Override
-    public boolean isInstrumentable() {
-        return false;
-    }
-
-    @Override
     public SLStatementNode getNonWrapperNode() {
         return child;
     }

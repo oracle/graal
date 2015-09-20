@@ -56,12 +56,6 @@ final class ProbeNode extends EventHandlerNode {
      */
     @Child protected AbstractInstrumentNode firstInstrumentNode;
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public boolean isInstrumentable() {
-        return false;
-    }
-
     @Override
     public Node copy() {
         Node node = super.copy();

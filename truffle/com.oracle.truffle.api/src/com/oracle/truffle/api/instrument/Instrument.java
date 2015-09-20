@@ -612,12 +612,6 @@ public abstract class Instrument {
             this.nextInstrumentNode = nextNode;
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isInstrumentable() {
-            return false;
-        }
-
         @Override
         public Probe getProbe() {
             return probe;

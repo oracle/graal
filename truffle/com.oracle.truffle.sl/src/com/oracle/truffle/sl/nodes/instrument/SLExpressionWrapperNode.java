@@ -81,11 +81,6 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
     }
 
     @Override
-    public boolean isInstrumentable() {
-        return false;
-    }
-
-    @Override
     public SLExpressionNode getNonWrapperNode() {
         return child;
     }
