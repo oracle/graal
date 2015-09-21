@@ -27,41 +27,36 @@ package com.oracle.truffle.api.interop.java;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.List;
 
-final class JavaFunctionNode extends RootNode {
-    JavaFunctionNode() {
+final class InvokeMemberNode extends RootNode {
+    InvokeMemberNode() {
         super(JavaInteropLanguage.class, null, null);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        JavaInterop.JavaFunctionObject receiver = (JavaInterop.JavaFunctionObject) ForeignAccess.getReceiver(frame);
-        List<Object> args = ForeignAccess.getArguments(frame);
-        return execute(receiver, args.toArray());
-    }
-
-    static Object execute(JavaInterop.JavaFunctionObject receiver, Object[] args) {
-        return execute(receiver.method, receiver.obj, args);
-    }
-
-    @SuppressWarnings("paramAssign")
-    static Object execute(Method method, Object obj, Object[] args) {
-        for (int i = 0; i < args.length; i++) {
-            if (args[i] instanceof JavaInterop.JavaObject) {
-                args[i] = ((JavaInterop.JavaObject) args[i]).obj;
+        JavaInterop.JavaObject receiver = (JavaInterop.JavaObject) ForeignAccess.getReceiver(frame);
+        final List<Object> args = ForeignAccess.getArguments(frame);
+        final Object nameOrIndex = args.get(0);
+        final int argsLength = args.size() - 1;
+        if (nameOrIndex instanceof Integer) {
+            throw new IllegalStateException();
+        } else {
+            String name = (String) nameOrIndex;
+            for (Method m : receiver.clazz.getMethods()) {
+                final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
+                if (isStatic) {
+                    continue;
+                }
+                if (m.getName().equals(name) && m.getParameterCount() == argsLength) {
+                    Object[] arr = args.subList(1, args.size()).toArray();
+                    return JavaFunctionNode.execute(m, receiver.obj, arr);
+                }
             }
-        }
-        try {
-            Object ret = method.invoke(obj, args);
-            if (JavaInterop.isPrimitive(ret)) {
-                return ret;
-            }
-            return JavaInterop.asTruffleObject(ret);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            throw new IllegalStateException(ex);
+            throw new IllegalArgumentException(name);
         }
     }
 
