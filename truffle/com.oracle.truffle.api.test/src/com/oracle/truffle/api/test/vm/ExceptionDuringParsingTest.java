@@ -29,6 +29,7 @@ import com.oracle.truffle.api.vm.TruffleVM;
 import java.io.IOException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
@@ -41,11 +42,33 @@ public class ExceptionDuringParsingTest {
         TruffleVM.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 
+        final Source src = Source.fromText("parse=No, no, no!", "Fail on parsing").withMimeType(L1);
         try {
-            vm.eval(Source.fromText("parse=No, no, no!", "Fail on parsing").withMimeType(L1));
+            vm.eval(src);
             fail("Exception thrown");
         } catch (IOException ex) {
             assertEquals(ex.getMessage(), "No, no, no!");
+        }
+
+        vm.dispose();
+
+        try {
+            vm.eval(src);
+            fail("Should throw an exception");
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("disposed"));
+        }
+        try {
+            vm.findGlobalSymbol("nothing");
+            fail("Should throw an exception");
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("disposed"));
+        }
+        try {
+            vm.dispose();
+            fail("Should throw an exception");
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("disposed"));
         }
     }
 }

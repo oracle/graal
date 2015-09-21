@@ -237,4 +237,8 @@ public abstract class Accessor {
     protected TruffleLanguage<?> findLanguage(Env env) {
         return API.findLanguage(env);
     }
+
+    protected void dispose(TruffleLanguage<?> impl, Env env) {
+        API.dispose(impl, env);
+    }
 }
