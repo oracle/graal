@@ -149,9 +149,9 @@ public final class TruffleVM {
      *
      * <pre>
      * {@link TruffleVM} vm = {@link TruffleVM}.{@link TruffleVM#newVM() newVM()}
-     *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
-     *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
-     *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})
+     *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
+     *     .{@link Builder#setErr(java.io.OutputStream) setrr}({@link OutputStream yourOutput})
+     *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
      *     .{@link Builder#build() build()};
      * </pre>
      *
@@ -175,9 +175,9 @@ public final class TruffleVM {
      *
      * <pre>
      * {@link TruffleVM} vm = {@link TruffleVM}.{@link TruffleVM#newVM() newVM()}
-     *     .{@link Builder#setOut(java.io.Writer) setOut}({@link OutputStream yourOutput})
-     *     .{@link Builder#setErr(java.io.Writer) setrr}({@link OutputStream yourOutput})
-     *     .{@link Builder#setIn(java.io.Reader) setIn}({@link InputStream yourInput})
+     *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
+     *     .{@link Builder#setErr(java.io.OutputStream) setrr}({@link OutputStream yourOutput})
+     *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
      *     .{@link Builder#build() build()};
      * </pre>
      */
@@ -208,6 +208,7 @@ public final class TruffleVM {
          * @deprecated does nothing
          */
         @Deprecated
+        @SuppressWarnings("unused")
         public Builder stdOut(Writer w) {
             return this;
         }
@@ -228,6 +229,7 @@ public final class TruffleVM {
          * @deprecated does nothing
          */
         @Deprecated
+        @SuppressWarnings("unused")
         public Builder stdErr(Writer w) {
             return this;
         }
@@ -248,6 +250,7 @@ public final class TruffleVM {
          * @deprecated does nothing
          */
         @Deprecated
+        @SuppressWarnings("unused")
         public Builder stdIn(Reader r) {
             return this;
         }
