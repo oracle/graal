@@ -25,7 +25,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os, platform
-from os.path import join, exists
+from os.path import join, exists, basename
 from argparse import ArgumentParser
 import sanitycheck
 import itertools
@@ -466,9 +466,49 @@ def specjbb2005(args):
 
     _run_benchmark(args, None, launcher)
 
+def jdkartifactstats(args):
+    """show stats about JDK deployed Graal artifacts"""
+    jdkDir = mx_jvmci.get_jvmci_jdk_dir()
+    artifacts = {}
+    for root, _, filenames in os.walk(mx_jvmci.vmLibDirInJdk(jdkDir)):
+        for f in filenames:
+            if f.endswith('.jar'):
+                jar = join(root, f)
+                if 'truffle' in f:
+                    if 'enterprise' in f:
+                        artifacts.setdefault('GraalEnterpriseTruffle', []).append(jar)
+                    else:
+                        artifacts.setdefault('GraalTruffle', []).append(jar)
+                elif 'enterprise' in f:
+                    artifacts.setdefault('GraalEnterprise', []).append(jar)
+                elif 'jvmci' in f:
+                    artifacts.setdefault('JVMCI', []).append(jar)
+                elif 'graal' in f:
+                    artifacts.setdefault('Graal', []).append(jar)
+                else:
+                    mx.logv('ignored: ' + jar)
+    for category in sorted(artifacts.viewkeys()):
+        jars = artifacts[category]
+        if jars:
+            total = 0
+            print
+            for j in jars:
+                size = os.path.getsize(j)
+                print '{:10,}\t{}:{}'.format(size, category, basename(j))
+                total += size
+            print '{:10,}\t{}:<total>'.format(total, category)
+
+    jvmLib = join(jdkDir, mx_jvmci.relativeVmLibDirInJdk(), get_vm(), mx.add_lib_suffix(mx.add_lib_prefix('jvm')))
+    print
+    if exists(jvmLib):
+        print '{:10,}\t{}'.format(os.path.getsize(jvmLib), jvmLib)
+    else:
+        print '{:>10}\t{}'.format('<missing>', jvmLib)
+
 mx.update_commands(_suite, {
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'dacapo': [dacapo, '[VM options] benchmarks...|"all" [DaCapo options]'],
+    'jdkartifactstats' : [jdkartifactstats, ''],
     'scaladacapo': [scaladacapo, '[VM options] benchmarks...|"all" [Scala DaCapo options]'],
     'specjvm2008': [specjvm2008, '[VM options] benchmarks...|"all" [SPECjvm2008 options]'],
     'specjbb2013': [specjbb2013, '[VM options] [-- [SPECjbb2013 options]]'],
