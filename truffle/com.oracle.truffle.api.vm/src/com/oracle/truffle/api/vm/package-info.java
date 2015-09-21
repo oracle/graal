@@ -30,8 +30,8 @@
  */
 
 /**
- * Central place to create and control {@link com.oracle.truffle.api.vm.TruffleVM Truffle Virtual
- * Machine} and all languages hosted in it.
+ * Central place to create and control {@link com.oracle.truffle.api.vm.PolyglotEngine polyglot
+ * execution engine} and all languages hosted in it.
  */
 package com.oracle.truffle.api.vm;
 

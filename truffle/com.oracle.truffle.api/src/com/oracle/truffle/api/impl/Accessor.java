@@ -36,7 +36,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
 /**
- * Communication between TruffleVM and TruffleLanguage API/SPI.
+ * Communication between PolyglotEngine and TruffleLanguage API/SPI.
  */
 @SuppressWarnings("rawtypes")
 public abstract class Accessor {

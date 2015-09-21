@@ -29,7 +29,7 @@ import com.oracle.truffle.api.source.*;
 import java.io.IOException;
 
 /**
- * Breakpoint in a {@link com.oracle.truffle.api.vm.TruffleVM} with
+ * Breakpoint in a {@link com.oracle.truffle.api.vm.PolyglotEngine} with
  * {@link com.oracle.truffle.api.debug debugging turned on}. You can ask
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)} or
  * {@link Debugger#setTagBreakpoint(int, com.oracle.truffle.api.instrument.SyntaxTag, boolean)} to

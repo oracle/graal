@@ -44,19 +44,20 @@ import java.util.logging.*;
 /**
  * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #buildNew()
  * Instantiate} your own portal into the isolated, multi language system with all the registered
- * languages ready for your use. A {@link PolyglotEngine} runs inside of a <em>JVM</em>, there can however
- * be multiple instances (some would say tenants) of {@link PolyglotEngine} running next to each other in a
- * single <em>JVM</em> with a complete mutual isolation. There is 1:N mapping between <em>JVM</em>
- * and {@link PolyglotEngine}.
+ * languages ready for your use. A {@link PolyglotEngine} runs inside of a <em>JVM</em>, there can
+ * however be multiple instances (some would say tenants) of {@link PolyglotEngine} running next to
+ * each other in a single <em>JVM</em> with a complete mutual isolation. There is 1:N mapping
+ * between <em>JVM</em> and {@link PolyglotEngine}.
  * <p>
  * It would not be correct to think of a {@link PolyglotEngine} as a runtime for a single
  * {@link TruffleLanguage Truffle language} (Ruby, Python, R, C, JavaScript, etc.) either.
- * {@link PolyglotEngine} can host as many of Truffle languages as {@link Registration registered on a
- * class path} of your <em>JVM</em> application. {@link PolyglotEngine} orchestrates these languages,
- * manages exchange of objects and calls among them. While it may happen that there is just one
- * activated language inside of a {@link PolyglotEngine}, the greatest strength of {@link PolyglotEngine} is in
- * inter-operability between all Truffle languages. There is 1:N mapping between {@link PolyglotEngine} and
- * {@link TruffleLanguage Truffle language implementations}.
+ * {@link PolyglotEngine} can host as many of Truffle languages as {@link Registration registered on
+ * a class path} of your <em>JVM</em> application. {@link PolyglotEngine} orchestrates these
+ * languages, manages exchange of objects and calls among them. While it may happen that there is
+ * just one activated language inside of a {@link PolyglotEngine}, the greatest strength of
+ * {@link PolyglotEngine} is in inter-operability between all Truffle languages. There is 1:N
+ * mapping between {@link PolyglotEngine} and {@link TruffleLanguage Truffle language
+ * implementations}.
  * <p>
  * Use {@link #buildNew()} to create new isolated portal ready for execution of various languages.
  * All the languages in a single portal see each other exported global symbols and can cooperate.
@@ -69,10 +70,10 @@ import java.util.logging.*;
  * is about to be processed, its appropriate engine (if found), is initialized. Once an engine gets
  * initialized, it remains so, until the virtual machine isn't garbage collected.
  * <p>
- * The <code>TruffleVM</code> is single-threaded and tries to enforce that. It records the thread it
- * has been {@link Builder#build() created} by and checks that all subsequent calls are coming from
- * the same thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it what
- * to do.
+ * The engine is single-threaded and tries to enforce that. It records the thread it has been
+ * {@link Builder#build() created} by and checks that all subsequent calls are coming from the same
+ * thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it what to
+ * do.
  */
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
@@ -141,14 +142,14 @@ public class PolyglotEngine {
     public static PolyglotEngine.Builder buildNew() {
         // making Builder non-static inner class is a
         // nasty trick to avoid the Builder class to appear
-        // in Javadoc next to TruffleVM class
+        // in Javadoc next to PolyglotEngine class
         PolyglotEngine vm = new PolyglotEngine();
         return vm.new Builder();
     }
 
     /**
-     * Builder for a new {@link PolyglotEngine}. Call various configuration methods in a chain and at the
-     * end create new {@link PolyglotEngine virtual machine}:
+     * Builder for a new {@link PolyglotEngine}. Call various configuration methods in a chain and
+     * at the end create new {@link PolyglotEngine virtual machine}:
      *
      * <pre>
      * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#buildNew() buildNew()}
@@ -182,8 +183,8 @@ public class PolyglotEngine {
         }
 
         /**
-         * Changes the error output for languages running in <em>to be created</em> {@link PolyglotEngine
-         * virtual machine}. The default is to use {@link System#err}.
+         * Changes the error output for languages running in <em>to be created</em>
+         * {@link PolyglotEngine virtual machine}. The default is to use {@link System#err}.
          *
          * @param w the writer to use as output
          * @return instance of this builder
@@ -194,8 +195,8 @@ public class PolyglotEngine {
         }
 
         /**
-         * Changes the default input for languages running in <em>to be created</em> {@link PolyglotEngine
-         * virtual machine}. The default is to use {@link System#out}.
+         * Changes the default input for languages running in <em>to be created</em>
+         * {@link PolyglotEngine virtual machine}. The default is to use {@link System#out}.
          *
          * @param r the reader to use as input
          * @return instance of this builder
@@ -219,11 +220,12 @@ public class PolyglotEngine {
         }
 
         /**
-         * Adds global named symbol into the configuration of to-be-built {@link PolyglotEngine}. This
-         * symbol will be accessible to all languages via {@link Env#importSymbol(java.lang.String)}
-         * and will take precedence over {@link TruffleLanguage#findExportedSymbol symbols exported
-         * by languages itself}. Repeated use of <code>globalSymbol</code> is possible; later
-         * definition of the same name overrides the previous one.
+         * Adds global named symbol into the configuration of to-be-built {@link PolyglotEngine}.
+         * This symbol will be accessible to all languages via
+         * {@link Env#importSymbol(java.lang.String)} and will take precedence over
+         * {@link TruffleLanguage#findExportedSymbol symbols exported by languages itself}. Repeated
+         * use of <code>globalSymbol</code> is possible; later definition of the same name overrides
+         * the previous one.
          *
          * @param name name of the symbol to register
          * @param obj value of the object - expected to be primitive wrapper, {@link String} or
@@ -258,8 +260,8 @@ public class PolyglotEngine {
         }
 
         /**
-         * Creates the {@link PolyglotEngine Truffle virtual machine}. The configuration is taken from
-         * values passed into configuration methods in this class.
+         * Creates the {@link PolyglotEngine Truffle virtual machine}. The configuration is taken
+         * from values passed into configuration methods in this class.
          *
          * @return new, isolated virtual machine with pre-registered languages
          */
@@ -412,10 +414,10 @@ public class PolyglotEngine {
     Value createValue(TruffleLanguage lang, Object[] result, CountDownLatch ready) {
         return new Value(lang, result, ready);
     }
+
     Language createLanguage(Map.Entry<String, LanguageCache> en) {
         return new Language(en.getValue());
     }
-
 
     @SuppressWarnings("try")
     private void evalImpl(Debugger[] fillIn, TruffleLanguage<?>[] fillLang, Source s, Object[] result, Language l, CountDownLatch ready) {
@@ -506,7 +508,7 @@ public class PolyglotEngine {
 
     private void checkThread() {
         if (initThread != Thread.currentThread()) {
-            throw new IllegalStateException("TruffleVM created on " + initThread.getName() + " but used on " + Thread.currentThread().getName());
+            throw new IllegalStateException("PolyglotEngine created on " + initThread.getName() + " but used on " + Thread.currentThread().getName());
         }
     }
 
@@ -550,7 +552,8 @@ public class PolyglotEngine {
 
     /**
      * A future value wrapper. A user level wrapper around values returned by evaluation of various
-     * {@link PolyglotEngine} functions like {@link PolyglotEngine#findGlobalSymbol(java.lang.String)} and
+     * {@link PolyglotEngine} functions like
+     * {@link PolyglotEngine#findGlobalSymbol(java.lang.String)} and
      * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} or value returned by
      * {@link #invoke(java.lang.Object, java.lang.Object...) sbbsequent of execution}. In case the
      * {@link PolyglotEngine} has been initialized for
@@ -680,12 +683,13 @@ public class PolyglotEngine {
     }
 
     /**
-     * Description of a language registered in {@link PolyglotEngine Truffle virtual machine}. Languages
-     * are registered by {@link Registration} annotation which stores necessary information into a
-     * descriptor inside of the language's JAR file. When a new {@link PolyglotEngine} is created, it reads
-     * all available descriptors and creates {@link Language} objects to represent them. One can
-     * obtain a {@link #getName() name} or list of supported {@link #getMimeTypes() MIME types} for
-     * each language. The actual language implementation is not initialized until
+     * Description of a language registered in {@link PolyglotEngine Truffle virtual machine}.
+     * Languages are registered by {@link Registration} annotation which stores necessary
+     * information into a descriptor inside of the language's JAR file. When a new
+     * {@link PolyglotEngine} is created, it reads all available descriptors and creates
+     * {@link Language} objects to represent them. One can obtain a {@link #getName() name} or list
+     * of supported {@link #getMimeTypes() MIME types} for each language. The actual language
+     * implementation is not initialized until
      * {@link PolyglotEngine#eval(java.lang.String, java.lang.String) a code is evaluated} in it.
      */
     public class Language {

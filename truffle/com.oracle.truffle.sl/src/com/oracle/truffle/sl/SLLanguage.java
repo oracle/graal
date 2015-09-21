@@ -449,7 +449,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         // if (statementCounts || coverage) {
         // if (registeredASTProber == null) {
         // final ASTProber newProber = new SLStandardASTProber();
-        // // This should be registered on the TruffleVM
+        // // This should be registered on the PolyglotEngine
         // Probe.registerASTProber(newProber);
         // registeredASTProber = newProber;
         // }
@@ -498,7 +498,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         public SLDebugProvider() {
             if (registeredASTProber == null) {
                 registeredASTProber = new SLStandardASTProber();
-                // This should be registered on the TruffleVM
+                // This should be registered on the PolyglotEngine
                 Probe.registerASTProber(registeredASTProber);
             }
         }
@@ -512,7 +512,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
         public void enableASTProbing(ASTProber prober) {
             if (prober != null) {
-                // This should be registered on the TruffleVM
+                // This should be registered on the PolyglotEngine
                 Probe.registerASTProber(prober);
             }
         }

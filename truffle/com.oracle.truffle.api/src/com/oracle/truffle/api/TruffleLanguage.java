@@ -38,10 +38,10 @@ import java.util.WeakHashMap;
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing an
  * implementation of this type and registering it using {@link Registration} annotation, your
- * language becomes accessible to users of the {@link com.oracle.truffle.api.vm.TruffleVM Truffle
- * virtual machine} - all they will need to do is to include your JAR into their application and all
- * the Truffle goodies (multi-language support, multitenant hosting, debugging, etc.) will be made
- * available to them.
+ * language becomes accessible to users of the {@link com.oracle.truffle.api.vm.PolyglotEngine
+ * polyglot execution engine} - all they will need to do is to include your JAR into their
+ * application and all the Truffle goodies (multi-language support, multitenant hosting, debugging,
+ * etc.) will be made available to them.
  *
  * @param <C> internal state of the language associated with every thread that is executing program
  *            {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)

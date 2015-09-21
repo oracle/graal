@@ -49,10 +49,10 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * This methods is called before first test is executed. It's purpose is to set a TruffleVM with
-     * your language up, so it is ready for testing.
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) Execute} any scripts you need, and
-     * prepare global symbols with proper names. The symbols will then be looked up by the
+     * This methods is called before first test is executed. It's purpose is to set a
+     * {@link PolyglotEngine} with your language up, so it is ready for testing.
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) Execute} any scripts you
+     * need, and prepare global symbols with proper names. The symbols will then be looked up by the
      * infrastructure (using the names provided by you from methods like {@link #plusInt()}) and
      * used for internal testing.
      *
@@ -63,8 +63,8 @@ public abstract class TruffleTCK {
 
     /**
      * MIME type associated with your language. The MIME type will be passed to
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} method of the {@link #prepareVM()
-     * created TruffleVM}.
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} method of the
+     * {@link #prepareVM() created engine}.
      *
      * @return mime type of the tested language
      */
@@ -82,8 +82,9 @@ public abstract class TruffleTCK {
     /**
      * Name of a function that returns <code>null</code>. Truffle languages are encouraged to have
      * their own type representing <code>null</code>, but when such value is returned from
-     * {@link PolyglotEngine#eval}, it needs to be converted to real Java <code>null</code> by sending a
-     * foreign access <em>isNull</em> message. There is a test to verify it is really true.
+     * {@link PolyglotEngine#eval}, it needs to be converted to real Java <code>null</code> by
+     * sending a foreign access <em>isNull</em> message. There is a test to verify it is really
+     * true.
      *
      * @return name of globally exported symbol
      */
@@ -149,10 +150,10 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that counts number of its invocations in current {@link PolyglotEngine} context.
-     * Your function should somehow keep a counter to remember number of its invocations and always
-     * increment it. The first invocation should return <code>1</code>, the second <code>2</code>
-     * and so on. The returned values are expected to be instances of {@link Number}.
+     * Name of a function that counts number of its invocations in current {@link PolyglotEngine}
+     * context. Your function should somehow keep a counter to remember number of its invocations
+     * and always increment it. The first invocation should return <code>1</code>, the second
+     * <code>2</code> and so on. The returned values are expected to be instances of {@link Number}.
      * <p>
      * The function will be used to test that two instances of your language can co-exist next to
      * each other. Without being mutually influenced.
@@ -163,8 +164,8 @@ public abstract class TruffleTCK {
 
     /**
      * Return a code snippet that is invalid in your language. Its
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) evaluation} should fail and yield
-     * an exception.
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) evaluation} should fail and
+     * yield an exception.
      *
      * @return code snippet invalid in the tested language
      */

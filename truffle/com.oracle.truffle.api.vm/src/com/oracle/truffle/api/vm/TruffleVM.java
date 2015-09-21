@@ -121,14 +121,14 @@ public final class TruffleVM extends PolyglotEngine {
 
     @Override
     public Symbol eval(Source source) throws IOException {
-        return (Symbol)super.eval(source);
+        return (Symbol) super.eval(source);
     }
 
     @Override
     public Symbol findGlobalSymbol(final String globalName) {
-        return (Symbol)super.findGlobalSymbol(globalName);
+        return (Symbol) super.findGlobalSymbol(globalName);
     }
-    
+
     @Override
     void dispatchSuspendedEvent(SuspendedEvent event) {
     }
@@ -145,7 +145,7 @@ public final class TruffleVM extends PolyglotEngine {
 
         @Override
         public Symbol invoke(final Object thiz, final Object... args) throws IOException {
-            return (Symbol)super.invoke(thiz, args);
+            return (Symbol) super.invoke(thiz, args);
         }
     }
 

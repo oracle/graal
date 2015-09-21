@@ -30,7 +30,7 @@ import org.junit.*;
 
 import com.oracle.truffle.api.vm.*;
 
-public class TruffleVMSingleThreadedTest {
+public class EngineSingleThreadedTest {
     PolyglotEngine tvm;
 
     @Before

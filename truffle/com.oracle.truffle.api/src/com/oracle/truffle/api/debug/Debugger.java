@@ -36,8 +36,8 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * Represents debugging related state of a {@link com.oracle.truffle.api.vm.TruffleVM}. Instance of
- * this class is delivered via {@link SuspendedEvent#getDebugger()} and
+ * Represents debugging related state of a {@link com.oracle.truffle.api.vm.PolyglotEngine}.
+ * Instance of this class is delivered via {@link SuspendedEvent#getDebugger()} and
  * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
  * is turned on}.
  */
