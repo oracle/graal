@@ -43,12 +43,13 @@
 
 package com.oracle.truffle.sl.parser;
 
-import java.util.*;
-
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.*;
-import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.runtime.SLContext;
+import java.util.ArrayList;
+import java.util.List;
 
 // Checkstyle: stop
 // @formatter:off

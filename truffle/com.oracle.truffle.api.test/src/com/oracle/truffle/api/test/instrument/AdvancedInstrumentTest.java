@@ -22,17 +22,20 @@
  */
 package com.oracle.truffle.api.test.instrument;
 
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdvancedInstrumentCounterRoot;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestRootNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  * Tests the kind of instrumentation where a client can provide an AST fragment to be

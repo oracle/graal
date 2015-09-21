@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
 /**
  * A {@link SLExpressionNode} that represents a parenthesized expression; it simply returns the

@@ -41,9 +41,9 @@
 package com.oracle.truffle.sl.test;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tck.TruffleTCK;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import static org.junit.Assert.*;
+import com.oracle.truffle.tck.TruffleTCK;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**

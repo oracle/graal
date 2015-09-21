@@ -24,11 +24,12 @@ package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.source.Source;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L3;
-import com.oracle.truffle.api.vm.*;
-import java.io.*;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.io.IOException;
 import java.util.concurrent.Executors;
-import org.junit.*;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import org.junit.Test;
 
 public class GlobalSymbolTest {
     @Test

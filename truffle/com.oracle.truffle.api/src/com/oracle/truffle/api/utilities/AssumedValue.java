@@ -24,9 +24,11 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 
 /**
  * A value that the compiler can assume is constant, but can be changed by invalidation.

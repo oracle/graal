@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
 
 /**
  * Represents a SL function. On the Truffle level, a callable element is represented by a

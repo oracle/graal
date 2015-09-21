@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.interop.*;
+import com.oracle.truffle.api.TypedObject;
+import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * Represents an object members of which can be dynamically added and removed at run time.
@@ -103,24 +103,6 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
     public abstract void define(Object key, Object value, int flags, LocationFactory locationFactory);
 
     /**
-     * Change property flags.
-     *
-     * @param key property identifier
-     * @param newFlags flags to be set
-     * @return {@code true} if successful or {@code false} if property not found
-     */
-    public abstract boolean changeFlags(Object key, int newFlags);
-
-    /**
-     * Change property flags.
-     *
-     * @param key property identifier
-     * @param flagsUpdateFunction function updating old flags to new flags
-     * @return {@code true} if successful or {@code false} if property not found
-     */
-    public abstract boolean changeFlags(Object key, FlagsFunction flagsUpdateFunction);
-
-    /**
      * Delete property.
      *
      * @param key property identifier
@@ -167,14 +149,4 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
      * @param currentShape the object's current shape (must equal {@link #getShape()})
      */
     public abstract DynamicObject copy(Shape currentShape);
-
-    /**
-     * Represents an operation on a single {@code int}-valued operand that produces an {@code int}
-     * -valued result.
-     *
-     * For Java 7 compatibility (equivalent to IntUnaryOperator).
-     */
-    public interface FlagsFunction {
-        int apply(int t);
-    }
 }

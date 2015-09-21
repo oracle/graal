@@ -24,8 +24,11 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * Represents a direct call to a {@link CallTarget}. Direct calls are calls for which the

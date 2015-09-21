@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.api.utilities.*;
-import com.oracle.truffle.sl.*;
-import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.ConditionProfile;
+import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * The node for setting a property of an object. When executed, this node first evaluates the value

@@ -22,14 +22,16 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NodeChildNoNameTestFactory.OneArgNoNameFactory;
 import com.oracle.truffle.api.dsl.test.NodeChildNoNameTestFactory.ThreeArgsNoNameFactory;
 import com.oracle.truffle.api.dsl.test.NodeChildNoNameTestFactory.TwoArgsNoNameFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class NodeChildNoNameTest {
 

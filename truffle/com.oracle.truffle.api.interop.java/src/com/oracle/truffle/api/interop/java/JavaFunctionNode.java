@@ -28,6 +28,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 
 final class JavaFunctionNode extends RootNode {
@@ -42,15 +43,19 @@ final class JavaFunctionNode extends RootNode {
         return execute(receiver, args.toArray());
     }
 
-    @SuppressWarnings("paramAssign")
     static Object execute(JavaInterop.JavaFunctionObject receiver, Object[] args) {
+        return execute(receiver.method, receiver.obj, args);
+    }
+
+    @SuppressWarnings("paramAssign")
+    static Object execute(Method method, Object obj, Object[] args) {
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof JavaInterop.JavaObject) {
                 args[i] = ((JavaInterop.JavaObject) args[i]).obj;
             }
         }
         try {
-            Object ret = receiver.method.invoke(receiver.obj, args);
+            Object ret = method.invoke(obj, args);
             if (JavaInterop.isPrimitive(ret)) {
                 return ret;
             }

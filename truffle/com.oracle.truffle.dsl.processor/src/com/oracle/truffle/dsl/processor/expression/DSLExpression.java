@@ -22,11 +22,15 @@
  */
 package com.oracle.truffle.dsl.processor.expression;
 
-import java.util.*;
-import java.util.concurrent.atomic.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 public abstract class DSLExpression {
 

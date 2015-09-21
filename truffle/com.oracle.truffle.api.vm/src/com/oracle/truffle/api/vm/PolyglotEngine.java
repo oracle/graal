@@ -24,22 +24,46 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.impl.*;
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.source.*;
-import java.io.*;
-import java.net.*;
-import java.nio.file.*;
-import java.util.*;
+import com.oracle.truffle.api.source.Source;
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.InterruptedIOException;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
-import java.util.logging.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #buildNew()
@@ -605,7 +629,8 @@ public class PolyglotEngine {
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
             }
-            return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+            T wrapper = JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+            return JavaWrapper.create(representation, wrapper, this);
         }
 
         /**
@@ -634,6 +659,32 @@ public class PolyglotEngine {
             });
             exceptionCheck(res);
             return createValue(language, res, done);
+        }
+
+        @SuppressWarnings("try")
+        final Value invokeProxy(final InvocationHandler chain, final Object wrapper, final Method method, final Object[] args) throws IOException {
+            final Debugger[] fillIn = {debugger};
+            final CountDownLatch done = new CountDownLatch(1);
+            final Object[] res = {null, null};
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try (final Closeable c = SPI.executionStart(PolyglotEngine.this, fillIn, null)) {
+                        if (debugger == null) {
+                            debugger = fillIn[0];
+                        }
+                        res[0] = chain.invoke(wrapper, method, args);
+                    } catch (IOException ex) {
+                        res[1] = ex;
+                    } catch (Throwable ex) {
+                        res[1] = ex;
+                    } finally {
+                        done.countDown();
+                    }
+                }
+            });
+            exceptionCheck(res);
+            return new Value(language, res, done);
         }
 
         @SuppressWarnings("try")

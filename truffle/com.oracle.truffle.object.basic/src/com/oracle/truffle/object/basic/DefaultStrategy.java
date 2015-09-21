@@ -22,11 +22,17 @@
  */
 package com.oracle.truffle.object.basic;
 
-import java.util.*;
-
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.object.*;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.object.LayoutImpl;
+import com.oracle.truffle.object.LayoutStrategy;
+import com.oracle.truffle.object.LocationImpl;
+import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
+import java.util.Objects;
 
 class DefaultStrategy implements LayoutStrategy {
     public boolean updateShape(DynamicObject object) {
@@ -41,8 +47,8 @@ class DefaultStrategy implements LayoutStrategy {
 
     private static boolean assertLocationInRange(Shape shape, Location location) {
         BasicLayout layout = (BasicLayout) shape.getLayout();
-        assert (shape.getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
-        assert (shape.getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
+        assert (((ShapeImpl) shape).getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
+        assert (((ShapeImpl) shape).getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
         return true;
     }
 

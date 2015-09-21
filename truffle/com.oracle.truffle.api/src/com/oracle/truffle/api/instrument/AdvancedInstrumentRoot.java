@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Root of a client-provided AST fragment that can be executed efficiently, subject to full Truffle

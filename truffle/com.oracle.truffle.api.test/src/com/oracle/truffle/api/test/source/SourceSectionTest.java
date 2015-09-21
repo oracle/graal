@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.api.test.source;
 
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class SourceSectionTest {
 

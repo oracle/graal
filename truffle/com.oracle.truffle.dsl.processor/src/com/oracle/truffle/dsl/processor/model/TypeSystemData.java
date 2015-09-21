@@ -22,14 +22,17 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.api.dsl.internal.*;
-import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.api.dsl.internal.DSLOptions;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 
 public class TypeSystemData extends Template {
 

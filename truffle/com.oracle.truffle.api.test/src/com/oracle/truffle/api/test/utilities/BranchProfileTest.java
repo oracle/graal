@@ -22,11 +22,9 @@
  */
 package com.oracle.truffle.api.test.utilities;
 
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.api.utilities.BranchProfile;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 public class BranchProfileTest {
 

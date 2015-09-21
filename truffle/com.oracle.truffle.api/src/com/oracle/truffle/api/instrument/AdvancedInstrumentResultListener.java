@@ -25,8 +25,8 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Listener for receiving the result a client-provided {@linkplain AdvancedInstrumentRoot AST

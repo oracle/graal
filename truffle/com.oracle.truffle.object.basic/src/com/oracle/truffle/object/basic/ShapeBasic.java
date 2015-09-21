@@ -22,8 +22,12 @@
  */
 package com.oracle.truffle.object.basic;
 
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.object.*;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.object.PropertyMap;
+import com.oracle.truffle.object.ShapeImpl;
+import com.oracle.truffle.object.Transition;
 
 public final class ShapeBasic extends ShapeImpl {
     public ShapeBasic(Layout layout, Object sharedData, ObjectType operations, int id) {

@@ -87,6 +87,8 @@ public final class ForeignAccess {
      * @return return value, if any
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
+     * @throws IllegalAccessError if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>foreignNode</code>
      */
     public static Object execute(Node foreignNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) {
         ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) foreignNode;

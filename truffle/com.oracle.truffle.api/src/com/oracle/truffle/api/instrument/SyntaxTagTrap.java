@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * A trap that can be set to interrupt execution at probed nodes carrying a specific tag.

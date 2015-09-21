@@ -24,11 +24,13 @@
  */
 package com.oracle.truffle.api.instrument.impl;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.instrument.ASTPrinter;
+import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 public class DefaultVisualizer implements Visualizer {
 

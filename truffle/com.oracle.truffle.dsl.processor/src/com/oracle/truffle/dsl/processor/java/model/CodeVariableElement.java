@@ -22,12 +22,18 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.Set;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ElementVisitor;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.Name;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 public final class CodeVariableElement extends CodeElement<Element> implements VariableElement {
 

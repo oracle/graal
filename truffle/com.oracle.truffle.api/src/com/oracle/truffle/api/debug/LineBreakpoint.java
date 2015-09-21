@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.source.LineLocation;
 
 // TODO (mlvdv) generic?
 /**

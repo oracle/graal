@@ -22,9 +22,8 @@
  */
 package com.oracle.truffle.api.test.nodes.serial;
 
-import java.util.*;
-
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import java.util.Objects;
 
 final class TestNodes {
 

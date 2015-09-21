@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import java.util.*;
-
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Helper function that allows to dump the AST during creation to a JSON format.

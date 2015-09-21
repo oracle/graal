@@ -22,10 +22,11 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.ShortCircuit;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.DoubleEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.EvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedGenerationFactory;
@@ -42,8 +43,11 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ChildrenNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class ExecuteEvaluatedTest {
 

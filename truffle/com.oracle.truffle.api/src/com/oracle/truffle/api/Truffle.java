@@ -24,10 +24,10 @@
  */
 package com.oracle.truffle.api;
 
-import java.lang.reflect.*;
-import java.security.*;
-
-import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import java.lang.reflect.Method;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.

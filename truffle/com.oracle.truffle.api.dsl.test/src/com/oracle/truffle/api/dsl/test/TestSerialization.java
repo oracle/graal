@@ -22,16 +22,16 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import com.oracle.truffle.api.dsl.test.TestSerializationFactory.SerializedNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.NodeCost;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 public class TestSerialization {
 

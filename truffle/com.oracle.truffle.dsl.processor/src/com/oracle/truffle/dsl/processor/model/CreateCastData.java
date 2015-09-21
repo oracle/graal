@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.*;
+import java.util.List;
 
 public class CreateCastData extends TemplateMethod {
 

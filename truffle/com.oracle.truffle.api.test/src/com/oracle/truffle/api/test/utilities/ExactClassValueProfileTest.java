@@ -22,15 +22,18 @@
  */
 package com.oracle.truffle.api.test.utilities;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-import org.junit.experimental.theories.*;
-import org.junit.runner.*;
-
-import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.api.utilities.ValueProfile;
 import java.lang.reflect.Method;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.theories.DataPoint;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
 
 @RunWith(Theories.class)
 public class ExactClassValueProfileTest {

@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.object;
 
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
-
-import com.oracle.truffle.object.debug.*;
+import com.oracle.truffle.object.debug.JSONShapeVisitor;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 class Debug {
     private static Collection<ShapeImpl> allShapes;

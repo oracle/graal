@@ -25,7 +25,7 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.instrument.ProbeFailure.Reason;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * An exception thrown when {@link Node#probe()} fails because of an implementation failure.

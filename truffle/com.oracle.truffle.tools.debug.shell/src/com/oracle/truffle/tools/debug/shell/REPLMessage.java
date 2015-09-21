@@ -24,9 +24,11 @@
  */
 package com.oracle.truffle.tools.debug.shell;
 
-import java.io.*;
-import java.util.*;
+import java.io.PrintStream;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * A message for communication between a Read-Eval-Print-Loop server associated with a language

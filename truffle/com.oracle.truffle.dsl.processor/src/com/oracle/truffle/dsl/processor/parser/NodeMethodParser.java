@@ -22,14 +22,19 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.java.*;
-import com.oracle.truffle.dsl.processor.model.*;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.MethodSpec;
+import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
+import com.oracle.truffle.dsl.processor.model.NodeFieldData;
+import com.oracle.truffle.dsl.processor.model.ParameterSpec;
+import com.oracle.truffle.dsl.processor.model.TemplateMethod;
+import java.util.Arrays;
+import java.util.Collection;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.TypeMirror;
 
 public abstract class NodeMethodParser<E extends TemplateMethod> extends TemplateMethodParser<NodeData, E> {
 

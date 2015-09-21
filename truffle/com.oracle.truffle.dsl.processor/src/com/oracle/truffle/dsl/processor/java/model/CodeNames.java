@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
+import java.util.HashMap;
+import java.util.Map;
+import javax.lang.model.element.Name;
 
 public abstract class CodeNames {
 

@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.api.dsl.test.examples;
 
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.ImplicitCast;
+import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.test.examples.FunctionCall.Function;
 import com.oracle.truffle.api.dsl.test.examples.Interop.TruffleObject;
 import com.oracle.truffle.api.dsl.test.examples.RubyCall.InternalMethod;

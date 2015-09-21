@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CodeFormatTestFactory.LineWrappingTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * Tests the generated code compiles without warnings for unusual large guard names.

@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.*;
-
-import javax.lang.model.type.*;
-
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
+import java.util.ArrayList;
+import java.util.List;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 
 public class NodeExecutionData {
 

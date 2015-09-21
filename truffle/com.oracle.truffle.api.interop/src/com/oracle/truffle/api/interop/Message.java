@@ -24,8 +24,10 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Inter-operability is based on sending messages. Standard messages are defined as as constants
@@ -34,35 +36,123 @@ import com.oracle.truffle.api.interop.ForeignAccess.Factory;
  */
 public abstract class Message {
     /**
+     * One can define their own extended message by subclassing. The expectation is that the
+     * subclass will have public constructor and its {@link #equals(java.lang.Object)} and
+     * {@link #hashCode()} methods will operate on the class equivalence. Only then the subclass
+     * will work properly with {@link #valueOf(java.lang.String)} and
+     * {@link #toString(com.oracle.truffle.api.interop.Message)} methods.
+     */
+    protected Message() {
+    }
+
+    /**
      * Message to read an object field. The
      * {@link Factory#access(com.oracle.truffle.api.interop.Message) target} created for this
-     * message accepts single {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame)
-     * argument} identifying a field to read - e.g. either {@link String} or an {@link Integer} - if
-     * access to an array at particular index is requested.
+     * message accepts (in addition to a
+     * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) a single
+     * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) argument} identifying a
+     * field to read - e.g. either {@link String} or an {@link Integer} - if access to an array at
+     * particular index is requested. The code that wants to send this message should use:
+     * 
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     *   {@link Message#READ}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver, nameOfTheField
+     * );
+     * </pre>
+     * 
+     * Where <code>receiver</code> is the {@link TruffleObject foreign object} to access and
+     * <code>nameOfTheField</code> is the name (or index) of its field.
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
      */
     public static final Message READ = Read.INSTANCE;
 
     /**
      * Converts {@link TruffleObject truffle value} to Java primitive type. Primitive types are
-     * subclasses of {@link Number}, {@link Boolean}, {@link Character} and {@link String}. Related
-     * to {@link #IS_BOXED} message.
+     * subclasses of {@link Number}, {@link Boolean}, {@link Character} and {@link String}. Before
+     * sending the {@link #UNBOX} message, it is desirable to send the {@link #IS_BOXED} one and
+     * verify that the object can really be unboxed. To unbox an object, use:
+     * 
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     *   {@link Message#UNBOX}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToUnbox
+     * );
+     * </pre>
+     * 
+     * The returned value should be subclass of {@link Number}, {@link Boolean}, {@link Character}
+     * or {@link String}.
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
      */
     public static final Message UNBOX = Unbox.INSTANCE;
 
     /**
      * Message to write a field. The {@link Factory#access(com.oracle.truffle.api.interop.Message)
-     * target} created for this message accepts two
+     * target} created for this message accepts the object to modify as a
+     * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver} and two
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) arguments}. The first
      * one identifies a field to read - e.g. either {@link String} or an {@link Integer} - if access
      * to an array at particular index is requested. The second one is the value to assign to such
-     * field.
+     * field. Use following style to construct field modification message:
+     * 
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     *   {@link Message#WRITE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver, nameOfTheField, newValue
+     * );
+     * </pre>
+     * 
+     * Where <code>receiver</code> is the {@link TruffleObject foreign object} to access,
+     * <code>nameOfTheField</code> is the name (or index) of its field and <code>newValue</code> is
+     * the value to assign to the receiver's field.
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
      */
     public static Message WRITE = Write.INSTANCE;
 
     /**
-     * Creates an execute message. All messages created by this method are
-     * {@link Object#equals(java.lang.Object) equal} to each other regardless of the value of
-     * <code>argumentsLength</code>.
+     * Creates a non-object oriented execution message. In contrast to {@link #createInvoke(int)}
+     * messages, which are more suitable for dealing with object oriented style of programming,
+     * messages created by this method are more suitable for execution where one can explicitly
+     * control all passed in arguments.
+     * <p>
+     * To inter-operate with a non-OOP language like <em>C</em> - for example to execute its
+     * function:
+     * 
+     * <pre>
+     * <b>double</b> add(<b>double</b> a, <b>double</b> b) {
+     *   <b>return</b> a + b;
+     * }
+     * </pre>
+     * 
+     * One can obtain reference to the <em>add</em> function (for example by
+     * {@link Env#importSymbol(java.lang.String) importing it as a global symbol}) and store it into
+     * variable <code>addFunction</code>. Then it's time to check the object is executable by
+     * sending it the {@link #IS_EXECUTABLE} message. If the answer is <code>true</code> one can:
+     *
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     *   {@link Message#createExecute(int) Message.createExecute}(2).{@link Message#createNode()}, {@link VirtualFrame currentFrame}, addFunction, valueOfA, valueOfB
+     * );
+     * </pre>
+     *
+     * The <code>valueOfA</code> and <code>valueOfB</code> should be <code>double</code> or
+     * {@link Double} or at least be {@link #UNBOX unboxable} to such type.
+     * <p>
+     * One can use this method to talk to object oriented language as well, however one needs to pay
+     * attention to provide all necessary arguments manually - usually an OOP language requires the
+     * first argument to represent <code>this</code> or <code>self</code> and only then pass in the
+     * additional arguments. It may be easier to use {@link #createInvoke(int)} message which is
+     * more suitable for object oriented languages and handles (if supported) the arguments
+     * manipulation automatically.
+     * <p>
+     *
+     *
+     * <p>
+     * All messages created by this method are {@link Object#equals(java.lang.Object) equal} to each
+     * other regardless of the value of <code>argumentsLength</code>.
      *
      * @param argumentsLength number of parameters to pass to the target
      * @return execute message
@@ -72,21 +162,91 @@ public abstract class Message {
     }
 
     /**
-     * Message to check for executability.
+     * Message to check executability of a
+     * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) foreign object}.
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
-     * this message should yield value of {@link Boolean}.
+     * this message accepts {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) no
+     * arguments} and a single non-null
+     * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}. The call
+     * should yield value of {@link Boolean}. Either {@link Boolean#TRUE} if the receiver can be
+     * executed (e.g. accepts {@link #createExecute(int)} message, or {@link Boolean#FALSE}
+     * otherwise. This is the way to send the <code>IS_EXECUTABLE</code> message:
+     * 
+     * <pre>
+     * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.execute(
+     *   {@link Message#IS_EXECUTABLE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver
+     * );
+     * </pre>
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
      */
     public static final Message IS_EXECUTABLE = IsExecutable.INSTANCE;
 
     /**
-     * Creates an execute message. All messages created by this method are
-     * {@link Object#equals(java.lang.Object) equal} to each other regardless of the value of
-     * <code>argumentsLength</code>. The expected behavior of this message is to perform
-     * {@link #READ} first and on the result invoke {@link #createExecute(int)}.
+     * Creates an object oriented execute message. Unlike {@link #createExecute(int)} the receiver
+     * of the message isn't the actual function to invoke, but an object. The object has the
+     * function as a field, or as a field of its class, or whatever is appropriate for an object
+     * oriented language.
+     * <p>
+     * Languages that don't support object oriented semantics do not and should not implement this
+     * message. When the invoke message isn't supported, the caller is expected to fall back into
+     * following basic operations:
+     * <ul>
+     * <li>sending {@link #READ} message to access the field</li>
+     * <li>verify the result {@link #IS_EXECUTABLE}, if so continue by</li>
+     * <li>sending {@link #createExecute(int) execute message}</li>
+     * </ul>
+     * <p>
+     * The last step is problematic, as it is not clear whether to pass just the execution
+     * arguments, or prefix them with the original receiver (aka <code>this</code> or
+     * <code>self</code>). Object oriented languages would in general welcome obtaining the
+     * receiving object as first argument, non-object languages like <em>C</em> would get confused
+     * by doing so. However it is not possible for the caller to find out what language one is
+     * sending message to - only the set of supported messages is known. As a result it is
+     * recommended for object oriented languages to support the {@link #createInvoke(int)} message
+     * and handle the semantics the way it is natural to them. Languages like <em>C</em> shouldn't
+     * implement {@link #createInvoke(int)} and just support primitive operations like
+     * {@link #createExecute(int)} and {@link #READ}.
+     * <p>
+     * When accessing a method of an object in an object oriented manner, one is supposed to send
+     * the {@link #createInvoke(int)} message first. Only when that fails, fallback to non-object
+     * oriented workflow with {@link #createExecute(int)}. Imagine there is a <em>Java</em> class
+     * with <code>add</code> method and its instance:
+     * 
+     * <pre>
+     * <b>public class</b> Arith {
+     *    <b>public double</b> add(double a, double b) {
+     *      <b>return</b> a + b;
+     *    }
+     * }
+     * Arith obj = <b>new</b> Arith();
+     * </pre>
+     * 
+     * To access <code>obj</code>'s <code>add</code> method one should use:
+     *
+     * <pre>
+     * <b>try</b> {
+     *   {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     *     {@link Message#createInvoke(int) Message.createInvoke}(2).{@link Message#createNode()}, {@link VirtualFrame currentFrame}, obj, "add", valueOfA, valueOfB
+     *   );
+     * } <b>catch</b> ({@link IllegalArgumentException} ex) {
+     *   // access the language via {@link #createExecute(int)}
+     * }
+     * </pre>
+     * 
+     * The <code>valueOfA</code> and <code>valueOfB</code> should be <code>double</code> or
+     * {@link Double} or at least be {@link #UNBOX unboxable} to such type.
+     * <p>
+     * All messages created by this method are {@link Object#equals(java.lang.Object) equal} to each
+     * other regardless of the value of <code>argumentsLength</code>. The expected behavior of this
+     * message is to perform {@link #READ} first and on the result invoke
+     * {@link #createExecute(int)}.
      *
      * @param argumentsLength number of parameters to pass to the target
-     * @return read & execute message
+     * @return message combining read & execute messages tailored for use with object oriented
+     *         languages
      */
     public static Message createInvoke(int argumentsLength) {
         return Execute.create(Execute.INVOKE, argumentsLength);
@@ -100,7 +260,7 @@ public abstract class Message {
      * receiver} and then perform its constructor with appropriate number of arguments.
      *
      * @param argumentsLength number of parameters to pass to the target
-     * @return read & execute message
+     * @return new instance message
      */
     public static Message createNew(int argumentsLength) {
         return Execute.create(Execute.NEW, argumentsLength);
@@ -110,10 +270,20 @@ public abstract class Message {
      * Check for <code>null</code> message. The Truffle languages are suggested to have their own
      * object representing <code>null</code> like values in their languages. For purposes of
      * inter-operability it is essential to canonicalize such values from time to time - sending
-     * this message is a way to recognize such <code>null</code> representing values.
+     * this message is a way to recognize such <code>null</code> representing values:
+     * 
+     * <pre>
+     * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.execute(
+     *   {@link Message#IS_NULL}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheckForNull
+     * );
+     * </pre>
+     *
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
      * this message should yield value of {@link Boolean}.
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
      */
     public static final Message IS_NULL = IsNull.INSTANCE;
 
@@ -135,13 +305,21 @@ public abstract class Message {
     public static final Message GET_SIZE = GetSize.INSTANCE;
 
     /**
-     * Check for value being boxed. Can you value be converted to one of the basic Java types? Many
-     * languages have a special representation for types like number, string, etc. To ensure
-     * inter-operability, these types should support unboxing - if they do, they should handle this
-     * message.
-     * <p>
+     * Check for value being boxed. Can the {@link TruffleObject foreign object} be converted to one
+     * of the basic Java types? Many languages have a special representation for types like number,
+     * string, etc. To ensure inter-operability, these types should support unboxing - if they do,
+     * they should handle this message and return {@link Boolean#TRUE}. The way to check whether an
+     * object is boxed is:
+     * 
+     * <pre>
+     * {@link Boolean} isBoxed = ({@link Boolean}) {@link ForeignAccess}.execute(
+     *   {@link Message#IS_BOXED}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheck
+     * );
+     * </pre>
+     * 
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
-     * created for this message should yield value of {@link Boolean}.
+     * created for this message should yield value of {@link Boolean}. If the object responds with
+     * {@link Boolean#TRUE}, it is safe to continue by sending it {@link #UNBOX} message.
      */
     public static final Message IS_BOXED = IsBoxed.INSTANCE;
 

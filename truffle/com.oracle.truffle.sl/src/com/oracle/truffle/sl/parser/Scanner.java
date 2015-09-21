@@ -43,8 +43,11 @@
 
 package com.oracle.truffle.sl.parser;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.util.HashMap;
+import java.util.Map;
 
 // Checkstyle: stop
 // @formatter:off

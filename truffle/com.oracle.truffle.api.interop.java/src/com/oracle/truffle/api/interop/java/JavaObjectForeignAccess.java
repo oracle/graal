@@ -78,7 +78,7 @@ final class JavaObjectForeignAccess implements ForeignAccess.Factory10 {
 
     @Override
     public CallTarget accessInvoke(int argumentsLength) {
-        return Truffle.getRuntime().createCallTarget(new JavaObjectMethodNode());
+        return Truffle.getRuntime().createCallTarget(new InvokeMemberNode());
     }
 
     @Override

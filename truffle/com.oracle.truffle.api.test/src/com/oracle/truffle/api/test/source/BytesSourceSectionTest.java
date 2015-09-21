@@ -22,13 +22,10 @@
  */
 package com.oracle.truffle.api.test.source;
 
-import static org.junit.Assert.*;
-
-import java.nio.charset.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.source.Source;
+import java.nio.charset.StandardCharsets;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class BytesSourceSectionTest {
 

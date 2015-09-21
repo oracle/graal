@@ -24,7 +24,10 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Imports all <code>public</code> and <code>static</code> methods and fields of the provided

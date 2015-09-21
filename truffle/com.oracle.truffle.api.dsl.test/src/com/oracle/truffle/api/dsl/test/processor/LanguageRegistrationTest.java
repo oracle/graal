@@ -22,14 +22,14 @@
  */
 package com.oracle.truffle.api.dsl.test.processor;
 
-import java.io.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.dsl.test.*;
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.source.Source;
+import java.io.IOException;
 
 public class LanguageRegistrationTest {
 

@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Lazy rewrite event that implements {@link CharSequence} to be provided as message in

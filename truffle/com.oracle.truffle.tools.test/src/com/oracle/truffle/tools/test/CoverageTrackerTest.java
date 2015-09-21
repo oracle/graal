@@ -24,14 +24,17 @@
  */
 package com.oracle.truffle.tools.test;
 
-import static com.oracle.truffle.tools.test.TestNodes.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.tools.*;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tools.CoverageTracker;
+import static com.oracle.truffle.tools.test.TestNodes.createExpr13TestRootNode;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 public class CoverageTrackerTest {
 

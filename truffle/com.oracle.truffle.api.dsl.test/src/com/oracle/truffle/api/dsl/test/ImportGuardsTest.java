@@ -22,13 +22,14 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ImportGuardsTestFactory.ImportGuards6Factory;
+import static com.oracle.truffle.api.dsl.test.TestHelper.array;
+import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import org.junit.Test;
 
 public class ImportGuardsTest {
 

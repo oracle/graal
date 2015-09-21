@@ -22,14 +22,14 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldTestNodeFactory;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class NodeChildTest {
 

@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Built-in function to create a new object. Objects in SL are simply made up of name/value pairs.

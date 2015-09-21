@@ -22,17 +22,15 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NullLiteralGuardsTestFactory.CompareNotNullNodeFactory;
 import com.oracle.truffle.api.dsl.test.NullLiteralGuardsTestFactory.CompareObjectsNullNodeFactory;
 import com.oracle.truffle.api.dsl.test.NullLiteralGuardsTestFactory.CompareStringNullNodeFactory;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ChildrenNode;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 @SuppressWarnings("unused")
 public class NullLiteralGuardsTest {

@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Represents the target of a call to a {@link RootNode}, i.e., to another tree of nodes. Instances

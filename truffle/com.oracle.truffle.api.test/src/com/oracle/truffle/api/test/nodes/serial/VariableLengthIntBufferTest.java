@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.api.test.nodes.serial;
 
-import java.nio.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.nodes.serial.*;
+import com.oracle.truffle.api.nodes.serial.VariableLengthIntBuffer;
+import java.nio.ByteBuffer;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 public class VariableLengthIntBufferTest {
 

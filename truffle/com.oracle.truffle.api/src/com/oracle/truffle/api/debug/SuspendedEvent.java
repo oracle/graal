@@ -29,9 +29,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

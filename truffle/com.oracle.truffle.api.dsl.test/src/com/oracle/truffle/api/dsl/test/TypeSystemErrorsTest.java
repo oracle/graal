@@ -22,7 +22,11 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.TypeCast;
+import com.oracle.truffle.api.dsl.TypeCheck;
+import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.test.TypeSystemErrorsTest.Types1.Type1;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 

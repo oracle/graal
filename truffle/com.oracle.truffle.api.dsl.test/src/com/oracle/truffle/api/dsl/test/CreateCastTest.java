@@ -22,16 +22,19 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.CreateCast;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CreateCastTestFactory.CreateCastNode1Factory;
 import com.oracle.truffle.api.dsl.test.CreateCastTestFactory.CreateCastNode2Factory;
 import com.oracle.truffle.api.dsl.test.CreateCastTestFactory.CreateCastNode3Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ChildrenNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import org.junit.Assert;
+import org.junit.Test;
 
 @SuppressWarnings("unused")
 public class CreateCastTest {

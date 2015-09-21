@@ -22,12 +22,10 @@
  */
 package com.oracle.truffle.api.test.utilities;
 
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 public class AlwaysValidAssumptionTest {
 

@@ -24,9 +24,8 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import java.util.*;
-
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import java.util.List;
 
 /**
  * Enables the dynamic creation of generated nodes. It provides an convenient way to instantiate

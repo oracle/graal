@@ -24,16 +24,31 @@
  */
 package com.oracle.truffle.tools;
 
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.instrument.impl.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.InstrumentationTool;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ProbeException;
+import com.oracle.truffle.api.instrument.ProbeFailure;
+import com.oracle.truffle.api.instrument.ProbeListener;
+import com.oracle.truffle.api.instrument.StandardInstrumentListener;
+import com.oracle.truffle.api.instrument.SyntaxTag;
+import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
+import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.NodeVisitor;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * An {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes,

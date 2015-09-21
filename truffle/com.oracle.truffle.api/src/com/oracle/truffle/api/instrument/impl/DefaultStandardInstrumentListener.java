@@ -24,9 +24,10 @@
  */
 package com.oracle.truffle.api.instrument.impl;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.StandardInstrumentListener;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * A listener for AST {@linkplain StandardInstrumentListener execution events} that provides a no-op

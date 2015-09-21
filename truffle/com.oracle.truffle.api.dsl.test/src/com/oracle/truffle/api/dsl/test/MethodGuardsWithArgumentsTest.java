@@ -22,11 +22,9 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArguments0Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArguments1Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArgumentsDouble0Factory;
@@ -34,8 +32,12 @@ import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArg
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArgumentsDouble2Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArgumentsDouble3Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArgumentsSingle2Factory;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class MethodGuardsWithArgumentsTest {
 

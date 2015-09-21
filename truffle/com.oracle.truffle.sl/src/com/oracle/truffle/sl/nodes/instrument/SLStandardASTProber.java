@@ -40,13 +40,18 @@
  */
 package com.oracle.truffle.sl.nodes.instrument;
 
-import static com.oracle.truffle.api.instrument.StandardSyntaxTag.*;
-
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.nodes.controlflow.*;
-import com.oracle.truffle.sl.nodes.local.*;
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.InstrumentationNode;
+import com.oracle.truffle.api.instrument.Probe;
+import static com.oracle.truffle.api.instrument.StandardSyntaxTag.ASSIGNMENT;
+import static com.oracle.truffle.api.instrument.StandardSyntaxTag.START_LOOP;
+import static com.oracle.truffle.api.instrument.StandardSyntaxTag.STATEMENT;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLWhileNode;
+import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 
 /**
  * A visitor which traverses a completely parsed Simple AST (presumed not yet executed) and enables

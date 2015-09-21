@@ -22,15 +22,15 @@
  */
 package com.oracle.truffle.api.dsl.test.examples;
 
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.*;
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
 import com.oracle.truffle.api.dsl.test.examples.MathPowFactory.MathPowNodeGen;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  * This example shows possible specializations for a simplified math pow node. It demonstrates how

@@ -22,19 +22,24 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.dsl.processor.expression.*;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
-import com.oracle.truffle.dsl.processor.java.model.*;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
 
 public class DSLExpressionGenerator implements DSLExpressionVisitor {
 

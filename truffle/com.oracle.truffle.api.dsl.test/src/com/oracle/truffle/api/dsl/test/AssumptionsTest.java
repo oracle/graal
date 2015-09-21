@@ -22,22 +22,28 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-import static org.junit.Assert.*;
-
-import java.util.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArrayTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.CacheAssumptionTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.FieldTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MethodTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.NodeFieldTest2Factory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.StaticFieldTestFactory;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
+import static com.oracle.truffle.api.dsl.test.TestHelper.getNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import java.util.HashMap;
+import java.util.Map;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import org.junit.Test;
 
 public class AssumptionsTest {
 

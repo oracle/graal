@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Enables instrumentation by attaching {@linkplain Probe Probes} to some nodes in a (newly created,

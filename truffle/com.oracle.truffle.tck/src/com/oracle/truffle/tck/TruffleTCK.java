@@ -30,9 +30,12 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
 import org.junit.Test;
 
 /**
@@ -41,7 +44,6 @@ import org.junit.Test;
  * include in your test suite.
  */
 public abstract class TruffleTCK {
-    private static final Logger LOG = Logger.getLogger(TruffleTCK.class.getName());
     private static final Random RANDOM = new Random();
     private PolyglotEngine tckVM;
 
@@ -135,18 +137,7 @@ public abstract class TruffleTCK {
      * @return name of globally exported symbol
      */
     protected String identity() {
-        final long introduced = 1441894042844L;
-        long wait = (System.currentTimeMillis() - introduced) / 3600;
-        if (wait < 100) {
-            wait = 100;
-        }
-        LOG.log(Level.SEVERE, "identity() method not overriden. Waiting for {0} ms", wait);
-        try {
-            Thread.sleep(wait);
-        } catch (InterruptedException ex) {
-            LOG.log(Level.SEVERE, null, ex);
-        }
-        return null;
+        throw new UnsupportedOperationException("identity() method not implemented");
     }
 
     /**
@@ -193,7 +184,7 @@ public abstract class TruffleTCK {
      * @return name of a function that returns such compound object
      */
     protected String compoundObject() {
-        return null;
+        throw new UnsupportedOperationException("compoundObject() method not implemented");
     }
 
     private PolyglotEngine vm() throws Exception {
@@ -222,7 +213,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testFortyTwoWithCompoundObject() throws Exception {
-        CompoundObject obj = findCompoundSymbol("testFortyTwoWithCompoundObject");
+        CompoundObject obj = findCompoundSymbol();
         if (obj == null) {
             return;
         }
@@ -241,7 +232,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testNullInCompoundObject() throws Exception {
-        CompoundObject obj = findCompoundSymbol("testNullInCompoundObject");
+        CompoundObject obj = findCompoundSymbol();
         if (obj == null) {
             return;
         }
@@ -320,7 +311,7 @@ public abstract class TruffleTCK {
         int a = RANDOM.nextInt(100);
         int b = RANDOM.nextInt(100);
 
-        CompoundObject obj = findCompoundSymbol("testPlusWithIntsOnCompoundObject");
+        CompoundObject obj = findCompoundSymbol();
         if (obj == null) {
             return;
         }
@@ -570,24 +561,17 @@ public abstract class TruffleTCK {
         return s;
     }
 
-    private CompoundObject findCompoundSymbol(String name) throws Exception {
+    private CompoundObject findCompoundSymbol() throws Exception {
         final String compoundObjectName = compoundObject();
-        if (compoundObjectName == null) {
-            final long introduced = 1441616302340L;
-            long wait = (System.currentTimeMillis() - introduced) / 36000;
-            if (wait < 100) {
-                wait = 100;
-            }
-            LOG.log(Level.SEVERE, "compoundObject() method not overriden! Skipping {1} test for now. But sleeping for {0} ms.", new Object[]{wait, name});
-            Thread.sleep(wait);
-            return null;
-        }
         PolyglotEngine.Value s = vm().findGlobalSymbol(compoundObjectName);
         assert s != null : "Symbol " + compoundObjectName + " is not found!";
-        CompoundObject obj = s.invoke(null).as(CompoundObject.class);
+        final PolyglotEngine.Value value = s.invoke(null);
+        CompoundObject obj = value.as(CompoundObject.class);
+        assertNotNull("Compound object for " + value + " found", obj);
         int traverse = RANDOM.nextInt(10);
-        while (traverse-- >= 0) {
+        for (int i = 1; i <= traverse; i++) {
             obj = obj.returnsThis();
+            assertNotNull("Remains non-null even after " + i + " iteration", obj);
         }
         return obj;
     }

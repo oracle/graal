@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.SlowPathException;
 
 /**
  * This exception is thrown on an attempt to assign an incompatible value to a location.

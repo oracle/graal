@@ -22,11 +22,14 @@
  */
 package com.oracle.truffle.object.debug;
 
-import java.util.*;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.object.DebugShapeVisitor;
+import com.oracle.truffle.object.ShapeImpl;
+import com.oracle.truffle.object.Transition;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Map.Entry;
-
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.object.*;
+import java.util.Set;
 
 public class GraphvizShapeVisitor extends DebugShapeVisitor<GraphvizShapeVisitor> {
     private final Set<Shape> drawn;

@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 
 /**
  * Access to information and basic services in the runtime context for a Truffle-implemented guest

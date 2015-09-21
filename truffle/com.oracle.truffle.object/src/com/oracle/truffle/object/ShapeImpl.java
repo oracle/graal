@@ -22,16 +22,24 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.*;
-import java.util.concurrent.*;
-
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.api.utilities.*;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.ObjectLocation;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.ShapeListener;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
 import com.oracle.truffle.object.Locations.ConstantLocation;
@@ -45,6 +53,15 @@ import com.oracle.truffle.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.object.Transition.PropertyTransition;
 import com.oracle.truffle.object.Transition.RemovePropertyTransition;
 import com.oracle.truffle.object.Transition.ReservePrimitiveArrayTransition;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Shape objects create a mapping of Property objects to indexes. The mapping of those indexes to an
@@ -99,6 +116,7 @@ public abstract class ShapeImpl extends Shape {
      *
      * @param parent predecessor shape
      * @param transitionFromParent direct transition from parent shape
+     *
      * @see #ShapeImpl(Layout, ShapeImpl, ObjectType, Object, PropertyMap, Transition,
      *      BaseAllocator, int)
      */
@@ -109,7 +127,7 @@ public abstract class ShapeImpl extends Shape {
         this.propertyMap = Objects.requireNonNull(propertyMap);
         this.root = parent != null ? parent.getRoot() : this;
         this.parent = parent;
-        this.transitionFromParent = transitionFromParent;
+
         this.objectArraySize = objectArraySize;
         this.objectArrayCapacity = capacityFromSize(objectArraySize);
         this.objectFieldSize = objectFieldSize;
@@ -129,11 +147,11 @@ public abstract class ShapeImpl extends Shape {
         this.validAssumption = createValidAssumption();
 
         this.id = id;
-        shapeCount.inc();
-
+        this.transitionFromParent = transitionFromParent;
         this.sharedData = sharedData;
         this.extraData = objectType.createShapeData(this);
 
+        shapeCount.inc();
         debugRegisterShape(this);
     }
 
@@ -150,7 +168,13 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static int makePropertyCount(ShapeImpl parent, PropertyMap propertyMap) {
-        return parent.propertyCount + ((propertyMap.size() > parent.propertyMap.size() && !propertyMap.getLastProperty().isHidden() && !propertyMap.getLastProperty().isShadow()) ? 1 : 0);
+        if (propertyMap.size() > parent.propertyMap.size()) {
+            Property lastProperty = propertyMap.getLastProperty();
+            if (!lastProperty.isHidden() && !lastProperty.isShadow()) {
+                return parent.propertyCount + 1;
+            }
+        }
+        return parent.propertyCount;
     }
 
     @Override
@@ -178,37 +202,30 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
-    @Override
     public final int getObjectArraySize() {
         return objectArraySize;
     }
 
-    @Override
     public final int getObjectFieldSize() {
         return objectFieldSize;
     }
 
-    @Override
     public final int getPrimitiveFieldSize() {
         return primitiveFieldSize;
     }
 
-    @Override
     public final int getObjectArrayCapacity() {
         return objectArrayCapacity;
     }
 
-    @Override
     public final int getPrimitiveArrayCapacity() {
         return primitiveArrayCapacity;
     }
 
-    @Override
     public final int getPrimitiveArraySize() {
         return primitiveArraySize;
     }
 
-    @Override
     public final boolean hasPrimitiveArray() {
         return hasPrimitiveArray;
     }
@@ -439,7 +456,9 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Property> getPropertyList(Pred<Property> filter) {
         LinkedList<Property> props = new LinkedList<>();
-        next: for (Property currentProperty : this.propertyMap.reverseOrderValues()) {
+        next: for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property currentProperty = it.next();
+
             if (!currentProperty.isHidden() && filter.test(currentProperty)) {
                 if (currentProperty.getLocation() instanceof DeclaredLocation) {
                     for (Iterator<Property> iter = props.iterator(); iter.hasNext();) {
@@ -471,7 +490,8 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Property> getPropertyListInternal(boolean ascending) {
         LinkedList<Property> props = new LinkedList<>();
-        for (Property current : this.propertyMap.reverseOrderValues()) {
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property current = it.next();
             if (ascending) {
                 props.addFirst(current);
             } else {
@@ -490,7 +510,8 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Object> getKeyList(Pred<Property> filter) {
         LinkedList<Object> keys = new LinkedList<>();
-        for (Property currentProperty : this.propertyMap.reverseOrderValues()) {
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property currentProperty = it.next();
             if (!currentProperty.isHidden() && filter.test(currentProperty) && !currentProperty.isShadow()) {
                 keys.addFirst(currentProperty.getKey());
             }
@@ -576,7 +597,7 @@ public abstract class ShapeImpl extends Shape {
         }
 
         sb.append("{");
-        for (Iterator<Property> iterator = propertyMap.reverseOrderValues().iterator(); iterator.hasNext();) {
+        for (Iterator<Property> iterator = propertyMap.reverseOrderedValueIterator(); iterator.hasNext();) {
             Property p = iterator.next();
             sb.append(p);
             if (iterator.hasNext()) {

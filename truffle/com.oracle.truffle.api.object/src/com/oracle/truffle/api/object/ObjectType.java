@@ -24,10 +24,11 @@
  */
 package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.*;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 
 public class ObjectType {
     /**

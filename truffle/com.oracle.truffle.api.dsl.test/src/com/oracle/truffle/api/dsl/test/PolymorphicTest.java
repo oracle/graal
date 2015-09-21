@@ -22,21 +22,26 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
-import static org.junit.Assert.*;
-
-import java.util.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic1Factory;
 import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic2Factory;
 import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic3Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
+import static com.oracle.truffle.api.dsl.test.TestHelper.array;
+import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class PolymorphicTest {
 

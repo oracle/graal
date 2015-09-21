@@ -24,10 +24,9 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
-import java.util.*;
-
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.tools.debug.shell.*;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tools.debug.shell.REPLServer;
+import java.util.List;
 
 /**
  * Client context for interaction with a program halted by the {@link REPLServer}.

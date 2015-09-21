@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * An exception that should be thrown if the return value cannot be represented as a value of the

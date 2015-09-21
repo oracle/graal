@@ -60,7 +60,7 @@ import java.lang.annotation.Target;
  * Then one can change the value of field <em>x</em> in <em>obj</em> from Java by calling:
  * 
  * <pre>
- * {@link JavaInterop#asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject) JavaInterop.asJavaObject(ObjInterop.<b>class</b>, obj).x(10);
+ * {@link JavaInterop#asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject) JavaInterop.asJavaObject}(ObjInterop.<b>class</b>, obj).x(10);
  * </pre>
  * 
  * the value of the <em>x</em> field is going to be <em>10</em> then.

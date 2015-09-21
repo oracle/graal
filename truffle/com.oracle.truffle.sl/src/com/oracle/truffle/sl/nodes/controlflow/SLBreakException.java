@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.controlflow;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 
 /**
  * Exception thrown by the {@link SLBreakNode break statement} and caught by the {@link SLWhileNode

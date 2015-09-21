@@ -22,18 +22,22 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static org.junit.Assert.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.ImplicitCast;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.ShortCircuit;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.DoubleChildNodeFactory;
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.ShortCircuitWithImplicitCastNodeFactory;
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.SingleChildNodeFactory;
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.VarArgsNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class ShortCircuitTest {
 

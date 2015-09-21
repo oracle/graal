@@ -24,19 +24,26 @@
  */
 package com.oracle.truffle.tck;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
-import java.nio.file.*;
-import java.util.*;
-
-import junit.runner.*;
-
-import org.junit.internal.*;
-import org.junit.runner.*;
-import org.junit.runner.notification.*;
-import org.junit.runners.*;
-import org.junit.runners.model.*;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import junit.runner.Version;
+import org.junit.internal.JUnitSystem;
+import org.junit.internal.RealSystem;
+import org.junit.runner.Description;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Request;
+import org.junit.runner.Result;
+import org.junit.runner.Runner;
+import org.junit.runner.notification.Failure;
+import org.junit.runners.ParentRunner;
+import org.junit.runners.model.RunnerScheduler;
 
 final class TruffleJUnitCore {
 

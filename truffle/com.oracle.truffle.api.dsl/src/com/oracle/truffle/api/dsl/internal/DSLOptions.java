@@ -24,7 +24,10 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Internal DSL options to tune the generated code. These are expert options and not intended to be

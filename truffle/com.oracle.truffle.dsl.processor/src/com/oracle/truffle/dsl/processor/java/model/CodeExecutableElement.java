@@ -22,13 +22,23 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import java.util.*;
-
-import javax.annotation.processing.*;
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ElementVisitor;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.Name;
+import javax.lang.model.element.TypeParameterElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 public class CodeExecutableElement extends CodeElement<Element> implements ExecutableElement {
 

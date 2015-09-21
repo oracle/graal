@@ -25,7 +25,7 @@
 
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 final class ForeignObjectAccessHeadNode extends Node {

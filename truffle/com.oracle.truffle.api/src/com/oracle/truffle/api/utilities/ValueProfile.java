@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.NodeCloneable;
 
 /**
  * Utility class to speculate on certain properties of values.

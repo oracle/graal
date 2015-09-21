@@ -24,8 +24,12 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 
 /**
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use

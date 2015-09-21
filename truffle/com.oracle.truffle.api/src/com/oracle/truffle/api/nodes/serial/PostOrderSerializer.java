@@ -24,16 +24,15 @@
  */
 package com.oracle.truffle.api.nodes.serial;
 
-import static com.oracle.truffle.api.nodes.serial.PostOrderDeserializer.*;
-
-import java.lang.reflect.*;
-import java.nio.*;
-
-import sun.misc.*;
-
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeClass;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
-import com.oracle.truffle.api.source.*;
+import static com.oracle.truffle.api.nodes.serial.PostOrderDeserializer.getFieldOffset;
+import com.oracle.truffle.api.source.SourceSection;
+import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import sun.misc.Unsafe;
 
 /**
  * Experimental API. May change without notice.

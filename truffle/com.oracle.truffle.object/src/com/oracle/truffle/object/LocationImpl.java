@@ -22,7 +22,17 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.BooleanLocation;
+import com.oracle.truffle.api.object.DoubleLocation;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.FinalLocationException;
+import com.oracle.truffle.api.object.IncompatibleLocationException;
+import com.oracle.truffle.api.object.IntLocation;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.LongLocation;
+import com.oracle.truffle.api.object.ObjectLocation;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.TypedLocation;
 
 public abstract class LocationImpl extends Location {
 

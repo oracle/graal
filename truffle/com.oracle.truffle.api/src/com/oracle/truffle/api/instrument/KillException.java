@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 
 /**
  * Controls breaking out of an execution context, such as a shell or eval.

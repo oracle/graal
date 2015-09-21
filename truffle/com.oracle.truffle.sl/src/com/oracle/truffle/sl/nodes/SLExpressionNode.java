@@ -40,13 +40,14 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.nodes.instrument.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode;
+import com.oracle.truffle.sl.runtime.SLFunction;
 
 /**
  * Base class for all SL nodes that produce a value and therefore benefit from type specialization.

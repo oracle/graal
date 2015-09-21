@@ -24,13 +24,19 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.debug.*;
-import com.oracle.truffle.api.impl.*;
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.FindContextNode;
+import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.*;
-import java.io.*;
-import java.lang.annotation.*;
+import com.oracle.truffle.api.source.Source;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;

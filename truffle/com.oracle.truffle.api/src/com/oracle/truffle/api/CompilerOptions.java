@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Allows options to be set to control the compilation of a specific {@link RootNode}, without

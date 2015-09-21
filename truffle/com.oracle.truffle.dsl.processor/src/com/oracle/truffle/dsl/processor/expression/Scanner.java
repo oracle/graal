@@ -25,8 +25,11 @@
 
 package com.oracle.truffle.dsl.processor.expression;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.util.HashMap;
+import java.util.Map;
 
 // Checkstyle: stop
 // @formatter:off

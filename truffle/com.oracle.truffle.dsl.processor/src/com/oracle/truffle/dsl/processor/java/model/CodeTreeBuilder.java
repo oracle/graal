@@ -22,14 +22,20 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import static com.oracle.truffle.dsl.processor.java.model.CodeTreeKind.*;
+import static com.oracle.truffle.dsl.processor.java.model.CodeTreeKind.GROUP;
+import static com.oracle.truffle.dsl.processor.java.model.CodeTreeKind.NEW_LINE;
+import static com.oracle.truffle.dsl.processor.java.model.CodeTreeKind.REMOVE_LAST;
 
-import java.util.*;
+import java.util.List;
 
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class CodeTreeBuilder {
 

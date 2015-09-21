@@ -22,15 +22,20 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import java.lang.annotation.*;
-import java.util.*;
-
-import javax.lang.model.element.*;
-
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.java.*;
-import com.oracle.truffle.dsl.processor.model.*;
+import com.oracle.truffle.api.dsl.ShortCircuit;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.MethodSpec;
+import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
+import com.oracle.truffle.dsl.processor.model.ParameterSpec;
+import com.oracle.truffle.dsl.processor.model.ShortCircuitData;
+import com.oracle.truffle.dsl.processor.model.TemplateMethod;
+import java.lang.annotation.Annotation;
+import java.util.HashSet;
+import java.util.Set;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.ExecutableElement;
 
 public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
 

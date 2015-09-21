@@ -41,13 +41,15 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.builtins.*;
-import com.oracle.truffle.sl.nodes.controlflow.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
+import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
@@ -75,6 +77,7 @@ public final class SLRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        assert SLLanguage.INSTANCE.findContext0(SLLanguage.INSTANCE.createFindContextNode0()) != null;
         return bodyNode.executeGeneric(frame);
     }
 

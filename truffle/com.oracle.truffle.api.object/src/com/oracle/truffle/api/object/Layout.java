@@ -24,10 +24,10 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.util.*;
-
 import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
 import com.oracle.truffle.api.object.Shape.Allocator;
+import java.util.EnumSet;
+import java.util.ServiceLoader;
 
 /**
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
@@ -51,16 +51,27 @@ public abstract class Layout {
         IntToLong,
     }
 
+    /**
+     * Create a new {@link LayoutBuilder}.
+     */
+    public static Builder newLayout() {
+        return new Builder();
+    }
+
+    /**
+     * Equivalent to {@code Layout.newLayout().build()}.
+     */
     public static Layout createLayout() {
         return createLayout(NONE);
     }
 
+    /**
+     * Equivalent to
+     * {@code Layout.newLayout().setAllowedImplicitCasts(allowedImplicitCasts).build()}.
+     */
+    @Deprecated
     public static Layout createLayout(EnumSet<ImplicitCast> allowedImplicitCasts) {
-        return new LayoutBuilder().setAllowedImplicitCasts(allowedImplicitCasts).build();
-    }
-
-    public static Layout createLayout(EnumSet<ImplicitCast> allowedImplicitCasts, FieldOffsetProvider fieldOffsetProvider) {
-        return new LayoutBuilder().setAllowedImplicitCasts(allowedImplicitCasts).setFieldOffsetProvider(fieldOffsetProvider).build();
+        return newLayout().setAllowedImplicitCasts(allowedImplicitCasts).build();
     }
 
     public abstract DynamicObject newInstance(Shape shape);
@@ -114,5 +125,56 @@ public abstract class Layout {
             throw new AssertionError("LayoutFactory not found");
         }
         return bestLayoutFactory;
+    }
+
+    /**
+     * Layout builder.
+     *
+     * @see Layout
+     */
+    public static final class Builder {
+        private EnumSet<ImplicitCast> allowedImplicitCasts;
+        private FieldOffsetProvider fieldOffsetProvider;
+
+        /**
+         * Create a new layout builder.
+         */
+        private Builder() {
+            this.allowedImplicitCasts = Layout.NONE;
+            this.fieldOffsetProvider = null;
+        }
+
+        /**
+         * Build {@link Layout} from the configuration in this builder.
+         */
+        public Layout build() {
+            return Layout.getFactory().createLayout(this);
+        }
+
+        /**
+         * Set the allowed implicit casts in this layout.
+         *
+         * @see Layout.ImplicitCast
+         */
+        public Builder setAllowedImplicitCasts(EnumSet<ImplicitCast> allowedImplicitCasts) {
+            this.allowedImplicitCasts = allowedImplicitCasts;
+            return this;
+        }
+
+        /**
+         * Set a custom field offset provider for this layout.
+         */
+        public Builder setFieldOffsetProvider(FieldOffsetProvider fieldOffsetProvider) {
+            this.fieldOffsetProvider = fieldOffsetProvider;
+            return this;
+        }
+
+        public EnumSet<ImplicitCast> getAllowedImplicitCasts() {
+            return allowedImplicitCasts;
+        }
+
+        public FieldOffsetProvider getFieldOffsetProvider() {
+            return fieldOffsetProvider;
+        }
     }
 }

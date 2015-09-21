@@ -22,9 +22,18 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.*;
-
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.BooleanLocation;
+import com.oracle.truffle.api.object.DoubleLocation;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.IntLocation;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.LocationModifier;
+import com.oracle.truffle.api.object.LongLocation;
+import com.oracle.truffle.api.object.ObjectLocation;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation;
 import com.oracle.truffle.object.LocationImpl.TypedObjectLocation;
@@ -33,6 +42,7 @@ import com.oracle.truffle.object.Locations.DeclaredLocation;
 import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.Locations.ValueLocation;
 import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
+import java.util.EnumSet;
 
 public abstract class LayoutImpl extends Layout {
     private static final int INT_TO_DOUBLE_FLAG = 1;

@@ -22,20 +22,27 @@
  */
 package com.oracle.truffle.object.basic;
 
-import static com.oracle.truffle.object.basic.BasicLocations.*;
-
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.object.*;
+import com.oracle.truffle.api.object.BooleanLocation;
+import com.oracle.truffle.api.object.DoubleLocation;
+import com.oracle.truffle.api.object.IntLocation;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.LongLocation;
+import com.oracle.truffle.api.object.ObjectLocation;
+import com.oracle.truffle.object.LayoutImpl;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.Locations.ConstantLocation;
 import com.oracle.truffle.object.Locations.DeclaredDualLocation;
 import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.Locations.ValueLocation;
+import com.oracle.truffle.object.ObjectStorageOptions;
+import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.basic.BasicLocations.BooleanLocationDecorator;
 import com.oracle.truffle.object.basic.BasicLocations.DoubleLocationDecorator;
 import com.oracle.truffle.object.basic.BasicLocations.IntLocationDecorator;
+import static com.oracle.truffle.object.basic.BasicLocations.LONG_SIZE;
 import com.oracle.truffle.object.basic.BasicLocations.LongArrayLocation;
 import com.oracle.truffle.object.basic.BasicLocations.LongFieldLocation;
+import static com.oracle.truffle.object.basic.BasicLocations.OBJECT_SIZE;
 import com.oracle.truffle.object.basic.BasicLocations.ObjectArrayLocation;
 
 public abstract class BasicAllocator extends ShapeImpl.BaseAllocator {

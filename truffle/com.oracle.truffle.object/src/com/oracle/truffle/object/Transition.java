@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.*;
-
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Property;
+import java.util.Objects;
 
 public abstract class Transition {
     @Override

@@ -22,12 +22,11 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.Collections;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 
 public final class AnnotatedParameterSpec extends ParameterSpec {
 

@@ -22,11 +22,13 @@
  */
 package com.oracle.truffle.api.test;
 
-import org.junit.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * <h3>Creating a Root Node</h3>

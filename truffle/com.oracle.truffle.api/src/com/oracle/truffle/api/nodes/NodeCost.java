@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Represents a rough estimate for the cost of a {@link Node}. This estimate can be used by runtime

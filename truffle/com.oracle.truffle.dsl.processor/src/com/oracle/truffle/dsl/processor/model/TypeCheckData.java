@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import javax.lang.model.type.*;
+import javax.lang.model.type.TypeMirror;
 
 public class TypeCheckData extends TemplateMethod {
 

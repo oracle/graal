@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.NodeInterface;
 
 /**
  * Implemented by DSL generated operation classes. This is internal implementation dependent API.

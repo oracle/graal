@@ -22,10 +22,17 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.*;
-
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.FinalLocationException;
+import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.object.IncompatibleLocationException;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.LocationModifier;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
+import java.util.EnumSet;
+import java.util.Objects;
 
 /**
  * Property objects represent the mapping between property identifiers (keys) and storage locations.

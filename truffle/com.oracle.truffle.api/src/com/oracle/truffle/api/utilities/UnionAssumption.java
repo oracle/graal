@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 
 /**
  * An assumption that combines two other assumptions. A check on this assumption checks both of the

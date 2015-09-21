@@ -24,13 +24,11 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import java.lang.reflect.*;
-
-import sun.misc.*;
-
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
+import java.lang.reflect.Field;
+import sun.misc.Unsafe;
 
 /**
  * Information about a field in a {@link Node} class.

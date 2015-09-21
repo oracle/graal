@@ -41,11 +41,12 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.parser.*;
-import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.parser.Parser;
+import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * Builtin function to define (or redefine) functions. The provided source code is parsed the same

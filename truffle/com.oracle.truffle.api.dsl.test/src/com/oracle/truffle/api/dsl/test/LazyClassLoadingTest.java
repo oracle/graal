@@ -22,14 +22,16 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import java.lang.reflect.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.LazyClassLoadingTestFactory.TestNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class LazyClassLoadingTest {
     @Test

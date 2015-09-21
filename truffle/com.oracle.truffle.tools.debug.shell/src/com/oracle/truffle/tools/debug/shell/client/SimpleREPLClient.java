@@ -24,13 +24,22 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
-import java.io.*;
-import java.util.*;
-
-import jline.console.*;
-
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.tools.debug.shell.*;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tools.debug.shell.REPLClient;
+import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import com.oracle.truffle.tools.debug.shell.REPLServer;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+import jline.console.ConsoleReader;
 
 /**
  * A very simple line-oriented, language-agnostic debugging client shell: the first step toward a

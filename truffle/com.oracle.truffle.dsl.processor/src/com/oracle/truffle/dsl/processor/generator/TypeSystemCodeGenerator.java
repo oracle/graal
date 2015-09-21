@@ -22,20 +22,33 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.*;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
-import static javax.lang.model.element.Modifier.*;
-
-import java.util.*;
-
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.java.*;
-import com.oracle.truffle.dsl.processor.java.model.*;
-import com.oracle.truffle.dsl.processor.model.*;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.createConstantName;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
+import com.oracle.truffle.dsl.processor.model.TypeCastData;
+import com.oracle.truffle.dsl.processor.model.TypeCheckData;
+import com.oracle.truffle.dsl.processor.model.TypeSystemData;
+import java.util.List;
+import javax.lang.model.element.Modifier;
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PROTECTED;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 
 public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemData> {
 

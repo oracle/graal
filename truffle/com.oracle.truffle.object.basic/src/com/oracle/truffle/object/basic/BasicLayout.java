@@ -22,15 +22,19 @@
  */
 package com.oracle.truffle.object.basic;
 
-import java.util.*;
-
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.ObjectLocation;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
-import com.oracle.truffle.object.*;
+import com.oracle.truffle.object.LayoutImpl;
+import com.oracle.truffle.object.LayoutStrategy;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.basic.BasicLocations.ObjectFieldLocation;
 import com.oracle.truffle.object.basic.BasicLocations.SimpleObjectFieldLocation;
+import java.util.EnumSet;
 
 public class BasicLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;

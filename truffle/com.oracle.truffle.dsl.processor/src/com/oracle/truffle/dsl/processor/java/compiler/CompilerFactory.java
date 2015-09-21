@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
-import javax.lang.model.element.*;
+import javax.lang.model.element.Element;
 
 public class CompilerFactory {
 

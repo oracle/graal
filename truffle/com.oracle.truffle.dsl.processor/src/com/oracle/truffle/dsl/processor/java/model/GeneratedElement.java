@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import javax.lang.model.element.*;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
 
 public interface GeneratedElement {
 

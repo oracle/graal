@@ -22,13 +22,18 @@
  */
 package com.oracle.truffle.object.debug;
 
-import java.io.*;
-import java.text.*;
-import java.util.*;
-import java.util.concurrent.*;
-
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.object.*;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.object.ObjectStorageOptions;
+import com.oracle.truffle.object.ShapeImpl;
+import java.io.PrintWriter;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ShapeProfiler {
     private static final String LINE_SEPARATOR = "***********************************************";
@@ -116,12 +121,12 @@ public class ShapeProfiler {
 
         public void profile(Shape shape) {
             jsObjects++;
-            oac += shape.getObjectArrayCapacity();
-            oas += shape.getObjectArraySize();
-            ofs += shape.getObjectFieldSize();
-            pac += shape.getPrimitiveArrayCapacity();
-            pas += shape.getPrimitiveArraySize();
-            pfs += shape.getPrimitiveFieldSize();
+            oac += ((ShapeImpl) shape).getObjectArrayCapacity();
+            oas += ((ShapeImpl) shape).getObjectArraySize();
+            ofs += ((ShapeImpl) shape).getObjectFieldSize();
+            pac += ((ShapeImpl) shape).getPrimitiveArrayCapacity();
+            pas += ((ShapeImpl) shape).getPrimitiveArraySize();
+            pfs += ((ShapeImpl) shape).getPrimitiveFieldSize();
         }
 
         public void add(ShapeStats stats) {
