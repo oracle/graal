@@ -37,7 +37,7 @@ import java.util.concurrent.Executor;
  */
 @Deprecated
 @SuppressWarnings({"rawtypes", "deprecated"})
-public final class TruffleVM extends Portaal {
+public final class TruffleVM extends PolyglotEngine {
     private TruffleVM() {
         super();
     }
@@ -56,7 +56,7 @@ public final class TruffleVM extends Portaal {
     }
 
     @Deprecated
-    public final class Builder extends Portaal.Builder {
+    public final class Builder extends PolyglotEngine.Builder {
         Builder() {
         }
 
@@ -150,7 +150,7 @@ public final class TruffleVM extends Portaal {
     }
 
     @Deprecated
-    public final class Language extends Portaal.Language {
+    public final class Language extends PolyglotEngine.Language {
         Language(LanguageCache info) {
             super(info);
         }

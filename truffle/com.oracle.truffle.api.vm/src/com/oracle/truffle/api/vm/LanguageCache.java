@@ -25,7 +25,7 @@
 package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import static com.oracle.truffle.api.vm.Portaal.LOG;
+import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -80,7 +80,7 @@ final class LanguageCache {
     }
 
     private static ClassLoader loader() {
-        ClassLoader l = Portaal.class.getClassLoader();
+        ClassLoader l = PolyglotEngine.class.getClassLoader();
         if (l == null) {
             l = ClassLoader.getSystemClassLoader();
         }

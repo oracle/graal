@@ -27,7 +27,7 @@ package com.oracle.truffle.tck;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.Portaal;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
 import java.util.Random;
 import java.util.logging.Level;
@@ -43,7 +43,7 @@ import org.junit.Test;
 public abstract class TruffleTCK {
     private static final Logger LOG = Logger.getLogger(TruffleTCK.class.getName());
     private static final Random RANDOM = new Random();
-    private Portaal tckVM;
+    private PolyglotEngine tckVM;
 
     protected TruffleTCK() {
     }
@@ -51,7 +51,7 @@ public abstract class TruffleTCK {
     /**
      * This methods is called before first test is executed. It's purpose is to set a TruffleVM with
      * your language up, so it is ready for testing.
-     * {@link Portaal#eval(com.oracle.truffle.api.source.Source) Execute} any scripts you need, and
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) Execute} any scripts you need, and
      * prepare global symbols with proper names. The symbols will then be looked up by the
      * infrastructure (using the names provided by you from methods like {@link #plusInt()}) and
      * used for internal testing.
@@ -59,11 +59,11 @@ public abstract class TruffleTCK {
      * @return initialized Truffle virtual machine
      * @throws java.lang.Exception thrown when the VM preparation fails
      */
-    protected abstract Portaal prepareVM() throws Exception;
+    protected abstract PolyglotEngine prepareVM() throws Exception;
 
     /**
      * MIME type associated with your language. The MIME type will be passed to
-     * {@link Portaal#eval(com.oracle.truffle.api.source.Source)} method of the {@link #prepareVM()
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} method of the {@link #prepareVM()
      * created TruffleVM}.
      *
      * @return mime type of the tested language
@@ -82,7 +82,7 @@ public abstract class TruffleTCK {
     /**
      * Name of a function that returns <code>null</code>. Truffle languages are encouraged to have
      * their own type representing <code>null</code>, but when such value is returned from
-     * {@link Portaal#eval}, it needs to be converted to real Java <code>null</code> by sending a
+     * {@link PolyglotEngine#eval}, it needs to be converted to real Java <code>null</code> by sending a
      * foreign access <em>isNull</em> message. There is a test to verify it is really true.
      *
      * @return name of globally exported symbol
@@ -149,7 +149,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that counts number of its invocations in current {@link Portaal} context.
+     * Name of a function that counts number of its invocations in current {@link PolyglotEngine} context.
      * Your function should somehow keep a counter to remember number of its invocations and always
      * increment it. The first invocation should return <code>1</code>, the second <code>2</code>
      * and so on. The returned values are expected to be instances of {@link Number}.
@@ -163,7 +163,7 @@ public abstract class TruffleTCK {
 
     /**
      * Return a code snippet that is invalid in your language. Its
-     * {@link Portaal#eval(com.oracle.truffle.api.source.Source) evaluation} should fail and yield
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) evaluation} should fail and yield
      * an exception.
      *
      * @return code snippet invalid in the tested language
@@ -195,7 +195,7 @@ public abstract class TruffleTCK {
         return null;
     }
 
-    private Portaal vm() throws Exception {
+    private PolyglotEngine vm() throws Exception {
         if (tckVM == null) {
             tckVM = prepareVM();
         }
@@ -208,7 +208,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testFortyTwo() throws Exception {
-        Portaal.Value fourtyTwo = findGlobalSymbol(fourtyTwo());
+        PolyglotEngine.Value fourtyTwo = findGlobalSymbol(fourtyTwo());
 
         Object res = fourtyTwo.invoke(null).get();
 
@@ -231,7 +231,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testNull() throws Exception {
-        Portaal.Value retNull = findGlobalSymbol(returnsNull());
+        PolyglotEngine.Value retNull = findGlobalSymbol(returnsNull());
 
         Object res = retNull.invoke(null).get();
 
@@ -253,7 +253,7 @@ public abstract class TruffleTCK {
         int a = RANDOM.nextInt(100);
         int b = RANDOM.nextInt(100);
 
-        Portaal.Value plus = findGlobalSymbol(plus(int.class, int.class));
+        PolyglotEngine.Value plus = findGlobalSymbol(plus(int.class, int.class));
 
         Number n = plus.invoke(null, a, b).as(Number.class);
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
@@ -264,7 +264,7 @@ public abstract class TruffleTCK {
         int a = RANDOM.nextInt(100);
         int b = RANDOM.nextInt(100);
 
-        Portaal.Value plus = findGlobalSymbol(plus(byte.class, byte.class));
+        PolyglotEngine.Value plus = findGlobalSymbol(plus(byte.class, byte.class));
 
         Number n = plus.invoke(null, (byte) a, (byte) b).as(Number.class);
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
@@ -275,7 +275,7 @@ public abstract class TruffleTCK {
         int a = RANDOM.nextInt(100);
         int b = RANDOM.nextInt(100);
 
-        Portaal.Value plus = findGlobalSymbol(plus(short.class, short.class));
+        PolyglotEngine.Value plus = findGlobalSymbol(plus(short.class, short.class));
 
         Number n = plus.invoke(null, (short) a, (short) b).as(Number.class);
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
@@ -286,7 +286,7 @@ public abstract class TruffleTCK {
         long a = RANDOM.nextInt(100);
         long b = RANDOM.nextInt(100);
 
-        Portaal.Value plus = findGlobalSymbol(plus(long.class, long.class));
+        PolyglotEngine.Value plus = findGlobalSymbol(plus(long.class, long.class));
 
         Number n = plus.invoke(null, a, b).as(Number.class);
         assert a + b == n.longValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.longValue();
@@ -297,7 +297,7 @@ public abstract class TruffleTCK {
         float a = RANDOM.nextFloat();
         float b = RANDOM.nextFloat();
 
-        Portaal.Value plus = findGlobalSymbol(plus(float.class, float.class));
+        PolyglotEngine.Value plus = findGlobalSymbol(plus(float.class, float.class));
 
         Number n = plus.invoke(null, a, b).as(Number.class);
         assertEquals("Correct value computed", a + b, n.floatValue(), 0.01f);
@@ -308,7 +308,7 @@ public abstract class TruffleTCK {
         double a = RANDOM.nextDouble();
         double b = RANDOM.nextDouble();
 
-        Portaal.Value plus = findGlobalSymbol(plus(float.class, float.class));
+        PolyglotEngine.Value plus = findGlobalSymbol(plus(float.class, float.class));
 
         Number n = plus.invoke(null, a, b).as(Number.class);
         assertEquals("Correct value computed", a + b, n.doubleValue(), 0.01);
@@ -338,7 +338,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testMaxOrMinValue() throws Exception {
-        Portaal.Value apply = findGlobalSymbol(applyNumbers());
+        PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
 
         TruffleObject fn = JavaInterop.asTruffleFunction(LongBinaryOperation.class, new MaxMinObject(true));
         Object res = apply.invoke(null, fn).get();
@@ -352,10 +352,10 @@ public abstract class TruffleTCK {
 
     @Test
     public void testMaxOrMinValue2() throws Exception {
-        Portaal.Value apply = findGlobalSymbol(applyNumbers());
+        PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
 
         TruffleObject fn = JavaInterop.asTruffleFunction(LongBinaryOperation.class, new MaxMinObject(false));
-        final Portaal.Value result = apply.invoke(null, fn);
+        final PolyglotEngine.Value result = apply.invoke(null, fn);
 
         try {
             String res = result.as(String.class);
@@ -370,7 +370,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testPrimitiveReturnTypeByte() throws Exception {
-        Portaal.Value apply = findGlobalSymbol(applyNumbers());
+        PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
 
         byte value = (byte) RANDOM.nextInt(100);
 
@@ -381,7 +381,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testPrimitiveReturnTypeShort() throws Exception {
-        Portaal.Value apply = findGlobalSymbol(applyNumbers());
+        PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
 
         short value = (short) RANDOM.nextInt(100);
 
@@ -392,7 +392,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testPrimitiveReturnTypeInt() throws Exception {
-        Portaal.Value apply = findGlobalSymbol(applyNumbers());
+        PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
 
         int value = RANDOM.nextInt(100);
 
@@ -403,7 +403,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testPrimitiveReturnTypeLong() throws Exception {
-        Portaal.Value apply = findGlobalSymbol(applyNumbers());
+        PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
 
         long value = RANDOM.nextInt(1000);
 
@@ -414,7 +414,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testPrimitiveReturnTypeFloat() throws Exception {
-        Portaal.Value apply = findGlobalSymbol(applyNumbers());
+        PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
 
         float value = RANDOM.nextInt(1000) + RANDOM.nextFloat();
 
@@ -425,7 +425,7 @@ public abstract class TruffleTCK {
 
     @Test
     public void testPrimitiveReturnTypeDouble() throws Exception {
-        Portaal.Value apply = findGlobalSymbol(applyNumbers());
+        PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
 
         double value = RANDOM.nextInt(1000) + RANDOM.nextDouble();
 
@@ -440,7 +440,7 @@ public abstract class TruffleTCK {
         if (id == null) {
             return;
         }
-        Portaal.Value apply = findGlobalSymbol(id);
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
 
         byte value = (byte) RANDOM.nextInt(100);
 
@@ -454,7 +454,7 @@ public abstract class TruffleTCK {
         if (id == null) {
             return;
         }
-        Portaal.Value apply = findGlobalSymbol(id);
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
 
         short value = (short) RANDOM.nextInt(100);
         Number n = (Number) apply.invoke(null, value).get();
@@ -467,7 +467,7 @@ public abstract class TruffleTCK {
         if (id == null) {
             return;
         }
-        Portaal.Value apply = findGlobalSymbol(id);
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
 
         int value = RANDOM.nextInt(100);
 
@@ -481,7 +481,7 @@ public abstract class TruffleTCK {
         if (id == null) {
             return;
         }
-        Portaal.Value apply = findGlobalSymbol(id);
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
 
         long value = RANDOM.nextInt(1000);
 
@@ -495,7 +495,7 @@ public abstract class TruffleTCK {
         if (id == null) {
             return;
         }
-        Portaal.Value apply = findGlobalSymbol(id);
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
 
         float value = RANDOM.nextInt(1000) + RANDOM.nextFloat();
 
@@ -509,7 +509,7 @@ public abstract class TruffleTCK {
         if (id == null) {
             return;
         }
-        Portaal.Value apply = findGlobalSymbol(id);
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
 
         double value = RANDOM.nextInt(1000) + RANDOM.nextDouble();
 
@@ -523,7 +523,7 @@ public abstract class TruffleTCK {
         if (id == null) {
             return;
         }
-        Portaal.Value apply = findGlobalSymbol(id);
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
 
         TruffleObject fn = JavaInterop.asTruffleFunction(LongBinaryOperation.class, new MaxMinObject(true));
 
@@ -534,11 +534,11 @@ public abstract class TruffleTCK {
     @Test
     public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
         final String countMethod = countInvocations();
-        Portaal.Value count1 = findGlobalSymbol(countMethod);
-        Portaal vm1 = tckVM;
+        PolyglotEngine.Value count1 = findGlobalSymbol(countMethod);
+        PolyglotEngine vm1 = tckVM;
         tckVM = null; // clean-up
-        Portaal.Value count2 = findGlobalSymbol(countMethod);
-        Portaal vm2 = tckVM;
+        PolyglotEngine.Value count2 = findGlobalSymbol(countMethod);
+        PolyglotEngine vm2 = tckVM;
 
         assertNotSame("Two virtual machines allocated", vm1, vm2);
 
@@ -563,8 +563,8 @@ public abstract class TruffleTCK {
 
     }
 
-    private Portaal.Value findGlobalSymbol(String name) throws Exception {
-        Portaal.Value s = vm().findGlobalSymbol(name);
+    private PolyglotEngine.Value findGlobalSymbol(String name) throws Exception {
+        PolyglotEngine.Value s = vm().findGlobalSymbol(name);
         assert s != null : "Symbol " + name + " is not found!";
         return s;
     }
@@ -581,7 +581,7 @@ public abstract class TruffleTCK {
             Thread.sleep(wait);
             return null;
         }
-        Portaal.Value s = vm().findGlobalSymbol(compoundObjectName);
+        PolyglotEngine.Value s = vm().findGlobalSymbol(compoundObjectName);
         assert s != null : "Symbol " + compoundObjectName + " is not found!";
         CompoundObject obj = s.invoke(null).as(CompoundObject.class);
         int traverse = RANDOM.nextInt(10);

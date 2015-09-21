@@ -218,7 +218,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintWriter printer = new PrintWriter(out);
         try {
-            Portaal vm = Portaal.createNew().stdIn(new BufferedReader(new StringReader(repeat(testCase.testInput, repeats)))).stdOut(printer).build();
+            PolyglotEngine vm = PolyglotEngine.createNew().stdIn(new BufferedReader(new StringReader(repeat(testCase.testInput, repeats)))).stdOut(printer).build();
 
             String script = readAllLines(testCase.path);
             SLLanguage.run(vm, testCase.path, null, printer, repeats, builtins);

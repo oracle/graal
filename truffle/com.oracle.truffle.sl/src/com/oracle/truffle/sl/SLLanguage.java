@@ -48,7 +48,7 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
-import com.oracle.truffle.api.vm.Portaal.Value;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.call.*;
@@ -180,7 +180,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
      */
     public static void main(String[] args) throws IOException {
-        Portaal vm = Portaal.createNew().build();
+        PolyglotEngine vm = PolyglotEngine.createNew().build();
         assert vm.getLanguages().containsKey("application/x-sl");
 
         setupToolDemos();
@@ -211,7 +211,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * Temporary method during API evolution, supports debugger integration.
      */
     public static void run(Source source) throws IOException {
-        Portaal vm = Portaal.createNew().build();
+        PolyglotEngine vm = PolyglotEngine.createNew().build();
         assert vm.getLanguages().containsKey("application/x-sl");
         vm.eval(source);
         Value main = vm.findGlobalSymbol("main");
@@ -225,7 +225,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * Parse and run the specified SL source. Factored out in a separate method so that it can also
      * be used by the unit test harness.
      */
-    public static long run(Portaal context, Path path, PrintWriter logOutput, PrintWriter out, int repeats, List<NodeFactory<? extends SLBuiltinNode>> currentBuiltins) throws IOException {
+    public static long run(PolyglotEngine context, Path path, PrintWriter logOutput, PrintWriter out, int repeats, List<NodeFactory<? extends SLBuiltinNode>> currentBuiltins) throws IOException {
         builtins = currentBuiltins;
 
         if (logOutput != null) {

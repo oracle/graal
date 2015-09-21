@@ -44,18 +44,18 @@ import java.util.logging.*;
 /**
  * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #createNew()
  * Instantiate} your own portal into the isolated, multi language system with all the registered
- * languages ready for your use. A {@link Portaal} runs inside of a <em>JVM</em>, there can however
- * be multiple instances (some would say tenants) of {@link Portaal} running next to each other in a
+ * languages ready for your use. A {@link PolyglotEngine} runs inside of a <em>JVM</em>, there can however
+ * be multiple instances (some would say tenants) of {@link PolyglotEngine} running next to each other in a
  * single <em>JVM</em> with a complete mutual isolation. There is 1:N mapping between <em>JVM</em>
- * and {@link Portaal}.
+ * and {@link PolyglotEngine}.
  * <p>
- * It would not be correct to think of a {@link Portaal} as a runtime for a single
+ * It would not be correct to think of a {@link PolyglotEngine} as a runtime for a single
  * {@link TruffleLanguage Truffle language} (Ruby, Python, R, C, JavaScript, etc.) either.
- * {@link Portaal} can host as many of Truffle languages as {@link Registration registered on a
- * class path} of your <em>JVM</em> application. {@link Portaal} orchestrates these languages,
+ * {@link PolyglotEngine} can host as many of Truffle languages as {@link Registration registered on a
+ * class path} of your <em>JVM</em> application. {@link PolyglotEngine} orchestrates these languages,
  * manages exchange of objects and calls among them. While it may happen that there is just one
- * activated language inside of a {@link Portaal}, the greatest strength of {@link Portaal} is in
- * inter-operability between all Truffle languages. There is 1:N mapping between {@link Portaal} and
+ * activated language inside of a {@link PolyglotEngine}, the greatest strength of {@link PolyglotEngine} is in
+ * inter-operability between all Truffle languages. There is 1:N mapping between {@link PolyglotEngine} and
  * {@link TruffleLanguage Truffle language implementations}.
  * <p>
  * Use {@link #createNew()} to create new isolated portal ready for execution of various languages.
@@ -71,12 +71,12 @@ import java.util.logging.*;
  * <p>
  * The <code>TruffleVM</code> is single-threaded and tries to enforce that. It records the thread it
  * has been {@link Builder#build() created} by and checks that all subsequent calls are coming from
- * the same thread. There is 1:1 mapping between {@link Portaal} and a thread that can tell it what
+ * the same thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it what
  * to do.
  */
 @SuppressWarnings("rawtypes")
-public class Portaal {
-    static final Logger LOG = Logger.getLogger(Portaal.class.getName());
+public class PolyglotEngine {
+    static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
     private final Thread initThread;
     private final Executor executor;
@@ -91,7 +91,7 @@ public class Portaal {
     /**
      * Private & temporary only constructor.
      */
-    Portaal() {
+    PolyglotEngine() {
         this.initThread = null;
         this.in = null;
         this.err = null;
@@ -105,7 +105,7 @@ public class Portaal {
     /**
      * Real constructor used from the builder.
      */
-    Portaal(Executor executor, Map<String, Object> globals, Writer out, Writer err, Reader in, EventConsumer<?>[] handlers) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, Writer out, Writer err, Reader in, EventConsumer<?>[] handlers) {
         this.executor = executor;
         this.out = out;
         this.err = err;
@@ -125,7 +125,7 @@ public class Portaal {
      * virtual machine and then create one using {@link Builder#build()}:
      *
      * <pre>
-     * {@link Portaal} vm = {@link Portaal}.{@link Portaal#createNew() createNew()}
+     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#createNew() createNew()}
      *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
      *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
      *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})
@@ -138,20 +138,20 @@ public class Portaal {
      *
      * @return new, isolated virtual machine with pre-registered languages
      */
-    public static Portaal.Builder createNew() {
+    public static PolyglotEngine.Builder createNew() {
         // making Builder non-static inner class is a
         // nasty trick to avoid the Builder class to appear
         // in Javadoc next to TruffleVM class
-        Portaal vm = new Portaal();
+        PolyglotEngine vm = new PolyglotEngine();
         return vm.new Builder();
     }
 
     /**
-     * Builder for a new {@link Portaal}. Call various configuration methods in a chain and at the
-     * end create new {@link Portaal virtual machine}:
+     * Builder for a new {@link PolyglotEngine}. Call various configuration methods in a chain and at the
+     * end create new {@link PolyglotEngine virtual machine}:
      *
      * <pre>
-     * {@link Portaal} vm = {@link Portaal}.{@link Portaal#createNew() createNew()}
+     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#createNew() createNew()}
      *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
      *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
      *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})
@@ -171,7 +171,7 @@ public class Portaal {
 
         /**
          * Changes the default output for languages running in <em>to be created</em>
-         * {@link Portaal virtual machine}. The default is to use {@link System#out}.
+         * {@link PolyglotEngine virtual machine}. The default is to use {@link System#out}.
          *
          * @param w the writer to use as output
          * @return instance of this builder
@@ -182,7 +182,7 @@ public class Portaal {
         }
 
         /**
-         * Changes the error output for languages running in <em>to be created</em> {@link Portaal
+         * Changes the error output for languages running in <em>to be created</em> {@link PolyglotEngine
          * virtual machine}. The default is to use {@link System#err}.
          *
          * @param w the writer to use as output
@@ -194,7 +194,7 @@ public class Portaal {
         }
 
         /**
-         * Changes the default input for languages running in <em>to be created</em> {@link Portaal
+         * Changes the default input for languages running in <em>to be created</em> {@link PolyglotEngine
          * virtual machine}. The default is to use {@link System#out}.
          *
          * @param r the reader to use as input
@@ -207,7 +207,7 @@ public class Portaal {
 
         /**
          * Registers another instance of {@link EventConsumer} into the to be created
-         * {@link Portaal}.
+         * {@link PolyglotEngine}.
          *
          * @param handler the handler to register
          * @return instance of this builder
@@ -219,7 +219,7 @@ public class Portaal {
         }
 
         /**
-         * Adds global named symbol into the configuration of to-be-built {@link Portaal}. This
+         * Adds global named symbol into the configuration of to-be-built {@link PolyglotEngine}. This
          * symbol will be accessible to all languages via {@link Env#importSymbol(java.lang.String)}
          * and will take precedence over {@link TruffleLanguage#findExportedSymbol symbols exported
          * by languages itself}. Repeated use of <code>globalSymbol</code> is possible; later
@@ -229,7 +229,7 @@ public class Portaal {
          * @param obj value of the object - expected to be primitive wrapper, {@link String} or
          *            <code>TruffleObject</code> for mutual inter-operability
          * @return instance of this builder
-         * @see Portaal#findGlobalSymbol(java.lang.String)
+         * @see PolyglotEngine#findGlobalSymbol(java.lang.String)
          */
         public Builder globalSymbol(String name, Object obj) {
             globals.put(name, obj);
@@ -237,8 +237,8 @@ public class Portaal {
         }
 
         /**
-         * Provides own executor for running {@link Portaal} scripts. By default
-         * {@link Portaal#eval(com.oracle.truffle.api.source.Source)} and
+         * Provides own executor for running {@link PolyglotEngine} scripts. By default
+         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
          * {@link Value#invoke(java.lang.Object, java.lang.Object[])} are executed synchronously in
          * the calling thread. Sometimes, however it is more beneficial to run them asynchronously -
          * the easiest way to do so is to provide own executor when configuring the {
@@ -248,7 +248,7 @@ public class Portaal {
          * single (yet arbitrary) thread.
          *
          * @param executor the executor to use for internal execution inside the {@link #build() to
-         *            be created} {@link Portaal}
+         *            be created} {@link PolyglotEngine}
          * @return instance of this builder
          */
         @SuppressWarnings("hiding")
@@ -258,13 +258,13 @@ public class Portaal {
         }
 
         /**
-         * Creates the {@link Portaal Truffle virtual machine}. The configuration is taken from
+         * Creates the {@link PolyglotEngine Truffle virtual machine}. The configuration is taken from
          * values passed into configuration methods in this class.
          *
          * @return new, isolated virtual machine with pre-registered languages
          */
         @SuppressWarnings("deprecation")
-        public Portaal build() {
+        public PolyglotEngine build() {
             if (out == null) {
                 out = new OutputStreamWriter(System.out);
             }
@@ -422,7 +422,7 @@ public class Portaal {
         try (Closeable d = SPI.executionStart(this, fillIn, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
-            Portaal.findDebuggerSupport(langImpl);
+            PolyglotEngine.findDebuggerSupport(langImpl);
             if (debugger == null) {
                 debugger = fillIn[0];
             }
@@ -550,10 +550,10 @@ public class Portaal {
 
     /**
      * A future value wrapper. A user level wrapper around values returned by evaluation of various
-     * {@link Portaal} functions like {@link Portaal#findGlobalSymbol(java.lang.String)} and
-     * {@link Portaal#eval(com.oracle.truffle.api.source.Source)} or value returned by
+     * {@link PolyglotEngine} functions like {@link PolyglotEngine#findGlobalSymbol(java.lang.String)} and
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} or value returned by
      * {@link #invoke(java.lang.Object, java.lang.Object...) sbbsequent of execution}. In case the
-     * {@link Portaal} has been initialized for
+     * {@link PolyglotEngine} has been initialized for
      * {@link Builder#executor(java.util.concurrent.Executor) asynchronous excution}, the
      * {@link Value} represents a future - e.g. it is returned immediately, leaving the execution
      * running on behind.
@@ -635,13 +635,13 @@ public class Portaal {
 
         @SuppressWarnings("try")
         private void invokeImpl(Debugger[] fillIn, Object thiz, Object[] args, Object[] res, CountDownLatch done) {
-            try (final Closeable c = SPI.executionStart(Portaal.this, fillIn, null)) {
+            try (final Closeable c = SPI.executionStart(PolyglotEngine.this, fillIn, null)) {
                 if (debugger == null) {
                     debugger = fillIn[0];
                 }
                 List<Object> arr = new ArrayList<>();
                 if (thiz == null && language != null) {
-                    Object global = SPI.languageGlobal(SPI.findLanguage(Portaal.this, language.getClass()));
+                    Object global = SPI.languageGlobal(SPI.findLanguage(PolyglotEngine.this, language.getClass()));
                     if (global != null) {
                         arr.add(global);
                     }
@@ -680,13 +680,13 @@ public class Portaal {
     }
 
     /**
-     * Description of a language registered in {@link Portaal Truffle virtual machine}. Languages
+     * Description of a language registered in {@link PolyglotEngine Truffle virtual machine}. Languages
      * are registered by {@link Registration} annotation which stores necessary information into a
-     * descriptor inside of the language's JAR file. When a new {@link Portaal} is created, it reads
+     * descriptor inside of the language's JAR file. When a new {@link PolyglotEngine} is created, it reads
      * all available descriptors and creates {@link Language} objects to represent them. One can
      * obtain a {@link #getName() name} or list of supported {@link #getMimeTypes() MIME types} for
      * each language. The actual language implementation is not initialized until
-     * {@link Portaal#eval(java.lang.String, java.lang.String) a code is evaluated} in it.
+     * {@link PolyglotEngine#eval(java.lang.String, java.lang.String) a code is evaluated} in it.
      */
     public class Language {
         private final LanguageCache info;
@@ -739,7 +739,7 @@ public class Portaal {
 
         TruffleLanguage.Env getEnv(boolean create) {
             if (env == null && create) {
-                env = SPI.attachEnv(Portaal.this, info.getImpl(true), out, err, in);
+                env = SPI.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in);
             }
             return env;
         }
@@ -784,7 +784,7 @@ public class Portaal {
     private static class SPIAccessor extends Accessor {
         @Override
         public Object importSymbol(Object vmObj, TruffleLanguage<?> ownLang, String globalName) {
-            Portaal vm = (Portaal) vmObj;
+            PolyglotEngine vm = (PolyglotEngine) vmObj;
             Object g = vm.globals.get(globalName);
             if (g != null) {
                 return g;
@@ -817,7 +817,7 @@ public class Portaal {
 
         @Override
         public Env attachEnv(Object obj, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
-            Portaal vm = (Portaal) obj;
+            PolyglotEngine vm = (PolyglotEngine) obj;
             return super.attachEnv(vm, language, stdOut, stdErr, stdIn);
         }
 
@@ -853,19 +853,19 @@ public class Portaal {
 
         @Override
         protected Env findLanguage(Object obj, Class<? extends TruffleLanguage> languageClass) {
-            Portaal vm = (Portaal) obj;
+            PolyglotEngine vm = (PolyglotEngine) obj;
             return vm.findEnv(languageClass);
         }
 
         @Override
         protected Closeable executionStart(Object obj, Debugger[] fillIn, Source s) {
-            Portaal vm = (Portaal) obj;
+            PolyglotEngine vm = (PolyglotEngine) obj;
             return super.executionStart(vm, fillIn, s);
         }
 
         @Override
         protected void dispatchEvent(Object obj, Object event) {
-            Portaal vm = (Portaal) obj;
+            PolyglotEngine vm = (PolyglotEngine) obj;
             vm.dispatch(event);
         }
     } // end of SPIAccessor
