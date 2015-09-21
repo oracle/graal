@@ -42,7 +42,7 @@ import java.util.concurrent.Executor;
 import java.util.logging.*;
 
 /**
- * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #createNew()
+ * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #buildNew()
  * Instantiate} your own portal into the isolated, multi language system with all the registered
  * languages ready for your use. A {@link PolyglotEngine} runs inside of a <em>JVM</em>, there can however
  * be multiple instances (some would say tenants) of {@link PolyglotEngine} running next to each other in a
@@ -58,9 +58,9 @@ import java.util.logging.*;
  * inter-operability between all Truffle languages. There is 1:N mapping between {@link PolyglotEngine} and
  * {@link TruffleLanguage Truffle language implementations}.
  * <p>
- * Use {@link #createNew()} to create new isolated portal ready for execution of various languages.
+ * Use {@link #buildNew()} to create new isolated portal ready for execution of various languages.
  * All the languages in a single portal see each other exported global symbols and can cooperate.
- * Use {@link #createNew()} multiple times to create different, isolated portal environment
+ * Use {@link #buildNew()} multiple times to create different, isolated portal environment
  * completely separated from each other.
  * <p>
  * Once instantiated use {@link #eval(java.net.URI)} with a reference to a file or URL or directly
@@ -125,7 +125,7 @@ public class PolyglotEngine {
      * virtual machine and then create one using {@link Builder#build()}:
      *
      * <pre>
-     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#createNew() createNew()}
+     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#buildNew() buildNew()}
      *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
      *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
      *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})
@@ -138,7 +138,7 @@ public class PolyglotEngine {
      *
      * @return new, isolated virtual machine with pre-registered languages
      */
-    public static PolyglotEngine.Builder createNew() {
+    public static PolyglotEngine.Builder buildNew() {
         // making Builder non-static inner class is a
         // nasty trick to avoid the Builder class to appear
         // in Javadoc next to TruffleVM class
@@ -151,7 +151,7 @@ public class PolyglotEngine {
      * end create new {@link PolyglotEngine virtual machine}:
      *
      * <pre>
-     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#createNew() createNew()}
+     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#buildNew() buildNew()}
      *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
      *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
      *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})

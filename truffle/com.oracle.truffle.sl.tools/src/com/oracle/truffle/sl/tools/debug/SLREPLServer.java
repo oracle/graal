@@ -135,7 +135,7 @@ public final class SLREPLServer extends REPLServer {
             }
         };
 
-        PolyglotEngine newVM = PolyglotEngine.createNew().onEvent(onHalted).onEvent(onExec).build();
+        PolyglotEngine newVM = PolyglotEngine.buildNew().onEvent(onHalted).onEvent(onExec).build();
         this.language = newVM.getLanguages().get("application/x-sl");
         assert language != null;
 

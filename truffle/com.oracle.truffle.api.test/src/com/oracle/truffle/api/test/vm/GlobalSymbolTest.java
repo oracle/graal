@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 public class GlobalSymbolTest {
     @Test
     public void globalSymbolFoundByLanguage() throws IOException {
-        PolyglotEngine vm = PolyglotEngine.createNew().globalSymbol("ahoj", "42").executor(Executors.newSingleThreadExecutor()).build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().globalSymbol("ahoj", "42").executor(Executors.newSingleThreadExecutor()).build();
         // @formatter:off
         Object ret = vm.eval(
             Source.fromText("return=ahoj", "Return").withMimeType(L3)
@@ -44,7 +44,7 @@ public class GlobalSymbolTest {
 
     @Test
     public void globalSymbolFoundByVMUser() throws IOException {
-        PolyglotEngine vm = PolyglotEngine.createNew().globalSymbol("ahoj", "42").build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().globalSymbol("ahoj", "42").build();
         PolyglotEngine.Value ret = vm.findGlobalSymbol("ahoj");
         assertNotNull("Symbol found", ret);
         assertEquals("42", ret.get());

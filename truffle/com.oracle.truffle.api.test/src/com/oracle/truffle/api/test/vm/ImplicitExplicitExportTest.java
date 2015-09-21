@@ -43,7 +43,7 @@ public class ImplicitExplicitExportTest {
     @Before
     public void initializeVM() {
         mainThread = Thread.currentThread();
-        vm = PolyglotEngine.createNew().executor(Executors.newSingleThreadExecutor()).build();
+        vm = PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor()).build();
         assertTrue("Found " + L1 + " language", vm.getLanguages().containsKey(L1));
         assertTrue("Found " + L2 + " language", vm.getLanguages().containsKey(L2));
         assertTrue("Found " + L3 + " language", vm.getLanguages().containsKey(L3));

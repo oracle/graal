@@ -53,13 +53,13 @@ import org.junit.Test;
 public class SLTckTest extends TruffleTCK {
     @Test
     public void testVerifyPresence() {
-        PolyglotEngine vm = PolyglotEngine.createNew().build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().build();
         assertTrue("Our language is present", vm.getLanguages().containsKey("application/x-sl"));
     }
 
     @Override
     protected PolyglotEngine prepareVM() throws Exception {
-        PolyglotEngine vm = PolyglotEngine.createNew().build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().build();
         // @formatter:off
         vm.eval(
             Source.fromText(

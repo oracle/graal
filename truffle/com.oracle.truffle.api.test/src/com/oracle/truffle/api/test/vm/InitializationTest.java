@@ -56,7 +56,7 @@ public class InitializationTest {
     @Test
     public void accessProbeForAbstractLanguage() throws IOException {
         final Debugger[] arr = {null};
-        PolyglotEngine vm = PolyglotEngine.createNew().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+        PolyglotEngine vm = PolyglotEngine.buildNew().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
                 arr[0] = event.getDebugger();

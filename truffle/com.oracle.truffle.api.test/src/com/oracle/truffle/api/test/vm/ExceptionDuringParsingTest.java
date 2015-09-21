@@ -35,7 +35,7 @@ public class ExceptionDuringParsingTest {
 
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
-        PolyglotEngine vm = PolyglotEngine.createNew().build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().build();
         PolyglotEngine.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 

@@ -48,7 +48,7 @@ public class AccessorTest {
 
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
-        PolyglotEngine vm = PolyglotEngine.createNew().executor(Executors.newSingleThreadExecutor()).build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor()).build();
         PolyglotEngine.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 

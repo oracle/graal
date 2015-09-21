@@ -227,7 +227,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
-                PolyglotEngine vm = PolyglotEngine.createNew().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
+                PolyglotEngine vm = PolyglotEngine.buildNew().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
 
                 final String src = readAllLines(testCase.path);
                 vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));

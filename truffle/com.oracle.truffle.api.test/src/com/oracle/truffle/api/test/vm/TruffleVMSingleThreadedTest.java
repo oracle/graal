@@ -35,7 +35,7 @@ public class TruffleVMSingleThreadedTest {
 
     @Before
     public void initInDifferentThread() throws InterruptedException {
-        final PolyglotEngine.Builder b = PolyglotEngine.createNew();
+        final PolyglotEngine.Builder b = PolyglotEngine.buildNew();
         Thread t = new Thread("Initializer") {
             @Override
             public void run() {
