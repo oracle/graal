@@ -161,7 +161,6 @@ public abstract class TruffleCompiler {
             CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable);
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
         } catch (Throwable t) {
-            System.out.println("compilation failed!?");
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
             throw t;
         }
