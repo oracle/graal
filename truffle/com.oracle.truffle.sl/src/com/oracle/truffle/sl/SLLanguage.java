@@ -208,7 +208,9 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected SLContext createContext(Env env) {
-        SLContext context = new SLContext(this, new BufferedReader(env.stdIn()), new PrintWriter(env.stdOut(), true));
+        final BufferedReader in = new BufferedReader(new InputStreamReader(env.in()));
+        final PrintWriter out = new PrintWriter(env.out(), true);
+        SLContext context = new SLContext(this, in, out);
         for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
             context.installBuiltin(builtin, true);
         }

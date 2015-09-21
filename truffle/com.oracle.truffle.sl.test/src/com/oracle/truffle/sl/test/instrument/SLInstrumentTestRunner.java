@@ -51,12 +51,11 @@ import com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.instrument.SLInstrumentTestRunner.InstrumentTestCase;
-import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
@@ -235,21 +234,22 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         notifier.fireTestStarted(testCase.name);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintWriter printer = new PrintWriter(out);
         final ASTProber prober = new SLStandardASTProber();
         Probe.registerASTProber(prober);
         try {
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
-                TruffleVM vm = TruffleVM.newVM().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
+                TruffleVM vm = TruffleVM.newVM().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
 
                 final String src = readAllLines(testCase.path);
                 vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));
 
                 // Attach an instrument to every probe tagged as an assignment
                 for (Probe probe : Probe.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
-                    SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(printer);
+                    PrintWriter pw = new PrintWriter(out);
+                    SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(pw);
+                    pw.close();
                     probe.attach(Instrument.create(slPrintAssigmentValueListener, "SL print assignment value"));
                 }
 
@@ -258,8 +258,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
             } else {
                 notifier.fireTestFailure(new Failure(testCase.name, new UnsupportedOperationException("No instrumentation found.")));
             }
-
-            printer.flush();
+            out.flush();
             String actualOutput = new String(out.toByteArray());
             Assert.assertEquals(testCase.expectedOutput, actualOutput);
         } catch (Throwable ex) {

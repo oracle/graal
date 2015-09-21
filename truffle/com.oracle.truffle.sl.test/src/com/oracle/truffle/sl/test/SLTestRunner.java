@@ -46,6 +46,7 @@ import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -229,14 +230,15 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         notifier.fireTestStarted(testCase.name);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintWriter printer = new PrintWriter(out);
         try {
-            TruffleVM vm = TruffleVM.newVM().stdIn(new BufferedReader(new StringReader(repeat(testCase.testInput, repeats)))).stdOut(printer).build();
+            TruffleVM vm = TruffleVM.newVM().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
 
             String script = readAllLines(testCase.path);
-            SLLanguage.run(vm, testCase.path, null, printer, repeats, builtins);
 
+            PrintWriter printer = new PrintWriter(out);
+            SLLanguage.run(vm, testCase.path, null, printer, repeats, builtins);
             printer.flush();
+
             String actualOutput = new String(out.toByteArray());
             Assert.assertEquals(script, repeat(testCase.expectedOutput, repeats), actualOutput);
         } catch (Throwable ex) {
