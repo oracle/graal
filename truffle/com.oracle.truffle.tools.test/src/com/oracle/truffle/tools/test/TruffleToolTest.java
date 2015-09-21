@@ -44,7 +44,7 @@ public class TruffleToolTest {
         final Instrumenter instrumenter = getInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
         assertFalse(tool.isEnabled());
-        tool.install(instrumenter);
+        instrumenter.install(tool);
         assertTrue(tool.isEnabled());
         tool.reset();
         assertTrue(tool.isEnabled());
@@ -82,24 +82,24 @@ public class TruffleToolTest {
     public void testAlreadyInstalled() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Instrumenter instrumenter = getInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install(instrumenter);
-        tool.install(instrumenter);
+        instrumenter.install(tool);
+        instrumenter.install(tool);
     }
 
     @Test(expected = IllegalStateException.class)
     public void testAlreadyDisposed1() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Instrumenter instrumenter = getInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install(instrumenter);
+        instrumenter.install(tool);
         tool.dispose();
-        tool.install(instrumenter);
+        instrumenter.install(tool);
     }
 
     @Test(expected = IllegalStateException.class)
     public void testAlreadyDisposed2() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Instrumenter instrumenter = getInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install(instrumenter);
+        instrumenter.install(tool);
         tool.dispose();
         tool.reset();
     }
@@ -108,7 +108,7 @@ public class TruffleToolTest {
     public void testAlreadyDisposed3() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Instrumenter instrumenter = getInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install(instrumenter);
+        instrumenter.install(tool);
         tool.dispose();
         tool.setEnabled(true);
     }
@@ -117,7 +117,7 @@ public class TruffleToolTest {
     public void testAlreadyDisposed4() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Instrumenter instrumenter = getInstrumenter();
         final DummyTruffleTool tool = new DummyTruffleTool();
-        tool.install(instrumenter);
+        instrumenter.install(tool);
         tool.dispose();
         tool.dispose();
     }

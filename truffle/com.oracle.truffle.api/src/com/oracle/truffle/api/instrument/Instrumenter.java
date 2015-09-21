@@ -132,13 +132,7 @@ public final class Instrumenter {
         protected Tool() {
         }
 
-        /**
-         * Connect the tool to some part of the Truffle runtime, and enable data collection to
-         * start. Instrumentation will only be added to subsequently created ASTs.
-         *
-         * @throws IllegalStateException if the tool has previously been installed.
-         */
-        public final void install(Instrumenter inst) {
+        final void install(Instrumenter inst) {
             checkUninstalled();
             this.instrumenter = inst;
 
@@ -545,6 +539,15 @@ public final class Instrumenter {
         final Instrument instrument = new Instrument.AdvancedInstrument(listener, rootFactory, requiredResultType, instrumentInfo);
         probe.attach(instrument);
         return instrument;
+    }
+
+    /**
+     * Connects the tool to some part of the Truffle runtime, and enable data collection to start.
+     *
+     * @throws IllegalStateException if the tool has previously been installed or has been disposed.
+     */
+    public void install(Tool tool) {
+        tool.install(this);
     }
 
     @SuppressWarnings("unused")

@@ -51,7 +51,7 @@ public class LineToProbesMapTest {
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
         final Source source = ToolTestUtil.createTestSource("testNoExecution");
         final LineToProbesMap probesMap = new LineToProbesMap();
-        probesMap.install(instrumenter);
+        instrumenter.install(probesMap);
         assertNull(probesMap.findFirstProbe(source.createLineLocation(1)));
         assertNull(probesMap.findFirstProbe(source.createLineLocation(2)));
         assertNull(probesMap.findFirstProbe(source.createLineLocation(3)));
@@ -72,7 +72,7 @@ public class LineToProbesMapTest {
         assertNull(probesMap.findFirstProbe(source.createLineLocation(3)));
 
         // Map installed before AST gets created
-        probesMap.install(instrumenter);
+        instrumenter.install(probesMap);
         assertEquals(vm.eval(source).get(), 13);
 
         final Probe probe1 = probesMap.findFirstProbe(source.createLineLocation(1));
@@ -103,7 +103,7 @@ public class LineToProbesMapTest {
 
         // Map installed after AST gets created
         assertEquals(vm.eval(source).get(), 13);
-        probesMap.install(instrumenter);
+        instrumenter.install(probesMap);
 
         final Probe probe1 = probesMap.findFirstProbe(source.createLineLocation(1));
         assertNotNull(probe1);

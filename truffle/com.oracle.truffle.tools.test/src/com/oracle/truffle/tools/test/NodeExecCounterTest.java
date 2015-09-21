@@ -48,7 +48,7 @@ public class NodeExecCounterTest {
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
         final NodeExecCounter tool = new NodeExecCounter();
         assertEquals(tool.getCounts().length, 0);
-        tool.install(instrumenter);
+        instrumenter.install(tool);
         assertEquals(tool.getCounts().length, 0);
         tool.setEnabled(false);
         assertEquals(tool.getCounts().length, 0);
@@ -82,7 +82,7 @@ public class NodeExecCounterTest {
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
         final Source source = ToolTestUtil.createTestSource("testCounting");
         final NodeExecCounter execTool = new NodeExecCounter();
-        execTool.install(instrumenter);
+        instrumenter.install(execTool);
 
         assertEquals(execTool.getCounts().length, 0);
 

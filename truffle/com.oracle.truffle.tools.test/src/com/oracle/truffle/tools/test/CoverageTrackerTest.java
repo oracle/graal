@@ -50,7 +50,7 @@ public class CoverageTrackerTest {
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
         final CoverageTracker tool = new CoverageTracker();
         assertEquals(tool.getCounts().entrySet().size(), 0);
-        tool.install(instrumenter);
+        instrumenter.install(tool);
         assertEquals(tool.getCounts().entrySet().size(), 0);
         tool.setEnabled(false);
         assertEquals(tool.getCounts().entrySet().size(), 0);
@@ -80,14 +80,14 @@ public class CoverageTrackerTest {
         final CoverageTracker valueCoverage = new CoverageTracker(ToolTestTag.VALUE_TAG);
         final CoverageTracker addCoverage = new CoverageTracker(ToolTestTag.ADD_TAG);
 
-        valueCoverage.install(instrumenter);
+        instrumenter.install(valueCoverage);
         assertTrue(valueCoverage.getCounts().isEmpty());
 
         assertEquals(vm.eval(source).get(), 13);
 
         checkCounts(source, valueCoverage, new Long[]{Long.valueOf(1), null, Long.valueOf(1), null});
 
-        addCoverage.install(instrumenter);
+        instrumenter.install(addCoverage);
 
         assertEquals(vm.eval(source).get(), 13);
 
