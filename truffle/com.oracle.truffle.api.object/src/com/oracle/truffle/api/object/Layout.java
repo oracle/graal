@@ -52,7 +52,7 @@ public abstract class Layout {
     }
 
     /**
-     * Create a new {@link LayoutBuilder}.
+     * Creates a new {@link Builder}.
      */
     public static Builder newLayout() {
         return new Builder();

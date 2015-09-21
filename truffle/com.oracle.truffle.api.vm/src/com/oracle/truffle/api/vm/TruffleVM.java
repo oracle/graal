@@ -27,9 +27,9 @@ package com.oracle.truffle.api.vm;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.InterruptedIOException;
-import java.io.OutputStreamWriter;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.InvocationHandler;
@@ -107,9 +107,9 @@ public final class TruffleVM {
     private final Thread initThread;
     private final Executor executor;
     private final Map<String, Language> langs;
-    private final Reader in;
-    private final Writer err;
-    private final Writer out;
+    private final InputStream in;
+    private final OutputStream err;
+    private final OutputStream out;
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter;
@@ -133,7 +133,7 @@ public final class TruffleVM {
     /**
      * Real constructor used from the builder.
      */
-    private TruffleVM(Executor executor, Map<String, Object> globals, Writer out, Writer err, Reader in, EventConsumer<?>[] handlers) {
+    private TruffleVM(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers) {
         this.executor = executor;
         this.out = out;
         this.err = err;
@@ -155,9 +155,9 @@ public final class TruffleVM {
      *
      * <pre>
      * {@link TruffleVM} vm = {@link TruffleVM}.{@link TruffleVM#newVM() newVM()}
-     *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
-     *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
-     *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})
+     *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
+     *     .{@link Builder#setErr(java.io.OutputStream) setrr}({@link OutputStream yourOutput})
+     *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
      *     .{@link Builder#build() build()};
      * </pre>
      *
@@ -181,16 +181,16 @@ public final class TruffleVM {
      *
      * <pre>
      * {@link TruffleVM} vm = {@link TruffleVM}.{@link TruffleVM#newVM() newVM()}
-     *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
-     *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
-     *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})
+     *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
+     *     .{@link Builder#setErr(java.io.OutputStream) setrr}({@link OutputStream yourOutput})
+     *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
      *     .{@link Builder#build() build()};
      * </pre>
      */
     public final class Builder {
-        private Writer out;
-        private Writer err;
-        private Reader in;
+        private OutputStream out;
+        private OutputStream err;
+        private InputStream in;
         private final List<EventConsumer<?>> handlers = new ArrayList<>();
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
@@ -202,11 +202,20 @@ public final class TruffleVM {
          * Changes the default output for languages running in <em>to be created</em>
          * {@link TruffleVM virtual machine}. The default is to use {@link System#out}.
          *
-         * @param w the writer to use as output
+         * @param os the stream to use as output
          * @return instance of this builder
          */
+        public Builder setOut(OutputStream os) {
+            out = os;
+            return this;
+        }
+
+        /**
+         * @deprecated does nothing
+         */
+        @Deprecated
+        @SuppressWarnings("unused")
         public Builder stdOut(Writer w) {
-            out = w;
             return this;
         }
 
@@ -214,23 +223,41 @@ public final class TruffleVM {
          * Changes the error output for languages running in <em>to be created</em>
          * {@link TruffleVM virtual machine}. The default is to use {@link System#err}.
          *
-         * @param w the writer to use as output
+         * @param os the stream to use as output
          * @return instance of this builder
          */
+        public Builder setErr(OutputStream os) {
+            err = os;
+            return this;
+        }
+
+        /**
+         * @deprecated does nothing
+         */
+        @Deprecated
+        @SuppressWarnings("unused")
         public Builder stdErr(Writer w) {
-            err = w;
             return this;
         }
 
         /**
          * Changes the default input for languages running in <em>to be created</em>
-         * {@link TruffleVM virtual machine}. The default is to use {@link System#out}.
+         * {@link TruffleVM virtual machine}. The default is to use {@link System#in}.
          *
-         * @param r the reader to use as input
+         * @param is the stream to use as input
          * @return instance of this builder
          */
+        public Builder setIn(InputStream is) {
+            in = is;
+            return this;
+        }
+
+        /**
+         * @deprecated does nothing
+         */
+        @Deprecated
+        @SuppressWarnings("unused")
         public Builder stdIn(Reader r) {
-            in = r;
             return this;
         }
 
@@ -294,13 +321,13 @@ public final class TruffleVM {
          */
         public TruffleVM build() {
             if (out == null) {
-                out = new OutputStreamWriter(System.out);
+                out = System.out;
             }
             if (err == null) {
-                err = new OutputStreamWriter(System.err);
+                err = System.err;
             }
             if (in == null) {
-                in = new InputStreamReader(System.in);
+                in = System.in;
             }
             Executor nonNullExecutor = executor != null ? executor : new Executor() {
                 @Override
@@ -862,7 +889,7 @@ public final class TruffleVM {
         }
 
         @Override
-        public Env attachEnv(Object obj, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn) {
             TruffleVM vm = (TruffleVM) obj;
             return super.attachEnv(vm, language, stdOut, stdErr, stdIn);
         }

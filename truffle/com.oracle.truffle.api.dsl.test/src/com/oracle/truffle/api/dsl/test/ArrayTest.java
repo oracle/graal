@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.ImplicitCast;
@@ -36,8 +39,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class ArrayTest {
 

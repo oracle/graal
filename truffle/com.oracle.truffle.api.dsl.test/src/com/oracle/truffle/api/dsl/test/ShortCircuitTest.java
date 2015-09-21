@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -36,8 +40,6 @@ import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.SingleChildNodeFa
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.VarArgsNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 public class ShortCircuitTest {
 

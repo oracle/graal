@@ -11,6 +11,10 @@
 <module name="Checker">
   <property name="severity" value="error"/>
   <module name="TreeWalker">
+    <module name="AvoidStarImport">
+      <property name="allowClassImports" value="false"/>
+      <property name="allowStaticMemberImports" value="false"/>
+    </module>
     <property name="tabWidth" value="4"/>
     <module name="FileContentsHolder"/>
     <module name="JavadocStyle">

@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.sl.test.instrument;
 
-import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringReader;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
@@ -234,14 +233,14 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         notifier.fireTestStarted(testCase.name);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintWriter printer = new PrintWriter(out);
+        PrintStream ps = new PrintStream(out);
         final ASTProber prober = new SLStandardASTProber();
 
         try {
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
-                TruffleVM vm = TruffleVM.newVM().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
+                TruffleVM vm = TruffleVM.newVM().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
 
                 final Field field = TruffleVM.class.getDeclaredField("instrumenter");
                 field.setAccessible(true);
@@ -253,7 +252,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
                 // Attach an instrument to every probe tagged as an assignment
                 for (Probe probe : instrumenter.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
-                    SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(printer);
+                    SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(ps);
                     instrumenter.attach(probe, slPrintAssigmentValueListener, "SL print assignment value");
                 }
 
@@ -262,8 +261,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
             } else {
                 notifier.fireTestFailure(new Failure(testCase.name, new UnsupportedOperationException("No instrumentation found.")));
             }
-
-            printer.flush();
+            ps.flush();
             String actualOutput = new String(out.toByteArray());
             Assert.assertEquals(testCase.expectedOutput, actualOutput);
         } catch (Throwable ex) {
@@ -307,15 +305,14 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
     /**
      * This sample listener provides prints the value of an assignment (after the assignment is
-     * complete) to the {@link PrintWriter} specified in the constructor. This listener can only be
+     * complete) to the {@link PrintStream} specified in the constructor. This listener can only be
      * attached at {@link SLWriteLocalVariableNode}, but provides no guards to protect it from being
      * attached elsewhere.
      */
     public final class SLPrintAssigmentValueListener extends DefaultSimpleInstrumentListener {
+        private final PrintStream output;
 
-        private PrintWriter output;
-
-        public SLPrintAssigmentValueListener(PrintWriter output) {
+        public SLPrintAssigmentValueListener(PrintStream output) {
             this.output = output;
         }
 

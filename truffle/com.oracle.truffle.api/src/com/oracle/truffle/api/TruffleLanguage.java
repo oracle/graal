@@ -25,6 +25,10 @@
 package com.oracle.truffle.api;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.annotation.ElementType;
@@ -325,11 +329,11 @@ public abstract class TruffleLanguage<C> {
         private final Object vm;
         private final TruffleLanguage<?> lang;
         private final LangCtx<?> langCtx;
-        private final Reader in;
-        private final Writer err;
-        private final Writer out;
+        private final InputStream in;
+        private final OutputStream err;
+        private final OutputStream out;
 
-        Env(Object vm, TruffleLanguage<?> lang, Writer out, Writer err, Reader in) {
+        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in) {
             this.vm = vm;
             this.in = in;
             this.err = err;
@@ -357,8 +361,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @return reader, never <code>null</code>
          */
-        public Reader stdIn() {
+        public InputStream in() {
             return in;
+        }
+
+        @Deprecated
+        public Reader stdIn() {
+            return new InputStreamReader(in);
         }
 
         /**
@@ -367,8 +376,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @return writer, never <code>null</code>
          */
-        public Writer stdOut() {
+        public OutputStream out() {
             return out;
+        }
+
+        @Deprecated
+        public Writer stdOut() {
+            return new OutputStreamWriter(out);
         }
 
         /**
@@ -377,8 +391,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @return writer, never <code>null</code>
          */
-        public Writer stdErr() {
+        public OutputStream err() {
             return err;
+        }
+
+        @Deprecated
+        public Writer stdErr() {
+            return new OutputStreamWriter(err);
         }
     }
 
@@ -387,7 +406,7 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
+        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn) {
             Env env = new Env(vm, language, stdOut, stdErr, stdIn);
             return env;
         }
