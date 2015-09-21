@@ -470,9 +470,9 @@ def jdkartifactstats(args):
     """show stats about JDK deployed Graal artifacts"""
     jdkDir = mx_jvmci.get_jvmci_jdk_dir()
     artifacts = {}
-    for root, _, filenames in os.walk(mx_jvmci.vmLibDirInJdk(jdkDir)):
+    for root, _, filenames in os.walk(join(jdkDir, 'jre', 'lib')):
         for f in filenames:
-            if f.endswith('.jar'):
+            if f.endswith('.jar') and not f.endswith('.stripped.jar'):
                 jar = join(root, f)
                 if 'truffle' in f:
                     if 'enterprise' in f:
@@ -487,23 +487,33 @@ def jdkartifactstats(args):
                     artifacts.setdefault('Graal', []).append(jar)
                 else:
                     mx.logv('ignored: ' + jar)
+
+    print '{:>10}  {:>10}  {:>10}  {}'.format('All', 'NoVars', 'None', 'Jar')
     for category in sorted(artifacts.viewkeys()):
         jars = artifacts[category]
         if jars:
-            total = 0
+            totals = (0, 0, 0)
             print
             for j in jars:
-                size = os.path.getsize(j)
-                print '{:10,}\t{}:{}'.format(size, category, basename(j))
-                total += size
-            print '{:10,}\t{}:<total>'.format(total, category)
+                gSize = os.path.getsize(j)
+                stripped = j[:-len('.jar')] + '.stripped.jar'
+                mx.run([mx.get_jdk().pack200, '--repack', '--quiet', '-J-Djava.util.logging.config.file=', '-DLocalVariableTypeTable=strip', '-DLocalVariableTable=strip', stripped, j])
+                gLinesSourceSize = os.path.getsize(stripped)
+                mx.run([mx.get_jdk().pack200, '--repack', '--quiet', '-J-Djava.util.logging.config.file=', '-G', stripped, j])
+                gNoneSize = os.path.getsize(stripped)
+                os.remove(stripped)
+                print '{:10,}  {:10,}  {:10,}  {}:{}'.format(gSize, gLinesSourceSize, gNoneSize, category, basename(j))
+                t1, t2, t3 = totals
+                totals = (t1 + gSize, t2 + gLinesSourceSize, t3 + gNoneSize)
+            t1, t2, t3 = totals
+            print '{:10,}  {:10,}  {:10,}  {}'.format(t1, t2, t3, category)
 
     jvmLib = join(jdkDir, mx_jvmci.relativeVmLibDirInJdk(), get_vm(), mx.add_lib_suffix(mx.add_lib_prefix('jvm')))
     print
     if exists(jvmLib):
-        print '{:10,}\t{}'.format(os.path.getsize(jvmLib), jvmLib)
+        print '{:10,}  {}'.format(os.path.getsize(jvmLib), jvmLib)
     else:
-        print '{:>10}\t{}'.format('<missing>', jvmLib)
+        print '{:>10}  {}'.format('<missing>', jvmLib)
 
 mx.update_commands(_suite, {
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
