@@ -23,6 +23,10 @@
 
 package com.oracle.graal.compiler.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Fcc0;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Subcc;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmpd;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmps;
 import static com.oracle.graal.lir.LIRValueUtil.asConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
@@ -93,13 +97,10 @@ import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.IPOPCNT;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.LBSR;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.LPOPCNT;
-import static com.oracle.graal.lir.sparc.SPARCCompare.DCMP;
-import static com.oracle.graal.lir.sparc.SPARCCompare.FCMP;
-import static com.oracle.graal.lir.sparc.SPARCCompare.ICMP;
-import static com.oracle.graal.lir.sparc.SPARCCompare.LCMP;
 import static com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp.IntrinsicOpcode.ABS;
 import static com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp.IntrinsicOpcode.SQRT;
 import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static jdk.internal.jvmci.meta.JavaKind.Char;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CodeUtil;
 import jdk.internal.jvmci.code.StackSlotValue;
@@ -117,6 +118,8 @@ import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Op3s;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Opfs;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
@@ -145,14 +148,13 @@ import com.oracle.graal.lir.sparc.SPARCArrayEqualsOp;
 import com.oracle.graal.lir.sparc.SPARCBitManipulationOp;
 import com.oracle.graal.lir.sparc.SPARCByteSwapOp;
 import com.oracle.graal.lir.sparc.SPARCCall;
-import com.oracle.graal.lir.sparc.SPARCCompare;
-import com.oracle.graal.lir.sparc.SPARCCompare.CompareOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.BranchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.CondMoveOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.sparc.SPARCFloatCompareOp;
 import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
 import com.oracle.graal.lir.sparc.SPARCJumpOp;
 import com.oracle.graal.lir.sparc.SPARCLoadConstantTableBaseOp;
@@ -166,7 +168,7 @@ import com.oracle.graal.lir.sparc.SPARCMove.Move;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
-import com.oracle.graal.lir.sparc.SPARCTestOp;
+import com.oracle.graal.lir.sparc.SPARCOP3Op;
 import com.oracle.graal.phases.util.Providers;
 
 /**
@@ -327,37 +329,42 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             right = loadNonConst(y);
             actualCondition = cond;
         }
-        SPARCCompare opcode;
         JavaKind actualCmpKind = (JavaKind) cmpKind;
-        switch (actualCmpKind) {
-            case Byte:
-                left = emitSignExtend(left, 8, 32);
-                right = emitSignExtend(right, 8, 32);
-                actualCmpKind = JavaKind.Int;
-                opcode = ICMP;
-                break;
-            case Short:
-                left = emitSignExtend(left, 16, 32);
-                right = emitSignExtend(right, 16, 32);
-                actualCmpKind = JavaKind.Int;
-                opcode = ICMP;
-                break;
-            case Long:
-                opcode = LCMP;
-                break;
-            case Int:
-                opcode = ICMP;
-                break;
-            case Float:
-                opcode = FCMP;
-                break;
-            case Double:
-                opcode = DCMP;
-                break;
-            default:
-                throw JVMCIError.shouldNotReachHere(actualCmpKind.toString());
+        if (actualCmpKind.isNumericInteger()) {
+            actualCmpKind = toSPARCCmpKind(actualCmpKind);
+            append(new SPARCControlFlow.CompareBranchOp(canonicalizeForCompare(left, cmpKind, actualCmpKind), canonicalizeForCompare(right, cmpKind, actualCmpKind), actualCondition, trueDestination,
+                            falseDestination, actualCmpKind, unorderedIsTrue, trueDestinationProbability));
+        } else if (actualCmpKind.isNumericFloat()) {
+            emitFloatCompare(cmpKind, x, y, Fcc0);
+            ConditionFlag cf = SPARCControlFlow.fromCondition(Fcc0, cond, unorderedIsTrue);
+            append(new SPARCControlFlow.BranchOp(cf, trueDestination, falseDestination, actualCmpKind, trueDestinationProbability));
         }
-        append(new SPARCControlFlow.CompareBranchOp(opcode, left, right, actualCondition, trueDestination, falseDestination, actualCmpKind, unorderedIsTrue, trueDestinationProbability));
+    }
+
+    private static JavaKind toSPARCCmpKind(JavaKind actualCmpKind) {
+        // TODO: Change to PlatformKind
+        assert actualCmpKind.isNumericInteger();
+        if (actualCmpKind.getByteCount() <= 4) {
+            return JavaKind.Int;
+        } else {
+            return JavaKind.Long;
+        }
+    }
+
+    private Value canonicalizeForCompare(Value v, PlatformKind from, PlatformKind to) {
+        if (LIRValueUtil.isJavaConstant(v)) {
+            JavaConstant c = asJavaConstant(v);
+            return new ConstantValue(v.getLIRKind().changeType(to), c);
+        } else {
+            int fromBytes = from.getSizeInBytes() * 8;
+            int toBytes = to.getSizeInBytes() * 8;
+            assert from.getSizeInBytes() <= v.getPlatformKind().getSizeInBytes();
+            if (from == to && !v.getPlatformKind().equals(JavaKind.Char)) {
+                return v;
+            } else {
+                return emitSignExtend(v, fromBytes, toBytes);
+            }
+        }
     }
 
     @Override
@@ -375,9 +382,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     private void emitIntegerTest(Value a, Value b) {
         assert ((JavaKind) a.getPlatformKind()).isNumericInteger();
         if (LIRValueUtil.isVariable(b)) {
-            append(new SPARCTestOp(load(b), loadNonConst(a)));
+            append(new SPARCOP3Op(Op3s.Andcc, load(b), loadNonConst(a)));
         } else {
-            append(new SPARCTestOp(load(a), loadNonConst(b)));
+            append(new SPARCOP3Op(Op3s.Andcc, load(a), loadNonConst(b)));
         }
     }
 
@@ -438,9 +445,23 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
      * @return true if the left and right operands were switched, false otherwise
      */
     protected boolean emitCompare(PlatformKind cmpKind, Value a, Value b) {
-        Variable left;
-        Value right;
         boolean mirrored;
+        JavaKind cmpJavaKind = (JavaKind) cmpKind;
+        if (cmpJavaKind.isNumericInteger()) { // Integer case
+            mirrored = emitIntegerCompare(cmpJavaKind, a, b);
+        } else if (cmpJavaKind.isNumericFloat()) { // Float case
+            mirrored = false; // No mirroring done on floats
+            emitFloatCompare(cmpJavaKind, a, b, Fcc0);
+        } else {
+            throw JVMCIError.shouldNotReachHere();
+        }
+        return mirrored;
+    }
+
+    private boolean emitIntegerCompare(JavaKind cmpJavaKind, Value a, Value b) {
+        boolean mirrored;
+        Value left;
+        Value right;
         if (LIRValueUtil.isVariable(b)) {
             left = load(b);
             right = loadNonConst(a);
@@ -450,30 +471,34 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             right = loadNonConst(b);
             mirrored = false;
         }
-        switch ((JavaKind) cmpKind) {
-            case Short:
-            case Char:
-                append(new CompareOp(ICMP, emitSignExtend(left, 16, 32), emitSignExtend(right, 16, 32)));
-                break;
-            case Byte:
-                append(new CompareOp(ICMP, emitSignExtend(left, 8, 32), emitSignExtend(right, 8, 32)));
-                break;
-            case Int:
-                append(new CompareOp(ICMP, left, right));
-                break;
-            case Long:
-                append(new CompareOp(LCMP, left, right));
+        int compareBits = cmpJavaKind.getBitCount();
+        // SPARC compares 32 or 64 bits
+        if (compareBits < JavaKind.Int.getBitCount()) {
+            if (cmpJavaKind.equals(Char)) { // Char needs zero extend
+                left = emitZeroExtend(left, compareBits, 32);
+                right = emitZeroExtend(right, compareBits, 32);
+            } else {
+                left = emitSignExtend(left, compareBits, 32);
+                right = emitSignExtend(right, compareBits, 32);
+            }
+        }
+        append(new SPARCOP3Op(Subcc, left, right));
+        return mirrored;
+    }
+
+    private void emitFloatCompare(PlatformKind cmpJavaKind, Value a, Value b, CC cc) {
+        Opfs floatCompareOpcode;
+        switch ((JavaKind) cmpJavaKind) {
+            case Double:
+                floatCompareOpcode = Fcmpd;
                 break;
             case Float:
-                append(new CompareOp(FCMP, left, right));
-                break;
-            case Double:
-                append(new CompareOp(DCMP, left, right));
+                floatCompareOpcode = Fcmps;
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
-        return mirrored;
+        append(new SPARCFloatCompareOp(floatCompareOpcode, cc, load(a), load(b)));
     }
 
     @Override

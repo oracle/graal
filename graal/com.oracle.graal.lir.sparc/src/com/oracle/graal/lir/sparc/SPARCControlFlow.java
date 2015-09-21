@@ -54,13 +54,16 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.LessEqual;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.LessEqualUnsigned;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.LessUnsigned;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.NotEqual;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Subcc;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static com.oracle.graal.lir.sparc.SPARCMove.const2reg;
+import static com.oracle.graal.lir.sparc.SPARCOP3Op.emitOp3;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.sparc.SPARC.g0;
 
@@ -92,7 +95,6 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.Opcode;
@@ -133,9 +135,8 @@ public class SPARCControlFlow {
     public static final class CompareBranchOp extends SPARCBlockEndOp implements SPARCDelayedControlTransfer {
         public static final LIRInstructionClass<CompareBranchOp> TYPE = LIRInstructionClass.create(CompareBranchOp.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(3);
-        static final EnumSet<JavaKind> SUPPORTED_KINDS = EnumSet.of(JavaKind.Long, JavaKind.Int, JavaKind.Object, JavaKind.Float, JavaKind.Double);
+        static final EnumSet<JavaKind> SUPPORTED_KINDS = EnumSet.of(JavaKind.Long, JavaKind.Int, JavaKind.Short, JavaKind.Char, JavaKind.Byte);
 
-        private final SPARCCompare opcode;
         @Use({REG}) protected Value x;
         @Use({REG, CONST}) protected Value y;
         private ConditionFlag conditionFlag;
@@ -149,10 +150,8 @@ public class SPARCControlFlow {
         private int delaySlotPosition = -1;
         private double trueDestinationProbability;
 
-        public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, JavaKind kind, boolean unorderedIsTrue,
-                        double trueDestinationProbability) {
+        public CompareBranchOp(Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, JavaKind kind, boolean unorderedIsTrue, double trueDestinationProbability) {
             super(TYPE, SIZE);
-            this.opcode = opcode;
             this.x = x;
             this.y = y;
             this.trueDestination = trueDestination;
@@ -176,11 +175,17 @@ public class SPARCControlFlow {
                     emitted = emitShortCompareBranch(crb, masm);
                 }
                 if (!emitted) { // No short compare/branch was used, so we go into fallback
-                    SPARCCompare.emit(crb, masm, opcode, x, y);
-                    emitted = emitBranch(crb, masm, kind, conditionFlag, trueDestination, falseDestination, true, trueDestinationProbability);
+                    emitted = emitLongCompareBranch(crb, masm, true);
+                    masm.nop();
+                    emitted = true;
                 }
             }
             assert emitted;
+        }
+
+        private boolean emitLongCompareBranch(CompilationResultBuilder crb, SPARCMacroAssembler masm, boolean withDelayedNop) {
+            emitOp3(masm, Subcc, x, y);
+            return emitBranch(crb, masm, kind, conditionFlag, trueDestination, falseDestination, withDelayedNop, trueDestinationProbability);
         }
 
         private static int getTargetPosition(Assembler asm) {
@@ -192,8 +197,7 @@ public class SPARCControlFlow {
             // When we use short branches, no delay slot is available
             int targetPosition = getTargetPosition(masm);
             if (!canUseShortBranch(crb, masm, targetPosition)) {
-                SPARCCompare.emit(crb, masm, opcode, x, y);
-                emitted = emitBranch(crb, masm, kind, conditionFlag, trueDestination, falseDestination, false, trueDestinationProbability);
+                emitted = emitLongCompareBranch(crb, masm, false);
                 if (emitted) {
                     delaySlotPosition = masm.position();
                 }
@@ -335,7 +339,8 @@ public class SPARCControlFlow {
         public void verify() {
             super.verify();
             assert SUPPORTED_KINDS.contains(kind) : kind;
-            assert x.getPlatformKind().equals(kind) && y.getPlatformKind().equals(kind) : x + " " + y;
+            assert !isConstantValue(x);
+            assert x.getPlatformKind().equals(kind) && (isConstantValue(y) || y.getPlatformKind().equals(kind)) : x + " " + y;
         }
     }
 
@@ -383,11 +388,6 @@ public class SPARCControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             emitBranch(crb, masm, kind, conditionFlag, trueDestination, falseDestination, true, trueDestinationProbability);
-        }
-
-        @Override
-        public void verify() {
-            assert CompareBranchOp.SUPPORTED_KINDS.contains(kind);
         }
     }
 

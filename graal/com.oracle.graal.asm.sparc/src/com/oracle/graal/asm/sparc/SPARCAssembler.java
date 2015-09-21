@@ -33,7 +33,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Andn;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Andncc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Casa;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Casxa;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Fcmp;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Flushw;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Fpop1;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Fpop2;
@@ -83,7 +82,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Xorcc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fabsd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fabss;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Faddd;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Faddq;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fadds;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fandd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fdivd;
@@ -202,7 +200,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public enum Ops {
+    public static enum Ops {
         // @formatter:off
         BranchOp(0b00),
         CallOp(0b01),
@@ -226,7 +224,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public enum Op2s {
+    public static enum Op2s {
         // @formatter:off
         Illtrap(0b000),
         Bpr    (0b011),
@@ -253,7 +251,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public enum Op3s {
+    public static enum Op3s {
         // @formatter:off
 
         Add(0x00, "add", ArithOp),
@@ -363,7 +361,6 @@ public abstract class SPARCAssembler extends Assembler {
 
         Rd    (0b10_1000, "rd", ArithOp),
         Wr    (0b11_0000, "wr", ArithOp),
-        Fcmp  (0b11_0101, "fcmp", ArithOp),
 
         Tcc(0b11_1010, "tcc", ArithOp);
 
@@ -374,7 +371,6 @@ public abstract class SPARCAssembler extends Assembler {
         private final Ops op;
 
         private Op3s(int value, String name, Ops op) {
-            assert isImm(value, 6);
             this.value = value;
             this.operator = name;
             this.op = op;
@@ -406,183 +402,80 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public enum Opfs {
+    public static enum Opfs {
         // @formatter:off
 
-        Fmovs(0b0_0000_0001, "fmovs"),
-        Fmovd(0b0_0000_0010, "fmovd"),
-        Fmovq(0b0_0000_0011, "fmovq"),
-        Fmovscc(0b00_0001, "fmovscc"),
-        Fmovdcc(0b00_0010, "fmovdcc"),
-        Fnegs(0x05, "fnegs"),
-        Fnegd(0x06, "fnegd"),
-        Fnegq(0x07, "fnegq"),
-        Fabss(0x09, "fabss"),
-        Fabsd(0x0A, "fabsd"),
-        Fabsq(0x0B, "fabsq"),
+        Fmovs(0b0_0000_0001, "fmovs", Fpop1),
+        Fmovd(0b0_0000_0010, "fmovd", Fpop1),
+        Fmovq(0b0_0000_0011, "fmovq", Fpop1),
+        Fmovscc(0b00_0001, "fmovscc", Fpop2),
+        Fmovdcc(0b00_0010, "fmovdcc", Fpop2),
+        Fnegs(0x05, "fnegs", Fpop1),
+        Fnegd(0x06, "fnegd", Fpop1),
+        Fnegq(0x07, "fnegq", Fpop1),
+        Fabss(0x09, "fabss", Fpop1),
+        Fabsd(0x0A, "fabsd", Fpop1),
+        Fabsq(0x0B, "fabsq", Fpop1),
 
         // start VIS1
-        Edge8cc(0x0, "edge8cc"),
-        Edge8n(0x1, "edge8n"),
-        Edge8lcc(0x2, "edge8lcc"),
-        Edge8ln(0x3, "edge8ln"),
-        Edge16cc(0x4, "edge16cc"),
-        Edge16n(0x5, "edge16n"),
-        Edge16lcc(0x6, "edge16lcc"),
-        Edge16ln(0x7, "edge16ln"),
-        Edge32cc(0x8, "edge32cc"),
-        Edge32n(0x9, "edge32n"),
-        Edge32lcc(0xA, "edge32lcc"),
-        Edge32ln(0xB, "edge32ln"),
-        Array8(0x10, "array8"),
-        Array16(0x12, "array16"),
-        Array32(0x14, "array32"),
-        AlignAddress(0x18, "alignaddress"),
-        AlignAddressLittle(0x1A, "alignaddress_little"),
-        Fpcmple16(0x20, "fpcmple16"),
-        Fpcmpne16(0x22, "fpcmpne16"),
-        Fpcmple32(0x24, "fpcmple32"),
-        Fpcmpne32(0x26, "fpcmpne32"),
-        Fpcmpgt16(0x28, "fpcmpgt16"),
-        Fpcmpeq16(0x2A, "fpcmpeq16"),
-        Fpcmpgt32(0x2C, "fpcmpgt32"),
-        Fpcmpeq32(0x2E, "fpcmpeq32"),
-        Fmul8x16(0x31, "fmul8x16"),
-        Fmul8x16au(0x33, "fmul8x16au"),
-        Fmul8x16al(0x35, "fmul8x16al"),
-        Fmul8sux16(0x36, "fmul8sux16"),
-        Fmul8ulx16(0x37, "fmul8ulx16"),
-        Fmuld8sux16(0x38, "fmuld8sux16"),
-        Fmuld8ulx16(0x39, "fmuld8ulx16"),
-        Fpack32(0x3A, "fpack32"),
-        Fpack16(0x3B, "fpack16"),
-        Fpackfix(0x3D, "fpackfix"),
-        Faligndatag(0x48, "faligndata"),
-        Fpmerge(0x4B, "fpmerge"),
-        Fpadd16(0x50, "fpadd16"),
-        Fpadd16s(0x51, "fpadd16s"),
-        Fpadd32(0x52, "fpadd32"),
-        Fpadd32s(0x53, "fpadd32s"),
-        Fpsub16(0x54, "fpadd16"),
-        Fpsub16s(0x55, "fpadd16s"),
-        Fpsub32(0x56, "fpadd32"),
-        Fpsub32s(0x57, "fpadd32s"),
-        Fzerod(0x60, "fzerod"),
-        Fzeros(0x61, "fzeros"),
-        Fnot2d(0x66, "fnot1d"),
-        Fnot2s(0x67, "fnot1s"),
-        Fnot1d(0x6A, "fnot1d"),
-        Fnot1s(0x6B, "fnot1s"),
-        Fsrc1d(0x74, "fsrc1d"),
-        Fsrc1s(0x75, "fsrc1s"),
-        Fsrc2d(0x78, "fsrc2d"),
-        Fsrc2s(0x79, "fsrc2s"),
-        Foned(0x7E, "foned"),
-        Fones(0x7F, "fones"),
-        Fandd(0b0_0111_0000, "fandd"),
-        Fands(0b0_0111_0001, "fands"),
-        Fxord(0b0_0110_1100, "fxord"),
-        Fxors(0b0_0110_1101, "fxors"),
+        Fpadd32(0x52, "fpadd32", Impdep1),
+        Fzerod(0x60, "fzerod", Impdep1),
+        Fzeros(0x61, "fzeros", Impdep1),
+        Fnot2d(0x66, "fnot1d", Impdep1),
+        Fsrc2d(0x78, "fsrc2d", Impdep1),
+        Fsrc2s(0x79, "fsrc2s", Impdep1),
+        Fandd(0b0_0111_0000, "fandd", Impdep1),
+        Fands(0b0_0111_0001, "fands", Impdep1),
         // end VIS1
 
-        // start VIS2
-        Bmask(0x19, "bmask"),
-        Bshuffle(0x4c, "bshuffle"),
-        // end VIS2 only
-
         // start VIS3
-        Addxc(0x11, "addxc"),
-        Addxccc(0x13, "addxccc"),
-        Cmask8(0x1B, "cmask8"),
-        Cmask16(0x1D, "cmask16"),
-        Cmask32(0x1F, "cmask32"),
-        Fmean16(0x40, "fmean16"),
-        Fnadds(0x51, "fnadds"),
-        Fnaddd(0x52, "fnaddd"),
-        Fnmuls(0x59, "fnmuls"),
-        Fnmuld(0x5A, "fnmuld"),
-        Fnsmuld(0x79, "fnsmuld"),
-        Fnhadds(0x71, "fnhadds"),
-        Fnhaddd(0x72, "fnhaddd"),
-        Movdtox(0x110, "movdtox"),
-        Movstouw(0x111, "movstouw"),
-        Movstosw(0x113, "movstosw"),
-        Movxtod(0x118, "movxtod"),
-        Movwtos(0b1_0001_1001, "movwtos"),
-        UMulxhi(0b0_0001_0110, "umulxhi"),
-        Lzcnt  (0b0_0001_0111, "lzcnt"),
+        Movdtox(0x110, "movdtox", Impdep1),
+        Movstouw(0x111, "movstouw", Impdep1),
+        Movstosw(0x113, "movstosw", Impdep1),
+        Movxtod(0x118, "movxtod", Impdep1),
+        Movwtos(0b1_0001_1001, "movwtos", Impdep1),
+        UMulxhi(0b0_0001_0110, "umulxhi", Impdep1),
         // end VIS3
 
-        // start CAMMELLIA
-        CammelliaFl(0x13C, "cammelia_fl"),
-        CammelliaFli(0x13D, "cammellia_fli"),
-        // end CAMMELLIA
+        Fadds(0x41, "fadds", Fpop1),
+        Faddd(0x42, "faddd", Fpop1),
+        Fsubs(0x45, "fsubs", Fpop1),
+        Fsubd(0x46, "fsubd", Fpop1),
+        Fmuls(0x49, "fmuls", Fpop1),
+        Fmuld(0x4A, "fmuld", Fpop1),
+        Fdivs(0x4D, "fdivs", Fpop1),
+        Fdivd(0x4E, "fdivd", Fpop1),
 
-        // start CRYPTO
-        Crc32c(0x147, "crc32c"),
-        // end CRYPTO
+        Fsqrts(0x29, "fsqrts", Fpop1),
+        Fsqrtd(0x2A, "fsqrtd", Fpop1),
 
-        // start OSA 2011
-        Fpadd64(0x44, "fpadd64"),
-        Fpsub64(0x46, "fpsub64"),
-        Fpadds16(0x58, "fpadds16"),
-        Fpadds16s(0x59, "fpadds16"),
-        Fpadds32(0x5A, "fpadds32"),
-        Fpadds32s(0x5B, "fpadds32s"),
-        Fpsubs16(0x5C, "fpsubs16"),
-        Fpsubs16s(0x5D, "fpsubs16s"),
-        Fpsubs32(0x5E, "fpsubs32"),
-        Fpsubs32s(0x5F, "fpsubs32s"),
-        Fpcmpne8(0x122, "fpcmpne8"),
-        Fpcmpeq8(0x12C, "fpcmpeq8"),
-        // end OSA 2011
+        Fsmuld(0x69, "fsmuld", Fpop1),
 
-        Fadds(0x41, "fadds"),
-        Faddd(0x42, "faddd"),
-        Faddq(0x43, "faddq"),
-        Fsubs(0x45, "fsubs"),
-        Fsubd(0x46, "fsubd"),
-        Fsubq(0x47, "fsubq"),
-        Fmuls(0x49, "fmuls"),
-        Fmuld(0x4A, "fmuld"),
-        Fdivs(0x4D, "fdivs"),
-        Fdivd(0x4E, "fdivd"),
-        Fdivq(0x4F, "fdivq"),
-
-        Fsqrts(0x29, "fsqrts"),
-        Fsqrtd(0x2A, "fsqrtd"),
-        Fsqrtq(0x2B, "fsqrtq"),
-
-        Fsmuld(0x69, "fsmuld"),
-        Fmulq(0x6B, "fmulq"),
-        Fdmuldq(0x6E, "fdmulq"),
-
-        Fstoi(0xD1, "fstoi"),
-        Fdtoi(0xD2, "fdtoi"),
-        Fstox(0x81, "fstox"),
-        Fdtox(0x82, "fdtox"),
-        Fxtos(0x84, "fxtos"),
-        Fxtod(0x88, "fxtod"),
-        Fxtoq(0x8C, "fxtoq"),
-        Fitos(0xC4, "fitos"),
-        Fdtos(0xC6, "fdtos"),
-        Fitod(0xC8, "fitod"),
-        Fstod(0xC9, "fstod"),
-        Fitoq(0xCC, "fitoq"),
+        Fstoi(0xD1, "fstoi", Fpop1),
+        Fdtoi(0xD2, "fdtoi", Fpop1),
+        Fstox(0x81, "fstox", Fpop1),
+        Fdtox(0x82, "fdtox", Fpop1),
+        Fxtos(0x84, "fxtos", Fpop1),
+        Fxtod(0x88, "fxtod", Fpop1),
+        Fitos(0xC4, "fitos", Fpop1),
+        Fdtos(0xC6, "fdtos", Fpop1),
+        Fitod(0xC8, "fitod", Fpop1),
+        Fstod(0xC9, "fstod", Fpop1),
 
 
-        Fcmps(0x51, "fcmps"),
-        Fcmpd(0x52, "fcmpd"),
-        Fcmpq(0x53, "fcmpq");
+        Fcmps(0x51, "fcmps", Fpop2),
+        Fcmpd(0x52, "fcmpd", Fpop2);
 
         // @formatter:on
 
         private final int value;
         private final String operator;
+        private final Op3s op3;
 
-        private Opfs(int value, String op) {
+        private Opfs(int value, String op, Op3s op3) {
             this.value = value;
             this.operator = op;
+            this.op3 = op3;
         }
 
         public int getValue() {
@@ -935,10 +828,11 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec op = new ContinousBitSpec(31, 30, "op");
         private static final BitSpec op2 = new ContinousBitSpec(24, 22, "op2");
         private static final BitSpec op3 = new ContinousBitSpec(24, 19, "op3");
+        private static final BitSpec opf = new ContinousBitSpec(13, 5, "opf");
         private static final BitSpec rd = new ContinousBitSpec(29, 25, "rd");
         private static final BitSpec rs1 = new ContinousBitSpec(18, 14, "rs1");
         private static final BitSpec rs2 = new ContinousBitSpec(4, 0, "rs2");
-        private static final BitSpec simm13 = new ContinousBitSpec(12, 0, "simm13");
+        private static final BitSpec simm13 = new ContinousBitSpec(12, 0, true, "simm13");
         private static final BitSpec imm22 = new ContinousBitSpec(21, 0, "imm22");
         private static final BitSpec immAsi = new ContinousBitSpec(12, 5, "immASI");
         private static final BitSpec i = new ContinousBitSpec(13, 13, "i");
@@ -950,6 +844,7 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec cond = new ContinousBitSpec(28, 25, "cond");
         private static final BitSpec rcond = new ContinousBitSpec(27, 25, "rcond");
         private static final BitSpec cc = new ContinousBitSpec(21, 20, "cc");
+        private static final BitSpec fcc = new ContinousBitSpec(26, 25, "cc");
         private static final BitSpec d16hi = new ContinousBitSpec(21, 20, "d16hi");
         private static final BitSpec d16lo = new ContinousBitSpec(13, 0, "d16lo");
         private static final BitSpec d16 = new CompositeBitSpec(d16hi, d16lo);
@@ -1126,28 +1021,34 @@ public abstract class SPARCAssembler extends Assembler {
          * @param keys Ordered by the importance
          * @param operation Operation represented by this list of keys
          */
-        private void addOp(List<BitKey> keys, SPARCOp operation) {
+        private void addOp(List<BitKey[]> keys, SPARCOp operation) {
             assert keys.size() > 0;
-            BitKey first = keys.get(0);
-            assert first.spec.equals(spec) : first.spec + " " + spec;
-            BitKeyIndex node;
-            if (keys.size() == 1) {
-                if (nodes.containsKey(first.value)) {
-                    node = nodes.get(first.value);
-                    assert node.op == null : node + " " + keys;
-                    node.op = operation;
+            BitKey[] firstKeys = keys.get(0);
+            for (BitKey first : firstKeys) {
+                assert first.spec.equals(spec) : first.spec + " " + spec;
+                BitKeyIndex node;
+                if (keys.size() == 1) {
+                    if (nodes.containsKey(first.value)) {
+                        node = nodes.get(first.value);
+                        assert node.op == null : node + " " + keys;
+                        node.op = operation;
+                    } else {
+                        assert !nodes.containsKey(first.value) : "Index must be unique. Existing key: " + nodes.get(first.value);
+                        node = new BitKeyIndex(operation);
+                    }
                 } else {
-                    assert !nodes.containsKey(first.value) : "Index must be unique. Existing key: " + nodes.get(first.value);
-                    node = new BitKeyIndex(operation);
+                    node = nodes.get(first.value);
+                    BitKey[] next = keys.get(1);
+                    if (node == null) {
+                        for (int i = 1; i < next.length; i++) {
+                            assert next[i - 1].spec.equals(next[i].spec) : "All spec on this node must equal";
+                        }
+                        node = new BitKeyIndex(next[0].spec);
+                    }
+                    node.addOp(keys.subList(1, keys.size()), operation);
                 }
-            } else {
-                node = nodes.get(first.value);
-                if (node == null) {
-                    node = new BitKeyIndex(keys.get(1).spec);
-                }
-                node.addOp(keys.subList(1, keys.size()), operation);
+                nodes.put(first.value, node);
             }
-            nodes.put(first.value, node);
         }
 
         /**
@@ -1182,6 +1083,7 @@ public abstract class SPARCAssembler extends Assembler {
     public static final Bpr BPR = new Bpr();
     public static final Br BR = new Br();
     public static final Sethi SETHI = new Sethi();
+    public static final OpfOp OPF = new OpfOp();
     public static final Op3Op OP3 = new Op3Op();
     public static final SPARCOp LDST = new SPARCOp(Ops.LdstOp);
     public static final SPARCOp BRANCH = new SPARCOp(Ops.BranchOp);
@@ -1204,7 +1106,7 @@ public abstract class SPARCAssembler extends Assembler {
     public static class SPARCOp {
         private final Ops op;
         private final BitKey opKey;
-        private List<BitKey> keyFields;
+        private List<BitKey[]> keyFields;
         private static final List<SPARCOp> OPS = new ArrayList<>();
 
         public SPARCOp(Ops op) {
@@ -1219,18 +1121,20 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public boolean match(int inst) {
-            for (BitKey k : keyFields) {
-                if (k.spec.getBits(inst) != k.value) {
-                    return false;
+            for (BitKey[] keys : keyFields) {
+                for (BitKey k : keys) {
+                    if (k.spec.getBits(inst) != k.value) {
+                        return false;
+                    }
                 }
             }
             return true;
         }
 
-        protected List<BitKey> getKeys() {
+        protected List<BitKey[]> getKeys() {
             if (keyFields == null) {
                 keyFields = new ArrayList<>(4);
-                keyFields.add(opKey);
+                keyFields.add(new BitKey[]{opKey});
             }
             return keyFields;
         }
@@ -1254,14 +1158,14 @@ public abstract class SPARCAssembler extends Assembler {
         private final Op2s op2;
         private final boolean delaySlot;
         private final BitSpec disp;
-        private final BitKey op2Key;
+        private final BitKey[] op2Key;
 
         private ControlTransferOp(Ops op, Op2s op2, boolean delaySlot, BitSpec disp) {
             super(op);
             this.op2 = op2;
             this.delaySlot = delaySlot;
             this.disp = disp;
-            this.op2Key = new BitKey(BitSpec.op2, op2.value);
+            this.op2Key = new BitKey[]{new BitKey(BitSpec.op2, op2.value)};
         }
 
         public boolean hasDelaySlot() {
@@ -1297,8 +1201,8 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         @Override
-        protected List<BitKey> getKeys() {
-            List<BitKey> keys = super.getKeys();
+        protected List<BitKey[]> getKeys() {
+            List<BitKey[]> keys = super.getKeys();
             keys.add(op2Key);
             return keys;
         }
@@ -1372,9 +1276,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         @Override
-        protected List<BitKey> getKeys() {
-            List<BitKey> keys = super.getKeys();
-            keys.add(CBCOND_KEY);
+        protected List<BitKey[]> getKeys() {
+            List<BitKey[]> keys = super.getKeys();
+            keys.add(new BitKey[]{CBCOND_KEY});
             return keys;
         }
 
@@ -1398,9 +1302,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         @Override
-        protected List<BitKey> getKeys() {
-            List<BitKey> keys = super.getKeys();
-            keys.add(CBCOND_KEY);
+        protected List<BitKey[]> getKeys() {
+            List<BitKey[]> keys = super.getKeys();
+            keys.add(new BitKey[]{CBCOND_KEY});
             return keys;
         }
 
@@ -1460,9 +1364,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         @Override
-        protected List<BitKey> getKeys() {
-            List<BitKey> keys = super.getKeys();
-            keys.add(op2Key);
+        protected List<BitKey[]> getKeys() {
+            List<BitKey[]> keys = super.getKeys();
+            keys.add(new BitKey[]{op2Key});
             return keys;
         }
     }
@@ -1494,6 +1398,69 @@ public abstract class SPARCAssembler extends Assembler {
         public Op3s getOp3(int inst) {
             assert match(inst);
             return OP3S[ArithOp.value & 1][BitSpec.op3.getBits(inst)];
+        }
+
+        public void emit(SPARCMacroAssembler masm, Op3s opcode, Register rs1, Register rs2, Register rd) {
+            int instruction = setBits(0, opcode, rs1, rd);
+            instruction = BitSpec.rs2.setBits(instruction, rs2.encoding);
+            instruction = BitSpec.i.setBits(instruction, 0);
+            masm.emitInt(instruction);
+        }
+
+        public void emit(SPARCMacroAssembler masm, Op3s opcode, Register rs1, int simm13, Register rd) {
+            int instruction = setBits(0, opcode, rs1, rd);
+            instruction = BitSpec.i.setBits(instruction, 1);
+            instruction = BitSpec.simm13.setBits(instruction, simm13);
+            masm.emitInt(instruction);
+        }
+
+        private static int setBits(int instruction, Op3s op3, Register rs1, Register rd) {
+            assert op3.op.equals(ArithOp);
+            int tmp = BitSpec.op3.setBits(instruction, op3.value);
+            tmp = BitSpec.op.setBits(tmp, op3.op.value);
+            tmp = BitSpec.rd.setBits(tmp, rd.encoding);
+            return BitSpec.rs1.setBits(tmp, rs1.encoding);
+        }
+    }
+
+    public static class OpfOp extends SPARCOp {
+        public OpfOp() {
+            super(ArithOp);
+        }
+
+        public void emit(SPARCMacroAssembler masm, Opfs opf, Register rs1, Register rs2, Register rd) {
+            int instruction = setBits(0, opf, rs1, rs2);
+            instruction = BitSpec.rd.setBits(instruction, rd.encoding);
+            instruction = BitSpec.i.setBits(instruction, 0);
+            masm.emitInt(instruction);
+        }
+
+        public void emitFcmp(SPARCMacroAssembler masm, Opfs opf, CC cc, Register rs1, Register rs2) {
+            assert opf.equals(Opfs.Fcmpd) || opf.equals(Opfs.Fcmps) : opf;
+            int instruction = setBits(0, opf, rs1, rs2);
+            instruction = BitSpec.fcc.setBits(instruction, cc.value);
+            masm.emitInt(instruction);
+        }
+
+        private static int setBits(int instruction, Opfs opf, Register rs1, Register rs2) {
+            int tmp = BitSpec.op.setBits(instruction, opf.op3.op.value);
+            tmp = BitSpec.op3.setBits(tmp, opf.op3.value);
+            tmp = BitSpec.opf.setBits(tmp, opf.value);
+            tmp = BitSpec.rs1.setBits(tmp, rs1.encoding);
+            return BitSpec.rs2.setBits(tmp, rs2.encoding);
+        }
+
+        @Override
+        protected List<BitKey[]> getKeys() {
+            List<BitKey[]> keys = super.getKeys();
+            // @formatter:off
+            keys.add(new BitKey[]{
+                            new BitKey(BitSpec.op3, Op3s.Fpop1.value),
+                            new BitKey(BitSpec.op3, Op3s.Fpop2.value),
+                            new BitKey(BitSpec.op3, Op3s.Impdep1.value),
+                            new BitKey(BitSpec.op3, Op3s.Impdep2.value)});
+            // @formatter:on
+            return keys;
         }
     }
 
@@ -1911,10 +1878,6 @@ public abstract class SPARCAssembler extends Assembler {
         op3(Fpop1, Faddd, rs1, rs2, rd);
     }
 
-    public void faddq(Register rs1, Register rs2, Register rd) {
-        op3(Fpop1, Faddq, rs1, rs2, rd);
-    }
-
     public void fdivs(Register rs1, Register rs2, Register rd) {
         op3(Fpop1, Fdivs, rs1, rs2, rd);
     }
@@ -2058,7 +2021,7 @@ public abstract class SPARCAssembler extends Assembler {
         int a = cc.value;
         int b = opf.value << 5 | rs2.encoding;
         delaySlotOptimizationPoints.add(position());
-        fmt10(a, Fcmp.value, rs1.encoding, b);
+        fmt10(a, Fpop2.value, rs1.encoding, b);
     }
 
     // @formatter:off
