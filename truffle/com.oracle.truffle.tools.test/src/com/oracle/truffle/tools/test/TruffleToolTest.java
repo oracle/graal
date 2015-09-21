@@ -31,7 +31,6 @@ import java.lang.reflect.Field;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.instrument.InstrumentationTool;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.vm.TruffleVM;
 
@@ -131,7 +130,7 @@ public class TruffleToolTest {
         return instrumenter;
     }
 
-    private static final class DummyTruffleTool extends InstrumentationTool {
+    private static final class DummyTruffleTool extends Instrumenter.Tool {
 
         @Override
         protected boolean internalInstall() {

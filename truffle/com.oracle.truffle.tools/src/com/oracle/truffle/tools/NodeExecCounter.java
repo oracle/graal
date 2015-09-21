@@ -38,7 +38,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.Instrument;
-import com.oracle.truffle.api.instrument.InstrumentationTool;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeException;
@@ -97,7 +96,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
  * @see SyntaxTag
  * @see ProbeFailure
  */
-public final class NodeExecCounter extends InstrumentationTool {
+public final class NodeExecCounter extends Instrumenter.Tool {
 
     /**
      * Execution count for AST nodes of a particular type.

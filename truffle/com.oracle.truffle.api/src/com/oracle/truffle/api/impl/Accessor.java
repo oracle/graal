@@ -61,7 +61,6 @@ public abstract class Accessor {
     private static Accessor NODES;
     private static Accessor INTEROP;
     private static Accessor INSTRUMENT;
-    private static Accessor TOOL;
     private static Accessor DEBUG;
     private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
 
@@ -178,11 +177,6 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             DEBUG = this;
-        } else if (this.getClass().getSimpleName().endsWith("Tool")) {
-            if (TOOL != null) {
-                throw new IllegalStateException();
-            }
-            TOOL = this;
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();

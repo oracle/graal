@@ -34,7 +34,6 @@ import java.util.Map.Entry;
 import java.util.TreeSet;
 
 import com.oracle.truffle.api.instrument.Instrument;
-import com.oracle.truffle.api.instrument.InstrumentationTool;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeListener;
@@ -83,7 +82,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see Instrument
  * @see SyntaxTag
  */
-public final class CoverageTracker extends InstrumentationTool {
+public final class CoverageTracker extends Instrumenter.Tool {
 
     /** Counting data. */
     private final Map<LineLocation, CoverageRecord> coverageMap = new HashMap<>();
