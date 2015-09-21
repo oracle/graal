@@ -28,7 +28,6 @@ import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
 import jdk.internal.jvmci.meta.Constant;
 import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
@@ -61,9 +60,7 @@ final class AMD64HotSpotStrategySwitchOp extends AMD64ControlFlow.StrategySwitch
                 HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) c;
                 if (meta.isCompressed()) {
                     crb.recordInlineDataInCode(meta);
-
-                    assert NumUtil.isInt(meta.rawValue());
-                    masm.cmpl(keyRegister, (int) meta.rawValue());
+                    masm.cmpl(keyRegister, 0xDEADDEAD);
                 } else {
                     AMD64Address addr = (AMD64Address) crb.recordDataReferenceInCode(meta, 8);
                     masm.cmpq(keyRegister, addr);

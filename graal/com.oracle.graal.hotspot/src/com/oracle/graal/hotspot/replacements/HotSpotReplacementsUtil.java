@@ -466,7 +466,7 @@ public class HotSpotReplacementsUtil {
             ResolvedJavaType constantType = LoadHubNode.findSynonymType(read.graph(), tool.getMetaAccess(), object);
             if (constantType != null) {
                 if (config().useCompressedClassPointers) {
-                    return ConstantNode.forConstant(read.stamp(), ((HotSpotMetaspaceConstant) constantType.getObjectHub()).compress(config().getKlassEncoding()), tool.getMetaAccess());
+                    return ConstantNode.forConstant(read.stamp(), ((HotSpotMetaspaceConstant) constantType.getObjectHub()).compress(), tool.getMetaAccess());
                 } else {
                     return ConstantNode.forConstant(read.stamp(), constantType.getObjectHub(), tool.getMetaAccess());
                 }

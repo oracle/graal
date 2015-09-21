@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
 import jdk.internal.jvmci.hotspot.HotSpotConstant;
-import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
 import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
 import jdk.internal.jvmci.meta.AllocatableValue;
 
@@ -48,8 +47,9 @@ public class AMD64HotSpotBinaryConsumer {
         protected final HotSpotConstant c;
 
         public ConstOp(AMD64MIOp opcode, AllocatableValue x, HotSpotConstant c) {
-            super(TYPE, opcode, DWORD, x, asImm32(c));
+            super(TYPE, opcode, DWORD, x, 0xDEADDEAD);
             this.c = c;
+            assert c.isCompressed();
         }
 
         @Override
@@ -70,9 +70,9 @@ public class AMD64HotSpotBinaryConsumer {
         protected final HotSpotConstant c;
 
         public MemoryConstOp(AMD64MIOp opcode, AMD64AddressValue x, HotSpotConstant c, LIRFrameState state) {
-            super(TYPE, opcode, DWORD, x, asImm32(c), state);
+            super(TYPE, opcode, DWORD, x, 0xDEADDEAD, state);
             this.c = c;
-
+            assert c.isCompressed();
         }
 
         @Override
@@ -80,16 +80,6 @@ public class AMD64HotSpotBinaryConsumer {
             assert crb.target.inlineObjects || !(c instanceof HotSpotObjectConstant);
             crb.recordInlineDataInCode(c);
             super.emitCode(crb, masm);
-        }
-    }
-
-    private static int asImm32(HotSpotConstant c) {
-        assert c.isCompressed();
-        if (c instanceof HotSpotMetaspaceConstant) {
-            return (int) ((HotSpotMetaspaceConstant) c).rawValue();
-        } else {
-            assert c instanceof HotSpotObjectConstant;
-            return 0xDEADDEAD;
         }
     }
 }

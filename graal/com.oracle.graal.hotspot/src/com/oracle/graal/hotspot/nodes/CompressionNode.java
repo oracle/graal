@@ -24,8 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.hotspot.HotSpotCompressedNullConstant;
-import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
+import jdk.internal.jvmci.hotspot.HotSpotConstant;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.internal.jvmci.meta.Constant;
 import jdk.internal.jvmci.meta.ConstantReflectionProvider;
@@ -88,25 +87,19 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
         return input.graph().unique(new CompressionNode(CompressionOp.Uncompress, input, encoding));
     }
 
-    private static Constant compress(Constant c, CompressEncoding encoding) {
+    private static Constant compress(Constant c) {
         if (JavaConstant.NULL_POINTER.equals(c)) {
             return HotSpotCompressedNullConstant.COMPRESSED_NULL;
-        } else if (c instanceof HotSpotObjectConstant) {
-            return ((HotSpotObjectConstant) c).compress();
-        } else if (c instanceof HotSpotMetaspaceConstant) {
-            return ((HotSpotMetaspaceConstant) c).compress(encoding);
+        } else if (c instanceof HotSpotConstant) {
+            return ((HotSpotConstant) c).compress();
         } else {
             throw JVMCIError.shouldNotReachHere("invalid constant input for compress op: " + c);
         }
     }
 
-    private static Constant uncompress(Constant c, CompressEncoding encoding) {
-        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-            return JavaConstant.NULL_POINTER;
-        } else if (c instanceof HotSpotObjectConstant) {
-            return ((HotSpotObjectConstant) c).uncompress();
-        } else if (c instanceof HotSpotMetaspaceConstant) {
-            return ((HotSpotMetaspaceConstant) c).uncompress(encoding);
+    private static Constant uncompress(Constant c) {
+        if (c instanceof HotSpotConstant) {
+            return ((HotSpotConstant) c).uncompress();
         } else {
             throw JVMCIError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
         }
@@ -116,9 +109,9 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
     public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
         switch (op) {
             case Compress:
-                return compress(c, encoding);
+                return compress(c);
             case Uncompress:
-                return uncompress(c, encoding);
+                return uncompress(c);
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
@@ -128,9 +121,9 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
     public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
         switch (op) {
             case Compress:
-                return uncompress(c, encoding);
+                return uncompress(c);
             case Uncompress:
-                return compress(c, encoding);
+                return compress(c);
             default:
                 throw JVMCIError.shouldNotReachHere();
         }

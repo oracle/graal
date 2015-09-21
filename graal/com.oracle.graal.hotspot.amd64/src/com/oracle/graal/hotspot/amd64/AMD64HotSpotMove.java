@@ -38,11 +38,9 @@ import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -127,24 +125,24 @@ public class AMD64HotSpotMove {
             boolean compressed = input.isCompressed();
             boolean isImmutable = GraalOptions.ImmutableCode.getValue();
             boolean generatePIC = GraalOptions.GeneratePIC.getValue();
-            crb.recordInlineDataInCode(input);
             if (isRegister(result)) {
                 if (compressed) {
                     if (isImmutable && generatePIC) {
                         int alignment = crb.target.wordSize;
                         // recordDataReferenceInCode forces the mov to be rip-relative
-                        masm.movl(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
+                        masm.movl(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, alignment));
                     } else {
-                        assert NumUtil.isInt(input.rawValue());
-                        masm.movl(asRegister(result), (int) input.rawValue());
+                        crb.recordInlineDataInCode(input);
+                        masm.movl(asRegister(result), 0xDEADDEAD);
                     }
                 } else {
                     if (isImmutable && generatePIC) {
                         int alignment = crb.target.wordSize;
                         // recordDataReferenceInCode forces the mov to be rip-relative
-                        masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.LONG_0, alignment));
+                        masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, alignment));
                     } else {
-                        masm.movq(asRegister(result), input.rawValue());
+                        crb.recordInlineDataInCode(input);
+                        masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
                     }
                 }
             } else {
@@ -153,8 +151,8 @@ public class AMD64HotSpotMove {
                     if (isImmutable && generatePIC) {
                         throw JVMCIError.shouldNotReachHere("Unsupported operation offset(%rip) -> mem (mem -> mem)");
                     } else {
-                        assert NumUtil.isInt(input.rawValue());
-                        masm.movl((AMD64Address) crb.asAddress(result), (int) input.rawValue());
+                        crb.recordInlineDataInCode(input);
+                        masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
                     }
                 } else {
                     throw JVMCIError.shouldNotReachHere("Cannot store 64-bit constants to memory");
