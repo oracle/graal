@@ -135,7 +135,7 @@ public abstract class LayoutImpl extends Layout {
             newLocation = oldLocation;
         } else if (oldLocation instanceof DoubleLocation && (value instanceof Double || this.isAllowedIntToDouble() && value instanceof Integer)) {
             newLocation = oldLocation;
-        } else if (oldLocation instanceof LongLocation && (value instanceof Long || this.isAllowedIntToLong() && value instanceof Long)) {
+        } else if (oldLocation instanceof LongLocation && (value instanceof Long || this.isAllowedIntToLong() && value instanceof Integer)) {
             newLocation = oldLocation;
         } else if (oldLocation instanceof DeclaredLocation) {
             return oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull));
