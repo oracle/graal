@@ -24,6 +24,7 @@ package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
 import com.oracle.truffle.api.vm.TruffleVM;
 import java.io.IOException;
@@ -38,6 +39,8 @@ public class ExceptionDuringParsingTest {
 
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
+        Ctx.disposed.clear();
+
         TruffleVM vm = TruffleVM.newVM().build();
         TruffleVM.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
@@ -50,7 +53,11 @@ public class ExceptionDuringParsingTest {
             assertEquals(ex.getMessage(), "No, no, no!");
         }
 
+        assertEquals("No dispose yet", 0, Ctx.disposed.size());
+
         vm.dispose();
+
+        assertEquals("One context disposed", 1, Ctx.disposed.size());
 
         try {
             vm.eval(src);

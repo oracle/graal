@@ -124,7 +124,7 @@ public class ImplicitExplicitExportTest {
         assertEquals("Global symbol is also 43", "43", vm.findGlobalSymbol("ahoj").invoke(null).get());
     }
 
-    private static final class Ctx {
+    static final class Ctx {
         static final Set<Ctx> disposed = new HashSet<>();
 
         final Map<String, String> explicit = new HashMap<>();
