@@ -24,14 +24,6 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
-import com.oracle.truffle.api.source.SourceSection;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -46,23 +38,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import sun.misc.Unsafe;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrument.SyntaxTag;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Utility class that manages the special access methods for node instances.
  */
 public final class NodeUtil {
-
-    /**
-     * Interface that allows the customization of field offsets used for {@link Unsafe} field
-     * accesses.
-     */
-    public interface FieldOffsetProvider {
-
-        long objectFieldOffset(Field field);
-
-        int getTypeSize(Class<?> clazz);
-    }
 
     static Iterator<Node> makeIterator(Node node) {
         return node.getNodeClass().makeIterator(node);

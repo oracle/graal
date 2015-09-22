@@ -24,10 +24,10 @@
  */
 package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
-import com.oracle.truffle.api.object.Shape.Allocator;
 import java.util.EnumSet;
 import java.util.ServiceLoader;
+
+import com.oracle.truffle.api.object.Shape.Allocator;
 
 /**
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
@@ -134,14 +134,12 @@ public abstract class Layout {
      */
     public static final class Builder {
         private EnumSet<ImplicitCast> allowedImplicitCasts;
-        private FieldOffsetProvider fieldOffsetProvider;
 
         /**
          * Create a new layout builder.
          */
         private Builder() {
             this.allowedImplicitCasts = Layout.NONE;
-            this.fieldOffsetProvider = null;
         }
 
         /**
@@ -161,20 +159,8 @@ public abstract class Layout {
             return this;
         }
 
-        /**
-         * Set a custom field offset provider for this layout.
-         */
-        public Builder setFieldOffsetProvider(FieldOffsetProvider fieldOffsetProvider) {
-            this.fieldOffsetProvider = fieldOffsetProvider;
-            return this;
-        }
-
         public EnumSet<ImplicitCast> getAllowedImplicitCasts() {
             return allowedImplicitCasts;
-        }
-
-        public FieldOffsetProvider getFieldOffsetProvider() {
-            return fieldOffsetProvider;
         }
     }
 }
