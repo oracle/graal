@@ -128,7 +128,7 @@ public abstract class SLREPLHandler extends REPLHandler {
             if (!file.canRead()) {
                 return finishReplyFailed(reply, "can't find file \"" + fileName + "\"");
             }
-            final PolyglotEngine vm = serverContext.vm();
+            final PolyglotEngine vm = serverContext.engine();
             vm.eval(Source.fromFileName(file.getPath()));
             PolyglotEngine.Value main = vm.findGlobalSymbol("main");
             if (main != null) {

@@ -76,7 +76,16 @@ public abstract class REPLServerContext {
         return new DefaultVisualizer();
     }
 
-    public abstract PolyglotEngine vm();
+    public PolyglotEngine engine() {
+        return vm();
+    }
+
+    /**
+     * @deprecated use {@link #engine()}.
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public abstract com.oracle.truffle.api.vm.TruffleVM vm();
 
     protected abstract Debugger db();
 

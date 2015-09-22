@@ -215,8 +215,9 @@ public final class SLREPLServer extends REPLServer {
         }
 
         @Override
-        public PolyglotEngine vm() {
-            return vm;
+        @SuppressWarnings("deprecation")
+        public com.oracle.truffle.api.vm.TruffleVM vm() {
+            return (com.oracle.truffle.api.vm.TruffleVM) vm;
         }
 
         @Override
