@@ -29,7 +29,8 @@
  )
  */
 
-/** Optimal object model.
+/**
+ * Dynamic object storage model.
  */
 package com.oracle.truffle.api.object;
 

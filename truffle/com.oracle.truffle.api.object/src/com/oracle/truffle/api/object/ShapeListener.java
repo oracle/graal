@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.object;
 
+/**
+ * A listener to be notified of property transitions.
+ */
 public interface ShapeListener {
     /**
      * Called when a property is added, removed, or replaced.

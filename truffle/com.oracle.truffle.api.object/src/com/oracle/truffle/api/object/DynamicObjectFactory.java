@@ -24,8 +24,24 @@
  */
 package com.oracle.truffle.api.object;
 
+/**
+ * This factory can be used to create a new {@link DynamicObject} from an initial shape, with its
+ * instance properties initialized to the values passed to {@link #newInstance(Object...)}.
+ *
+ * @see Shape#createFactory()
+ */
 public interface DynamicObjectFactory {
+    /**
+     * Create a new {@link DynamicObject} and initialize instance properties with the provided
+     * values. Exactly as many values are required as there are instance properties.
+     *
+     * @param initialValues the values to initialize the object with, in order.
+     * @return a new {@link DynamicObject} initialized with the provided values.
+     */
     DynamicObject newInstance(Object... initialValues);
 
+    /**
+     * @return the shape of objects created by this factory.
+     */
     Shape getShape();
 }

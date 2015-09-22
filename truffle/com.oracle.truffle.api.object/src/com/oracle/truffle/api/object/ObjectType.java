@@ -30,6 +30,9 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 
+/**
+ * An extensible object type descriptor for {@link DynamicObject}s.
+ */
 public class ObjectType {
     /**
      * Delegate method for {@link DynamicObject#equals(Object)}.

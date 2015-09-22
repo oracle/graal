@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.object;
 
+/**
+ * Implementation class.
+ */
 public interface LayoutFactory {
     Layout createLayout(Layout.Builder layoutBuilder);
 
