@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import jdk.internal.jvmci.code.Location;
 import jdk.internal.jvmci.code.ReferenceMap;
 import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.hotspot.HotSpotReferenceMap;
 import jdk.internal.jvmci.meta.LIRKind;
@@ -50,14 +49,12 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
     private final ArrayList<Value> objectValues;
     private int objectCount;
 
-    private final TargetDescription target;
     private final int totalFrameSize;
 
-    public HotSpotReferenceMapBuilder(TargetDescription target, int totalFrameSize) {
+    public HotSpotReferenceMapBuilder(int totalFrameSize) {
         this.objectValues = new ArrayList<>();
         this.objectCount = 0;
 
-        this.target = target;
         this.totalFrameSize = totalFrameSize;
     }
 
@@ -76,7 +73,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             }
         }
         if (isRegister(v)) {
-            int size = target.getSizeInBytes(lirKind.getPlatformKind());
+            int size = lirKind.getPlatformKind().getSizeInBytes();
             if (size > maxRegisterSize) {
                 maxRegisterSize = size;
             }
@@ -118,9 +115,9 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
         return new HotSpotReferenceMap(objects, derivedBase, sizeInBytes, maxRegisterSize);
     }
 
-    private int bytesPerElement(LIRKind kind) {
+    private static int bytesPerElement(LIRKind kind) {
         PlatformKind platformKind = kind.getPlatformKind();
-        return target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
+        return platformKind.getSizeInBytes() / platformKind.getVectorLength();
     }
 
     private Location toLocation(Value v, int offset) {

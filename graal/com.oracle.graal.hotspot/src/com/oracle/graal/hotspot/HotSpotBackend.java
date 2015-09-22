@@ -270,6 +270,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     @Override
     public ReferenceMapBuilder newReferenceMapBuilder(int totalFrameSize) {
-        return new HotSpotReferenceMapBuilder(getTarget(), totalFrameSize);
+        return new HotSpotReferenceMapBuilder(totalFrameSize);
     }
 }

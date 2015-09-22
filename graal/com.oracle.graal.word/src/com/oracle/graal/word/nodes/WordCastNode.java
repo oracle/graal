@@ -116,7 +116,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
     public void generate(NodeLIRBuilderTool generator) {
         Value value = generator.operand(input);
         LIRKind kind = generator.getLIRGeneratorTool().getLIRKind(stamp());
-        assert generator.getLIRGeneratorTool().target().getSizeInBytes(kind.getPlatformKind()) == generator.getLIRGeneratorTool().target().getSizeInBytes(value.getPlatformKind());
+        assert kind.getPlatformKind().getSizeInBytes() == value.getPlatformKind().getSizeInBytes();
 
         if (trackedPointer && kind.isValue() && !value.getLIRKind().isValue()) {
             // just change the PlatformKind, but don't drop reference information

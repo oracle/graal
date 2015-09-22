@@ -127,7 +127,7 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            final int byteCount = crb.target.getSizeInBytes(result.getPlatformKind());
+            final int byteCount = result.getPlatformKind().getSizeInBytes();
             assert byteCount > 1 : "Byte values must not be loaded via constant table";
             final Runnable recordReference = () -> crb.recordDataReferenceInCode(constant, byteCount);
             Register baseRegister = asRegister(constantTableBase);
@@ -243,9 +243,8 @@ public class SPARCMove {
         }
 
         private void moveViaStack(CompilationResultBuilder crb, SPARCMacroAssembler masm, JavaKind inputKind, JavaKind resultKind) {
-            int inputKindSize = crb.target.getSizeInBytes(inputKind);
-            int resultKindSize = crb.target.getSizeInBytes(resultKind);
-            assert inputKindSize == resultKindSize;
+            int resultKindSize = resultKind.getSizeInBytes();
+            assert inputKind.getSizeInBytes() == resultKindSize;
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 SPARCAddress tempAddress = generateSimm13OffsetLoad((SPARCAddress) crb.asAddress(temp), masm, scratch);
@@ -514,7 +513,7 @@ public class SPARCMove {
                 if (state != null) {
                     crb.recordImplicitException(masm.position(), state);
                 }
-                int byteCount = crb.target.getSizeInBytes(kind);
+                int byteCount = kind.getSizeInBytes();
                 masm.st(g0, addr, byteCount);
             }
         }
@@ -635,7 +634,7 @@ public class SPARCMove {
             boolean hasVIS1 = cpuFeatures.contains(CPUFeature.VIS1);
             boolean hasVIS3 = cpuFeatures.contains(CPUFeature.VIS3);
             Register resultRegister = asRegister(result);
-            int byteCount = crb.target.getSizeInBytes(result.getPlatformKind());
+            int byteCount = result.getPlatformKind().getSizeInBytes();
             Runnable recordReference = () -> crb.recordDataReferenceInCode(input, byteCount);
             switch (input.getJavaKind().getStackKind()) {
                 case Int:
@@ -739,7 +738,7 @@ public class SPARCMove {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            int byteCount = crb.target.getSizeInBytes(kind);
+            int byteCount = kind.getSizeInBytes();
             masm.ld(addr, dst, byteCount, signExtend);
         }
     }
@@ -753,7 +752,7 @@ public class SPARCMove {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            int byteCount = crb.target.getSizeInBytes(kind);
+            int byteCount = kind.getSizeInBytes();
             masm.st(asRegister(input), addr, byteCount);
         }
     }

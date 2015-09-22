@@ -110,7 +110,7 @@ public final class SPARCFrameMap extends FrameMap {
      */
     @Override
     public int spillSlotSize(LIRKind kind) {
-        return SPARC.spillSlotSize(getTarget(), kind.getPlatformKind());
+        return Math.max(kind.getPlatformKind().getSizeInBytes(), SPARC.MEMORY_ACCESS_ALIGN);
     }
 
     @Override

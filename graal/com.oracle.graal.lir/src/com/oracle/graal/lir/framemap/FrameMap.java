@@ -248,7 +248,7 @@ public abstract class FrameMap {
      * @return the size in bytes
      */
     public int spillSlotSize(LIRKind kind) {
-        return getTarget().getSizeInBytes(kind.getPlatformKind());
+        return kind.getPlatformKind().getSizeInBytes();
     }
 
     /**
