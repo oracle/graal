@@ -127,7 +127,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.interop.java",
+        "com.oracle.truffle.api.vm",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",

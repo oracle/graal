@@ -721,10 +721,12 @@ public class PolyglotEngine {
                     debugger = fillIn[0];
                 }
                 List<Object> arr = new ArrayList<>();
-                if (thiz == null && language != null) {
-                    Object global = SPI.languageGlobal(SPI.findLanguage(PolyglotEngine.this, language.getClass()));
-                    if (global != null) {
-                        arr.add(global);
+                if (thiz == null) {
+                    if (language != null) {
+                        Object global = SPI.languageGlobal(SPI.findLanguage(PolyglotEngine.this, language.getClass()));
+                        if (global != null) {
+                            arr.add(global);
+                        }
                     }
                 } else {
                     arr.add(thiz);
