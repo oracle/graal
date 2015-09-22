@@ -36,7 +36,6 @@ import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectTypeImpl;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.Assumptions;
 import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
@@ -393,7 +392,7 @@ public class HotSpotReplacementsUtil {
                     ObjectStamp stamp = (ObjectStamp) javaObject.stamp();
                     HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) stamp.javaType(tool.getMetaAccess());
                     if (type.isArray() && !type.getComponentType().isPrimitive()) {
-                        int layout = ((HotSpotResolvedObjectTypeImpl) type).layoutHelper();
+                        int layout = type.layoutHelper();
                         return ConstantNode.forInt(layout);
                     }
                 }

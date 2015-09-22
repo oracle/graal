@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.test;
 
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectTypeImpl;
+import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.Constant;
 import jdk.internal.jvmci.meta.JavaKind;
@@ -43,13 +43,13 @@ public class HotSpotResolvedObjectTypeTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testGetSourceFileName() throws Throwable {
-        Assert.assertEquals("Object.java", HotSpotResolvedObjectTypeImpl.fromObjectClass(Object.class).getSourceFileName());
-        Assert.assertEquals("HotSpotResolvedObjectTypeTest.java", HotSpotResolvedObjectTypeImpl.fromObjectClass(this.getClass()).getSourceFileName());
+        Assert.assertEquals("Object.java", HotSpotResolvedObjectType.fromObjectClass(Object.class).getSourceFileName());
+        Assert.assertEquals("HotSpotResolvedObjectTypeTest.java", HotSpotResolvedObjectType.fromObjectClass(this.getClass()).getSourceFileName());
     }
 
     @Test
     public void testKlassLayoutHelper() {
-        Constant klass = HotSpotResolvedObjectTypeImpl.fromObjectClass(this.getClass()).klass();
+        Constant klass = HotSpotResolvedObjectType.fromObjectClass(this.getClass()).klass();
         MemoryAccessProvider memoryAccess = getProviders().getConstantReflection().getMemoryAccessProvider();
         HotSpotVMConfig config = config();
         Constant c = StampFactory.forKind(JavaKind.Int).readConstant(memoryAccess, klass, config.klassLayoutHelperOffset);

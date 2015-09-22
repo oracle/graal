@@ -56,13 +56,10 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.HotSpotConstantPool;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethodImpl;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectTypeImpl;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.ConstantPool;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
@@ -73,6 +70,7 @@ import jdk.internal.jvmci.options.OptionsParser;
 import jdk.internal.jvmci.options.OptionsParser.OptionConsumer;
 import jdk.internal.jvmci.runtime.JVMCI;
 
+import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.CompilerThreadFactory;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.debug.Debug;
@@ -206,7 +204,7 @@ public final class CompileTheWorld {
         // ...but we want to see exceptions.
         config.putIfAbsent(PrintBailout, true);
         config.putIfAbsent(PrintStackTraceOnException, true);
-        config.putIfAbsent(HotSpotResolvedJavaMethodImpl.Options.UseProfilingInformation, false);
+        config.putIfAbsent(HotSpotResolvedJavaMethod.Options.UseProfilingInformation, false);
     }
 
     public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler) {
@@ -372,10 +370,10 @@ public final class CompileTheWorld {
 
                         // Pre-load all classes in the constant pool.
                         try {
-                            HotSpotResolvedObjectType objectType = HotSpotResolvedObjectTypeImpl.fromObjectClass(javaClass);
+                            HotSpotResolvedObjectType objectType = HotSpotResolvedObjectType.fromObjectClass(javaClass);
                             ConstantPool constantPool = objectType.getConstantPool();
                             for (int cpi = 1; cpi < constantPool.length(); cpi++) {
-                                constantPool.loadReferencedType(cpi, HotSpotConstantPool.Bytecodes.LDC);
+                                constantPool.loadReferencedType(cpi, Bytecodes.LDC);
                             }
                         } catch (Throwable t) {
                             // If something went wrong during pre-loading we just ignore it.

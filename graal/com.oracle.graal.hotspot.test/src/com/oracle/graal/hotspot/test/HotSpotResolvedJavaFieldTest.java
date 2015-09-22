@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ import java.lang.reflect.Field;
 
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaField;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectTypeImpl;
 import jdk.internal.jvmci.meta.JavaType;
 import jdk.internal.jvmci.meta.ModifiersProvider;
 import jdk.internal.jvmci.meta.ResolvedJavaField;
@@ -49,7 +48,7 @@ public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
     @Test
     public void testModifiersForInternal() {
         for (Class<?> c : classesWithInternalFields) {
-            HotSpotResolvedObjectType type = HotSpotResolvedObjectTypeImpl.fromObjectClass(c);
+            HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {
                     Assert.assertEquals(0, ~ModifiersProvider.jvmFieldModifiers() & field.getModifiers());
@@ -59,13 +58,13 @@ public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
     }
 
     /**
-     * Tests that {@link HotSpotResolvedObjectTypeImpl#createField(String, JavaType, long, int)}
-     * always returns the same object for an internal field.
+     * Tests that {@link HotSpotResolvedObjectType#createField(String, JavaType, long, int)} always
+     * returns the same object for an internal field.
      */
     @Test
     public void testCachingForInternalFields() {
         for (Class<?> c : classesWithInternalFields) {
-            HotSpotResolvedObjectType type = HotSpotResolvedObjectTypeImpl.fromObjectClass(c);
+            HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {
                     HotSpotResolvedJavaField expected = (HotSpotResolvedJavaField) field;
