@@ -32,7 +32,10 @@ import jdk.internal.jvmci.code.VirtualObject;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.JavaType;
 import jdk.internal.jvmci.meta.JavaValue;
+import jdk.internal.jvmci.meta.ResolvedJavaField;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
@@ -119,6 +122,7 @@ public class DebugInfoBuilder {
                         slotKinds = Arrays.copyOf(slotKinds, pos);
                     }
                 }
+                assert checkValues(vobjValue.getType(), values, slotKinds);
                 vobjValue.setValues(values, slotKinds);
             }
 
@@ -128,6 +132,55 @@ public class DebugInfoBuilder {
         objectStates.clear();
 
         return newLIRFrameState(exceptionEdge, frame, virtualObjectsArray);
+    }
+
+    private boolean checkValues(ResolvedJavaType type, JavaValue[] values, JavaKind[] slotKinds) {
+        assert (values == null) == (slotKinds == null);
+        if (values != null) {
+            assert values.length == slotKinds.length;
+            if (!type.isArray()) {
+                ResolvedJavaField[] fields = type.getInstanceFields(true);
+                int fieldIndex = 0;
+                for (int i = 0; i < values.length; i++) {
+                    ResolvedJavaField field = fields[fieldIndex++];
+                    JavaKind valKind = slotKinds[i].getStackKind();
+                    JavaKind fieldKind = storageKind(field.getType());
+                    if (fieldKind == JavaKind.Object) {
+                        assert valKind.isObject() : field + ": " + valKind + " != " + fieldKind;
+                    } else {
+                        if ((valKind == JavaKind.Double || valKind == JavaKind.Long) && fieldKind == JavaKind.Int) {
+                            assert storageKind(fields[fieldIndex].getType()) == JavaKind.Int;
+                            fieldIndex++;
+                        } else {
+                            assert valKind == fieldKind.getStackKind() : field + ": " + valKind + " != " + fieldKind;
+                        }
+                    }
+                }
+                assert fields.length == fieldIndex : type + ": fields=" + Arrays.toString(fields) + ", field values=" + Arrays.toString(values);
+            } else {
+                JavaKind componentKind = storageKind(type.getComponentType()).getStackKind();
+                if (componentKind == JavaKind.Object) {
+                    for (int i = 0; i < values.length; i++) {
+                        assert slotKinds[i].isObject() : slotKinds[i] + " != " + componentKind;
+                    }
+                } else {
+                    for (int i = 0; i < values.length; i++) {
+                        assert slotKinds[i] == componentKind || componentKind.getBitCount() >= slotKinds[i].getBitCount() ||
+                                        (componentKind == JavaKind.Int && slotKinds[i].getBitCount() >= JavaKind.Int.getBitCount()) : slotKinds[i] + " != " + componentKind;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    /*
+     * Customization point for subclasses. For example, Word types have a kind Object, but are
+     * internally stored as a primitive value. We do not know about Word types here, but subclasses
+     * do know.
+     */
+    protected JavaKind storageKind(JavaType type) {
+        return type.getJavaKind();
     }
 
     protected LIRFrameState newLIRFrameState(LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
