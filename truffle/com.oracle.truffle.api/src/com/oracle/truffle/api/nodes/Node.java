@@ -416,22 +416,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * @see TruffleLanguage
-     */
-    @Deprecated
-    public boolean isInstrumentable() {
-        return false;
-    }
-
-    /**
-     * @see TruffleLanguage
-     */
-    @Deprecated
-    public WrapperNode createWrapperNode() {
-        return null;
-    }
-
-    /**
      * Converts this node to a textual representation useful for debugging.
      */
     @Override
@@ -508,7 +492,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         return "";
     }
 
-    protected void applyInstrumentation(Node node) {
+    protected final void applyInstrumentation(Node node) {
         ACCESSOR.applyInstrumentation(node);
     }
 
