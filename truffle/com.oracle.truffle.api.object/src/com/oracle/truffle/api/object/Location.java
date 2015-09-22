@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  * @see Property
  * @see DynamicObject
  */
-public abstract class Location implements BaseLocation {
+public abstract class Location {
     protected static IncompatibleLocationException incompatibleLocation() throws IncompatibleLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new IncompatibleLocationException();
@@ -44,18 +44,53 @@ public abstract class Location implements BaseLocation {
         throw new FinalLocationException();
     }
 
+    /**
+     * Get object value as object at this location in store.
+     *
+     * @param shape the current shape of the object, which must contain this location
+     */
     public final Object get(DynamicObject store, Shape shape) {
         return get(store, checkShape(store, shape));
     }
 
+    /**
+     * Get object value as object at this location in store. For internal use only and subject to
+     * change, use {@link #get(DynamicObject, Shape)} instead.
+     *
+     * @param condition the result of a shape check or {@code false}
+     * @see #get(DynamicObject, Shape)
+     */
     public Object get(DynamicObject store, boolean condition) {
         return getInternal(store);
     }
 
+    /**
+     * Get object value as object at this location in store.
+     *
+     * @param shape the current shape of the object, which must contain this location
+     */
+    public final Object get(DynamicObject store) {
+        return get(store, false);
+    }
+
+    /**
+     * Set object value at this location in store.
+     *
+     * @param shape the current shape of the storage object
+     * @throws IncompatibleLocationException for storage type invalidations
+     * @throws FinalLocationException for effectively final fields
+     */
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
         setInternal(store, value);
     }
 
+    /**
+     * Set object value at this location in store and update shape.
+     *
+     * @param oldShape the shape before the transition
+     * @param newShape new shape after the transition
+     * @throws IncompatibleLocationException if value is of non-assignable type
+     */
     public final void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         if (canStore(value)) {
             store.setShapeAndGrow(oldShape, newShape);
@@ -69,6 +104,12 @@ public abstract class Location implements BaseLocation {
         }
     }
 
+    /**
+     * Set object value at this location in store.
+     *
+     * @throws IncompatibleLocationException for storage type invalidations
+     * @throws FinalLocationException for effectively final fields
+     */
     public final void set(DynamicObject store, Object value) throws IncompatibleLocationException, FinalLocationException {
         set(store, value, null);
     }
@@ -131,6 +172,9 @@ public abstract class Location implements BaseLocation {
     @Override
     public abstract boolean equals(Object obj);
 
+    /**
+     * Equivalent to {@link Shape#check(DynamicObject)}.
+     */
     protected static boolean checkShape(DynamicObject store, Shape shape) {
         return store.getShape() == shape;
     }
