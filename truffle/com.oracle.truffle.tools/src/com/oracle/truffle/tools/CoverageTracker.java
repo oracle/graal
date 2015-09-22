@@ -82,7 +82,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see Instrument
  * @see SyntaxTag
  */
-public final class CoverageTracker extends Instrumenter.Tool {
+public final class CoverageTracker extends Instrumenter.Tool<CoverageTracker> {
 
     /** Counting data. */
     private final Map<LineLocation, CoverageRecord> coverageMap = new HashMap<>();

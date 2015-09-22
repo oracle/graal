@@ -96,7 +96,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
  * @see SyntaxTag
  * @see ProbeFailure
  */
-public final class NodeExecCounter extends Instrumenter.Tool {
+public final class NodeExecCounter extends Instrumenter.Tool<NodeExecCounter> {
 
     /**
      * Execution count for AST nodes of a particular type.
@@ -119,7 +119,7 @@ public final class NodeExecCounter extends Instrumenter.Tool {
                 /*
                  * Everything up to here is inlined by Truffle compilation. Delegate the next part
                  * to a method behind an inlining boundary.
-                 *
+                 * 
                  * Note that it is not permitted to pass a {@link VirtualFrame} across an inlining
                  * boundary; they are truly virtual in inlined code.
                  */

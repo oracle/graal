@@ -43,7 +43,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * An {@link InstrumentationTool} that builds a map of every {@link Probe} attached to some AST,
  * indexed by {@link Source} and line number.
  */
-public final class LineToProbesMap extends Instrumenter.Tool {
+public final class LineToProbesMap extends Instrumenter.Tool<LineToProbesMap> {
 
     private static final boolean TRACE = false;
     private static final PrintStream OUT = System.out;

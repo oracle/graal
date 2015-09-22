@@ -138,8 +138,7 @@ final class LineBreakpointFactory {
         this.warningLog = warningLog;
 
         final Instrumenter instrumenter = debugger.getInstrumenter();
-        lineToProbesMap = new LineToProbesMap();
-        instrumenter.install(lineToProbesMap);
+        lineToProbesMap = instrumenter.install(new LineToProbesMap());
 
         instrumenter.addProbeListener(new DefaultProbeListener() {
 
