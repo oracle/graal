@@ -37,7 +37,7 @@ import java.util.List;
 
 /**
  * This event is delivered to all
- * {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
+ * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
  * registered event handlers} when an execution is suspended on a
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)
  * breakpoint} or during {@link #prepareStepInto(int) stepping}. Methods in this event can only be
@@ -82,10 +82,10 @@ public final class SuspendedEvent {
     /**
      * Debugger associated with the just suspended execution. This debugger remains valid after the
      * event is processed, it is possible and suggested to keep a reference to it and use it any
-     * time later when evaluating sources in the {@link com.oracle.truffle.api.vm.TruffleVM}.
+     * time later when evaluating sources in the {@link com.oracle.truffle.api.vm.PolyglotEngine}.
      *
      * @return instance of debugger associated with the just suspended execution and any subsequent
-     *         ones in the same {@link com.oracle.truffle.api.vm.TruffleVM}.
+     *         ones in the same {@link com.oracle.truffle.api.vm.PolyglotEngine}.
      */
     public Debugger getDebugger() {
         return debugger;
@@ -104,8 +104,8 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Gets the stack frames from the currently halted {@link com.oracle.truffle.api.vm.TruffleVM}
-     * execution.
+     * Gets the stack frames from the currently halted
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine} execution.
      *
      * @return list of stack frames
      */

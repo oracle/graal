@@ -43,7 +43,7 @@ package com.oracle.truffle.sl.tools.debug;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.QuitException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
 import com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient;
 import com.oracle.truffle.tools.debug.shell.server.REPLHandler;
@@ -128,9 +128,9 @@ public abstract class SLREPLHandler extends REPLHandler {
             if (!file.canRead()) {
                 return finishReplyFailed(reply, "can't find file \"" + fileName + "\"");
             }
-            final TruffleVM vm = serverContext.vm();
+            final PolyglotEngine vm = serverContext.vm();
             vm.eval(Source.fromFileName(file.getPath()));
-            TruffleVM.Symbol main = vm.findGlobalSymbol("main");
+            PolyglotEngine.Value main = vm.findGlobalSymbol("main");
             if (main != null) {
                 main.invoke(null);
             }

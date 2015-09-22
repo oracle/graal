@@ -49,8 +49,8 @@ import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.EventConsumer;
-import com.oracle.truffle.api.vm.TruffleVM;
-import com.oracle.truffle.api.vm.TruffleVM.Language;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.instrument.SLDefaultVisualizer;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
@@ -90,7 +90,7 @@ public final class SLREPLServer extends REPLServer {
     }
 
     private final Language language;
-    private final TruffleVM vm;
+    private final PolyglotEngine vm;
     private Debugger db;
     private final String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
@@ -140,7 +140,7 @@ public final class SLREPLServer extends REPLServer {
             }
         };
 
-        TruffleVM newVM = TruffleVM.newVM().onEvent(onHalted).onEvent(onExec).build();
+        PolyglotEngine newVM = PolyglotEngine.buildNew().onEvent(onHalted).onEvent(onExec).build();
         this.language = newVM.getLanguages().get("application/x-sl");
         assert language != null;
 
@@ -215,7 +215,7 @@ public final class SLREPLServer extends REPLServer {
         }
 
         @Override
-        public TruffleVM vm() {
+        public PolyglotEngine vm() {
             return vm;
         }
 

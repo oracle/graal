@@ -30,28 +30,28 @@
  */
 
 /**
- * Control over {@link com.oracle.truffle.api.debug.Debugger debugging} of your {@link com.oracle.truffle.api.vm.TruffleVM}. Each {@link com.oracle.truffle.api.vm.TruffleVM}
+ * Control over {@link com.oracle.truffle.api.debug.Debugger debugging} of your {@link com.oracle.truffle.api.vm.PolyglotEngine}. Each {@link com.oracle.truffle.api.vm.PolyglotEngine}
  * is inherently capable to run in debugging mode - there is just one thing
- * to do - the {@link com.oracle.truffle.api.vm.TruffleVM.Builder creator of the virtual machine}
- * needs to turn debugging on when constructing its Truffle virtual machine:
+ * to do - the {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder creator of the virtual machine}
+ * needs to turn debugging on when constructing its polyglot execution engine:
  * <pre>
- * vm = {@link com.oracle.truffle.api.vm.TruffleVM#newVM()}.
- *     {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}
+ * vm = {@link com.oracle.truffle.api.vm.PolyglotEngine#buildNew()}.
+ *     {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}
  *     {@code <}{@link com.oracle.truffle.api.debug.ExecutionEvent}{@code >}() {
  *         <b>public void</b> handle({@link com.oracle.truffle.api.debug.ExecutionEvent} ev) {
- *             <em>// configure the virtual machine as {@link com.oracle.truffle.api.vm.TruffleVM#eval(com.oracle.truffle.api.source.Source) new execution} is starting</em>
+ *             <em>// configure the virtual machine as {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source) new execution} is starting</em>
  *         }
  *     }).
- *     {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}{@code <}
+ *     {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}{@code <}
  *     {@link com.oracle.truffle.api.debug.SuspendedEvent}{@code >}() {
  *         <b>public void</b> handle({@link com.oracle.truffle.api.debug.SuspendedEvent} ev) {
  *             <em>// execution is suspended on a breakpoint or on a step - decide what next</em>
  *         }
- *     }).{@link com.oracle.truffle.api.vm.TruffleVM.Builder#build() build()};
+ *     }).{@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#build() build()};
  * </pre>
  * The debugging is controlled by events emitted by the Truffle virtual machine
  * at important moments. The {@link com.oracle.truffle.api.debug.ExecutionEvent}
- * is sent when a call to {@link com.oracle.truffle.api.vm.TruffleVM#eval(com.oracle.truffle.api.source.Source)}
+ * is sent when a call to {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)}
  * is made and allows one to configure {@link com.oracle.truffle.api.debug.Breakpoint breakpoints} and/or decide whether the
  * program should {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto() step-into} or
  * {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareContinue() just run}. Once the execution is suspended a
@@ -63,7 +63,7 @@
  * The events methods are only available when the event is being delivered and
  * shouldn't be used anytime later. Both events however provide access to
  * {@link com.oracle.truffle.api.debug.Debugger} which can be kept and used
- * during whole existence of the {@link com.oracle.truffle.api.vm.TruffleVM}.
+ * during whole existence of the {@link com.oracle.truffle.api.vm.PolyglotEngine}.
  * {@link com.oracle.truffle.api.debug.Debugger} is the central class that
  * keeps information about {@link com.oracle.truffle.api.debug.Debugger#getBreakpoints() registered breakpoints}
  * and allows one create new {@link com.oracle.truffle.api.debug.Breakpoint ones}.

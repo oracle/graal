@@ -46,7 +46,7 @@ import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.impl.DefaultSimpleInstrumentListener;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.test.SLTestRunner;
@@ -241,7 +241,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
-                TruffleVM vm = TruffleVM.newVM().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
+                PolyglotEngine vm = PolyglotEngine.buildNew().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
 
                 final String src = readAllLines(testCase.path);
                 vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));
@@ -252,7 +252,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
                     probe.attach(Instrument.create(slPrintAssigmentValueListener, "SL print assignment value"));
                 }
 
-                TruffleVM.Symbol main = vm.findGlobalSymbol("main");
+                PolyglotEngine.Value main = vm.findGlobalSymbol("main");
                 main.invoke(null);
             } else {
                 notifier.fireTestFailure(new Failure(testCase.name, new UnsupportedOperationException("No instrumentation found.")));

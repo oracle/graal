@@ -31,7 +31,7 @@ import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Enumeration;
@@ -48,12 +48,12 @@ import org.junit.Test;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
-    private TruffleVM vm;
+    private PolyglotEngine vm;
 
     @Before
     public void initializeVM() {
         mainThread = Thread.currentThread();
-        vm = TruffleVM.newVM().executor(Executors.newSingleThreadExecutor()).build();
+        vm = PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor()).build();
         assertTrue("Found " + L1 + " language", vm.getLanguages().containsKey(L1));
         assertTrue("Found " + L2 + " language", vm.getLanguages().containsKey(L2));
         assertTrue("Found " + L3 + " language", vm.getLanguages().containsKey(L3));

@@ -24,7 +24,7 @@ package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.source.Source;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L3;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import static org.junit.Assert.assertEquals;
@@ -34,7 +34,7 @@ import org.junit.Test;
 public class GlobalSymbolTest {
     @Test
     public void globalSymbolFoundByLanguage() throws IOException {
-        TruffleVM vm = TruffleVM.newVM().globalSymbol("ahoj", "42").executor(Executors.newSingleThreadExecutor()).build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().globalSymbol("ahoj", "42").executor(Executors.newSingleThreadExecutor()).build();
         // @formatter:off
         Object ret = vm.eval(
             Source.fromText("return=ahoj", "Return").withMimeType(L3)
@@ -45,8 +45,8 @@ public class GlobalSymbolTest {
 
     @Test
     public void globalSymbolFoundByVMUser() throws IOException {
-        TruffleVM vm = TruffleVM.newVM().globalSymbol("ahoj", "42").build();
-        TruffleVM.Symbol ret = vm.findGlobalSymbol("ahoj");
+        PolyglotEngine vm = PolyglotEngine.buildNew().globalSymbol("ahoj", "42").build();
+        PolyglotEngine.Value ret = vm.findGlobalSymbol("ahoj");
         assertNotNull("Symbol found", ret);
         assertEquals("42", ret.get());
     }

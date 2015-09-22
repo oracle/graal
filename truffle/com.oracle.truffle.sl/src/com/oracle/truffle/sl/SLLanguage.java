@@ -61,8 +61,8 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.TruffleVM;
-import com.oracle.truffle.api.vm.TruffleVM.Symbol;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
@@ -226,7 +226,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
      */
     public static void main(String[] args) throws IOException {
-        TruffleVM vm = TruffleVM.newVM().build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().build();
         assert vm.getLanguages().containsKey("application/x-sl");
 
         setupToolDemos();
@@ -243,7 +243,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             source = Source.fromFileName(args[0]);
         }
         vm.eval(source);
-        Symbol main = vm.findGlobalSymbol("main");
+        Value main = vm.findGlobalSymbol("main");
         if (main == null) {
             throw new SLException("No function main() defined in SL source file.");
         }
@@ -257,10 +257,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * Temporary method during API evolution, supports debugger integration.
      */
     public static void run(Source source) throws IOException {
-        TruffleVM vm = TruffleVM.newVM().build();
+        PolyglotEngine vm = PolyglotEngine.buildNew().build();
         assert vm.getLanguages().containsKey("application/x-sl");
         vm.eval(source);
-        Symbol main = vm.findGlobalSymbol("main");
+        Value main = vm.findGlobalSymbol("main");
         if (main == null) {
             throw new SLException("No function main() defined in SL source file.");
         }
@@ -271,7 +271,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * Parse and run the specified SL source. Factored out in a separate method so that it can also
      * be used by the unit test harness.
      */
-    public static long run(TruffleVM context, Path path, PrintWriter logOutput, PrintWriter out, int repeats, List<NodeFactory<? extends SLBuiltinNode>> currentBuiltins) throws IOException {
+    public static long run(PolyglotEngine context, Path path, PrintWriter logOutput, PrintWriter out, int repeats, List<NodeFactory<? extends SLBuiltinNode>> currentBuiltins) throws IOException {
         builtins = currentBuiltins;
 
         if (logOutput != null) {
@@ -287,7 +287,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         }
 
         /* Lookup our main entry point, which is per definition always named "main". */
-        Symbol main = context.findGlobalSymbol("main");
+        Value main = context.findGlobalSymbol("main");
         if (main == null) {
             throw new SLException("No function main() defined in SL source file.");
         }
@@ -495,7 +495,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         // if (statementCounts || coverage) {
         // if (registeredASTProber == null) {
         // final ASTProber newProber = new SLStandardASTProber();
-        // // This should be registered on the TruffleVM
+        // // This should be registered on the PolyglotEngine
         // Probe.registerASTProber(newProber);
         // registeredASTProber = newProber;
         // }
@@ -544,7 +544,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         public SLDebugProvider() {
             if (registeredASTProber == null) {
                 registeredASTProber = new SLStandardASTProber();
-                // This should be registered on the TruffleVM
+                // This should be registered on the PolyglotEngine
                 Probe.registerASTProber(registeredASTProber);
             }
         }
@@ -558,7 +558,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
         public void enableASTProbing(ASTProber prober) {
             if (prober != null) {
-                // This should be registered on the TruffleVM
+                // This should be registered on the PolyglotEngine
                 Probe.registerASTProber(prober);
             }
         }

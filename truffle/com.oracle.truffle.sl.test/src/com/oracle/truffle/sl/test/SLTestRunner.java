@@ -41,7 +41,7 @@
 package com.oracle.truffle.sl.test;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
@@ -229,7 +229,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
-            TruffleVM vm = TruffleVM.newVM().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
+            PolyglotEngine vm = PolyglotEngine.buildNew().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
 
             String script = readAllLines(testCase.path);
 
