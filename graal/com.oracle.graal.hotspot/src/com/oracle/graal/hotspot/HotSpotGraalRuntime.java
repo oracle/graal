@@ -45,7 +45,6 @@ import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotProxified;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.internal.jvmci.hotspot.HotSpotStackFrameReference;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.inittimer.InitTimer;
@@ -226,33 +225,16 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
 
     @Override
     public <T> T iterateFrames(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip, InspectedFrameVisitor<T> visitor) {
-        final HotSpotResolvedJavaMethod[] initialMetaMethods = toHotSpotResolvedJavaMethods(initialMethods);
-        final HotSpotResolvedJavaMethod[] matchingMetaMethods = toHotSpotResolvedJavaMethods(matchingMethods);
-
         CompilerToVM compilerToVM = runtime().getCompilerToVM();
-        HotSpotStackFrameReference current = compilerToVM.getNextStackFrame(null, initialMetaMethods, initialSkip);
+        HotSpotStackFrameReference current = compilerToVM.getNextStackFrame(null, initialMethods, initialSkip);
         while (current != null) {
             T result = visitor.visitFrame(current);
             if (result != null) {
                 return result;
             }
-            current = compilerToVM.getNextStackFrame(current, matchingMetaMethods, 0);
+            current = compilerToVM.getNextStackFrame(current, matchingMethods, 0);
         }
         return null;
-    }
-
-    private static HotSpotResolvedJavaMethod[] toHotSpotResolvedJavaMethods(ResolvedJavaMethod[] methods) {
-        if (methods == null) {
-            return null;
-        } else if (methods instanceof HotSpotResolvedJavaMethod[]) {
-            return (HotSpotResolvedJavaMethod[]) methods;
-        } else {
-            HotSpotResolvedJavaMethod[] result = new HotSpotResolvedJavaMethod[methods.length];
-            for (int i = 0; i < result.length; i++) {
-                result[i] = (HotSpotResolvedJavaMethod) methods[i];
-            }
-            return result;
-        }
     }
 
     private long runtimeStartTime;
