@@ -332,13 +332,15 @@ public abstract class TruffleLanguage<C> {
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
+        private final Instrumenter instrumenter;
 
-        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in) {
+        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter) {
             this.vm = vm;
             this.in = in;
             this.err = err;
             this.out = out;
             this.lang = lang;
+            this.instrumenter = instrumenter;
             this.langCtx = new LangCtx<>(lang, this);
         }
 
@@ -399,6 +401,10 @@ public abstract class TruffleLanguage<C> {
         public Writer stdErr() {
             return new OutputStreamWriter(err);
         }
+
+        public Instrumenter instrumenter() {
+            return instrumenter;
+        }
     }
 
     private static final AccessAPI API = new AccessAPI();
@@ -406,8 +412,8 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn) {
-            Env env = new Env(vm, language, stdOut, stdErr, stdIn);
+        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter) {
+            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter);
             return env;
         }
 

@@ -813,7 +813,7 @@ public final class TruffleVM {
 
         TruffleLanguage.Env getEnv(boolean create) {
             if (env == null && create) {
-                env = SPI.attachEnv(TruffleVM.this, info.getImpl(true), out, err, in);
+                env = SPI.attachEnv(TruffleVM.this, info.getImpl(true), out, err, in, TruffleVM.this.instrumenter);
             }
             return env;
         }
@@ -889,9 +889,9 @@ public final class TruffleVM {
         }
 
         @Override
-        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter) {
             TruffleVM vm = (TruffleVM) obj;
-            return super.attachEnv(vm, language, stdOut, stdErr, stdIn);
+            return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter);
         }
 
         @Override
