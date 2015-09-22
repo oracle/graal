@@ -113,7 +113,7 @@ public final class TruffleVM {
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter;
-    private Debugger debugger;
+    private final Debugger debugger;
 
     /**
      * Private & temporary only constructor.
@@ -128,6 +128,7 @@ public final class TruffleVM {
         this.globals = null;
         this.executor = null;
         this.instrumenter = null;
+        this.debugger = null;
     }
 
     /**
@@ -142,6 +143,7 @@ public final class TruffleVM {
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
         this.instrumenter = SPI.createInstrumenter(this);
+        this.debugger = SPI.createDebugger(this, this.instrumenter);
         Map<String, Language> map = new HashMap<>();
         for (Map.Entry<String, LanguageCache> en : LanguageCache.languages().entrySet()) {
             map.put(en.getKey(), new Language(en.getValue()));
@@ -450,14 +452,13 @@ public final class TruffleVM {
     }
 
     private Symbol eval(final Language l, final Source s) throws IOException {
-        final Debugger[] fillIn = {debugger};
         final Object[] result = {null, null};
         final CountDownLatch ready = new CountDownLatch(1);
         final TruffleLanguage[] lang = {null};
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                evalImpl(fillIn, lang, s, result, l, ready);
+                evalImpl(lang, s, result, l, ready);
             }
         });
         exceptionCheck(result);
@@ -465,13 +466,10 @@ public final class TruffleVM {
     }
 
     @SuppressWarnings("try")
-    private void evalImpl(Debugger[] fillIn, TruffleLanguage<?>[] fillLang, Source s, Object[] result, Language l, CountDownLatch ready) {
-        try (Closeable d = SPI.executionStart(this, fillIn, s)) {
+    private void evalImpl(TruffleLanguage<?>[] fillLang, Source s, Object[] result, Language l, CountDownLatch ready) {
+        try (Closeable d = SPI.executionStart(this, debugger, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
-            if (debugger == null) {
-                debugger = fillIn[0];
-            }
             result[0] = SPI.eval(langImpl, s);
         } catch (IOException ex) {
             result[1] = ex;
@@ -661,13 +659,12 @@ public final class TruffleVM {
          */
         public Symbol invoke(final Object thiz, final Object... args) throws IOException {
             get();
-            final Debugger[] fillIn = {debugger};
             final CountDownLatch done = new CountDownLatch(1);
             final Object[] res = {null, null};
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    invokeImpl(fillIn, thiz, args, res, done);
+                    invokeImpl(thiz, args, res, done);
                 }
             });
             exceptionCheck(res);
@@ -676,16 +673,12 @@ public final class TruffleVM {
 
         @SuppressWarnings("try")
         final Symbol invokeProxy(final InvocationHandler chain, final Object wrapper, final Method method, final Object[] args) throws IOException {
-            final Debugger[] fillIn = {debugger};
             final CountDownLatch done = new CountDownLatch(1);
             final Object[] res = {null, null};
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    try (final Closeable c = SPI.executionStart(TruffleVM.this, fillIn, null)) {
-                        if (debugger == null) {
-                            debugger = fillIn[0];
-                        }
+                    try (final Closeable c = SPI.executionStart(TruffleVM.this, debugger, null)) {
                         res[0] = chain.invoke(wrapper, method, args);
                     } catch (IOException ex) {
                         res[1] = ex;
@@ -701,11 +694,8 @@ public final class TruffleVM {
         }
 
         @SuppressWarnings("try")
-        private void invokeImpl(Debugger[] fillIn, Object thiz, Object[] args, Object[] res, CountDownLatch done) {
-            try (final Closeable c = SPI.executionStart(TruffleVM.this, fillIn, null)) {
-                if (debugger == null) {
-                    debugger = fillIn[0];
-                }
+        private void invokeImpl(Object thiz, Object[] args, Object[] res, CountDownLatch done) {
+            try (final Closeable c = SPI.executionStart(TruffleVM.this, debugger, null)) {
                 List<Object> arr = new ArrayList<>();
                 if (thiz == null && language != null) {
                     Object global = SPI.languageGlobal(SPI.findLanguage(TruffleVM.this, language.getClass()));
@@ -927,6 +917,11 @@ public final class TruffleVM {
         }
 
         @Override
+        protected Debugger createDebugger(Object vm, Instrumenter instrumenter) {
+            return super.createDebugger(vm, instrumenter);
+        }
+
+        @Override
         protected ASTProber getDefaultASTProber(TruffleLanguage impl) {
             return super.getDefaultASTProber(impl);
         }
@@ -955,9 +950,9 @@ public final class TruffleVM {
         }
 
         @Override
-        protected Closeable executionStart(Object obj, Debugger[] fillIn, Source s) {
+        protected Closeable executionStart(Object obj, Debugger debugger, Source s) {
             TruffleVM vm = (TruffleVM) obj;
-            return super.executionStart(vm, fillIn, s);
+            return super.executionStart(vm, debugger, s);
         }
 
         @Override

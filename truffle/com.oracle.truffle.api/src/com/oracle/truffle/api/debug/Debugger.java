@@ -808,42 +808,26 @@ public final class Debugger {
 
     @SuppressWarnings("rawtypes")
     private static final class AccessorDebug extends Accessor {
+
         @Override
-        protected Closeable executionStart(Object vm, Debugger[] fillIn, Source s) {
-            final Debugger d;
-            if (fillIn[0] == null) {
-                final Instrumenter instrumenter = ACCESSOR.getInstrumenter(vm);
-                d = fillIn[0] = new Debugger(vm, instrumenter);
-            } else {
-                d = fillIn[0];
-            }
-            d.executionStarted(s);
+        protected Closeable executionStart(Object vm, final Debugger debugger, Source s) {
+            debugger.executionStarted(s);
             return new Closeable() {
                 @Override
                 public void close() throws IOException {
-                    d.executionEnded();
+                    debugger.executionEnded();
                 }
             };
         }
 
         @Override
+        protected Debugger createDebugger(Object vm, Instrumenter instrumenter) {
+            return new Debugger(vm, instrumenter);
+        }
+
+        @Override
         protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
             return super.findLanguage(probe);
-        }
-
-        @Override
-        protected TruffleLanguage.Env findLanguage(Object vm, Class<? extends TruffleLanguage> languageClass) {
-            return super.findLanguage(vm, languageClass);
-        }
-
-        @Override
-        protected TruffleLanguage<?> findLanguage(TruffleLanguage.Env env) {
-            return super.findLanguage(env);
-        }
-
-        @Override
-        protected Instrumenter getInstrumenter(Object vm) {
-            return super.getInstrumenter(vm);
         }
 
         @Override

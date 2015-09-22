@@ -309,11 +309,15 @@ public abstract class Accessor {
         return INSTRUMENT.createInstrumenter(vm);
     }
 
+    protected Debugger createDebugger(Object vm, Instrumenter instrumenter) {
+        return DEBUG.createDebugger(vm, instrumenter);
+    }
+
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
-    protected Closeable executionStart(Object vm, Debugger[] fillIn, Source s) {
-        final Closeable debugClose = DEBUG.executionStart(vm, fillIn, s);
+    protected Closeable executionStart(Object vm, Debugger debugger, Source s) {
+        final Closeable debugClose = DEBUG.executionStart(vm, debugger, s);
         final Object prev = CURRENT_VM.get();
         if (!(vm == previousVM.get())) {
             previousVM = new WeakReference<>(vm);
