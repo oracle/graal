@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.code.UnsignedMath;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.graph.NodeClass;
@@ -57,7 +56,7 @@ public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLo
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.remainder(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
+            return ConstantNode.forIntegerStamp(stamp(), Long.remainderUnsigned(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
         } else if (forY.isConstant()) {
             long c = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (c == 1) {

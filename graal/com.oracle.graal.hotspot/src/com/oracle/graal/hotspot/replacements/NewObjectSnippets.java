@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
+import static com.oracle.graal.compiler.common.calc.UnsignedMath.belowThan;
 import static com.oracle.graal.hotspot.nodes.CStringNode.cstring;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
@@ -62,7 +63,6 @@ import static com.oracle.graal.replacements.ReplacementsUtil.REPLACEMENTS_ASSERT
 import static com.oracle.graal.replacements.ReplacementsUtil.staticAssert;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.explodeLoop;
-import static jdk.internal.jvmci.code.UnsignedMath.belowThan;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.computeArrayAllocationSize;
 import jdk.internal.jvmci.code.CodeUtil;

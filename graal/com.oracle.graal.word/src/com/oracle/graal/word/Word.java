@@ -29,11 +29,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import jdk.internal.jvmci.code.UnsignedMath;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.calc.UnsignedMath;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.calc.AndNode;
@@ -319,7 +319,7 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Operation(node = UnsignedDivNode.class)
     public Word unsignedDivide(Word val) {
-        return box(UnsignedMath.divide(unbox(), val.unbox()));
+        return box(Long.divideUnsigned(unbox(), val.unbox()));
     }
 
     @Override
@@ -353,7 +353,7 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Operation(node = UnsignedRemNode.class)
     public Word unsignedRemainder(Word val) {
-        return box(UnsignedMath.remainder(unbox(), val.unbox()));
+        return box(Long.remainderUnsigned(unbox(), val.unbox()));
     }
 
     @Override

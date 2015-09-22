@@ -30,7 +30,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import jdk.internal.jvmci.code.UnsignedMath;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.DeoptimizationAction;
 import jdk.internal.jvmci.meta.DeoptimizationReason;
@@ -46,6 +45,7 @@ import sun.misc.Unsafe;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.calc.UnsignedMath;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -415,30 +415,6 @@ public class StandardGraphBuilderPlugins {
         r.register2("aboveOrEqual", long.class, long.class, new UnsignedMathPlugin(Condition.AE));
         r.register2("belowOrEqual", int.class, int.class, new UnsignedMathPlugin(Condition.BE));
         r.register2("belowOrEqual", long.class, long.class, new UnsignedMathPlugin(Condition.BE));
-        r.register2("divide", int.class, int.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                b.push(JavaKind.Int, b.recursiveAppend(new UnsignedDivNode(x, y).canonical(null, x, y)));
-                return true;
-            }
-        });
-        r.register2("divide", long.class, long.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                b.push(JavaKind.Long, b.recursiveAppend(new UnsignedDivNode(x, y).canonical(null, x, y)));
-                return true;
-            }
-        });
-        r.register2("remainder", int.class, int.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                b.push(JavaKind.Int, b.recursiveAppend(new UnsignedRemNode(x, y).canonical(null, x, y)));
-                return true;
-            }
-        });
-        r.register2("remainder", long.class, long.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                b.push(JavaKind.Long, b.recursiveAppend(new UnsignedRemNode(x, y).canonical(null, x, y)));
-                return true;
-            }
-        });
     }
 
     protected static void registerBoxingPlugins(InvocationPlugins plugins) {

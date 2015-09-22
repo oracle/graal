@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.common.calc;
 
-import jdk.internal.jvmci.code.UnsignedMath;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.Constant;
 import jdk.internal.jvmci.meta.ConstantReflectionProvider;
