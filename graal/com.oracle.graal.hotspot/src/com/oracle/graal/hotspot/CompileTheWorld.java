@@ -108,14 +108,19 @@ public final class CompileTheWorld {
         /**
          * Creates a {@link Config} object by parsing a set of space separated override options.
          *
-         * @param options a space or hash separated set of option value settings with each option
-         *            setting in a format compatible with {@link OptionsParser#parseOption}. Ignored
-         *            if null.
+         * @param options a space separated set of option value settings with each option setting in
+         *            a -G:<value> format but without the leading "-G:". Ignored if null.
          */
         public Config(String options) {
             if (options != null) {
-                for (String option : options.split("\\s+|#")) {
-                    OptionsParser.parseOption(option, this, null);
+                for (String optionSetting : options.split("\\s+|#")) {
+                    if (optionSetting.charAt(0) == '-') {
+                        OptionsParser.parseOptionSetting(optionSetting.substring(1) + "=false", this, null);
+                    } else if (optionSetting.charAt(0) == '+') {
+                        OptionsParser.parseOptionSetting(optionSetting.substring(1) + "=true", this, null);
+                    } else {
+                        OptionsParser.parseOptionSetting(optionSetting, this, null);
+                    }
                 }
             }
         }
