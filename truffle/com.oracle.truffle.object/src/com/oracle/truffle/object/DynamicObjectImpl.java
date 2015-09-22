@@ -288,7 +288,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         if (existing == null) {
             updateShape();
             oldShape = getShape();
-            Shape newShape = oldShape.addProperty(Property.create(id, oldShape.allocator().locationForValue(value, true, true), flags));
+            Shape newShape = oldShape.addProperty(Property.create(id, oldShape.allocator().locationForValue(value, true, value != null), flags));
             updateShape();
             newShape.getLastProperty().setGeneric(this, value, oldShape, newShape);
         } else {
