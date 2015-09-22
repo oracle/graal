@@ -33,7 +33,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.function.Consumer;
 
-import jdk.internal.jvmci.code.AbstractAddress;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.code.CompilationResult.ConstantReference;
@@ -55,6 +54,7 @@ import jdk.internal.jvmci.options.Option;
 import jdk.internal.jvmci.options.OptionType;
 import jdk.internal.jvmci.options.OptionValue;
 
+import com.oracle.graal.asm.AbstractAddress;
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;

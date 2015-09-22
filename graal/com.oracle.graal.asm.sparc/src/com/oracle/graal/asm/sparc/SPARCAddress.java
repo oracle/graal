@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,10 @@ package com.oracle.graal.asm.sparc;
 import static jdk.internal.jvmci.sparc.SPARC.STACK_BIAS;
 import static jdk.internal.jvmci.sparc.SPARC.fp;
 import static jdk.internal.jvmci.sparc.SPARC.sp;
-import jdk.internal.jvmci.code.AbstractAddress;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.sparc.SPARC;
+
+import com.oracle.graal.asm.AbstractAddress;
 
 public class SPARCAddress extends AbstractAddress {
 

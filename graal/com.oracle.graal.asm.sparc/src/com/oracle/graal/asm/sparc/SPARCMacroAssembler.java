@@ -37,13 +37,13 @@ import static jdk.internal.jvmci.sparc.SPARC.o7;
 
 import java.util.function.Consumer;
 
-import jdk.internal.jvmci.code.AbstractAddress;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.sparc.SPARC;
 import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 
+import com.oracle.graal.asm.AbstractAddress;
 import com.oracle.graal.asm.Label;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
