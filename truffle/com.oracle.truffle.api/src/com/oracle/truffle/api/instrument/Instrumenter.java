@@ -84,15 +84,14 @@ public final class Instrumenter {
     }
 
     /**
-     * {@linkplain Instrument Instrumentation}-based tools that gather data during Guest Language
+     * {@linkplain Instrument Instrumentation}-based collectors of data during Guest Language
      * program execution.
      * <p>
      * Tools share a common <em>life cycle</em>:
      * <ul>
-     * <li>A newly created tool is inert until {@linkplain #install(Instrumenter) installed}.</li>
+     * <li>A newly created tool is inert until {@linkplain Instrumenter#install(Tool) installed}.</li>
      * <li>An installed tool becomes <em>enabled</em> and immediately begins installing
-     * {@linkplain Instrument instrumentation} on subsequently created ASTs and collecting data from
-     * those instruments</li>
+     * {@linkplain Instrument instrumentation} on ASTs and collecting execution data from them.</li>
      * <li>A tool may only be installed once.</li>
      * <li>It should be possible to install multiple instances of a tool, possibly (but not
      * necessarily) configured differently with respect to what data is being collected.</li>
@@ -118,10 +117,6 @@ public final class Instrumenter {
      * <li>Return modification-safe representations of the data; and</li>
      * <li>Not change the state of the data.</li>
      * </ul>
-     * <b>Note:</b><br>
-     * Tool installation is currently <em>global</em> to the Truffle Execution environment. When
-     * language-agnostic management of individual execution environments is added to the platform,
-     * installation will be (optionally) specific to a single execution environment.
      */
     public abstract static class Tool<T extends Tool<?>> {
         // TODO (mlvdv) still thinking about the most appropriate name for this class of tools
@@ -285,21 +280,6 @@ public final class Instrumenter {
      */
     public boolean isInstrumentable(Node node) {
         return ACCESSOR.isInstrumentable(vm, node);
-    }
-
-    /**
-     * For AST nodes that are {@linkplain #isInstrumentable() instrumentable}, returns a
-     * <em>wrapper node</em> that:
-     * <ol>
-     * <li>implements {@link WrapperNode}</li>
-     * <li>has the node as its single child, and</li>
-     * <li>whose type is safe for replacement of the node in the parent.</li>
-     * </ol>
-     *
-     * @return an appropriately typed {@link WrapperNode}
-     */
-    public WrapperNode createWrapperNode(Node node) {
-        return ACCESSOR.createWrapperNode(vm, node);
     }
 
     /**
@@ -558,6 +538,10 @@ public final class Instrumenter {
     }
 
     void executionEnded() {
+    }
+
+    WrapperNode createWrapperNode(Node node) {
+        return ACCESSOR.createWrapperNode(vm, node);
     }
 
     void tagAdded(Probe probe, SyntaxTag tag, Object tagValue) {

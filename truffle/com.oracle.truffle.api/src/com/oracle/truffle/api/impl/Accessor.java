@@ -215,6 +215,9 @@ public abstract class Accessor {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Provided by each {@linkplain TruffleLanguage language implementation}.
+     */
     protected boolean isInstrumentable(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
         Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
@@ -226,6 +229,9 @@ public abstract class Accessor {
         return API.isInstrumentable(node, language);
     }
 
+    /**
+     * Provided by each {@linkplain TruffleLanguage language implementation}.
+     */
     protected WrapperNode createWrapperNode(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
         Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
@@ -237,6 +243,9 @@ public abstract class Accessor {
         return API.createWrapperNode(node, language);
     }
 
+    /**
+     * Provided by each {@linkplain TruffleLanguage language implementation}.
+     */
     protected ASTProber getDefaultASTProber(TruffleLanguage language) {
         return API.getDefaultASTProber(language);
     }
