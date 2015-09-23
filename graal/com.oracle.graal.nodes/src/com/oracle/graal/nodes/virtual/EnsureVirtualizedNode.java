@@ -28,6 +28,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.VerificationError;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Lowerable;
@@ -71,6 +72,14 @@ public final class EnsureVirtualizedNode extends FixedWithNextNode implements Vi
 
     public static void ensureVirtualFailure(Node location, Stamp stamp) {
         Throwable exception = new VerificationError("Object should not be materialized (stamp=%s):", stamp);
-        throw GraphUtil.approxSourceException(location, exception);
+        Node pos;
+        if (location instanceof FixedWithNextNode) {
+            pos = ((FixedWithNextNode) location).next();
+        } else if (location instanceof AbstractEndNode) {
+            pos = ((AbstractEndNode) location).merge();
+        } else {
+            pos = location;
+        }
+        throw GraphUtil.approxSourceException(pos, exception);
     }
 }
