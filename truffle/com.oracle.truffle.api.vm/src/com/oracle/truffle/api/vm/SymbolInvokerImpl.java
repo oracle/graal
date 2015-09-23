@@ -83,11 +83,6 @@ final class SymbolInvokerImpl {
             Object tmp = ForeignAccess.execute(foreignAccess, frame, function, args);
             return convert.convert(frame, tmp);
         }
-
-        @Override
-        public void applyInstrumentation() {
-            SymbolInvokerImpl.ACCESSOR_INTEROP.applyInstrumentation(foreignAccess);
-        }
     }
 
     private static final class ConvertNode extends Node {
@@ -131,14 +126,4 @@ final class SymbolInvokerImpl {
             return obj;
         }
     }
-
-    static final class AccessorInterop extends Accessor {
-
-        @Override
-        protected void applyInstrumentation(Node node) {
-            super.applyInstrumentation(node);
-        }
-    }
-
-    static final AccessorInterop ACCESSOR_INTEROP = new AccessorInterop();
 }

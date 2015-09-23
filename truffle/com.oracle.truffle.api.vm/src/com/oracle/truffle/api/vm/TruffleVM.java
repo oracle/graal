@@ -960,5 +960,6 @@ public final class TruffleVM {
             TruffleVM vm = (TruffleVM) obj;
             vm.dispatch(event);
         }
+
     } // end of SPIAccessor
 }

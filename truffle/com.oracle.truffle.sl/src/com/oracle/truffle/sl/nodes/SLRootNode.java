@@ -88,18 +88,9 @@ public final class SLRootNode extends RootNode {
         this.isCloningAllowed = isCloningAllowed;
     }
 
-    public SLExpressionNode getBodyNode() {
-        return bodyNode;
-    }
-
     @Override
     public boolean isCloningAllowed() {
         return isCloningAllowed;
-    }
-
-    @Override
-    public void applyInstrumentation() {
-        super.applyInstrumentation(bodyNode);
     }
 
     @Override

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
-import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -161,7 +160,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     *
+     * 
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();
@@ -186,26 +185,13 @@ public abstract class RootNode extends Node {
         }
     }
 
-    /**
-     * Apply to the AST all instances of {@link ASTProber} specified for the language, if any, held
-     * by this root node. This can only be done once the AST is complete, notably once all parent
-     * pointers are correctly assigned. But it also must be done before any AST cloning or
-     * execution.
-     * <p>
-     * If this is not done, then the AST will not be subject to debugging or any other
-     * instrumentation-supported tooling.
-     * <p>
-     * Implementations should ensure that instrumentation is never applied more than once to an AST,
-     * as this is not guaranteed to be error-free.
-     *
-     * @see TruffleLanguage
-     */
-    public void applyInstrumentation() {
+    public final void applyInstrumentation() {
+        super.probeAST(this);
     }
 
     /**
      * Helper method to create a root node that always returns the same value. Certain operations
-     * (expecially {@link com.oracle.truffle.api.interop inter-operability} API) require return of
+     * (especially {@link com.oracle.truffle.api.interop inter-operability} API) require return of
      * stable {@link RootNode root nodes}. To simplify creation of such nodes, here is a factory
      * method that can create {@link RootNode} that returns always the same value.
      *

@@ -563,29 +563,31 @@ public final class Instrumenter {
      * Enables instrumentation in a newly created AST by applying all registered instances of
      * {@link ASTProber}.
      */
-    private void applyInstrumentation(Node node) {
+    private void probeAST(RootNode rootNode) {
+        if (!astProbers.isEmpty()) {
 
-        String name = "<?>";
-        final Source source = findSource(node);
-        if (source != null) {
-            name = source.getShortName();
-        } else {
-            final SourceSection sourceSection = node.getEncapsulatingSourceSection();
-            if (sourceSection != null) {
-                name = sourceSection.getShortDescription();
+            String name = "<?>";
+            final Source source = findSource(rootNode);
+            if (source != null) {
+                name = source.getShortName();
+            } else {
+                final SourceSection sourceSection = rootNode.getEncapsulatingSourceSection();
+                if (sourceSection != null) {
+                    name = sourceSection.getShortDescription();
+                }
             }
+            trace("START %s", name);
+            for (ProbeListener listener : probeListeners) {
+                listener.startASTProbing(source);
+            }
+            for (ASTProber prober : astProbers) {
+                prober.probeAST(this, rootNode);  // TODO (mlvdv)
+            }
+            for (ProbeListener listener : probeListeners) {
+                listener.endASTProbing(source);
+            }
+            trace("FINISHED %s", name);
         }
-        trace("START %s", name);
-        for (ProbeListener listener : probeListeners) {
-            listener.startASTProbing(source);
-        }
-        for (ASTProber prober : astProbers) {
-            prober.probeAST(this, node);  // TODO (mlvdv)
-        }
-        for (ProbeListener listener : probeListeners) {
-            listener.endASTProbing(source);
-        }
-        trace("FINISHED %s", name);
     }
 
     static final class AccessorInstrument extends Accessor {
@@ -618,11 +620,15 @@ public final class Instrumenter {
         }
 
         @Override
-        protected void applyInstrumentation(Node node) {
-            super.getInstrumenter(null).applyInstrumentation(node);
+        protected void probeAST(RootNode rootNode) {
+            // Normally null vm argument; can be reflectively set for testing
+            super.getInstrumenter(testVM).probeAST(rootNode);
         }
     }
 
     static final AccessorInstrument ACCESSOR = new AccessorInstrument();
+
+    // Normally null; set for testing where the Accessor hasn't been fully initialized
+    private static Object testVM = null;
 
 }

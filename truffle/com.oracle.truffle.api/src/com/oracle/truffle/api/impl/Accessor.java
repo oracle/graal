@@ -59,7 +59,6 @@ public abstract class Accessor {
     private static Accessor API;
     private static Accessor SPI;
     private static Accessor NODES;
-    private static Accessor INTEROP;
     private static Accessor INSTRUMENT;
     private static Accessor DEBUG;
     private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
@@ -162,11 +161,6 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             NODES = this;
-        } else if (this.getClass().getSimpleName().endsWith("Interop")) {
-            if (INTEROP != null) {
-                throw new IllegalStateException();
-            }
-            INTEROP = this;
         } else if (this.getClass().getSimpleName().endsWith("Instrument")) {
             if (INSTRUMENT != null) {
                 throw new IllegalStateException();
@@ -268,7 +262,7 @@ public abstract class Accessor {
         if (known == null) {
             vm = CURRENT_VM.get();
             if (vm == null) {
-                throw new IllegalStateException();
+                throw new IllegalStateException("Accessor.findLanguage access to vm");
             }
             if (languageClass == null) {
                 return null;
@@ -284,7 +278,7 @@ public abstract class Accessor {
         if (known == null) {
             vm = CURRENT_VM.get();
             if (vm == null) {
-                throw new IllegalStateException();
+                throw new IllegalStateException("Accessor.findLanguageImpl access to vm");
             }
         } else {
             vm = known;
@@ -297,7 +291,7 @@ public abstract class Accessor {
         if (known == null) {
             vm = CURRENT_VM.get();
             if (vm == null) {
-                throw new IllegalStateException();
+                throw new IllegalStateException("Accessor.getInstrumenter access to vm");
             }
         } else {
             vm = known;
@@ -367,7 +361,8 @@ public abstract class Accessor {
         return API.findLanguage(env);
     }
 
-    protected void applyInstrumentation(Node node) {
-        INSTRUMENT.applyInstrumentation(node);
+    /** Applies all registered {@linkplain ASTProber probers} to the AST. */
+    protected void probeAST(RootNode rootNode) {
+        INSTRUMENT.probeAST(rootNode);
     }
 }
