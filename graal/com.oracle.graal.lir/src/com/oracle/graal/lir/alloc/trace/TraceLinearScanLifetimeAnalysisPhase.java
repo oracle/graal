@@ -47,6 +47,7 @@ import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
+import com.oracle.graal.compiler.common.BackendOptions;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -627,6 +628,10 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             }
         }
 
+        protected static Boolean neverSpillConstants() {
+            return BackendOptions.UserOptions.NeverSpillConstants.getValue();
+        }
+
         /**
          * Returns a value for a interval definition, which can be used for re-materialization.
          *
@@ -641,18 +646,20 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             if (op instanceof LoadConstantOp) {
                 LoadConstantOp move = (LoadConstantOp) op;
                 if (move.getConstant() instanceof JavaConstant) {
-                    /*
-                     * Check if the interval has any uses which would accept an stack location
-                     * (priority == ShouldHaveRegister). Rematerialization of such intervals can
-                     * result in a degradation, because rematerialization always inserts a constant
-                     * load, even if the value is not needed in a register.
-                     */
-                    UsePosList usePosList = interval.usePosList();
-                    int numUsePos = usePosList.size();
-                    for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
-                        TraceInterval.RegisterPriority priority = usePosList.registerPriority(useIdx);
-                        if (priority == TraceInterval.RegisterPriority.ShouldHaveRegister) {
-                            return null;
+                    if (!neverSpillConstants()) {
+                        /*
+                         * Check if the interval has any uses which would accept an stack location
+                         * (priority == ShouldHaveRegister). Rematerialization of such intervals can
+                         * result in a degradation, because rematerialization always inserts a
+                         * constant load, even if the value is not needed in a register.
+                         */
+                        UsePosList usePosList = interval.usePosList();
+                        int numUsePos = usePosList.size();
+                        for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
+                            TraceInterval.RegisterPriority priority = usePosList.registerPriority(useIdx);
+                            if (priority == TraceInterval.RegisterPriority.ShouldHaveRegister) {
+                                return null;
+                            }
                         }
                     }
                     return (JavaConstant) move.getConstant();
