@@ -80,18 +80,6 @@ public abstract class Accessor {
                 return false;
             }
 
-            @SuppressWarnings("deprecation")
-            @Override
-            protected ToolSupportProvider getToolSupport() {
-                throw new UnsupportedOperationException();
-            }
-
-            @SuppressWarnings("deprecation")
-            @Override
-            protected DebugSupportProvider getDebugSupport() {
-                return null;
-            }
-
             @Override
             protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
                 throw new IOException();
@@ -120,12 +108,6 @@ public abstract class Accessor {
             @Override
             protected Visualizer getVisualizer() {
                 return null;
-            }
-
-            @SuppressWarnings("deprecation")
-            @Override
-            protected void enableASTProbing(ASTProber astProber) {
-                throw new UnsupportedOperationException();
             }
 
             @Override

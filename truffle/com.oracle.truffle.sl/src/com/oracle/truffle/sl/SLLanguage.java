@@ -53,16 +53,14 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
-import com.oracle.truffle.api.instrument.WrapperNode;
-import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.GraphPrintVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -190,7 +188,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 
 /*
- * 
+ *
  * <p> <b>Tools:</b><br> The use of some of Truffle's support for developer tools (based on the
  * Truffle Instrumentation Framework) are demonstrated in this file, for example: <ul> <li>a
  * {@linkplain NodeExecCounter counter for node executions}, tabulated by node type; and</li> <li>a
@@ -510,12 +508,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return astProber;
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    protected void enableASTProbing(ASTProber prober) {
-        throw new UnsupportedOperationException();
-    }
-
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
         throw new IllegalStateException("evalInContext not supported in this language");
@@ -524,18 +516,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
         throw new IllegalStateException("createAdvancedInstrumentRootFactory not supported in this language");
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected ToolSupportProvider getToolSupport() {
-        return null;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected DebugSupportProvider getDebugSupport() {
-        return null;
     }
 
     public Node createFindContextNode0() {

@@ -39,7 +39,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
@@ -48,7 +47,6 @@ import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -192,25 +190,10 @@ public abstract class TruffleLanguage<C> {
      */
     protected abstract boolean isObjectOfLanguage(Object object);
 
-    @Deprecated
-    protected abstract ToolSupportProvider getToolSupport();
-
-    @Deprecated
-    protected abstract DebugSupportProvider getDebugSupport();
-
     /**
      * Gets visualization services for language-specific information.
      */
     protected abstract Visualizer getVisualizer();
-
-    /**
-     * Enables AST probing on all subsequently created ASTs (sources parsed).
-     *
-     * @param astProber optional AST prober to enable; the default for the language used if
-     *            {@code null}
-     */
-    @Deprecated
-    protected abstract void enableASTProbing(ASTProber astProber);
 
     /**
      * Returns {@code true} for a node can be "instrumented" by
@@ -489,17 +472,6 @@ public abstract class TruffleLanguage<C> {
             return language.getDefaultASTProber();
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        protected ToolSupportProvider getToolSupport(TruffleLanguage<?> l) {
-            return l.getToolSupport();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        protected DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
-            return l.getDebugSupport();
-        }
     }
 
 }

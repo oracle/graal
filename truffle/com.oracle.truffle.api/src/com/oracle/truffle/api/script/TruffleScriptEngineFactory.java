@@ -27,11 +27,12 @@ package com.oracle.truffle.api.script;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 
-@Deprecated
 /**
  * Tool access to the creation of Truffle execution engines.
+ * 
  * @deprecated no longer needed and will be removed
  */
+@Deprecated
 public abstract class TruffleScriptEngineFactory implements ScriptEngineFactory {
 
     // TODO (mlvdv) first step, based on a suggestion from NetBeans

@@ -30,7 +30,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
@@ -41,7 +40,6 @@ import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -142,12 +140,6 @@ public class ToolTestUtil {
             return null;
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        protected void enableASTProbing(ASTProber astProber) {
-            throw new UnsupportedOperationException();
-        }
-
         @Override
         protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
             return null;
@@ -158,23 +150,10 @@ public class ToolTestUtil {
             return null;
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        protected ToolSupportProvider getToolSupport() {
-            throw new UnsupportedOperationException();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        protected DebugSupportProvider getDebugSupport() {
-            throw new UnsupportedOperationException();
-        }
-
         @Override
         protected Object createContext(Env env) {
             return null;
         }
-
     }
 
     static final class TestASTProber implements ASTProber {
