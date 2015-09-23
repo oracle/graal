@@ -29,11 +29,24 @@ import com.oracle.truffle.api.dsl.test.NodeChildNoNameTestFactory.OneArgNoNameFa
 import com.oracle.truffle.api.dsl.test.NodeChildNoNameTestFactory.ThreeArgsNoNameFactory;
 import com.oracle.truffle.api.dsl.test.NodeChildNoNameTestFactory.TwoArgsNoNameFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.frame.VirtualFrame;
+
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class NodeChildNoNameTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @Before
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testOneArg() {

@@ -22,6 +22,22 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createRootPrefix;
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.theories.DataPoints;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
+
 import com.oracle.truffle.api.dsl.CreateCast;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -29,28 +45,27 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.internal.SpecializationNode;
 import com.oracle.truffle.api.dsl.test.SourceSectionTestFactory.SourceSection0Factory;
 import com.oracle.truffle.api.dsl.test.SourceSectionTestFactory.SourceSection1Factory;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createRootPrefix;
-import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.sameInstance;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
-import org.junit.Test;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
 
 @RunWith(Theories.class)
 public class SourceSectionTest {
 
     @DataPoints public static final int[] data = new int[]{1, 2, 3, 4};
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Theory
     public void testSourceSections(int value0, int value1, int value2) {

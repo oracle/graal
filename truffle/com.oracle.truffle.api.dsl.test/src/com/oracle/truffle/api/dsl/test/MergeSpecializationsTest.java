@@ -22,6 +22,18 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -30,20 +42,24 @@ import com.oracle.truffle.api.dsl.internal.SpecializationNode;
 import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.dsl.test.MergeSpecializationsTestFactory.TestCachedNodeFactory;
 import com.oracle.truffle.api.dsl.test.MergeSpecializationsTestFactory.TestNodeFactory;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
-import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.nodes.Node;
-import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import org.junit.Test;
 
 public class MergeSpecializationsTest {
 
     private static final int THREADS = 50;
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @NodeChild
     @SuppressWarnings("unused")

@@ -22,6 +22,18 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
+import static com.oracle.truffle.api.dsl.test.TestHelper.getNode;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -36,16 +48,20 @@ import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.FieldTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MethodTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.NodeFieldTest2Factory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.StaticFieldTestFactory;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
-import static com.oracle.truffle.api.dsl.test.TestHelper.getNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import java.util.HashMap;
-import java.util.Map;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import org.junit.Test;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 
 public class AssumptionsTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testField() {

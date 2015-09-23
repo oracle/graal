@@ -22,6 +22,18 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.array;
+import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -33,20 +45,23 @@ import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains3Factory;
 import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains4Factory;
 import com.oracle.truffle.api.dsl.test.ContainsTestFactory.PolymorphicToMonomorphic0Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
-import static com.oracle.truffle.api.dsl.test.TestHelper.array;
-import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
-import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.nodes.NodeCost;
-import static org.hamcrest.CoreMatchers.is;
-import org.junit.Assert;
-import static org.junit.Assert.assertThat;
-import org.junit.Test;
 
 @SuppressWarnings("unused")
 public class ContainsTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     /*
      * Tests a simple monomorphic inclusion.

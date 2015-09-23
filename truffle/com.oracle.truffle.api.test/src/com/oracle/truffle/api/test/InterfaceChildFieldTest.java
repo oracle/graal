@@ -30,14 +30,29 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.utilities.InstrumentationTestMode;
+
 import java.util.Iterator;
+
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Test child fields declared with interface types instead of {@link Node} subclasses.
  */
 public class InterfaceChildFieldTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testChild() {

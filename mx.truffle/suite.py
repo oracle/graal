@@ -84,6 +84,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.dsl.processor",
+        "com.oracle.truffle.api.vm",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -128,6 +129,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
+        "com.oracle.truffle.api.vm",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",

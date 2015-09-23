@@ -22,23 +22,38 @@
  */
 package com.oracle.truffle.api.dsl.test.examples;
 
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
 import com.oracle.truffle.api.dsl.test.examples.InteropFactory.UseInteropNodeGen;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 /**
  * This example aims to illustrate how the {@link Cached} annotation can be used to implement a
  * cache for a simplified language interoperability pattern.
  */
 public class Interop {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testInterop() {

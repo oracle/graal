@@ -22,18 +22,34 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.LazyClassLoadingTestFactory.TestNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import org.junit.Assert;
-import org.junit.Test;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 
 public class LazyClassLoadingTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
+
     @Test
     public void test() {
         String factoryName = TestNodeFactory.class.getName();

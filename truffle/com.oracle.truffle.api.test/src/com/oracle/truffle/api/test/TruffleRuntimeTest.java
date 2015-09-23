@@ -30,15 +30,20 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.utilities.InstrumentationTestMode;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -63,8 +68,14 @@ public class TruffleRuntimeTest {
     private TruffleRuntime runtime;
 
     @Before
-    public void setUp() {
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
         this.runtime = Truffle.getRuntime();
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
     }
 
     private static RootNode createTestRootNode() {

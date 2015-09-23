@@ -22,6 +22,19 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.array;
+import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
+import static org.junit.Assert.assertEquals;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -29,21 +42,24 @@ import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic1Factor
 import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic2Factory;
 import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic3Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
-import static com.oracle.truffle.api.dsl.test.TestHelper.array;
-import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 public class PolymorphicTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     private static void assertParent(Node expectedParent, Node child) {
         Node parent = child.getParent();

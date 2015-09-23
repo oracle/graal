@@ -29,8 +29,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.utilities.InstrumentationTestMode;
+
 import java.util.Iterator;
+
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -54,6 +59,16 @@ import org.junit.Test;
  * </p>
  */
 public class ChildNodeTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void test() {

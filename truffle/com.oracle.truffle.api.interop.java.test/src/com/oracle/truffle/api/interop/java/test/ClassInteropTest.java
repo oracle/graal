@@ -27,10 +27,13 @@ package com.oracle.truffle.api.interop.java.test;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,9 +51,15 @@ public class ClassInteropTest {
     }
 
     @Before
-    public void initObjects() {
+    public void initObjects() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         obj = JavaInterop.asTruffleObject(ClassInteropTest.class);
         xyp = JavaInterop.asJavaObject(XYPlus.class, obj);
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
     }
 
     @Test

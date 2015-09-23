@@ -113,11 +113,6 @@ public class InitializationTest {
         public Object execute(VirtualFrame frame) {
             return node.constant();
         }
-
-        @Override
-        public void applyInstrumentation() {
-            super.applyInstrumentation(node);
-        }
     }
 
     private static class ANode extends Node {

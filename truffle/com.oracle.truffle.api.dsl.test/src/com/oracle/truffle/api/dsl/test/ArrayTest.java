@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -35,12 +37,23 @@ import com.oracle.truffle.api.dsl.TypeCheck;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.test.ArrayTestFactory.TestNode1NodeGen;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class ArrayTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testNode1() {

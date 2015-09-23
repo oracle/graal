@@ -24,6 +24,8 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -40,8 +42,19 @@ import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.SingleChildNodeFa
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.VarArgsNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 
 public class ShortCircuitTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testSingleChild1() {

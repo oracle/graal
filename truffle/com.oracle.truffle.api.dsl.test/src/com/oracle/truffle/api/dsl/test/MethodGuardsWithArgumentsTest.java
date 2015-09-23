@@ -22,6 +22,14 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -32,14 +40,21 @@ import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArg
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArgumentsDouble2Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArgumentsDouble3Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArgumentsSingle2Factory;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
-import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import org.junit.Assert;
-import org.junit.Test;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 
 public class MethodGuardsWithArgumentsTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testMArguments0() {

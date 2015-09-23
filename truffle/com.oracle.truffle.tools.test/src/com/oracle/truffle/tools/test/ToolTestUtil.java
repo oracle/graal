@@ -25,8 +25,6 @@
 package com.oracle.truffle.tools.test;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -323,10 +321,6 @@ public class ToolTestUtil {
             return true;
         }
 
-        @Override
-        public void applyInstrumentation() {
-            super.applyInstrumentation(body);
-        }
     }
 
     /**
@@ -359,18 +353,5 @@ public class ToolTestUtil {
         public boolean isCloningAllowed() {
             return true;
         }
-
-        @Override
-        public void applyInstrumentation() {
-            Method method;
-            try {
-                method = Instrumenter.class.getDeclaredMethod("applyInstrumentation", Node.class);
-                method.setAccessible(true);
-                method.invoke(instrumenter, body);
-            } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                throw new RuntimeException("InstrumentationTestNodes");
-            }
-        }
     }
-
 }

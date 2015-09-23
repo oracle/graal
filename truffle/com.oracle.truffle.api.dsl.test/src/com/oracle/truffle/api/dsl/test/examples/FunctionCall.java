@@ -22,19 +22,24 @@
  */
 package com.oracle.truffle.api.dsl.test.examples;
 
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createDummyTarget;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createDummyTarget;
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
 import com.oracle.truffle.api.dsl.test.examples.FunctionCallFactory.FunctionCallNodeGen;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 /**
  * This example illustrates how {@link Cached} can be used to implement function calls that use
@@ -45,6 +50,16 @@ import org.junit.Test;
  */
 @SuppressWarnings("unused")
 public class FunctionCall {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testFunctionCall() {

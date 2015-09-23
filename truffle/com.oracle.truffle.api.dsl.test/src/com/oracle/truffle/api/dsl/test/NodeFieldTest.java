@@ -22,6 +22,13 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -32,12 +39,20 @@ import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.ObjectContainerNodeF
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.RewriteTestNodeFactory;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.StringFieldTestNodeFactory;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.TestContainerFactory;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 
 public class NodeFieldTest {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testIntField() {

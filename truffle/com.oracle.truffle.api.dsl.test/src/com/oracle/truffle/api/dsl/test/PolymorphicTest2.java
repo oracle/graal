@@ -22,16 +22,31 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.BinaryNodeTest.BinaryNode;
 import com.oracle.truffle.api.dsl.test.PolymorphicTest2Factory.Polymorphic1Factory;
-import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.nodes.NodeCost;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 public class PolymorphicTest2 {
+
+    @Before
+    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testMultipleTypes() {
