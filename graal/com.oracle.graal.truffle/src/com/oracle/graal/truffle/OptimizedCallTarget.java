@@ -337,7 +337,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
     }
 
-    public void compile() {
+    public final void compile() {
         if (!isCompiling()) {
             compiling = true;
             runtime.compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
