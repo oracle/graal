@@ -428,10 +428,6 @@ public class InvocationPlugins {
     private InvocationPlugins(InvocationPlugins parent, MetaAccessProvider metaAccess) {
         this.metaAccess = metaAccess;
         InvocationPlugins p = parent;
-        // Only adopt a non-empty parent
-        while (p != null && p.size() == 0) {
-            p = p.parent;
-        }
         this.parent = p;
     }
 
