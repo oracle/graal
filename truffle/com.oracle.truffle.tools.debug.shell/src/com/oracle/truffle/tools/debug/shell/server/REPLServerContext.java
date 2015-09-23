@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.tools.debug.shell.server;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedEvent;
@@ -35,9 +39,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public abstract class REPLServerContext {
 
@@ -85,7 +86,9 @@ public abstract class REPLServerContext {
      */
     @SuppressWarnings("deprecation")
     @Deprecated
-    public abstract com.oracle.truffle.api.vm.TruffleVM vm();
+    public com.oracle.truffle.api.vm.TruffleVM vm() {
+        return (com.oracle.truffle.api.vm.TruffleVM) engine();
+    }
 
     protected abstract Debugger db();
 
@@ -102,7 +105,7 @@ public abstract class REPLServerContext {
 
     /**
      * Provides access to the execution stack.
-     * 
+     *
      * @return immutable list of stack elements
      */
     public List<FrameDebugDescription> getStack() {
