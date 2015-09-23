@@ -22,6 +22,16 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.array;
+import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
+import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -30,22 +40,12 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback1Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback4Factory;
-
-import static com.oracle.truffle.api.dsl.test.TestHelper.array;
-import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
-import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
-
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 public class FallbackTest {
 
@@ -57,7 +57,7 @@ public class FallbackTest {
         InstrumentationTestMode.set(true);
     }
 
-    @Before
+    @After
     public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         InstrumentationTestMode.set(false);
     }
