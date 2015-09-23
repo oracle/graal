@@ -168,6 +168,36 @@ public class InvocationPlugins {
         }
 
         /**
+         * Registers a plugin for an optional method with no arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptional0(String name, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringClass, name);
+        }
+
+        /**
+         * Registers a plugin for an optional method with 1 argument.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptional1(String name, Class<?> arg, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg);
+        }
+
+        /**
+         * Registers a plugin for an optional method with 2 arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptional2(String name, Class<?> arg1, Class<?> arg2, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg1, arg2);
+        }
+
+        /**
          * Registers a plugin for an optional method with 3 arguments.
          *
          * @param name the name of the method
