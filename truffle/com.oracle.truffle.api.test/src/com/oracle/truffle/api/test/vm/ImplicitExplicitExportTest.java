@@ -36,8 +36,10 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
@@ -122,13 +124,19 @@ public class ImplicitExplicitExportTest {
         assertEquals("Global symbol is also 43", "43", vm.findGlobalSymbol("ahoj").invoke(null).get());
     }
 
-    private static final class Ctx {
+    static final class Ctx {
+        static final Set<Ctx> disposed = new HashSet<>();
+
         final Map<String, String> explicit = new HashMap<>();
         final Map<String, String> implicit = new HashMap<>();
         final Env env;
 
         public Ctx(Env env) {
             this.env = env;
+        }
+
+        void dispose() {
+            disposed.add(this);
         }
     }
 
@@ -140,6 +148,11 @@ public class ImplicitExplicitExportTest {
                 assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);
             }
             return new Ctx(env);
+        }
+
+        @Override
+        protected void disposeContext(Ctx context) {
+            context.dispose();
         }
 
         @Override

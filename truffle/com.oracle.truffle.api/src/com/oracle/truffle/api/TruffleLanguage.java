@@ -118,6 +118,19 @@ public abstract class TruffleLanguage<C> {
     protected abstract C createContext(Env env);
 
     /**
+     * Disposes context created by
+     * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}. A language can be asked
+     * by its user to <em>clean-up</em>. In such case the language is supposed to dispose any
+     * resources acquired before and <em>dispose</em> the <code>context</code> - e.g. render it
+     * useless for any future calls.
+     *
+     * @param context the context {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)
+     *            created by the language}
+     */
+    protected void disposeContext(C context) {
+    }
+
+    /**
      * Parses the provided source and generates appropriate AST. The parsing should execute no user
      * code, it should only create the {@link Node} tree to represent the source. The parsing may be
      * performed in a context (specified as another {@link Node}) or without context. The
@@ -237,6 +250,10 @@ public abstract class TruffleLanguage<C> {
 
         Object getLanguageGlobal() {
             return lang.getLanguageGlobal(ctx);
+        }
+
+        void dispose() {
+            lang.disposeContext(ctx);
         }
     }
 
@@ -389,6 +406,12 @@ public abstract class TruffleLanguage<C> {
         @Override
         protected DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
             return l.getDebugSupport();
+        }
+
+        @Override
+        protected void dispose(TruffleLanguage<?> impl, Env env) {
+            assert impl == env.langCtx.lang;
+            env.langCtx.dispose();
         }
     }
 

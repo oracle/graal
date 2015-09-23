@@ -112,6 +112,7 @@ public class PolyglotEngine {
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private Debugger debugger;
+    private boolean disposed;
 
     /**
      * Private & temporary only constructor.
@@ -447,6 +448,35 @@ public class PolyglotEngine {
         return eval(l, source);
     }
 
+    /**
+     * Dispose instance of this engine. A user can explicitly
+     * {@link TruffleLanguage#disposeContext(java.lang.Object) dispose all resources} allocated by
+     * the languages active in this engine, when it is known the system is not going to be used in
+     * the future.
+     * <p>
+     * Calling any other method of this class after the dispose has been done yields an
+     * {@link IllegalStateException}.
+     */
+    public void dispose() {
+        checkThread();
+        disposed = true;
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                for (Language language : getLanguages().values()) {
+                    TruffleLanguage<?> impl = language.getImpl(false);
+                    if (impl != null) {
+                        try {
+                            SPI.dispose(impl, language.getEnv(true));
+                        } catch (Exception | Error ex) {
+                            LOG.log(Level.SEVERE, "Error disposing " + impl, ex);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     private Value eval(final Language l, final Source s) throws IOException {
         final Debugger[] fillIn = {debugger};
         final Object[] result = {null, null};
@@ -560,6 +590,9 @@ public class PolyglotEngine {
     private void checkThread() {
         if (initThread != Thread.currentThread()) {
             throw new IllegalStateException("PolyglotEngine created on " + initThread.getName() + " but used on " + Thread.currentThread().getName());
+        }
+        if (disposed) {
+            throw new IllegalStateException("Engine has already been disposed");
         }
     }
 
@@ -951,6 +984,11 @@ public class PolyglotEngine {
         protected void dispatchEvent(Object obj, Object event) {
             PolyglotEngine vm = (PolyglotEngine) obj;
             vm.dispatch(event);
+        }
+
+        @Override
+        protected void dispose(TruffleLanguage<?> impl, TruffleLanguage.Env env) {
+            super.dispose(impl, env);
         }
     } // end of SPIAccessor
 }

@@ -24,16 +24,26 @@ package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
+import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ExceptionDuringParsingTest {
     public static Accessor API;
+
+    @Before
+    @After
+    public void cleanTheSet() {
+        Ctx.disposed.clear();
+    }
 
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
@@ -41,11 +51,37 @@ public class ExceptionDuringParsingTest {
         PolyglotEngine.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 
+        final Source src = Source.fromText("parse=No, no, no!", "Fail on parsing").withMimeType(L1);
         try {
-            vm.eval(Source.fromText("parse=No, no, no!", "Fail on parsing").withMimeType(L1));
+            vm.eval(src);
             fail("Exception thrown");
         } catch (IOException ex) {
             assertEquals(ex.getMessage(), "No, no, no!");
+        }
+
+        assertEquals("No dispose yet", 0, Ctx.disposed.size());
+
+        vm.dispose();
+
+        assertEquals("One context disposed", 1, Ctx.disposed.size());
+
+        try {
+            vm.eval(src);
+            fail("Should throw an exception");
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("disposed"));
+        }
+        try {
+            vm.findGlobalSymbol("nothing");
+            fail("Should throw an exception");
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("disposed"));
+        }
+        try {
+            vm.dispose();
+            fail("Should throw an exception");
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("disposed"));
         }
     }
 }
