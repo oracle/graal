@@ -118,7 +118,7 @@ public abstract class TruffleLanguage<C> {
     protected abstract C createContext(Env env);
 
     /**
-     * Disposes context created by
+     * Disposes the context created by
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}. A language can be asked
      * by its user to <em>clean-up</em>. In such case the language is supposed to dispose any
      * resources acquired before and <em>dispose</em> the <code>context</code> - e.g. render it
