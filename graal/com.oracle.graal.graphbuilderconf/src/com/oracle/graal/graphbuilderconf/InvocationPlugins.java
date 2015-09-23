@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.*;
 
+import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.Node;
@@ -97,6 +98,23 @@ public class InvocationPlugins {
         public Registration(InvocationPlugins plugins, Class<?> declaringClass) {
             this.plugins = plugins;
             this.declaringClass = declaringClass;
+        }
+
+        /**
+         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
+         * given class.
+         *
+         * @param plugins where to register the plugins
+         * @param declaringClassName the name of the class class declaring the methods for which
+         *            plugins will be registered via this object
+         */
+        public Registration(InvocationPlugins plugins, String declaringClassName) {
+            this.plugins = plugins;
+            try {
+                this.declaringClass = Class.forName(declaringClassName);
+            } catch (ClassNotFoundException ex) {
+                throw JVMCIError.shouldNotReachHere(ex);
+            }
         }
 
         /**
