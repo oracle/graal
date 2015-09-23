@@ -51,7 +51,7 @@ final class InvokeMemberNode extends RootNode {
                 if (isStatic) {
                     continue;
                 }
-                if (m.getName().equals(name) && m.getParameterCount() == argsLength) {
+                if (m.getName().equals(name) && m.getParameterTypes().length == argsLength) {
                     Object[] arr = args.subList(1, args.size()).toArray();
                     return JavaFunctionNode.execute(m, receiver.obj, arr);
                 }
