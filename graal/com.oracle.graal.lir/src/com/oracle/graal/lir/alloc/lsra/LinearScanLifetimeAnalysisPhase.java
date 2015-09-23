@@ -46,6 +46,10 @@ import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionType;
+import jdk.internal.jvmci.options.OptionValue;
+import jdk.internal.jvmci.options.StableOptionValue;
 
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
@@ -824,6 +828,12 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
+    public static class Options {
+        @Option(help = "Enable temporary workaround for LIR constant optimization (see GRAAL-1272).", type = OptionType.Debug)//
+        public static final OptionValue<Boolean> NeverSpillConstants = new StableOptionValue<>(false);
+
+    }
+
     /**
      * Returns a value for a interval definition, which can be used for re-materialization.
      *
@@ -838,6 +848,12 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         if (op instanceof LoadConstantOp) {
             LoadConstantOp move = (LoadConstantOp) op;
             if (move.getConstant() instanceof JavaConstant) {
+
+                /* Temporary workaround until GRAAL-1272 is fixed. */
+                if (Options.NeverSpillConstants.getValue()) {
+                    return (JavaConstant) move.getConstant();
+                }
+
                 /*
                  * Check if the interval has any uses which would accept an stack location (priority
                  * == ShouldHaveRegister). Rematerialization of such intervals can result in a
