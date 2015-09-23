@@ -24,34 +24,51 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
+import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.sparc.SPARC;
+import jdk.internal.jvmci.sparc.SPARCKind;
 
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Opfs;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
-public class SPARCOPFOp extends SPARCLIRInstruction {
+public final class SPARCOPFOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCOPFOp> TYPE = LIRInstructionClass.create(SPARCOPFOp.class);
     public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
     @Opcode protected final Opfs opf;
-    @Use({REG}) protected Value a;
-    @Use({REG}) protected Value b;
-    @Use({REG}) protected Value result;
+    @Use({REG}) protected Value rs1;
+    @Use({REG}) protected Value rs2;
+    @Def({REG}) protected Value rd;
+    @State protected LIRFrameState state;
 
-    public SPARCOPFOp(Opfs opf, Value a, Value b, Value result) {
+    public SPARCOPFOp(Opfs opf, Value rs2, Value rd) {
+        this(opf, SPARC.g0.asValue(LIRKind.value(SPARCKind.SINGLE)), rs2, rd);
+    }
+
+    public SPARCOPFOp(Opfs opf, Value rs1, Value rs2, Value rd) {
+        this(opf, rs1, rs2, rd, null);
+    }
+
+    public SPARCOPFOp(Opfs opf, Value rs1, Value rs2, Value rd, LIRFrameState state) {
         super(TYPE, SIZE);
         this.opf = opf;
-        this.a = a;
-        this.b = b;
-        this.result = result;
+        this.rs1 = rs1;
+        this.rs2 = rs2;
+        this.rd = rd;
+        this.state = state;
     }
 
     @Override
     protected void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        SPARCAssembler.OPF.emit(masm, opf, asRegister(a), asRegister(b), asRegister(result));
+        if (state != null) {
+            crb.recordImplicitException(masm.position(), state);
+        }
+        SPARCAssembler.OpfOp.emit(masm, opf, asRegister(rs1), asRegister(rs2), asRegister(rd));
     }
 }

@@ -53,7 +53,7 @@ public class SPARCFloatCompareOp extends SPARCLIRInstruction {
 
     @Override
     protected void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        SPARCAssembler.OPF.emitFcmp(masm, opf, cc, asRegister(a), asRegister(b));
+        SPARCAssembler.OpfOp.emitFcmp(masm, opf, cc, asRegister(a), asRegister(b));
     }
 
     @Override

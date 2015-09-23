@@ -66,7 +66,7 @@ final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitch
             if (keyConstants[index] instanceof HotSpotMetaspaceConstant) {
                 HotSpotMetaspaceConstant constant = (HotSpotMetaspaceConstant) keyConstants[index];
                 CC conditionCode = constant.isCompressed() ? CC.Icc : CC.Xcc;
-                ConditionFlag conditionFlag = SPARCControlFlow.fromCondition(conditionCode, condition, false);
+                ConditionFlag conditionFlag = SPARCControlFlow.fromCondition(true, condition, false);
                 LabelHint hint = requestHint(masm, target);
 
                 // Load constant takes one instruction

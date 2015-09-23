@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import jdk.internal.jvmci.amd64.AMD64Kind;
 import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
 import jdk.internal.jvmci.meta.Value;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.lir.Variable;
@@ -34,6 +36,15 @@ import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 public class StackMoveTest extends LIRTest {
+    private static PlatformKind byteKind;
+    private static PlatformKind shortKind;
+
+    @Before
+    public void setUp() {
+        byteKind = getBackend().getTarget().arch.getPlatformKind(JavaKind.Byte);
+        shortKind = getBackend().getTarget().arch.getPlatformKind(JavaKind.Short);
+    }
+
     private static class StackCopySpec extends LIRTestSpecification {
         @Override
         public void generate(LIRGeneratorTool gen, Value a) {
@@ -184,7 +195,7 @@ public class StackMoveTest extends LIRTest {
     private static final LIRTestSpecification shortStackCopy = new StackCopySpec() {
         @Override
         protected LIRKind getLIRKind(Value value) {
-            return LIRKind.value(AMD64Kind.WORD);
+            return LIRKind.value(shortKind);
         }
     };
 
@@ -218,7 +229,7 @@ public class StackMoveTest extends LIRTest {
     private static final LIRTestSpecification byteStackCopy = new StackCopySpec() {
         @Override
         protected LIRKind getLIRKind(Value value) {
-            return LIRKind.value(AMD64Kind.BYTE);
+            return LIRKind.value(byteKind);
         }
     };
 

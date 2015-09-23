@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.internal.jvmci.sparc.SPARC.g0;
+import static jdk.internal.jvmci.sparc.SPARCKind.DWORD;
 import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
@@ -63,7 +63,7 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
 
         // Restore the thread register when coming back from the runtime.
-        SPARCMove.move(crb, masm, thread.asValue(LIRKind.value(JavaKind.Long)), threadTemp, SPARCDelayedControlTransfer.DUMMY);
+        SPARCMove.move(crb, masm, thread.asValue(LIRKind.value(DWORD)), threadTemp, SPARCDelayedControlTransfer.DUMMY);
 
         // Reset last Java frame, last Java PC and flags.
         masm.stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset));

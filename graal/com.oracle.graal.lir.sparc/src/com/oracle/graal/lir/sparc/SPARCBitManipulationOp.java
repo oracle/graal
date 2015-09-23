@@ -22,16 +22,15 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm13;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 import static jdk.internal.jvmci.sparc.SPARC.g0;
+import static jdk.internal.jvmci.sparc.SPARCKind.DWORD;
+import static jdk.internal.jvmci.sparc.SPARCKind.WORD;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.PlatformKind;
 import jdk.internal.jvmci.meta.Value;
@@ -46,8 +45,6 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCBitManipulationOp> TYPE = LIRInstructionClass.create(SPARCBitManipulationOp.class);
 
     public enum IntrinsicOpcode {
-        IPOPCNT(SizeEstimate.create(2)),
-        LPOPCNT(SizeEstimate.create(1)),
         IBSR(SizeEstimate.create(13)),
         LBSR(SizeEstimate.create(14)),
         BSF(SizeEstimate.create(4));
@@ -74,26 +71,18 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        Register dst = asRegister(result, JavaKind.Int);
+        Register dst = asRegister(result, WORD);
         if (isRegister(input)) {
             Register src = asRegister(input);
             switch (opcode) {
-                case IPOPCNT:
-                    // clear upper word for 64 bit POPC
-                    masm.srl(src, g0, dst);
-                    masm.popc(dst, dst);
-                    break;
-                case LPOPCNT:
-                    masm.popc(src, dst);
-                    break;
                 case BSF:
                     PlatformKind tkind = input.getPlatformKind();
-                    if (tkind == JavaKind.Int) {
+                    if (tkind == WORD) {
                         masm.sub(src, 1, dst);
                         masm.andn(dst, src, dst);
                         masm.srl(dst, g0, dst);
                         masm.popc(dst, dst);
-                    } else if (tkind == JavaKind.Long) {
+                    } else if (tkind == DWORD) {
                         masm.sub(src, 1, dst);
                         masm.andn(dst, src, dst);
                         masm.popc(dst, dst);
@@ -103,7 +92,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     break;
                 case IBSR: {
                     PlatformKind ikind = input.getPlatformKind();
-                    assert ikind == JavaKind.Int;
+                    assert ikind == WORD;
                     Register tmp = asRegister(scratch);
                     assert !tmp.equals(dst);
                     masm.srl(src, 1, tmp);
@@ -123,7 +112,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                 }
                 case LBSR: {
                     PlatformKind lkind = input.getPlatformKind();
-                    assert lkind == JavaKind.Long;
+                    assert lkind == DWORD;
                     Register tmp = asRegister(scratch);
                     assert !tmp.equals(dst);
                     masm.srlx(src, 1, tmp);
@@ -145,17 +134,6 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                 default:
                     throw JVMCIError.shouldNotReachHere();
 
-            }
-        } else if (isJavaConstant(input) && isSimm13(crb.asIntConst(input))) {
-            switch (opcode) {
-                case IPOPCNT:
-                    masm.popc(crb.asIntConst(input), dst);
-                    break;
-                case LPOPCNT:
-                    masm.popc(crb.asIntConst(input), dst);
-                    break;
-                default:
-                    throw JVMCIError.shouldNotReachHere();
             }
         } else {
             throw JVMCIError.shouldNotReachHere();

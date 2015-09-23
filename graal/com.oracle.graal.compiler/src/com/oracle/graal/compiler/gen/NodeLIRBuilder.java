@@ -494,7 +494,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp()));
+            assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp())) : paramValue + " " + getLIRGeneratorTool().getLIRKind(param.stamp());
             setResult(param, gen.emitMove(paramValue));
         }
     }

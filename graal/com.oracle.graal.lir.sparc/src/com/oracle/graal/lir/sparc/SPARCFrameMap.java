@@ -25,9 +25,9 @@ package com.oracle.graal.lir.sparc;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.sparc.SPARC;
+import jdk.internal.jvmci.sparc.SPARCKind;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.lir.framemap.FrameMap;
@@ -131,6 +131,6 @@ public final class SPARCFrameMap extends FrameMap {
 
     public StackSlot allocateDeoptimizationRescueSlot() {
         assert spillSize == initialSpillSize : "Deoptimization rescue slot must be the first stack slot";
-        return allocateSpillSlot(LIRKind.value(JavaKind.Long));
+        return allocateSpillSlot(LIRKind.value(SPARCKind.DWORD));
     }
 }

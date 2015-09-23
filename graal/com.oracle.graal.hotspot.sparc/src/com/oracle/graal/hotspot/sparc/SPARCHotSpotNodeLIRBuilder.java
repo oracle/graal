@@ -32,9 +32,9 @@ import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterValue;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.sparc.SPARCKind;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
@@ -70,7 +70,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(JavaKind.Long));
+        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(SPARCKind.DWORD));
         return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack);
     }
 

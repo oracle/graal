@@ -83,7 +83,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fabsd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fabss;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Faddd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fadds;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fandd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fdivd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fdivs;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fdtoi;
@@ -92,9 +91,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fdtox;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fitod;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fitos;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fmovd;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fmovdcc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fmovs;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fmovscc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fmuld;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fmuls;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fnegd;
@@ -140,9 +137,10 @@ import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.PlatformKind;
 import jdk.internal.jvmci.sparc.SPARC;
 import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
+import jdk.internal.jvmci.sparc.SPARCKind;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
@@ -251,60 +249,60 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    private static final int COMMUTATIVE = 1;
+    private static final int BINARY = 2;
+    private static final int UNARY = 4;
+    private static final int VOID_IN = 8;
+
     public static enum Op3s {
         // @formatter:off
+        Add(0x00, "add", ArithOp, BINARY | COMMUTATIVE),
+        And(0x01, "and", ArithOp, BINARY | COMMUTATIVE),
+        Or(0x02, "or", ArithOp, BINARY | COMMUTATIVE),
+        Xor(0x03, "xor", ArithOp, BINARY | COMMUTATIVE),
+        Sub(0x04, "sub", ArithOp, BINARY),
+        Andn(0x05, "andn", ArithOp, BINARY | COMMUTATIVE),
+        Orn(0x06, "orn", ArithOp, BINARY | COMMUTATIVE),
+        Xnor(0x07, "xnor", ArithOp, BINARY | COMMUTATIVE),
+        Addc(0x08, "addc", ArithOp, BINARY | COMMUTATIVE),
+        Mulx(0x09, "mulx", ArithOp, BINARY | COMMUTATIVE),
+        Umul(0x0A, "umul", ArithOp, BINARY | COMMUTATIVE),
+        Smul(0x0B, "smul", ArithOp, BINARY | COMMUTATIVE),
+        Subc(0x0C, "subc", ArithOp, BINARY),
+        Udivx(0x0D, "udivx", ArithOp, BINARY),
+        Udiv(0x0E, "udiv", ArithOp, BINARY),
+        Sdiv(0x0F, "sdiv", ArithOp, BINARY),
 
-        Add(0x00, "add", ArithOp),
-        And(0x01, "and", ArithOp),
-        Or(0x02, "or", ArithOp),
-        Xor(0x03, "xor", ArithOp),
-        Sub(0x04, "sub", ArithOp),
-        Andn(0x05, "andn", ArithOp),
-        Orn(0x06, "orn", ArithOp),
-        Xnor(0x07, "xnor", ArithOp),
-        Addc(0x08, "addc", ArithOp),
-        Mulx(0x09, "mulx", ArithOp),
-        Umul(0x0A, "umul", ArithOp),
-        Smul(0x0B, "smul", ArithOp),
-        Subc(0x0C, "subc", ArithOp),
-        Udivx(0x0D, "udivx", ArithOp),
-        Udiv(0x0E, "udiv", ArithOp),
-        Sdiv(0x0F, "sdiv", ArithOp),
+        Addcc(0x10, "addcc", ArithOp, BINARY | COMMUTATIVE),
+        Andcc(0x11, "andcc", ArithOp, BINARY | COMMUTATIVE),
+        Orcc(0x12, "orcc", ArithOp, BINARY | COMMUTATIVE),
+        Xorcc(0x13, "xorcc", ArithOp, BINARY | COMMUTATIVE),
+        Subcc(0x14, "subcc", ArithOp, BINARY | COMMUTATIVE),
+        Andncc(0x15, "andncc", ArithOp, BINARY | COMMUTATIVE),
+        Orncc(0x16, "orncc", ArithOp, BINARY | COMMUTATIVE),
+        Xnorcc(0x17, "xnorcc", ArithOp, BINARY | COMMUTATIVE),
+        Addccc(0x18, "addccc", ArithOp, BINARY | COMMUTATIVE),
 
-        Addcc(0x10, "addcc", ArithOp),
-        Andcc(0x11, "andcc", ArithOp),
-        Orcc(0x12, "orcc", ArithOp),
-        Xorcc(0x13, "xorcc", ArithOp),
-        Subcc(0x14, "subcc", ArithOp),
-        Andncc(0x15, "andncc", ArithOp),
-        Orncc(0x16, "orncc", ArithOp),
-        Xnorcc(0x17, "xnorcc", ArithOp),
-        Addccc(0x18, "addccc", ArithOp),
+        Umulcc(0x1A, "umulcc", ArithOp, BINARY | COMMUTATIVE),
+        Smulcc(0x1B, "smulcc", ArithOp, BINARY | COMMUTATIVE),
+        Subccc(0x1C, "subccc", ArithOp, BINARY),
+        Udivcc(0x1E, "udivcc", ArithOp, BINARY),
+        Sdivcc(0x1F, "sdivcc", ArithOp, BINARY),
 
-        Umulcc(0x1A, "umulcc", ArithOp),
-        Smulcc(0x1B, "smulcc", ArithOp),
-        Subccc(0x1C, "subccc", ArithOp),
-        Udivcc(0x1E, "udivcc", ArithOp),
-        Sdivcc(0x1F, "sdivcc", ArithOp),
-
-        Taddcc(0x20, "taddcc", ArithOp),
-        Tsubcc(0x21, "tsubcc", ArithOp),
-        Taddcctv(0x22, "taddcctv", ArithOp),
-        Tsubcctv(0x23, "tsubcctv", ArithOp),
-        Mulscc(0x24, "mulscc", ArithOp),
-        Sll(0x25, "sll", ArithOp),
-        Sllx(0x25, "sllx", ArithOp),
-        Srl(0x26, "srl", ArithOp),
-        Srlx(0x26, "srlx", ArithOp),
-        Sra(0x27, "srax", ArithOp),
-        Srax(0x27, "srax", ArithOp),
+        Mulscc(0x24, "mulscc", ArithOp, BINARY | COMMUTATIVE),
+        Sll(0x25, "sll", ArithOp, BINARY),
+        Sllx(0x25, "sllx", ArithOp, BINARY),
+        Srl(0x26, "srl", ArithOp, BINARY),
+        Srlx(0x26, "srlx", ArithOp, BINARY),
+        Sra(0x27, "srax", ArithOp, BINARY),
+        Srax(0x27, "srax", ArithOp, BINARY),
         Membar(0x28, "membar", ArithOp),
 
         Flushw(0x2B, "flushw", ArithOp),
         Movcc(0x2C, "movcc", ArithOp),
-        Sdivx(0x2D, "sdivx", ArithOp),
-        Popc(0x2E, "popc", ArithOp),
-        Movr(0x2F, "movr", ArithOp),
+        Sdivx(0x2D, "sdivx", ArithOp, BINARY),
+        Popc(0x2E, "popc", ArithOp, UNARY),
+        Movr(0x2F, "movr", ArithOp, BINARY),
 
         Fpop1(0b11_0100, "fpop1", ArithOp),
         Fpop2(0b11_0101, "fpop2", ArithOp),
@@ -369,11 +367,17 @@ public abstract class SPARCAssembler extends Assembler {
         private final int value;
         private final String operator;
         private final Ops op;
+        private final int flags;
 
         private Op3s(int value, String name, Ops op) {
+            this(value, name, op, 0);
+        }
+
+        private Op3s(int value, String name, Ops op, int flags) {
             this.value = value;
             this.operator = name;
             this.op = op;
+            this.flags = flags;
         }
 
         public int getValue() {
@@ -400,82 +404,91 @@ public abstract class SPARCAssembler extends Assembler {
                     return false;
             }
         }
+
+        public boolean isBinary() {
+            return (flags & BINARY) != 0;
+        }
+
+        public boolean isUnary() {
+            return (flags & UNARY) != 0;
+        }
+
+        public boolean isCommutative() {
+            return (flags & COMMUTATIVE) != 0;
+        }
     }
 
     public static enum Opfs {
         // @formatter:off
 
-        Fmovs(0b0_0000_0001, "fmovs", Fpop1),
-        Fmovd(0b0_0000_0010, "fmovd", Fpop1),
-        Fmovq(0b0_0000_0011, "fmovq", Fpop1),
-        Fmovscc(0b00_0001, "fmovscc", Fpop2),
-        Fmovdcc(0b00_0010, "fmovdcc", Fpop2),
-        Fnegs(0x05, "fnegs", Fpop1),
-        Fnegd(0x06, "fnegd", Fpop1),
-        Fnegq(0x07, "fnegq", Fpop1),
-        Fabss(0x09, "fabss", Fpop1),
-        Fabsd(0x0A, "fabsd", Fpop1),
-        Fabsq(0x0B, "fabsq", Fpop1),
+        Fmovs(0b0_0000_0001, "fmovs", Fpop1, UNARY),
+        Fmovd(0b0_0000_0010, "fmovd", Fpop1, UNARY),
+        Fmovq(0b0_0000_0011, "fmovq", Fpop1, UNARY),
+        Fnegs(0x05, "fnegs", Fpop1, UNARY),
+        Fnegd(0x06, "fnegd", Fpop1, UNARY),
+        Fnegq(0x07, "fnegq", Fpop1, UNARY),
+        Fabss(0x09, "fabss", Fpop1, UNARY),
+        Fabsd(0x0A, "fabsd", Fpop1, UNARY),
+        Fabsq(0x0B, "fabsq", Fpop1, UNARY),
 
         // start VIS1
-        Fpadd32(0x52, "fpadd32", Impdep1),
-        Fzerod(0x60, "fzerod", Impdep1),
-        Fzeros(0x61, "fzeros", Impdep1),
-        Fnot2d(0x66, "fnot1d", Impdep1),
-        Fsrc2d(0x78, "fsrc2d", Impdep1),
-        Fsrc2s(0x79, "fsrc2s", Impdep1),
-        Fandd(0b0_0111_0000, "fandd", Impdep1),
-        Fands(0b0_0111_0001, "fands", Impdep1),
+        Fpadd32(0x52, "fpadd32", Impdep1, BINARY | COMMUTATIVE),
+        Fzerod(0x60, "fzerod", Impdep1, VOID_IN),
+        Fzeros(0x61, "fzeros", Impdep1, VOID_IN),
+        Fsrc2d(0x78, "fsrc2d", Impdep1, UNARY),
+        Fsrc2s(0x79, "fsrc2s", Impdep1, UNARY),
         // end VIS1
 
         // start VIS3
-        Movdtox(0x110, "movdtox", Impdep1),
-        Movstouw(0x111, "movstouw", Impdep1),
-        Movstosw(0x113, "movstosw", Impdep1),
-        Movxtod(0x118, "movxtod", Impdep1),
-        Movwtos(0b1_0001_1001, "movwtos", Impdep1),
-        UMulxhi(0b0_0001_0110, "umulxhi", Impdep1),
+        Movdtox(0x110, "movdtox", Impdep1, UNARY),
+        Movstouw(0x111, "movstouw", Impdep1, UNARY),
+        Movstosw(0x113, "movstosw", Impdep1, UNARY),
+        Movxtod(0x118, "movxtod", Impdep1, UNARY),
+        Movwtos(0b1_0001_1001, "movwtos", Impdep1, UNARY),
+        UMulxhi(0b0_0001_0110, "umulxhi", Impdep1, BINARY | COMMUTATIVE),
         // end VIS3
 
-        Fadds(0x41, "fadds", Fpop1),
-        Faddd(0x42, "faddd", Fpop1),
-        Fsubs(0x45, "fsubs", Fpop1),
-        Fsubd(0x46, "fsubd", Fpop1),
-        Fmuls(0x49, "fmuls", Fpop1),
-        Fmuld(0x4A, "fmuld", Fpop1),
-        Fdivs(0x4D, "fdivs", Fpop1),
-        Fdivd(0x4E, "fdivd", Fpop1),
+        Fadds(0x41, "fadds", Fpop1, BINARY | COMMUTATIVE),
+        Faddd(0x42, "faddd", Fpop1, BINARY | COMMUTATIVE),
+        Fsubs(0x45, "fsubs", Fpop1, BINARY),
+        Fsubd(0x46, "fsubd", Fpop1, BINARY),
+        Fmuls(0x49, "fmuls", Fpop1, BINARY | COMMUTATIVE),
+        Fmuld(0x4A, "fmuld", Fpop1, BINARY | COMMUTATIVE),
+        Fdivs(0x4D, "fdivs", Fpop1, BINARY),
+        Fdivd(0x4E, "fdivd", Fpop1, BINARY),
 
-        Fsqrts(0x29, "fsqrts", Fpop1),
-        Fsqrtd(0x2A, "fsqrtd", Fpop1),
+        Fsqrts(0x29, "fsqrts", Fpop1, UNARY),
+        Fsqrtd(0x2A, "fsqrtd", Fpop1, UNARY),
 
-        Fsmuld(0x69, "fsmuld", Fpop1),
+        Fsmuld(0x69, "fsmuld", Fpop1, BINARY | COMMUTATIVE),
 
-        Fstoi(0xD1, "fstoi", Fpop1),
-        Fdtoi(0xD2, "fdtoi", Fpop1),
-        Fstox(0x81, "fstox", Fpop1),
-        Fdtox(0x82, "fdtox", Fpop1),
-        Fxtos(0x84, "fxtos", Fpop1),
-        Fxtod(0x88, "fxtod", Fpop1),
-        Fitos(0xC4, "fitos", Fpop1),
-        Fdtos(0xC6, "fdtos", Fpop1),
-        Fitod(0xC8, "fitod", Fpop1),
-        Fstod(0xC9, "fstod", Fpop1),
+        Fstoi(0xD1, "fstoi", Fpop1, UNARY),
+        Fdtoi(0xD2, "fdtoi", Fpop1, UNARY),
+        Fstox(0x81, "fstox", Fpop1, UNARY),
+        Fdtox(0x82, "fdtox", Fpop1, UNARY),
+        Fxtos(0x84, "fxtos", Fpop1, UNARY),
+        Fxtod(0x88, "fxtod", Fpop1, UNARY),
+        Fitos(0xC4, "fitos", Fpop1, UNARY),
+        Fdtos(0xC6, "fdtos", Fpop1, UNARY),
+        Fitod(0xC8, "fitod", Fpop1, UNARY),
+        Fstod(0xC9, "fstod", Fpop1, UNARY),
 
 
-        Fcmps(0x51, "fcmps", Fpop2),
-        Fcmpd(0x52, "fcmpd", Fpop2);
+        Fcmps(0x51, "fcmps", Fpop2, BINARY),
+        Fcmpd(0x52, "fcmpd", Fpop2, BINARY);
 
         // @formatter:on
 
         private final int value;
         private final String operator;
         private final Op3s op3;
+        private final int flags;
 
-        private Opfs(int value, String op, Op3s op3) {
+        private Opfs(int value, String op, Op3s op3, int flags) {
             this.value = value;
             this.operator = op;
             this.op3 = op3;
+            this.flags = flags;
         }
 
         public int getValue() {
@@ -483,6 +496,38 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public String getOperator() {
+            return operator;
+        }
+
+        public boolean isBinary() {
+            return (flags & BINARY) != 0;
+        }
+
+        public boolean isUnary() {
+            return (flags & UNARY) != 0;
+        }
+
+        public boolean isCommutative() {
+            return (flags & COMMUTATIVE) != 0;
+        }
+    }
+
+    public static enum OpfLow {
+        Fmovscc(0b00_0001, "fmovscc", Fpop2),
+        Fmovdcc(0b00_0010, "fmovdcc", Fpop2);
+
+        private final int value;
+        private final String operator;
+        private final Op3s op3;
+
+        private OpfLow(int value, String op, Op3s op3) {
+            this.value = value;
+            this.operator = op;
+            this.op3 = op3;
+        }
+
+        @Override
+        public String toString() {
             return operator;
         }
     }
@@ -575,19 +620,15 @@ public abstract class SPARCAssembler extends Assembler {
             return operator;
         }
 
-        public static CC forKind(JavaKind kind) {
-            boolean isInt = kind == JavaKind.Boolean || kind == JavaKind.Byte || kind == JavaKind.Char || kind == JavaKind.Short || kind == JavaKind.Int;
-            boolean isFloat = kind == JavaKind.Float || kind == JavaKind.Double;
-            boolean isLong = kind == JavaKind.Long || kind == JavaKind.Object;
-            assert isInt || isFloat || isLong;
-            if (isLong) {
+        public static CC forKind(PlatformKind kind) {
+            if (kind.equals(SPARCKind.DWORD)) {
                 return Xcc;
-            } else if (isInt) {
+            } else if (kind.equals(SPARCKind.WORD)) {
                 return Icc;
-            } else if (isFloat) {
+            } else if (kind.equals(SPARCKind.SINGLE) || kind.equals(SPARCKind.DOUBLE)) {
                 return Fcc0;
             } else {
-                throw new InternalError();
+                throw new IllegalArgumentException("Unknown kind: " + kind);
             }
         }
     }
@@ -829,10 +870,15 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec op2 = new ContinousBitSpec(24, 22, "op2");
         private static final BitSpec op3 = new ContinousBitSpec(24, 19, "op3");
         private static final BitSpec opf = new ContinousBitSpec(13, 5, "opf");
+        private static final BitSpec opfLow = new ContinousBitSpec(10, 5, "opfLow");
+        private static final BitSpec opfCC = new ContinousBitSpec(13, 11, "opfCC");
+        private static final BitSpec opfCond = new ContinousBitSpec(17, 14, "opfCond");
         private static final BitSpec rd = new ContinousBitSpec(29, 25, "rd");
         private static final BitSpec rs1 = new ContinousBitSpec(18, 14, "rs1");
         private static final BitSpec rs2 = new ContinousBitSpec(4, 0, "rs2");
         private static final BitSpec simm13 = new ContinousBitSpec(12, 0, true, "simm13");
+        private static final BitSpec shcnt32 = new ContinousBitSpec(4, 0, "shcnt32");
+        private static final BitSpec shcnt64 = new ContinousBitSpec(5, 0, "shcnt64");
         private static final BitSpec imm22 = new ContinousBitSpec(21, 0, "imm22");
         private static final BitSpec immAsi = new ContinousBitSpec(12, 5, "immASI");
         private static final BitSpec i = new ContinousBitSpec(13, 13, "i");
@@ -841,6 +887,7 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec disp30 = new ContinousBitSpec(29, 0, true, "disp30");
         private static final BitSpec a = new ContinousBitSpec(29, 29, "a");
         private static final BitSpec p = new ContinousBitSpec(19, 19, "p");
+        private static final BitSpec x = new ContinousBitSpec(12, 12, "x");
         private static final BitSpec cond = new ContinousBitSpec(28, 25, "cond");
         private static final BitSpec rcond = new ContinousBitSpec(27, 25, "rcond");
         private static final BitSpec cc = new ContinousBitSpec(21, 20, "cc");
@@ -848,6 +895,12 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec d16hi = new ContinousBitSpec(21, 20, "d16hi");
         private static final BitSpec d16lo = new ContinousBitSpec(13, 0, "d16lo");
         private static final BitSpec d16 = new CompositeBitSpec(d16hi, d16lo);
+        // Movcc
+        private static final BitSpec movccLo = new ContinousBitSpec(12, 11, "cc_lo");
+        private static final BitSpec movccHi = new ContinousBitSpec(18, 18, "cc_hi");
+        private static final BitSpec movccCond = new ContinousBitSpec(17, 14, "cond");
+        private static final BitSpec simm11 = new ContinousBitSpec(10, 0, true, "simm11");
+
         // CBCond
         private static final BitSpec cLo = new ContinousBitSpec(27, 25, "cLo");
         private static final BitSpec cHi = new ContinousBitSpec(29, 29, "cHi");
@@ -868,7 +921,7 @@ public abstract class SPARCAssembler extends Assembler {
         public abstract boolean valueFits(int value);
     }
 
-    public static class ContinousBitSpec extends BitSpec {
+    public static final class ContinousBitSpec extends BitSpec {
         private final int hiBit;
         private final int lowBit;
         private final int width;
@@ -925,7 +978,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class CompositeBitSpec extends BitSpec {
+    public static final class CompositeBitSpec extends BitSpec {
         private final BitSpec left;
         private final int leftWidth;
         private final BitSpec right;
@@ -996,7 +1049,7 @@ public abstract class SPARCAssembler extends Assembler {
     /**
      * Represents a prefix tree of {@link BitSpec} objects to find the most accurate SPARCOp.
      */
-    public static class BitKeyIndex {
+    public static final class BitKeyIndex {
         private final BitSpec spec;
         private final Map<Integer, BitKeyIndex> nodes;
         private SPARCOp op;
@@ -1083,6 +1136,9 @@ public abstract class SPARCAssembler extends Assembler {
     public static final Bpr BPR = new Bpr();
     public static final Br BR = new Br();
     public static final Sethi SETHI = new Sethi();
+    public static final FMOVcc FMOVSCC = new FMOVcc(OpfLow.Fmovscc);
+    public static final FMOVcc FMOVDCC = new FMOVcc(OpfLow.Fmovdcc);
+    public static final MOVicc MOVicc = new MOVicc();
     public static final OpfOp OPF = new OpfOp();
     public static final Op3Op OP3 = new Op3Op();
     public static final SPARCOp LDST = new SPARCOp(Ops.LdstOp);
@@ -1216,7 +1272,7 @@ public abstract class SPARCAssembler extends Assembler {
         public abstract boolean isConditional(int inst);
     }
 
-    public static class Bpcc extends ControlTransferOp {
+    public static final class Bpcc extends ControlTransferOp {
         public Bpcc(Op2s op2) {
             super(Ops.BranchOp, op2, true, BitSpec.disp19);
         }
@@ -1242,7 +1298,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Br extends ControlTransferOp {
+    public static final class Br extends ControlTransferOp {
         public Br() {
             super(Ops.BranchOp, Op2s.Br, true, BitSpec.disp22);
         }
@@ -1259,7 +1315,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Bpr extends ControlTransferOp {
+    public static final class Bpr extends ControlTransferOp {
         private static final BitKey CBCOND_KEY = new BitKey(BitSpec.cbcond, 0);
 
         public Bpr() {
@@ -1371,26 +1427,26 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Sethi extends Op2Op {
+    public static final class Sethi extends Op2Op {
         public Sethi() {
             super(Ops.BranchOp, Op2s.Sethi);
         }
 
-        public Register getRS1(int word) {
+        public static Register getRS1(int word) {
             int regNum = BitSpec.rs1.getBits(word);
             return SPARC.cpuRegisters[regNum];
         }
 
-        public int getImm22(int word) {
+        public static int getImm22(int word) {
             return BitSpec.imm22.getBits(word);
         }
 
-        public boolean isNop(int inst) {
+        public static boolean isNop(int inst) {
             return getRS1(inst).equals(g0) && getImm22(inst) == 0;
         }
     }
 
-    public static class Op3Op extends SPARCOp {
+    public static final class Op3Op extends SPARCOp {
         public Op3Op() {
             super(ArithOp);
         }
@@ -1400,42 +1456,157 @@ public abstract class SPARCAssembler extends Assembler {
             return OP3S[ArithOp.value & 1][BitSpec.op3.getBits(inst)];
         }
 
-        public void emit(SPARCMacroAssembler masm, Op3s opcode, Register rs1, Register rs2, Register rd) {
+        public static void emit(SPARCMacroAssembler masm, Op3s opcode, Register rs1, Register rs2, Register rd) {
             int instruction = setBits(0, opcode, rs1, rd);
             instruction = BitSpec.rs2.setBits(instruction, rs2.encoding);
             instruction = BitSpec.i.setBits(instruction, 0);
             masm.emitInt(instruction);
         }
 
-        public void emit(SPARCMacroAssembler masm, Op3s opcode, Register rs1, int simm13, Register rd) {
+        public static void emit(SPARCMacroAssembler masm, Op3s opcode, Register rs1, int simm13, Register rd) {
             int instruction = setBits(0, opcode, rs1, rd);
             instruction = BitSpec.i.setBits(instruction, 1);
-            instruction = BitSpec.simm13.setBits(instruction, simm13);
+            BitSpec immediateSpec;
+            switch (opcode) {
+                case Sllx:
+                case Srlx:
+                case Srax:
+                    immediateSpec = BitSpec.shcnt64;
+                    break;
+                case Sll:
+                case Srl:
+                case Sra:
+                    immediateSpec = BitSpec.shcnt32;
+                    break;
+                default:
+                    immediateSpec = BitSpec.simm13;
+                    break;
+            }
+            instruction = immediateSpec.setBits(instruction, simm13);
             masm.emitInt(instruction);
         }
 
         private static int setBits(int instruction, Op3s op3, Register rs1, Register rd) {
             assert op3.op.equals(ArithOp);
             int tmp = BitSpec.op3.setBits(instruction, op3.value);
+            switch (op3) {
+                case Sllx:
+                case Srlx:
+                case Srax:
+                    tmp = BitSpec.x.setBits(tmp, 1);
+                    break;
+            }
             tmp = BitSpec.op.setBits(tmp, op3.op.value);
             tmp = BitSpec.rd.setBits(tmp, rd.encoding);
             return BitSpec.rs1.setBits(tmp, rs1.encoding);
         }
     }
 
-    public static class OpfOp extends SPARCOp {
-        public OpfOp() {
+    /**
+     * Used for interfacing FP and GP conditional move instructions.
+     */
+    public interface CMOV {
+        void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, Register rs2, Register rd);
+
+        void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, int simm11, Register rd);
+    }
+
+    public static final class MOVicc extends SPARCOp implements CMOV {
+        private static final Op3s op3 = Movcc;
+
+        public MOVicc() {
             super(ArithOp);
         }
 
-        public void emit(SPARCMacroAssembler masm, Opfs opf, Register rs1, Register rs2, Register rd) {
+        public void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, Register rs2, Register rd) {
+            int inst = setBits(0, condition, cc, rd);
+            inst = BitSpec.rs2.setBits(inst, rs2.encoding());
+            masm.emitInt(inst);
+        }
+
+        public void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, int simm11, Register rd) {
+            int inst = setBits(0, condition, cc, rd);
+            inst = BitSpec.i.setBits(inst, 1);
+            inst = BitSpec.simm11.setBits(inst, simm11);
+            masm.emitInt(inst);
+        }
+
+        protected int setBits(int word, ConditionFlag condition, CC cc, Register rd) {
+            int inst = super.setBits(word);
+            inst = BitSpec.rd.setBits(inst, rd.encoding());
+            inst = BitSpec.op3.setBits(inst, op3.value);
+            inst = BitSpec.movccCond.setBits(inst, condition.value);
+            inst = BitSpec.movccLo.setBits(inst, cc.value);
+            return BitSpec.movccHi.setBits(inst, cc.isFloat ? 0 : 1);
+        }
+
+        @Override
+        protected List<BitKey[]> getKeys() {
+            List<BitKey[]> keys = super.getKeys();
+            keys.add(new BitKey[]{new BitKey(BitSpec.op3, op3.value)});
+            return keys;
+        }
+    }
+
+    public static final class FMOVcc extends SPARCOp implements CMOV {
+        private OpfLow opfLow;
+
+        public FMOVcc(OpfLow opfLow) {
+            super(ArithOp);
+            this.opfLow = opfLow;
+        }
+
+        public void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, Register rs2, Register rd) {
+            int inst = setBits(0);
+            inst = BitSpec.rd.setBits(inst, rd.encoding());
+            inst = BitSpec.op3.setBits(inst, opfLow.op3.value);
+            inst = BitSpec.opfCond.setBits(inst, condition.value);
+            inst = BitSpec.opfCC.setBits(inst, cc.value);
+            inst = BitSpec.opfLow.setBits(inst, opfLow.value);
+            inst = BitSpec.rs2.setBits(inst, rs2.encoding());
+            masm.emitInt(inst);
+        }
+
+        public void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, int simm11, Register rd) {
+            throw new IllegalArgumentException("FMOVCC cannot be used with immediate value");
+        }
+
+        @Override
+        protected List<BitKey[]> getKeys() {
+            List<BitKey[]> keys = super.getKeys();
+            keys.add(new BitKey[]{new BitKey(BitSpec.op3, opfLow.op3.value)});
+            keys.add(new BitKey[]{new BitKey(BitSpec.opfLow, opfLow.value)});
+            return keys;
+        }
+    }
+
+    public static final class OpfOp extends SPARCOp {
+
+        private BitKey[] op3Keys;
+
+        public OpfOp(BitKey... op3Keys) {
+            super(ArithOp);
+            this.op3Keys = op3Keys;
+        }
+
+        public OpfOp() {
+            // @formatter:off
+            this(new BitKey[]{
+                            new BitKey(BitSpec.op3, Op3s.Fpop1.value),
+                            new BitKey(BitSpec.op3, Op3s.Fpop2.value),
+                            new BitKey(BitSpec.op3, Op3s.Impdep1.value),
+                            new BitKey(BitSpec.op3, Op3s.Impdep2.value)});
+            // @formatter:on
+        }
+
+        public static void emit(SPARCMacroAssembler masm, Opfs opf, Register rs1, Register rs2, Register rd) {
             int instruction = setBits(0, opf, rs1, rs2);
             instruction = BitSpec.rd.setBits(instruction, rd.encoding);
             instruction = BitSpec.i.setBits(instruction, 0);
             masm.emitInt(instruction);
         }
 
-        public void emitFcmp(SPARCMacroAssembler masm, Opfs opf, CC cc, Register rs1, Register rs2) {
+        public static void emitFcmp(SPARCMacroAssembler masm, Opfs opf, CC cc, Register rs1, Register rs2) {
             assert opf.equals(Opfs.Fcmpd) || opf.equals(Opfs.Fcmps) : opf;
             int instruction = setBits(0, opf, rs1, rs2);
             instruction = BitSpec.fcc.setBits(instruction, cc.value);
@@ -1453,12 +1624,7 @@ public abstract class SPARCAssembler extends Assembler {
         @Override
         protected List<BitKey[]> getKeys() {
             List<BitKey[]> keys = super.getKeys();
-            // @formatter:off
-            keys.add(new BitKey[]{
-                            new BitKey(BitSpec.op3, Op3s.Fpop1.value),
-                            new BitKey(BitSpec.op3, Op3s.Fpop2.value),
-                            new BitKey(BitSpec.op3, Op3s.Impdep1.value),
-                            new BitKey(BitSpec.op3, Op3s.Impdep2.value)});
+            keys.add(op3Keys);
             // @formatter:on
             return keys;
         }
@@ -2072,11 +2238,11 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void fmovdcc(ConditionFlag cond, CC cc, Register rs2, Register rd) {
-        fmovcc(cond, cc, rs2, rd, Fmovdcc.value);
+        fmovcc(cond, cc, rs2, rd, OpfLow.Fmovdcc.value);
     }
 
     public void fmovscc(ConditionFlag cond, CC cc, Register rs2, Register rd) {
-        fmovcc(cond, cc, rs2, rd, Fmovscc.value);
+        fmovcc(cond, cc, rs2, rd, OpfLow.Fmovscc.value);
     }
 
     private void fmovcc(ConditionFlag cond, CC cc, Register rs2, Register rd, int opfLow) {
@@ -2226,10 +2392,6 @@ public abstract class SPARCAssembler extends Assembler {
     public void srlx(Register rs1, int shcnt64, Register rd) {
         assert isImm(shcnt64, 6);
         op3(Srlx, rs1, shcnt64, rd);
-    }
-
-    public void fandd(Register rs1, Register rs2, Register rd) {
-        op3(Impdep1, Fandd, rs1, rs2, rd);
     }
 
     public void sub(Register rs1, Register rs2, Register rd) {
@@ -2545,7 +2707,7 @@ public abstract class SPARCAssembler extends Assembler {
         int delaySlotAbsolute = i + INSTRUCTION_SIZE;
         int nextInst = getInt(delaySlotAbsolute);
         SPARCOp nextOp = getSPARCOp(nextInst);
-        if (nextOp instanceof Sethi && ((Sethi) nextOp).isNop(nextInst)) {
+        if (nextOp instanceof Sethi && Sethi.isNop(nextInst)) {
             int inst = getInt(i);
             SPARCOp op = getSPARCOp(inst);
             if (op instanceof ControlTransferOp && ((ControlTransferOp) op).hasDelaySlot() && ((ControlTransferOp) op).isAnnulable(inst)) {

@@ -34,6 +34,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.NotEqual;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.sparc.SPARC.g0;
+import static jdk.internal.jvmci.sparc.SPARCKind.WORD;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -42,6 +43,7 @@ import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.sparc.SPARCKind;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.asm.Label;
@@ -113,7 +115,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
         masm.add(asRegister(array2Value), arrayBaseOffset, array2);
 
         // Get array length in bytes.
-        masm.mulx(asRegister(lengthValue, JavaKind.Int), arrayIndexScale, length);
+        masm.mulx(asRegister(lengthValue, WORD), arrayIndexScale, length);
         masm.mov(length, result); // copy
 
         emit8ByteCompare(masm, result, array1, array2, length, trueLabel, falseLabel);
@@ -142,7 +144,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
      * Emits code that uses 8-byte vector compares.
      */
     private void emit8ByteCompare(SPARCMacroAssembler masm, Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
-        assert lengthValue.getPlatformKind().equals(JavaKind.Int);
+        assert lengthValue.getPlatformKind().equals(SPARCKind.WORD);
         Label loop = new Label();
         Label compareTail = new Label();
         Label compareTailCorrectVectorEnd = new Label();

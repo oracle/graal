@@ -23,12 +23,16 @@
 
 package com.oracle.graal.compiler.sparc;
 
+import static jdk.internal.jvmci.sparc.SPARCKind.BYTE;
+import static jdk.internal.jvmci.sparc.SPARCKind.DWORD;
+import static jdk.internal.jvmci.sparc.SPARCKind.HWORD;
+import static jdk.internal.jvmci.sparc.SPARCKind.WORD;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.JavaType;
 import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
+import jdk.internal.jvmci.sparc.SPARCKind;
 
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.compiler.match.ComplexMatchResult;
@@ -88,33 +92,32 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
     private ComplexMatchResult emitSignExtendMemory(Access access, int fromBits, int toBits) {
         assert fromBits <= toBits && toBits <= 64;
-        JavaKind toKind = null;
-        JavaKind fromKind = null;
+        SPARCKind toKind = null;
+        SPARCKind fromKind = null;
         if (fromBits == toBits) {
             return null;
-        } else if (toBits > 32) {
-            toKind = JavaKind.Long;
-        } else if (toBits > 16) {
-            toKind = JavaKind.Int;
-        } else {
-            toKind = JavaKind.Short;
+        } else if (toBits > WORD.getSizeInBits()) {
+            toKind = DWORD;
+        } else if (toBits > HWORD.getSizeInBits()) {
+            toKind = WORD;
+        } else if (toBits > BYTE.getSizeInBits()) {
+            toKind = HWORD;
         }
         switch (fromBits) {
             case 8:
-                fromKind = JavaKind.Byte;
+                fromKind = BYTE;
                 break;
             case 16:
-                fromKind = JavaKind.Short;
+                fromKind = HWORD;
                 break;
             case 32:
-                fromKind = JavaKind.Int;
+                fromKind = WORD;
                 break;
             default:
                 throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
         }
-
-        JavaKind localFromKind = fromKind;
-        JavaKind localToKind = toKind;
+        SPARCKind localFromKind = fromKind;
+        SPARCKind localToKind = toKind;
         return builder -> {
             Value v = getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
             return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
@@ -123,33 +126,32 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
     private ComplexMatchResult emitZeroExtendMemory(Access access, int fromBits, int toBits) {
         assert fromBits <= toBits && toBits <= 64;
-        JavaKind toKind = null;
-        JavaKind fromKind = null;
+        SPARCKind toKind = null;
+        SPARCKind fromKind = null;
         if (fromBits == toBits) {
             return null;
-        } else if (toBits > 32) {
-            toKind = JavaKind.Long;
-        } else if (toBits > 16) {
-            toKind = JavaKind.Int;
-        } else {
-            toKind = JavaKind.Short;
+        } else if (toBits > WORD.getSizeInBits()) {
+            toKind = DWORD;
+        } else if (toBits > HWORD.getSizeInBits()) {
+            toKind = WORD;
+        } else if (toBits > BYTE.getSizeInBits()) {
+            toKind = HWORD;
         }
         switch (fromBits) {
             case 8:
-                fromKind = JavaKind.Byte;
+                fromKind = BYTE;
                 break;
             case 16:
-                fromKind = JavaKind.Short;
+                fromKind = HWORD;
                 break;
             case 32:
-                fromKind = JavaKind.Int;
+                fromKind = WORD;
                 break;
             default:
                 throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
         }
-
-        JavaKind localFromKind = fromKind;
-        JavaKind localToKind = toKind;
+        SPARCKind localFromKind = fromKind;
+        SPARCKind localToKind = toKind;
         return builder -> {
             // Loads are always zero extending load
             Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
