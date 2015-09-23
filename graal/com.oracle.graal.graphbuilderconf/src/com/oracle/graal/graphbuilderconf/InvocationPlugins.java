@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
@@ -92,6 +93,7 @@ public class InvocationPlugins {
 
         private final InvocationPlugins plugins;
         private final Class<?> declaringClass;
+        private boolean allowOverwrite;
 
         /**
          * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
@@ -107,13 +109,38 @@ public class InvocationPlugins {
         }
 
         /**
+         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
+         * given class.
+         *
+         * @param plugins where to register the plugins
+         * @param declaringClassName the name of the class class declaring the methods for which
+         *            plugins will be registered via this object
+         */
+        public Registration(InvocationPlugins plugins, String declaringClassName) {
+            this.plugins = plugins;
+            try {
+                this.declaringClass = Class.forName(declaringClassName);
+            } catch (ClassNotFoundException ex) {
+                throw JVMCIError.shouldNotReachHere(ex);
+            }
+        }
+
+        /**
+         * Configures this registration to allow or disallow overwriting of invocation plugins.
+         */
+        public Registration setAllowOverwrite(boolean allowOverwrite) {
+            this.allowOverwrite = allowOverwrite;
+            return this;
+        }
+
+        /**
          * Registers a plugin for a method with no arguments.
          *
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
         public void register0(String name, InvocationPlugin plugin) {
-            plugins.register(plugin, declaringClass, name);
+            plugins.register(plugin, false, allowOverwrite, declaringClass, name);
         }
 
         /**
@@ -123,7 +150,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register1(String name, Class<?> arg, InvocationPlugin plugin) {
-            plugins.register(plugin, declaringClass, name, arg);
+            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg);
         }
 
         /**
@@ -133,7 +160,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register2(String name, Class<?> arg1, Class<?> arg2, InvocationPlugin plugin) {
-            plugins.register(plugin, declaringClass, name, arg1, arg2);
+            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg1, arg2);
         }
 
         /**
@@ -143,7 +170,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register3(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, InvocationPlugin plugin) {
-            plugins.register(plugin, declaringClass, name, arg1, arg2, arg3);
+            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg1, arg2, arg3);
         }
 
         /**
@@ -153,7 +180,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register4(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, InvocationPlugin plugin) {
-            plugins.register(plugin, declaringClass, name, arg1, arg2, arg3, arg4);
+            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg1, arg2, arg3, arg4);
         }
 
         /**
@@ -163,7 +190,37 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register5(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, Class<?> arg5, InvocationPlugin plugin) {
-            plugins.register(plugin, declaringClass, name, arg1, arg2, arg3, arg4, arg5);
+            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg1, arg2, arg3, arg4, arg5);
+        }
+
+        /**
+         * Registers a plugin for an optional method with no arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptional0(String name, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringClass, name);
+        }
+
+        /**
+         * Registers a plugin for an optional method with 1 argument.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptional1(String name, Class<?> arg, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg);
+        }
+
+        /**
+         * Registers a plugin for an optional method with 2 arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptional2(String name, Class<?> arg1, Class<?> arg2, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg1, arg2);
         }
 
         /**
@@ -173,7 +230,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void registerOptional3(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, InvocationPlugin plugin) {
-            plugins.registerOptional(plugin, declaringClass, name, arg1, arg2, arg3);
+            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg1, arg2, arg3);
         }
 
         /**
@@ -183,7 +240,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void registerOptional4(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, InvocationPlugin plugin) {
-            plugins.registerOptional(plugin, declaringClass, name, arg1, arg2, arg3, arg4);
+            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg1, arg2, arg3, arg4);
         }
 
         /**
@@ -198,7 +255,7 @@ public class InvocationPlugins {
          */
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, Class<?>... argumentTypes) {
             MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(substituteDeclaringClass, name, argumentTypes);
-            plugins.register(plugin, declaringClass, name, argumentTypes);
+            plugins.register(plugin, false, allowOverwrite, declaringClass, name, argumentTypes);
         }
     }
 
@@ -319,11 +376,11 @@ public class InvocationPlugins {
      *            {@code declaringClass} iff the method is non-static.
      * @return an object representing the method
      */
-    MethodKey put(InvocationPlugin value, boolean isStatic, boolean isOptional, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+    MethodKey put(InvocationPlugin value, boolean isStatic, boolean isOptional, boolean allowOverwrite, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
         assert isStatic || argumentTypes[0] == declaringClass;
         MethodKey methodKey = new MethodKey(value, isStatic, isOptional, declaringClass, name, argumentTypes);
         assert entries == null : "registration is closed";
-        assert !registrations.contains(methodKey) : "a value is already registered for " + methodKey;
+        assert allowOverwrite || !registrations.contains(methodKey) : "a value is already registered for " + methodKey;
         registrations.add(methodKey);
         return methodKey;
     }
@@ -379,10 +436,6 @@ public class InvocationPlugins {
     private InvocationPlugins(InvocationPlugins parent, MetaAccessProvider metaAccess) {
         this.metaAccess = metaAccess;
         InvocationPlugins p = parent;
-        // Only adopt a non-empty parent
-        while (p != null && p.size() == 0) {
-            p = p.parent;
-        }
         this.parent = p;
     }
 
@@ -401,12 +454,12 @@ public class InvocationPlugins {
         this(null, metaAccess);
     }
 
-    private void register(InvocationPlugin plugin, boolean isOptional, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+    private void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
         boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
         if (!isStatic) {
             argumentTypes[0] = declaringClass;
         }
-        MethodKey methodInfo = put(plugin, isStatic, isOptional, declaringClass, name, argumentTypes);
+        MethodKey methodInfo = put(plugin, isStatic, isOptional, allowOverwrite, declaringClass, name, argumentTypes);
         assert Checker.check(this, methodInfo, plugin);
     }
 
@@ -420,7 +473,7 @@ public class InvocationPlugins {
      *            {@code declaringClass}
      */
     public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
-        register(plugin, false, declaringClass, name, argumentTypes);
+        register(plugin, false, false, declaringClass, name, argumentTypes);
     }
 
     /**
@@ -433,7 +486,7 @@ public class InvocationPlugins {
      *            {@code declaringClass}
      */
     public void registerOptional(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
-        register(plugin, true, declaringClass, name, argumentTypes);
+        register(plugin, true, false, declaringClass, name, argumentTypes);
     }
 
     /**

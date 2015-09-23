@@ -583,7 +583,7 @@ public class BytecodeParser implements GraphBuilderContext {
     private ValueNode unwindValue;
     private FixedWithNextNode beforeUnwindNode;
 
-    private FixedWithNextNode lastInstr;                 // the last instruction added
+    protected FixedWithNextNode lastInstr;                 // the last instruction added
     private final boolean explodeLoops;
     private final boolean mergeExplosions;
     private final Map<FrameStateBuilder, Integer> mergeExplosionsMap;
@@ -1853,7 +1853,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @SuppressWarnings("try")
-    private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
+    protected void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
         try (IntrinsicScope s = calleeIntrinsicContext != null && !parsingIntrinsic() ? new IntrinsicScope(this, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args) : null) {
 
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, Compiler.INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
@@ -1886,7 +1886,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, JavaTypeProfile profile) {
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, JavaTypeProfile profile) {
         return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType, profile);
     }
 

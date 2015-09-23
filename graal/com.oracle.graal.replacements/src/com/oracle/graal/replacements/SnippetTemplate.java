@@ -133,10 +133,7 @@ import com.oracle.graal.word.WordBase;
  */
 public class SnippetTemplate {
 
-    // Checkstyle: stop
-    public static boolean LAZY_SNIPPETS = true;
-
-    // Checkstyle: resume
+    private static final boolean EAGER_SNIPPETS = Boolean.getBoolean("graal.snippets.eager");
 
     /**
      * Holds the {@link ResolvedJavaMethod} of the snippet, together with some information about the
@@ -587,10 +584,10 @@ public class SnippetTemplate {
             assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
             providers.getReplacements().registerSnippet(javaMethod);
-            if (LAZY_SNIPPETS) {
-                return new LazySnippetInfo(javaMethod, privateLocations);
-            } else {
+            if (EAGER_SNIPPETS) {
                 return new EagerSnippetInfo(javaMethod, privateLocations);
+            } else {
+                return new LazySnippetInfo(javaMethod, privateLocations);
             }
         }
 
