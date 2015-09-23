@@ -24,11 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.MethodMessage;
-import com.oracle.truffle.api.interop.java.test.JavaInteropTest.XYPlus;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -36,6 +31,10 @@ import static org.junit.Assert.assertTrue;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.MethodMessage;
 
 public class MethodMessageTest {
     interface MathWrap {
