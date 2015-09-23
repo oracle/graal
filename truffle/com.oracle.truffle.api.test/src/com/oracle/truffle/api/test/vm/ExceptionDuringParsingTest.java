@@ -28,19 +28,25 @@ import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
 import com.oracle.truffle.api.vm.TruffleVM;
 import java.io.IOException;
+import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ExceptionDuringParsingTest {
     public static Accessor API;
 
+    @Before
+    @After
+    public void cleanTheSet() {
+        Ctx.disposed.clear();
+    }
+    
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
-        Ctx.disposed.clear();
-
         TruffleVM vm = TruffleVM.newVM().build();
         TruffleVM.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
