@@ -106,11 +106,16 @@ public abstract class TruffleLanguage<C> {
     /**
      * Creates internal representation of the executing context suitable for given environment. Each
      * time the {@link TruffleLanguage language} is used by a new
-     * {@link com.oracle.truffle.api.vm.TruffleVM} or in a new thread, the system calls this method
-     * to let the {@link TruffleLanguage language} prepare for <em>execution</em>. The returned
-     * execution context is completely language specific; it is however expected it will contain
-     * reference to here-in provided <code>env</code> and adjust itself according to parameters
-     * provided by the <code>env</code> object.
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine} or in a new thread, the system calls this
+     * method to let the {@link TruffleLanguage language} prepare for <em>execution</em>. The
+     * returned execution context is completely language specific; it is however expected it will
+     * contain reference to here-in provided <code>env</code> and adjust itself according to
+     * parameters provided by the <code>env</code> object.
+     * <p>
+     * The standard way of accessing the here-in generated context is to create a {@link Node} and
+     * insert it into own AST hierarchy - use {@link #createFindContextNode()} to obtain the
+     * {@link Node findNode} and later {@link #findContext(com.oracle.truffle.api.nodes.Node)
+     * findContext(findNode)} to get back your language context.
      *
      * @param env the environment the language is supposed to operate in
      * @return internal data of the language in given environment
@@ -215,7 +220,10 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Uses the {@link #createFindContextNode()} node to obtain the current context.
+     * Uses the {@link #createFindContextNode()} node to obtain the current context. In case you
+     * don't care about performance (e.g. your are on a slow execution path), you can chain the
+     * calls directly as <code>findContext({@link #createFindContextNode()})</code> and forget the
+     * node all together.
      *
      * @param n the node created by this language's {@link #createFindContextNode()}
      * @return the context created by
