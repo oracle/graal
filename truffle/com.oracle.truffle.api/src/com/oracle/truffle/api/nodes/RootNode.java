@@ -160,7 +160,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     * 
+     *
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();
@@ -186,7 +186,7 @@ public abstract class RootNode extends Node {
     }
 
     public final void applyInstrumentation() {
-        super.probeAST(this);
+        Node.ACCESSOR.probeAST(this);
     }
 
     /**

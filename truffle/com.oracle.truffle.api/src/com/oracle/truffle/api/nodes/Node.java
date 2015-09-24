@@ -491,11 +491,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         return "";
     }
 
-    @SuppressWarnings("static-method")
-    protected final void probeAST(RootNode rootNode) {
-        ACCESSOR.probeAST(rootNode);
-    }
-
     private static final Object GIL = new Object();
 
     private static final ThreadLocal<Integer> IN_ATOMIC_BLOCK = new ThreadLocal<Integer>() {
@@ -519,7 +514,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         return true;
     }
 
-    private static final class AccessorNodes extends Accessor {
+    static final class AccessorNodes extends Accessor {
         @SuppressWarnings("rawtypes")
         @Override
         protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
@@ -533,5 +528,5 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     // registers into Accessor.NODES
-    private static final AccessorNodes ACCESSOR = new AccessorNodes();
+    static final AccessorNodes ACCESSOR = new AccessorNodes();
 }
