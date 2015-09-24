@@ -24,13 +24,11 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * A {@link Node} instance that must be inserted into a Truffle AST in order to enable
- * {@linkplain Instrument instrumentation} at a particular Guest Language (GL) node. Implementations
- * must ensure that {@link TruffleLanguage#isInstrumentable(Node)} returns {@code false}.
+ * {@linkplain Instrument instrumentation} at a particular Guest Language (GL) node.
  * <p>
  * The implementation must be GL-specific. A wrapper <em>decorates</em> a GL AST node (the wrapper's
  * <em>child</em>) by acting as a transparent <em>proxy</em> with respect to the GL's execution

@@ -60,9 +60,7 @@
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probe} that is permanently associated with a
  * particular segment of source code, e.g. a "statement", that corresponds to an AST location.</li>
  * <li>Probing is only supported at
- * {@linkplain com.oracle.truffle.api.nodes.Node Nodes} that are implemented to be
- * {@linkplain com.oracle.truffle.api.instrument.Instrumenter#isInstrumentable(com.oracle.truffle.api.nodes.Node)
- * instrumentable}.</li>
+ * {@linkplain com.oracle.truffle.api.nodes.Node Nodes} where supported by specific language implementations.</li>
  * <li>The relationship between a
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probe} and
  * a source code location persists across Truffle <em>cloning</em> of ASTs, which is to say, a single

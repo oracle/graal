@@ -206,8 +206,8 @@ public abstract class TruffleLanguage<C> {
     protected abstract boolean isInstrumentable(Node node);
 
     /**
-     * For nodes in this language that are {@linkplain #isInstrumentable() instrumentable}, this
-     * method returns an {@linkplain Node AST node} that:
+     * For nodes in this language that are <em>instrumentable</em>, this method returns an
+     * {@linkplain Node AST node} that:
      * <ol>
      * <li>implements {@link WrapperNode};</li>
      * <li>has the node argument as it's child; and</li>

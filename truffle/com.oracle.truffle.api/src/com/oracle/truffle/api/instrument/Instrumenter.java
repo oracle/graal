@@ -272,17 +272,6 @@ public final class Instrumenter {
     }
 
     /**
-     * Returns {@code true} if the AST node can be "instrumented" by {@linkplain #probe(Node)
-     * Probing}.
-     * <p>
-     * <b>Note:</b> instrumentation requires a appropriate {@linkplain #createWrapperNode(Node)
-     * WrapperNode}.
-     */
-    public boolean isInstrumentable(Node node) {
-        return ACCESSOR.isInstrumentable(vm, node);
-    }
-
-    /**
      * Prepares an AST node for {@linkplain Instrument instrumentation}, where the node is presumed
      * to be part of a well-formed Truffle AST that has not yet been executed.
      * <p>
@@ -324,7 +313,7 @@ public final class Instrumenter {
             return wrapper.getProbe();
         }
 
-        if (!isInstrumentable(node)) {
+        if (!ACCESSOR.isInstrumentable(vm, node)) {
             throw new ProbeException(ProbeFailure.Reason.NOT_INSTRUMENTABLE, parent, node, null);
         }
 

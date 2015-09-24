@@ -63,8 +63,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * <ul>
  * <li>"Execution call" on a node is is defined as invocation of a node method that is instrumented
  * to produce the event {@link SimpleInstrumentListener#onEnter(Probe)};</li>
- * <li>Execution calls are tabulated only at <em>instrumented</em> nodes, i.e. those for which
- * {@link Instrumenter#isInstrumentable(Node)}{@code == true};</li>
+ * <li>Execution calls are tabulated only at nodes where the guest languages supports
+ * {@linkplain Instrumenter#probe(Node) probing}.</li>
  * <li>Execution calls are tabulated only at nodes present in the AST when originally created;
  * dynamically added nodes will not be instrumented.</li>
  * </ul>
