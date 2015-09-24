@@ -792,18 +792,17 @@ public final class TruffleVM {
         TruffleLanguage<?> getImpl(boolean create) {
             getEnv(create);
             TruffleLanguage<?> impl = info.getImpl(false);
-            if (impl != null) {
-                ASTProber prober = SPI.getDefaultASTProber(impl);
-                if (prober != null) {
-                    instrumenter.registerASTProber(prober);
-                }
-            }
             return impl;
         }
 
         TruffleLanguage.Env getEnv(boolean create) {
             if (env == null && create) {
-                env = SPI.attachEnv(TruffleVM.this, info.getImpl(true), out, err, in, TruffleVM.this.instrumenter);
+                final TruffleLanguage<?> impl = info.getImpl(true);
+                ASTProber prober = SPI.getDefaultASTProber(impl);
+                if (prober != null) {
+                    instrumenter.registerASTProber(prober);
+                }
+                env = SPI.attachEnv(TruffleVM.this, impl, out, err, in, TruffleVM.this.instrumenter);
             }
             return env;
         }
