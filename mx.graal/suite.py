@@ -80,7 +80,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.graal.graph",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
     },
 
     # ------------- Graal -------------
