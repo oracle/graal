@@ -67,7 +67,6 @@ public abstract class Location {
     /**
      * Get object value as object at this location in store.
      *
-     * @param shape the current shape of the object, which must contain this location
      */
     public final Object get(DynamicObject store) {
         return get(store, false);
