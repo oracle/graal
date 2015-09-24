@@ -391,31 +391,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     /**
      * Gets a garbage value for a given kind.
      */
-    protected JavaConstant zapValueForKind(PlatformKind kind) {
-        long dead = 0xDEADDEADDEADDEADL;
-        switch ((JavaKind) kind) {
-            case Boolean:
-                return JavaConstant.FALSE;
-            case Byte:
-                return JavaConstant.forByte((byte) dead);
-            case Char:
-                return JavaConstant.forChar((char) dead);
-            case Short:
-                return JavaConstant.forShort((short) dead);
-            case Int:
-                return JavaConstant.forInt((int) dead);
-            case Double:
-                return JavaConstant.forDouble(Double.longBitsToDouble(dead));
-            case Float:
-                return JavaConstant.forFloat(Float.intBitsToFloat((int) dead));
-            case Long:
-                return JavaConstant.forLong(dead);
-            case Object:
-                return JavaConstant.NULL_POINTER;
-            default:
-                throw new IllegalArgumentException(kind.toString());
-        }
-    }
+    protected abstract JavaConstant zapValueForKind(PlatformKind kind);
 
     public LIRKind getLIRKind(Stamp stamp) {
         return stamp.getLIRKind(lirKindTool);
@@ -428,15 +404,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             return LIRKind.reference(target().arch.getWordKind());
         } else {
             return LIRKind.unknownReference(target().arch.getWordKind());
-        }
-    }
-
-    public LIRKind toRegisterKind(LIRKind kind) {
-        JavaKind stackKind = ((JavaKind) kind.getPlatformKind()).getStackKind();
-        if (stackKind != kind.getPlatformKind()) {
-            return kind.changeType(stackKind);
-        } else {
-            return kind;
         }
     }
 

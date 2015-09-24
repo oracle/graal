@@ -198,6 +198,32 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
+    @Override
+    protected JavaConstant zapValueForKind(PlatformKind kind) {
+        long dead = 0xDEADDEADDEADDEADL;
+        switch ((SPARCKind) kind) {
+            case BYTE:
+                return JavaConstant.forByte((byte) dead);
+            case HWORD:
+                return JavaConstant.forShort((short) dead);
+            case WORD:
+                return JavaConstant.forInt((int) dead);
+            case DWORD:
+                return JavaConstant.forLong(dead);
+            case SINGLE:
+            case V32_BYTE:
+            case V32_HWORD:
+                return JavaConstant.forFloat(Float.intBitsToFloat((int) dead));
+            case DOUBLE:
+            case V64_BYTE:
+            case V64_HWORD:
+            case V64_WORD:
+                return JavaConstant.forDouble(Double.longBitsToDouble(dead));
+            default:
+                throw new IllegalArgumentException(kind.toString());
+        }
+    }
+
     protected LIRInstruction createMove(AllocatableValue dst, Value src) {
         boolean srcIsSlot = isStackSlotValue(src);
         boolean dstIsSlot = isStackSlotValue(dst);
