@@ -49,6 +49,50 @@ import java.util.List;
  * just encapsulates it into <b>Java</b> facade to make it as natural to access foreign
  * {@link TruffleObject Truffle objects} as <b>Java</b> programmers are used to when accessing
  * <b>Java</b> objects and interfaces directly.
+ *
+ * <h3>Java/Truffle Object Inter-op Semantics</h3>
+ *
+ * In case your language exposes a {@link TruffleObject} implementation, and somebody wraps your
+ * object into a <em>JavaInterop</em> interface via
+ * {@link #asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)} method, this
+ * is the set of {@link Message messages} you can expect:
+ * <p>
+ * Users can send you any message by annotating their interface method with {@link MethodMessage}
+ * and it is up to them (and you) to negotiate the correct set of messages and their parameters to
+ * help you understand each other. However there is a default set of {@link Message messages} (for
+ * methods not annotated by {@link MethodMessage}) which consists of:
+ * <ol>
+ * <li>First of all {@link Message#createInvoke(int)} is constructed (with the number of parameters
+ * of the interface method) and delivered to your object. The
+ * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver} of the message is
+ * your {@link TruffleObject}. The first
+ * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) argument} is name of the
+ * interface method, followed by the
+ * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) actual arguments} of the
+ * interface method. Your language can either handle the message or throw
+ * {@link IllegalArgumentException} to signal additional processing is needed.</li>
+ * <li>
+ * If the {@link Message#createInvoke(int) previous message} isn't handled, a {@link Message#READ}
+ * is sent to your {@link TruffleObject object} (e.g.
+ * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) with a field name
+ * equal to the name of the interface method. If the read returns a primitive type, it is returned.</li>
+ * <li>
+ * If the read value is another {@link TruffleObject}, it is inspected whether it handles
+ * {@link Message#IS_EXECUTABLE}. If it does, a message {@link Message#createExecute(int)} with name
+ * of the interface method and its parameters is sent to the object. The result is returned to the
+ * interface method caller.</li>
+ * <li>
+ * In case the read value is neither primitive, neither {@link Message#IS_EXECUTABLE executable},
+ * and the interface method has no parameters, it is returned back.</li>
+ * <li>
+ * All other cases yield an {@link IllegalArgumentException}.</li>
+ * </ol>
+ * <p>
+ * Object oriented languages are expected to handle the initial {@link Message#createInvoke(int)}
+ * message. Non-OOP languages are expected to ignore it, yield {@link IllegalArgumentException} and
+ * handle the subsequent {@link Message#READ read} and {@link Message#createExecute(int) execute}
+ * ones. The real semantic however depends on the actual language one is communicating with.
+ * <p>
  */
 public final class JavaInterop {
     static final Object[] EMPTY = {};
@@ -351,7 +395,7 @@ public final class JavaInterop {
                         if (args.length == 0) {
                             return toJava(attr, method);
                         }
-                        throw new IllegalStateException(attr + " cannot be invoked with " + args.length + " parameters");
+                        throw new IllegalArgumentException(attr + " cannot be invoked with " + args.length + " parameters");
                     }
                     List<Object> callArgs = new ArrayList<>(args.length + 1);
                     // callArgs.add(attr);
@@ -360,7 +404,7 @@ public final class JavaInterop {
                 }
                 return toJava(ret, method);
             }
-            throw new IllegalStateException("Unknown message: " + message);
+            throw new IllegalArgumentException("Unknown message: " + message);
         }
 
     }
