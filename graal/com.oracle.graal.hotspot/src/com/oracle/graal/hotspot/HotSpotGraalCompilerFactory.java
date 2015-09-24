@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot;
 
 import static jdk.internal.jvmci.inittimer.InitTimer.timer;
 import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.compiler.Compiler;
 import jdk.internal.jvmci.compiler.CompilerFactory;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
@@ -50,15 +49,6 @@ public abstract class HotSpotGraalCompilerFactory implements CompilerFactory {
     protected abstract HotSpotBackendFactory getBackendFactory(Architecture arch);
 
     protected abstract CompilerConfiguration createCompilerConfiguration();
-
-    @Override
-    public Architecture initializeArchitecture(Architecture arch) {
-        HotSpotBackendFactory backend = getBackendFactory(arch);
-        if (backend == null) {
-            throw new JVMCIError("no Graal backend found for %s", arch);
-        }
-        return backend.initializeArchitecture(arch);
-    }
 
     @SuppressWarnings("try")
     @Override

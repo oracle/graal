@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import jdk.internal.jvmci.amd64.AMD64;
-import jdk.internal.jvmci.code.Architecture;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
@@ -236,10 +235,5 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, Startu
     @Override
     public String toString() {
         return "AMD64";
-    }
-
-    public Architecture initializeArchitecture(Architecture arch) {
-        assert arch instanceof AMD64;
-        return arch;
     }
 }

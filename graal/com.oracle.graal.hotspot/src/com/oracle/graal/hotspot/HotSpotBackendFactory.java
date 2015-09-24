@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.code.Architecture;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public interface HotSpotBackendFactory {
-
-    Architecture initializeArchitecture(Architecture arch);
 
     HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host);
 }

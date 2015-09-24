@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import jdk.internal.jvmci.code.Architecture;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
@@ -146,10 +145,5 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory, Startu
     @Override
     public String toString() {
         return "SPARC";
-    }
-
-    public Architecture initializeArchitecture(Architecture arch) {
-        assert arch instanceof SPARC;
-        return arch;
     }
 }
