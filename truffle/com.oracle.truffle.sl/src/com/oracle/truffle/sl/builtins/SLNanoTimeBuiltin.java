@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.builtins;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * Builtin function that returns the value of a high-resolution time, in nanoseconds.
@@ -51,7 +52,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public abstract class SLNanoTimeBuiltin extends SLBuiltinNode {
 
     public SLNanoTimeBuiltin() {
-        super(SourceSection.createUnavailable("SL builtin", "nanoTime"));
+        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "nanoTime"));
     }
 
     @Specialization

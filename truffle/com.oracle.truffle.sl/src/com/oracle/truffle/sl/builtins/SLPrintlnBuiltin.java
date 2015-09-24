@@ -44,7 +44,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
+
 import java.io.PrintWriter;
 
 /**
@@ -60,7 +62,7 @@ import java.io.PrintWriter;
 public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
 
     public SLPrintlnBuiltin() {
-        super(SourceSection.createUnavailable("SL builtin", "println"));
+        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "println"));
     }
 
     @Specialization

@@ -198,6 +198,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
 public final class SLLanguage extends TruffleLanguage<SLContext> {
+    public static final String builtinKind = "SL builtin";
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
     private static Visualizer visualizer = new SLDefaultVisualizer();
     private ASTProber astProber = new SLStandardASTProber();
