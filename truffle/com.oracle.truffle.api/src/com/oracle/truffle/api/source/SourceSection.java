@@ -98,7 +98,7 @@ public final class SourceSection {
 
     /**
      * Gets a representation of the first line of the section, suitable for a hash key.
-     * 
+     *
      * @return first line of the section
      */
     public LineLocation getLineLocation() {
@@ -175,7 +175,7 @@ public final class SourceSection {
      * @return the code as a String object
      */
     public String getCode() {
-        return getSource().getCode(charIndex, charLength);
+        return source == null ? "<unavailable>" : source.getCode(charIndex, charLength);
     }
 
     /**
@@ -262,6 +262,6 @@ public final class SourceSection {
      * @return source section which is mostly <em>empty</em>
      */
     public static SourceSection createUnavailable(String kind, String name) {
-        return new SourceSection(kind, null, name, -1, -1, -1, -1);
+        return new SourceSection(kind, null, name == null ? "<unknown>" : name, -1, -1, -1, -1);
     }
 }
