@@ -37,7 +37,7 @@ import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
-public final class SPARCOPFOp extends SPARCLIRInstruction {
+public final class SPARCOPFOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
     public static final LIRInstructionClass<SPARCOPFOp> TYPE = LIRInstructionClass.create(SPARCOPFOp.class);
     public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
@@ -66,6 +66,7 @@ public final class SPARCOPFOp extends SPARCLIRInstruction {
 
     @Override
     protected void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        getDelayedControlTransfer().emitControlTransfer(crb, masm);
         if (state != null) {
             crb.recordImplicitException(masm.position(), state);
         }
