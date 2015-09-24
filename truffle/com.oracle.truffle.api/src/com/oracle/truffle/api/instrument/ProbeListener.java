@@ -25,7 +25,7 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * An observer of events related to {@link Probe}s: creating and tagging.
@@ -36,9 +36,9 @@ public interface ProbeListener {
      * Notifies that all registered {@link ASTProber}s are about to be applied to a newly
      * constructed AST.
      *
-     * @param source source code from which the AST was constructed
+     * @param rootNode parent of the newly created AST
      */
-    void startASTProbing(Source source);
+    void startASTProbing(RootNode rootNode);
 
     /**
      * Notifies that a {@link Probe} has been newly attached to an AST via
@@ -74,8 +74,8 @@ public interface ProbeListener {
      * Notifies that the application of all registered {@link ASTProber}s to a newly constructed AST
      * has completed.
      *
-     * @param source source code from which the AST was constructed
+     * @param rootNode parent of the newly created AST
      */
-    void endASTProbing(Source source);
+    void endASTProbing(RootNode rootNode);
 
 }

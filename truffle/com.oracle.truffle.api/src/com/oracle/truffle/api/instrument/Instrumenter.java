@@ -38,7 +38,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -56,16 +55,6 @@ public final class Instrumenter {
         if (TRACE) {
             OUT.println(TRACE_PREFIX + String.format(format, args));
         }
-    }
-
-    /**
-     * Walks an AST, looking for the first node with an assigned {@link SourceSection} and returning
-     * the {@link Source}.
-     */
-    private static Source findSource(Node node) {
-        final FindSourceVisitor visitor = new FindSourceVisitor();
-        node.accept(visitor);
-        return visitor.source;
     }
 
     private enum ToolState {
@@ -252,20 +241,6 @@ public final class Instrumenter {
      * matching tag.
      */
     @CompilationFinal private SyntaxTagTrap afterTagTrap = null;
-
-    private static final class FindSourceVisitor implements NodeVisitor {
-
-        Source source = null;
-
-        public boolean visit(Node node) {
-            final SourceSection sourceSection = node.getSourceSection();
-            if (sourceSection != null) {
-                source = sourceSection.getSource();
-                return false;
-            }
-            return true;
-        }
-    }
 
     Instrumenter(Object vm) {
         this.vm = vm;
@@ -556,24 +531,24 @@ public final class Instrumenter {
         if (!astProbers.isEmpty()) {
 
             String name = "<?>";
-            final Source source = findSource(rootNode);
-            if (source != null) {
-                name = source.getShortName();
-            } else {
-                final SourceSection sourceSection = rootNode.getEncapsulatingSourceSection();
-                if (sourceSection != null) {
+            final SourceSection sourceSection = rootNode.getSourceSection();
+            if (sourceSection != null) {
+                final Source source = sourceSection.getSource();
+                if (source != null) {
+                    name = source.getShortName();
+                } else {
                     name = sourceSection.getShortDescription();
                 }
             }
             trace("START %s", name);
             for (ProbeListener listener : probeListeners) {
-                listener.startASTProbing(source);
+                listener.startASTProbing(rootNode);
             }
             for (ASTProber prober : astProbers) {
                 prober.probeAST(this, rootNode);  // TODO (mlvdv)
             }
             for (ProbeListener listener : probeListeners) {
-                listener.endASTProbing(source);
+                listener.endASTProbing(rootNode);
             }
             trace("FINISHED %s", name);
         }

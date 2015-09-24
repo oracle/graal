@@ -35,8 +35,8 @@ import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeListener;
 import com.oracle.truffle.api.instrument.SyntaxTag;
+import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdvancedInstrumentCounterRoot;
@@ -59,24 +59,15 @@ public class AdvancedInstrumentTest {
         final Source source = Source.fromText("testAdvancedInstrumentListener text", "testAdvancedInstrumentListener").withMimeType("text/x-instTest");
 
         final Probe[] addNodeProbe = new Probe[1];
-        instrumenter.addProbeListener(new ProbeListener() {
+        instrumenter.addProbeListener(new DefaultProbeListener() {
 
-            public void startASTProbing(Source s) {
-            }
-
-            public void newProbeInserted(Probe p) {
-            }
-
+            @Override
             public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
                 if (tag == InstrumentTestTag.ADD_TAG) {
                     assertNull("only one add node", addNodeProbe[0]);
                     addNodeProbe[0] = probe;
                 }
             }
-
-            public void endASTProbing(Source s) {
-            }
-
         });
         assertEquals(vm.eval(source).get(), 13);
         assertNotNull("Add node should be probed", addNodeProbe[0]);

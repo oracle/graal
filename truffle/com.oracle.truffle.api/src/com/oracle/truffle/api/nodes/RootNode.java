@@ -78,6 +78,11 @@ public abstract class RootNode extends Node {
     /**
      * Creates new root node. Each {@link RootNode} is associated with a particular language - if
      * the root node represents a method it is assumed the method is written in such language.
+     * <p>
+     * <strong>Note:</strong> Although the {@link SourceSction} <em>can</em> be {@code null}, this
+     * is strongly discouraged for the purposes of testing/tracing/tooling. Please use
+     * {@link SourceSection#createUnavailable(String, String)} to create a descriptive instance with
+     * a language-specific <em>kind</em> such as "SL Builtin" and a <em>name</em> if possible.
      *
      * @param language the language of the node, <b>cannot be</b> <code>null</code>
      * @param sourceSection a part of source associated with this node, can be <code>null</code>
@@ -160,7 +165,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     *
+     * 
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();

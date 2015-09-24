@@ -36,11 +36,10 @@ import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.Instrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeListener;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
 import com.oracle.truffle.api.instrument.StandardInstrumentListener;
 import com.oracle.truffle.api.instrument.SyntaxTag;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
 import com.oracle.truffle.api.instrument.impl.DefaultSimpleInstrumentListener;
 import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
@@ -71,14 +70,9 @@ public class InstrumentationTest {
         final Source source = Source.fromText("testProbing text", "testProbing").withMimeType("text/x-instTest");
 
         final Probe[] probes = new Probe[3];
-        instrumenter.addProbeListener(new ProbeListener() {
+        instrumenter.addProbeListener(new DefaultProbeListener() {
 
-            public void startASTProbing(Source s) {
-            }
-
-            public void newProbeInserted(Probe probe) {
-            }
-
+            @Override
             public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
                 if (tag == InstrumentTestTag.ADD_TAG) {
                     assertEquals(probes[0], null);
@@ -93,10 +87,6 @@ public class InstrumentationTest {
                     }
                 }
             }
-
-            public void endASTProbing(Source s) {
-            }
-
         });
         assertEquals(vm.eval(source).get(), 13);
         assertNotNull("Add node should be probed", probes[0]);
