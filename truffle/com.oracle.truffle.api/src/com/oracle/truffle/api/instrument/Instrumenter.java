@@ -44,7 +44,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Access to instrumentation services in an instance of {@link TruffleVM}.
+ * Access to instrumentation services in an execution instance.
  */
 public final class Instrumenter {
 

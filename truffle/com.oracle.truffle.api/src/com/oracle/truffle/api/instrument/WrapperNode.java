@@ -69,9 +69,8 @@ import com.oracle.truffle.api.nodes.Node;
 public interface WrapperNode extends InstrumentationNode {
 
     /**
-     * Gets the node being "wrapped", i.e. the AST node for which
-     * {@linkplain InstrumentationNode.EventHandlerNode execution events} will be reported through
-     * the Instrumentation Framework.
+     * Gets the node being "wrapped", i.e. the AST node for which {@linkplain EventHandlerNode
+     * execution events} will be reported through the Instrumentation Framework.
      */
     Node getChild();
 

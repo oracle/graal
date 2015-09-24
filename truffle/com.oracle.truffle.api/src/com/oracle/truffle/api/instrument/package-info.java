@@ -27,7 +27,7 @@
  * <h4>The Truffle Instrumentation Framework</h4>
  * <p>
  * This framework permits client
- * {@linkplain com.oracle.truffle.api.iknstrument.Instrumenter.Tool tools},
+ * {@linkplain com.oracle.truffle.api.instrument.Instrumenter.Tool tools},
  * either builtin or third-party, to observe with <em>very low overhead</em> the execution of a
  * {@linkplain com.oracle.truffle.api.TruffleLanguage Truffle Language} program at the level of
  * <em>AST execution events</em>:
@@ -37,11 +37,11 @@
  * <li>a Truffle
  * {@linkplain com.oracle.truffle.api.nodes.Node Node} execution has just completed.</li>
  * </ul>
- * The framework supports many kinds of tools, for example simple collectors of data such as
- * {@linkplain com.oracle.truffle.tools.CoverageTracker code coverage}.
+ * The framework supports many kinds of tools, for example simple collectors of data such as the
+ * CoverageTracker.
  * It also supports Truffle's built-in
  * {@linkplain com.oracle.truffle.api.debug.Debugger debugging services}, as well as utilities
- * that maintain {@linkplain com.oracle.truffle.tools.LineToProbesMap maps of source code locations}
+ * that maintain {@linkplain com.oracle.truffle.api.debug.LineToProbesMap maps of source code locations}
  * for other tools such as {@linkplain com.oracle.truffle.api.debug.Debugger debugging}.
  *
  * <h4>Instrumentation Services</h4>
@@ -92,8 +92,7 @@
  * of clients during program execution.  For example, knowing which
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probes} are on
  * {@linkplain com.oracle.truffle.api.instrument.StandardSyntaxTag#STATEMENT STATEMENT nodes}
- * informs both the {@linkplain com.oracle.truffle.tools.CoverageTracker code coverage} counter
- * and the
+ * informs both the CoverageTracker and the
  * {@linkplain com.oracle.truffle.api.debug.Debugger debugger} while "stepping".</li>
  * <li>{@linkplain com.oracle.truffle.api.instrument.SyntaxTag tags} can also be added at any
  * time by any client for any purpose, including private
@@ -107,8 +106,8 @@
  * being {@linkplain com.oracle.truffle.api.instrument.Instrumenter#probe(com.oracle.truffle.api.nodes.Node) created} and
  * {@linkplain com.oracle.truffle.api.instrument.SyntaxTag Tags} being
  * {@linkplain com.oracle.truffle.api.instrument.Probe#tagAs(SyntaxTag, Object) added} by
- * {@linkplain com.oracle.truffle.api.instrument.Instrumenter#addProbeListener(ProbeListener) registering a
- * {@linkplain com.oracle.truffle.api.instrument.ProbeListener ProbeListner}.</li>
+ * {@linkplain com.oracle.truffle.api.instrument.Instrumenter#addProbeListener(ProbeListener) registering} a
+ * {@linkplain com.oracle.truffle.api.instrument.ProbeListener ProbeListener}.</li>
  * <li>Clients can also
  * {@linkplain com.oracle.truffle.api.instrument.Instrumenter#findProbesTaggedAs(SyntaxTag) find} all existing
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probes}, possibly filtering the search by
@@ -133,7 +132,7 @@
  * whose notification methods provide only the instance of the
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probe} to which it was attached.  This
  * provides access to the corresponding
- * {@linkplain com.oracle.truffle.api.SourceSection source code location} and any
+ * {@linkplain com.oracle.truffle.api.source.SourceSection source code location} and any
  * {@linkplain com.oracle.truffle.api.instrument.SyntaxTag tags} that had been applied there.</li>
  * <li>Clients that require deeper access to execution state implement a
  * {@linkplain com.oracle.truffle.api.instrument.StandardInstrumentListener StandardInstrumentListener}
@@ -180,12 +179,11 @@
  * {@linkplain com.oracle.truffle.api.instrument.Instrumenter.Tool#setEnabled(boolean) disabled and re-enabled} and eventually
  * {@linkplain com.oracle.truffle.api.instrument.Instrumenter.Tool#dispose() disposed} when no longer needed.</li>
  * <li>A useful example is the
- * {@linkplain com.oracle.truffle.tools.LineToProbesMap LineToProbesMap}, which incrementally builds and maintains a map of
+ * {@linkplain com.oracle.truffle.api.debug.LineToProbesMap LineToProbesMap}, which incrementally builds and maintains a map of
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probes} indexed by
  * {@linkplain com.oracle.truffle.api.source.LineLocation source code line}. Truffle
  * {@linkplain com.oracle.truffle.api.debug.Debugger debugging services} depend heavily on this utility.</li>
- * <li>The
- * {@linkplain com.oracle.truffle.tools.CoverageTracker CoverageTracker} maintains counts of execution events where a
+ * <li>The CoverageTracker maintains counts of execution events where a
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probe} has been tagged with
  * {@linkplain com.oracle.truffle.api.instrument.StandardSyntaxTag#STATEMENT STATEMENT}, indexed by source code line.</li>
  * </ul></li>

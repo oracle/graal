@@ -201,7 +201,7 @@ public abstract class TruffleLanguage<C> {
      * <p>
      * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
      *
-     * @see Node#createWrapperNode()
+     * @see WrapperNode
      */
     protected abstract boolean isInstrumentable(Node node);
 
