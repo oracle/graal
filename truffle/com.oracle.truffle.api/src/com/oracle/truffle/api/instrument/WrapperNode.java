@@ -28,7 +28,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 /**
  * A {@link Node} instance that must be inserted into a Truffle AST in order to enable
- * {@linkplain Instrument instrumentation} at a particular Guest Language (GL) node.
+ * {@linkplain ProbeInstrument instrumentation} at a particular Guest Language (GL) node.
  * <p>
  * The implementation must be GL-specific. A wrapper <em>decorates</em> a GL AST node (the wrapper's
  * <em>child</em>) by acting as a transparent <em>proxy</em> with respect to the GL's execution
@@ -41,7 +41,7 @@ import com.oracle.truffle.api.nodes.Node;
  * at the wrapped AST node during program execution.
  * <p>
  * When a GL AST is cloned, the {@link WrapperNode}, its {@link EventHandlerNode} and any
- * {@linkplain Instrument instrumentation} are also cloned; they are in effect part of the GL AST.
+ * {@linkplain ProbeInstrument instrumentation} are also cloned; they are in effect part of the GL AST.
  * An instance of {@link Probe} represents abstractly the instrumentation at a particular location
  * in a GL AST; it tracks all the copies of the Wrapper and attached instrumentation, and acts as a
  * single point of access for tools.
@@ -60,11 +60,11 @@ import com.oracle.truffle.api.nodes.Node;
  * <li>Method {@code insertProbe(EventHandlerNode)} should be implemented as
  * {@code this.eventHandlerNode=insert(eventHandlerNode);}</li>
  * <li>Most importantly, Wrappers must be implemented so that Truffle optimization will reduce their
- * runtime overhead to zero when there are no attached {@link Instrument}s.</li>
+ * runtime overhead to zero when there are no attached {@link ProbeInstrument}s.</li>
  * </ol>
  * <p>
  *
- * @see Instrument
+ * @see ProbeInstrument
  */
 public interface WrapperNode extends InstrumentationNode {
 

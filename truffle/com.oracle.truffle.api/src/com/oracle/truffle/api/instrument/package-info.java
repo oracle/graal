@@ -119,12 +119,12 @@
  * <li>Clients can be notified of <em>AST execution events</em> by creating one of several kinds of
  * <em>event listener</em> and <em>attaching</em> it to a
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probe}. This creates an
- * {@linkplain com.oracle.truffle.api.instrument.Instrument Instrument} that notifies the listener
+ * {@linkplain com.oracle.truffle.api.instrument.ProbeInstrument Instrument} that notifies the listener
  * of every subsequent execution event at the AST location corresponding to the
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probe}.</li>
  * <li>An
- * {@linkplain com.oracle.truffle.api.instrument.Instrument Instrument} can be
- * {@linkplain com.oracle.truffle.api.instrument.Instrument#dispose() disposed}, at which time
+ * {@linkplain com.oracle.truffle.api.instrument.ProbeInstrument Instrument} can be
+ * {@linkplain com.oracle.truffle.api.instrument.ProbeInstrument#dispose() disposed}, at which time
  * it is removed from service at every clone of the AST, incurs no further overhead, and is
  * permanently unusable.</li>
  * <li>Many clients need only implement a
@@ -140,7 +140,7 @@
  * {@linkplain com.oracle.truffle.api.nodes.Node AST location} and current
  * {@linkplain com.oracle.truffle.api.frame.Frame stack frame}.</li>
  * <li>Clients can also create an
- * {@linkplain com.oracle.truffle.api.instrument.Instrument Instrument} (whose design is currently
+ * {@linkplain com.oracle.truffle.api.instrument.ProbeInstrument Instrument} (whose design is currently
  * under revision) that supports (effectively) inserting a Truffle AST fragment into the AST
  * location, where it will be executed subject to full Truffle optimization.</li>
  * </ul></li>

@@ -27,7 +27,7 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Instrument.AbstractInstrumentNode;
+import com.oracle.truffle.api.instrument.ProbeInstrument.AbstractInstrumentNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -36,11 +36,11 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  * Implementation class & interface for enabling the attachment of {@linkplain Probe Probes} to
  * Truffle ASTs.
  * <p>
- * A {@link ProbeNode} is the head of a chain of nodes acting on behalf of {@linkplain Instrument
+ * A {@link ProbeNode} is the head of a chain of nodes acting on behalf of {@linkplain ProbeInstrument
  * instruments}. It is attached to an AST as a child of a guest-language-specific
  * {@link WrapperNode} node.
  * <p>
- * When Truffle clones an AST, the chain, including all attached {@linkplain Instrument instruments}
+ * When Truffle clones an AST, the chain, including all attached {@linkplain ProbeInstrument instruments}
  * will be cloned along with the {@link WrapperNode} to which it is attached. An instance of
  * {@link Probe} represents abstractly the instrumentation at a particular location in a Guest
  * Language AST, tracks the clones of the chain, and keeps the instrumentation attached to the
@@ -135,7 +135,7 @@ final class ProbeNode extends EventHandlerNode {
      * Adds an {@link AbstractInstrumentNode} to this chain.
      */
     @TruffleBoundary
-    void addInstrument(Instrument instrument) {
+    void addInstrument(ProbeInstrument instrument) {
         assert instrument.getProbe() == probe;
         // The existing chain of nodes may be empty
         // Attach the modified chain.
@@ -148,7 +148,7 @@ final class ProbeNode extends EventHandlerNode {
      * @throws RuntimeException if no matching instrument is found,
      */
     @TruffleBoundary
-    void removeInstrument(Instrument instrument) {
+    void removeInstrument(ProbeInstrument instrument) {
         assert instrument.getProbe() == probe;
         final AbstractInstrumentNode modifiedChain = instrument.removeFromChain(firstInstrumentNode);
         if (modifiedChain == null) {

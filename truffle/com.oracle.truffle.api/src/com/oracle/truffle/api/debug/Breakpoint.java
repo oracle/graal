@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.instrument.Instrument;
+import java.io.IOException;
+
+import javax.sound.midi.Instrument;
+
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.source.Source;
-import java.io.IOException;
 
 /**
  * Breakpoint in a {@link com.oracle.truffle.api.vm.TruffleVM} with

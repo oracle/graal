@@ -33,7 +33,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
@@ -58,7 +58,7 @@ import com.oracle.truffle.api.vm.TruffleVM;
  *
  * Instrumentation allows the insertion into Truffle ASTs language-specific instances of
  * {@link WrapperNode} that propagate execution events through a {@link Probe} to any instances of
- * {@link Instrument} that might be attached to the particular probe by tools.
+ * {@link ProbeInstrument} that might be attached to the particular probe by tools.
  */
 public class InstrumentationTest {
 
@@ -210,7 +210,7 @@ public class InstrumentationTest {
         public int enterCount = 0;
         public int leaveCount = 0;
         public Instrumenter instrumenter;
-        private Instrument instrument;
+        private ProbeInstrument instrument;
 
         public TestSimpleInstrumentCounter(Instrumenter instrumenter) {
             this.instrumenter = instrumenter;
@@ -263,7 +263,7 @@ public class InstrumentationTest {
         public int enterCount = 0;
         public int leaveCount = 0;
         public final Instrumenter instrumenter;
-        public Instrument instrument;
+        public ProbeInstrument instrument;
 
         public TestStandardInstrumentCounter(Instrumenter instrumenter) {
             this.instrumenter = instrumenter;

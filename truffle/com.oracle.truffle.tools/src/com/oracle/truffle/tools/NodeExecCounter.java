@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeException;
@@ -93,7 +93,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * any time in a simple textual format, without effect on the state of the tool.
  * </p>
  *
- * @see Instrument
+ * @see ProbeInstrument
  * @see SyntaxTag
  * @see ProbeFailure
  */
@@ -110,7 +110,7 @@ public final class NodeExecCounter extends Instrumenter.Tool<NodeExecCounter> {
 
     /**
      * Listener for events at instrumented nodes. Counts are maintained in a shared table, so the
-     * listener is stateless and can be shared by every {@link Instrument}.
+     * listener is stateless and can be shared by every {@link ProbeInstrument}.
      */
     private final StandardInstrumentListener instrumentListener = new DefaultStandardInstrumentListener() {
         @Override
@@ -151,7 +151,7 @@ public final class NodeExecCounter extends Instrumenter.Tool<NodeExecCounter> {
     private final List<ProbeFailure> failures = new ArrayList<>();
 
     /** For disposal. */
-    private final List<Instrument> instruments = new ArrayList<>();
+    private final List<ProbeInstrument> instruments = new ArrayList<>();
 
     /**
      * If non-null, counting is restricted to nodes holding this tag.
@@ -209,7 +209,7 @@ public final class NodeExecCounter extends Instrumenter.Tool<NodeExecCounter> {
         if (probeListener != null) {
             getInstrumenter().removeProbeListener(probeListener);
         }
-        for (Instrument instrument : instruments) {
+        for (ProbeInstrument instrument : instruments) {
             instrument.dispose();
         }
     }
@@ -301,7 +301,7 @@ public final class NodeExecCounter extends Instrumenter.Tool<NodeExecCounter> {
                     try {
 
                         final Probe probe = instrumenter.probe(node);
-                        final Instrument instrument = instrumenter.attach(probe, instrumentListener, "NodeExecCounter");
+                        final ProbeInstrument instrument = instrumenter.attach(probe, instrumentListener, "NodeExecCounter");
                         instruments.add(instrument);
                     } catch (ProbeException ex) {
                         failures.add(ex.getFailure());
@@ -322,7 +322,7 @@ public final class NodeExecCounter extends Instrumenter.Tool<NodeExecCounter> {
         @Override
         public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
             if (countingTag == tag) {
-                final Instrument instrument = getInstrumenter().attach(probe, instrumentListener, NodeExecCounter.class.getSimpleName());
+                final ProbeInstrument instrument = getInstrumenter().attach(probe, instrumentListener, NodeExecCounter.class.getSimpleName());
                 instruments.add(instrument);
             }
         }

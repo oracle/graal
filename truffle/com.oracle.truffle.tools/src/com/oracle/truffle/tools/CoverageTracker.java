@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeSet;
 
-import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeListener;
@@ -79,7 +79,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * any time in a simple textual format, with no other effect on the state of the tool.
  * </p>
  *
- * @see Instrument
+ * @see ProbeInstrument
  * @see SyntaxTag
  */
 public final class CoverageTracker extends Instrumenter.Tool<CoverageTracker> {
@@ -88,7 +88,7 @@ public final class CoverageTracker extends Instrumenter.Tool<CoverageTracker> {
     private final Map<LineLocation, CoverageRecord> coverageMap = new HashMap<>();
 
     /** Needed for disposal. */
-    private final List<Instrument> instruments = new ArrayList<>();
+    private final List<ProbeInstrument> instruments = new ArrayList<>();
 
     /**
      * Coverage counting is restricted to nodes holding this tag.
@@ -132,7 +132,7 @@ public final class CoverageTracker extends Instrumenter.Tool<CoverageTracker> {
     @Override
     protected void internalDispose() {
         getInstrumenter().removeProbeListener(probeListener);
-        for (Instrument instrument : instruments) {
+        for (ProbeInstrument instrument : instruments) {
             instrument.dispose();
         }
     }
@@ -247,7 +247,7 @@ public final class CoverageTracker extends Instrumenter.Tool<CoverageTracker> {
     private final class CoverageRecord extends DefaultSimpleInstrumentListener {
 
         private final SourceSection srcSection; // The text of the code being counted
-        private Instrument instrument;  // The attached Instrument, in case need to remove.
+        private ProbeInstrument instrument;  // The attached Instrument, in case need to remove.
         private long count = 0;
 
         CoverageRecord(SourceSection srcSection) {
@@ -304,7 +304,7 @@ public final class CoverageTracker extends Instrumenter.Tool<CoverageTracker> {
         }
 
         final CoverageRecord coverageRecord = new CoverageRecord(srcSection);
-        final Instrument instrument = getInstrumenter().attach(probe, coverageRecord, CoverageTracker.class.getSimpleName());
+        final ProbeInstrument instrument = getInstrumenter().attach(probe, coverageRecord, CoverageTracker.class.getSimpleName());
         coverageRecord.instrument = instrument;
         instruments.add(instrument);
         coverageMap.put(lineLocation, coverageRecord);

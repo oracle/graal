@@ -37,7 +37,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * execution state should use {@link StandardInstrumentListener}.
  * <p>
  * Clients are free, of course, to record additional information in the listener implementation that
- * carries additional information about the context and reason for the particular {@link Instrument}
+ * carries additional information about the context and reason for the particular {@link ProbeInstrument}
  * that is to be created from the listener.
  * <p>
  * Notification is fully synchronous, so overrides have performance implications. Non-trivial

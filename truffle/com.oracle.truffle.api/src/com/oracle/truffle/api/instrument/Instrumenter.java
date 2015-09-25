@@ -73,14 +73,14 @@ public final class Instrumenter {
     }
 
     /**
-     * {@linkplain Instrument Instrumentation}-based collectors of data during Guest Language
+     * {@linkplain ProbeInstrument Instrumentation}-based collectors of data during Guest Language
      * program execution.
      * <p>
      * Tools share a common <em>life cycle</em>:
      * <ul>
      * <li>A newly created tool is inert until {@linkplain Instrumenter#install(Tool) installed}.</li>
      * <li>An installed tool becomes <em>enabled</em> and immediately begins installing
-     * {@linkplain Instrument instrumentation} on ASTs and collecting execution data from them.</li>
+     * {@linkplain ProbeInstrument instrumentation} on ASTs and collecting execution data from them.</li>
      * <li>A tool may only be installed once.</li>
      * <li>It should be possible to install multiple instances of a tool, possibly (but not
      * necessarily) configured differently with respect to what data is being collected.</li>
@@ -247,7 +247,7 @@ public final class Instrumenter {
     }
 
     /**
-     * Prepares an AST node for {@linkplain Instrument instrumentation}, where the node is presumed
+     * Prepares an AST node for {@linkplain ProbeInstrument instrumentation}, where the node is presumed
      * to be part of a well-formed Truffle AST that has not yet been executed.
      * <p>
      * <em>Probing</em> a node is idempotent:
@@ -422,8 +422,8 @@ public final class Instrumenter {
 
     /**
      * <em>Attaches</em> a {@link SimpleInstrumentListener listener} to a {@link Probe}, creating a
-     * <em>binding</em> called an {@link Instrument}. Until the Instrument is
-     * {@linkplain Instrument#dispose() disposed}, it routes synchronous notification of
+     * <em>binding</em> called an {@link ProbeInstrument}. Until the Instrument is
+     * {@linkplain ProbeInstrument#dispose() disposed}, it routes synchronous notification of
      * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
      * the listener.
      *
@@ -433,16 +433,16 @@ public final class Instrumenter {
      * @return a handle for access to the binding
      */
     @SuppressWarnings("static-method")
-    public Instrument attach(Probe probe, SimpleInstrumentListener listener, String instrumentInfo) {
-        final Instrument instrument = new Instrument.SimpleInstrument(listener, instrumentInfo);
+    public ProbeInstrument attach(Probe probe, SimpleInstrumentListener listener, String instrumentInfo) {
+        final ProbeInstrument instrument = new ProbeInstrument.SimpleInstrument(listener, instrumentInfo);
         probe.attach(instrument);
         return instrument;
     }
 
     /**
      * <em>Attaches</em> a {@link StandardInstrumentListener listener} to a {@link Probe}, creating
-     * a <em>binding</em> called an {@link Instrument}. Until the Instrument is
-     * {@linkplain Instrument#dispose() disposed}, it routes synchronous notification of
+     * a <em>binding</em> called an {@link ProbeInstrument}. Until the Instrument is
+     * {@linkplain ProbeInstrument#dispose() disposed}, it routes synchronous notification of
      * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
      * the listener.
      *
@@ -452,16 +452,16 @@ public final class Instrumenter {
      * @return a handle for access to the binding
      */
     @SuppressWarnings("static-method")
-    public Instrument attach(Probe probe, StandardInstrumentListener listener, String instrumentInfo) {
-        final Instrument instrument = new Instrument.StandardInstrument(listener, instrumentInfo);
+    public ProbeInstrument attach(Probe probe, StandardInstrumentListener listener, String instrumentInfo) {
+        final ProbeInstrument instrument = new ProbeInstrument.StandardInstrument(listener, instrumentInfo);
         probe.attach(instrument);
         return instrument;
     }
 
     /**
      * <em>Attaches</em> a {@link AdvancedInstrumentResultListener listener} to a {@link Probe},
-     * creating a <em>binding</em> called an {@link Instrument}. Until the Instrument is
-     * {@linkplain Instrument#dispose() disposed}, it routes synchronous notification of
+     * creating a <em>binding</em> called an {@link ProbeInstrument}. Until the Instrument is
+     * {@linkplain ProbeInstrument#dispose() disposed}, it routes synchronous notification of
      * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
      * the listener.
      * <p>
@@ -480,8 +480,8 @@ public final class Instrumenter {
      * @return a handle for access to the binding
      */
     @SuppressWarnings("static-method")
-    public Instrument attach(Probe probe, AdvancedInstrumentResultListener listener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
-        final Instrument instrument = new Instrument.AdvancedInstrument(listener, rootFactory, requiredResultType, instrumentInfo);
+    public ProbeInstrument attach(Probe probe, AdvancedInstrumentResultListener listener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
+        final ProbeInstrument instrument = new ProbeInstrument.AdvancedInstrument(listener, rootFactory, requiredResultType, instrumentInfo);
         probe.attach(instrument);
         return instrument;
     }

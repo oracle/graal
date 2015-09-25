@@ -46,7 +46,7 @@ import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
 import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.SyntaxTag;
@@ -72,8 +72,8 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * <ol>
  * <li>Only one Tag Breakpoint can be active for a specific {@linkplain SyntaxTag Tag}.</li>
  * <li>A newly created breakpoint looks for probes matching the tag, attaches to them if found by
- * installing an {@link Instrument}.</li>
- * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link Instrument} will be
+ * installing an {@link ProbeInstrument}.</li>
+ * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link ProbeInstrument} will be
  * copied along with the rest of the AST and will call back to the same breakpoint.</li>
  * <li>When notification is received that the breakpoint's Tag has been newly added to a Node, then
  * the breakpoint will attach a new Instrument at the probe to activate the breakpoint at that
@@ -260,7 +260,7 @@ final class TagBreakpointFactory {
          * The instrument(s) that this breakpoint currently has attached to a {@link Probe}:
          * {@code null} if not attached.
          */
-        private List<Instrument> instruments = new ArrayList<>();
+        private List<ProbeInstrument> instruments = new ArrayList<>();
 
         private TagBreakpointImpl(int ignoreCount, SyntaxTag tag, boolean oneShot) {
             super(ENABLED, ignoreCount, oneShot);
@@ -307,7 +307,7 @@ final class TagBreakpointFactory {
             if (this.conditionExpr != null || expr != null) {
                 // De-instrument the Probes instrumented by this breakpoint
                 final ArrayList<Probe> probes = new ArrayList<>();
-                for (Instrument instrument : instruments) {
+                for (ProbeInstrument instrument : instruments) {
                     probes.add(instrument.getProbe());
                     instrument.dispose();
                 }
@@ -329,7 +329,7 @@ final class TagBreakpointFactory {
         @Override
         public void dispose() {
             if (getState() != DISPOSED) {
-                for (Instrument instrument : instruments) {
+                for (ProbeInstrument instrument : instruments) {
                     instrument.dispose();
                 }
                 changeState(DISPOSED);
@@ -341,7 +341,7 @@ final class TagBreakpointFactory {
             if (getState() == DISPOSED) {
                 throw new IllegalStateException("Attempt to attach a disposed " + BREAKPOINT_NAME);
             }
-            Instrument newInstrument = null;
+            ProbeInstrument newInstrument = null;
             final Instrumenter instrumenter = debugger.getInstrumenter();
             if (conditionExpr == null) {
                 newInstrument = instrumenter.attach(newProbe, new UnconditionalTagBreakInstrumentListener(), BREAKPOINT_NAME);

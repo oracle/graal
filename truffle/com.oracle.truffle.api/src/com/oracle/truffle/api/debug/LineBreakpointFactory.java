@@ -48,7 +48,7 @@ import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
 import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
@@ -70,8 +70,8 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * <ol>
  * <li>Line breakpoints can only be set at nodes tagged as {@link StandardSyntaxTag#STATEMENT}.</li>
  * <li>A newly created breakpoint looks for probes matching the location, attaches to them if found
- * by installing an {@link Instrument} that calls back to the breakpoint.</li>
- * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link Instrument} will be
+ * by installing an {@link ProbeInstrument} that calls back to the breakpoint.</li>
+ * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link ProbeInstrument} will be
  * copied along with the rest of the AST and will call back to the same breakpoint.</li>
  * <li>When notification is received of a new Node being tagged as a statement, and if a
  * breakpoint's line location matches the Probe's line location, then the breakpoint will attach a
@@ -291,7 +291,7 @@ final class LineBreakpointFactory {
          * The instrument(s) that this breakpoint currently has attached to a {@link Probe}:
          * {@code null} if not attached.
          */
-        private List<Instrument> instruments = new ArrayList<>();
+        private List<ProbeInstrument> instruments = new ArrayList<>();
 
         public LineBreakpointImpl(int ignoreCount, LineLocation lineLocation, boolean oneShot) {
             super(ENABLED_UNRESOLVED, ignoreCount, oneShot);
@@ -346,7 +346,7 @@ final class LineBreakpointFactory {
             if (this.conditionExpr != null || expr != null) {
                 // De-instrument the Probes instrumented by this breakpoint
                 final ArrayList<Probe> probes = new ArrayList<>();
-                for (Instrument instrument : instruments) {
+                for (ProbeInstrument instrument : instruments) {
                     probes.add(instrument.getProbe());
                     instrument.dispose();
                 }
@@ -368,7 +368,7 @@ final class LineBreakpointFactory {
         @Override
         public void dispose() {
             if (getState() != DISPOSED) {
-                for (Instrument instrument : instruments) {
+                for (ProbeInstrument instrument : instruments) {
                     instrument.dispose();
                 }
                 changeState(DISPOSED);
@@ -380,7 +380,7 @@ final class LineBreakpointFactory {
             if (getState() == DISPOSED) {
                 throw new IllegalStateException("Attempt to attach a disposed " + BREAKPOINT_NAME);
             }
-            Instrument newInstrument = null;
+            ProbeInstrument newInstrument = null;
             final Instrumenter instrumenter = debugger.getInstrumenter();
             if (conditionExpr == null) {
                 newInstrument = instrumenter.attach(newProbe, new UnconditionalLineBreakInstrumentListener(), BREAKPOINT_NAME);

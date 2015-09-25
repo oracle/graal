@@ -42,7 +42,7 @@ package com.oracle.truffle.sl.nodes.instrument;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.EventHandlerNode;
-import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.WrapperNode;
@@ -57,7 +57,7 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 /**
  * A Truffle node that can be inserted into a Simple AST (assumed not to have executed yet) to
  * enable "instrumentation" of an {@link SLExpressionNode}. Tools wishing to interact with AST
- * execution may attach {@link Instrument}s to the {@link Probe} uniquely associated with the
+ * execution may attach {@link ProbeInstrument}s to the {@link Probe} uniquely associated with the
  * wrapper, and to which this wrapper routes execution events.
  */
 @NodeInfo(cost = NodeCost.NONE)

@@ -44,7 +44,7 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * <ol>
  * <li>A <em>guest language program location</em> in an executing Truffle AST (corresponding to a
  * {@link SourceSection}), and</li>
- * <li>A dynamically managed collection of <em>attached</em> {@linkplain Instrument Instruments}
+ * <li>A dynamically managed collection of <em>attached</em> {@linkplain ProbeInstrument Instruments}
  * that receive event notifications from the Probe's AST location on behalf of external clients.</li>
  * </ol>
  * <strong>Note</strong>:The relationship must be with an AST <em>location</em>, not a specific
@@ -57,7 +57,7 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * <p>
  *
  * @see Instrumenter
- * @see Instrument
+ * @see ProbeInstrument
  * @see ASTProber
  * @see ProbeListener
  * @see SyntaxTag
@@ -115,7 +115,7 @@ public final class Probe {
      * </ul>
      * </li>
      * <li>The effect of the binding is to intercept {@linkplain EventHandlerNode execution events}
-     * arriving at the "probed" AST Node and notify each attached {@link Instrument} before
+     * arriving at the "probed" AST Node and notify each attached {@link ProbeInstrument} before
      * execution is allowed to proceed to the child and again after execution completes.</li>
      *
      * <li>The method {@link Instrumenter#probe(Node)} creates a Probe on an AST Node; redundant
@@ -130,7 +130,7 @@ public final class Probe {
      * <li>The "probing" of an AST Node is implemented by insertion of a
      * {@link ProbeNode.WrapperNode} into the AST (as new parent of the Node being probed), together
      * with an associated {@link ProbeNode} that routes execution events at the probed Node to all
-     * the {@linkplain Instrument Instruments} attached to the Probe's <em>instrument chain</em>.</li>
+     * the {@linkplain ProbeInstrument Instruments} attached to the Probe's <em>instrument chain</em>.</li>
      *
      * <li>When Truffle clones an AST, any attached WrapperNodes and ProbeNodes are cloned as well,
      * together with their attached instrument chains. Each Probe instance intercepts cloning events
@@ -207,7 +207,7 @@ public final class Probe {
      * @param instrument an instrument not yet attached to a probe
      * @throws IllegalStateException if the instrument has ever been attached before
      */
-    void attach(Instrument instrument) throws IllegalStateException {
+    void attach(ProbeInstrument instrument) throws IllegalStateException {
         if (instrument.isDisposed()) {
             throw new IllegalStateException("Attempt to attach disposed instrument");
         }
@@ -243,9 +243,9 @@ public final class Probe {
      *
      * @param instrument an instrument already attached
      * @throws IllegalStateException if instrument not attached at this Probe
-     * @see Instrument#dispose()
+     * @see ProbeInstrument#dispose()
      */
-    void disposeInstrument(Instrument instrument) throws IllegalStateException {
+    void disposeInstrument(ProbeInstrument instrument) throws IllegalStateException {
         for (WeakReference<ProbeNode> ref : probeNodeClones) {
             final ProbeNode probeNode = ref.get();
             if (probeNode != null) {

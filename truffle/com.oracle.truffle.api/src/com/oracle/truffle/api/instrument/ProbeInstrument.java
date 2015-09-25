@@ -47,7 +47,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see Probe
  * @see EventHandlerNode
  */
-public abstract class Instrument {
+public abstract class ProbeInstrument {
 
     /**
      * Has this instrument been disposed? stays true once set.
@@ -78,7 +78,7 @@ public abstract class Instrument {
      * {@link StandardInstrumentListener}, since those event methods identify the concrete Node
      * instance (and thus the AST instance) where the event takes place.
      * <p>
-     * <h4>Implementation Notes: the Life Cycle of an {@link Instrument} at a {@link Probe}</h4>
+     * <h4>Implementation Notes: the Life Cycle of an {@link ProbeInstrument} at a {@link Probe}</h4>
      * <p>
      * <ul>
      * <li>A new Instrument is created in permanent association with a client-provided
@@ -86,7 +86,7 @@ public abstract class Instrument {
      *
      * <li>Multiple Instruments may share a single listener.</li>
      *
-     * <li>An Instrument does nothing until it is {@linkplain Probe#attach(Instrument) attached} to
+     * <li>An Instrument does nothing until it is {@linkplain Probe#attach(ProbeInstrument) attached} to
      * a Probe, at which time the Instrument begins routing execution events from the Probe's AST
      * location to the Instrument's listener.</li>
      *
@@ -116,7 +116,7 @@ public abstract class Instrument {
      *
      * </ul>
      */
-    private Instrument(String instrumentInfo) {
+    private ProbeInstrument(String instrumentInfo) {
         this.instrumentInfo = instrumentInfo;
     }
 
@@ -170,7 +170,7 @@ public abstract class Instrument {
     /**
      * An instrument that propagates events to an instance of {@link SimpleInstrumentListener}.
      */
-    static final class SimpleInstrument extends Instrument {
+    static final class SimpleInstrument extends ProbeInstrument {
 
         /**
          * Tool-supplied listener for events.
@@ -257,7 +257,7 @@ public abstract class Instrument {
     /**
      * An instrument that propagates events to an instance of {@link StandardInstrumentListener}.
      */
-    static final class StandardInstrument extends Instrument {
+    static final class StandardInstrument extends ProbeInstrument {
 
         /**
          * Tool-supplied listener for AST events.
@@ -346,7 +346,7 @@ public abstract class Instrument {
      * within a Probe's <em>instrumentation chain</em>, and thus directly in the executing Truffle
      * AST with potential for full optimization.
      */
-    static final class AdvancedInstrument extends Instrument {
+    static final class AdvancedInstrument extends ProbeInstrument {
 
         private final AdvancedInstrumentResultListener resultListener;
         private final AdvancedInstrumentRootFactory rootFactory;
@@ -484,7 +484,7 @@ public abstract class Instrument {
     }
 
     @SuppressWarnings("unused")
-    private static final class TruffleOptInstrument extends Instrument {
+    private static final class TruffleOptInstrument extends ProbeInstrument {
 
         private final TruffleOptListener toolOptListener;
 
@@ -582,8 +582,8 @@ public abstract class Instrument {
         /**
          * Gets the instrument that created this node.
          */
-        private Instrument getInstrument() {
-            return Instrument.this;
+        private ProbeInstrument getInstrument() {
+            return ProbeInstrument.this;
         }
 
         /**
@@ -593,7 +593,7 @@ public abstract class Instrument {
          * for the tail of the list, which would be replacing itself with null. So the replacement
          * must be directed the parent of the node being removed.
          */
-        private boolean removeFromChain(Instrument instrument) {
+        private boolean removeFromChain(ProbeInstrument instrument) {
             assert getInstrument() != instrument;
             if (nextInstrumentNode == null) {
                 return false;
@@ -613,7 +613,7 @@ public abstract class Instrument {
         }
 
         protected String getInstrumentInfo() {
-            return Instrument.this.instrumentInfo;
+            return ProbeInstrument.this.instrumentInfo;
         }
     }
 }

@@ -33,14 +33,14 @@ import com.oracle.truffle.api.nodes.Node;
  * {@linkplain Instrumenter#attach(Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
  * Advanced Instrument}.
  *
- * @see Instrument
+ * @see ProbeInstrument
  * @see AdvancedInstrumentRootFactory
  * @see AdvancedInstrumentResultListener
  */
 public abstract class AdvancedInstrumentRoot extends Node implements InstrumentationNode {
 
     /**
-     * Executes this AST fragment on behalf of a client {@link Instrument}, just before the
+     * Executes this AST fragment on behalf of a client {@link ProbeInstrument}, just before the
      * guest-language AST node to which the {@link Probe} holding the Instrument is executed.
      *
      * @param node the guest-language AST node to which the host Instrument's Probe is attached

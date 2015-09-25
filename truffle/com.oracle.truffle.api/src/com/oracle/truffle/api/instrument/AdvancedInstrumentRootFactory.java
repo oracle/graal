@@ -32,7 +32,7 @@ import com.oracle.truffle.api.nodes.Node;
  * {@linkplain Instrumenter#attach(Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
  * Advanced Instrument}.
  *
- * @see Instrument
+ * @see ProbeInstrument
  * @see AdvancedInstrumentRoot
  */
 public interface AdvancedInstrumentRootFactory {

@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.Node;
  * Notification is fully synchronous, so overrides have performance implications. Non-trivial
  * methods should be coded with Truffle guidelines and cautions in mind.
  *
- * @see Instrument
+ * @see ProbeInstrument
  * @see AdvancedInstrumentRoot
  * @see AdvancedInstrumentRootFactory
  */
