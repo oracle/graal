@@ -158,7 +158,7 @@ public class ToolTestUtil {
 
     static final class TestASTProber implements ASTProber {
 
-        public void probeAST(final Instrumenter instrumenter, Node startNode) {
+        public void probeAST(final Instrumenter instrumenter, RootNode startNode) {
             startNode.accept(new NodeVisitor() {
 
                 @Override

@@ -169,7 +169,7 @@ public class InitializationTest {
 
         private final ASTProber prober = new ASTProber() {
 
-            public void probeAST(final Instrumenter instrumenter, Node startNode) {
+            public void probeAST(final Instrumenter instrumenter, RootNode startNode) {
                 startNode.accept(new NodeVisitor() {
 
                     public boolean visit(Node node) {

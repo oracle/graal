@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * An {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes,
@@ -292,7 +293,7 @@ public final class NodeExecCounter extends Instrumenter.Tool<NodeExecCounter> {
      */
     private class ExecCounterASTProber implements ASTProber {
 
-        public void probeAST(final Instrumenter instrumenter, final Node startNode) {
+        public void probeAST(final Instrumenter instrumenter, final RootNode startNode) {
 
             startNode.accept(new NodeVisitor() {
 

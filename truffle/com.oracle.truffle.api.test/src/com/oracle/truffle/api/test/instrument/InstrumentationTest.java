@@ -45,6 +45,7 @@ import com.oracle.truffle.api.instrument.impl.DefaultSimpleInstrumentListener;
 import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestLanguageNode;
@@ -336,8 +337,8 @@ public class InstrumentationTest {
         }
 
         @Override
-        public void probeAST(Instrumenter inst, Node node) {
-            node.accept(this);
+        public void probeAST(Instrumenter inst, RootNode rootNode) {
+            rootNode.accept(this);
         }
     }
 

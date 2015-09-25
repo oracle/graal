@@ -38,6 +38,7 @@ import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.InstrumentationTestRootNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
@@ -144,7 +145,7 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
 
     static final class TestASTProber implements ASTProber {
 
-        public void probeAST(final Instrumenter instrumenter, Node startNode) {
+        public void probeAST(final Instrumenter instrumenter, RootNode startNode) {
             startNode.accept(new NodeVisitor() {
 
                 @Override

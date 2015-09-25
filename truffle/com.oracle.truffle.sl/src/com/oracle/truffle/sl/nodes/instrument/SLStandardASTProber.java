@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLWhileNode;
@@ -61,7 +62,7 @@ import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
  */
 public class SLStandardASTProber implements ASTProber {
 
-    public void probeAST(final Instrumenter instrumenter, Node startNode) {
+    public void probeAST(final Instrumenter instrumenter, RootNode startNode) {
         startNode.accept(new NodeVisitor() {
 
             /**
