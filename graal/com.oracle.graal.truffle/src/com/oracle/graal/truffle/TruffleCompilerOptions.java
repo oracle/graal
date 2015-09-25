@@ -144,6 +144,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleCompilationExceptionsAreFatal = new OptionValue<>(false);
 
+    @Option(help = "Prints the exception stack trace for compilation exceptions", type = OptionType.Debug)
+    public static final OptionValue<Boolean> TruffleCompilationExceptionsArePrinted = new OptionValue<>(false);
+
     @Option(help = "Treat compilation exceptions as thrown runtime exceptions", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleCompilationExceptionsAreThrown = new OptionValue<>(false);
 

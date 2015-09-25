@@ -357,9 +357,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             if (TruffleCompilationExceptionsAreThrown.getValue()) {
                 throw new OptimizationFailedException(t, this);
             }
-            if (TruffleCompilationExceptionsAreFatal.getValue()) {
+            if (TruffleCompilationExceptionsArePrinted.getValue() || TruffleCompilationExceptionsAreFatal.getValue()) {
                 printException(t);
-                System.exit(-1);
+                if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                    System.exit(-1);
+                }
             }
         }
     }
