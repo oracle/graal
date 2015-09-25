@@ -77,6 +77,11 @@ public abstract class LocationImpl extends Location {
     }
 
     @Override
+    public final boolean canSet(Object value) {
+        return canSet(null, value);
+    }
+
+    @Override
     public boolean canStore(Object value) {
         return true;
     }

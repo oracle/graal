@@ -135,6 +135,15 @@ public abstract class Location {
     }
 
     /**
+     * Returns {@code true} if the location can be set to the value.
+     *
+     * @param value the value in question
+     */
+    public boolean canSet(Object value) {
+        return canStore(value);
+    }
+
+    /**
      * Returns {@code true} if the location is compatible with the value.
      *
      * The value may still be rejected if {@link #canSet(DynamicObject, Object)} returns false.
