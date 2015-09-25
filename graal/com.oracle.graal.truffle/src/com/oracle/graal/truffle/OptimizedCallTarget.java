@@ -26,6 +26,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleArgumentTyp
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
 
@@ -385,9 +386,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             if (TruffleCompilationExceptionsAreThrown.getValue()) {
                 throw new OptimizationFailedException(t, this);
             }
-            if (TruffleCompilationExceptionsAreFatal.getValue()) {
+            if (TruffleCompilationExceptionsArePrinted.getValue() || TruffleCompilationExceptionsAreFatal.getValue()) {
                 printException(t);
-                System.exit(-1);
+                if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                    System.exit(-1);
+                }
             }
         }
     }

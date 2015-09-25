@@ -118,10 +118,10 @@ public class StandardGraphBuilderPlugins {
     }
     // @formatter:on
 
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean allowDeoptimization) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
-        registerMathPlugins(plugins);
+        registerMathPlugins(plugins, allowDeoptimization);
         registerUnsignedMathPlugins(plugins);
         registerCharacterPlugins(plugins);
         registerShortPlugins(plugins);
@@ -332,28 +332,30 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins) {
+    private static void registerMathPlugins(InvocationPlugins plugins, boolean allowDeoptimization) {
         Registration r = new Registration(plugins, Math.class);
-        for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
-            Class<?> type = kind.toJavaClass();
-            r.register2("addExact", type, type, new InvocationPlugin() {
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind, new IntegerAddExactNode(x, y));
-                    return true;
-                }
-            });
-            r.register2("subtractExact", type, type, new InvocationPlugin() {
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind, new IntegerSubExactNode(x, y));
-                    return true;
-                }
-            });
-            r.register2("multiplyExact", type, type, new InvocationPlugin() {
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind, new IntegerMulExactNode(x, y));
-                    return true;
-                }
-            });
+        if (allowDeoptimization) {
+            for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
+                Class<?> type = kind.toJavaClass();
+                r.register2("addExact", type, type, new InvocationPlugin() {
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                        b.addPush(kind, new IntegerAddExactNode(x, y));
+                        return true;
+                    }
+                });
+                r.register2("subtractExact", type, type, new InvocationPlugin() {
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                        b.addPush(kind, new IntegerSubExactNode(x, y));
+                        return true;
+                    }
+                });
+                r.register2("multiplyExact", type, type, new InvocationPlugin() {
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                        b.addPush(kind, new IntegerMulExactNode(x, y));
+                        return true;
+                    }
+                });
+            }
         }
         r.register1("abs", Float.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
