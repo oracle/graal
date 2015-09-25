@@ -70,7 +70,7 @@ public final class SLRootNode extends RootNode {
 
     @SuppressWarnings("unused")
     public SLRootNode(SLContext ignore, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
-        super(SLLanguage.class, null, frameDescriptor);
+        super(SLLanguage.class, sourceSection, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
     }
