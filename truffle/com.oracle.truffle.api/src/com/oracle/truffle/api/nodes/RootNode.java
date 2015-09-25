@@ -165,7 +165,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     * 
+     *
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();
@@ -191,7 +191,16 @@ public abstract class RootNode extends Node {
     }
 
     public final void applyInstrumentation() {
-        Node.ACCESSOR.probeAST(this);
+        if (isInstrumentable()) {
+            Node.ACCESSOR.probeAST(this);
+        }
+    }
+
+    /**
+     * Does this contain AST content that it is possible to instrument.
+     */
+    protected boolean isInstrumentable() {
+        return true;
     }
 
     /**
