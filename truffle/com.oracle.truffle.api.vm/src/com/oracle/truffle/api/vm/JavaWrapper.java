@@ -40,9 +40,13 @@ final class JavaWrapper implements InvocationHandler {
     }
 
     static <T> T create(Class<T> representation, Object wrapper, PolyglotEngine.Value value) {
-        InvocationHandler chain = Proxy.getInvocationHandler(wrapper);
-        Object instance = Proxy.newProxyInstance(representation.getClassLoader(), new Class<?>[]{representation}, new JavaWrapper(value, wrapper, chain));
-        return representation.cast(instance);
+        try {
+            InvocationHandler chain = Proxy.getInvocationHandler(wrapper);
+            Object instance = Proxy.newProxyInstance(representation.getClassLoader(), new Class<?>[]{representation}, new JavaWrapper(value, wrapper, chain));
+            return representation.cast(instance);
+        } catch (IllegalArgumentException ex) {
+            return representation.cast(wrapper);
+        }
     }
 
     @Override

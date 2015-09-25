@@ -140,15 +140,32 @@ public final class JavaInterop {
      *         <code>foreignObject</code>
      */
     public static <T> T asJavaObject(Class<T> type, TruffleObject foreignObject) {
-        if (type.isInstance(foreignObject)) {
-            return type.cast(foreignObject);
+        return asJavaObject(type, null, foreignObject);
+    }
+
+    private static <T> T asJavaObject(Class<T> clazz, Type type, TruffleObject foreignObject) {
+        Object obj;
+        if (clazz.isInstance(foreignObject)) {
+            obj = foreignObject;
         } else {
-            if (!type.isInterface()) {
+            if (!clazz.isInterface()) {
                 throw new IllegalArgumentException();
             }
-            Object obj = Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, new TruffleHandler(foreignObject));
-            return type.cast(obj);
+            if (clazz == List.class && Boolean.TRUE.equals(message(Message.HAS_SIZE, foreignObject))) {
+                Class<?> elementType = Object.class;
+                if (type instanceof ParameterizedType) {
+                    ParameterizedType parametrizedType = (ParameterizedType) type;
+                    final Type[] arr = parametrizedType.getActualTypeArguments();
+                    if (arr.length == 1 && arr[0] instanceof Class) {
+                        elementType = (Class<?>) arr[0];
+                    }
+                }
+                obj = TruffleList.create(elementType, foreignObject);
+            } else {
+                obj = Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new TruffleHandler(foreignObject));
+            }
         }
+        return clazz.cast(obj);
     }
 
     /**
@@ -265,19 +282,7 @@ public final class JavaInterop {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                if (method.getReturnType() == List.class && Boolean.TRUE.equals(message(Message.HAS_SIZE, truffleObject))) {
-                    Class<?> elementType = Object.class;
-                    Type type = method.getGenericReturnType();
-                    if (type instanceof ParameterizedType) {
-                        ParameterizedType parametrizedType = (ParameterizedType) type;
-                        final Type[] arr = parametrizedType.getActualTypeArguments();
-                        if (arr.length == 1 && arr[0] instanceof Class) {
-                            elementType = (Class<?>) arr[0];
-                        }
-                    }
-                    return TruffleList.create(elementType, truffleObject);
-                }
-                return asJavaObject(retType, truffleObject);
+                return asJavaObject(retType, method.getGenericReturnType(), truffleObject);
             }
         }
         return ret;

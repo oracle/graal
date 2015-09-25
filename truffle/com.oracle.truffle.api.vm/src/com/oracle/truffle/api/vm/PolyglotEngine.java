@@ -293,7 +293,13 @@ public class PolyglotEngine {
          * @see PolyglotEngine#findGlobalSymbol(java.lang.String)
          */
         public Builder globalSymbol(String name, Object obj) {
-            globals.put(name, obj);
+            final Object truffleReady;
+            if (obj instanceof Number || obj instanceof String || obj instanceof Character || obj instanceof Boolean) {
+                truffleReady = obj;
+            } else {
+                truffleReady = JavaInterop.asTruffleObject(obj);
+            }
+            globals.put(name, truffleReady);
             return this;
         }
 
