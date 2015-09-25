@@ -48,6 +48,7 @@ import com.oracle.graal.replacements.IntegerSubstitutions;
 import com.oracle.graal.replacements.LongSubstitutions;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.UnsafeGetPlugin;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.UnsafePutPlugin;
+import com.oracle.graal.replacements.nodes.BitCountNode;
 
 public class AMD64GraphBuilderPlugins {
 
@@ -63,7 +64,7 @@ public class AMD64GraphBuilderPlugins {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);
-        if (arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
+        if (arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) && arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
             r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountLeadingZerosNode.tryFold(value);
@@ -78,7 +79,7 @@ public class AMD64GraphBuilderPlugins {
         } else {
             r.registerMethodSubstitution(substituteDeclaringClass, "numberOfLeadingZeros", type);
         }
-        if (arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
+        if (arch.getFeatures().contains(AMD64.CPUFeature.BMI1) && arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
             r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountTrailingZerosNode.tryFold(value);
@@ -92,6 +93,15 @@ public class AMD64GraphBuilderPlugins {
             });
         } else {
             r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
+        }
+
+        if (arch.getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
+            r.register1("bitCount", type, new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(JavaKind.Int, b.recursiveAppend(new BitCountNode(value).canonical(null, value)));
+                    return true;
+                }
+            });
         }
     }
 

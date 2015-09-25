@@ -96,7 +96,6 @@ import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.RegisterFinalizerNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.virtual.EnsureVirtualizedNode;
-import com.oracle.graal.replacements.nodes.BitCountNode;
 import com.oracle.graal.replacements.nodes.DeferredPiNode;
 import com.oracle.graal.replacements.nodes.DirectReadNode;
 import com.oracle.graal.replacements.nodes.DirectStoreNode;
@@ -249,12 +248,6 @@ public class StandardGraphBuilderPlugins {
         r.register1("reverseBytes", type, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(kind, b.recursiveAppend(new ReverseBytesNode(value).canonical(null, value)));
-                return true;
-            }
-        });
-        r.register1("bitCount", type, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.recursiveAppend(new BitCountNode(value).canonical(null, value)));
                 return true;
             }
         });

@@ -30,14 +30,19 @@ import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
 import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.graphbuilderconf.ForeignCallPlugin;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
+import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.replacements.IntegerSubstitutions;
 import com.oracle.graal.replacements.LongSubstitutions;
+import com.oracle.graal.replacements.nodes.BitCountNode;
 
 public class SPARCGraphBuilderPlugins {
 
@@ -54,6 +59,13 @@ public class SPARCGraphBuilderPlugins {
         Registration r = new Registration(plugins, declaringClass);
         r.registerMethodSubstitution(substituteDeclaringClass, "numberOfLeadingZeros", type);
         r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
+
+        r.register1("bitCount", type, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Int, b.recursiveAppend(new BitCountNode(value).canonical(null, value)));
+                return true;
+            }
+        });
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
