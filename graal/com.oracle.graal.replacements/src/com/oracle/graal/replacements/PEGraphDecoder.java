@@ -104,8 +104,9 @@ import com.oracle.graal.phases.common.inlining.InliningUtil;
 public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     public static class Options {
-        @Option(help = "Maximum inlining depth during partial evaluation before reporting an infinite recursion")//
-        public static final OptionValue<Integer> InliningDepthError = new OptionValue<>(300);
+        // Default value of 275 is determined experimentally with default HotSpot stack sizes on
+        // SPARC and Intel
+        @Option(help = "Maximum inlining depth during partial evaluation before reporting an infinite recursion") public static final OptionValue<Integer> InliningDepthError = new OptionValue<>(275);
     }
 
     protected class PEMethodScope extends MethodScope {
