@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler;
 
-import static com.oracle.graal.compiler.GraalCompiler.Options.EmitLIRRepeatCount;
+import static com.oracle.graal.compiler.GraalCompilerOptions.EmitLIRRepeatCount;
 import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
 import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.ALL_REGISTERS;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
@@ -44,8 +44,6 @@ import jdk.internal.jvmci.meta.ProfilingInfo;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 import jdk.internal.jvmci.meta.TriState;
 import jdk.internal.jvmci.meta.VMConstant;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
 import jdk.internal.jvmci.options.OptionValue;
 import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
@@ -94,15 +92,6 @@ public class GraalCompiler {
     private static final DebugTimer BackEnd = Debug.timer("BackEnd");
     private static final DebugTimer EmitLIR = Debug.timer("EmitLIR");
     private static final DebugTimer EmitCode = Debug.timer("EmitCode");
-
-    static class Options {
-
-        // @formatter:off
-        @Option(help = "Repeatedly run the LIR code generation pass to improve statistical profiling results.", type = OptionType.Debug)
-        public static final OptionValue<Integer> EmitLIRRepeatCount = new OptionValue<>(0);
-        // @formatter:on
-
-    }
 
     /**
      * Encapsulates all the inputs to a {@linkplain GraalCompiler#compile(Request) compilation}.

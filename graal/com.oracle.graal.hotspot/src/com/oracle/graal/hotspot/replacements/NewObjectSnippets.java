@@ -52,7 +52,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useT
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeTlabTop;
-import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Options.ProfileAllocations;
+import static com.oracle.graal.hotspot.replacements.NewObjectSnippetsOptions.ProfileAllocations;
 import static com.oracle.graal.nodes.PiArrayNode.piArrayCast;
 import static com.oracle.graal.nodes.PiNode.piCast;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
@@ -75,9 +75,6 @@ import jdk.internal.jvmci.meta.DeoptimizationReason;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LocationIdentity;
 import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -129,14 +126,6 @@ import com.oracle.graal.word.Word;
 public class NewObjectSnippets implements Snippets {
 
     public static final LocationIdentity INIT_LOCATION = NamedLocationIdentity.mutable("Initialization");
-
-    static class Options {
-
-        //@formatter:off
-        @Option(help = "", type = OptionType.Debug)
-        static final OptionValue<Boolean> ProfileAllocations = new OptionValue<>(false);
-        //@formatter:on
-    }
 
     static enum ProfileMode {
         AllocatingMethods,
