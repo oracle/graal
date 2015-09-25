@@ -32,8 +32,6 @@ import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
@@ -60,11 +58,14 @@ import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -530,6 +531,33 @@ public class PolyglotEngine {
         }
     }
 
+    @SuppressWarnings("try")
+    final Object invokeForeign(final Node foreignNode, final VirtualFrame frame, final TruffleObject receiver) throws IOException {
+        final Debugger[] fillIn = {debugger};
+        final Object[] res = {null, null};
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try (final Closeable c = SPI.executionStart(PolyglotEngine.this, fillIn, null)) {
+                    if (debugger == null) {
+                        debugger = fillIn[0];
+                    }
+                    res[0] = ForeignAccess.execute(foreignNode, frame, receiver, ForeignAccess.getArguments(frame).toArray());
+                } catch (IOException ex) {
+                    res[1] = ex;
+                } catch (Throwable ex) {
+                    res[1] = ex;
+                }
+            }
+        });
+        exceptionCheck(res);
+        if (res[0] instanceof TruffleObject) {
+            return new EngineTruffleObject(this, (TruffleObject) res[0]);
+        } else {
+            return res[0];
+        }
+    }
+
     /**
      * Looks global symbol provided by one of initialized languages up. First of all execute your
      * program via one of your {@link #eval(java.lang.String, java.lang.String)} and then look
@@ -682,7 +710,11 @@ public class PolyglotEngine {
         public Object get() throws IOException {
             waitForSymbol();
             exceptionCheck(result);
-            return result[0];
+            if (result[0] instanceof TruffleObject) {
+                return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result[0]);
+            } else {
+                return result[0];
+            }
         }
 
         /**
@@ -702,8 +734,7 @@ public class PolyglotEngine {
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
             }
-            T wrapper = JavaInterop.asJavaObject(representation, (TruffleObject) obj);
-            return JavaWrapper.create(representation, wrapper, this);
+            return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
         }
 
         /**
@@ -732,32 +763,6 @@ public class PolyglotEngine {
             });
             exceptionCheck(res);
             return createValue(language, res, done);
-        }
-
-        @SuppressWarnings("try")
-        final Value invokeProxy(final InvocationHandler chain, final Object wrapper, final Method method, final Object[] args) throws IOException {
-            final Debugger[] fillIn = {debugger};
-            final CountDownLatch done = new CountDownLatch(1);
-            final Object[] res = {null, null};
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try (final Closeable c = SPI.executionStart(PolyglotEngine.this, fillIn, null)) {
-                        if (debugger == null) {
-                            debugger = fillIn[0];
-                        }
-                        res[0] = chain.invoke(wrapper, method, args);
-                    } catch (IOException ex) {
-                        res[1] = ex;
-                    } catch (Throwable ex) {
-                        res[1] = ex;
-                    } finally {
-                        done.countDown();
-                    }
-                }
-            });
-            exceptionCheck(res);
-            return new Value(language, res, done);
         }
 
         @SuppressWarnings("try")

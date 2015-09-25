@@ -29,6 +29,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.Random;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -520,7 +521,7 @@ public abstract class TruffleTCK {
         TruffleObject fn = JavaInterop.asTruffleFunction(LongBinaryOperation.class, new MaxMinObject(true));
 
         Object ret = apply.invoke(null, fn).get();
-        assertSame("The same value returned", fn, ret);
+        assertSameTruffleObject("The same value returned", fn, ret);
     }
 
     @Test
@@ -574,6 +575,28 @@ public abstract class TruffleTCK {
             assertNotNull("Remains non-null even after " + i + " iteration", obj);
         }
         return obj;
+    }
+
+    private static void assertSameTruffleObject(String msg, Object expected, Object actual) {
+        Object unExpected = unwrapTruffleObject(expected);
+        Object unAction = unwrapTruffleObject(actual);
+        assertSame(msg, unExpected, unAction);
+    }
+
+    private static Object unwrapTruffleObject(Object obj) {
+        try {
+            if (obj instanceof TruffleObject) {
+                Class<?> eto = Class.forName("com.oracle.truffle.api.vm.EngineTruffleObject");
+                if (eto.isInstance(obj)) {
+                    final Field field = eto.getDeclaredField("delegate");
+                    field.setAccessible(true);
+                    return field.get(obj);
+                }
+            }
+            return obj;
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     interface CompoundObject {
