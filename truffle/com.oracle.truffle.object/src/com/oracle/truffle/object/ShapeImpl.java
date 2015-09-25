@@ -1023,6 +1023,8 @@ public abstract class ShapeImpl extends Shape {
                 initialType = int.class;
             } else if (value instanceof Double) {
                 initialType = double.class;
+            } else if (value instanceof Long) {
+                initialType = long.class;
             } else if (value instanceof Boolean) {
                 initialType = boolean.class;
             } else {
