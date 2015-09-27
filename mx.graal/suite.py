@@ -1,12 +1,12 @@
 suite = {
-  "mxversion" : "5.0",
+  "mxversion" : "5.5.6",
   "name" : "graal",
 
   "imports" : {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "0851eafff5c9ec7ebbcc588dca5bcd1290175b5d",
+               "version" : "0f13373f18d01dec38726de941bf625b1b0273bf",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -14,7 +14,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "93a6b7597937fcee05a0c8f9366dd61ab80d804a",
+               "version" : "364e3f0246430aa094556c0f422662120a2a89cf",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
