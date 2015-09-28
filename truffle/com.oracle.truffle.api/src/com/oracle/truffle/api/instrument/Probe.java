@@ -49,7 +49,7 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * <li>A dynamically managed collection of <em>attached</em> {@linkplain Instrument Instruments}
  * that receive event notifications on behalf of external clients.</li>
  * </ol>
- * <strong>Note</strong>:The relationship for {@link ProlbeInstrument} must be with an AST
+ * <strong>Note</strong>:The relationship for {@link ProbeInstrument} must be with an AST
  * <em>location</em>, not a specific {@link Node}, because ASTs are routinely <em>cloned</em> at
  * runtime. An AST <em>location</em> is best represented as the {@link SourceSection} from which the
  * original AST Node was created.
