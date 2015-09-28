@@ -164,6 +164,9 @@ public class GraphUtil {
                     if (usage.isAlive()) {
                         if (usage instanceof PhiNode) {
                             usage.replaceFirstInput(node, null);
+                            if (!((PhiNode) usage).hasValidInput()) {
+                                propagateKill(usage);
+                            }
                         } else {
                             propagateKill(usage);
                         }

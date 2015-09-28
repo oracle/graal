@@ -233,4 +233,12 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
         return merge() instanceof LoopBeginNode;
     }
 
+    public boolean hasValidInput() {
+        for (ValueNode n : values()) {
+            if (n != null) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
