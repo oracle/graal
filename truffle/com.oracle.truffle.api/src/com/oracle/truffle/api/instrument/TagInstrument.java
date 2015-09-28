@@ -45,14 +45,17 @@ public abstract class TagInstrument extends Instrument {
      */
     @SuppressWarnings("unused") private final String instrumentInfo;
 
+    protected Instrumenter instrumenter;
+
     /**
      * Has this instrument been disposed? stays true once set.
      */
-    private boolean isDisposed = false;
+    protected boolean isDisposed = false;
 
     private SyntaxTag tag = null;
 
-    protected TagInstrument(SyntaxTag tag, String instrumentInfo) {
+    protected TagInstrument(Instrumenter instrumenter, SyntaxTag tag, String instrumentInfo) {
+        this.instrumenter = instrumenter;
         this.tag = tag;
         this.instrumentInfo = instrumentInfo;
     }
@@ -62,8 +65,7 @@ public abstract class TagInstrument extends Instrument {
         if (isDisposed) {
             throw new IllegalStateException("Attempt to dispose an already disposed Instrumennt");
         }
-
-        // TODO (mlvdv)
+        instrumenter.disposeAfterTagInstrument();
         this.isDisposed = true;
     }
 
@@ -80,13 +82,22 @@ public abstract class TagInstrument extends Instrument {
 
         private final StandardBeforeInstrumentListener listener;
 
-        BeforeTagInstrument(SyntaxTag tag, StandardBeforeInstrumentListener listener, String instrumentInfo) {
-            super(tag, instrumentInfo);
+        BeforeTagInstrument(Instrumenter instrumenter, SyntaxTag tag, StandardBeforeInstrumentListener listener, String instrumentInfo) {
+            super(instrumenter, tag, instrumentInfo);
             this.listener = listener;
         }
 
         StandardBeforeInstrumentListener getListener() {
             return listener;
+        }
+
+        @Override
+        public void dispose() throws IllegalStateException {
+            if (isDisposed) {
+                throw new IllegalStateException("Disposed Instrument can not be disposed again");
+            }
+            instrumenter.disposeBeforeTagInstrument();
+            this.isDisposed = true;
         }
     }
 
@@ -94,13 +105,22 @@ public abstract class TagInstrument extends Instrument {
 
         private final StandardAfterInstrumentListener listener;
 
-        AfterTagInstrument(SyntaxTag tag, StandardAfterInstrumentListener listener, String instrumentInfo) {
-            super(tag, instrumentInfo);
+        AfterTagInstrument(Instrumenter instrumenter, SyntaxTag tag, StandardAfterInstrumentListener listener, String instrumentInfo) {
+            super(instrumenter, tag, instrumentInfo);
             this.listener = listener;
         }
 
         StandardAfterInstrumentListener getListener() {
             return listener;
+        }
+
+        @Override
+        public void dispose() throws IllegalStateException {
+            if (isDisposed) {
+                throw new IllegalStateException("Disposed Instrument can not be disposed again");
+            }
+            instrumenter.disposeAfterTagInstrument();
+            this.isDisposed = true;
         }
     }
 }
