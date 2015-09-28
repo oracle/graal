@@ -37,6 +37,8 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument;
+import com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -80,7 +82,8 @@ public final class Instrumenter {
      * <ul>
      * <li>A newly created tool is inert until {@linkplain Instrumenter#install(Tool) installed}.</li>
      * <li>An installed tool becomes <em>enabled</em> and immediately begins installing
-     * {@linkplain ProbeInstrument instrumentation} on ASTs and collecting execution data from them.</li>
+     * {@linkplain ProbeInstrument instrumentation} on ASTs and collecting execution data from them.
+     * </li>
      * <li>A tool may only be installed once.</li>
      * <li>It should be possible to install multiple instances of a tool, possibly (but not
      * necessarily) configured differently with respect to what data is being collected.</li>
@@ -231,24 +234,24 @@ public final class Instrumenter {
     private final List<WeakReference<Probe>> probes = new ArrayList<>();
 
     /**
-     * A global trap that triggers notification just before executing any Node that is Probed with a
-     * matching tag.
+     * A global instrument that triggers notification just before executing any Node that is Probed
+     * with a matching tag.
      */
-    @CompilationFinal private SyntaxTagTrap beforeTagTrap = null;
+    @CompilationFinal private BeforeTagInstrument beforeTagInstrument = null;
 
     /**
-     * A global trap that triggers notification just after executing any Node that is Probed with a
-     * matching tag.
+     * A global instrument that triggers notification just after executing any Node that is Probed
+     * with a matching tag.
      */
-    @CompilationFinal private SyntaxTagTrap afterTagTrap = null;
+    @CompilationFinal private AfterTagInstrument afterTagInstrument = null;
 
     Instrumenter(Object vm) {
         this.vm = vm;
     }
 
     /**
-     * Prepares an AST node for {@linkplain ProbeInstrument instrumentation}, where the node is presumed
-     * to be part of a well-formed Truffle AST that has not yet been executed.
+     * Prepares an AST node for {@linkplain ProbeInstrument instrumentation}, where the node is
+     * presumed to be part of a well-formed Truffle AST that has not yet been executed.
      * <p>
      * <em>Probing</em> a node is idempotent:
      * <ul>
@@ -357,54 +360,6 @@ public final class Instrumenter {
         return taggedProbes;
     }
 
-    // TODO (mlvdv) generalize to permit multiple "before traps" without a performance hit?
-    /**
-     * Sets the current "<em>before</em> tag trap"; there can be no more than one in effect.
-     * <ul>
-     * <li>The before-trap triggers a callback just <strong><em>before</em></strong> execution
-     * reaches <strong><em>any</em></strong> {@link Probe} (either existing or subsequently created)
-     * with the specified {@link SyntaxTag}.</li>
-     * <li>Setting the before-trap to {@code null} clears an existing before-trap.</li>
-     * <li>Setting a non{@code -null} before-trap when one is already set clears the previously set
-     * before-trap.</li>
-     * </ul>
-     *
-     * @param newBeforeTagTrap The new "before" {@link SyntaxTagTrap} to set.
-     */
-    public void setBeforeTagTrap(SyntaxTagTrap newBeforeTagTrap) {
-        beforeTagTrap = newBeforeTagTrap;
-        for (WeakReference<Probe> ref : probes) {
-            final Probe probe = ref.get();
-            if (probe != null) {
-                probe.notifyTrapsChanged();
-            }
-        }
-    }
-
-    // TODO (mlvdv) generalize to permit multiple "after traps" without a performance hit?
-    /**
-     * Sets the current "<em>after</em> tag trap"; there can be no more than one in effect.
-     * <ul>
-     * <li>The after-trap triggers a callback just <strong><em>after</em></strong> execution leaves
-     * <strong><em>any</em></strong> {@link Probe} (either existing or subsequently created) with
-     * the specified {@link SyntaxTag}.</li>
-     * <li>Setting the after-trap to {@code null} clears an existing after-trap.</li>
-     * <li>Setting a non{@code -null} after-trap when one is already set clears the previously set
-     * after-trap.</li>
-     * </ul>
-     *
-     * @param newAfterTagTrap The new "after" {@link SyntaxTagTrap} to set.
-     */
-    public void setAfterTagTrap(SyntaxTagTrap newAfterTagTrap) {
-        afterTagTrap = newAfterTagTrap;
-        for (WeakReference<Probe> ref : probes) {
-            final Probe probe = ref.get();
-            if (probe != null) {
-                probe.notifyTrapsChanged();
-            }
-        }
-    }
-
     /**
      * Enables instrumentation at selected nodes in all subsequently constructed ASTs. Ignored if
      * the argument is already registered, runtime error if argument is {@code null}.
@@ -486,6 +441,66 @@ public final class Instrumenter {
         return instrument;
     }
 
+    // TODO (mlvdv) allow multiple <em>before</em> instruments without performance hit?
+    /**
+     * Sets the current "<em>before</em>" TagInstrument; there can be no more than one in effect.
+     * <ul>
+     * <li>The Instrument triggers a callback just <strong><em>before</em></strong> execution
+     * reaches <strong><em>any</em></strong> {@link Probe} (either existing or subsequently created)
+     * with the specified {@link SyntaxTag}.</li>
+     * <li>Calling {@link TagInstrument#dispose()} removes the instrument.</li>
+     * </ul>
+     *
+     * @param tag identifies the nodes to be instrumented
+     * @param listener receiver of <em>before</em> execution events
+     * @param instrumentInfo optional, mainly for debugging.
+     * @return a newly created, active Instrument
+     * @throws IllegalStateException if called when a <em>before</em> Instrument is active.
+     */
+    public TagInstrument attach(SyntaxTag tag, StandardBeforeInstrumentListener listener, String instrumentInfo) {
+        if (beforeTagInstrument != null) {
+            throw new IllegalStateException("Only one 'before' TagInstrument at a time");
+        }
+        this.beforeTagInstrument = new TagInstrument.BeforeTagInstrument(tag, listener, instrumentInfo);
+        for (WeakReference<Probe> ref : probes) {
+            final Probe probe = ref.get();
+            if (probe != null) {
+                probe.notifyTagInstrumentsChanged();
+            }
+        }
+        return beforeTagInstrument;
+    }
+
+    // TODO (mlvdv) allow multiple <em>after</em> instruments without performance hit?
+    /**
+     * Sets the current "<em>after</em>" TagInstrument; there can be no more than one in effect.
+     * <ul>
+     * <li>The Instrument triggers a callback just <strong><em>after</em></strong> execution reaches
+     * <strong><em>any</em></strong> {@link Probe} (either existing or subsequently created) with
+     * the specified {@link SyntaxTag}.</li>
+     * <li>Calling {@link TagInstrument#dispose()} removes the instrument.</li>
+     * </ul>
+     *
+     * @param tag identifies the nodes to be instrumented
+     * @param listener receiver of <em>after</em> execution events
+     * @param instrumentInfo optional, mainly for debugging.
+     * @return a newly created, active Instrument
+     * @throws IllegalStateException if called when a <em>after</em> Instrument is active.
+     */
+    public TagInstrument attach(SyntaxTag tag, StandardAfterInstrumentListener listener, String instrumentInfo) {
+        if (afterTagInstrument != null) {
+            throw new IllegalStateException("Only one 'afater' TagInstrument at a time");
+        }
+        this.afterTagInstrument = new TagInstrument.AfterTagInstrument(tag, listener, instrumentInfo);
+        for (WeakReference<Probe> ref : probes) {
+            final Probe probe = ref.get();
+            if (probe != null) {
+                probe.notifyTagInstrumentsChanged();
+            }
+        }
+        return afterTagInstrument;
+    }
+
     /**
      * Connects the tool to some part of the Truffle runtime, and enable data collection to start.
      *
@@ -514,12 +529,12 @@ public final class Instrumenter {
         }
     }
 
-    SyntaxTagTrap getBeforeTagTrap() {
-        return beforeTagTrap;
+    BeforeTagInstrument getBeforeTagInstrument() {
+        return beforeTagInstrument;
     }
 
-    SyntaxTagTrap getAfterTagTrap() {
-        return afterTagTrap;
+    AfterTagInstrument getAfterTagInstrument() {
+        return afterTagInstrument;
     }
 
     // TODO (mlvdv) build this in as a VM event?

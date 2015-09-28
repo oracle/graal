@@ -145,25 +145,25 @@
  * location, where it will be executed subject to full Truffle optimization.</li>
  * </ul></li>
  *
- * <li><strong>Wide-area Instrumentation: traps</strong>
+ * <li><strong>Wide-area Instrumentation: TagInstruments</strong>
  * <ul>
  * <li>A specialized form of Instrumentation is provided that efficiently attaches a single
  * listener called a
- * {@linkplain com.oracle.truffle.api.instrument.SyntaxTagTrap tag trap} to every
+ * {@linkplain com.oracle.truffle.api.instrument.StandardBeforeInstrumentListener StandardBeforeInstrumentListener} to every
  * {@linkplain com.oracle.truffle.api.instrument.Probe Probe} containing a specified
  * {@linkplain com.oracle.truffle.api.instrument.SyntaxTag tag}.</li>
  * <li>One (but no more than one)
- * {@linkplain com.oracle.truffle.api.instrument.SyntaxTagTrap tag trap} may optionally be set
- * to be notified <em>before</em> every <em>AST execution event</em> where the specified
+ * {@linkplain com.oracle.truffle.api.instrument.StandardBeforeInstrumentListener StandardBeforeInstrumentListener}
+ * may optionally be attached for notification <em>before</em> every <em>AST execution event</em> where the specified
  * {@linkplain com.oracle.truffle.api.instrument.SyntaxTag tag} is present.</li>
  * <li>One (but no more than one)
- * {@linkplain com.oracle.truffle.api.instrument.SyntaxTagTrap tag trap} may optionally be set
- * to be notified <em>after</em> every <em>AST execution event</em> where the specified
+ * {@linkplain com.oracle.truffle.api.instrument.StandardBeforeInstrumentListener StandardBeforeInstrumentListener}
+ * may optionally be attached for notification <em>after</em> every <em>AST execution event</em> where the specified
  * {@linkplain com.oracle.truffle.api.instrument.SyntaxTag tag} is present.</li>
  * <li>The
- * {@linkplain com.oracle.truffle.api.instrument.SyntaxTagTrap tag trap} mechanism is independent
+ * {@linkplain com.oracle.truffle.api.instrument.TagInstrument TagInstrument} mechanism is independent
  * of listeners that may be attached to
- * {@linkplain com.oracle.truffle.api.instrument.Probe Probe}.  It is especially valuable for
+ * {@linkplain com.oracle.truffle.api.instrument.Probe Probes}.  It is especially valuable for
  * applications such as the debugger, where during "stepping" the program should be halted at
  * any node tagged with
  * {@linkplain com.oracle.truffle.api.instrument.StandardSyntaxTag#STATEMENT STATEMENT}.</li>

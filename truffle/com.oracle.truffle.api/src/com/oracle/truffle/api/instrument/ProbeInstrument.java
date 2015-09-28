@@ -45,9 +45,14 @@ import com.oracle.truffle.api.source.SourceSection;
  * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  *
  * @see Probe
- * @see EventHandlerNode
+ * @see Instrumenter
  */
-public abstract class ProbeInstrument {
+public abstract class ProbeInstrument extends Instrument {
+
+    /**
+     * Optional documentation, mainly for debugging.
+     */
+    private final String instrumentInfo;
 
     /**
      * Has this instrument been disposed? stays true once set.
@@ -55,11 +60,6 @@ public abstract class ProbeInstrument {
     private boolean isDisposed = false;
 
     protected Probe probe = null;
-
-    /**
-     * Optional documentation, mainly for debugging.
-     */
-    private final String instrumentInfo;
 
     /**
      * <h4>Implementation Notes</h4>
@@ -86,9 +86,9 @@ public abstract class ProbeInstrument {
      *
      * <li>Multiple Instruments may share a single listener.</li>
      *
-     * <li>An Instrument does nothing until it is {@linkplain Probe#attach(ProbeInstrument) attached} to
-     * a Probe, at which time the Instrument begins routing execution events from the Probe's AST
-     * location to the Instrument's listener.</li>
+     * <li>An Instrument does nothing until it is {@linkplain Probe#attach(ProbeInstrument)
+     * attached} to a Probe, at which time the Instrument begins routing execution events from the
+     * Probe's AST location to the Instrument's listener.</li>
      *
      * <li>Neither Instruments nor Probes are {@link Node}s.</li>
      *
@@ -121,19 +121,12 @@ public abstract class ProbeInstrument {
     }
 
     /**
-     * Gets the {@link Probe} to which this Instrument is currently attached: {@code null} if not
-     * yet attached to a Probe or if this Instrument has been {@linkplain #dispose() disposed}.
-     */
-    public Probe getProbe() {
-        return probe;
-    }
-
-    /**
      * Removes this Instrument from the Probe to which it attached and renders this Instrument
      * inert.
      *
      * @throws IllegalStateException if this instrument has already been disposed
      */
+    @Override
     public void dispose() throws IllegalStateException {
         if (isDisposed) {
             throw new IllegalStateException("Attempt to dispose an already disposed Instrumennt");
@@ -146,18 +139,24 @@ public abstract class ProbeInstrument {
         this.isDisposed = true;
     }
 
+    @Override
+    public boolean isDisposed() {
+        return isDisposed;
+    }
+
+    /**
+     * Gets the {@link Probe} to which this Instrument is currently attached: {@code null} if not
+     * yet attached to a Probe or if this Instrument has been {@linkplain #dispose() disposed}.
+     */
+    public Probe getProbe() {
+        return probe;
+    }
+
     /**
      * For internal implementation only.
      */
     void setAttachedTo(Probe probe) {
         this.probe = probe;
-    }
-
-    /**
-     * Has this instrument been disposed and rendered unusable?
-     */
-    boolean isDisposed() {
-        return isDisposed;
     }
 
     abstract AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode);

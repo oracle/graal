@@ -34,6 +34,8 @@ import java.util.List;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument;
+import com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -44,12 +46,13 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * <ol>
  * <li>A <em>guest language program location</em> in an executing Truffle AST (corresponding to a
  * {@link SourceSection}), and</li>
- * <li>A dynamically managed collection of <em>attached</em> {@linkplain ProbeInstrument Instruments}
- * that receive event notifications from the Probe's AST location on behalf of external clients.</li>
+ * <li>A dynamically managed collection of <em>attached</em> {@linkplain Instrument Instruments}
+ * that receive event notifications on behalf of external clients.</li>
  * </ol>
- * <strong>Note</strong>:The relationship must be with an AST <em>location</em>, not a specific
- * {@link Node}, because ASTs are routinely <em>cloned</em> at runtime. An AST <em>location</em> is
- * best represented as the {@link SourceSection} from which the original AST Node was created.
+ * <strong>Note</strong>:The relationship for {@link ProlbeInstrument} must be with an AST
+ * <em>location</em>, not a specific {@link Node}, because ASTs are routinely <em>cloned</em> at
+ * runtime. An AST <em>location</em> is best represented as the {@link SourceSection} from which the
+ * original AST Node was created.
  * <p>
  * Client-oriented documentation for the use of Probes is available online at <a
  * HREF="https://wiki.openjdk.java.net/display/Graal/Finding+Probes" >https://wiki.openjdk.java.
@@ -94,10 +97,10 @@ public final class Probe {
     @CompilationFinal private Assumption probeStateUnchangedAssumption = probeStateUnchangedCyclic.getAssumption();
 
     // Must invalidate whenever changed
-    @CompilationFinal private boolean isBeforeTrapActive = false;
+    @CompilationFinal private boolean isBeforeTagInstrumentActive = false;
 
     // Must invalidate whenever changed
-    @CompilationFinal private boolean isAfterTrapActive = false;
+    @CompilationFinal private boolean isAfterTagInstrumentActive = false;
 
     /**
      * Constructor for use only by {@link ProbeNode}.
@@ -130,7 +133,8 @@ public final class Probe {
      * <li>The "probing" of an AST Node is implemented by insertion of a
      * {@link ProbeNode.WrapperNode} into the AST (as new parent of the Node being probed), together
      * with an associated {@link ProbeNode} that routes execution events at the probed Node to all
-     * the {@linkplain ProbeInstrument Instruments} attached to the Probe's <em>instrument chain</em>.</li>
+     * the {@linkplain ProbeInstrument Instruments} attached to the Probe's
+     * <em>instrument chain</em>.</li>
      *
      * <li>When Truffle clones an AST, any attached WrapperNodes and ProbeNodes are cloned as well,
      * together with their attached instrument chains. Each Probe instance intercepts cloning events
@@ -163,19 +167,19 @@ public final class Probe {
             tags.add(tag);
             instrumenter.tagAdded(this, tag, tagValue);
 
-            // Update the status of this Probe with respect to global tag traps
-            boolean tagTrapsChanged = false;
-            final SyntaxTagTrap beforeTagTrap = instrumenter.getBeforeTagTrap();
-            if (beforeTagTrap != null && tag == beforeTagTrap.getTag()) {
-                this.isBeforeTrapActive = true;
-                tagTrapsChanged = true;
+            // Update the status of this Probe with respect to global TagInstruments
+            boolean tagInstrumentsChanged = false;
+            final BeforeTagInstrument beforeTagInstrument = instrumenter.getBeforeTagInstrument();
+            if (beforeTagInstrument != null && tag == beforeTagInstrument.getTag()) {
+                this.isBeforeTagInstrumentActive = true;
+                tagInstrumentsChanged = true;
             }
-            final SyntaxTagTrap afterTagTrap = instrumenter.getAfterTagTrap();
-            if (afterTagTrap != null && tag == afterTagTrap.getTag()) {
-                this.isAfterTrapActive = true;
-                tagTrapsChanged = true;
+            final AfterTagInstrument afterTagInstrument = instrumenter.getAfterTagInstrument();
+            if (afterTagInstrument != null && tag == afterTagInstrument.getTag()) {
+                this.isAfterTagInstrumentActive = true;
+                tagInstrumentsChanged = true;
             }
-            if (tagTrapsChanged) {
+            if (tagInstrumentsChanged) {
                 invalidateProbeUnchanged();
             }
             if (TRACE) {
@@ -264,25 +268,23 @@ public final class Probe {
     }
 
     /**
-     * Gets the currently active <strong><em>before</em></strong> {@linkplain SyntaxTagTrap Tag
-     * Trap} at this Probe. Non{@code -null} if the global
-     * {@linkplain Instrumenter#setBeforeTagTrap(SyntaxTagTrap) Before Tag Trap} is set and if this
-     * Probe holds the {@link SyntaxTag} specified in the trap.
+     * Gets the currently active {@linkplain BeforeTagInstrument} at this Probe. Non{@code -null} if
+     * the global {@linkplain BeforeTagInstrument} is set and if this Probe holds the
+     * {@link SyntaxTag} specified in the instrument.
      */
-    SyntaxTagTrap getBeforeTrap() {
+    BeforeTagInstrument getBeforeTagInstrument() {
         checkProbeUnchanged();
-        return isBeforeTrapActive ? instrumenter.getBeforeTagTrap() : null;
+        return isBeforeTagInstrumentActive ? instrumenter.getBeforeTagInstrument() : null;
     }
 
     /**
-     * Gets the currently active <strong><em>after</em></strong> {@linkplain SyntaxTagTrap Tag Trap}
-     * at this Probe. Non{@code -null} if the global
-     * {@linkplain Instrumenter#setAfterTagTrap(SyntaxTagTrap) After Tag Trap} is set and if this
-     * Probe holds the {@link SyntaxTag} specified in the trap.
+     * Gets the currently active {@linkplain AfterTagInstrument} at this Probe. Non{@code -null} if
+     * the global {@linkplain BeforeTagInstrument} is set and if this Probe holds the
+     * {@link SyntaxTag} specified in the instrument.
      */
-    SyntaxTagTrap getAfterTrap() {
+    AfterTagInstrument getAfterTagInstrument() {
         checkProbeUnchanged();
-        return isAfterTrapActive ? instrumenter.getAfterTagTrap() : null;
+        return isAfterTagInstrumentActive ? instrumenter.getAfterTagInstrument() : null;
     }
 
     Class<? extends TruffleLanguage> getLanguage() {
@@ -307,11 +309,11 @@ public final class Probe {
         probeStateUnchangedCyclic.invalidate();
     }
 
-    void notifyTrapsChanged() {
-        final SyntaxTagTrap beforeTagTrap = instrumenter.getBeforeTagTrap();
-        this.isBeforeTrapActive = beforeTagTrap != null && this.isTaggedAs(beforeTagTrap.getTag());
-        final SyntaxTagTrap afterTagTrap = instrumenter.getAfterTagTrap();
-        this.isAfterTrapActive = afterTagTrap != null && this.isTaggedAs(afterTagTrap.getTag());
+    void notifyTagInstrumentsChanged() {
+        final BeforeTagInstrument beforeTagInstrument = instrumenter.getBeforeTagInstrument();
+        this.isBeforeTagInstrumentActive = beforeTagInstrument != null && this.isTaggedAs(beforeTagInstrument.getTag());
+        final AfterTagInstrument afterTagInstrument = instrumenter.getAfterTagInstrument();
+        this.isAfterTagInstrumentActive = afterTagInstrument != null && this.isTaggedAs(afterTagInstrument.getTag());
         invalidateProbeUnchanged();
     }
 

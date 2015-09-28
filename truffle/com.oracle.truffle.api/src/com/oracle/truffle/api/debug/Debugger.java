@@ -34,6 +34,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -44,9 +45,11 @@ import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.StandardAfterInstrumentListener;
+import com.oracle.truffle.api.instrument.StandardBeforeInstrumentListener;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.instrument.SyntaxTagTrap;
+import com.oracle.truffle.api.instrument.TagInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
@@ -406,6 +409,8 @@ public final class Debugger {
      * @see Debugger#prepareStepInto(int)
      */
     private final class StepInto extends StepStrategy {
+        private TagInstrument beforeTagInstrument;
+        private TagInstrument afterTagInstrument;
         private int unfinishedStepCount;
 
         StepInto(int stepCount) {
@@ -415,26 +420,40 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int stackDepth) {
-            instrumenter.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
+
+            beforeTagInstrument = instrumenter.attach(STEPPING_TAG, new StandardBeforeInstrumentListener() {
                 @TruffleBoundary
                 @Override
-                public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
+                public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
                     // HALT: just before statement
                     --unfinishedStepCount;
-                    strategyTrace("TRAP BEFORE", "unfinished steps=%d", unfinishedStepCount);
+                    strategyTrace("HALT BEFORE", "unfinished steps=%d", unfinishedStepCount);
                     // Should run in fast path
                     if (unfinishedStepCount <= 0) {
-                        halt(node, mFrame, true);
+                        halt(node, vFrame.materialize(), true);
                     }
                     strategyTrace("RESUME BEFORE", "");
                 }
-            });
-            instrumenter.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
+            }, "Debugger StepInto");
+
+            afterTagInstrument = instrumenter.attach(CALL_TAG, new StandardAfterInstrumentListener() {
+
+                public void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame) {
+                    doHalt(node, vFrame.materialize());
+                }
+
+                public void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
+                    doHalt(node, vFrame.materialize());
+                }
+
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
+                    doHalt(node, vFrame.materialize());
+                }
+
                 @TruffleBoundary
-                @Override
-                public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
+                private void doHalt(Node node, MaterializedFrame mFrame) {
                     --unfinishedStepCount;
-                    strategyTrace(null, "TRAP AFTER unfinished steps=%d", unfinishedStepCount);
+                    strategyTrace(null, "HALT AFTER unfinished steps=%d", unfinishedStepCount);
                     if (currentStackDepth() < stackDepth) {
                         // HALT: just "stepped out"
                         if (unfinishedStepCount <= 0) {
@@ -443,13 +462,13 @@ public final class Debugger {
                     }
                     strategyTrace("RESUME AFTER", "");
                 }
-            });
+            }, "Debugger StepInto");
         }
 
         @Override
         protected void unsetStrategy() {
-            instrumenter.setBeforeTagTrap(null);
-            instrumenter.setAfterTagTrap(null);
+            beforeTagInstrument.dispose();
+            afterTagInstrument.dispose();
         }
     }
 
@@ -470,27 +489,41 @@ public final class Debugger {
      */
     private final class StepOut extends StepStrategy {
 
+        private TagInstrument afterTagInstrument;
+
         @Override
         protected void setStrategy(final int stackDepth) {
-            instrumenter.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
+
+            afterTagInstrument = instrumenter.attach(CALL_TAG, new StandardAfterInstrumentListener() {
+
+                public void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame) {
+                    doHalt(node, vFrame.materialize());
+                }
+
+                public void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
+                    doHalt(node, vFrame.materialize());
+                }
+
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
+                    doHalt(node, vFrame.materialize());
+                }
 
                 @TruffleBoundary
-                @Override
-                public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
+                private void doHalt(Node node, MaterializedFrame mFrame) {
                     // HALT:
                     final int currentStackDepth = currentStackDepth();
-                    strategyTrace("TRAP AFTER", "stackDepth: start=%d current=%d", stackDepth, currentStackDepth);
+                    strategyTrace("HALT AFTER", "stackDepth: start=%d current=%d", stackDepth, currentStackDepth);
                     if (currentStackDepth < stackDepth) {
                         halt(node, mFrame, false);
                     }
                     strategyTrace("RESUME AFTER", "");
                 }
-            });
+            }, "Debugger StepOut");
         }
 
         @Override
         protected void unsetStrategy() {
-            instrumenter.setAfterTagTrap(null);
+            afterTagInstrument.dispose();
         }
     }
 
@@ -508,6 +541,8 @@ public final class Debugger {
      * </ul>
      */
     private final class StepOver extends StepStrategy {
+        private TagInstrument beforeTagInstrument;
+        private TagInstrument afterTagInstrument;
         private int unfinishedStepCount;
 
         StepOver(int stepCount) {
@@ -516,20 +551,21 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int stackDepth) {
-            instrumenter.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
+            beforeTagInstrument = instrumenter.attach(STEPPING_TAG, new StandardBeforeInstrumentListener() {
+
                 @TruffleBoundary
                 @Override
-                public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
+                public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
                     final int currentStackDepth = currentStackDepth();
                     if (currentStackDepth <= stackDepth) {
                         // HALT: stack depth unchanged or smaller; treat like StepInto
                         --unfinishedStepCount;
                         if (TRACE) {
-                            strategyTrace("TRAP BEFORE", "unfinished steps=%d stackDepth start=%d current=%d", unfinishedStepCount, stackDepth, currentStackDepth);
+                            strategyTrace("HALT BEFORE", "unfinished steps=%d stackDepth start=%d current=%d", unfinishedStepCount, stackDepth, currentStackDepth);
                         }
                         // Test should run in fast path
                         if (unfinishedStepCount <= 0) {
-                            halt(node, mFrame, true);
+                            halt(node, vFrame.materialize(), true);
                         }
                     } else {
                         // CONTINUE: Stack depth increased; don't count as a step
@@ -539,17 +575,29 @@ public final class Debugger {
                     }
                     strategyTrace("RESUME BEFORE", "");
                 }
-            });
+            }, "Debugger StepOver");
 
-            instrumenter.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
+            afterTagInstrument = instrumenter.attach(CALL_TAG, new StandardAfterInstrumentListener() {
+
+                public void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame) {
+                    doHalt(node, vFrame.materialize());
+                }
+
+                public void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
+                    doHalt(node, vFrame.materialize());
+                }
+
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
+                    doHalt(node, vFrame.materialize());
+                }
+
                 @TruffleBoundary
-                @Override
-                public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
+                private void doHalt(Node node, MaterializedFrame mFrame) {
                     final int currentStackDepth = currentStackDepth();
                     if (currentStackDepth < stackDepth) {
                         // HALT: just "stepped out"
                         --unfinishedStepCount;
-                        strategyTrace("TRAP AFTER", "unfinished steps=%d stackDepth: start=%d current=%d", unfinishedStepCount, stackDepth, currentStackDepth);
+                        strategyTrace("HALT AFTER", "unfinished steps=%d stackDepth: start=%d current=%d", unfinishedStepCount, stackDepth, currentStackDepth);
                         // Should run in fast path
                         if (unfinishedStepCount <= 0) {
                             halt(node, mFrame, false);
@@ -557,13 +605,13 @@ public final class Debugger {
                         strategyTrace("RESUME AFTER", "");
                     }
                 }
-            });
+            }, "Debugger StepOver");
         }
 
         @Override
         protected void unsetStrategy() {
-            instrumenter.setBeforeTagTrap(null);
-            instrumenter.setAfterTagTrap(null);
+            beforeTagInstrument.dispose();
+            afterTagInstrument.dispose();
         }
     }
 
@@ -581,6 +629,7 @@ public final class Debugger {
      * </ul>
      */
     private final class StepOverNested extends StepStrategy {
+        private TagInstrument beforeTagInstrument;
         private int unfinishedStepCount;
         private final int startStackDepth;
 
@@ -591,28 +640,28 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int stackDepth) {
-            instrumenter.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
+            beforeTagInstrument = instrumenter.attach(STEPPING_TAG, new StandardBeforeInstrumentListener() {
                 @TruffleBoundary
                 @Override
-                public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
+                public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
                     final int currentStackDepth = currentStackDepth();
                     if (currentStackDepth <= startStackDepth) {
                         // At original step depth (or smaller) after being nested
                         --unfinishedStepCount;
-                        strategyTrace("TRAP AFTER", "unfinished steps=%d stackDepth start=%d current=%d", unfinishedStepCount, stackDepth, currentStackDepth);
+                        strategyTrace("HALT AFTER", "unfinished steps=%d stackDepth start=%d current=%d", unfinishedStepCount, stackDepth, currentStackDepth);
                         if (unfinishedStepCount <= 0) {
-                            halt(node, mFrame, false);
+                            halt(node, vFrame.materialize(), false);
                         }
                         // TODO (mlvdv) fixme for multiple steps
                         strategyTrace("RESUME BEFORE", "");
                     }
                 }
-            });
+            }, "Debuger StepOverNested");
         }
 
         @Override
         protected void unsetStrategy() {
-            instrumenter.setBeforeTagTrap(null);
+            beforeTagInstrument.dispose();
         }
     }
 

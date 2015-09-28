@@ -46,11 +46,10 @@ import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
 import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.instrument.SyntaxTagTrap;
 import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
 import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
@@ -63,18 +62,20 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * Support class for creating and managing "Tag Breakpoints". A Tag Breakpoint halts execution just
  * before reaching any node whose Probe carries a specified {@linkplain SyntaxTag Tag}.
  * <p>
- * The {@linkplain Instrumenter#setBeforeTagTrap(SyntaxTagTrap) Tag Trap}, which is built directly
- * into the Instrumentation Framework, does the same thing more efficiently, but there may only be
- * one Tag Trap active at a time. Any number of tag breakpoints may coexist with the Tag Trap, but
- * it would be confusing to have a Tag Breakpoint set for the same Tag as the current Tag Trap.
+ * The
+ * {@linkplain Instrumenter#attach(SyntaxTag, com.oracle.truffle.api.instrument.StandardBeforeInstrumentListener, String)
+ * before TagInstrument}, does the same thing more efficiently, but there may only be one
+ * <em>before</em> TagInstrument active at a time. Any number of {@link TagBreakpoint}s may coexist
+ * with the <em>before</em> TagInstrument, but it would be confusing to have a {@link TagBreakpoint}
+ * set for the same Tag as the current <em>before</em> TagInstrument.
  * <p>
  * Notes:
  * <ol>
  * <li>Only one Tag Breakpoint can be active for a specific {@linkplain SyntaxTag Tag}.</li>
  * <li>A newly created breakpoint looks for probes matching the tag, attaches to them if found by
  * installing an {@link ProbeInstrument}.</li>
- * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link ProbeInstrument} will be
- * copied along with the rest of the AST and will call back to the same breakpoint.</li>
+ * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link ProbeInstrument} will
+ * be copied along with the rest of the AST and will call back to the same breakpoint.</li>
  * <li>When notification is received that the breakpoint's Tag has been newly added to a Node, then
  * the breakpoint will attach a new Instrument at the probe to activate the breakpoint at that
  * location.</li>

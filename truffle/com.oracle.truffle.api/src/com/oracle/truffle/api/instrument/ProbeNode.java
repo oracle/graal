@@ -28,6 +28,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ProbeInstrument.AbstractInstrumentNode;
+import com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument;
+import com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -36,14 +38,14 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  * Implementation class & interface for enabling the attachment of {@linkplain Probe Probes} to
  * Truffle ASTs.
  * <p>
- * A {@link ProbeNode} is the head of a chain of nodes acting on behalf of {@linkplain ProbeInstrument
- * instruments}. It is attached to an AST as a child of a guest-language-specific
- * {@link WrapperNode} node.
+ * A {@link ProbeNode} is the head of a chain of nodes acting on behalf of
+ * {@linkplain ProbeInstrument instruments}. It is attached to an AST as a child of a
+ * guest-language-specific {@link WrapperNode} node.
  * <p>
- * When Truffle clones an AST, the chain, including all attached {@linkplain ProbeInstrument instruments}
- * will be cloned along with the {@link WrapperNode} to which it is attached. An instance of
- * {@link Probe} represents abstractly the instrumentation at a particular location in a Guest
- * Language AST, tracks the clones of the chain, and keeps the instrumentation attached to the
+ * When Truffle clones an AST, the chain, including all attached {@linkplain ProbeInstrument
+ * instruments} will be cloned along with the {@link WrapperNode} to which it is attached. An
+ * instance of {@link Probe} represents abstractly the instrumentation at a particular location in a
+ * Guest Language AST, tracks the clones of the chain, and keeps the instrumentation attached to the
  * clones consistent.
  */
 @NodeInfo(cost = NodeCost.NONE)
@@ -74,9 +76,9 @@ final class ProbeNode extends EventHandlerNode {
     @Override
     public void enter(Node node, VirtualFrame vFrame) {
         this.probe.checkProbeUnchanged();
-        final SyntaxTagTrap beforeTagTrap = probe.getBeforeTrap();
-        if (beforeTagTrap != null) {
-            beforeTagTrap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
+        final BeforeTagInstrument beforeTagInstrument = probe.getBeforeTagInstrument();
+        if (beforeTagInstrument != null) {
+            beforeTagInstrument.getListener().onEnter(probe, ((WrapperNode) this.getParent()).getChild(), vFrame);
         }
         if (firstInstrumentNode != null) {
             firstInstrumentNode.enter(node, vFrame);
@@ -89,9 +91,9 @@ final class ProbeNode extends EventHandlerNode {
         if (firstInstrumentNode != null) {
             firstInstrumentNode.returnVoid(node, vFrame);
         }
-        final SyntaxTagTrap afterTagTrap = probe.getAfterTrap();
-        if (afterTagTrap != null) {
-            afterTagTrap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
+        final AfterTagInstrument afterTagInstrument = probe.getAfterTagInstrument();
+        if (afterTagInstrument != null) {
+            afterTagInstrument.getListener().onReturnVoid(probe, ((WrapperNode) this.getParent()).getChild(), vFrame);
         }
     }
 
@@ -101,9 +103,9 @@ final class ProbeNode extends EventHandlerNode {
         if (firstInstrumentNode != null) {
             firstInstrumentNode.returnValue(node, vFrame, result);
         }
-        final SyntaxTagTrap afterTagTrap = probe.getAfterTrap();
-        if (afterTagTrap != null) {
-            afterTagTrap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
+        final AfterTagInstrument afterTagInstrument = probe.getAfterTagInstrument();
+        if (afterTagInstrument != null) {
+            afterTagInstrument.getListener().onReturnValue(probe, ((WrapperNode) this.getParent()).getChild(), vFrame, result);
         }
     }
 
@@ -113,9 +115,9 @@ final class ProbeNode extends EventHandlerNode {
         if (firstInstrumentNode != null) {
             firstInstrumentNode.returnExceptional(node, vFrame, exception);
         }
-        final SyntaxTagTrap afterTagTrap = probe.getAfterTrap();
-        if (afterTagTrap != null) {
-            afterTagTrap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
+        final AfterTagInstrument afterTagInstrument = probe.getAfterTagInstrument();
+        if (afterTagInstrument != null) {
+            afterTagInstrument.getListener().onReturnExceptional(probe, ((WrapperNode) this.getParent()).getChild(), vFrame, exception);
         }
     }
 

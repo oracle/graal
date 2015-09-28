@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,34 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.nodes.Node;
-
 /**
- * A trap that can be set to interrupt execution at probed nodes carrying a specific tag.
+ * A <em>binding</em> between:
+ * <ol>
+ * <li>Some source of <em>execution events</em> in an executing Truffle AST, and</li>
+ * <li>A <em>listener</em>: a consumer of execution events on behalf of an external client.
+ * </ol>
+ * <p>
+ * Client-oriented documentation for the use of Instruments is available online at <a
+ * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events" >https://
+ * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  *
- * @see Probe
+ * @See Instrumenter
  */
-public abstract class SyntaxTagTrap {
+abstract class Instrument {
 
-    private final SyntaxTag tag;
-
-    protected SyntaxTagTrap(SyntaxTag tag) {
-        this.tag = tag;
-    }
-
-    public final SyntaxTag getTag() {
-        return tag;
+    protected Instrument() {
     }
 
     /**
-     * Notifies that execution is halted at a node with the specified tag.
+     * Removes this from its source of execution events and renders itself Instrument inert.
+     *
+     * @throws IllegalStateException if this has already been disposed
      */
-    public abstract void tagTrappedAt(Node node, MaterializedFrame frame);
+    public abstract void dispose() throws IllegalStateException;
+
+    /**
+     * Has this been detached from its source of execution events.
+     */
+    public abstract boolean isDisposed();
+
 }
