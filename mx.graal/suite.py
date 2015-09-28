@@ -999,6 +999,10 @@ suite = {
         "GRAAL_HOTSPOT",
         "jvmci:JVMCI_HOTSPOT",
       ],
+      "exclude" : [
+        "mx:JUNIT",
+        "JAVA_ALLOCATION_INSTRUMENTER"
+      ],
     },
 
     "GRAAL_TRUFFLE" : {
