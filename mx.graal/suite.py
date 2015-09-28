@@ -23,6 +23,8 @@ suite = {
     ]
    },
 
+  "defaultLicense" : "GPLv2-CPE",
+
   "libraries" : {
 
     # ------------- Libraries -------------
