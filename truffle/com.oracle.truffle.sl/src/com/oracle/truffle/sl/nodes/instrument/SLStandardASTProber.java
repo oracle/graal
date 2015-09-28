@@ -58,7 +58,7 @@ import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 
 /**
  * A visitor which traverses a completely parsed Simple AST (presumed not yet executed) and enables
- * instrumentation at a few standard kinds of nodes.
+ * {@linkplain Instrumenter Instrumentation} at a few standard kinds of nodes.
  */
 public class SLStandardASTProber implements ASTProber {
 

@@ -27,7 +27,8 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A receiver of Truffle AST execution events that can act on behalf of an external client.
+ * A receiver of Truffle AST execution events (containing minimal information) that can act on
+ * behalf of an external client.
  * <p>
  * The {@link Probe} instance provides access to the {@link SourceSection} associated with the
  * event, as well as any {@link SyntaxTag}s that have been applied at that program's location.
@@ -37,8 +38,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * execution state should use {@link StandardInstrumentListener}.
  * <p>
  * Clients are free, of course, to record additional information in the listener implementation that
- * carries additional information about the context and reason for the particular {@link ProbeInstrument}
- * that is to be created from the listener.
+ * carries additional information about the context and reason for the particular
+ * {@link ProbeInstrument} that is to be created from the listener.
  * <p>
  * Notification is fully synchronous, so overrides have performance implications. Non-trivial
  * methods should be coded with Truffle guidelines and cautions in mind.

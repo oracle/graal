@@ -28,7 +28,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * An observer of events related to {@link Probe}s: creating and tagging.
+ * An observer of events related to {@link Probe}s: creation of new Probes and the addition of new
+ * {@linkplain SyntaxTag SyntaxTags} to existing Probes.
  */
 public interface ProbeListener {
 

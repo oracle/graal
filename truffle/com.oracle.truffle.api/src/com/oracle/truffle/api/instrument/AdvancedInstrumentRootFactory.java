@@ -39,7 +39,8 @@ public interface AdvancedInstrumentRootFactory {
 
     /**
      * Provider of {@linkplain AdvancedInstrumentRoot AST fragment} instances to be executed by the
-     * Instrumentation Framework at a {@linkplain Probe Probed} site in a guest-language AST.
+     * {@linkplain Instrumenter Instrumentation Framework} at a {@linkplain Probe Probed} site in a
+     * guest-language AST.
      * <p>
      * <strong>Notes:</strong>
      * <ul>

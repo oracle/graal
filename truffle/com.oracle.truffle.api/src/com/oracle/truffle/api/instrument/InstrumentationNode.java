@@ -27,9 +27,10 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * A marker interface for Truffle {@linkplain Node nodes} that internally implement the
- * <em>Instrumentation Framework</em>. Such nodes should not be part of any Guest Language execution
- * semantics, and should in general not be visible to ordinary Instrumentation clients.
+ * A marker interface for the Truffle {@linkplain Node Nodes} that internally implement the
+ * {@linkplain Instrumenter Instrumentation Framework} . Such nodes should not be part of any Guest
+ * Language execution semantics, and should in general not be visible to ordinary Instrumentation
+ * clients.
  */
 public interface InstrumentationNode {
 

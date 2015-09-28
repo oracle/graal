@@ -27,8 +27,8 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * A {@link Node} instance that must be inserted into a Truffle AST in order to enable
- * {@linkplain ProbeInstrument instrumentation} at a particular Guest Language (GL) node.
+ * A specialized {@link Node} instance that must be inserted into a Truffle AST in order to enable
+ * {@linkplain Instrumenter instrumentation} at a particular Guest Language (GL) node.
  * <p>
  * The implementation must be GL-specific. A wrapper <em>decorates</em> a GL AST node (the wrapper's
  * <em>child</em>) by acting as a transparent <em>proxy</em> with respect to the GL's execution
@@ -41,10 +41,10 @@ import com.oracle.truffle.api.nodes.Node;
  * at the wrapped AST node during program execution.
  * <p>
  * When a GL AST is cloned, the {@link WrapperNode}, its {@link EventHandlerNode} and any
- * {@linkplain ProbeInstrument instrumentation} are also cloned; they are in effect part of the GL AST.
- * An instance of {@link Probe} represents abstractly the instrumentation at a particular location
- * in a GL AST; it tracks all the copies of the Wrapper and attached instrumentation, and acts as a
- * single point of access for tools.
+ * {@linkplain ProbeInstrument instrumentation} are also cloned; they are in effect part of the GL
+ * AST. An instance of {@link Probe} represents abstractly the instrumentation at a particular
+ * location in a GL AST; it tracks all the copies of the Wrapper and attached instrumentation, and
+ * acts as a single point of access for tools.
  * <p>
  * Implementation guidelines:
  * <ol>

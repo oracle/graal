@@ -46,7 +46,7 @@ public final class ProbeFailure {
         WRAPPER_NODE("The node to be probed is a wrapper"),
 
         /**
-         * The node to be probed does not support instrumentation.
+         * The node to be probed does not support {@linkplain Instrumenter Instrumentation} .
          */
         NOT_INSTRUMENTABLE("The node to be project is \"not instrumentable\""),
 

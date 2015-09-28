@@ -24,7 +24,7 @@
  */
 
 /**
- * <h4>The Truffle Instrumentation Framework</h4>
+ * <h4>Truffle {@linkplain com.oracle.truffle.api.instrument.Instrumenter Instrumentation}: access to execution events for Debuggers and other tools.</h4>
  * <p>
  * This framework permits client
  * {@linkplain com.oracle.truffle.api.instrument.Instrumenter.Tool tools},
@@ -157,7 +157,7 @@
  * may optionally be attached for notification <em>before</em> every <em>AST execution event</em> where the specified
  * {@linkplain com.oracle.truffle.api.instrument.SyntaxTag tag} is present.</li>
  * <li>One (but no more than one)
- * {@linkplain com.oracle.truffle.api.instrument.StandardBeforeInstrumentListener StandardBeforeInstrumentListener}
+ * {@linkplain com.oracle.truffle.api.instrument.StandardAfterInstrumentListener StandardAfterInstrumentListener}
  * may optionally be attached for notification <em>after</em> every <em>AST execution event</em> where the specified
  * {@linkplain com.oracle.truffle.api.instrument.SyntaxTag tag} is present.</li>
  * <li>The

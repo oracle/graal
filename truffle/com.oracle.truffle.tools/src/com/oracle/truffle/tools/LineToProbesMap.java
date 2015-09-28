@@ -40,8 +40,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * An {@link InstrumentationTool} that builds a map of every {@link Probe} attached to some AST,
- * indexed by {@link Source} and line number.
+ * An {@linkplain Instrumenter.Tool Instrumentation Tool} that builds a map of every {@link Probe}
+ * attached to some AST, indexed by {@link Source} and line number.
  */
 public final class LineToProbesMap extends Instrumenter.Tool<LineToProbesMap> {
 

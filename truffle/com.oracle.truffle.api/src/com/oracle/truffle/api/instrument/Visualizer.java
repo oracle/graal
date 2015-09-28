@@ -29,9 +29,9 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Visualization services for the benefit of instrumentation-based tools, possibly specialized for
- * each guest language and possibly specialized for relevant information from the underlying Truffle
- * implementation.
+ * Visualization services for the benefit of {@linkplain Instrumenter Instrumentation-based} tools,
+ * possibly specialized for each guest language and possibly specialized for relevant information
+ * from the underlying Truffle implementation.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
  */
@@ -61,7 +61,7 @@ public interface Visualizer {
 
     /**
      * Converts a value in the guest language to a display string. If
-     * 
+     *
      * @param trim if {@code > 0}, them limit size of String to either the value of trim or the
      *            number of characters in the first line, whichever is lower.
      */

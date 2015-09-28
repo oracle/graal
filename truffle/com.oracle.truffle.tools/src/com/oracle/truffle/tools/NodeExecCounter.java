@@ -37,11 +37,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeException;
 import com.oracle.truffle.api.instrument.ProbeFailure;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.ProbeListener;
 import com.oracle.truffle.api.instrument.StandardInstrumentListener;
 import com.oracle.truffle.api.instrument.SyntaxTag;
@@ -53,14 +53,15 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * An {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes,
- * tabulated by the type of called nodes; counting can be enabled <em>all</em> nodes or restricted
- * to nodes with a specified {@linkplain SyntaxTag tag} that is presumed to be applied external to
- * the tool.
+ * An {@linkplain Instrumenter.Tool Instrumentation Tool} that counts interpreter
+ * <em>execution calls</em> to AST nodes, tabulated by the type of called nodes; counting can be
+ * enabled <em>all</em> nodes or restricted to nodes with a specified {@linkplain SyntaxTag tag}
+ * that is presumed to be applied external to the tool.
  * <p>
- * <b>Tool Life Cycle</b>
+ * s <b>Tool Life Cycle</b>
  * <p>
- * See {@link InstrumentationTool} for the life cycle common to all such tools.
+ * See {@linkplain Instrumenter.Tool Instrumentation Tool} for the life cycle common to all such
+ * tools.
  * </p>
  * <b>Execution Counts</b>
  * <p>

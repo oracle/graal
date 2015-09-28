@@ -33,9 +33,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeSet;
 
-import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.ProbeListener;
 import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
@@ -48,15 +48,16 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * An {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes that
- * hold a specified {@linkplain SyntaxTag syntax tag}, tabulated by source and line number
- * associated with each node. Syntax tags are presumed to be applied external to the tool. If no tag
- * is specified, {@linkplain StandardSyntaxTag#STATEMENT STATEMENT} is used, corresponding to
- * conventional behavior for code coverage tools.
+ * An {@linkplain Instrumenter.Tool Instrumentation Tool} that counts interpreter
+ * <em>execution calls</em> to AST nodes that hold a specified {@linkplain SyntaxTag syntax tag},
+ * tabulated by source and line number associated with each node. Syntax tags are presumed to be
+ * applied external to the tool. If no tag is specified, {@linkplain StandardSyntaxTag#STATEMENT
+ * STATEMENT} is used, corresponding to conventional behavior for code coverage tools.
  * <p>
  * <b>Tool Life Cycle</b>
  * <p>
- * See {@link InstrumentationTool} for the life cycle common to all such tools.
+ * See {@linkplain Instrumenter.Tool Instrumentation Tool} for the life cycle common to all such
+ * tools.
  * <p>
  * <b>Execution Counts</b>
  * <p>

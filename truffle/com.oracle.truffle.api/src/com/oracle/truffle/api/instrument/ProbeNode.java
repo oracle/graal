@@ -36,7 +36,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
  * Implementation class & interface for enabling the attachment of {@linkplain Probe Probes} to
- * Truffle ASTs.
+ * Truffle ASTs, part of the {@linkplain Instrumenter Instrumentation Framework}.
  * <p>
  * A {@link ProbeNode} is the head of a chain of nodes acting on behalf of
  * {@linkplain ProbeInstrument instruments}. It is attached to an AST as a child of a

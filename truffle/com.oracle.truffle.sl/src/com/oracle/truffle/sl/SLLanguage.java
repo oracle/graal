@@ -190,11 +190,12 @@ import com.oracle.truffle.sl.runtime.SLNull;
 /*
  *
  * <p> <b>Tools:</b><br> The use of some of Truffle's support for developer tools (based on the
- * Truffle Instrumentation Framework) are demonstrated in this file, for example: <ul> <li>a
- * {@linkplain NodeExecCounter counter for node executions}, tabulated by node type; and</li> <li>a
- * simple {@linkplain CoverageTracker code coverage engine}.</li> </ul> In each case, the tool is
- * enabled if a corresponding local boolean variable in this file is set to {@code true}. Results
- * are printed at the end of the execution using each tool's <em>default printer</em>.
+ * Truffle {@linkplain Instrumenter Instrumentation Framework}) are demonstrated in this file, for
+ * example: <ul> <li>a {@linkplain NodeExecCounter counter for node executions}, tabulated by node
+ * type; and</li> <li>a simple {@linkplain CoverageTracker code coverage engine}.</li> </ul> In each
+ * case, the tool is enabled if a corresponding local boolean variable in this file is set to {@code
+ * true}. Results are printed at the end of the execution using each tool's <em>default
+ * printer</em>.
  */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
 public final class SLLanguage extends TruffleLanguage<SLContext> {

@@ -25,8 +25,9 @@
 package com.oracle.truffle.api.instrument;
 
 /**
- * Program element "tags", presumed to be singletons (best implemented as enums) that define
- * user-visible behavior for debugging and other simple tools. These categories should correspond to
+ * Program element "tags" such as <code>"STATEMENT"</code>, presumed to be singletons (best
+ * implemented as enums) that define user-visible behavior for debugging and other
+ * {@linkplain Instrumenter Instrumentation-based} tools. These categories should correspond to
  * program structures, for example "statement" and "assignment", that are meaningful
  * ("human-sensible") to guest language programmers.
  * <p>

@@ -29,7 +29,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 /**
  * An Instrumentation-managed {@link Node} that synchronously propagates notification of AST
- * Execution Events through the Instrumentation Framework.
+ * Execution Events through the {@linkplain Instrumenter Instrumentation Framework} .
  */
 public abstract class EventHandlerNode extends Node implements InstrumentationNode {
 
