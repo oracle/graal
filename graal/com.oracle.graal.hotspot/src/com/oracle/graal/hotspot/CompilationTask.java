@@ -39,6 +39,7 @@ import jdk.internal.jvmci.code.InstalledCode;
 import jdk.internal.jvmci.compiler.Compiler;
 import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
 import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotNmethod;
@@ -48,7 +49,6 @@ import jdk.internal.jvmci.hotspot.events.EmptyEventProvider;
 import jdk.internal.jvmci.hotspot.events.EventProvider;
 import jdk.internal.jvmci.hotspot.events.EventProvider.CompilationEvent;
 import jdk.internal.jvmci.hotspot.events.EventProvider.CompilerFailureEvent;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 import jdk.internal.jvmci.service.Services;
 import sun.misc.Unsafe;
 
@@ -97,10 +97,7 @@ public class CompilationTask {
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
 
     private final HotSpotGraalCompiler compiler;
-
-    private final HotSpotResolvedJavaMethod method;
-    private final int entryBCI;
-    private final int id;
+    private final HotSpotCompilationRequest request;
 
     /**
      * Specifies whether the compilation result is installed as the
@@ -116,23 +113,15 @@ public class CompilationTask {
         static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) Management.getThreadMXBean();
     }
 
-    /**
-     * The address of the JVMCIEnv associated with this compilation or 0L if no such object exists.
-     */
-    private final long jvmciEnv;
-
-    public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotResolvedJavaMethod method, int entryBCI, long jvmciEnv, int id, boolean installAsDefault) {
+    public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean installAsDefault) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
-        this.method = method;
-        this.entryBCI = entryBCI;
-        this.id = id;
-        this.jvmciEnv = jvmciEnv;
+        this.request = request;
         this.installAsDefault = installAsDefault;
     }
 
-    public ResolvedJavaMethod getMethod() {
-        return method;
+    public HotSpotResolvedJavaMethod getMethod() {
+        return request.getMethod();
     }
 
     /**
@@ -141,11 +130,11 @@ public class CompilationTask {
      * @return compile id
      */
     public int getId() {
-        return id;
+        return request.getId();
     }
 
     public int getEntryBCI() {
-        return entryBCI;
+        return request.getEntryBCI();
     }
 
     /**
@@ -166,7 +155,9 @@ public class CompilationTask {
         final long threadId = Thread.currentThread().getId();
         long startCompilationTime = System.nanoTime();
         HotSpotInstalledCode installedCode = null;
+        int entryBCI = getEntryBCI();
         final boolean isOSR = entryBCI != Compiler.INVOCATION_ENTRY_BCI;
+        HotSpotResolvedJavaMethod method = getMethod();
 
         // Log a compilation event.
         CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
@@ -198,7 +189,7 @@ public class CompilationTask {
                 allocatedBytesBefore = 0L;
             }
 
-            try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+            try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(getId()), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
 
@@ -222,7 +213,7 @@ public class CompilationTask {
                     if (printAfterCompilation) {
                         TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dkB", stop - start, targetCodeSize, allocatedBytes));
                     } else if (printCompilation) {
-                        TTY.println(String.format("%-6d JVMCI %-70s %-45s %-50s | %4dms %5dB %5dkB", id, "", "", "", stop - start, targetCodeSize, allocatedBytes));
+                        TTY.println(String.format("%-6d JVMCI %-70s %-45s %-50s | %4dms %5dB %5dkB", getId(), "", "", "", stop - start, targetCodeSize, allocatedBytes));
                     }
                 }
             }
@@ -280,6 +271,7 @@ public class CompilationTask {
                 compilationEvent.commit();
             }
 
+            long jvmciEnv = request.getJvmciEnv();
             if (jvmciEnv != 0) {
                 long ctask = UNSAFE.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
                 assert ctask != 0L;
@@ -289,7 +281,7 @@ public class CompilationTask {
             if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
                 long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
                 CompilerToVM c2vm = jvmciRuntime.getCompilerToVM();
-                c2vm.notifyCompilationStatistics(id, method, entryBCI != Compiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
+                c2vm.notifyCompilationStatistics(getId(), method, entryBCI != Compiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
             }
         }
     }
@@ -301,6 +293,7 @@ public class CompilationTask {
         if (config.ciTime || config.ciTimeEach || CompiledBytecodes.isEnabled()) {
             return true;
         }
+        long jvmciEnv = request.getJvmciEnv();
         if (jvmciEnv == 0 || UNSAFE.getByte(jvmciEnv + config.jvmciEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0) {
             return true;
         }
@@ -308,16 +301,17 @@ public class CompilationTask {
     }
 
     private String getMethodDescription() {
-        return String.format("%-6d JVMCI %-70s %-45s %-50s %s", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature().toMethodDescriptor(),
-                        entryBCI == Compiler.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + entryBCI + ") ");
+        HotSpotResolvedJavaMethod method = getMethod();
+        return String.format("%-6d JVMCI %-70s %-45s %-50s %s", getId(), method.getDeclaringClass().getName(), method.getName(), method.getSignature().toMethodDescriptor(),
+                        getEntryBCI() == Compiler.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + getEntryBCI() + ") ");
     }
 
     @SuppressWarnings("try")
     private InstalledCode installMethod(final CompilationResult compResult) {
         final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         InstalledCode installedCode = null;
-        try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
-            installedCode = codeCache.installMethod(method, compResult, jvmciEnv, installAsDefault);
+        try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(getId()), true), codeCache, getMethod())) {
+            installedCode = codeCache.installMethod(getMethod(), compResult, request.getJvmciEnv(), installAsDefault);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -326,6 +320,6 @@ public class CompilationTask {
 
     @Override
     public String toString() {
-        return "Compilation[id=" + id + ", " + method.format("%H.%n(%p)") + (entryBCI == Compiler.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
+        return "Compilation[id=" + getId() + ", " + getMethod().format("%H.%n(%p)") + (getEntryBCI() == Compiler.INVOCATION_ENTRY_BCI ? "" : "@" + getEntryBCI()) + "]";
     }
 }

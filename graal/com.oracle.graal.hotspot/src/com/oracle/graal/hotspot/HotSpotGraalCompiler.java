@@ -28,11 +28,12 @@ import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCallee;
 import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.CompilationRequest;
 import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.compiler.Compiler;
 import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.internal.jvmci.meta.JavaType;
 import jdk.internal.jvmci.meta.ProfilingInfo;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
@@ -79,13 +80,13 @@ public class HotSpotGraalCompiler implements Compiler {
 
     @Override
     @SuppressWarnings("try")
-    public void compileMethod(ResolvedJavaMethod method, int entryBCI, long jvmciEnv, int id) {
+    public void compileMethod(CompilationRequest request) {
         // Ensure a debug configuration for this thread is initialized
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
             DebugEnvironment.initialize(TTY.out);
         }
 
-        CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotResolvedJavaMethod) method, entryBCI, jvmciEnv, id, true);
+        CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotCompilationRequest) request, true);
         try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig())) {
             task.runCompilation();
         }

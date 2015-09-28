@@ -56,6 +56,7 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
 import jdk.internal.jvmci.compiler.Compiler;
+import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
@@ -293,7 +294,8 @@ public final class CompileTheWorld {
             // compile dummy method to get compiler initilized outside of the config debug override.
             HotSpotResolvedJavaMethod dummyMethod = (HotSpotResolvedJavaMethod) JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(
                             CompileTheWorld.class.getDeclaredMethod("dummy"));
-            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, dummyMethod, Compiler.INVOCATION_ENTRY_BCI, 0L, dummyMethod.allocateCompileId(Compiler.INVOCATION_ENTRY_BCI), false);
+            int entryBCI = Compiler.INVOCATION_ENTRY_BCI;
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L, dummyMethod.allocateCompileId(entryBCI)), false);
             task.runCompilation();
         } catch (NoSuchMethodException | SecurityException e1) {
             e1.printStackTrace();
@@ -483,8 +485,9 @@ public final class CompileTheWorld {
         try {
             long start = System.currentTimeMillis();
             long allocatedAtStart = MemUseTrackerImpl.getCurrentThreadAllocatedBytes();
-
-            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, method, Compiler.INVOCATION_ENTRY_BCI, 0L, method.allocateCompileId(Compiler.INVOCATION_ENTRY_BCI), false);
+            int entryBCI = Compiler.INVOCATION_ENTRY_BCI;
+            HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L, method.allocateCompileId(entryBCI));
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, false);
             task.runCompilation();
 
             memoryUsed.getAndAdd(MemUseTrackerImpl.getCurrentThreadAllocatedBytes() - allocatedAtStart);
