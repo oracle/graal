@@ -36,7 +36,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
@@ -44,7 +43,6 @@ import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -179,16 +177,6 @@ public abstract class Accessor {
 
     protected Object languageGlobal(TruffleLanguage.Env env) {
         return API.languageGlobal(env);
-    }
-
-    @Deprecated
-    protected ToolSupportProvider getToolSupport(@SuppressWarnings("unused") TruffleLanguage<?> l) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Deprecated
-    protected DebugSupportProvider getDebugSupport(@SuppressWarnings("unused") TruffleLanguage<?> l) {
-        throw new UnsupportedOperationException();
     }
 
     /**
