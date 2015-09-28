@@ -134,6 +134,7 @@ import com.oracle.graal.word.WordBase;
 public class SnippetTemplate {
 
     private static final boolean EAGER_SNIPPETS = Boolean.getBoolean("graal.snippets.eager");
+    private boolean mayRemoveLocation = false;
 
     /**
      * Holds the {@link ResolvedJavaMethod} of the snippet, together with some information about the
@@ -1236,8 +1237,9 @@ public class SnippetTemplate {
                     if (pos.getInputType() == InputType.Memory && pos.get(usage) == node) {
                         MemoryNode replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {
-                            assert LocationIdentity.any().equals(location) || Arrays.stream(info.privateLocations).anyMatch(Predicate.isEqual(location)) : "Snippet " + info.method.format("%h.%n") +
-                                            " contains access to the non-private location " + location + ", but replacee doesn't access this location." + map.getLocations();
+                            assert mayRemoveLocation || LocationIdentity.any().equals(location) || Arrays.stream(info.privateLocations).anyMatch(Predicate.isEqual(location)) : "Snippet " +
+                                            info.method.format("%h.%n") + " contains access to the non-private location " + location + ", but replacee doesn't access this location." +
+                                            map.getLocations();
                         } else {
                             pos.set(usage, replacement.asNode());
                         }
@@ -1495,5 +1497,9 @@ public class SnippetTemplate {
             }
         }
         return true;
+    }
+
+    public void setMayRemoveLocation(boolean mayRemoveLocation) {
+        this.mayRemoveLocation = mayRemoveLocation;
     }
 }
