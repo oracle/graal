@@ -289,7 +289,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         append(new LoadDataAddressOp(dst, data));
     }
 
-    protected SPARCAddressValue asAddressValue(Value address) {
+    public SPARCAddressValue asAddressValue(Value address) {
         if (address instanceof SPARCAddressValue) {
             return (SPARCAddressValue) address;
         } else {
