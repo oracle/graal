@@ -146,7 +146,6 @@ import com.oracle.graal.phases.util.Providers;
  */
 public abstract class SPARCLIRGenerator extends LIRGenerator {
 
-    private StackSlotValue tmpStackSlot;
     private SPARCSpillMoveFactory moveFactory;
     private Variable constantTableBase;
     private SPARCLoadConstantTableBaseOp loadConstantTableBaseOp;
@@ -1053,10 +1052,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     protected StackSlotValue getTempSlot(LIRKind kind) {
-        if (tmpStackSlot == null) {
-            tmpStackSlot = getResult().getFrameMapBuilder().allocateSpillSlot(kind);
-        }
-        return tmpStackSlot;
+        return getResult().getFrameMapBuilder().allocateSpillSlot(kind);
     }
 
     protected SPARC getArchitecture() {
