@@ -23,6 +23,7 @@
 package com.oracle.graal.replacements;
 
 import static jdk.internal.jvmci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
+import static jdk.internal.jvmci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
 import static jdk.internal.jvmci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
 import static jdk.internal.jvmci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 
@@ -607,7 +608,7 @@ public class StandardGraphBuilderPlugins {
             }
             b.add(new UnsafeStoreNode(object, offset, value, kind, LocationIdentity.any()));
             if (isVolatile) {
-                b.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
+                b.add(new MembarNode(JMM_POST_VOLATILE_WRITE));
             }
             b.getGraph().markUnsafeAccess();
             return true;
