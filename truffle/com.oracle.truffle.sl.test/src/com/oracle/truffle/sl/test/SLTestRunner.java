@@ -187,7 +187,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
                 suffix = sep + "build/truffle-sl.jar!" + classPart;
             } else if (externalForm.startsWith("file:")) {
                 prefix = "file:";
-                suffix = sep + "bin" + classPart;
+                suffix = classPart;
             } else {
                 return null;
             }

@@ -44,7 +44,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(SLInstrumentTestRunner.class)
-@SLInstrumentTestSuite({"truffle/com.oracle.truffle.sl.test/tests_instrumentation", "tests_instrumentation"})
+@SLInstrumentTestSuite({"tests_instrumentation"})
 public class SLSimpleInstrumentTestSuite {
 
     public static void main(String[] args) throws Exception {
