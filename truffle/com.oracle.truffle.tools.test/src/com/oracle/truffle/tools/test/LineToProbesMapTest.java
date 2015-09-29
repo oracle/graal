@@ -49,6 +49,7 @@ public class LineToProbesMapTest {
         final Field field = TruffleVM.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        instrumenter.registerASTProber(new ToolTestUtil.TestASTProber());
         final Source source = ToolTestUtil.createTestSource("testNoExecution");
         final LineToProbesMap probesMap = new LineToProbesMap();
         instrumenter.install(probesMap);
@@ -64,6 +65,7 @@ public class LineToProbesMapTest {
         final Field field = TruffleVM.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        instrumenter.registerASTProber(new ToolTestUtil.TestASTProber());
         final Source source = ToolTestUtil.createTestSource("testMapping1");
         final LineToProbesMap probesMap = new LineToProbesMap();
 
@@ -94,6 +96,7 @@ public class LineToProbesMapTest {
         final Field field = TruffleVM.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        instrumenter.registerASTProber(new ToolTestUtil.TestASTProber());
         final Source source = ToolTestUtil.createTestSource("testMapping2");
         final LineToProbesMap probesMap = new LineToProbesMap();
 

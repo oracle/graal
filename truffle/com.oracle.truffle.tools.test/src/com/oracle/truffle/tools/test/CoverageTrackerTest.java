@@ -48,6 +48,7 @@ public class CoverageTrackerTest {
         final Field field = TruffleVM.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        instrumenter.registerASTProber(new ToolTestUtil.TestASTProber());
         final CoverageTracker tool = new CoverageTracker();
         assertEquals(tool.getCounts().entrySet().size(), 0);
         instrumenter.install(tool);
@@ -75,6 +76,7 @@ public class CoverageTrackerTest {
         final Field field = TruffleVM.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        instrumenter.registerASTProber(new ToolTestUtil.TestASTProber());
         final Source source = ToolTestUtil.createTestSource("testCountingCoverage");
 
         final CoverageTracker valueCoverage = new CoverageTracker(ToolTestTag.VALUE_TAG);
