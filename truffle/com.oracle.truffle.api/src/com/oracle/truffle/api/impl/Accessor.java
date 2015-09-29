@@ -188,6 +188,7 @@ public abstract class Accessor {
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
     protected Closeable executionStart(Object vm, Debugger[] fillIn, Source s) {
+        vm.getClass();
         final Closeable debugClose = DEBUG.executionStart(vm, fillIn, s);
         final Object prev = CURRENT_VM.get();
         if (!(vm == previousVM.get())) {
