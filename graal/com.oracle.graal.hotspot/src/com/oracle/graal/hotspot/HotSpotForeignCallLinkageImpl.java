@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
+import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.util.Set;
 
@@ -33,7 +34,6 @@ import jdk.internal.jvmci.code.InstalledCode;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotForeignCallTarget;
 import jdk.internal.jvmci.hotspot.HotSpotProxified;
 import jdk.internal.jvmci.meta.AllocatableValue;
@@ -90,8 +90,6 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
 
     private final boolean reexecutable;
 
-    private final CompilerToVM vm;
-
     /**
      * Creates a {@link HotSpotForeignCallLinkage}.
      *
@@ -107,12 +105,11 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
      *            re-executed.
      * @param killedLocations the memory locations killed by the call
      */
-    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, HotSpotForeignCallsProvider foreignCalls, CompilerToVM vm,
-                    ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, boolean reexecutable,
-                    LocationIdentity... killedLocations) {
+    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, HotSpotForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor,
+                    long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, boolean reexecutable, LocationIdentity... killedLocations) {
         CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, descriptor, outgoingCcType);
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, descriptor, incomingCcType);
-        HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(vm, descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
+        HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
         if (outgoingCcType == Type.NativeCall) {
             linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
         }
@@ -143,10 +140,9 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         }
     }
 
-    public HotSpotForeignCallLinkageImpl(CompilerToVM vm, ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention outgoingCallingConvention,
+    public HotSpotForeignCallLinkageImpl(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention outgoingCallingConvention,
                     CallingConvention incomingCallingConvention, boolean reexecutable, LocationIdentity... killedLocations) {
         super(address);
-        this.vm = vm;
         this.descriptor = descriptor;
         this.address = address;
         this.effect = effect;
@@ -196,7 +192,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     public long getMaxCallTargetOffset() {
-        return vm.getMaxCallTargetOffset(address);
+        return runtime().getHostJVMCIBackend().getCodeCache().getMaxCallTargetOffset(address);
     }
 
     public ForeignCallDescriptor getDescriptor() {

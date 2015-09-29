@@ -32,7 +32,6 @@ import java.util.Map;
 
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.meta.LocationIdentity;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
@@ -93,8 +92,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      * @param killedLocations the memory locations killed by the stub call
      */
     public HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor, boolean reexecutable, Transition transition, LocationIdentity... killedLocations) {
-        CompilerToVM vm = jvmciRuntime.getCompilerToVM();
-        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, vm, descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
     }
 
     /**
@@ -116,8 +114,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         Class<?> resultType = descriptor.getResultType();
         assert address != 0;
         assert transition != NOT_LEAF || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
-        CompilerToVM vm = jvmciRuntime.getCompilerToVM();
-        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, vm, descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
     }
 
     /**
