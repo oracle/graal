@@ -350,7 +350,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        compilerToVM().invalidateInstalledCode(optimizedCallTarget);
+        Providers providers = getHotSpotProviders();
+        CodeCacheProvider codeCache = providers.getCodeCache();
+        codeCache.invalidateInstalledCode(optimizedCallTarget);
         getCompilationNotify().notifyCompilationInvalidated(optimizedCallTarget, source, reason);
     }
 
