@@ -39,7 +39,6 @@ import jdk.internal.jvmci.meta.MetaAccessProvider;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 import jdk.internal.jvmci.service.Services;
 
-import com.oracle.graal.api.runtime.Graal;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.TTY;
@@ -76,7 +75,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
 
-    private StackIntrospection stackIntrospection;
     protected ResolvedJavaMethod[] callNodeMethod;
     protected ResolvedJavaMethod[] callTargetMethod;
     protected ResolvedJavaMethod[] anyFrameMethod;
@@ -202,7 +200,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     @TruffleBoundary
     @Override
     public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
-        initStackIntrospection();
+        StackIntrospection stackIntrospection = getStackIntrospection();
 
         InspectedFrameVisitor<T> inspectedFrameVisitor = new InspectedFrameVisitor<T>() {
             private boolean skipNext = false;
@@ -227,11 +225,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return stackIntrospection.iterateFrames(anyFrameMethod, anyFrameMethod, 1, inspectedFrameVisitor);
     }
 
-    private void initStackIntrospection() {
-        if (stackIntrospection == null) {
-            stackIntrospection = Graal.getRequiredCapability(StackIntrospection.class);
-        }
-    }
+    protected abstract StackIntrospection getStackIntrospection();
 
     @Override
     public FrameInstance getCallerFrame() {
@@ -241,9 +235,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     @TruffleBoundary
     @Override
     public FrameInstance getCurrentFrame() {
-        initStackIntrospection();
-
-        return stackIntrospection.iterateFrames(callTargetMethod, callTargetMethod, 0, frame -> new GraalFrameInstance.CallTargetFrame(frame, true));
+        return getStackIntrospection().iterateFrames(callTargetMethod, callTargetMethod, 0, frame -> new GraalFrameInstance.CallTargetFrame(frame, true));
     }
 
     public <T> T getCapability(Class<T> capability) {

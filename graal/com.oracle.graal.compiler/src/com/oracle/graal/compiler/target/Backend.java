@@ -27,7 +27,6 @@ import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.code.stack.StackIntrospection;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
@@ -131,8 +130,6 @@ public abstract class Backend implements TargetProvider {
      */
     public abstract CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult,
                     CompilationResultBuilderFactory factory);
-
-    public abstract StackIntrospection getStackIntrospection();
 
     /**
      * Emits the code for a given graph.

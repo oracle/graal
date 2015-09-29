@@ -53,8 +53,10 @@ import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CallingConvention.Type;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.stack.StackIntrospection;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.internal.jvmci.hotspot.HotSpotSpeculationLog;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
@@ -119,6 +121,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     private Map<OptimizedCallTarget, Future<?>> compilations = newIdentityMap();
     private final ExecutorService compileQueue;
+    private StackIntrospection stackIntrospection;
 
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
 
@@ -157,6 +160,14 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public String getName() {
         return "Graal Truffle Runtime";
+    }
+
+    @Override
+    protected StackIntrospection getStackIntrospection() {
+        if (stackIntrospection == null) {
+            stackIntrospection = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getStackIntrospection();
+        }
+        return stackIntrospection;
     }
 
     @Override
