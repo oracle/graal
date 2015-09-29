@@ -27,7 +27,6 @@ import java.io.IOException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -74,11 +73,6 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
 
     @Override
     protected WrapperNode createWrapperNode(Node node) {
-        return null;
-    }
-
-    @Override
-    protected ASTProber getDefaultASTProber() {
         return null;
     }
 

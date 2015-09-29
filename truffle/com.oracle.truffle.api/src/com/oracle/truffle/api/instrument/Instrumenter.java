@@ -120,14 +120,14 @@ public final class Instrumenter {
      * <p>
      * Tools share a common <em>life cycle</em>:
      * <ul>
-     * <li>A newly created tool is inert until {@linkplain Instrumenter#install(Tool) installed}.</li>
-     * <li>An installed tool becomes <em>enabled</em> and immediately begins installing
-     * {@linkplain ProbeInstrument instrumentation} on ASTs and collecting execution data from them.
-     * </li>
+     * <li>A newly created tool is "UNINSTALLED"; it does nothing until
+     * {@linkplain Instrumenter#install(Tool) installed} .</li>
+     * <li>An installed tool becomes "ENABLED" and immediately begins attaching
+     * {@linkplain ProbeInstrument instrumentation} to ASTs and collecting execution data.</li>
      * <li>A tool may only be installed once.</li>
-     * <li>It should be possible to install multiple instances of a tool, possibly (but not
-     * necessarily) configured differently with respect to what data is being collected.</li>
-     * <li>Once installed, a tool can be {@linkplain #setEnabled(boolean) enabled and disabled}
+     * <li>It is possible to install multiple instances of a tool, possibly (but not necessarily)
+     * configured differently with respect to what data is being collected.</li>
+     * <li>Once installed, a tool can be {@linkplain #setEnabled(boolean) "ENABLED" and "DISABLED"}
      * arbitrarily.</li>
      * <li>A disabled tool:
      * <ul>

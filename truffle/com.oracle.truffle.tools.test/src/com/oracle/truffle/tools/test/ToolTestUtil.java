@@ -86,8 +86,6 @@ public class ToolTestUtil {
 
         public static final ToolTestLang INSTANCE = new ToolTestLang();
 
-        private final ASTProber prober = new TestASTProber();
-
         private ToolTestLang() {
         }
 
@@ -120,11 +118,6 @@ public class ToolTestUtil {
         @Override
         protected Visualizer getVisualizer() {
             return null;
-        }
-
-        @Override
-        protected ASTProber getDefaultASTProber() {
-            return prober;
         }
 
         @Override

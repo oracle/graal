@@ -59,7 +59,6 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -796,10 +795,6 @@ public final class TruffleVM {
         TruffleLanguage.Env getEnv(boolean create) {
             if (env == null && create) {
                 final TruffleLanguage<?> impl = info.getImpl(true);
-                ASTProber prober = SPI.getDefaultASTProber(impl);
-                if (prober != null) {
-                    instrumenter.registerASTProber(prober);
-                }
                 env = SPI.attachEnv(TruffleVM.this, impl, out, err, in, TruffleVM.this.instrumenter);
             }
             return env;
@@ -904,11 +899,6 @@ public final class TruffleVM {
         @Override
         protected Debugger createDebugger(Object vm, Instrumenter instrumenter) {
             return super.createDebugger(vm, instrumenter);
-        }
-
-        @Override
-        protected ASTProber getDefaultASTProber(TruffleLanguage impl) {
-            return super.getDefaultASTProber(impl);
         }
 
         @Override

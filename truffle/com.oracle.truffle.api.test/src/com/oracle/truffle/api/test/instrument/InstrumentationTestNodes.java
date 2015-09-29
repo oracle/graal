@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.api.test.instrument;
 
-import java.lang.reflect.Field;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
@@ -36,20 +34,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.vm.TruffleVM;
 
 /**
  * Tests instrumentation where a client can attach a node that gets attached into the AST.
  */
 class InstrumentationTestNodes {
-
-    static Instrumenter createInstrumenter() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        TruffleVM vm = TruffleVM.newVM().build();
-        final Field field = TruffleVM.class.getDeclaredField("instrumenter");
-        field.setAccessible(true);
-        final Instrumenter instrument = (Instrumenter) field.get(vm);
-        return instrument;
-    }
 
     abstract static class TestLanguageNode extends Node {
         public abstract Object execute(VirtualFrame vFrame);

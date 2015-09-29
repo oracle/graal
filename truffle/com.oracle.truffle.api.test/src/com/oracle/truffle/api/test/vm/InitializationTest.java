@@ -28,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 
 import org.junit.Test;
 
@@ -68,8 +69,9 @@ import com.oracle.truffle.api.vm.TruffleVM;
  * Debugger instance simulates.
  */
 public class InitializationTest {
+
     @Test
-    public void accessProbeForAbstractLanguage() throws IOException {
+    public void accessProbeForAbstractLanguage() throws IOException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Debugger[] arr = {null};
         TruffleVM vm = TruffleVM.newVM().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
@@ -77,6 +79,25 @@ public class InitializationTest {
                 arr[0] = event.getDebugger();
             }
         }).build();
+
+        final Field field = TruffleVM.class.getDeclaredField("instrumenter");
+        field.setAccessible(true);
+        final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        instrumenter.registerASTProber(new ASTProber() {
+
+            public void probeAST(final Instrumenter inst, RootNode startNode) {
+                startNode.accept(new NodeVisitor() {
+
+                    public boolean visit(Node node) {
+
+                        if (node instanceof ANode) {
+                            inst.probe(node).tagAs(StandardSyntaxTag.STATEMENT, null);
+                        }
+                        return true;
+                    }
+                });
+            }
+        });
 
         Source source = Source.fromText("accessProbeForAbstractLanguage text", "accessProbeForAbstractLanguage").withMimeType("application/x-abstrlang");
 
@@ -167,22 +188,6 @@ public class InitializationTest {
     public static final class TestLanguage extends AbstractLanguage {
         public static final TestLanguage INSTANCE = new TestLanguage();
 
-        private final ASTProber prober = new ASTProber() {
-
-            public void probeAST(final Instrumenter instrumenter, RootNode startNode) {
-                startNode.accept(new NodeVisitor() {
-
-                    public boolean visit(Node node) {
-
-                        if (node instanceof ANode) {
-                            instrumenter.probe(node).tagAs(StandardSyntaxTag.STATEMENT, null);
-                        }
-                        return true;
-                    }
-                });
-            }
-        };
-
         @Override
         protected Object createContext(Env env) {
             assertNull("Not defined symbol", env.importSymbol("unknown"));
@@ -232,11 +237,6 @@ public class InitializationTest {
         @Override
         protected WrapperNode createWrapperNode(Node node) {
             return node instanceof ANode ? new ANodeWrapper((ANode) node) : null;
-        }
-
-        @Override
-        protected ASTProber getDefaultASTProber() {
-            return prober;
         }
     }
 

@@ -56,6 +56,8 @@ public class AdvancedInstrumentTest {
         final Field field = TruffleVM.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+
+        instrumenter.registerASTProber(new InstrumentationTestingLanguage.TestASTProber());
         final Source source = Source.fromText("testAdvancedInstrumentListener text", "testAdvancedInstrumentListener").withMimeType("text/x-instTest");
 
         final Probe[] addNodeProbe = new Probe[1];

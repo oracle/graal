@@ -56,7 +56,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -202,7 +201,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String builtinKind = "SL builtin";
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
     private static Visualizer visualizer = new SLDefaultVisualizer();
-    private ASTProber astProber = new SLStandardASTProber();
 
     private SLLanguage() {
     }
@@ -217,6 +215,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
             context.installBuiltin(builtin, true);
         }
+        env.instrumenter().registerASTProber(new SLStandardASTProber());
         return context;
     }
 
@@ -503,11 +502,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             return new SLStatementWrapperNode((SLStatementNode) node);
         }
         return null;
-    }
-
-    @Override
-    protected ASTProber getDefaultASTProber() {
-        return astProber;
     }
 
     @Override

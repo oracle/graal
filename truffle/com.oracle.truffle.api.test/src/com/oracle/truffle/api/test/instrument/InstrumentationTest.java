@@ -33,9 +33,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
 import com.oracle.truffle.api.instrument.StandardInstrumentListener;
 import com.oracle.truffle.api.instrument.SyntaxTag;
@@ -68,6 +68,7 @@ public class InstrumentationTest {
         final Field field = TruffleVM.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        instrumenter.registerASTProber(new TestASTProber(instrumenter));
         final Source source = Source.fromText("testProbing text", "testProbing").withMimeType("text/x-instTest");
 
         final Probe[] probes = new Probe[3];

@@ -28,7 +28,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -96,11 +95,6 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected ASTProber getDefaultASTProber() {
-            return null;
-        }
-
-        @Override
         protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
             return null;
         }
@@ -160,11 +154,6 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected ASTProber getDefaultASTProber() {
-            return null;
-        }
-
-        @Override
         protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
             return null;
         }
@@ -216,11 +205,6 @@ public class LanguageRegistrationTest {
 
         @Override
         protected WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected ASTProber getDefaultASTProber() {
             return null;
         }
 

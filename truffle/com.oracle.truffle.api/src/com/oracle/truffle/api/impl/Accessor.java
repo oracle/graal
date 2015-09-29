@@ -99,11 +99,6 @@ public abstract class Accessor {
             }
 
             @Override
-            protected ASTProber getDefaultASTProber() {
-                return null;
-            }
-
-            @Override
             protected Visualizer getVisualizer() {
                 return null;
             }
@@ -205,13 +200,6 @@ public abstract class Accessor {
 
     protected WrapperNode createWrapperNode(Node node, TruffleLanguage language) {
         return API.createWrapperNode(node, language);
-    }
-
-    /**
-     * Provided by each {@linkplain TruffleLanguage language implementation}.
-     */
-    protected ASTProber getDefaultASTProber(TruffleLanguage language) {
-        return API.getDefaultASTProber(language);
     }
 
     protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr, AdvancedInstrumentResultListener resultListener)

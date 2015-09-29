@@ -74,8 +74,6 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
         }
     }
 
-    private final ASTProber prober = new TestASTProber();
-
     private InstrumentationTestingLanguage() {
     }
 
@@ -108,11 +106,6 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
     @Override
     protected Visualizer getVisualizer() {
         return null;
-    }
-
-    @Override
-    protected ASTProber getDefaultASTProber() {
-        return prober;
     }
 
     @Override

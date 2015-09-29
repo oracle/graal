@@ -43,7 +43,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -190,11 +189,6 @@ public class ImplicitExplicitExportTest {
 
         @Override
         protected WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected ASTProber getDefaultASTProber() {
             return null;
         }
 
