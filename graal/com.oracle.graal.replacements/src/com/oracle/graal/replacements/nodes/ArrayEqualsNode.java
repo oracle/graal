@@ -78,6 +78,18 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
         this.length = length;
     }
 
+    public ValueNode getArray1() {
+        return array1;
+    }
+
+    public ValueNode getArray2() {
+        return array2;
+    }
+
+    public ValueNode getLength() {
+        return length;
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (tool.allUsagesAvailable() && hasNoUsages()) {
