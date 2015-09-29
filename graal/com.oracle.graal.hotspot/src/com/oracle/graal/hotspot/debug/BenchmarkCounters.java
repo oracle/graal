@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.inittimer.SuppressFBWarnings;
 import jdk.internal.jvmci.options.Option;
@@ -331,7 +331,7 @@ public class BenchmarkCounters {
         }
     }
 
-    public static void initialize(final CompilerToVM compilerToVM) {
+    public static void initialize(final HotSpotJVMCIRuntime jvmciRuntime) {
         final class BenchmarkCountersOutputStream extends CallbackOutputStream {
 
             private long startTime;
@@ -347,7 +347,7 @@ public class BenchmarkCounters {
                 switch (index) {
                     case 2:
                         startTime = System.nanoTime();
-                        BenchmarkCounters.clear(compilerToVM.collectCounters());
+                        BenchmarkCounters.clear(jvmciRuntime.collectCounters());
                         running = true;
                         break;
                     case 1:
@@ -359,7 +359,7 @@ public class BenchmarkCounters {
                         if (waitingForEnd) {
                             waitingForEnd = false;
                             running = false;
-                            BenchmarkCounters.dump(delegate, (System.nanoTime() - startTime) / 1000000000d, compilerToVM.collectCounters(), 100);
+                            BenchmarkCounters.dump(delegate, (System.nanoTime() - startTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
                         }
                         break;
                 }
@@ -398,7 +398,7 @@ public class BenchmarkCounters {
                         } catch (InterruptedException e) {
                         }
                         long time = System.nanoTime();
-                        dump(out, (time - lastTime) / 1000000000d, compilerToVM.collectCounters(), 10);
+                        dump(out, (time - lastTime) / 1000000000d, jvmciRuntime.collectCounters(), 10);
                         lastTime = time;
                     }
                 }
@@ -409,13 +409,13 @@ public class BenchmarkCounters {
             enabled = true;
         }
         if (enabled) {
-            clear(compilerToVM.collectCounters());
+            clear(jvmciRuntime.collectCounters());
         }
     }
 
-    public static void shutdown(CompilerToVM compilerToVM, long compilerStartTime) {
+    public static void shutdown(HotSpotJVMCIRuntime jvmciRuntime, long compilerStartTime) {
         if (Options.GenericDynamicCounters.getValue()) {
-            dump(TTY.out, (System.nanoTime() - compilerStartTime) / 1000000000d, compilerToVM.collectCounters(), 100);
+            dump(TTY.out, (System.nanoTime() - compilerStartTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
         }
     }
 }
