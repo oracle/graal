@@ -35,15 +35,15 @@ package com.oracle.truffle.api.instrument;
  * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events" >https://
  * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  *
- * @See Instrumenter
+ * @see Instrumenter
  */
-abstract class Instrument {
+public abstract class Instrument {
 
     protected Instrument() {
     }
 
     /**
-     * Removes this from its source of execution events and renders itself Instrument inert.
+     * Detaches this from its source of execution events and renders itself unusable.
      *
      * @throws IllegalStateException if this has already been disposed
      */

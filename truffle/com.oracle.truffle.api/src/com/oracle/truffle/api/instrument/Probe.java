@@ -44,9 +44,9 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
 /**
  * A <em>binding</em> between:
  * <ol>
- * <li>A <em>guest language program location</em> in an executing Truffle AST (corresponding to a
+ * <li>a <em>guest language program location</em> in an executing Truffle AST (corresponding to a
  * {@link SourceSection}), and</li>
- * <li>A dynamically managed collection of <em>attached</em> {@linkplain Instrument Instruments}
+ * <li>a dynamically managed collection of <em>attached</em> {@linkplain Instrument Instruments}
  * that receive event notifications on behalf of external clients.</li>
  * </ol>
  * <strong>Note</strong>:The relationship for {@link ProbeInstrument} must be with an AST
