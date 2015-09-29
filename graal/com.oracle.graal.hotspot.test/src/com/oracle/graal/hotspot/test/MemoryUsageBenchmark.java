@@ -137,13 +137,12 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         // invalidate any existing compiled code
         method.reprofile();
 
-        int id = method.allocateCompileId(jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
         long jvmciEnv = 0L;
 
         try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
             int entryBCI = Compiler.INVOCATION_ENTRY_BCI;
-            HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, jvmciEnv, id);
+            HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, jvmciEnv);
             CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, false);
             task.runCompilation();
         }
@@ -157,11 +156,10 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             // invalidate any existing compiled code
             method.reprofile();
 
-            int id = method.allocateCompileId(jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
             long jvmciEnv = 0L;
             try (AllocSpy as = AllocSpy.open(methodName)) {
                 HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
-                HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, Compiler.INVOCATION_ENTRY_BCI, jvmciEnv, id);
+                HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, Compiler.INVOCATION_ENTRY_BCI, jvmciEnv);
                 CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, false);
                 task.runCompilation();
             }

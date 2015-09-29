@@ -182,7 +182,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {
-            installedCode = providers.getCodeCache().addMethod(g.method(), compResult, null, null);
+            installedCode = providers.getCodeCache().addCode(g.method(), compResult, null, null);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

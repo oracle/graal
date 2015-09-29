@@ -192,10 +192,7 @@ public class CompilationTask {
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(getId()), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
-
                 result = compiler.compile(method, entryBCI, mustRecordMethodInlining(config));
-
-                result.setId(getId());
             } catch (Throwable e) {
                 throw Debug.handle(e);
             } finally {
@@ -218,8 +215,10 @@ public class CompilationTask {
                 }
             }
 
-            try (DebugCloseable b = CodeInstallationTime.start()) {
-                installedCode = (HotSpotInstalledCode) installMethod(result);
+            if (result != null) {
+                try (DebugCloseable b = CodeInstallationTime.start()) {
+                    installedCode = (HotSpotInstalledCode) installMethod(result);
+                }
             }
             stats.finish(method, installedCode);
         } catch (BailoutException bailout) {
@@ -311,7 +310,7 @@ public class CompilationTask {
         final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(getId()), true), codeCache, getMethod())) {
-            installedCode = codeCache.installMethod(getMethod(), compResult, request.getJvmciEnv(), installAsDefault);
+            installedCode = codeCache.installCode(request, compResult, null, request.getMethod().getSpeculationLog(), installAsDefault);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

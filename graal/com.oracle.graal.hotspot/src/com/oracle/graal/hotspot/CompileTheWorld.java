@@ -295,7 +295,7 @@ public final class CompileTheWorld {
             HotSpotResolvedJavaMethod dummyMethod = (HotSpotResolvedJavaMethod) JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(
                             CompileTheWorld.class.getDeclaredMethod("dummy"));
             int entryBCI = Compiler.INVOCATION_ENTRY_BCI;
-            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L, dummyMethod.allocateCompileId(entryBCI)), false);
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L), false);
             task.runCompilation();
         } catch (NoSuchMethodException | SecurityException e1) {
             e1.printStackTrace();
@@ -486,7 +486,7 @@ public final class CompileTheWorld {
             long start = System.currentTimeMillis();
             long allocatedAtStart = MemUseTrackerImpl.getCurrentThreadAllocatedBytes();
             int entryBCI = Compiler.INVOCATION_ENTRY_BCI;
-            HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L, method.allocateCompileId(entryBCI));
+            HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
             CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, false);
             task.runCompilation();
 

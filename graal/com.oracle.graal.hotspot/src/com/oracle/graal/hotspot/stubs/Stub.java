@@ -25,8 +25,7 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.compiler.GraalCompiler.emitBackEnd;
 import static com.oracle.graal.compiler.GraalCompiler.emitFrontEnd;
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
-import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
+import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,23 +37,22 @@ import java.util.Set;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.CompilationResult.Call;
+import jdk.internal.jvmci.code.CompilationResult.ConstantReference;
+import jdk.internal.jvmci.code.CompilationResult.DataPatch;
+import jdk.internal.jvmci.code.CompilationResult.Infopoint;
 import jdk.internal.jvmci.code.InstalledCode;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
-import jdk.internal.jvmci.hotspot.HotSpotCompiledCode;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.hotspot.HotSpotCompiledRuntimeStub;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.meta.HotSpotRuntimeStub;
 import com.oracle.graal.hotspot.nodes.StubStartNode;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
@@ -203,23 +201,14 @@ public abstract class Stub {
                     SchedulePhase schedule = emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), suites);
                     LIRSuites lirSuites = createLIRSuites();
                     emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, compResult, CompilationResultBuilderFactory.Default, schedule, getRegisterConfig(), lirSuites);
+                    assert checkStubInvariants();
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {
-                    Stub stub = Stub.this;
-                    HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
-                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(compResult);
-
-                    int result = compilerToVM().installCode(backend.getTarget(), hsCompResult, installedCode, null);
-                    HotSpotVMConfig config = config();
-                    if (result != config.codeInstallResultOk) {
-                        throw new JVMCIError("Error installing stub %s: %s", Stub.this, config.getCodeInstallResultDescription(result));
-                    }
-                    ((HotSpotCodeCacheProvider) codeCache).logOrDump(installedCode, compResult);
-                    code = installedCode;
+                    code = codeCache.installCode(null, compResult, null, null, false);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
@@ -230,6 +219,42 @@ public abstract class Stub {
         }
 
         return code;
+    }
+
+    /**
+     * Checks the conditions a compilation must satisfy to be installed as a RuntimeStub.
+     */
+    private boolean checkStubInvariants() {
+        assert compResult.getExceptionHandlers().isEmpty() : this;
+
+        // Stubs cannot be recompiled so they cannot be compiled with
+        // assumptions and there is no point in recording evol_method dependencies
+        assert compResult.getAssumptions() == null : "stubs should not use assumptions: " + this;
+        assert compResult.getMethods() == null : "stubs should not record evol_method dependencies: " + this;
+
+        for (DataPatch data : compResult.getDataPatches()) {
+            if (data.reference instanceof ConstantReference) {
+                ConstantReference ref = (ConstantReference) data.reference;
+                if (ref.getConstant() instanceof HotSpotMetaspaceConstant) {
+                    HotSpotMetaspaceConstant c = (HotSpotMetaspaceConstant) ref.getConstant();
+                    if (c.asResolvedJavaType() != null && c.asResolvedJavaType().getName().equals("[I")) {
+                        // special handling for NewArrayStub
+                        // embedding the type '[I' is safe, since it is never unloaded
+                        continue;
+                    }
+                }
+            }
+
+            assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
+        }
+        for (Infopoint infopoint : compResult.getInfopoints()) {
+            assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;
+            Call call = (Call) infopoint;
+            assert call.target instanceof HotSpotForeignCallLinkage : this + " cannot have non runtime call: " + call.target;
+            HotSpotForeignCallLinkage callLinkage = (HotSpotForeignCallLinkage) call.target;
+            assert !callLinkage.isCompiledStub() || callLinkage.getDescriptor().equals(UNCOMMON_TRAP_HANDLER) : this + " cannot call compiled stub " + callLinkage;
+        }
+        return true;
     }
 
     private LIRSuites createLIRSuites() {

@@ -147,7 +147,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
         removeLoopSafepoint(graph);
 
         CompilationResult compilationResult = compile(javaMethod, graph);
-        final InstalledCode installedCode = getProviders().getCodeCache().setDefaultMethod(javaMethod, compilationResult);
+        final InstalledCode installedCode = getProviders().getCodeCache().setDefaultCode(javaMethod, compilationResult);
 
         final Monitor monitor = new Monitor();
 

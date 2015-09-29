@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
 import java.io.ByteArrayOutputStream;
@@ -40,10 +39,6 @@ import javax.crypto.SecretKey;
 
 import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotCompiledNmethod;
-import jdk.internal.jvmci.hotspot.HotSpotNmethod;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
@@ -65,17 +60,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Override
     protected InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {
-        HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
-        HotSpotNmethod installedCode = new HotSpotNmethod(hsMethod, compResult.getName(), true);
-        HotSpotCompiledNmethod compiledNmethod = new HotSpotCompiledNmethod(hsMethod, compResult);
-        int result = compilerToVM().installCode(getTarget(), compiledNmethod, installedCode, null);
-        HotSpotVMConfig config = config();
-        Assert.assertEquals("Error installing method " + method + ": " + config.getCodeInstallResultDescription(result), result, config.codeInstallResultOk);
-
-        // HotSpotRuntime hsRuntime = (HotSpotRuntime) getCodeCache();
-        // TTY.println(hsMethod.toString());
-        // TTY.println(hsRuntime.disassemble(installedCode));
-        return installedCode;
+        return getCodeCache().setDefaultCode(method, compResult);
     }
 
     SecretKey aesKey;
