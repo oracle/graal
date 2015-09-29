@@ -39,8 +39,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@link SimpleInstrumentListener}.
  * <p>
  * Clients are free, of course, to record additional information in the listener implementation that
- * carries additional information about the context and reason for the particular {@link ProbeInstrument}
- * that is to be created from the listener.
+ * carries additional information about the context and reason for the particular
+ * {@link ProbeInstrument} that is to be created from the listener.
  * <p>
  * Notification is fully synchronous, so overrides have performance implications. Non-trivial
  * methods should be coded with Truffle guidelines and cautions in mind.

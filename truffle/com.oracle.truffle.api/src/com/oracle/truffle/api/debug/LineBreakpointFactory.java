@@ -71,8 +71,8 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * <li>Line breakpoints can only be set at nodes tagged as {@link StandardSyntaxTag#STATEMENT}.</li>
  * <li>A newly created breakpoint looks for probes matching the location, attaches to them if found
  * by installing an {@link ProbeInstrument} that calls back to the breakpoint.</li>
- * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link ProbeInstrument} will be
- * copied along with the rest of the AST and will call back to the same breakpoint.</li>
+ * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link ProbeInstrument} will
+ * be copied along with the rest of the AST and will call back to the same breakpoint.</li>
  * <li>When notification is received of a new Node being tagged as a statement, and if a
  * breakpoint's line location matches the Probe's line location, then the breakpoint will attach a
  * new Instrument at the probe to activate the breakpoint at that location.</li>
