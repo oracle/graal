@@ -34,10 +34,10 @@ import java.lang.reflect.Field;
 import java.util.concurrent.TimeUnit;
 
 import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.code.InstalledCode;
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
 import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
 import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
@@ -279,8 +279,8 @@ public class CompilationTask {
             long compilationTime = System.nanoTime() - startCompilationTime;
             if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
                 long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
-                CompilerToVM c2vm = jvmciRuntime.getCompilerToVM();
-                c2vm.notifyCompilationStatistics(getId(), method, entryBCI != Compiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
+                final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
+                codeCache.notifyCompilationStatistics(getId(), method, entryBCI != Compiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
             }
         }
     }
@@ -307,7 +307,7 @@ public class CompilationTask {
 
     @SuppressWarnings("try")
     private InstalledCode installMethod(final CompilationResult compResult) {
-        final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
+        final CodeCacheProvider codeCache = jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(getId()), true), codeCache, getMethod())) {
             installedCode = codeCache.installCode(request, compResult, null, request.getMethod().getSpeculationLog(), installAsDefault);

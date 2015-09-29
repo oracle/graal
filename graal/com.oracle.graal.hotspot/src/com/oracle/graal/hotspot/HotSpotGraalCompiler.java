@@ -31,7 +31,7 @@ import jdk.internal.jvmci.code.CallingConvention.Type;
 import jdk.internal.jvmci.code.CompilationRequest;
 import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
 import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.meta.JavaType;
@@ -93,10 +93,10 @@ public class HotSpotGraalCompiler implements Compiler {
     }
 
     public void compileTheWorld() throws Throwable {
-        CompilerToVM compilerToVM = jvmciRuntime.getCompilerToVM();
+        HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         int iterations = CompileTheWorldOptions.CompileTheWorldIterations.getValue();
         for (int i = 0; i < iterations; i++) {
-            compilerToVM.resetCompilationStatistics();
+            codeCache.resetCompilationStatistics();
             TTY.println("CompileTheWorld : iteration " + i);
             CompileTheWorld ctw = new CompileTheWorld(jvmciRuntime, this);
             ctw.compile();
