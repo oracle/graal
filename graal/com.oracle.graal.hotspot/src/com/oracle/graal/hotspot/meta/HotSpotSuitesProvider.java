@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.compiler.common.GraalOptions.VerifyPhases;
-import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.options.DerivedOptionValue;
 import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
@@ -158,23 +156,18 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     }
 
     /**
-     * Modifies the {@link GraphBuilderConfiguration} to build extra
-     * {@linkplain DebugInfoMode#Simple debug info} if the VM
-     * {@linkplain CompilerToVM#shouldDebugNonSafepoints() requests} it.
+     * Modifies a given {@link GraphBuilderConfiguration} to build extra
+     * {@linkplain DebugInfoMode#Simple debug info}.
      *
-     * @param gbs the current graph builder suite
-     * @return a possibly modified graph builder suite
+     * @param gbs the current graph builder suite to modify
      */
-    public static PhaseSuite<HighTierContext> withSimpleDebugInfoIfRequested(PhaseSuite<HighTierContext> gbs) {
-        if (compilerToVM().shouldDebugNonSafepoints()) {
-            PhaseSuite<HighTierContext> newGbs = gbs.copy();
-            GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
-            GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-            GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple));
-            newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
-            return newGbs;
-        }
-        return gbs;
+    public static PhaseSuite<HighTierContext> withSimpleDebugInfo(PhaseSuite<HighTierContext> gbs) {
+        PhaseSuite<HighTierContext> newGbs = gbs.copy();
+        GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
+        GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
+        GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple));
+        newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
+        return newGbs;
     }
 
     public LIRSuites getDefaultLIRSuites() {

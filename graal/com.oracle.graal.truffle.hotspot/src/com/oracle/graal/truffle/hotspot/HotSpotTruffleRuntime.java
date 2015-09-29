@@ -25,13 +25,12 @@ package com.oracle.graal.truffle.hotspot;
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
 import static com.oracle.graal.graph.util.CollectionsAccess.newIdentityMap;
-import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.withSimpleDebugInfoIfRequested;
+import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.withSimpleDebugInfo;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
 import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
-import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 
 import java.util.Arrays;
@@ -55,6 +54,7 @@ import jdk.internal.jvmci.code.CallingConvention.Type;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.internal.jvmci.hotspot.HotSpotSpeculationLog;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
@@ -241,12 +241,13 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
-        boolean infoPoints = compilerToVM().shouldDebugNonSafepoints();
+        HotSpotCodeCacheProvider codeCache = providers.getCodeCache();
+        boolean infoPoints = codeCache.shouldDebugNonSafepoints();
         GraphBuilderConfiguration config = infoPoints ? GraphBuilderConfiguration.getInfopointEagerDefault(plugins) : GraphBuilderConfiguration.getEagerDefault(plugins);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.ALL, null).apply(graph);
 
-        PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
-        CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
+        PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, suitesProvider);
+        CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
         Backend backend = getHotSpotBackend();
         CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName());
         return compileGraph(graph, cc, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), suites, lirSuites, new CompilationResult(), factory);
@@ -261,9 +262,12 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return getHotSpotBackend().getProviders();
     }
 
-    private static PhaseSuite<HighTierContext> getGraphBuilderSuite(SuitesProvider suitesProvider) {
+    private static PhaseSuite<HighTierContext> getGraphBuilderSuite(CodeCacheProvider codeCache, SuitesProvider suitesProvider) {
         PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
-        return withSimpleDebugInfoIfRequested(graphBuilderSuite);
+        if (codeCache.shouldDebugNonSafepoints()) {
+            graphBuilderSuite = withSimpleDebugInfo(graphBuilderSuite);
+        }
+        return graphBuilderSuite;
     }
 
     private static void removeInliningPhase(Suites suites) {
@@ -348,11 +352,14 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return false;
     }
 
+    private static CodeCacheProvider getCodeCache() {
+        Providers providers = getHotSpotProviders();
+        return providers.getCodeCache();
+    }
+
     @Override
     public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        Providers providers = getHotSpotProviders();
-        CodeCacheProvider codeCache = providers.getCodeCache();
-        codeCache.invalidateInstalledCode(optimizedCallTarget);
+        getCodeCache().invalidateInstalledCode(optimizedCallTarget);
         getCompilationNotify().notifyCompilationInvalidated(optimizedCallTarget, source, reason);
     }
 
@@ -363,7 +370,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public boolean platformEnableInfopoints() {
-        return compilerToVM().shouldDebugNonSafepoints();
+        return getCodeCache().shouldDebugNonSafepoints();
     }
 
     @Override
