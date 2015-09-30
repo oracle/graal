@@ -24,7 +24,6 @@ package com.oracle.graal.truffle.hotspot;
 
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
-import static com.oracle.graal.graph.util.CollectionsAccess.newIdentityMap;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.withSimpleDebugInfo;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
@@ -36,6 +35,7 @@ import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -119,7 +119,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return new HotSpotTruffleRuntime();
     }
 
-    private Map<OptimizedCallTarget, Future<?>> compilations = newIdentityMap();
+    private Map<OptimizedCallTarget, Future<?>> compilations = Collections.synchronizedMap(new IdentityHashMap<>());
     private final ExecutorService compileQueue;
     private StackIntrospection stackIntrospection;
 
