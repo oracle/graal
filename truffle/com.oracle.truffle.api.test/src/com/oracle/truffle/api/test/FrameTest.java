@@ -173,7 +173,7 @@ public class FrameTest {
                 Frame readWrite = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE, true);
                 Frame materialized = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE, true);
 
-                assertTrue("Really materilized: " + materialized, materialized instanceof MaterializedFrame);
+                assertTrue("Really materialized: " + materialized, materialized instanceof MaterializedFrame);
                 assertEquals("It's my frame", frame, readWrite);
                 return this;
             }

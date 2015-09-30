@@ -38,6 +38,7 @@ import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -48,7 +49,6 @@ import java.lang.ref.WeakReference;
 /**
  * Communication between PolyglotEngine and TruffleLanguage API/SPI.
  */
-@SuppressWarnings("rawtypes")
 public abstract class Accessor {
     private static Accessor API;
     private static Accessor SPI;
@@ -166,14 +166,17 @@ public abstract class Accessor {
         return API.getDebugSupport(l);
     }
 
+    @SuppressWarnings("rawtypes")
     protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
         return NODES.findLanguage(n);
     }
 
+    @SuppressWarnings("rawtypes")
     protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
         return INSTRUMENT.findLanguage(probe);
     }
 
+    @SuppressWarnings("rawtypes")
     protected Env findLanguage(Object known, Class<? extends TruffleLanguage> languageClass) {
         Object vm;
         if (known == null) {
