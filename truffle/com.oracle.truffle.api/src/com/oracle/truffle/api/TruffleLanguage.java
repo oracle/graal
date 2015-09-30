@@ -25,10 +25,13 @@
 package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.debug.DebugSupportProvider;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 import java.io.InputStream;
@@ -379,6 +382,18 @@ public abstract class TruffleLanguage<C> {
             } catch (Exception ex) {
                 throw new IOException(ex);
             }
+        }
+
+        @Override
+        protected Object evalInContext(Object vm, SuspendedEvent ev, String code, FrameInstance frame) throws IOException {
+            Node n = frame == null ? ev.getNode() : frame.getCallNode();
+            RootNode rootNode = n.getRootNode();
+            Class<? extends TruffleLanguage> languageType = findLanguage(rootNode);
+            Env env = findLanguage(vm, languageType);
+            TruffleLanguage<?> lang = findLanguage(env);
+            Source source = Source.fromText(code, "eval in context");
+            CallTarget target = lang.parse(source, n);
+            return target.call();
         }
 
         @Override

@@ -807,6 +807,10 @@ public final class Debugger {
         debugContext = debugContext.predecessor;
     }
 
+    Object evalInContext(SuspendedEvent ev, String code, FrameInstance frame) throws IOException {
+        return ACCESSOR.evalInContext(vm, ev, code, frame);
+    }
+
     @SuppressWarnings("rawtypes")
     private static final class AccessorDebug extends Accessor {
         @Override
@@ -849,6 +853,11 @@ public final class Debugger {
         @Override
         protected void dispatchEvent(Object vm, Object event) {
             super.dispatchEvent(vm, event);
+        }
+
+        @Override
+        protected Object evalInContext(Object vm, SuspendedEvent ev, String code, FrameInstance frame) throws IOException {
+            return super.evalInContext(vm, ev, code, frame);
         }
     }
 

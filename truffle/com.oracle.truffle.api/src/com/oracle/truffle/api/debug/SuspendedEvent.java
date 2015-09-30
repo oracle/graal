@@ -31,6 +31,7 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -191,5 +192,19 @@ public final class SuspendedEvent {
      */
     public void prepareStepOver(int stepCount) {
         debugger.prepareStepOver(stepCount);
+    }
+
+    /**
+     * Evaluates given code snippet in the context of currently suspended execution.
+     *
+     * @param code the snippet to evaluate
+     * @param frame <code>null</code> in case the evaluation should happen in top most frame,
+     *            non-null value to specify a frame from those {@link #getStack() currently on
+     *            stack} to perform the evaluation in context of
+     * @return the computed value
+     * @throws IOException in case an evaluation goes wrong
+     */
+    public Object eval(String code, FrameInstance frame) throws IOException {
+        return debugger.evalInContext(this, code, frame);
     }
 }
