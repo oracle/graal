@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common.inlining.info.elem;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.common.query.ExtractICGPhase;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
@@ -209,6 +211,9 @@ public class InlineableGraph implements Inlineable {
             }
             assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined();
 
+            if (UseGraalQueries.getValue()) {
+                new ExtractICGPhase().apply(newGraph, context);
+            }
             new DeadCodeEliminationPhase(Optional).apply(newGraph);
 
             if (OptCanonicalizer.getValue()) {
@@ -223,7 +228,7 @@ public class InlineableGraph implements Inlineable {
 
     @Override
     public int getNodeCount() {
-        return graph.getNodeCount();
+        return InliningUtil.getNodeCount(graph);
     }
 
     @Override

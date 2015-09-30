@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.policy;
+package com.oracle.graal.debug.query;
 
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
-import jdk.internal.jvmci.code.BailoutException;
+public class DelimitationAPI {
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
-
-public class InlineEverythingPolicy implements InliningPolicy {
-
-    public boolean continueInlining(StructuredGraph graph) {
-        if (InliningUtil.getNodeCount(graph) >= MaximumDesiredSize.getValue()) {
-            throw new BailoutException("Inline all calls failed. The resulting graph is too large.");
-        }
-        return true;
+    /**
+     * Marks the beginning of the instrumentation boundary. - The target parameter indicates whether
+     * to associate the instrumentation with the preceding or the following base program IR node.
+     * Supported values are -1 (predecessor), 1 (successor)}.
+     */
+    public static void instrumentationBegin(@SuppressWarnings("unused") int offset) {
     }
 
-    public boolean isWorthInlining(Replacements replacements, MethodInvocation invocation, int inliningDepth, boolean fullyProcessed) {
-        return true;
+    public static void instrumentationBegin(@SuppressWarnings("unused") int offset, @SuppressWarnings("unused") int type) {
     }
+
+    /**
+     * Marks the end of the instrumentation boundary.
+     */
+    public static void instrumentationEnd() {
+    }
+
 }

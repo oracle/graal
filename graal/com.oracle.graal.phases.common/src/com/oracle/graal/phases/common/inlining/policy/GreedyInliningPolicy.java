@@ -49,7 +49,7 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
     }
 
     public boolean continueInlining(StructuredGraph currentGraph) {
-        if (currentGraph.getNodeCount() >= MaximumDesiredSize.getValue()) {
+        if (InliningUtil.getNodeCount(currentGraph) >= MaximumDesiredSize.getValue()) {
             InliningUtil.logInliningDecision("inlining is cut off by MaximumDesiredSize");
             metricInliningStoppedByMaxDesiredSize.increment();
             return false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.policy;
+package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
-import jdk.internal.jvmci.code.BailoutException;
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.debug.query.DelimitationAPI;
+import com.oracle.graal.phases.common.query.nodes.InstrumentationBeginNode;
+import com.oracle.graal.phases.common.query.nodes.InstrumentationEndNode;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+@ClassSubstitution(DelimitationAPI.class)
+public class DelimitationAPISubstitutions {
 
-public class InlineEverythingPolicy implements InliningPolicy {
-
-    public boolean continueInlining(StructuredGraph graph) {
-        if (InliningUtil.getNodeCount(graph) >= MaximumDesiredSize.getValue()) {
-            throw new BailoutException("Inline all calls failed. The resulting graph is too large.");
-        }
-        return true;
+    @MethodSubstitution(isStatic = true)
+    public static void instrumentationBegin(int target) {
+        InstrumentationBeginNode.instantiate(target, 0);
     }
 
-    public boolean isWorthInlining(Replacements replacements, MethodInvocation invocation, int inliningDepth, boolean fullyProcessed) {
-        return true;
+    @MethodSubstitution(isStatic = true)
+    public static void instrumentationBegin(int target, int type) {
+        InstrumentationBeginNode.instantiate(target, type);
     }
+
+    @MethodSubstitution(isStatic = true)
+    public static void instrumentationEnd() {
+        InstrumentationEndNode.instantiate();
+    }
+
 }

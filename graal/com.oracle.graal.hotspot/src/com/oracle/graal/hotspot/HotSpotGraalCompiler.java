@@ -46,6 +46,7 @@ import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TopLevelDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.debug.query.SpecialIntrinsicGuard;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext;
@@ -108,8 +109,10 @@ public class HotSpotGraalCompiler implements Compiler {
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
         final boolean isOSR = entryBCI != Compiler.INVOCATION_ENTRY_BCI;
+        // avoid compiling the intrinsic graphs for GraalQueryAPI methods
+        boolean bypassIntrinsic = method.isNative() || isOSR || SpecialIntrinsicGuard.isQueryIntrinsic(method);
+        StructuredGraph graph = bypassIntrinsic ? null : getIntrinsicGraph(method, providers);
 
-        StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers);
         if (graph == null) {
             SpeculationLog speculationLog = method.getSpeculationLog();
             if (speculationLog != null) {

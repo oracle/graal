@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.policy;
+package com.oracle.graal.debug.query;
 
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
-import jdk.internal.jvmci.code.BailoutException;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+public class SpecialIntrinsicGuard {
 
-public class InlineEverythingPolicy implements InliningPolicy {
+    public static final String CN_DELIMITATIONAPI = DelimitationAPI.class.getName();
+    public static final String CN_GRAALQUERYAPI = GraalQueryAPI.class.getName();
 
-    public boolean continueInlining(StructuredGraph graph) {
-        if (InliningUtil.getNodeCount(graph) >= MaximumDesiredSize.getValue()) {
-            throw new BailoutException("Inline all calls failed. The resulting graph is too large.");
-        }
-        return true;
+    public static boolean isQueryIntrinsic(ResolvedJavaMethod method) {
+        String klass = method.getDeclaringClass().toJavaName();
+        return CN_DELIMITATIONAPI.equals(klass) || CN_GRAALQUERYAPI.equals(klass);
     }
 
-    public boolean isWorthInlining(Replacements replacements, MethodInvocation invocation, int inliningDepth, boolean fullyProcessed) {
-        return true;
-    }
 }

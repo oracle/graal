@@ -43,6 +43,7 @@ import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.common.inlining.InliningUtil;
 
 public class ComputeInliningRelevance {
 
@@ -83,7 +84,7 @@ public class ComputeInliningRelevance {
             rootScope = new Scope(graph.start(), null);
         } else {
             if (nodeRelevances == null) {
-                nodeRelevances = Node.newIdentityMap(EXPECTED_MIN_INVOKE_COUNT + graph.getNodeCount() / EXPECTED_INVOKE_RATIO);
+                nodeRelevances = Node.newIdentityMap(EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
             }
             NodeWorkList workList = graph.createNodeWorkList();
             Map<LoopBeginNode, Scope> loops = Node.newIdentityMap(EXPECTED_LOOP_COUNT);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.policy;
+package com.oracle.graal.phases.common.query.nodes;
 
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
-import jdk.internal.jvmci.code.BailoutException;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.FixedWithNextNode;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+@NodeInfo
+public final class InstrumentationEndNode extends FixedWithNextNode {
 
-public class InlineEverythingPolicy implements InliningPolicy {
+    public static final NodeClass<InstrumentationEndNode> TYPE = NodeClass.create(InstrumentationEndNode.class);
 
-    public boolean continueInlining(StructuredGraph graph) {
-        if (InliningUtil.getNodeCount(graph) >= MaximumDesiredSize.getValue()) {
-            throw new BailoutException("Inline all calls failed. The resulting graph is too large.");
-        }
-        return true;
+    public InstrumentationEndNode() {
+        super(TYPE, StampFactory.forVoid());
     }
 
-    public boolean isWorthInlining(Replacements replacements, MethodInvocation invocation, int inliningDepth, boolean fullyProcessed) {
-        return true;
-    }
+    @NodeIntrinsic
+    public static native void instantiate();
+
 }
