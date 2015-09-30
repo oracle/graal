@@ -381,15 +381,7 @@ public class PolyglotEngine {
         if (location.getScheme().equals("file")) {
             File file = new File(location);
             s = Source.fromFileName(file.getPath(), true);
-            if (file.getName().endsWith(".c")) {
-                mimeType = "text/x-c";
-            } else if (file.getName().endsWith(".sl")) {
-                mimeType = "application/x-sl";
-            } else if (file.getName().endsWith(".R") || file.getName().endsWith(".r")) {
-                mimeType = "application/x-r";
-            } else {
-                mimeType = Files.probeContentType(file.toPath());
-            }
+            mimeType = Files.probeContentType(file.toPath());
         } else {
             URL url = location.toURL();
             s = Source.fromURL(url, location.toString());
