@@ -84,8 +84,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
     }
 
     /**
-     * This is the generic case that always succeeds. Since we already have another specialization
-     * with the same signature above, we need to order them explicitly with the order attribute.
+     * This is the generic case that always succeeds.
      */
     @Specialization(contains = {"readLong", "readBoolean", "readObject"})
     protected Object read(VirtualFrame frame) {
