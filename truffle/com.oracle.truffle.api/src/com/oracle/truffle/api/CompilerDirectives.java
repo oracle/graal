@@ -101,6 +101,19 @@ public final class CompilerDirectives {
     }
 
     /**
+     * Returns a boolean indicating whether or not a given value is seen as constant during the
+     * initial partial evaluation phase. If this method is called in the interpreter this method
+     * will always return <code>true</code>.
+     *
+     * @param value
+     * @return {@code true} when given value is seen as compilation constant, {@code false} if not
+     *         compilation constant.
+     */
+    public static boolean isPartialEvaluationConstant(Object value) {
+        return CompilerDirectives.inInterpreter();
+    }
+
+    /**
      * Directive for the compiler that the given runnable should only be executed in the interpreter
      * and ignored in the compiled code.
      *
