@@ -26,7 +26,6 @@ package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.source.LineLocation;
 
-// TODO (mlvdv) generic?
 /**
  * A breakpoint associated with a {@linkplain LineLocation source line location}.
  *

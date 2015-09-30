@@ -24,29 +24,31 @@
  */
 package com.oracle.truffle.tools.test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+
+import org.junit.Test;
+
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.NodeExecCounter;
 import com.oracle.truffle.tools.NodeExecCounter.NodeExecutionCount;
-import com.oracle.truffle.tools.test.TestNodes.TestAddNode;
-import com.oracle.truffle.tools.test.TestNodes.TestValueNode;
-import static com.oracle.truffle.tools.test.TestNodes.createExpr13TestCallTarget;
-import static com.oracle.truffle.tools.test.TestNodes.createExpr13TestRootNode;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-import org.junit.Test;
 
 public class NodeExecCounterTest {
 
     @Test
-    public void testNoExecution() {
+    public void testNoExecution() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+        final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
+        field.setAccessible(true);
+        final Instrumenter instrumenter = (Instrumenter) field.get(vm);
         final NodeExecCounter tool = new NodeExecCounter();
         assertEquals(tool.getCounts().length, 0);
-        tool.install();
+        instrumenter.install(tool);
         assertEquals(tool.getCounts().length, 0);
         tool.setEnabled(false);
         assertEquals(tool.getCounts().length, 0);
@@ -58,113 +60,45 @@ public class NodeExecCounterTest {
         assertEquals(tool.getCounts().length, 0);
     }
 
-    @Test
-    public void testToolCreatedTooLate() {
-        final CallTarget expr13callTarget = createExpr13TestCallTarget();
-        final NodeExecCounter tool = new NodeExecCounter();
-        tool.install();
-        assertEquals(13, expr13callTarget.call());
-        assertEquals(tool.getCounts().length, 0);
-        tool.dispose();
-    }
-
-    @Test
-    public void testToolInstalledcTooLate() {
-        final NodeExecCounter tool = new NodeExecCounter();
-        final CallTarget expr13callTarget = createExpr13TestCallTarget();
-        tool.install();
-        assertEquals(13, expr13callTarget.call());
-        assertEquals(tool.getCounts().length, 0);
-        tool.dispose();
-    }
-
-    @Test
-    public void testCountingAll() {
-        final NodeExecCounter tool = new NodeExecCounter();
-        tool.install();
-        final CallTarget expr13callTarget = createExpr13TestCallTarget();
-
-        // execute once
-        assertEquals(13, expr13callTarget.call());
-        final NodeExecutionCount[] count1 = tool.getCounts();
-        assertNotNull(count1);
-        assertEquals(count1.length, 2);
-        for (NodeExecutionCount count : count1) {
-            final Class<?> class1 = count.nodeClass();
-            final long executionCount = count.executionCount();
-            if (class1 == TestAddNode.class) {
-                assertEquals(executionCount, 1);
-            } else if (class1 == TestValueNode.class) {
-                assertEquals(executionCount, 2);
+    void checkCounts(NodeExecCounter execTool, int addCount, int valueCount) {
+        NodeExecutionCount[] counts = execTool.getCounts();
+        assertEquals(counts.length, 2);
+        for (NodeExecutionCount counter : counts) {
+            if (counter.nodeClass() == ToolTestUtil.TestAdditionNode.class) {
+                assertEquals(counter.executionCount(), addCount);
+            } else if (counter.nodeClass() == ToolTestUtil.TestValueNode.class) {
+                assertEquals(counter.executionCount(), valueCount);
             } else {
-                fail();
+                fail("correct classes counted");
             }
         }
-
-        // Execute 99 more times
-        for (int i = 0; i < 99; i++) {
-            assertEquals(13, expr13callTarget.call());
-        }
-        final NodeExecutionCount[] counts100 = tool.getCounts();
-        assertNotNull(counts100);
-        assertEquals(counts100.length, 2);
-        for (NodeExecutionCount count : counts100) {
-            final Class<?> class1 = count.nodeClass();
-            final long executionCount = count.executionCount();
-            if (class1 == TestAddNode.class) {
-                assertEquals(executionCount, 100);
-            } else if (class1 == TestValueNode.class) {
-                assertEquals(executionCount, 200);
-            } else {
-                fail();
-            }
-        }
-
-        tool.dispose();
     }
 
     @Test
-    public void testCountingTagged() {
-        final NodeExecCounter tool = new NodeExecCounter(StandardSyntaxTag.STATEMENT);
-        tool.install();
-        final RootNode expr13rootNode = createExpr13TestRootNode();
+    public void testCounting() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
+        final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
+        field.setAccessible(true);
+        final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+        final Source source = ToolTestUtil.createTestSource("testCounting");
+        final NodeExecCounter execTool = new NodeExecCounter();
+        instrumenter.install(execTool);
 
-        // Not probed yet.
-        assertEquals(13, expr13rootNode.execute(null));
-        assertEquals(tool.getCounts().length, 0);
+        assertEquals(execTool.getCounts().length, 0);
 
-        final Node addNode = expr13rootNode.getChildren().iterator().next();
-        final Probe probe = addNode.probe();
+        assertEquals(vm.eval(source).get(), 13);
 
-        // Probed but not tagged yet.
-        assertEquals(13, expr13rootNode.execute(null));
-        assertEquals(tool.getCounts().length, 0);
+        checkCounts(execTool, 1, 2);
 
-        probe.tagAs(StandardSyntaxTag.STATEMENT, "fake statement for testing");
-
-        // Counting now; execute once
-        assertEquals(13, expr13rootNode.execute(null));
-        final NodeExecutionCount[] counts1 = tool.getCounts();
-        assertNotNull(counts1);
-        assertEquals(counts1.length, 1);
-        final NodeExecutionCount count1 = counts1[0];
-        assertNotNull(count1);
-        assertEquals(count1.nodeClass(), addNode.getClass());
-        assertEquals(count1.executionCount(), 1);
-
-        // Execute 99 more times
         for (int i = 0; i < 99; i++) {
-            assertEquals(13, expr13rootNode.execute(null));
+            assertEquals(vm.eval(source).get(), 13);
         }
+        checkCounts(execTool, 100, 200);
 
-        final NodeExecutionCount[] counts100 = tool.getCounts();
-        assertNotNull(counts100);
-        assertEquals(counts100.length, 1);
-        final NodeExecutionCount count100 = counts100[0];
-        assertNotNull(count100);
-        assertEquals(count100.nodeClass(), addNode.getClass());
-        assertEquals(count100.executionCount(), 100);
+        execTool.setEnabled(false);
+        assertEquals(vm.eval(source).get(), 13);
+        checkCounts(execTool, 100, 200);
 
-        tool.dispose();
+        execTool.dispose();
     }
 }

@@ -40,22 +40,12 @@
  */
 package com.oracle.truffle.sl.test.instrument;
 
-import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.Instrument;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.api.instrument.impl.DefaultSimpleInstrumentListener;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber;
-import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
-import com.oracle.truffle.sl.test.SLTestRunner;
-import com.oracle.truffle.sl.test.instrument.SLInstrumentTestRunner.InstrumentTestCase;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
@@ -65,6 +55,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.Assert;
 import org.junit.internal.TextListener;
 import org.junit.runner.Description;
@@ -76,6 +67,18 @@ import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
+
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrument.impl.DefaultSimpleInstrumentListener;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber;
+import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
+import com.oracle.truffle.sl.test.SLTestRunner;
+import com.oracle.truffle.sl.test.instrument.SLInstrumentTestRunner.InstrumentTestCase;
 
 /**
  * This class builds and executes the tests for instrumenting SL. Although much of this class is
@@ -94,7 +97,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
     private static final String LF = System.getProperty("line.separator");
 
-    static class InstrumentTestCase {
+    static final class InstrumentTestCase {
         protected final Description name;
         protected final Path path;
         protected final String baseName;
@@ -115,16 +118,12 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
     private final List<InstrumentTestCase> testCases;
 
-    public SLInstrumentTestRunner(Class<?> testClass) throws InitializationError {
+    public SLInstrumentTestRunner(Class<?> testClass) throws InitializationError, SecurityException, IllegalArgumentException {
         super(testClass);
-        final SLStandardASTProber prober = new SLStandardASTProber();
-        Probe.registerASTProber(prober);
         try {
             testCases = createTests(testClass);
         } catch (IOException e) {
             throw new InitializationError(e);
-        } finally {
-            Probe.unregisterASTProber(prober);
         }
     }
 
@@ -236,20 +235,25 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(out);
         final ASTProber prober = new SLStandardASTProber();
-        Probe.registerASTProber(prober);
+
         try {
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
                 PolyglotEngine vm = PolyglotEngine.buildNew().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
 
+                final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
+                field.setAccessible(true);
+                final Instrumenter instrumenter = (Instrumenter) field.get(vm);
+                instrumenter.registerASTProber(prober);
+
                 final String src = readAllLines(testCase.path);
                 vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));
 
                 // Attach an instrument to every probe tagged as an assignment
-                for (Probe probe : Probe.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
+                for (Probe probe : instrumenter.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
                     SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(ps);
-                    probe.attach(Instrument.create(slPrintAssigmentValueListener, "SL print assignment value"));
+                    instrumenter.attach(probe, slPrintAssigmentValueListener, "SL print assignment value");
                 }
 
                 PolyglotEngine.Value main = vm.findGlobalSymbol("main");
@@ -263,13 +267,12 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         } catch (Throwable ex) {
             notifier.fireTestFailure(new Failure(testCase.name, ex));
         } finally {
-            Probe.unregisterASTProber(prober);
             notifier.fireTestFinished(testCase.name);
         }
 
     }
 
-    public static void runInMain(Class<?> testClass, String[] args) throws InitializationError, NoTestsRemainException {
+    public static void runInMain(Class<?> testClass, String[] args) throws InitializationError, NoTestsRemainException, SecurityException, IllegalArgumentException {
         JUnitCore core = new JUnitCore();
         core.addListener(new TextListener(System.out));
         SLInstrumentTestRunner suite = new SLInstrumentTestRunner(testClass);
@@ -314,7 +317,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         }
 
         @Override
-        public void returnValue(Probe probe, Object result) {
+        public void onReturnValue(Probe probe, Object result) {
             output.println(result);
         }
     }

@@ -35,8 +35,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
-import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -80,6 +78,11 @@ public abstract class RootNode extends Node {
     /**
      * Creates new root node. Each {@link RootNode} is associated with a particular language - if
      * the root node represents a method it is assumed the method is written in such language.
+     * <p>
+     * <strong>Note:</strong> Although the {@link SourceSection} <em>can</em> be {@code null}, this
+     * is strongly discouraged for the purposes of testing/tracing/tooling. Please use
+     * {@link SourceSection#createUnavailable(String, String)} to create a descriptive instance with
+     * a language-specific <em>kind</em> such as "SL Builtin" and a <em>name</em> if possible.
      *
      * @param language the language of the node, <b>cannot be</b> <code>null</code>
      * @param sourceSection a part of source associated with this node, can be <code>null</code>
@@ -187,25 +190,22 @@ public abstract class RootNode extends Node {
         }
     }
 
+    public final void applyInstrumentation() {
+        if (isInstrumentable()) {
+            Node.ACCESSOR.probeAST(this);
+        }
+    }
+
     /**
-     * Apply all registered instances of {@link ASTProber} to the AST, if any, held by this root
-     * node. This can only be done once the AST is complete, notably once all parent pointers are
-     * correctly assigned. But it also must be done before any AST cloning or execution.
-     * <p>
-     * If this is not done, then the AST will not be subject to debugging or any other
-     * instrumentation-supported tooling.
-     * <p>
-     * Implementations should ensure that instrumentation is never applied more than once to an AST,
-     * as this is not guaranteed to be error-free.
-     *
-     * @see Probe#registerASTProber(com.oracle.truffle.api.instrument.ASTProber)
+     * Does this contain AST content that it is possible to instrument.
      */
-    public void applyInstrumentation() {
+    protected boolean isInstrumentable() {
+        return true;
     }
 
     /**
      * Helper method to create a root node that always returns the same value. Certain operations
-     * (expecially {@link com.oracle.truffle.api.interop inter-operability} API) require return of
+     * (especially {@link com.oracle.truffle.api.interop inter-operability} API) require return of
      * stable {@link RootNode root nodes}. To simplify creation of such nodes, here is a factory
      * method that can create {@link RootNode} that returns always the same value.
      *

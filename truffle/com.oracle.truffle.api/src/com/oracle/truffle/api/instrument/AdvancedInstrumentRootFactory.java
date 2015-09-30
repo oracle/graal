@@ -29,17 +29,18 @@ import com.oracle.truffle.api.nodes.Node;
 /**
  * Creator of {@linkplain AdvancedInstrumentRoot AST fragments} suitable for efficient execution,
  * subject to full Truffle optimization, by an
- * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
+ * {@linkplain Instrumenter#attach(Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
  * Advanced Instrument}.
  *
- * @see Instrument
+ * @see ProbeInstrument
  * @see AdvancedInstrumentRoot
  */
 public interface AdvancedInstrumentRootFactory {
 
     /**
      * Provider of {@linkplain AdvancedInstrumentRoot AST fragment} instances to be executed by the
-     * Instrumentation Framework at a {@linkplain Probe Probed} site in a guest-language AST.
+     * {@linkplain Instrumenter Instrumentation Framework} at a {@linkplain Probe Probed} site in a
+     * guest-language AST.
      * <p>
      * <strong>Notes:</strong>
      * <ul>

@@ -24,28 +24,41 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * A trap that can be set to interrupt execution at probed nodes carrying a specific tag.
- *
- * @see Probe
+ * An Instrumentation-managed {@link Node} that synchronously propagates notification of AST
+ * Execution Events through the {@linkplain Instrumenter Instrumentation Framework} .
  */
-public abstract class SyntaxTagTrap {
+public abstract class EventHandlerNode extends Node implements InstrumentationNode {
 
-    private final SyntaxTag tag;
-
-    protected SyntaxTagTrap(SyntaxTag tag) {
-        this.tag = tag;
-    }
-
-    public final SyntaxTag getTag() {
-        return tag;
+    protected EventHandlerNode() {
     }
 
     /**
-     * Notifies that execution is halted at a node with the specified tag.
+     * An AST node's execute method is about to be called.
      */
-    public abstract void tagTrappedAt(Node node, MaterializedFrame frame);
+    public abstract void enter(Node node, VirtualFrame vFrame);
+
+    /**
+     * An AST Node's {@code void}-valued execute method has just returned.
+     */
+    public abstract void returnVoid(Node node, VirtualFrame vFrame);
+
+    /**
+     * An AST Node's execute method has just returned a value (boxed if primitive).
+     */
+    public abstract void returnValue(Node node, VirtualFrame vFrame, Object result);
+
+    /**
+     * An AST Node's execute method has just thrown an exception.
+     */
+    public abstract void returnExceptional(Node node, VirtualFrame vFrame, Exception exception);
+
+    /**
+     * Gets the {@link Probe} that manages this chain of event handling.
+     */
+    public abstract Probe getProbe();
+
 }

@@ -22,20 +22,26 @@
  */
 package com.oracle.truffle.api.test.instrument;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+
+import org.junit.Test;
+
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
-import com.oracle.truffle.api.instrument.Instrument;
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.SyntaxTag;
+import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdvancedInstrumentCounterRoot;
-import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestRootNode;
-import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestingLanguage.InstrumentTestTag;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
  * Tests the kind of instrumentation where a client can provide an AST fragment to be
@@ -44,47 +50,53 @@ import org.junit.Test;
 public class AdvancedInstrumentTest {
 
     @Test
-    public void testAdvancedInstrumentListener() {
-        // Create a simple addition AST
-        final TruffleRuntime runtime = Truffle.getRuntime();
-        final TestValueNode leftValueNode = new TestValueNode(6);
-        final TestValueNode rightValueNode = new TestValueNode(7);
-        final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
-        final TestRootNode rootNode = new TestRootNode(addNode);
-        final CallTarget callTarget1 = runtime.createCallTarget(rootNode);
+    public void testAdvancedInstrumentListener() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
 
-        // Ensure it executes correctly
-        assertEquals(13, callTarget1.call());
+        final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
+        field.setAccessible(true);
+        final Instrumenter instrumenter = (Instrumenter) field.get(vm);
 
-        // Probe the addition node
-        final Probe probe = addNode.probe();
+        instrumenter.registerASTProber(new InstrumentationTestingLanguage.TestASTProber());
+        final Source source = Source.fromText("testAdvancedInstrumentListener text", "testAdvancedInstrumentListener").withMimeType("text/x-instTest");
 
-        assertEquals(13, callTarget1.call());
+        final Probe[] addNodeProbe = new Probe[1];
+        instrumenter.addProbeListener(new DefaultProbeListener() {
 
-        // Attach a null factory; it never actually attaches a node.
-        final Instrument instrument = Instrument.create(null, new AdvancedInstrumentRootFactory() {
+            @Override
+            public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
+                if (tag == InstrumentTestTag.ADD_TAG) {
+                    assertNull("only one add node", addNodeProbe[0]);
+                    addNodeProbe[0] = probe;
+                }
+            }
+        });
+        assertEquals(vm.eval(source).get(), 13);
+        assertNotNull("Add node should be probed", addNodeProbe[0]);
+
+        // Attach a factory that never actually attaches a node.
+        final AdvancedInstrumentRootFactory rootFactory1 = new AdvancedInstrumentRootFactory() {
 
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return null;
             }
-        }, null, "test AdvancedInstrument");
-        probe.attach(instrument);
+        };
+        instrumenter.attach(addNodeProbe[0], null, rootFactory1, null, "test AdvancedInstrument");
 
-        assertEquals(13, callTarget1.call());
-
-        final TestAdvancedInstrumentCounterRoot counter = new TestAdvancedInstrumentCounterRoot();
+        assertEquals(vm.eval(source).get(), 13);
 
         // Attach a factory that splices an execution counter into the AST.
-        probe.attach(Instrument.create(null, new AdvancedInstrumentRootFactory() {
+        final TestAdvancedInstrumentCounterRoot counter = new TestAdvancedInstrumentCounterRoot();
+        final AdvancedInstrumentRootFactory rootFactory2 = new AdvancedInstrumentRootFactory() {
 
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return counter;
             }
-        }, null, "test AdvancedInstrument"));
+        };
+        instrumenter.attach(addNodeProbe[0], null, rootFactory2, null, "test AdvancedInstrument");
+
         assertEquals(0, counter.getCount());
-
-        assertEquals(13, callTarget1.call());
-
+        assertEquals(vm.eval(source).get(), 13);
         assertEquals(1, counter.getCount());
     }
 }

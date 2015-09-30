@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import java.io.File;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.nodes.instrument.SLStatementWrapperNode;
-import java.io.File;
 
 /**
  * The base class of all Truffle nodes for SL. All nodes (even expressions) can be used as
@@ -101,15 +100,4 @@ public abstract class SLStatementNode extends Node {
             return String.format("%s:%d%s", sourceName, startLine, estimated ? "~" : "");
         }
     }
-
-    @Override
-    public boolean isInstrumentable() {
-        return true;
-    }
-
-    @Override
-    public WrapperNode createWrapperNode() {
-        return new SLStatementWrapperNode(this);
-    }
-
 }

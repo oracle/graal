@@ -22,16 +22,20 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.SpecializationGroupingTestFactory.TestElseConnectionBug1Factory;
 import com.oracle.truffle.api.dsl.test.SpecializationGroupingTestFactory.TestElseConnectionBug2Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.SlowPathException;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  * Tests execution counts of guards. While we do not make guarantees for guard invocation except for
@@ -39,6 +43,16 @@ import org.junit.Test;
  * generic case.
  */
 public class SpecializationGroupingTest {
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testElseConnectionBug1() {

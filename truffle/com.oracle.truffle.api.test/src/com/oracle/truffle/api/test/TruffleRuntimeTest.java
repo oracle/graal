@@ -22,6 +22,21 @@
  */
 package com.oracle.truffle.api.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -30,17 +45,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import org.junit.Before;
-import org.junit.Test;
+import com.oracle.truffle.api.test.utilities.InstrumentationTestMode;
 
 /**
  * <h3>Accessing the Truffle Runtime</h3>
@@ -63,12 +68,18 @@ public class TruffleRuntimeTest {
     private TruffleRuntime runtime;
 
     @Before
-    public void setUp() {
+    public void before() {
+        InstrumentationTestMode.set(true);
         this.runtime = Truffle.getRuntime();
     }
 
-    private static RootNode createTestRootNode() {
-        return new RootNode(TestingLanguage.class, null, null) {
+    @After
+    public void after() {
+        InstrumentationTestMode.set(false);
+    }
+
+    private static RootNode createTestRootNode(SourceSection sourceSection) {
+        return new RootNode(TestingLanguage.class, sourceSection, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return 42;
@@ -93,7 +104,7 @@ public class TruffleRuntimeTest {
 
     @Test
     public void testCreateCallTarget() {
-        RootNode rootNode = createTestRootNode();
+        RootNode rootNode = createTestRootNode(null);
         RootCallTarget target = runtime.createCallTarget(rootNode);
         assertNotNull(target);
         assertEquals(target.call(), 42);
@@ -102,14 +113,14 @@ public class TruffleRuntimeTest {
 
     @Test
     public void testGetCallTargets1() {
-        RootNode rootNode = createTestRootNode();
+        RootNode rootNode = createTestRootNode(null);
         RootCallTarget target = runtime.createCallTarget(rootNode);
         assertTrue(runtime.getCallTargets().contains(target));
     }
 
     @Test
     public void testGetCallTargets2() {
-        RootNode rootNode = createTestRootNode();
+        RootNode rootNode = createTestRootNode(null);
         RootCallTarget target1 = runtime.createCallTarget(rootNode);
         RootCallTarget target2 = runtime.createCallTarget(rootNode);
         assertTrue(runtime.getCallTargets().contains(target1));
@@ -127,10 +138,8 @@ public class TruffleRuntimeTest {
         SourceSection sourceSection1 = source1.createSection("foo", 1);
         SourceSection sourceSection2 = source1.createSection("bar", 2);
 
-        RootNode rootNode1 = createTestRootNode();
-        rootNode1.assignSourceSection(sourceSection1);
-        RootNode rootNode2 = createTestRootNode();
-        rootNode2.assignSourceSection(sourceSection2);
+        RootNode rootNode1 = createTestRootNode(sourceSection1);
+        RootNode rootNode2 = createTestRootNode(sourceSection2);
         RootNode rootNode2Copy = NodeUtil.cloneNode(rootNode2);
 
         assertSame(rootNode2.getSourceSection(), rootNode2Copy.getSourceSection());

@@ -44,11 +44,28 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.test.instrument.InstrumentationTestMode;
+
 import java.io.ByteArrayOutputStream;
+
 import static org.junit.Assert.assertEquals;
+
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class SLJavaInteropTest {
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() {
+        InstrumentationTestMode.set(false);
+    }
+
     @Test
     public void asFunction() throws Exception {
         String scriptText = "function main() {\n" + "    println(\"Called!\");\n" + "}\n";

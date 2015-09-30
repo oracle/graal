@@ -22,16 +22,10 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.debug.DebugSupportProvider;
-import com.oracle.truffle.api.instrument.ToolSupportProvider;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Enumeration;
@@ -41,12 +35,24 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Executors;
+
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
+import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
@@ -185,12 +191,27 @@ public class ImplicitExplicitExportTest {
         }
 
         @Override
-        protected ToolSupportProvider getToolSupport() {
+        protected Visualizer getVisualizer() {
             return null;
         }
 
         @Override
-        protected DebugSupportProvider getDebugSupport() {
+        protected boolean isInstrumentable(Node node) {
+            return false;
+        }
+
+        @Override
+        protected WrapperNode createWrapperNode(Node node) {
+            return null;
+        }
+
+        @Override
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+            return null;
+        }
+
+        @Override
+        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
             return null;
         }
 

@@ -27,11 +27,11 @@ package com.oracle.truffle.api.instrument.impl;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeListener;
 import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public abstract class DefaultProbeListener implements ProbeListener {
 
-    public void startASTProbing(Source source) {
+    public void startASTProbing(RootNode rootNode) {
     }
 
     public void newProbeInserted(Probe probe) {
@@ -40,7 +40,7 @@ public abstract class DefaultProbeListener implements ProbeListener {
     public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
     }
 
-    public void endASTProbing(Source source) {
+    public void endASTProbing(RootNode rootNode) {
     }
 
 }

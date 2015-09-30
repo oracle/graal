@@ -24,18 +24,6 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeVisitor;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -43,66 +31,36 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-//TODO (mlvdv) these statics should not be global.  Move them to some kind of context.
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument;
+import com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
 
 /**
  * A <em>binding</em> between:
  * <ol>
- * <li>A program location in an executing Truffle AST (corresponding to a {@link SourceSection}),
- * and</li>
- * <li>A dynamically managed collection of "attached" {@linkplain Instrument Instruments} that
- * receive event notifications on behalf of external clients.</li>
+ * <li>a <em>guest language program location</em> in an executing Truffle AST (corresponding to a
+ * {@link SourceSection}), and</li>
+ * <li>a dynamically managed collection of <em>attached</em> {@linkplain Instrument Instruments}
+ * that receive event notifications on behalf of external clients.</li>
  * </ol>
+ * <strong>Note</strong>:The relationship for {@link ProbeInstrument} must be with an AST
+ * <em>location</em>, not a specific {@link Node}, because ASTs are routinely <em>cloned</em> at
+ * runtime. An AST <em>location</em> is best represented as the {@link SourceSection} from which the
+ * original AST Node was created.
  * <p>
  * Client-oriented documentation for the use of Probes is available online at <a
  * HREF="https://wiki.openjdk.java.net/display/Graal/Finding+Probes" >https://wiki.openjdk.java.
  * net/display/Graal/Finding+Probes</a>
  * <p>
- * <h4>Implementation notes:</h4>
- * <p>
- * <ul>
- * <li>A Probe must be permanently associated with a <em>program location</em>, defined by a
- * particular {@link SourceSection}, even though:
- * <ul>
- * <li>that location is represented in an AST as a {@link Node}, which might be replaced through
- * optimizations such as specialization, and</li>
- * <li>Truffle may <em>clone</em> the AST so that the location is actually represented by multiple
- * Nodes in multiple ASTs.</li>
- * </ul>
- * </li>
  *
- * <li>The effect of the binding is to intercept {@linkplain TruffleEvents execution events}
- * arriving at the "probed" AST Node and notify each attached {@link Instrument} before execution is
- * allowed to proceed to the child and again after execution completes.</li>
- *
- * <li>The method {@link Node#probe()} creates a Probe on an AST Node; redundant calls return the
- * same Probe.</li>
- *
- * <li>The "probing" of a Truffle AST must be done after the AST is complete (i.e. parent pointers
- * correctly assigned), but before any cloning or executions. This is done by creating an instance
- * of {@link ASTProber} and registering it via {@link #registerASTProber(ASTProber)}. Once
- * registered, it will be applied automatically to every newly created AST.</li>
- *
- * <li>The "probing" of an AST Node is implemented by insertion of a {@link ProbeNode.WrapperNode}
- * into the AST (as new parent of the Node being probed), together with an associated
- * {@link ProbeNode} that routes execution events at the probed Node to all the
- * {@linkplain Instrument Instruments} attached to the Probe's <em>instrument chain</em>.</li>
- *
- * <li>When Truffle clones an AST, any attached WrapperNodes and ProbeNodes are cloned as well,
- * together with their attached instrument chains. Each Probe instance intercepts cloning events and
- * keeps track of all AST copies.</li>
- *
- * <li>All attached {@link InstrumentationNode}s effectively become part of the running program:
- * <ul>
- * <li>Good News: instrumentation code implicitly benefits from every kind of Truffle optimization.</li>
- * <li>Bad News: instrumentation code must be implemented carefully to avoid interfering with any
- * Truffle optimizations.</li>
- * </ul>
- * </li>
- *
- * </ul>
- *
- * @see Instrument
+ * @see Instrumenter
+ * @see ProbeInstrument
  * @see ASTProber
  * @see ProbeListener
  * @see SyntaxTag
@@ -121,173 +79,7 @@ public final class Probe {
         }
     }
 
-    private static final List<ASTProber> astProbers = new ArrayList<>();
-
-    private static final List<ProbeListener> probeListeners = new ArrayList<>();
-
-    /**
-     * All Probes that have been created.
-     */
-    private static final List<WeakReference<Probe>> probes = new ArrayList<>();
-
-    /**
-     * A global trap that triggers notification just before executing any Node that is Probed with a
-     * matching tag.
-     */
-    @CompilationFinal private static SyntaxTagTrap beforeTagTrap = null;
-
-    /**
-     * A global trap that triggers notification just after executing any Node that is Probed with a
-     * matching tag.
-     */
-    @CompilationFinal private static SyntaxTagTrap afterTagTrap = null;
-
-    private static final class FindSourceVisitor implements NodeVisitor {
-
-        Source source = null;
-
-        public boolean visit(Node node) {
-            final SourceSection sourceSection = node.getSourceSection();
-            if (sourceSection != null) {
-                source = sourceSection.getSource();
-                return false;
-            }
-            return true;
-        }
-    }
-
-    /**
-     * Walks an AST, looking for the first node with an assigned {@link SourceSection} and returning
-     * the {@link Source}.
-     */
-    private static Source findSource(Node node) {
-        final FindSourceVisitor visitor = new FindSourceVisitor();
-        node.accept(visitor);
-        return visitor.source;
-    }
-
-    /**
-     * Enables instrumentation at selected nodes in all subsequently constructed ASTs.
-     */
-    public static void registerASTProber(ASTProber prober) {
-        astProbers.add(prober);
-    }
-
-    public static void unregisterASTProber(ASTProber prober) {
-        astProbers.remove(prober);
-    }
-
-    /**
-     * Enables instrumentation in a newly created AST by applying all registered instances of
-     * {@link ASTProber}.
-     */
-    public static void applyASTProbers(Node node) {
-
-        String name = "<?>";
-        final Source source = findSource(node);
-        if (source != null) {
-            name = source.getShortName();
-        } else {
-            final SourceSection sourceSection = node.getEncapsulatingSourceSection();
-            if (sourceSection != null) {
-                name = sourceSection.getShortDescription();
-            }
-        }
-        trace("START %s", name);
-        for (ProbeListener listener : probeListeners) {
-            listener.startASTProbing(source);
-        }
-        for (ASTProber prober : astProbers) {
-            prober.probeAST(node);
-        }
-        for (ProbeListener listener : probeListeners) {
-            listener.endASTProbing(source);
-        }
-        trace("FINISHED %s", name);
-    }
-
-    /**
-     * Adds a {@link ProbeListener} to receive events.
-     */
-    public static void addProbeListener(ProbeListener listener) {
-        assert listener != null;
-        probeListeners.add(listener);
-    }
-
-    /**
-     * Removes a {@link ProbeListener}. Ignored if listener not found.
-     */
-    public static void removeProbeListener(ProbeListener listener) {
-        probeListeners.remove(listener);
-    }
-
-    /**
-     * Returns all {@link Probe}s holding a particular {@link SyntaxTag}, or the whole collection of
-     * probes if the specified tag is {@code null}.
-     *
-     * @return A collection of probes containing the given tag.
-     */
-    public static Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
-        final List<Probe> taggedProbes = new ArrayList<>();
-        for (WeakReference<Probe> ref : probes) {
-            Probe probe = ref.get();
-            if (probe != null) {
-                if (tag == null || probe.isTaggedAs(tag)) {
-                    taggedProbes.add(ref.get());
-                }
-            }
-        }
-        return taggedProbes;
-    }
-
-    // TODO (mlvdv) generalize to permit multiple "before traps" without a performance hit?
-    /**
-     * Sets the current "<em>before</em> tag trap"; there can be no more than one in effect.
-     * <ul>
-     * <li>The before-trap triggers a callback just <strong><em>before</em></strong> execution
-     * reaches <strong><em>any</em></strong> {@link Probe} (either existing or subsequently created)
-     * with the specified {@link SyntaxTag}.</li>
-     * <li>Setting the before-trap to {@code null} clears an existing before-trap.</li>
-     * <li>Setting a non{@code -null} before-trap when one is already set clears the previously set
-     * before-trap.</li>
-     * </ul>
-     *
-     * @param newBeforeTagTrap The new "before" {@link SyntaxTagTrap} to set.
-     */
-    public static void setBeforeTagTrap(SyntaxTagTrap newBeforeTagTrap) {
-        beforeTagTrap = newBeforeTagTrap;
-        for (WeakReference<Probe> ref : probes) {
-            final Probe probe = ref.get();
-            if (probe != null) {
-                probe.notifyTrapsChanged();
-            }
-        }
-    }
-
-    // TODO (mlvdv) generalize to permit multiple "after traps" without a performance hit?
-    /**
-     * Sets the current "<em>after</em> tag trap"; there can be no more than one in effect.
-     * <ul>
-     * <li>The after-trap triggers a callback just <strong><em>after</em></strong> execution leaves
-     * <strong><em>any</em></strong> {@link Probe} (either existing or subsequently created) with
-     * the specified {@link SyntaxTag}.</li>
-     * <li>Setting the after-trap to {@code null} clears an existing after-trap.</li>
-     * <li>Setting a non{@code -null} after-trap when one is already set clears the previously set
-     * after-trap.</li>
-     * </ul>
-     *
-     * @param newAfterTagTrap The new "after" {@link SyntaxTagTrap} to set.
-     */
-    public static void setAfterTagTrap(SyntaxTagTrap newAfterTagTrap) {
-        afterTagTrap = newAfterTagTrap;
-        for (WeakReference<Probe> ref : probes) {
-            final Probe probe = ref.get();
-            if (probe != null) {
-                probe.notifyTrapsChanged();
-            }
-        }
-    }
-
+    private final Instrumenter instrumenter;
     private final SourceSection sourceSection;
     private final ArrayList<SyntaxTag> tags = new ArrayList<>();
     private final List<WeakReference<ProbeNode>> probeNodeClones = new ArrayList<>();
@@ -305,42 +97,64 @@ public final class Probe {
     @CompilationFinal private Assumption probeStateUnchangedAssumption = probeStateUnchangedCyclic.getAssumption();
 
     // Must invalidate whenever changed
-    @CompilationFinal private boolean isBeforeTrapActive = false;
+    @CompilationFinal private boolean isBeforeTagInstrumentActive = false;
 
     // Must invalidate whenever changed
-    @CompilationFinal private boolean isAfterTrapActive = false;
+    @CompilationFinal private boolean isAfterTagInstrumentActive = false;
 
     /**
-     * Intended for use only by {@link ProbeNode}.
+     * Constructor for use only by {@link ProbeNode}.
+     * <p>
+     * <h4>Probe Implementation notes:</h4>
+     * <p>
+     * <ul>
+     * <li>A Probe must be permanently associated with a <em>program location</em>, defined by a
+     * particular {@link SourceSection}, even though:
+     * <ul>
+     * <li>that location is represented in an AST as a {@link Node}, which might be replaced through
+     * optimizations such as specialization, and</li>
+     * <li>Truffle may <em>clone</em> the AST so that the location is actually represented by
+     * multiple Nodes in multiple ASTs.</li>
+     * </ul>
+     * </li>
+     * <li>The effect of the binding is to intercept {@linkplain EventHandlerNode execution events}
+     * arriving at the "probed" AST Node and notify each attached {@link ProbeInstrument} before
+     * execution is allowed to proceed to the child and again after execution completes.</li>
+     *
+     * <li>The method {@link Instrumenter#probe(Node)} creates a Probe on an AST Node; redundant
+     * calls return the same Probe.</li>
+     *
+     * <li>The "probing" of a Truffle AST must be done after the AST is complete (i.e. parent
+     * pointers correctly assigned), but before any cloning or executions. This is done by applying
+     * instances of {@link ASTProber} provided by each language implementation, combined with any
+     * instances registered by tools via {@link Instrumenter#registerASTProber(ASTProber)}. Once
+     * registered, these will be applied automatically to every newly created AST.</li>
+     *
+     * <li>The "probing" of an AST Node is implemented by insertion of a
+     * {@link ProbeNode.WrapperNode} into the AST (as new parent of the Node being probed), together
+     * with an associated {@link ProbeNode} that routes execution events at the probed Node to all
+     * the {@linkplain ProbeInstrument Instruments} attached to the Probe's
+     * <em>instrument chain</em>.</li>
+     *
+     * <li>When Truffle clones an AST, any attached WrapperNodes and ProbeNodes are cloned as well,
+     * together with their attached instrument chains. Each Probe instance intercepts cloning events
+     * and keeps track of all AST copies.</li>
+     *
+     * <li>All attached {@link InstrumentationNode}s effectively become part of the running program:
+     * <ul>
+     * <li>Good News: instrumentation code implicitly benefits from every kind of Truffle
+     * optimization.</li>
+     * <li>Bad News: instrumentation code must be implemented carefully to avoid interfering with
+     * any Truffle optimizations.</li>
+     * </ul>
+     * </li>
+     * </ul>
      */
-    Probe(Class<? extends TruffleLanguage> l, ProbeNode probeNode, SourceSection sourceSection) {
+    Probe(Instrumenter instrumenter, Class<? extends TruffleLanguage> l, ProbeNode probeNode, SourceSection sourceSection) {
+        this.instrumenter = instrumenter;
         this.sourceSection = sourceSection;
-        probes.add(new WeakReference<>(this));
         registerProbeNodeClone(probeNode);
-        if (TRACE) {
-            final String location = this.sourceSection == null ? "<unknown>" : sourceSection.getShortDescription();
-            trace("ADDED %s %s %s", "Probe@", location, getTagsDescription());
-        }
-        for (ProbeListener listener : probeListeners) {
-            listener.newProbeInserted(this);
-        }
         this.language = l;
-    }
-
-    /**
-     * Is this node tagged as belonging to a particular human-sensible category of language
-     * constructs?
-     */
-    public boolean isTaggedAs(SyntaxTag tag) {
-        assert tag != null;
-        return tags.contains(tag);
-    }
-
-    /**
-     * In which user-sensible categories has this node been tagged (<em>empty set</em> if none).
-     */
-    public Collection<SyntaxTag> getSyntaxTags() {
-        return Collections.unmodifiableCollection(tags);
     }
 
     /**
@@ -351,21 +165,21 @@ public final class Probe {
         assert tag != null;
         if (!tags.contains(tag)) {
             tags.add(tag);
-            for (ProbeListener listener : probeListeners) {
-                listener.probeTaggedAs(this, tag, tagValue);
-            }
+            instrumenter.tagAdded(this, tag, tagValue);
 
-            // Update the status of this Probe with respect to global tag traps
-            boolean tagTrapsChanged = false;
-            if (beforeTagTrap != null && tag == beforeTagTrap.getTag()) {
-                this.isBeforeTrapActive = true;
-                tagTrapsChanged = true;
+            // Update the status of this Probe with respect to global TagInstruments
+            boolean tagInstrumentsChanged = false;
+            final BeforeTagInstrument beforeTagInstrument = instrumenter.getBeforeTagInstrument();
+            if (beforeTagInstrument != null && tag == beforeTagInstrument.getTag()) {
+                this.isBeforeTagInstrumentActive = true;
+                tagInstrumentsChanged = true;
             }
-            if (afterTagTrap != null && tag == afterTagTrap.getTag()) {
-                this.isAfterTrapActive = true;
-                tagTrapsChanged = true;
+            final AfterTagInstrument afterTagInstrument = instrumenter.getAfterTagInstrument();
+            if (afterTagInstrument != null && tag == afterTagInstrument.getTag()) {
+                this.isAfterTagInstrumentActive = true;
+                tagInstrumentsChanged = true;
             }
-            if (tagTrapsChanged) {
+            if (tagInstrumentsChanged) {
                 invalidateProbeUnchanged();
             }
             if (TRACE) {
@@ -375,12 +189,29 @@ public final class Probe {
     }
 
     /**
+     * Is the <em>Probed node</em> tagged as belonging to a particular human-sensible category of
+     * language constructs?
+     */
+    public boolean isTaggedAs(SyntaxTag tag) {
+        assert tag != null;
+        return tags.contains(tag);
+    }
+
+    /**
+     * In which user-sensible categories has the <em>Probed node</em> been tagged (
+     * <em>empty set</em> if none).
+     */
+    public Collection<SyntaxTag> getSyntaxTags() {
+        return Collections.unmodifiableCollection(tags);
+    }
+
+    /**
      * Adds instrumentation at this Probe.
      *
      * @param instrument an instrument not yet attached to a probe
      * @throws IllegalStateException if the instrument has ever been attached before
      */
-    public void attach(Instrument instrument) throws IllegalStateException {
+    void attach(ProbeInstrument instrument) throws IllegalStateException {
         if (instrument.isDisposed()) {
             throw new IllegalStateException("Attempt to attach disposed instrument");
         }
@@ -398,8 +229,8 @@ public final class Probe {
     }
 
     /**
-     * Gets the {@link SourceSection} associated with the Guest Language AST node being
-     * instrumented, possibly {@code null}.
+     * Gets the {@link SourceSection} associated with the <en>Probed AST node</em>, possibly
+     * {@code null}.
      */
     public SourceSection getProbedSourceSection() {
         return sourceSection;
@@ -416,9 +247,9 @@ public final class Probe {
      *
      * @param instrument an instrument already attached
      * @throws IllegalStateException if instrument not attached at this Probe
-     * @see Instrument#dispose()
+     * @see ProbeInstrument#dispose()
      */
-    void disposeInstrument(Instrument instrument) throws IllegalStateException {
+    void disposeInstrument(ProbeInstrument instrument) throws IllegalStateException {
         for (WeakReference<ProbeNode> ref : probeNodeClones) {
             final ProbeNode probeNode = ref.get();
             if (probeNode != null) {
@@ -437,25 +268,27 @@ public final class Probe {
     }
 
     /**
-     * Gets the currently active <strong><em>before</em></strong> {@linkplain SyntaxTagTrap Tag
-     * Trap} at this Probe. Non{@code -null} if the global
-     * {@linkplain Probe#setBeforeTagTrap(SyntaxTagTrap) Before Tag Trap} is set and if this Probe
-     * holds the {@link SyntaxTag} specified in the trap.
+     * Gets the currently active {@linkplain BeforeTagInstrument} at this Probe. Non{@code -null} if
+     * the global {@linkplain BeforeTagInstrument} is set and if this Probe holds the
+     * {@link SyntaxTag} specified in the instrument.
      */
-    SyntaxTagTrap getBeforeTrap() {
+    BeforeTagInstrument getBeforeTagInstrument() {
         checkProbeUnchanged();
-        return isBeforeTrapActive ? beforeTagTrap : null;
+        return isBeforeTagInstrumentActive ? instrumenter.getBeforeTagInstrument() : null;
     }
 
     /**
-     * Gets the currently active <strong><em>after</em></strong> {@linkplain SyntaxTagTrap Tag Trap}
-     * at this Probe. Non{@code -null} if the global
-     * {@linkplain Probe#setAfterTagTrap(SyntaxTagTrap) After Tag Trap} is set and if this Probe
-     * holds the {@link SyntaxTag} specified in the trap.
+     * Gets the currently active {@linkplain AfterTagInstrument} at this Probe. Non{@code -null} if
+     * the global {@linkplain BeforeTagInstrument} is set and if this Probe holds the
+     * {@link SyntaxTag} specified in the instrument.
      */
-    SyntaxTagTrap getAfterTrap() {
+    AfterTagInstrument getAfterTagInstrument() {
         checkProbeUnchanged();
-        return isAfterTrapActive ? afterTagTrap : null;
+        return isAfterTagInstrumentActive ? instrumenter.getAfterTagInstrument() : null;
+    }
+
+    Class<? extends TruffleLanguage> getLanguage() {
+        return language;
     }
 
     /**
@@ -476,13 +309,15 @@ public final class Probe {
         probeStateUnchangedCyclic.invalidate();
     }
 
-    private void notifyTrapsChanged() {
-        this.isBeforeTrapActive = beforeTagTrap != null && this.isTaggedAs(beforeTagTrap.getTag());
-        this.isAfterTrapActive = afterTagTrap != null && this.isTaggedAs(afterTagTrap.getTag());
+    void notifyTagInstrumentsChanged() {
+        final BeforeTagInstrument beforeTagInstrument = instrumenter.getBeforeTagInstrument();
+        this.isBeforeTagInstrumentActive = beforeTagInstrument != null && this.isTaggedAs(beforeTagInstrument.getTag());
+        final AfterTagInstrument afterTagInstrument = instrumenter.getAfterTagInstrument();
+        this.isAfterTagInstrumentActive = afterTagInstrument != null && this.isTaggedAs(afterTagInstrument.getTag());
         invalidateProbeUnchanged();
     }
 
-    private String getTagsDescription() {
+    String getTagsDescription() {
         final StringBuilder sb = new StringBuilder();
         sb.append("[");
         String prefix = "";
@@ -494,18 +329,4 @@ public final class Probe {
         sb.append("]");
         return sb.toString();
     }
-
-    static final class AccessorInstrument extends Accessor {
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
-            return super.findLanguage(n);
-        }
-
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
-            return probe.language;
-        }
-    }
-
-    static final AccessorInstrument ACCESSOR = new AccessorInstrument();
 }

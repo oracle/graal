@@ -43,9 +43,9 @@ package com.oracle.truffle.sl.nodes;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
@@ -69,8 +69,8 @@ public final class SLRootNode extends RootNode {
     @CompilationFinal private boolean isCloningAllowed;
 
     @SuppressWarnings("unused")
-    public SLRootNode(SLContext ignore, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, String name) {
-        super(SLLanguage.class, null, frameDescriptor);
+    public SLRootNode(SLContext ignore, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
+        super(SLLanguage.class, sourceSection, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
     }
@@ -89,18 +89,9 @@ public final class SLRootNode extends RootNode {
         this.isCloningAllowed = isCloningAllowed;
     }
 
-    public SLExpressionNode getBodyNode() {
-        return bodyNode;
-    }
-
     @Override
     public boolean isCloningAllowed() {
         return isCloningAllowed;
-    }
-
-    @Override
-    public void applyInstrumentation() {
-        Probe.applyASTProbers(bodyNode);
     }
 
     @Override

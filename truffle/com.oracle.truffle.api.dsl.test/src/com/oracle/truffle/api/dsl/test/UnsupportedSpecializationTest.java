@@ -22,6 +22,13 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import java.util.List;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.ShortCircuit;
@@ -31,13 +38,21 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.Unsupported1Factory;
 import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.Unsupported2Factory;
+import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
-import java.util.List;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class UnsupportedSpecializationTest {
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testUnsupported1() {

@@ -24,13 +24,13 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * A marker interface for Truffle {@linkplain Node nodes} that internally implement the
- * <em>Instrumentation Framework</em>. Such nodes should not be part of any Guest Language execution
- * semantics, and should in general not be visible to ordinary Instrumentation clients.
+ * A marker interface for the Truffle {@linkplain Node Nodes} that internally implement the
+ * {@linkplain Instrumenter Instrumentation Framework} . Such nodes should not be part of any Guest
+ * Language execution semantics, and should in general not be visible to ordinary Instrumentation
+ * clients.
  */
 public interface InstrumentationNode {
 
@@ -39,30 +39,4 @@ public interface InstrumentationNode {
      */
     String instrumentationInfo();
 
-    /**
-     * Events that propagate through the {@linkplain InstrumentationNode implementation nodes} of
-     * the Instrumentation Framework, not visible in this form to Instrumentation clients.
-     */
-    interface TruffleEvents {
-
-        /**
-         * An AST node's execute method is about to be called.
-         */
-        void enter(Node node, VirtualFrame vFrame);
-
-        /**
-         * An AST Node's {@code void}-valued execute method has just returned.
-         */
-        void returnVoid(Node node, VirtualFrame vFrame);
-
-        /**
-         * An AST Node's execute method has just returned a value (boxed if primitive).
-         */
-        void returnValue(Node node, VirtualFrame vFrame, Object result);
-
-        /**
-         * An AST Node's execute method has just thrown an exception.
-         */
-        void returnExceptional(Node node, VirtualFrame vFrame, Exception exception);
-    }
 }

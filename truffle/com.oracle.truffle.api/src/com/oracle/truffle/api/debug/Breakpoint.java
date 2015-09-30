@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.instrument.Instrument;
+import java.io.IOException;
+
+import javax.sound.midi.Instrument;
+
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.source.Source;
-import java.io.IOException;
 
 /**
  * Breakpoint in a {@link com.oracle.truffle.api.vm.PolyglotEngine} with
@@ -115,8 +118,8 @@ public abstract class Breakpoint {
     }
 
     /**
-     * Enables or disables this breakpoint's AST instrumentation. The breakpoint is enabled by
-     * default.
+     * Enables or disables this breakpoint's AST {@linkplain Instrumenter instrumentation}. The
+     * breakpoint is enabled by default.
      *
      * @param enabled <code>true</code> to activate the instrumentation, <code>false</code> to
      *            deactivate the instrumentation so that it has no effect.

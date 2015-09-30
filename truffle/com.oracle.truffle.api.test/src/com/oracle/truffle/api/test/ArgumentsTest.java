@@ -22,14 +22,18 @@
  */
 package com.oracle.truffle.api.test;
 
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.junit.Assert;
-import org.junit.Test;
+import com.oracle.truffle.api.test.utilities.InstrumentationTestMode;
 
 /**
  * <h3>Passing Arguments</h3>
@@ -53,6 +57,16 @@ import org.junit.Test;
  * </p>
  */
 public class ArgumentsTest {
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void test() {

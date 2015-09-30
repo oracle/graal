@@ -40,14 +40,17 @@
  */
 package com.oracle.truffle.sl.nodes.instrument;
 
-import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.InstrumentationNode;
-import com.oracle.truffle.api.instrument.Probe;
 import static com.oracle.truffle.api.instrument.StandardSyntaxTag.ASSIGNMENT;
 import static com.oracle.truffle.api.instrument.StandardSyntaxTag.START_LOOP;
 import static com.oracle.truffle.api.instrument.StandardSyntaxTag.STATEMENT;
+
+import com.oracle.truffle.api.instrument.ASTProber;
+import com.oracle.truffle.api.instrument.InstrumentationNode;
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLWhileNode;
@@ -55,41 +58,41 @@ import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 
 /**
  * A visitor which traverses a completely parsed Simple AST (presumed not yet executed) and enables
- * instrumentation at a few standard kinds of nodes.
+ * {@linkplain Instrumenter Instrumentation} at a few standard kinds of nodes.
  */
-public class SLStandardASTProber implements NodeVisitor, ASTProber {
+public class SLStandardASTProber implements ASTProber {
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Instruments and tags all relevant {@link SLStatementNode}s and {@link SLExpressionNode}s.
-     * Currently, only SLStatementNodes that are not SLExpressionNodes are tagged as statements.
-     */
-    public boolean visit(Node node) {
+    public void probeAST(final Instrumenter instrumenter, RootNode startNode) {
+        startNode.accept(new NodeVisitor() {
 
-        if (!(node instanceof InstrumentationNode) && node instanceof SLStatementNode && node.getParent() != null && node.getSourceSection() != null) {
-            // All SL nodes are instrumentable, but treat expressions specially
+            /**
+             * Instruments and tags all relevant {@link SLStatementNode}s and
+             * {@link SLExpressionNode}s. Currently, only SLStatementNodes that are not
+             * SLExpressionNodes are tagged as statements.
+             */
+            public boolean visit(Node node) {
 
-            if (node instanceof SLExpressionNode) {
-                SLExpressionNode expressionNode = (SLExpressionNode) node;
-                Probe probe = expressionNode.probe();
-                if (node instanceof SLWriteLocalVariableNode) {
-                    probe.tagAs(STATEMENT, null);
-                    probe.tagAs(ASSIGNMENT, null);
+                if (!(node instanceof InstrumentationNode) && node instanceof SLStatementNode && node.getParent() != null && node.getSourceSection() != null) {
+                    // All SL nodes are instrumentable, but treat expressions specially
+
+                    if (node instanceof SLExpressionNode) {
+                        SLExpressionNode expressionNode = (SLExpressionNode) node;
+                        final Probe probe = instrumenter.probe(expressionNode);
+                        if (node instanceof SLWriteLocalVariableNode) {
+                            probe.tagAs(STATEMENT, null);
+                            probe.tagAs(ASSIGNMENT, null);
+                        }
+                    } else {
+                        SLStatementNode statementNode = (SLStatementNode) node;
+                        final Probe probe = instrumenter.probe(statementNode);
+                        probe.tagAs(STATEMENT, null);
+                        if (node instanceof SLWhileNode) {
+                            probe.tagAs(START_LOOP, null);
+                        }
+                    }
                 }
-            } else {
-                SLStatementNode statementNode = (SLStatementNode) node;
-                Probe probe = statementNode.probe();
-                probe.tagAs(STATEMENT, null);
-                if (node instanceof SLWhileNode) {
-                    probe.tagAs(START_LOOP, null);
-                }
+                return true;
             }
-        }
-        return true;
-    }
-
-    public void probeAST(Node node) {
-        node.accept(this);
+        });
     }
 }

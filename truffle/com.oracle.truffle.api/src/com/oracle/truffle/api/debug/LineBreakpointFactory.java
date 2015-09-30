@@ -24,30 +24,12 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import static com.oracle.truffle.api.debug.Breakpoint.State.DISABLED;
 import static com.oracle.truffle.api.debug.Breakpoint.State.DISABLED_UNRESOLVED;
 import static com.oracle.truffle.api.debug.Breakpoint.State.DISPOSED;
 import static com.oracle.truffle.api.debug.Breakpoint.State.ENABLED;
 import static com.oracle.truffle.api.debug.Breakpoint.State.ENABLED_UNRESOLVED;
-import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
-import com.oracle.truffle.api.debug.Debugger.WarningLog;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.Instrument;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
-import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.LineLocation;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -58,6 +40,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
+import com.oracle.truffle.api.debug.Debugger.WarningLog;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
+import com.oracle.truffle.api.instrument.ProbeInstrument;
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrument.SyntaxTag;
+import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
+import com.oracle.truffle.api.instrument.impl.DefaultStandardInstrumentListener;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.LineLocation;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
+
 //TODO (mlvdv) some common functionality could be factored out of this and TagBreakpointSupport
 
 /**
@@ -67,9 +70,9 @@ import java.util.Map.Entry;
  * <ol>
  * <li>Line breakpoints can only be set at nodes tagged as {@link StandardSyntaxTag#STATEMENT}.</li>
  * <li>A newly created breakpoint looks for probes matching the location, attaches to them if found
- * by installing an {@link Instrument} that calls back to the breakpoint.</li>
- * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link Instrument} will be
- * copied along with the rest of the AST and will call back to the same breakpoint.</li>
+ * by installing an {@link ProbeInstrument} that calls back to the breakpoint.</li>
+ * <li>When Truffle "splits" or otherwise copies an AST, any attached {@link ProbeInstrument} will
+ * be copied along with the rest of the AST and will call back to the same breakpoint.</li>
  * <li>When notification is received of a new Node being tagged as a statement, and if a
  * breakpoint's line location matches the Probe's line location, then the breakpoint will attach a
  * new Instrument at the probe to activate the breakpoint at that location.</li>
@@ -83,7 +86,7 @@ final class LineBreakpointFactory {
     private static final boolean TRACE = false;
     private static final PrintStream OUT = System.out;
 
-    private static final String BREAKPOINT_NAME = "LINE BREAKPOINT";
+    private static final String BREAKPOINT_NAME = "Line Breakpoints";
 
     @TruffleBoundary
     private static void trace(String format, Object... args) {
@@ -106,6 +109,7 @@ final class LineBreakpointFactory {
         }
     };
 
+    private final Debugger debugger;
     private final BreakpointCallback breakpointCallback;
     private final WarningLog warningLog;
 
@@ -127,17 +131,17 @@ final class LineBreakpointFactory {
      */
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
-    private final Debugger debugger;
 
     LineBreakpointFactory(Debugger debugger, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
         this.debugger = debugger;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
 
-        lineToProbesMap = new LineToProbesMap();
-        lineToProbesMap.install();
+        final Instrumenter instrumenter = debugger.getInstrumenter();
+        this.lineToProbesMap = new LineToProbesMap();
+        instrumenter.install(lineToProbesMap);
 
-        Probe.addProbeListener(new DefaultProbeListener() {
+        instrumenter.addProbeListener(new DefaultProbeListener() {
 
             @Override
             public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
@@ -288,7 +292,7 @@ final class LineBreakpointFactory {
          * The instrument(s) that this breakpoint currently has attached to a {@link Probe}:
          * {@code null} if not attached.
          */
-        private List<Instrument> instruments = new ArrayList<>();
+        private List<ProbeInstrument> instruments = new ArrayList<>();
 
         public LineBreakpointImpl(int ignoreCount, LineLocation lineLocation, boolean oneShot) {
             super(ENABLED_UNRESOLVED, ignoreCount, oneShot);
@@ -343,7 +347,7 @@ final class LineBreakpointFactory {
             if (this.conditionExpr != null || expr != null) {
                 // De-instrument the Probes instrumented by this breakpoint
                 final ArrayList<Probe> probes = new ArrayList<>();
-                for (Instrument instrument : instruments) {
+                for (ProbeInstrument instrument : instruments) {
                     probes.add(instrument.getProbe());
                     instrument.dispose();
                 }
@@ -365,7 +369,7 @@ final class LineBreakpointFactory {
         @Override
         public void dispose() {
             if (getState() != DISPOSED) {
-                for (Instrument instrument : instruments) {
+                for (ProbeInstrument instrument : instruments) {
                     instrument.dispose();
                 }
                 changeState(DISPOSED);
@@ -377,13 +381,13 @@ final class LineBreakpointFactory {
             if (getState() == DISPOSED) {
                 throw new IllegalStateException("Attempt to attach a disposed " + BREAKPOINT_NAME);
             }
-            Instrument newInstrument = null;
+            ProbeInstrument newInstrument = null;
+            final Instrumenter instrumenter = debugger.getInstrumenter();
             if (conditionExpr == null) {
-                newInstrument = Instrument.create(new UnconditionalLineBreakInstrumentListener(), BREAKPOINT_NAME);
+                newInstrument = instrumenter.attach(newProbe, new UnconditionalLineBreakInstrumentListener(), BREAKPOINT_NAME);
             } else {
-                newInstrument = Instrument.create(this, debugger.createAdvancedInstrumentRootFactory(newProbe, conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
+                newInstrument = instrumenter.attach(newProbe, this, debugger.createAdvancedInstrumentRootFactory(newProbe, conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
             }
-            newProbe.attach(newInstrument);
             instruments.add(newInstrument);
             changeState(isEnabled ? ENABLED : DISABLED);
         }
@@ -442,7 +446,7 @@ final class LineBreakpointFactory {
             }
         }
 
-        public void notifyResult(Node node, VirtualFrame vFrame, Object result) {
+        public void onExecution(Node node, VirtualFrame vFrame, Object result) {
             final boolean condition = (Boolean) result;
             if (TRACE) {
                 trace("breakpoint condition = %b  %s", condition, getShortDescription());
@@ -452,7 +456,7 @@ final class LineBreakpointFactory {
             }
         }
 
-        public void notifyFailure(Node node, VirtualFrame vFrame, RuntimeException ex) {
+        public void onFailure(Node node, VirtualFrame vFrame, RuntimeException ex) {
             addExceptionWarning(ex);
             if (TRACE) {
                 trace("breakpoint failure = %s  %s", ex, getShortDescription());
@@ -479,7 +483,7 @@ final class LineBreakpointFactory {
         private final class UnconditionalLineBreakInstrumentListener extends DefaultStandardInstrumentListener {
 
             @Override
-            public void enter(Probe probe, Node node, VirtualFrame vFrame) {
+            public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
                 LineBreakpointImpl.this.nodeEnter(node, vFrame);
             }
         }

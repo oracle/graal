@@ -42,11 +42,9 @@ package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
 /**
@@ -94,15 +92,4 @@ public abstract class SLExpressionNode extends SLStatementNode {
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.expectBoolean(executeGeneric(frame));
     }
-
-    @Override
-    public boolean isInstrumentable() {
-        return true;
-    }
-
-    @Override
-    public WrapperNode createWrapperNode() {
-        return new SLExpressionWrapperNode(this);
-    }
-
 }

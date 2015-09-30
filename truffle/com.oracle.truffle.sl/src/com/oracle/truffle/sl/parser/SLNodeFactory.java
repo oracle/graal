@@ -40,8 +40,15 @@
  */
 package com.oracle.truffle.sl.parser;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -80,11 +87,6 @@ import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNodeGen;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNodeGen;
 import com.oracle.truffle.sl.runtime.SLContext;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Helper class used by the SL {@link Parser} to create nodes. The code is factored out of the
@@ -166,8 +168,7 @@ public class SLNodeFactory {
         assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
         final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(functionSrc, methodBlock);
-        final SLRootNode rootNode = new SLRootNode(this.context, frameDescriptor, functionBodyNode, functionName);
-        rootNode.assignSourceSection(functionSrc);
+        final SLRootNode rootNode = new SLRootNode(this.context, frameDescriptor, functionBodyNode, functionSrc, functionName);
 
         context.getFunctionRegistry().register(functionName, rootNode);
 
@@ -346,7 +347,8 @@ public class SLNodeFactory {
     /**
      * Returns a {@link SLReadLocalVariableNode} if this read is a local variable or a
      * {@link SLFunctionLiteralNode} if this read is global. In Simple, the only global names are
-     * functions. </br> There is currently no instrumentation for this node.
+     * functions. </br> There is currently no instrumentation{@linkplain Instrumenter
+     * Instrumentation} for this node.
      *
      * @param nameToken The name of the variable/function being read
      * @return either:

@@ -45,7 +45,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 
@@ -56,7 +58,7 @@ import java.io.IOException;
 public abstract class SLReadlnBuiltin extends SLBuiltinNode {
 
     public SLReadlnBuiltin() {
-        super(SourceSection.createUnavailable("SL builtin", "readln"));
+        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "readln"));
     }
 
     @Specialization

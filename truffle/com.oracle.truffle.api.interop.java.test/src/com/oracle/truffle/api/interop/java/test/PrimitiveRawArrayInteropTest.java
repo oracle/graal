@@ -26,9 +26,13 @@ package com.oracle.truffle.api.interop.java.test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+
 import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -79,6 +83,12 @@ public class PrimitiveRawArrayInteropTest {
     public void initObjects() {
         obj = JavaInterop.asTruffleObject(this);
         interop = JavaInterop.asJavaObject(RawInterop.class, obj);
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() {
+        InstrumentationTestMode.set(false);
     }
 
     @Test

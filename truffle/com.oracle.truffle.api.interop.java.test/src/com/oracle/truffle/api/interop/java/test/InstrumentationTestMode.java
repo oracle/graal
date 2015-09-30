@@ -22,24 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrument;
+package com.oracle.truffle.api.interop.java.test;
 
-/**
- * Access to language-specific information and execution services for external tools.
- */
-public interface ToolSupportProvider {
+import static org.junit.Assert.fail;
 
-    /**
-     * Gets visualization services for language-specific information.
-     */
-    Visualizer getVisualizer();
+import java.lang.reflect.Field;
 
-    /**
-     * Enables AST probing on all subsequently created ASTs (sources parsed).
-     *
-     * @param astProber optional AST prober to enable; the default for the language used if
-     *            {@code null}
-     */
-    void enableASTProbing(ASTProber astProber);
+import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
+public class InstrumentationTestMode {
+
+    public static void set(boolean enable) {
+
+        try {
+            final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+            final Field instrumenterField = vm.getClass().getDeclaredField("instrumenter");
+            instrumenterField.setAccessible(true);
+            final Object instrumenter = instrumenterField.get(vm);
+            final java.lang.reflect.Field testVMField = Instrumenter.class.getDeclaredField("testVM");
+            testVMField.setAccessible(true);
+            if (enable) {
+                testVMField.set(instrumenter, vm);
+            } else {
+                testVMField.set(instrumenter, null);
+            }
+        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            fail("Reflective access to Instrumenter for testing");
+        }
+
+    }
 }

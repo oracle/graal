@@ -24,10 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.debug.ExecutionEvent;
-import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,6 +32,11 @@ import java.io.Writer;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * @deprecated

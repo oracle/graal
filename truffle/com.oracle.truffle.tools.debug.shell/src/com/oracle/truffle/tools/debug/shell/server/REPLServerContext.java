@@ -84,10 +84,9 @@ public abstract class REPLServerContext {
     /**
      * @deprecated use {@link #engine()}.
      */
-    @SuppressWarnings("deprecation")
     @Deprecated
-    public com.oracle.truffle.api.vm.TruffleVM vm() {
-        return (com.oracle.truffle.api.vm.TruffleVM) engine();
+    public com.oracle.truffle.api.vm.PolyglotEngine vm() {
+        return engine();
     }
 
     protected abstract Debugger db();
