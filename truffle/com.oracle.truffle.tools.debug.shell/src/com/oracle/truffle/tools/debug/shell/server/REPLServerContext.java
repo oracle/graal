@@ -24,10 +24,6 @@
  */
 package com.oracle.truffle.tools.debug.shell.server;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedEvent;
@@ -39,6 +35,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public abstract class REPLServerContext {
 
@@ -62,6 +62,19 @@ public abstract class REPLServerContext {
      */
     public Node getNodeAtHalt() {
         return event.getNode();
+    }
+
+    /**
+     * Evaluates given code snippet in the context of currently suspended execution.
+     * 
+     * @param code the snippet to evaluate
+     * @param frame <code>null</code> in case the evaluation should happen in top most frame,
+     *            non-null value
+     * @return result of the evaluation
+     * @throws IOException if something goes wrong
+     */
+    public Object eval(String code, FrameInstance frame) throws IOException {
+        return event.eval(code, frame);
     }
 
     /**

@@ -30,7 +30,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -59,10 +58,13 @@ public class DefaultCallTarget implements RootCallTarget {
 
     @Override
     public Object call(Object... args) {
-        final VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
+        final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
         FrameInstance oldCurrentFrame = defaultTruffleRuntime().setCurrentFrame(new FrameInstance() {
 
             public Frame getFrame(FrameAccess access, boolean slowPath) {
+                if (access == FrameAccess.MATERIALIZE) {
+                    return new DefaultMaterializedFrame(frame);
+                }
                 return frame;
             }
 
