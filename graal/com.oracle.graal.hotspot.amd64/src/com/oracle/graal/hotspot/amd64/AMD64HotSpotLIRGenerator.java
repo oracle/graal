@@ -30,7 +30,6 @@ import static com.oracle.graal.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
 import static com.oracle.graal.hotspot.HotSpotBackend.UNCOMMON_TRAP;
 import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
-import static jdk.internal.jvmci.amd64.AMD64.cpuxmmRegisters;
 import static jdk.internal.jvmci.amd64.AMD64.rbp;
 
 import java.util.ArrayList;
@@ -358,7 +357,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public SaveRegistersOp emitSaveAllRegisters() {
         // We are saving all registers.
         // TODO Save upper half of YMM registers.
-        return emitSaveAllRegisters(cpuxmmRegisters, false);
+        return emitSaveAllRegisters(target().arch.getAvailableValueRegisters(), false);
     }
 
     protected void emitRestoreRegisters(AMD64SaveRegistersOp save) {

@@ -53,6 +53,7 @@ import static jdk.internal.jvmci.amd64.AMD64.xmm7;
 import static jdk.internal.jvmci.amd64.AMD64.xmm8;
 import static jdk.internal.jvmci.amd64.AMD64.xmm9;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 
 import jdk.internal.jvmci.code.Register;
@@ -90,16 +91,14 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
             regMap.set(reg.number);
         }
 
-        Register[] allocatableRegisters = new Register[registers.length];
-        int i = 0;
+        ArrayList<Register> allocatableRegisters = new ArrayList<>(registers.length);
         for (Register reg : registerAllocationOrder) {
             if (regMap.get(reg.number)) {
-                allocatableRegisters[i++] = reg;
+                allocatableRegisters.add(reg);
             }
         }
 
-        assert i == allocatableRegisters.length;
-        return super.initAllocatable(allocatableRegisters);
+        return super.initAllocatable(allocatableRegisters.toArray(new Register[allocatableRegisters.size()]));
     }
 
     @Override
