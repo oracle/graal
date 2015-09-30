@@ -127,7 +127,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     private HotSpotTruffleRuntime() {
         setDontInlineCallBoundaryMethod();
-        lookupCallMethods(getHotSpotProviders().getMetaAccess());
 
         installDefaultListeners();
 
@@ -380,8 +379,16 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public boolean platformEnableInfopoints() {
+    protected boolean platformEnableInfopoints() {
         return getCodeCache().shouldDebugNonSafepoints();
+    }
+
+    @Override
+    protected CallMethods getCallMethods() {
+        if (callMethods == null) {
+            lookupCallMethods(getHotSpotProviders().getMetaAccess());
+        }
+        return callMethods;
     }
 
     @Override
