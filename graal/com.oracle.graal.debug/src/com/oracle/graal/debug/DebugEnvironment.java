@@ -34,12 +34,15 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.internal.jvmci.runtime.JVMCI;
 import jdk.internal.jvmci.service.Services;
 
 public class DebugEnvironment {
 
     public static GraalDebugConfig initialize(PrintStream log) {
-
+        // Initialize JVMCI before loading class Debug to make sure, properties are loaded
+        // (especially Debug=...)
+        JVMCI.initialize();
         if (!Debug.isEnabled()) {
             log.println("WARNING: Scope debugging needs to be enabled with -esa or -D" + Debug.Initialization.INITIALIZER_PROPERTY_NAME + "=true");
             return null;
