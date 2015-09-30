@@ -14,7 +14,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "df6a1647cfb3a789ed2d167c265b9a45d3da57bd",
+               "version" : "71ec6de11cea65ab4ef7dca73aae10637dd6ceb8",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
