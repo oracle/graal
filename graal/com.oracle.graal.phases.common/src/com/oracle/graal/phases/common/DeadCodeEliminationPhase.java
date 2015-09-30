@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Options.ReduceDCE;
-
 import java.util.function.BiConsumer;
 
 import jdk.internal.jvmci.options.Option;
@@ -75,7 +73,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     @Override
     public void run(StructuredGraph graph) {
-        if (optional && ReduceDCE.getValue()) {
+        if (optional && Options.ReduceDCE.getValue()) {
             return;
         }
 

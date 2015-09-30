@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.common;
 
-import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.LIREagerSSADestruction;
 import jdk.internal.jvmci.options.DerivedOptionValue;
 import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
 import jdk.internal.jvmci.options.Option;
@@ -79,7 +78,7 @@ public final class BackendOptions {
             if (UserOptions.LIROptSSILinearScan.getValue()) {
                 return LSRAVariant.SSI_LSRA;
             }
-            if (GraalOptions.SSA_LIR.getValue() && !LIREagerSSADestruction.getValue()) {
+            if (GraalOptions.SSA_LIR.getValue() && !UserOptions.LIREagerSSADestruction.getValue()) {
                 return LSRAVariant.SSA_LSRA;
             }
             return LSRAVariant.NONSSA_LSAR;
