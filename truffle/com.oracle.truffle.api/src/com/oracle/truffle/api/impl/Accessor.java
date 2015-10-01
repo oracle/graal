@@ -209,6 +209,7 @@ public abstract class Accessor {
         return API.createWrapperNode(node, language);
     }
 
+    @Deprecated
     @SuppressWarnings("rawtypes")
     protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr, AdvancedInstrumentResultListener resultListener)
                     throws IOException {

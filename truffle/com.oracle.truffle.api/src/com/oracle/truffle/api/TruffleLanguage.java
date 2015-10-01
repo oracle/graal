@@ -478,6 +478,14 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr,
+                        AdvancedInstrumentResultListener resultListener) throws IOException {
+
+            final TruffleLanguage language = findLanguageImpl(vm, languageClass);
+            return language.createAdvancedInstrumentRootFactory(expr, resultListener);
+        }
+
+        @Override
         protected Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
             return env.langCtx.findExportedSymbol(globalName, onlyExplicit);
         }

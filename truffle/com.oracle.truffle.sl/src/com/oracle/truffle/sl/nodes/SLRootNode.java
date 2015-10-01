@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.nodes;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -97,5 +98,9 @@ public final class SLRootNode extends RootNode {
     @Override
     public String toString() {
         return "root " + name;
+    }
+
+    public Node getBodyNode() {
+        return bodyNode;
     }
 }

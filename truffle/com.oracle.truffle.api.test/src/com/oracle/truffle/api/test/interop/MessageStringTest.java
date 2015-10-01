@@ -22,17 +22,22 @@
  */
 package com.oracle.truffle.api.test.interop;
 
-import com.oracle.truffle.api.interop.Message;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
+
+import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.Message;
+
 public class MessageStringTest {
+
     @Test
     public void testFields() throws Exception {
         for (Field f : Message.class.getFields()) {
@@ -83,6 +88,7 @@ public class MessageStringTest {
         }
     }
 
+    @Ignore
     @Test
     public void specialMessagePersitance() {
         SpecialMsg msg = new SpecialMsg();
