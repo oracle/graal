@@ -162,10 +162,12 @@ public final class TruffleVM extends PolyglotEngine {
 
     @Override
     void dispatchSuspendedEvent(SuspendedEvent event) {
+        super.dispatchSuspendedEvent(event);
     }
 
     @Override
     void dispatchExecutionEvent(ExecutionEvent event) {
+        super.dispatchExecutionEvent(event);
     }
 
     @Deprecated
