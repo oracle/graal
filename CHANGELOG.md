@@ -5,7 +5,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## `tip`
 ### Truffle
-...
+* The Instrumentation Framework has been revised and has new APIs that are integrated into the PolyglotEngine.
+  * Instrumention support required of language implementatins is specified as abstract methods on TruffleLanguage.
+  * Clients access instrumentation sevices via an instance of Instrumenter, provided by the Polyglot framework.
 
 ## Version 0.8
 17-Jul-2015, [Repository Revision](http://lafo.ssw.uni-linz.ac.at/hg/truffle/shortlog/graal-0.8)

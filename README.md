@@ -16,14 +16,44 @@ included TruffleDSL provides a convenient way to express such optimizations.
 Truffle is developed and maintained by Oracle Labs and the Institute for System
 Software of the Johannes Kepler University Linz.
 
+## Using Truffle
 
-## Building and Using Truffle
+Truffle official documentation is part of [Truffle javadoc](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/).
+It includes description of common use-cases, references to various tutorials,
+code snippets and more. In case you want to embedded Truffle into your
+application or write your own high speed language interpreter, start
+[here](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/).
 
-Truffle and Graal use the [MX build tool](https://bitbucket.org/allr/mxtool2),
-which is part of this repository. To build Truffle execute:
+Our typicial sample language is called the SimpleLanguage. A good entry point for
+exploring SimpleLanguage is the [SLLanguage class](https://github.com/graalvm/Truffle/blob/master/truffle/com.oracle.truffle.sl/src/com/oracle/truffle/sl/SLLanguage.java).
+In addition to that here are links to presentations, FAQs and papers about
+Graal and Truffle:
+
+  - [Truffle Tutorials and Presentations](https://wiki.openjdk.java.net/display/Graal/Publications+and+Presentations)
+  - [Truffle FAQ and Guidelines](https://wiki.openjdk.java.net/display/Graal/Truffle+FAQ+and+Guidelines)
+  - [Graal VM and Truffle/JS](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html) on the Oracle Technology Network
+  - [Papers on Truffle](http://ssw.jku.at/Research/Projects/JVM/Truffle.html)
+  - [Papers on Graal](http://ssw.jku.at/Research/Projects/JVM/Graal.html)
+
+## Hacking Truffle
+
+Truffle and Graal use the [MX build tool](https://bitbucket.org/allr/mx),
+which needs to be installed before using this repository. To do so execute
+in a clean directory:
 
 ```bash
-./mx.sh build
+$ hg clone https://bitbucket.org/allr/mx
+$ mx/mx
+```
+
+the mx/*mx* command is a wrapper around Python script that serves as our build tool.
+Make sure you put it onto your ''PATH'' and then you can work with Truffle
+sources from a command line:
+
+```bash
+$ mx clean
+$ mx build
+$ mx unittest
 ```
 
 The created `./build` directory contains all necessary jars and source bundles.
@@ -31,10 +61,24 @@ The created `./build` directory contains all necessary jars and source bundles.
   - `truffle-api.jar` contains the framework
   - `truffle-dsl-processor.jar` contains the TruffleDSL annotation processor
 
-### Maven
+You can open Truffle sources in your favorite Java IDE by invoking:
 
-For Maven based projects, prebuilt binaries can be included into a project by
-adding the following dependencies to a `pom.xml`:
+```bash
+$ mx ideinit
+```
+
+the necessary IDE metadata will then be generated into *truffle* subdirectory
+and its folders.
+
+*mx* supports Maven integration. To register prebuilt binaries into local Maven
+repository you can invoke:
+
+```bash
+$ mx build
+$ mx maven-install
+```
+
+and then it is possible to include the artifacts as dependencies to a `pom.xml`:
 
 ```xml
 <dependency>
@@ -50,22 +94,10 @@ adding the following dependencies to a `pom.xml`:
 </dependency>
 ```
 
-## Resources and Documentation
-
-This repository contains the SimpleLanguage, which comes with JavaDoc
-documentation to demonstrate how Truffle is used. A good entry point for
-exploring SimpleLanguage is the [SLLanguage class](https://github.com/OracleLabs/Truffle/blob/master/truffle/com.oracle.truffle.sl/src/com/oracle/truffle/sl/SLLanguage.java).
-
-  - [Truffle Tutorials and Presentations](https://wiki.openjdk.java.net/display/Graal/Publications+and+Presentations)
-  - [Truffle FAQ and Guidelines](https://wiki.openjdk.java.net/display/Graal/Truffle+FAQ+and+Guidelines)
-  - [Graal VM and Truffle/JS](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html) on the Oracle Technology Network
-  - [Papers on Truffle](http://ssw.jku.at/Research/Projects/JVM/Truffle.html)
-  - [Papers on Graal](http://ssw.jku.at/Research/Projects/JVM/Graal.html)
-
 ## Contributing
 
-TODO
-
+You can contact the Truffle developers at graal-dev@openjdk.java.net mailing
+list.
 
 ## License
 

@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.api.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -32,9 +35,11 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -165,5 +170,32 @@ public class FrameTest {
                 throw new IllegalStateException(e);
             }
         }
+    }
+
+    @Test
+    public void framesCanBeMaterialized() {
+        final TruffleRuntime runtime = Truffle.getRuntime();
+
+        class FrameRootNode extends RootNode {
+
+            public FrameRootNode() {
+                super(TestingLanguage.class, null, null);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                FrameInstance frameInstance = runtime.getCurrentFrame();
+                Frame readWrite = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE, true);
+                Frame materialized = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE, true);
+
+                assertTrue("Really materialized: " + materialized, materialized instanceof MaterializedFrame);
+                assertEquals("It's my frame", frame, readWrite);
+                return this;
+            }
+        }
+
+        FrameRootNode frn = new FrameRootNode();
+        Object ret = Truffle.getRuntime().createCallTarget(frn).call();
+        assertEquals("Returns itself", frn, ret);
     }
 }

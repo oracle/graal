@@ -165,7 +165,7 @@ public class PolyglotEngine {
      * <pre>
      * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#buildNew() buildNew()}
      *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
-     *     .{@link Builder#setErr(java.io.OutputStream) setrr}({@link OutputStream yourOutput})
+     *     .{@link Builder#setErr(java.io.OutputStream) setErr}({@link OutputStream yourOutput})
      *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
      *     .{@link Builder#build() build()};
      * </pre>
@@ -191,7 +191,7 @@ public class PolyglotEngine {
      * <pre>
      * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#buildNew() buildNew()}
      *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
-     *     .{@link Builder#setErr(java.io.OutputStream) setrr}({@link OutputStream yourOutput})
+     *     .{@link Builder#setErr(java.io.OutputStream) setErr}({@link OutputStream yourOutput})
      *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
      *     .{@link Builder#build() build()};
      * </pre>
@@ -384,15 +384,7 @@ public class PolyglotEngine {
         if (location.getScheme().equals("file")) {
             File file = new File(location);
             s = Source.fromFileName(file.getPath(), true);
-            if (file.getName().endsWith(".c")) {
-                mimeType = "text/x-c";
-            } else if (file.getName().endsWith(".sl")) {
-                mimeType = "application/x-sl";
-            } else if (file.getName().endsWith(".R") || file.getName().endsWith(".r")) {
-                mimeType = "application/x-r";
-            } else {
-                mimeType = Files.probeContentType(file.toPath());
-            }
+            mimeType = Files.probeContentType(file.toPath());
         } else {
             URL url = location.toURL();
             s = Source.fromURL(url, location.toString());
@@ -673,11 +665,11 @@ public class PolyglotEngine {
      * A future value wrapper. A user level wrapper around values returned by evaluation of various
      * {@link PolyglotEngine} functions like
      * {@link PolyglotEngine#findGlobalSymbol(java.lang.String)} and
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} or value returned by
-     * {@link #invoke(java.lang.Object, java.lang.Object...) sbbsequent of execution}. In case the
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} or a value returned by
+     * {@link #invoke(java.lang.Object, java.lang.Object...) a subsequent execution}. In case the
      * {@link PolyglotEngine} has been initialized for
-     * {@link Builder#executor(java.util.concurrent.Executor) asynchronous excution}, the
-     * {@link Value} represents a future - e.g. it is returned immediately, leaving the execution
+     * {@link Builder#executor(java.util.concurrent.Executor) asynchronous execution}, the
+     * {@link Value} represents a future - i.e., it is returned immediately, leaving the execution
      * running on behind.
      */
     public class Value {
@@ -989,7 +981,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected TruffleLanguage findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz) {
+        protected TruffleLanguage<?> findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz) {
             final PolyglotEngine vm = (PolyglotEngine) obj;
             return vm.findLanguage(languageClazz);
         }

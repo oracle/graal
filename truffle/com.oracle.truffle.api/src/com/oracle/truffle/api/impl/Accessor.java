@@ -37,6 +37,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
@@ -52,7 +54,6 @@ import com.oracle.truffle.api.source.Source;
 /**
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
  */
-@SuppressWarnings("rawtypes")
 public abstract class Accessor {
     private static Accessor API;
     private static Accessor SPI;
@@ -162,6 +163,10 @@ public abstract class Accessor {
         return API.eval(l, s);
     }
 
+    protected Object evalInContext(Object vm, SuspendedEvent ev, String code, FrameInstance frame) throws IOException {
+        return API.evalInContext(vm, ev, code, frame);
+    }
+
     protected Object importSymbol(Object vm, TruffleLanguage<?> queryingLang, String globalName) {
         return SPI.importSymbol(vm, queryingLang, globalName);
     }
@@ -177,6 +182,7 @@ public abstract class Accessor {
     /**
      * Provided by each {@linkplain TruffleLanguage language implementation}.
      */
+    @SuppressWarnings("rawtypes")
     protected boolean isInstrumentable(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
         Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
@@ -184,13 +190,14 @@ public abstract class Accessor {
         return isInstrumentable(node, language);
     }
 
-    protected boolean isInstrumentable(Node node, TruffleLanguage language) {
+    protected boolean isInstrumentable(Node node, TruffleLanguage<?> language) {
         return API.isInstrumentable(node, language);
     }
 
     /**
      * Provided by each {@linkplain TruffleLanguage language implementation}.
      */
+    @SuppressWarnings("rawtypes")
     protected WrapperNode createWrapperNode(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
         Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
@@ -198,23 +205,27 @@ public abstract class Accessor {
         return createWrapperNode(node, language);
     }
 
-    protected WrapperNode createWrapperNode(Node node, TruffleLanguage language) {
+    protected WrapperNode createWrapperNode(Node node, TruffleLanguage<?> language) {
         return API.createWrapperNode(node, language);
     }
 
+    @SuppressWarnings("rawtypes")
     protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr, AdvancedInstrumentResultListener resultListener)
                     throws IOException {
         return API.createAdvancedInstrumentRootFactory(vm, languageClass, expr, resultListener);
     }
 
+    @SuppressWarnings("rawtypes")
     protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
         return NODES.findLanguage(n);
     }
 
+    @SuppressWarnings("rawtypes")
     protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
         return INSTRUMENT.findLanguage(probe);
     }
 
+    @SuppressWarnings("rawtypes")
     protected Env findLanguage(Object known, Class<? extends TruffleLanguage> languageClass) {
         Object vm;
         if (known == null) {
@@ -231,7 +242,8 @@ public abstract class Accessor {
         return SPI.findLanguage(vm, languageClass);
     }
 
-    protected TruffleLanguage findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass) {
+    @SuppressWarnings("rawtypes")
+    protected TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass) {
         Object vm;
         if (known == null) {
             vm = CURRENT_VM.get();
@@ -297,7 +309,7 @@ public abstract class Accessor {
         return oneVM;
     }
 
-    @SuppressWarnings({"unchecked"})
+    @SuppressWarnings({"unchecked", "rawtypes"})
     static <C> C findContext(Class<? extends TruffleLanguage> type) {
         Env env = SPI.findLanguage(CURRENT_VM.get(), type);
         return (C) API.findContext(env);

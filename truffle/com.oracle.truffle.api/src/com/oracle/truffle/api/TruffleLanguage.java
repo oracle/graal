@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
@@ -52,6 +54,7 @@ import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -463,11 +466,15 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr,
-                        AdvancedInstrumentResultListener resultListener) throws IOException {
-
-            final TruffleLanguage language = findLanguageImpl(vm, languageClass);
-            return language.createAdvancedInstrumentRootFactory(expr, resultListener);
+        protected Object evalInContext(Object vm, SuspendedEvent ev, String code, FrameInstance frame) throws IOException {
+            Node n = frame == null ? ev.getNode() : frame.getCallNode();
+            RootNode rootNode = n.getRootNode();
+            Class<? extends TruffleLanguage> languageType = findLanguage(rootNode);
+            Env env = findLanguage(vm, languageType);
+            TruffleLanguage<?> lang = findLanguage(env);
+            Source source = Source.fromText(code, "eval in context");
+            CallTarget target = lang.parse(source, n);
+            return target.call();
         }
 
         @Override
