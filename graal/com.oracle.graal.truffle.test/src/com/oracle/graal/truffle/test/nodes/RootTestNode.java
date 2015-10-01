@@ -25,7 +25,6 @@ package com.oracle.graal.truffle.test.nodes;
 import com.oracle.graal.truffle.test.MockLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -44,11 +43,6 @@ public class RootTestNode extends RootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         return node.execute(frame);
-    }
-
-    @Override
-    public void applyInstrumentation() {
-        Probe.applyASTProbers(node);
     }
 
     @Override

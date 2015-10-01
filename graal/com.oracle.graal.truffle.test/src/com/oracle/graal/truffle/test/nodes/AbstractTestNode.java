@@ -23,23 +23,12 @@
 package com.oracle.graal.truffle.test.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class AbstractTestNode extends Node {
 
     protected AbstractTestNode() {
         super(null);
-    }
-
-    @Override
-    public boolean isInstrumentable() {
-        return true;
-    }
-
-    @Override
-    public WrapperNode createWrapperNode() {
-        return new WrapperTestNode(this);
     }
 
     public abstract int execute(VirtualFrame frame);

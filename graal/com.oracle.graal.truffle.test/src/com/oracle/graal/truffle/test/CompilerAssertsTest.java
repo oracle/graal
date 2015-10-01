@@ -24,7 +24,9 @@ package com.oracle.graal.truffle.test;
 
 import jdk.internal.jvmci.code.BailoutException;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
@@ -45,6 +47,18 @@ public class CompilerAssertsTest extends PartialEvaluationTest {
             return 0;
         }
 
+    }
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @Override
+    @After
+    public void after() {
+        super.after();
+        InstrumentationTestMode.set(false);
     }
 
     public static class CompilationConstantTestNode extends AbstractTestNode {
