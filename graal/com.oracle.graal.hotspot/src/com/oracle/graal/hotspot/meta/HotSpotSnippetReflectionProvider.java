@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.meta;
 
 import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
 import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstantImpl;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
@@ -37,14 +37,16 @@ import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvider {
 
     private final HotSpotGraalRuntimeProvider runtime;
+    private final ConstantReflectionProvider constantReflection;
 
-    public HotSpotSnippetReflectionProvider(HotSpotGraalRuntimeProvider runtime) {
+    public HotSpotSnippetReflectionProvider(HotSpotGraalRuntimeProvider runtime, ConstantReflectionProvider constantReflection) {
         this.runtime = runtime;
+        this.constantReflection = constantReflection;
     }
 
     @Override
     public JavaConstant forObject(Object object) {
-        return HotSpotObjectConstantImpl.forObject(object);
+        return constantReflection.forObject(object);
     }
 
     @Override
@@ -67,7 +69,11 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
 
     @Override
     public JavaConstant forBoxed(JavaKind kind, Object value) {
-        return HotSpotObjectConstantImpl.forBoxedValue(kind, value);
+        if (kind == JavaKind.Object) {
+            return forObject(value);
+        } else {
+            return JavaConstant.forBoxedPrimitive(value);
+        }
     }
 
     public Object getSubstitutionGuardParameter(Class<?> type) {

@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.sparc;
 
 import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
@@ -36,8 +37,8 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 public class SPARCHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
     public SPARCHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    TargetDescription target) {
-        super(runtime, metaAccess, foreignCalls, registers, target);
+                    ConstantReflectionProvider constantReflection, TargetDescription target) {
+        super(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
     }
 
     @Override

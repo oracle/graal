@@ -68,7 +68,7 @@ public class InlineICGPhase extends BasePhase<LowTierContext> {
             instrumentationNode.inlineAt(instrumentationNode);
 
             for (GraalQueryNode query : graph.getNodes().filter(GraalQueryNode.class)) {
-                query.onInlineICG(instrumentationNode, instrumentationNode);
+                query.onInlineICG(instrumentationNode, instrumentationNode, context.getConstantReflection());
             }
 
             GraphUtil.unlinkFixedNode(instrumentationNode);

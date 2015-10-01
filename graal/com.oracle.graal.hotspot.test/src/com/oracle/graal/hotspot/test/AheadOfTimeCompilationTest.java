@@ -30,8 +30,8 @@ import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CallingConvention.Type;
 import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstantImpl;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 import jdk.internal.jvmci.options.OptionValue;
@@ -119,9 +119,8 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asConstant();
-        Assert.assertEquals(Class.class, c.getObjectClass());
-        Assert.assertTrue(c.isEqualTo(AheadOfTimeCompilationTest.class));
+        JavaConstant c = filter.first().asJavaConstant();
+        Assert.assertEquals(getSnippetReflection().asObject(Class.class, c), AheadOfTimeCompilationTest.class);
 
         assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
@@ -148,9 +147,8 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getPrimitiveClassObject", false);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asConstant();
-        Assert.assertEquals(Class.class, c.getObjectClass());
-        Assert.assertTrue(c.isEqualTo(Integer.TYPE));
+        JavaConstant c = filter.first().asJavaConstant();
+        Assert.assertEquals(getSnippetReflection().asObject(Class.class, c), Integer.TYPE);
 
         assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
@@ -176,9 +174,8 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asConstant();
-        Assert.assertEquals(String.class, c.getObjectClass());
-        Assert.assertTrue(c.isEqualTo("test string"));
+        JavaConstant c = filter.first().asJavaConstant();
+        Assert.assertEquals(getSnippetReflection().asObject(String.class, c), "test string");
 
         assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
@@ -210,8 +207,8 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         ConstantNode constant = getConstantNodes(result).first();
         assertDeepEquals(JavaKind.Object, constant.getStackKind());
 
-        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) constant.asConstant();
-        Assert.assertTrue(c.isEqualTo(Boolean.TRUE));
+        JavaConstant c = constant.asJavaConstant();
+        Assert.assertEquals(getSnippetReflection().asObject(Boolean.class, c), Boolean.TRUE);
     }
 
     @SuppressWarnings("try")

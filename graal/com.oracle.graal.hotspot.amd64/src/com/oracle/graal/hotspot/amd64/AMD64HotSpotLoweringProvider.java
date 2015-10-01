@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
@@ -41,8 +42,8 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     private AMD64ConvertSnippets.Templates convertSnippets;
 
     public AMD64HotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    TargetDescription target) {
-        super(runtime, metaAccess, foreignCalls, registers, target);
+                    ConstantReflectionProvider constantReflection, TargetDescription target) {
+        super(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
     }
 
     @Override

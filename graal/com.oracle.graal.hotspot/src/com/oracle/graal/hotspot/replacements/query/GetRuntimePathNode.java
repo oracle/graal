@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements.query;
 
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -63,7 +64,7 @@ public final class GetRuntimePathNode extends GraalQueryNode {
     }
 
     @Override
-    public void onInlineICG(InstrumentationNode instrumentation, FixedNode position) {
+    public void onInlineICG(InstrumentationNode instrumentation, FixedNode position, ConstantReflectionProvider constantReflection) {
         if (instrumentation.target() instanceof AbstractMergeNode) {
             AbstractMergeNode merge = (AbstractMergeNode) instrumentation.target();
 

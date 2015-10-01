@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common.query.nodes;
 
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -40,7 +42,8 @@ public abstract class GraalQueryNode extends FixedWithNextNode {
     public void onExtractICG(@SuppressWarnings("unused") InstrumentationNode instrumentation) {
     }
 
-    public void onInlineICG(@SuppressWarnings("unused") InstrumentationNode instrumentation, @SuppressWarnings("unused") FixedNode position) {
+    public void onInlineICG(@SuppressWarnings("unused") InstrumentationNode instrumentation, @SuppressWarnings("unused") FixedNode position,
+                    @SuppressWarnings("unused") ConstantReflectionProvider constantReflection) {
     }
 
 }
