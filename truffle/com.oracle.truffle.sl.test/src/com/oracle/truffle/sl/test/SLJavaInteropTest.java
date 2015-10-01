@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.test.instrument.InstrumentationTestMode;
 
 import java.io.ByteArrayOutputStream;
@@ -51,6 +52,8 @@ import java.io.ByteArrayOutputStream;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.After;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -74,7 +77,11 @@ public class SLJavaInteropTest {
         PolyglotEngine engine = PolyglotEngine.buildNew().setOut(os).build();
         engine.eval(script);
         PolyglotEngine.Value main = engine.findGlobalSymbol("main");
-        Runnable runnable = JavaInterop.asJavaFunction(Runnable.class, (TruffleObject) main.get());
+        final Object value = main.get();
+        assertTrue("It's truffle object", value instanceof TruffleObject);
+        SLFunction rawFunction = main.as(SLFunction.class);
+        assertNotNull("One can get the type of the inner Truffle Object", rawFunction);
+        Runnable runnable = JavaInterop.asJavaFunction(Runnable.class, (TruffleObject) value);
         runnable.run();
 
         assertEquals("Called!\n", os.toString("UTF-8"));

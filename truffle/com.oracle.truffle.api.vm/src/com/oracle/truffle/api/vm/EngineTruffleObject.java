@@ -49,6 +49,10 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
         return ForeignAccess.create(this);
     }
 
+    TruffleObject getDelegate() {
+        return delegate;
+    }
+
     @Override
     public boolean canHandle(TruffleObject obj) {
         return true;

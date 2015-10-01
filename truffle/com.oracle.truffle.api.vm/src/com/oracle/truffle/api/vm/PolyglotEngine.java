@@ -717,6 +717,12 @@ public class PolyglotEngine {
          */
         public <T> T as(Class<T> representation) throws IOException {
             Object obj = get();
+            if (obj instanceof EngineTruffleObject) {
+                EngineTruffleObject eto = (EngineTruffleObject) obj;
+                if (representation.isInstance(eto.getDelegate())) {
+                    return representation.cast(eto.getDelegate());
+                }
+            }
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
             }
