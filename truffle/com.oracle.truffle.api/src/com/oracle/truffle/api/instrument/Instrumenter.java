@@ -649,7 +649,10 @@ public final class Instrumenter {
         @Override
         protected void probeAST(RootNode rootNode) {
             // Normally null vm argument; can be reflectively set for testing
-            super.getInstrumenter(testVM).probeAST(rootNode);
+            Instrumenter instrumenter = super.getInstrumenter(testVM);
+            if (instrumenter != null) {
+                instrumenter.probeAST(rootNode);
+            }
         }
     }
 

@@ -262,7 +262,7 @@ public abstract class Accessor {
         if (known == null) {
             vm = CURRENT_VM.get();
             if (vm == null) {
-                throw new IllegalStateException("Accessor.getInstrumenter access to vm");
+                return null;
             }
         } else {
             vm = known;
