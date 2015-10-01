@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle.test;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
@@ -33,6 +35,18 @@ public class ReadOnlyArrayListPartialEvaluationTest extends PartialEvaluationTes
 
     public static Object constant42() {
         return 42;
+    }
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @Override
+    @After
+    public void after() {
+        super.after();
+        InstrumentationTestMode.set(false);
     }
 
     @Test

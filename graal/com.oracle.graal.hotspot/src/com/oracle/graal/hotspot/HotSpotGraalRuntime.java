@@ -22,14 +22,12 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
 import static com.oracle.graal.debug.GraalDebugConfig.DebugValueSummary;
 import static com.oracle.graal.debug.GraalDebugConfig.Dump;
 import static com.oracle.graal.debug.GraalDebugConfig.Log;
 import static com.oracle.graal.debug.GraalDebugConfig.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Verify;
 import static com.oracle.graal.debug.GraalDebugConfig.areScopedMetricsOrTimersEnabled;
-import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import static jdk.internal.jvmci.inittimer.InitTimer.timer;
@@ -39,22 +37,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.code.stack.InspectedFrameVisitor;
 import jdk.internal.jvmci.code.stack.StackIntrospection;
 import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotProxified;
-import jdk.internal.jvmci.hotspot.HotSpotStackFrameReference;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.inittimer.InitTimer;
 import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 import jdk.internal.jvmci.runtime.JVMCIBackend;
 
 import com.oracle.graal.api.collections.CollectionsProvider;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.api.runtime.GraalRuntime;
+import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugEnvironment;
@@ -98,8 +93,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         CompileTheWorldOptions.overrideWithNativeOptions(config);
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
-        if (HotSpotPrintInlining.getValue() == false) {
-            HotSpotPrintInlining.setValue(config.printInlining);
+        if (GraalOptions.HotSpotPrintInlining.getValue() == false) {
+            GraalOptions.HotSpotPrintInlining.setValue(config.printInlining);
         }
 
         CompilerConfiguration compilerConfiguration = compilerFactory.createCompilerConfiguration();
@@ -170,7 +165,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             }
         }
 
-        BenchmarkCounters.initialize(jvmciRuntime.getCompilerToVM());
+        BenchmarkCounters.initialize(jvmciRuntime);
 
         assert checkArrayIndexScaleInvariants();
 
@@ -223,20 +218,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return Collections.unmodifiableMap(backends);
     }
 
-    @Override
-    public <T> T iterateFrames(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip, InspectedFrameVisitor<T> visitor) {
-        CompilerToVM compilerToVM = runtime().getCompilerToVM();
-        HotSpotStackFrameReference current = compilerToVM.getNextStackFrame(null, initialMethods, initialSkip);
-        while (current != null) {
-            T result = visitor.visitFrame(current);
-            if (result != null) {
-                return result;
-            }
-            current = compilerToVM.getNextStackFrame(current, matchingMethods, 0);
-        }
-        return null;
-    }
-
     private long runtimeStartTime;
 
     /**
@@ -255,6 +236,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         phaseTransition("final");
 
         SnippetCounter.printGroups(TTY.out().out());
-        BenchmarkCounters.shutdown(compilerToVM(), runtimeStartTime);
+        BenchmarkCounters.shutdown(runtime(), runtimeStartTime);
     }
 }

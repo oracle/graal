@@ -34,7 +34,6 @@ import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterSaveLayout;
 import jdk.internal.jvmci.code.StackSlot;
 import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.code.stack.StackIntrospection;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.Value;
@@ -245,11 +244,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                 info.setCalleeSaveInfo(save.getMap(frameMap));
             }
         }
-    }
-
-    @Override
-    public StackIntrospection getStackIntrospection() {
-        return runtime;
     }
 
     @Override

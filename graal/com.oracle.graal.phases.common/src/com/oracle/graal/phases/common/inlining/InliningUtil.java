@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common.inlining;
 
 import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
 import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.internal.jvmci.meta.DeoptimizationReason.NullCheckException;
 
@@ -94,6 +95,7 @@ import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
+import com.oracle.graal.phases.common.query.nodes.InstrumentationNode;
 
 public class InliningUtil {
 
@@ -363,6 +365,9 @@ public class InliningUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
+        if (UseGraalQueries.getValue()) {
+            removeAttachedInstrumentation(invoke);
+        }
         finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
 
         GraphUtil.killCFG(invokeNode);
@@ -753,4 +758,24 @@ public class InliningUtil {
             throw new GraalGraphJVMCIError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
         }
     }
+
+    // exclude InstrumentationNode for inlining heuristics
+    public static int getNodeCount(StructuredGraph graph) {
+        if (UseGraalQueries.getValue()) {
+            return graph.getNodeCount() - graph.getNodes().filter(InstrumentationNode.class).count();
+        } else {
+            return graph.getNodeCount();
+        }
+    }
+
+    public static void removeAttachedInstrumentation(Invoke invoke) {
+        FixedNode invokeNode = invoke.asNode();
+        for (InstrumentationNode instrumentation : invokeNode.usages().filter(InstrumentationNode.class)) {
+            if (instrumentation.target() == invoke) {
+                GraphUtil.unlinkFixedNode(instrumentation);
+                instrumentation.safeDelete();
+            }
+        }
+    }
+
 }

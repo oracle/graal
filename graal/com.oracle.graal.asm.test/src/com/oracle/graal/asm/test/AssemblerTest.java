@@ -76,7 +76,7 @@ public abstract class AssemblerTest extends GraalTest {
             compResult.setTargetCode(targetCode, targetCode.length);
             compResult.setTotalFrameSize(0);
 
-            InstalledCode code = codeCache.addMethod(method, compResult, null, null);
+            InstalledCode code = codeCache.addCode(method, compResult, null, null);
 
             for (DisassemblerProvider dis : Services.load(DisassemblerProvider.class)) {
                 String disasm1 = dis.disassembleCompiledCode(codeCache, compResult);

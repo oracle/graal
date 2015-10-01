@@ -44,8 +44,8 @@ public interface ForeignCallLinkage extends InvokeTarget {
     CallingConvention getIncomingCallingConvention();
 
     /**
-     * Returns the maximum absolute offset of PC relative call to this stub from any position in the
-     * code cache or -1 when not applicable. Intended for determining the required size of
+     * Returns the maximum absolute offset of a PC relative call to this stub from any position in
+     * the code cache or -1 when not applicable. Intended for determining the required size of
      * address/offset fields.
      */
     long getMaxCallTargetOffset();

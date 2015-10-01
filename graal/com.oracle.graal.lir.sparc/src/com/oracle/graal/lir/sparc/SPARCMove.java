@@ -182,7 +182,7 @@ public class SPARCMove {
 
         @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
-        @Use({STACK, ILLEGAL}) protected AllocatableValue temp;
+        @Temp({STACK, ILLEGAL}) protected AllocatableValue temp;
 
         public MoveFpGp(AllocatableValue result, AllocatableValue input, AllocatableValue temp) {
             super(TYPE, SIZE);

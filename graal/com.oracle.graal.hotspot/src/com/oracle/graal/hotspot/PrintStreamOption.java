@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.hotspot.CompilerToVM.compilerToVM;
-
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -31,7 +29,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 
-import jdk.internal.jvmci.hotspot.CompilerToVM;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.options.OptionValue;
 
 /**
@@ -76,8 +75,49 @@ public class PrintStreamOption extends OptionValue<String> {
     }
 
     /**
+     * An output stream that redirects to {@link HotSpotJVMCIRuntimeProvider#getLogStream()}. The
+     * {@link HotSpotJVMCIRuntimeProvider#getLogStream()} value is only accessed the first time an
+     * IO operation is performed on the stream. This is required to break a deadlock in early JVMCI
+     * initialization.
+     */
+    static class DelayedOutputStream extends OutputStream {
+        private volatile OutputStream lazy;
+
+        private OutputStream lazy() {
+            if (lazy == null) {
+                synchronized (this) {
+                    if (lazy == null) {
+                        lazy = HotSpotJVMCIRuntime.runtime().getLogStream();
+                    }
+                }
+            }
+            return lazy;
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            lazy().write(b, off, len);
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            lazy().write(b);
+        }
+
+        @Override
+        public void flush() throws IOException {
+            lazy().flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            lazy().close();
+        }
+    }
+
+    /**
      * Gets the print stream configured by this option. If no file is configured, the print stream
-     * will output to {@link CompilerToVM#writeDebugOutput(byte[], int, int)}.
+     * will output to HotSpot's {@link HotSpotJVMCIRuntimeProvider#getLogStream() log} stream.
      */
     public PrintStream getStream() {
         if (ps == null) {
@@ -100,39 +140,7 @@ public class PrintStreamOption extends OptionValue<String> {
                     }
                 }
             } else {
-                OutputStream ttyOut = new OutputStream() {
-                    CompilerToVM vm;
-
-                    private CompilerToVM vm() {
-                        if (vm == null) {
-                            vm = compilerToVM();
-                        }
-                        return vm;
-                    }
-
-                    @Override
-                    public void write(byte[] b, int off, int len) throws IOException {
-                        if (b == null) {
-                            throw new NullPointerException();
-                        } else if (off < 0 || off > b.length || len < 0 || (off + len) > b.length || (off + len) < 0) {
-                            throw new IndexOutOfBoundsException();
-                        } else if (len == 0) {
-                            return;
-                        }
-                        vm().writeDebugOutput(b, off, len);
-                    }
-
-                    @Override
-                    public void write(int b) throws IOException {
-                        write(new byte[]{(byte) b}, 0, 1);
-                    }
-
-                    @Override
-                    public void flush() throws IOException {
-                        vm().flushDebugOutput();
-                    }
-                };
-                ps = new PrintStream(ttyOut);
+                ps = new PrintStream(new DelayedOutputStream());
             }
         }
         return ps;

@@ -24,6 +24,7 @@ package com.oracle.graal.compiler;
 
 import static com.oracle.graal.compiler.GraalCompilerOptions.EmitLIRRepeatCount;
 import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
 import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.ALL_REGISTERS;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
@@ -75,6 +76,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import com.oracle.graal.phases.common.query.ExtractICGPhase;
 import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.LowTierContext;
@@ -201,6 +203,9 @@ public class GraalCompiler {
             HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
                 graphBuilderSuite.apply(graph, highTierContext);
+                if (UseGraalQueries.getValue()) {
+                    new ExtractICGPhase().apply(graph, highTierContext);
+                }
                 new DeadCodeEliminationPhase(Optional).apply(graph);
             } else {
                 Debug.dump(graph, "initial state");

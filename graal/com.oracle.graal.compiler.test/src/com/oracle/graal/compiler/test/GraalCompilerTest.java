@@ -779,7 +779,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
-        return getCodeCache().addMethod(method, compResult, null, null);
+        return getCodeCache().addCode(method, compResult, null, null);
     }
 
     private final Map<ResolvedJavaMethod, Method> methodMap = new HashMap<>();

@@ -24,7 +24,6 @@ package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.compiler.common.GraalOptions.EscapeAnalysisIterations;
 import static com.oracle.graal.compiler.common.GraalOptions.EscapeAnalyzeOnly;
-import static com.oracle.graal.virtual.phases.ea.PartialEscapePhase.Options.OptEarlyReadElimination;
 
 import java.util.Set;
 
@@ -55,11 +54,11 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     private final BasePhase<PhaseContext> cleanupPhase;
 
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer) {
-        this(iterative, OptEarlyReadElimination.getValue(), canonicalizer, null);
+        this(iterative, Options.OptEarlyReadElimination.getValue(), canonicalizer, null);
     }
 
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, BasePhase<PhaseContext> cleanupPhase) {
-        this(iterative, OptEarlyReadElimination.getValue(), canonicalizer, cleanupPhase);
+        this(iterative, Options.OptEarlyReadElimination.getValue(), canonicalizer, cleanupPhase);
     }
 
     public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<PhaseContext> cleanupPhase) {

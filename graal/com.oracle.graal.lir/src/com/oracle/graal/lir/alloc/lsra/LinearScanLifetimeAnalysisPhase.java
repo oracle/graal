@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.debug.LIRGenerationDebugContext.getSourceForOperandFromDebugContext;
+import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
 import static jdk.internal.jvmci.code.ValueUtil.isRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
@@ -272,7 +273,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
          */
         if (isRegister(operand) && block != allocator.getLIR().getControlFlowGraph().getStartBlock()) {
             if (allocator.isProcessed(operand)) {
-                assert liveKill.get(allocator.operandNumber(operand)) : "using fixed register that is not defined in this block";
+                assert liveKill.get(allocator.operandNumber(operand)) : "using fixed register " + asRegister(operand) + " that is not defined in this block " + block;
             }
         }
     }

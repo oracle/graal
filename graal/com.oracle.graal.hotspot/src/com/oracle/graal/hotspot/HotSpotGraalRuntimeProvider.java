@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot;
 
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.code.stack.StackIntrospection;
 
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -34,7 +33,7 @@ import com.oracle.graal.runtime.RuntimeProvider;
 /**
  * Configuration information for the HotSpot Graal runtime.
  */
-public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvider, StackIntrospection {
+public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvider {
 
     default TargetDescription getTarget() {
         return getHostBackend().getTarget();

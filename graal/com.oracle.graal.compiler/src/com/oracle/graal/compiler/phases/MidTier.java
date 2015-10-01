@@ -31,6 +31,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.OptFloatingReads;
 import static com.oracle.graal.compiler.common.GraalOptions.OptPushThroughPi;
 import static com.oracle.graal.compiler.common.GraalOptions.OptReadElimination;
 import static com.oracle.graal.compiler.common.GraalOptions.ReassociateInvariants;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
 import static com.oracle.graal.compiler.common.GraalOptions.VerifyHeapAtReturn;
 
 import com.oracle.graal.loop.phases.LoopSafepointEliminationPhase;
@@ -52,6 +53,7 @@ import com.oracle.graal.phases.common.PushThroughPiPhase;
 import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.common.ValueAnchorCleanupPhase;
 import com.oracle.graal.phases.common.VerifyHeapAtReturnPhase;
+import com.oracle.graal.phases.common.query.MidTierReconcileICGPhase;
 import com.oracle.graal.phases.tiers.MidTierContext;
 import com.oracle.graal.virtual.phases.ea.EarlyReadEliminationPhase;
 
@@ -113,6 +115,9 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
+        if (UseGraalQueries.getValue()) {
+            appendPhase(new MidTierReconcileICGPhase());
+        }
 
         appendPhase(new FrameStateAssignmentPhase());
 

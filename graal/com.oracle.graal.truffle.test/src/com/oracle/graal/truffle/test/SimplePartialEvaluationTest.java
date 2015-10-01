@@ -25,7 +25,9 @@ package com.oracle.graal.truffle.test;
 import jdk.internal.jvmci.code.BailoutException;
 import jdk.internal.jvmci.code.SourceStackTrace;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.replacements.PEGraphDecoder;
@@ -52,6 +54,18 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {
         return 42;
+    }
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @Override
+    @After
+    public void after() {
+        super.after();
+        InstrumentationTestMode.set(false);
     }
 
     @Test

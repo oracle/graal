@@ -256,6 +256,18 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register1("isPartialEvaluationConstant", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                } else if (canDelayIntrinsification) {
+                    return false;
+                } else {
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                }
+                return true;
+            }
+        });
         r.register1("materialize", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.add(new ForceMaterializeNode(value));

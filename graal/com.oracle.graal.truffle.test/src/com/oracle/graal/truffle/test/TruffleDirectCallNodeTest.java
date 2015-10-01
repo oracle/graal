@@ -24,6 +24,8 @@ package com.oracle.graal.truffle.test;
 
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -33,6 +35,16 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class TruffleDirectCallNodeTest {
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @After
+    public void after() {
+        InstrumentationTestMode.set(false);
+    }
 
     @Test
     public void testCanBeClonedWithoutParent() {

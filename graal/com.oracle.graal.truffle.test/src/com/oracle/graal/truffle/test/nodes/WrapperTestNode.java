@@ -23,10 +23,10 @@
 package com.oracle.graal.truffle.test.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrument.EventHandlerNode;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeNode;
-import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -35,7 +35,7 @@ import com.oracle.truffle.api.nodes.Node;
 public final class WrapperTestNode extends AbstractTestNode implements WrapperNode {
 
     @Child private AbstractTestNode child;
-    @Child private ProbeNode probeNode;
+    @Child private EventHandlerNode eventHandlerNode;
 
     public WrapperTestNode(AbstractTestNode child) {
         this.child = child;
@@ -46,16 +46,12 @@ public final class WrapperTestNode extends AbstractTestNode implements WrapperNo
     }
 
     @Override
-    public boolean isInstrumentable() {
-        return false;
-    }
-
-    public void insertProbe(ProbeNode newProbeNode) {
-        this.probeNode = newProbeNode;
+    public void insertEventHandlerNode(EventHandlerNode eventHandler) {
+        this.eventHandlerNode = eventHandler;
     }
 
     public Probe getProbe() {
-        return probeNode.getProbe();
+        return eventHandlerNode.getProbe();
     }
 
     @Override
@@ -65,15 +61,15 @@ public final class WrapperTestNode extends AbstractTestNode implements WrapperNo
 
     @Override
     public int execute(VirtualFrame frame) {
-        probeNode.enter(child, frame);
+        eventHandlerNode.enter(child, frame);
         try {
             final int result = child.execute(frame);
-            probeNode.returnValue(child, frame, result);
+            eventHandlerNode.returnValue(child, frame, result);
             return result;
         } catch (KillException e) {
             throw (e);
         } catch (Exception e) {
-            probeNode.returnExceptional(child, frame, e);
+            eventHandlerNode.returnExceptional(child, frame, e);
             throw (e);
         }
 

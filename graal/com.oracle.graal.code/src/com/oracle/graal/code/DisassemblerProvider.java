@@ -34,8 +34,7 @@ public interface DisassemblerProvider {
     /**
      * Gets a textual disassembly of a given compilation result.
      *
-     * @param codeCache the object used for code {@link CodeCacheProvider#addMethod code
-     *            installation}
+     * @param codeCache the object used for code {@link CodeCacheProvider#addCode code installation}
      * @param compResult a compilation result
      * @return a non-zero length string containing a disassembly of {@code compResult} or null it
      *         could not be disassembled
@@ -47,8 +46,7 @@ public interface DisassemblerProvider {
     /**
      * Gets a textual disassembly of a given installed code.
      *
-     * @param codeCache the object used for code {@link CodeCacheProvider#addMethod code
-     *            installation}
+     * @param codeCache the object used for code {@link CodeCacheProvider#addCode code installation}
      * @param compResult a compiled code that was installed to produce {@code installedCode}. This
      *            will be null if not available.
      * @param installedCode

@@ -41,7 +41,6 @@ import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.RegisterValue;
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.LIRKind;
@@ -78,9 +77,8 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         RegisterValue incomingExceptionPc = i1.asValue(LIRKind.value(word));
         CallingConvention outgoingExceptionCc = new CallingConvention(0, ILLEGAL, outgoingException, outgoingExceptionPc);
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);
-        CompilerToVM vm = jvmciRuntime.getCompilerToVM();
-        register(new HotSpotForeignCallLinkageImpl(vm, EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF_NOFP, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, any()));
-        register(new HotSpotForeignCallLinkageImpl(vm, EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF_NOFP, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, any()));
+        register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF_NOFP, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, any()));
+        register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF_NOFP, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, any()));
 
         if (PreferGraalStubs.getValue()) {
             link(new SPARCDeoptimizationStub(providers, target, registerStubCall(DEOPTIMIZATION_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));

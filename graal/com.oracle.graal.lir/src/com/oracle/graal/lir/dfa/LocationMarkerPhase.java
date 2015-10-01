@@ -73,7 +73,18 @@ public final class LocationMarkerPhase extends AllocationPhase {
 
         @Override
         protected boolean shouldProcessValue(Value operand) {
-            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && !operand.getLIRKind().equals(LIRKind.Illegal);
+            if (isRegister(operand)) {
+                Register reg = asRegister(operand);
+                if (reg.getReferenceMapIndex() < 0 || !attributes(reg).isAllocatable()) {
+                    // register that's not allocatable or not part of the reference map
+                    return false;
+                }
+            } else if (!isStackSlot(operand)) {
+                // neither register nor stack slot
+                return false;
+            }
+
+            return !operand.getLIRKind().equals(LIRKind.Illegal);
         }
 
         /**

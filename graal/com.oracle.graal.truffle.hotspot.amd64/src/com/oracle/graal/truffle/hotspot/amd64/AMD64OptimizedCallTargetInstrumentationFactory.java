@@ -57,13 +57,10 @@ public class AMD64OptimizedCallTargetInstrumentationFactory extends OptimizedCal
                 Register spillRegister = AMD64.r10; // TODO(mg): fix me
                 Label doProlog = new Label();
 
-                AMD64Address codeBlobAddress = new AMD64Address(thisRegister, getFieldOffset("address", InstalledCode.class));
+                AMD64Address codeBlobAddress = new AMD64Address(thisRegister, getFieldOffset("entryPoint", InstalledCode.class));
                 asm.movq(spillRegister, codeBlobAddress);
-                asm.cmpq(spillRegister, 0);
+                asm.testq(spillRegister, spillRegister);
                 asm.jcc(ConditionFlag.Equal, doProlog);
-
-                AMD64Address verifiedEntryPointAddress = new AMD64Address(spillRegister, config.nmethodEntryOffset);
-                asm.movq(spillRegister, verifiedEntryPointAddress);
                 asm.jmp(spillRegister);
 
                 asm.bind(doProlog);

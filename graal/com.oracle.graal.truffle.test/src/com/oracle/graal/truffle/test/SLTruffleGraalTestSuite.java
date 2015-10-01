@@ -42,7 +42,7 @@ import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
 
 @RunWith(SLTestRunner.class)
-@SLTestSuite({"graal/com.oracle.graal.truffle.test/sl", "sl"})
+@SLTestSuite({"sl"})
 public class SLTruffleGraalTestSuite {
 
     public static void main(String[] args) throws Exception {

@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.test;
 import static java.lang.reflect.Modifier.isStatic;
 import jdk.internal.jvmci.code.InvalidInstalledCodeException;
 import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstantImpl;
 import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaType;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
@@ -84,7 +83,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
             assert parameterTypes.length == args.length;
             for (int i = 0; i < argsToBind.length; i++) {
                 ParameterNode param = graph.getParameter(i);
-                JavaConstant c = HotSpotObjectConstantImpl.forBoxedValue(parameterTypes[i].getJavaKind(), argsToBind[i]);
+                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[i].getJavaKind(), argsToBind[i]);
                 ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
                 param.replaceAtUsages(replacement);
             }

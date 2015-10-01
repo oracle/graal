@@ -138,7 +138,7 @@ public class InvokeGraal {
              * Install the compilation result into the VM, i.e., copy the byte[] array that contains
              * the machine code into an actual executable memory location.
              */
-            InstalledCode installedCode = codeCache.addMethod(method, compilationResult, null, null);
+            InstalledCode installedCode = codeCache.addCode(method, compilationResult, null, null);
 
             return installedCode;
         } catch (Throwable ex) {

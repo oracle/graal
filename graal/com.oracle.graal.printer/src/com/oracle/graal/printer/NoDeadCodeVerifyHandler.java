@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.printer.NoDeadCodeVerifyHandler.Options.NDCV;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,7 +62,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
     private static final Map<String, Boolean> discovered = new ConcurrentHashMap<>();
 
     public void verify(Object object, String message) {
-        if (NDCV.getValue() != OFF && object instanceof StructuredGraph) {
+        if (Options.NDCV.getValue() != OFF && object instanceof StructuredGraph) {
             StructuredGraph graph = (StructuredGraph) object;
             List<Node> before = graph.getNodes().snapshot();
             new DeadCodeEliminationPhase().run(graph);
@@ -75,12 +73,12 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
                     before.removeAll(after);
                     String prefix = message == null ? "" : message + ": ";
                     JVMCIError error = new JVMCIError("%sfound dead nodes in %s: %s", prefix, graph, before);
-                    if (NDCV.getValue() == INFO) {
+                    if (Options.NDCV.getValue() == INFO) {
                         System.out.println(error.getMessage());
-                    } else if (NDCV.getValue() == VERBOSE) {
+                    } else if (Options.NDCV.getValue() == VERBOSE) {
                         error.printStackTrace(System.out);
                     } else {
-                        assert NDCV.getValue() == FATAL;
+                        assert Options.NDCV.getValue() == FATAL;
                         throw error;
                     }
                 }

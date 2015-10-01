@@ -215,7 +215,7 @@ public abstract class TruffleCompiler {
 
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
-            installedCode = providers.getCodeCache().addMethod(graph.method(), result, graph.getSpeculationLog(), predefinedInstalledCode);
+            installedCode = providers.getCodeCache().addCode(graph.method(), result, graph.getSpeculationLog(), predefinedInstalledCode);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

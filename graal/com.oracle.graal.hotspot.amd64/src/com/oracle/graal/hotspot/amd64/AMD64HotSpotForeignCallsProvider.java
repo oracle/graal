@@ -41,7 +41,6 @@ import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.RegisterValue;
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.CompilerToVM;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.meta.LIRKind;
@@ -76,9 +75,8 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         RegisterValue exception = rax.asValue(LIRKind.reference(word));
         RegisterValue exceptionPc = rdx.asValue(LIRKind.value(word));
         CallingConvention exceptionCc = new CallingConvention(0, ILLEGAL, exception, exceptionPc);
-        CompilerToVM vm = jvmciRuntime.getCompilerToVM();
-        register(new HotSpotForeignCallLinkageImpl(vm, EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF_NOFP, null, exceptionCc, NOT_REEXECUTABLE, any()));
-        register(new HotSpotForeignCallLinkageImpl(vm, EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF_NOFP, exceptionCc, null, NOT_REEXECUTABLE, any()));
+        register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF_NOFP, null, exceptionCc, NOT_REEXECUTABLE, any()));
+        register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF_NOFP, exceptionCc, null, NOT_REEXECUTABLE, any()));
 
         if (PreferGraalStubs.getValue()) {
             link(new AMD64DeoptimizationStub(providers, target, config, registerStubCall(DEOPTIMIZATION_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));

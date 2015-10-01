@@ -31,7 +31,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 import static com.oracle.graal.compiler.common.GraalOptions.OptConvertDeoptsToGuards;
 import static com.oracle.graal.compiler.common.GraalOptions.OptLoopTransform;
 import static com.oracle.graal.compiler.common.GraalOptions.PartialEscapeAnalysis;
-import static com.oracle.graal.compiler.phases.HighTier.Options.Inline;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 import jdk.internal.jvmci.options.Option;
 import jdk.internal.jvmci.options.OptionType;
@@ -49,6 +49,7 @@ import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.common.inlining.InliningPhase;
+import com.oracle.graal.phases.common.query.HighTierReconcileICGPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 
@@ -72,7 +73,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             appendPhase(canonicalizer);
         }
 
-        if (Inline.getValue()) {
+        if (Options.Inline.getValue()) {
             appendPhase(new InliningPhase(canonicalizer));
             appendPhase(new DeadCodeEliminationPhase(Optional));
 
@@ -109,5 +110,8 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         appendPhase(new RemoveValueProxyPhase());
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));
+        if (UseGraalQueries.getValue()) {
+            appendPhase(new HighTierReconcileICGPhase());
+        }
     }
 }

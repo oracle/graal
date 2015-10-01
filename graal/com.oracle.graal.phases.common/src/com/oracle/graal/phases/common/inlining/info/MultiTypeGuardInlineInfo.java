@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -241,6 +243,9 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.next() == continuation;
         invoke.setNext(null);
         returnMerge.setNext(continuation);
+        if (UseGraalQueries.getValue()) {
+            InliningUtil.removeAttachedInstrumentation(invoke);
+        }
         if (returnValuePhi != null) {
             invoke.asNode().replaceAtUsages(returnValuePhi);
         }

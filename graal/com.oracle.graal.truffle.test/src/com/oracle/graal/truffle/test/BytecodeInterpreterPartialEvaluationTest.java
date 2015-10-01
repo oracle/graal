@@ -24,7 +24,9 @@ package com.oracle.graal.truffle.test;
 
 import java.util.Random;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -42,6 +44,18 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationTest {
+
+    @Before
+    public void before() {
+        InstrumentationTestMode.set(true);
+    }
+
+    @Override
+    @After
+    public void after() {
+        super.after();
+        InstrumentationTestMode.set(false);
+    }
 
     public static class Bytecode {
         public static final byte CONST = 0;
