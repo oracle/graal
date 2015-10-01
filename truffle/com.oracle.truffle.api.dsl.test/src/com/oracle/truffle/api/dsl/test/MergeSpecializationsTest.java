@@ -30,8 +30,6 @@ import static org.junit.Assert.fail;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -44,22 +42,11 @@ import com.oracle.truffle.api.dsl.test.MergeSpecializationsTestFactory.TestCache
 import com.oracle.truffle.api.dsl.test.MergeSpecializationsTestFactory.TestNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.nodes.Node;
 
 public class MergeSpecializationsTest {
 
     private static final int THREADS = 50;
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
-    }
 
     @NodeChild
     @SuppressWarnings("unused")

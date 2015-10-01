@@ -25,8 +25,6 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static org.junit.Assert.assertEquals;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -37,20 +35,9 @@ import com.oracle.truffle.api.dsl.test.IntegerLiteralGuardsTestFactory.DecimalLi
 import com.oracle.truffle.api.dsl.test.IntegerLiteralGuardsTestFactory.HexLiteralTestFactory;
 import com.oracle.truffle.api.dsl.test.IntegerLiteralGuardsTestFactory.OctalLiteralTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 
 @SuppressWarnings("unused")
 public class IntegerLiteralGuardsTest {
-
-    @Before
-    public void before() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        InstrumentationTestMode.set(false);
-    }
 
     @Test
     public void testDecimalLiteral() {

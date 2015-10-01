@@ -26,8 +26,6 @@ import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArgumen
 import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
 import static org.junit.Assert.assertEquals;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -35,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.examples.InteropFactory.UseInteropNodeGen;
-import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -44,16 +41,6 @@ import com.oracle.truffle.api.nodes.Node;
  * cache for a simplified language interoperability pattern.
  */
 public class Interop {
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
-    }
 
     @Test
     public void testInterop() {

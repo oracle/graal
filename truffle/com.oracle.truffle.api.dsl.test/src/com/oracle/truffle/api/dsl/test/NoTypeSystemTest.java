@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.JustFrameTestNodeGen;
@@ -34,8 +37,6 @@ import com.oracle.truffle.api.dsl.test.NoTypeSystemTestFactory.TypesNotInTypeSys
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class NoTypeSystemTest {
 

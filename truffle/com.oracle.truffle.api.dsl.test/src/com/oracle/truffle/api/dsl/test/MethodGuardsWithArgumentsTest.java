@@ -25,9 +25,7 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
 import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -42,19 +40,8 @@ import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArg
 import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArgumentsSingle2Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.dsl.test.utilities.InstrumentationTestMode;
 
 public class MethodGuardsWithArgumentsTest {
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
-    }
 
     @Test
     public void testMArguments0() {
