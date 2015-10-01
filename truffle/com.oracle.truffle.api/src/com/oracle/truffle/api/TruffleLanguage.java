@@ -477,6 +477,7 @@ public abstract class TruffleLanguage<C> {
             return target.call();
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr,
                         AdvancedInstrumentResultListener resultListener) throws IOException {

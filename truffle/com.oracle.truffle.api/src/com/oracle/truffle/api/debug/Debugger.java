@@ -883,6 +883,7 @@ public final class Debugger {
             return super.findLanguage(probe);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr,
                         AdvancedInstrumentResultListener resultListener) throws IOException {
