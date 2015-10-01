@@ -59,12 +59,10 @@ public class SPARCOptimizedCallTargetInstumentationFactory extends OptimizedCall
                     Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object)[0];
                     Register spillRegister = scratch.getRegister();
                     Label doProlog = new Label();
-                    SPARCAddress codeBlobAddress = new SPARCAddress(thisRegister, getFieldOffset("address", InstalledCode.class));
-                    SPARCAddress verifiedEntryPointAddress = new SPARCAddress(spillRegister, config.nmethodEntryOffset);
+                    SPARCAddress entryPointAddress = new SPARCAddress(thisRegister, getFieldOffset("entryPoint", InstalledCode.class));
 
-                    asm.ldx(codeBlobAddress, spillRegister);
+                    asm.ldx(entryPointAddress, spillRegister);
                     asm.compareBranch(spillRegister, 0, Equal, Xcc, doProlog, PREDICT_NOT_TAKEN, null);
-                    asm.ldx(verifiedEntryPointAddress, spillRegister); // in delay slot
                     asm.jmp(spillRegister);
                     asm.nop();
                     asm.bind(doProlog);

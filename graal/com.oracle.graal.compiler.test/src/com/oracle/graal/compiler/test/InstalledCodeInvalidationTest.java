@@ -43,7 +43,9 @@ public class InstalledCodeInvalidationTest extends GraalCompilerTest {
              */
 
             GraalDirectives.deoptimizeAndInvalidate();
+            assert code.isAlive() && !code.isValid();
             code.invalidate();
+            assert !code.isAlive();
         }
         if (GraalDirectives.inCompiledCode()) {
             /*
