@@ -1972,9 +1972,6 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
-        if (frameState.lockDepth(false) != 0) {
-            throw bailout("unbalanced monitors");
-        }
     }
 
     protected void genMonitorEnter(ValueNode x, int bci) {
@@ -1985,6 +1982,9 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected void genMonitorExit(ValueNode x, ValueNode escapedReturnValue, int bci) {
+        if (frameState.lockDepth(false) == 0) {
+            throw bailout("unbalanced monitors: too many exits");
+        }
         MonitorIdNode monitorId = frameState.peekMonitorId();
         ValueNode lockedObject = frameState.popLock();
         if (GraphUtil.originalValue(lockedObject) != GraphUtil.originalValue(x)) {
@@ -2520,6 +2520,9 @@ public class BytecodeParser implements GraphBuilderContext {
             genMonitorExit(methodSynchronizedObject, currentReturnValue, bci);
             assert !frameState.rethrowException();
         }
+        if (frameState.lockDepth(false) != 0) {
+            throw bailout("unbalanced monitors: too few exits exiting frame");
+        }
     }
 
     private void createExceptionDispatch(ExceptionDispatchBlock block) {
@@ -2646,6 +2649,9 @@ public class BytecodeParser implements GraphBuilderContext {
 
             try {
                 processBytecode(bci, opcode);
+            } catch (BailoutException e) {
+                // Don't wrap bailouts as parser errors
+                throw e;
             } catch (Throwable e) {
                 throw asParserError(e);
             }
