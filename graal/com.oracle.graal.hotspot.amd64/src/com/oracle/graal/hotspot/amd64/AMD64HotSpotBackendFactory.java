@@ -40,6 +40,7 @@ import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
 import jdk.internal.jvmci.inittimer.InitTimer;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.Value;
 import jdk.internal.jvmci.runtime.JVMCIBackend;
 import jdk.internal.jvmci.service.ServiceProvider;
@@ -108,13 +109,13 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, Startu
                 foreignCalls = createForeignCalls(jvmciRuntime, graalRuntime, metaAccess, codeCache, nativeABICallerSaveRegisters);
             }
             try (InitTimer rt = timer("create Lowerer provider")) {
-                lowerer = createLowerer(graalRuntime, metaAccess, foreignCalls, registers, target);
+                lowerer = createLowerer(graalRuntime, metaAccess, foreignCalls, registers, constantReflection, target);
             }
             HotSpotStampProvider stampProvider = new HotSpotStampProvider();
             Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, stampProvider);
 
             try (InitTimer rt = timer("create SnippetReflection provider")) {
-                snippetReflection = createSnippetReflection(graalRuntime);
+                snippetReflection = createSnippetReflection(graalRuntime, constantReflection);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(config, p, snippetReflection);
@@ -167,13 +168,13 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, Startu
                         registers.getHeapBaseRegister()));
     }
 
-    protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime) {
-        return new HotSpotSnippetReflectionProvider(runtime);
+    protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime, ConstantReflectionProvider constantReflection) {
+        return new HotSpotSnippetReflectionProvider(runtime, constantReflection);
     }
 
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls,
-                    HotSpotRegistersProvider registers, TargetDescription target) {
-        return new AMD64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
+                    HotSpotRegistersProvider registers, ConstantReflectionProvider constantReflection, TargetDescription target) {
+        return new AMD64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
     }
 
     protected Value[] createNativeABICallerSaveRegisters(HotSpotVMConfig config, RegisterConfig regConfig) {

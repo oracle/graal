@@ -36,6 +36,7 @@ import jdk.internal.jvmci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.Value;
 import jdk.internal.jvmci.runtime.JVMCIBackend;
 import jdk.internal.jvmci.service.ServiceProvider;
@@ -86,10 +87,10 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory, Startu
         HotSpotConstantReflectionProvider constantReflection = new HotSpotGraalConstantReflectionProvider(jvmciRuntime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(config, codeCache.getRegisterConfig());
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(jvmciRuntime, runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
+        LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
         HotSpotStampProvider stampProvider = new HotSpotStampProvider();
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, stampProvider);
-        HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime);
+        HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime, constantReflection);
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, config, target);
         HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordJavaKind);
         Plugins plugins = createGraphBuilderPlugins(config, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
@@ -117,8 +118,8 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory, Startu
     }
 
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls,
-                    HotSpotRegistersProvider registers, TargetDescription target) {
-        return new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
+                    HotSpotRegistersProvider registers, ConstantReflectionProvider constantReflection, TargetDescription target) {
+        return new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
     }
 
     protected HotSpotRegistersProvider createRegisters() {

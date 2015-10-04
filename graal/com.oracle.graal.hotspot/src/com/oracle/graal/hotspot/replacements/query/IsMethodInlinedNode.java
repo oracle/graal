@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements.query;
 
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -49,7 +50,7 @@ public final class IsMethodInlinedNode extends GraalQueryNode {
     }
 
     @Override
-    public void onInlineICG(InstrumentationNode instrumentation, FixedNode position) {
+    public void onInlineICG(InstrumentationNode instrumentation, FixedNode position, ConstantReflectionProvider constantReflection) {
         graph().replaceFixedWithFloating(this, ConstantNode.forBoolean(original != System.identityHashCode(instrumentation.graph()), graph()));
     }
 

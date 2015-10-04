@@ -33,8 +33,14 @@ import json
 import re
 
 import mx
-import mx_jvmci
-from mx_jvmci import JvmciJDKDeployedDist, run_vm, VM, Task, get_vm, isJVMCIEnabled, get_jvmci_jdk, get_jvmci_jdk_dir, buildvms
+from mx_jvmci import JvmciJDKDeployedDist, add_bootclasspath_prepend
+from mx_jvmci import jdkDeployedDists #pylint: disable=unused-import
+
+try:
+    from mx_jvmci import run_vm, VM, Task, get_vm, \
+    isJVMCIEnabled, relativeVmLibDirInJdk, get_jvmci_jdk, get_jvmci_jdk_dir, buildvms
+except ImportError:
+    pass
 from mx_unittest import unittest
 import mx_gate
 
@@ -69,7 +75,7 @@ class GraalJDKDeployedDist(JvmciJDKDeployedDist):
             with open(graalProperties, 'w') as fp:
                 fp.write(os.linesep.join(content))
 
-mx_jvmci.jdkDeployedDists += [
+jdkDeployedDists += [
     JvmciJDKDeployedDist('GRAAL_NODEINFO'),
     JvmciJDKDeployedDist('GRAAL_API'),
     JvmciJDKDeployedDist('GRAAL_COMPILER'),
@@ -468,7 +474,7 @@ def specjbb2005(args):
 
 def jdkartifactstats(args):
     """show stats about JDK deployed Graal artifacts"""
-    jdkDir = mx_jvmci.get_jvmci_jdk_dir()
+    jdkDir = get_jvmci_jdk_dir()
     artifacts = {}
     for root, _, filenames in os.walk(join(jdkDir, 'jre', 'lib')):
         for f in filenames:
@@ -508,7 +514,7 @@ def jdkartifactstats(args):
             t1, t2, t3 = totals
             print '{:10,}  {:10,}  {:10,}  {}'.format(t1, t2, t3, category)
 
-    jvmLib = join(jdkDir, mx_jvmci.relativeVmLibDirInJdk(), get_vm(), mx.add_lib_suffix(mx.add_lib_prefix('jvm')))
+    jvmLib = join(jdkDir, relativeVmLibDirInJdk(), get_vm(), mx.add_lib_suffix(mx.add_lib_prefix('jvm')))
     print
     if exists(jvmLib):
         print '{:10,}  {}'.format(os.path.getsize(jvmLib), jvmLib)
@@ -531,4 +537,4 @@ mx.update_commands(_suite, {
 
 
 def mx_post_parse_cmd_line(opts):
-    mx_jvmci.add_bootclasspath_prepend(mx.distribution('truffle:TRUFFLE_API'))
+    add_bootclasspath_prepend(mx.distribution('truffle:TRUFFLE_API'))

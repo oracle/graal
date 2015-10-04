@@ -338,6 +338,18 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     /**
+     * Allocate a stack slot for saving a register.
+     */
+    protected StackSlotValue allocateSaveRegisterLocation(Register register) {
+        PlatformKind kind = target().arch.getLargestStorableKind(register.getRegisterCategory());
+        if (kind.getVectorLength() > 1) {
+            // we don't use vector registers, so there is no need to save them
+            kind = AMD64Kind.DOUBLE;
+        }
+        return getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));
+    }
+
+    /**
      * Adds a node to the graph that saves all allocatable registers to the stack.
      *
      * @param supportsRemove determines if registers can be pruned

@@ -42,10 +42,10 @@ import java.lang.ref.Reference;
 import jdk.internal.jvmci.code.CallingConvention;
 import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstantImpl;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaField;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.JavaType;
@@ -155,6 +155,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected final HotSpotGraalRuntimeProvider runtime;
     protected final ForeignCallsProvider foreignCalls;
     protected final HotSpotRegistersProvider registers;
+    protected final ConstantReflectionProvider constantReflection;
 
     protected CheckCastDynamicSnippets.Templates checkcastDynamicSnippets;
     protected InstanceOfSnippets.Templates instanceofSnippets;
@@ -167,11 +168,12 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected ArrayCopySnippets.Templates arraycopySnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    TargetDescription target) {
+                    ConstantReflectionProvider constantReflection, TargetDescription target) {
         super(metaAccess, target);
         this.runtime = runtime;
         this.foreignCalls = foreignCalls;
         this.registers = registers;
+        this.constantReflection = constantReflection;
     }
 
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
@@ -532,7 +534,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
-                FloatingNode exceptionNode = ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(exception), metaAccess, graph);
+                FloatingNode exceptionNode = ConstantNode.forConstant(constantReflection.forObject(exception), metaAccess, graph);
                 graph.replaceFixedWithFloating(node, exceptionNode);
 
             } else {

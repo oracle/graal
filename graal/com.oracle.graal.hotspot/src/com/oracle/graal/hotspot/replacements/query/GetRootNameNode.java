@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements.query;
 
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstantImpl;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
 import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.ConstantReflectionProvider;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -46,10 +45,10 @@ public final class GetRootNameNode extends GraalQueryNode {
     }
 
     @Override
-    public void onInlineICG(InstrumentationNode instrumentation, FixedNode position) {
+    public void onInlineICG(InstrumentationNode instrumentation, FixedNode position, ConstantReflectionProvider constantReflection) {
         ResolvedJavaMethod method = graph().method();
         String root = method.getDeclaringClass().toJavaName() + "." + method.getName() + method.getSignature().toMethodDescriptor();
-        Constant constant = HotSpotObjectConstantImpl.forBoxedValue(JavaKind.Object, root);
+        Constant constant = constantReflection.forObject(root);
         ConstantNode constantNode = graph().unique(new ConstantNode(constant, stamp()));
         graph().replaceFixedWithFloating(this, constantNode);
     }
