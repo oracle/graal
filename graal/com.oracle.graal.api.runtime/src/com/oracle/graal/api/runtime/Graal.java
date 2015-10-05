@@ -31,23 +31,25 @@ import jdk.internal.jvmci.service.Services;
  */
 public class Graal {
 
-    private static final GraalRuntime runtime = initializeRuntime();
+    private static final class Lazy {
+        private static final GraalRuntime runtime = initializeRuntime();
 
-    private static GraalRuntime initializeRuntime() {
-        GraalRuntimeAccess access = Services.loadSingle(GraalRuntimeAccess.class, false);
-        if (access != null) {
-            GraalRuntime rt = access.getRuntime();
-            assert rt != null;
-            return rt;
+        private static GraalRuntime initializeRuntime() {
+            GraalRuntimeAccess access = Services.loadSingle(GraalRuntimeAccess.class, false);
+            if (access != null) {
+                GraalRuntime rt = access.getRuntime();
+                assert rt != null;
+                return rt;
+            }
+            return new InvalidGraalRuntime();
         }
-        return new InvalidGraalRuntime();
     }
 
     /**
      * Gets the singleton {@link GraalRuntime} instance available to the application.
      */
     public static GraalRuntime getRuntime() {
-        return runtime;
+        return Lazy.runtime;
     }
 
     /**
@@ -61,7 +63,7 @@ public class Graal {
             String javaHome = System.getProperty("java.home");
             String vmName = System.getProperty("java.vm.name");
             Formatter errorMessage = new Formatter();
-            if (runtime.getClass() == InvalidGraalRuntime.class) {
+            if (getRuntime().getClass() == InvalidGraalRuntime.class) {
                 errorMessage.format("The VM does not support the Graal API.%n");
             } else {
                 errorMessage.format("The VM does not expose required Graal capability %s.%n", clazz.getName());
