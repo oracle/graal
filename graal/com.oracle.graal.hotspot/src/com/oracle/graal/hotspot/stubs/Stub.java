@@ -27,10 +27,6 @@ import static com.oracle.graal.compiler.GraalCompiler.emitFrontEnd;
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
@@ -73,8 +69,6 @@ import com.oracle.graal.phases.tiers.Suites;
  * method.
  */
 public abstract class Stub {
-
-    private static final List<Stub> stubs = new ArrayList<>();
 
     /**
      * The linkage information for a call to this stub from compiled code.
@@ -129,14 +123,6 @@ public abstract class Stub {
     public Stub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
         this.linkage = linkage;
         this.providers = providers;
-        stubs.add(this);
-    }
-
-    /**
-     * Gets an immutable view of all stubs that have been created.
-     */
-    public static Collection<Stub> getStubs() {
-        return Collections.unmodifiableList(stubs);
     }
 
     /**
