@@ -383,8 +383,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private static CodeCacheProvider getCodeCache() {
-        Providers providers = getHotSpotProviders();
-        return providers.getCodeCache();
+        return JVMCI.getRuntime().getHostJVMCIBackend().getCodeCache();
     }
 
     @Override
@@ -406,7 +405,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     protected CallMethods getCallMethods() {
         if (callMethods == null) {
-            lookupCallMethods(getHotSpotProviders().getMetaAccess());
+            lookupCallMethods(JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess());
         }
         return callMethods;
     }
