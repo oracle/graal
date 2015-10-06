@@ -165,6 +165,11 @@ public class SLTckTest extends TruffleTCK {
         return "count";
     }
 
+    @Override
+    protected String globalObject() {
+        return null;
+    }
+
     //
     // Ignore tests working on floats and double
     //

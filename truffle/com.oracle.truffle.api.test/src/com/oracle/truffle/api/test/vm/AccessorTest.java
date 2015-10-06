@@ -54,8 +54,8 @@ public class AccessorTest {
         PolyglotEngine.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 
-        Source s = Source.fromText("return nothing", "nothing").withMimeType(L1);
-        Object ret = vm.eval(s).get();
+        Source s = Source.fromText("return nothing", "nothing");
+        Object ret = language.eval(s).get();
         assertNull("nothing is returned", ret);
 
         Object afterInitialization = findLanguageByClass(vm);

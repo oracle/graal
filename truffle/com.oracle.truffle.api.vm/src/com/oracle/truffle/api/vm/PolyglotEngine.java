@@ -794,7 +794,9 @@ public class PolyglotEngine {
         private void waitForSymbol() throws InterruptedIOException {
             checkThread();
             try {
-                ready.await();
+                if (ready != null) {
+                    ready.await();
+                }
             } catch (InterruptedException ex) {
                 throw (InterruptedIOException) new InterruptedIOException(ex.getMessage()).initCause(ex);
             }
@@ -844,6 +846,35 @@ public class PolyglotEngine {
          */
         public String getVersion() {
             return info.getVersion();
+        }
+
+        /**
+         * Evaluates provided source. Ignores the particular {@link Source#getMimeType() MIME type}
+         * and forces evaluation in the context of <code>this</code> language.
+         * 
+         * @param source code snippet to execute
+         * @return a {@link Value} object that holds result of an execution, never <code>null</code>
+         * @throws IOException thrown to signal errors while processing the code
+         */
+        public Value eval(Source source) throws IOException {
+            checkThread();
+            return PolyglotEngine.this.eval(this, source);
+        }
+
+        /**
+         * Returns value representing global object of the language.
+         * <p>
+         * The object is expected to be <code>TruffleObject</code> (e.g. a native object from the
+         * other language) but technically it can be one of Java primitive wrappers ({@link Integer}, {@link Double}, {@link Short}, etc.).
+         *
+         * @return the global object or <code>null</code> if the language does not support such
+         *         concept
+         */
+        public Value getGlobalObject() {
+            checkThread();
+
+            Object[] res = {SPI.languageGlobal(getEnv(true)), null};
+            return res[0] == null ? null : new Value(info.getImpl(true), res, null);
         }
 
         /**

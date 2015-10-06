@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.tck;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Random;
@@ -139,6 +141,19 @@ public abstract class TruffleTCK {
      */
     protected String identity() {
         throw new UnsupportedOperationException("identity() method not implemented");
+    }
+
+    /**
+     * Name of a function to return global object. The function can be executed without providing
+     * any arguments and should return global object of the language, if the language supports it.
+     * Global object is the one accessible via
+     * {@link TruffleLanguage#getLanguageGlobal(java.lang.Object)}.
+     *
+     * @return name of globally exported symbol, return <code>null</code> if the language doesn't
+     *         support the concept of global object
+     */
+    protected String globalObject() {
+        throw new UnsupportedOperationException("globalObject() method not implemented");
     }
 
     /**
@@ -553,7 +568,21 @@ public abstract class TruffleTCK {
             }
             assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2;
         }
+    }
 
+    @Test
+    public void testGlobalObjectIsAccessible() throws Exception {
+        String globalObjectFunction = globalObject();
+        if (globalObjectFunction == null) {
+            return;
+        }
+
+        Language language = vm().getLanguages().get(mimeType());
+        assertNotNull("Langugage for " + mimeType() + " found", language);
+
+        PolyglotEngine.Value function = vm().findGlobalSymbol(globalObjectFunction);
+        Object global = function.invoke(null).get();
+        assertEquals("Global from the language same with Java obtained one", language.getGlobalObject().get(), global);
     }
 
     private PolyglotEngine.Value findGlobalSymbol(String name) throws Exception {
