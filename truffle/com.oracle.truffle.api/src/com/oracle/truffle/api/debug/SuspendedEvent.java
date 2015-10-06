@@ -128,7 +128,7 @@ public final class SuspendedEvent {
      * </ul>
      */
     public void prepareContinue() {
-        debugger.prepareContinue();
+        debugger.prepareContinue(-1);
     }
 
     /**

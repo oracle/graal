@@ -121,8 +121,8 @@ public final class Debugger {
         Source.setFileCaching(true);
 
         // Initialize execution context stack
-        debugContext = new DebugExecutionContext(null, null);
-        prepareContinue();
+        debugContext = new DebugExecutionContext(null, null, 0);
+        debugContext.setStrategy(0, new Continue());
         debugContext.contextTrace("START EXEC DEFAULT");
 
         breakpointCallback = new BreakpointCallback() {
@@ -197,8 +197,8 @@ public final class Debugger {
      * </ul>
      */
     @TruffleBoundary
-    void prepareContinue() {
-        debugContext.setStrategy(new Continue());
+    void prepareContinue(int depth) {
+        debugContext.setStrategy(depth, new Continue());
     }
 
     /**
@@ -702,12 +702,16 @@ public final class Debugger {
         private MaterializedFrame haltedFrame;
 
         private DebugExecutionContext(Source executionSource, DebugExecutionContext previousContext) {
+            this(executionSource, previousContext, -1);
+        }
+
+        private DebugExecutionContext(Source executionSource, DebugExecutionContext previousContext, int depth) {
             this.source = executionSource;
             this.predecessor = previousContext;
             this.level = previousContext == null ? 0 : previousContext.level + 1;
 
             // "Base" is the number of stack frames for all nested (halted) executions.
-            this.contextStackBase = currentStackDepth();
+            this.contextStackBase = depth == -1 ? currentStackDepth() : depth;
             this.running = true;
             contextTrace("NEW CONTEXT");
         }
@@ -718,9 +722,13 @@ public final class Debugger {
          * @param stepStrategy
          */
         void setStrategy(StepStrategy stepStrategy) {
+            setStrategy(currentStackDepth(), stepStrategy);
+        }
+
+        void setStrategy(int depth, StepStrategy stepStrategy) {
             if (this.strategy == null) {
                 this.strategy = stepStrategy;
-                this.strategy.enable(this, currentStackDepth());
+                this.strategy.enable(this, depth);
                 if (TRACE) {
                     contextTrace("SET MODE <none>-->" + stepStrategy.getName());
                 }
@@ -832,7 +840,7 @@ public final class Debugger {
 
     }
 
-    void executionStarted(Source source) {
+    void executionStarted(int depth, Source source) {
         Source execSource = source;
         if (execSource == null) {
             execSource = lastSource;
@@ -840,8 +848,8 @@ public final class Debugger {
             lastSource = execSource;
         }
         // Push a new execution context onto stack
-        debugContext = new DebugExecutionContext(execSource, debugContext);
-        prepareContinue();
+        debugContext = new DebugExecutionContext(execSource, debugContext, depth);
+        prepareContinue(depth);
         debugContext.contextTrace("START EXEC ");
         ACCESSOR.dispatchEvent(vm, new ExecutionEvent(this));
     }
@@ -863,8 +871,8 @@ public final class Debugger {
     private static final class AccessorDebug extends Accessor {
 
         @Override
-        protected Closeable executionStart(Object vm, final Debugger debugger, Source s) {
-            debugger.executionStarted(s);
+        protected Closeable executionStart(Object vm, int currentDepth, final Debugger debugger, Source s) {
+            debugger.executionStarted(currentDepth, s);
             return new Closeable() {
                 @Override
                 public void close() throws IOException {

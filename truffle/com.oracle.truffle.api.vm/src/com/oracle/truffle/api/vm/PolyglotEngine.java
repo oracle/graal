@@ -510,7 +510,7 @@ public class PolyglotEngine {
 
     @SuppressWarnings("try")
     private void evalImpl(TruffleLanguage<?>[] fillLang, Source s, Object[] result, Language l, CountDownLatch ready) {
-        try (Closeable d = SPI.executionStart(this, debugger, s)) {
+        try (Closeable d = SPI.executionStart(this, -1, debugger, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
             result[0] = SPI.eval(langImpl, s);
@@ -527,7 +527,7 @@ public class PolyglotEngine {
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                try (final Closeable c = SPI.executionStart(PolyglotEngine.this, debugger, null)) {
+                try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
                     res[0] = ForeignAccess.execute(foreignNode, frame, receiver, ForeignAccess.getArguments(frame).toArray());
                 } catch (IOException ex) {
                     res[1] = ex;
@@ -758,7 +758,7 @@ public class PolyglotEngine {
 
         @SuppressWarnings("try")
         private void invokeImpl(Object thiz, Object[] args, Object[] res, CountDownLatch done) {
-            try (final Closeable c = SPI.executionStart(PolyglotEngine.this, debugger, null)) {
+            try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
                 List<Object> arr = new ArrayList<>();
                 if (thiz == null) {
                     if (language != null) {
@@ -993,9 +993,9 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Closeable executionStart(Object obj, Debugger debugger, Source s) {
+        protected Closeable executionStart(Object obj, int currentDepth, Debugger debugger, Source s) {
             PolyglotEngine vm = (PolyglotEngine) obj;
-            return super.executionStart(vm, debugger, s);
+            return super.executionStart(vm, -1, debugger, s);
         }
 
         @Override
