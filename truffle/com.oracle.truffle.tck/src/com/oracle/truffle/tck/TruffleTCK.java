@@ -247,6 +247,15 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testNullCanBeCastToAnything() throws Exception {
+        PolyglotEngine.Value retNull = findGlobalSymbol(returnsNull());
+
+        Object res = retNull.invoke(null).as(CompoundObject.class);
+
+        assertNull("Should yield real Java null", res);
+    }
+
+    @Test
     public void testNullInCompoundObject() throws Exception {
         CompoundObject obj = findCompoundSymbol();
         if (obj == null) {
