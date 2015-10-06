@@ -137,6 +137,11 @@ def scaladacapo(args):
 # depend on the JMH library).
 def microbench(args):
     """run JMH microbenchmark projects"""
+    parser = ArgumentParser(prog='mx microbench', description=microbench.__doc__,
+                            usage="%(prog)s [command options|VM options] [-- [JMH options]]")
+    parser.add_argument('--jar', help='Explicitly specify micro-benchmark location')
+    known_args, args = parser.parse_known_args(args)
+
     vmArgs, jmhArgs = mx.extract_VM_args(args, useDoubleDash=True)
     if isJVMCIEnabled(get_vm()) and  '-XX:-UseJVMCIClassLoader' not in vmArgs:
         vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
@@ -156,22 +161,29 @@ def microbench(args):
             except ValueError:
                 pass
 
-    # default to -f1 if not specified otherwise
-    if not containsF:
-        jmhArgs += ['-f1']
+    if known_args.jar:
+        # use the specified jar
+        args = ['-jar', known_args.jar]
+        if not forking:
+            args += vmArgs
+    else:
+        # default to -f1 if not specified otherwise
+        if not containsF:
+            jmhArgs += ['-f1']
 
-    # find all projects with a direct JMH dependency
-    jmhProjects = []
-    for p in mx.projects_opt_limit_to_suites():
-        if 'JMH' in [x.name for x in p.deps]:
-            jmhProjects.append(p.name)
-    cp = mx.classpath(jmhProjects)
+        # find all projects with a direct JMH dependency
+        jmhProjects = []
+        for p in mx.projects_opt_limit_to_suites():
+            if 'JMH' in [x.name for x in p.deps]:
+                jmhProjects.append(p.name)
+        cp = mx.classpath(jmhProjects)
 
-    # execute JMH runner
-    args = ['-cp', cp]
-    if not forking:
-        args += vmArgs
-    args += ['org.openjdk.jmh.Main']
+        # execute JMH runner
+        args = ['-cp', cp]
+        if not forking:
+            args += vmArgs
+        args += ['org.openjdk.jmh.Main']
+
     if forking:
         jdk = get_jvmci_jdk()
         jvm = get_vm()
