@@ -847,10 +847,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * Human readable string that identifies the language and version.
-         *
-         * @return string describing the specific language version
+         * @deprecated concatenate {@link #getName()} and {@link #getVersion()} the way you want.
          */
+        @Deprecated
         public String getShortName() {
             return getName() + "(" + getVersion() + ")";
         }
