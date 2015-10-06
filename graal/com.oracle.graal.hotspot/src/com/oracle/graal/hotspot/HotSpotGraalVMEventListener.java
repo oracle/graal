@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
+import java.util.ArrayList;
+
 import jdk.internal.jvmci.code.CompilationResult;
 import jdk.internal.jvmci.code.InstalledCode;
 import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
 import jdk.internal.jvmci.hotspot.HotSpotVMEventListener;
 import jdk.internal.jvmci.service.ServiceProvider;
 
@@ -34,11 +35,17 @@ import com.oracle.graal.debug.Debug;
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
+    private static final ArrayList<HotSpotGraalRuntime> runtimes = new ArrayList<>();
+
+    static void addRuntime(HotSpotGraalRuntime runtime) {
+        runtimes.add(runtime);
+    }
+
     @Override
     public void notifyShutdown() {
-        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
-        HotSpotGraalRuntime graalRuntime = (HotSpotGraalRuntime) compiler.getGraalRuntime();
-        graalRuntime.shutdown();
+        for (HotSpotGraalRuntime runtime : runtimes) {
+            runtime.shutdown();
+        }
     }
 
     @Override
