@@ -34,6 +34,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.io.IOException;
+import java.util.Objects;
 
 final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory {
     private final PolyglotEngine engine;
@@ -61,6 +62,31 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
     @Override
     public CallTarget accessMessage(Message tree) {
         return Truffle.getRuntime().createCallTarget(new WrappingRoot(TruffleLanguage.class, tree.createNode()));
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 89 * hash + Objects.hashCode(this.engine);
+        hash = 89 * hash + Objects.hashCode(this.delegate);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof EngineTruffleObject) {
+            final EngineTruffleObject other = (EngineTruffleObject) obj;
+            return engine == other.engine && Objects.equals(this.delegate, other.delegate);
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return delegate.toString();
     }
 
     static class WrappingRoot extends RootNode {
