@@ -31,7 +31,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.Message;
@@ -88,7 +87,6 @@ public class MessageStringTest {
         }
     }
 
-    @Ignore
     @Test
     public void specialMessagePersitance() {
         SpecialMsg msg = new SpecialMsg();
