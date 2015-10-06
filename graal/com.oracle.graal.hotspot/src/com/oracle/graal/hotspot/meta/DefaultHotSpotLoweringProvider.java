@@ -411,7 +411,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
+    public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) f;
         JavaConstant base = field.getDeclaringClass().getJavaClass();
         return ConstantNode.forConstant(base, metaAccess, graph);
@@ -467,12 +467,12 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected BarrierType fieldInitializationBarrier(JavaKind entryKind) {
+    public BarrierType fieldInitializationBarrier(JavaKind entryKind) {
         return (entryKind == JavaKind.Object && !config().useDeferredInitBarriers) ? BarrierType.IMPRECISE : BarrierType.NONE;
     }
 
     @Override
-    protected BarrierType arrayInitializationBarrier(JavaKind entryKind) {
+    public BarrierType arrayInitializationBarrier(JavaKind entryKind) {
         return (entryKind == JavaKind.Object && !config().useDeferredInitBarriers) ? BarrierType.PRECISE : BarrierType.NONE;
     }
 
@@ -623,7 +623,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected int fieldOffset(ResolvedJavaField f) {
+    public int fieldOffset(ResolvedJavaField f) {
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) f;
         return field.offset();
     }
@@ -638,17 +638,17 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected int arrayBaseOffset(JavaKind kind) {
+    public int arrayBaseOffset(JavaKind kind) {
         return getArrayBaseOffset(kind);
     }
 
     @Override
-    protected int arrayLengthOffset() {
+    public int arrayLengthOffset() {
         return config().arrayOopDescLengthOffset();
     }
 
     @Override
-    protected LocationIdentity initLocationIdentity() {
+    public LocationIdentity initLocationIdentity() {
         return INIT_LOCATION;
     }
 }

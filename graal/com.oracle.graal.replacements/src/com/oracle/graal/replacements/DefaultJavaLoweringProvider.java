@@ -142,6 +142,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(providers, snippetReflection, target));
     }
 
+    public final TargetDescription getTarget() {
+        return target;
+    }
+
     @Override
     public void lower(Node n, LoweringTool tool) {
         assert n instanceof Lowerable;
@@ -649,11 +653,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return BarrierType.NONE;
     }
 
-    protected BarrierType fieldInitializationBarrier(JavaKind entryKind) {
+    public BarrierType fieldInitializationBarrier(JavaKind entryKind) {
         return entryKind == JavaKind.Object ? BarrierType.IMPRECISE : BarrierType.NONE;
     }
 
-    protected BarrierType arrayInitializationBarrier(JavaKind entryKind) {
+    public BarrierType arrayInitializationBarrier(JavaKind entryKind) {
         return entryKind == JavaKind.Object ? BarrierType.PRECISE : BarrierType.NONE;
     }
 
@@ -681,19 +685,19 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return BarrierType.NONE;
     }
 
-    protected abstract int fieldOffset(ResolvedJavaField field);
+    public abstract int fieldOffset(ResolvedJavaField field);
 
-    protected abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field);
+    public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field);
 
-    protected abstract int arrayLengthOffset();
+    public abstract int arrayLengthOffset();
 
-    protected abstract int arrayBaseOffset(JavaKind elementKind);
+    public abstract int arrayBaseOffset(JavaKind elementKind);
 
     public int arrayScalingFactor(JavaKind elementKind) {
         return target.arch.getPlatformKind(elementKind).getSizeInBytes();
     }
 
-    protected abstract LocationIdentity initLocationIdentity();
+    public abstract LocationIdentity initLocationIdentity();
 
     public Stamp loadStamp(Stamp stamp, JavaKind kind) {
         return loadStamp(stamp, kind, true);

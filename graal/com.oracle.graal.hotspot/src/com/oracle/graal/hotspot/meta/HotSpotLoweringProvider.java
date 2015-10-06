@@ -23,12 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.JavaKind;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 
 /**
@@ -37,14 +32,4 @@ import com.oracle.graal.nodes.spi.LoweringProvider;
 public interface HotSpotLoweringProvider extends LoweringProvider {
 
     void initialize(HotSpotProviders providers, HotSpotVMConfig config);
-
-    int arrayScalingFactor(JavaKind kind);
-
-    AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index);
-
-    Stamp loadStamp(Stamp stamp, JavaKind kind);
-
-    ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value);
-
-    ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value);
 }

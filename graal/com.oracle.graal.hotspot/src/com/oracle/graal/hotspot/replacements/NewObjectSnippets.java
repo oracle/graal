@@ -69,6 +69,7 @@ import jdk.internal.jvmci.code.CodeUtil;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.TargetDescription;
 import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
 import jdk.internal.jvmci.meta.DeoptimizationAction;
 import jdk.internal.jvmci.meta.DeoptimizationReason;
@@ -83,7 +84,6 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.hotspot.meta.HotSpotLoweringProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.nodes.DimensionsNode;
@@ -523,8 +523,7 @@ public class NewObjectSnippets implements Snippets {
             JavaKind elementKind = elementType.getJavaKind();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayType.klass(), providers.getMetaAccess(), graph);
             final int headerSize = getArrayBaseOffset(elementKind);
-            HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-            int log2ElementSize = CodeUtil.log2(lowerer.arrayScalingFactor(elementKind));
+            int log2ElementSize = CodeUtil.log2(HotSpotJVMCIRuntimeProvider.getArrayIndexScale(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
