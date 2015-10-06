@@ -33,7 +33,6 @@ import jdk.internal.jvmci.code.CodeCacheProvider;
 import jdk.internal.jvmci.code.Register;
 import jdk.internal.jvmci.code.RegisterConfig;
 import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.compiler.StartupEventListener;
 import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
 import jdk.internal.jvmci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -69,11 +68,11 @@ import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.amd64.AMD64GraphBuilderPlugins;
 
-@ServiceProvider(StartupEventListener.class)
-public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, StartupEventListener {
+@ServiceProvider(HotSpotBackendFactory.class)
+public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     @Override
-    public void beforeJVMCIStartup() {
+    public void register() {
         DefaultHotSpotGraalCompilerFactory.registerBackend(AMD64.class, this);
     }
 

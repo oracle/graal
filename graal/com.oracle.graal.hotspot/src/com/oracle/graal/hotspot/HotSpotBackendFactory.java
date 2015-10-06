@@ -28,5 +28,7 @@ import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public interface HotSpotBackendFactory {
 
+    void register();
+
     HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host);
 }
