@@ -24,7 +24,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import os, platform
+import os
 from os.path import join, exists, basename
 from argparse import ArgumentParser
 import sanitycheck
@@ -306,7 +306,7 @@ graal_unit_test_runs = [
     UnitTestRun('UnitTestsTraceRA', ['-G:+TraceRA']),
 ]
 
-_registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if platform.processor() == 'sparc' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
+_registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
 
 graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa']),
