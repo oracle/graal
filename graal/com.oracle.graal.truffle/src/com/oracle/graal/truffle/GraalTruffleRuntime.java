@@ -377,9 +377,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     protected static final class CallMethods {
-        protected final ResolvedJavaMethod[] callNodeMethod;
-        protected final ResolvedJavaMethod[] callTargetMethod;
-        protected final ResolvedJavaMethod[] anyFrameMethod;
+        public final ResolvedJavaMethod[] callNodeMethod;
+        public final ResolvedJavaMethod[] callTargetMethod;
+        public final ResolvedJavaMethod[] anyFrameMethod;
 
         private CallMethods(MetaAccessProvider metaAccess) {
             this.callNodeMethod = new ResolvedJavaMethod[]{metaAccess.lookupJavaMethod(GraalFrameInstance.CallNodeFrame.METHOD)};
