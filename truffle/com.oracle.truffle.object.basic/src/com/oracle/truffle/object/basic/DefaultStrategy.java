@@ -25,7 +25,6 @@ package com.oracle.truffle.object.basic;
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -43,20 +42,20 @@ class DefaultStrategy extends LayoutStrategy {
     }
 
     @Override
-    public Shape ensureValid(Shape newShape) {
+    public ShapeImpl ensureValid(ShapeImpl newShape) {
         assert newShape.isValid();
         return newShape;
     }
 
-    private static boolean assertLocationInRange(Shape shape, Location location) {
+    private static boolean assertLocationInRange(ShapeImpl shape, Location location) {
         BasicLayout layout = (BasicLayout) shape.getLayout();
-        assert (((ShapeImpl) shape).getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
-        assert (((ShapeImpl) shape).getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
+        assert (shape.getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
+        assert (shape.getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
         return true;
     }
 
     @Override
-    public Shape ensureSpace(Shape shape, Location location) {
+    public ShapeImpl ensureSpace(ShapeImpl shape, Location location) {
         Objects.requireNonNull(location);
         assert assertLocationInRange(shape, location);
         return shape;
@@ -68,7 +67,7 @@ class DefaultStrategy extends LayoutStrategy {
     }
 
     @Override
-    public ShapeAndProperty generalizeProperty(Property oldProperty, Object value, Shape currentShape, Shape nextShape) {
+    public ShapeAndProperty generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape) {
         Location oldLocation = oldProperty.getLocation();
         Location newLocation = ((BasicAllocator) currentShape.allocator()).locationForValueUpcast(value, oldLocation);
         Property newProperty = oldProperty.relocate(newLocation);
@@ -77,13 +76,13 @@ class DefaultStrategy extends LayoutStrategy {
     }
 
     @Override
-    public BaseAllocator createAllocator(Shape shape) {
-        return new DefaultAllocatorImpl((ShapeImpl) shape);
+    public BaseAllocator createAllocator(ShapeImpl shape) {
+        return new DefaultAllocatorImpl(shape);
     }
 
     @Override
-    public BaseAllocator createAllocator(Layout layout) {
-        return new DefaultAllocatorImpl((LayoutImpl) layout);
+    public BaseAllocator createAllocator(LayoutImpl layout) {
+        return new DefaultAllocatorImpl(layout);
     }
 
     public static class DefaultAllocatorImpl extends BasicAllocator {

@@ -228,7 +228,7 @@ public class PropertyImpl extends Property {
             oldShape = store.getShape();
         }
         LayoutStrategy strategy = ((LayoutImpl) currentShape.getLayout()).getStrategy();
-        LayoutStrategy.ShapeAndProperty newShapeAndProperty = strategy.generalizeProperty(this, value, oldShape, nextShape);
+        LayoutStrategy.ShapeAndProperty newShapeAndProperty = strategy.generalizeProperty(this, value, (ShapeImpl) oldShape, (ShapeImpl) nextShape);
         if (store.updateShape()) {
             oldShape = store.getShape();
         }

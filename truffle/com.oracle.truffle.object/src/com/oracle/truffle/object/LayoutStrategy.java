@@ -23,7 +23,6 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -32,17 +31,17 @@ import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
 public abstract class LayoutStrategy {
     public abstract boolean updateShape(DynamicObject object);
 
-    public abstract Shape ensureValid(Shape newShape);
+    public abstract ShapeImpl ensureValid(ShapeImpl newShape);
 
-    public abstract Shape ensureSpace(Shape shape, Location location);
+    public abstract ShapeImpl ensureSpace(ShapeImpl shape, Location location);
 
     public abstract boolean isAutoExtArray();
 
-    public abstract BaseAllocator createAllocator(Layout shape);
+    public abstract BaseAllocator createAllocator(LayoutImpl shape);
 
-    public abstract BaseAllocator createAllocator(Shape shape);
+    public abstract BaseAllocator createAllocator(ShapeImpl shape);
 
-    protected abstract ShapeAndProperty generalizeProperty(Property oldProperty, Object value, Shape currentShape, Shape nextShape);
+    protected abstract ShapeAndProperty generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape);
 
     public static class ShapeAndProperty {
         private final Shape shape;

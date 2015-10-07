@@ -314,7 +314,7 @@ public abstract class ShapeImpl extends Shape {
         ShapeImpl cachedShape = this.getTransitionMapForRead().get(transition);
         if (cachedShape != null) { // Shape already exists?
             shapeCacheHitCount.inc();
-            return (ShapeImpl) layout.getStrategy().ensureValid(cachedShape);
+            return layout.getStrategy().ensureValid(cachedShape);
         }
         shapeCacheMissCount.inc();
 
@@ -352,7 +352,7 @@ public abstract class ShapeImpl extends Shape {
     public ShapeImpl defineProperty(Object key, Object value, int flags, LocationFactory locationFactory) {
         ShapeImpl oldShape = this;
         if (!oldShape.isValid()) {
-            oldShape = (ShapeImpl) layout.getStrategy().ensureValid(oldShape);
+            oldShape = layout.getStrategy().ensureValid(oldShape);
         }
         PropertyImpl existing = (PropertyImpl) oldShape.getProperty(key);
         if (existing == null) {
@@ -393,7 +393,7 @@ public abstract class ShapeImpl extends Shape {
             return cachedShape;
         }
 
-        ShapeImpl oldShape = (ShapeImpl) layout.getStrategy().ensureSpace(this, prop.getLocation());
+        ShapeImpl oldShape = layout.getStrategy().ensureSpace(this, prop.getLocation());
 
         ShapeImpl newShape = makeShapeWithAddedProperty(oldShape, addTransition);
         oldShape.addDirectTransition(addTransition, newShape);
@@ -460,7 +460,7 @@ public abstract class ShapeImpl extends Shape {
             return cachedShape;
         }
 
-        ShapeImpl oldShape = (ShapeImpl) layout.getStrategy().ensureSpace(this, layout.getPrimitiveArrayLocation());
+        ShapeImpl oldShape = layout.getStrategy().ensureSpace(this, layout.getPrimitiveArrayLocation());
         ShapeImpl newShape = makeShapeWithPrimitiveExtensionArray(oldShape, transition);
         oldShape.addDirectTransition(transition, newShape);
         return newShape;
