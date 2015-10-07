@@ -283,43 +283,21 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     @TruffleBoundary
     public void define(Object id, Object value, int flags) {
-        ShapeImpl oldShape = getShape();
-        Property existing = oldShape.getProperty(id);
-        if (existing == null) {
-            updateShape();
-            oldShape = getShape();
-            Shape newShape = oldShape.addProperty(Property.create(id, oldShape.allocator().locationForValue(value, true, value != null), flags));
-            updateShape();
-            newShape.getLastProperty().setGeneric(this, value, oldShape, newShape);
-        } else {
-            defineExisting(id, value, flags, existing, oldShape);
-        }
-    }
-
-    private void defineExisting(Object id, Object value, int flags, Property existing, ShapeImpl oldShape) {
-        if (existing.getFlags() == flags) {
-            existing.setGeneric(this, value, null);
-        } else {
-            Property newProperty = Property.create(id, oldShape.getLayout().existingLocationForValue(value, existing.getLocation(), oldShape), flags);
-            Shape newShape = oldShape.replaceProperty(existing, newProperty);
-            this.setShapeAndResize(newShape);
-            newProperty.setInternal(this, value);
-        }
+        define(id, value, flags, ShapeImpl.DEFAULT_LAYOUT_FACTORY);
     }
 
     @Override
     @TruffleBoundary
     public void define(Object id, Object value, int flags, LocationFactory locationFactory) {
         ShapeImpl oldShape = getShape();
-        Property existing = oldShape.getProperty(id);
-        if (existing == null) {
-            updateShape();
-            oldShape = getShape();
-            Shape newShape = oldShape.addProperty(Property.create(id, locationFactory.createLocation(oldShape, value), flags));
-            updateShape();
-            newShape.getLastProperty().setGeneric(this, value, oldShape, newShape);
+        ShapeImpl newShape = oldShape.defineProperty(id, value, flags, locationFactory);
+        updateShape();
+        Property property = newShape.getProperty(id);
+
+        if (oldShape == newShape) {
+            property.setSafe(this, value, oldShape);
         } else {
-            defineExisting(id, value, flags, existing, oldShape);
+            property.setSafe(this, value, oldShape, newShape);
         }
     }
 
