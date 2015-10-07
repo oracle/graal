@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.query;
+package com.oracle.graal.phases.common.instrumentation;
 
 import java.util.HashMap;
 import java.util.function.Predicate;
@@ -40,10 +40,10 @@ import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
 import com.oracle.graal.nodes.virtual.CommitAllocationNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.phases.Phase;
-import com.oracle.graal.phases.common.query.nodes.InstrumentationNode;
-import com.oracle.graal.phases.common.query.nodes.MonitorProxyNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 
-public class HighTierReconcileICGPhase extends Phase {
+public class HighTierReconcileInstrumentationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
@@ -101,8 +101,8 @@ public class HighTierReconcileICGPhase extends Phase {
         public void duplicateInstrumentationIfMatch(Predicate<InstrumentationNode> guard, Supplier<ValueNode> newTargetSupplier) {
             StructuredGraph graph = commit.graph();
             for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
-                // insert ICG only if the CommitAllocationNode is accessible from the
-                // instrumentation node
+                // insert instrumentation node only if the CommitAllocationNode is accessible from
+                // the original instrumentation node
                 if (!(isCFGAccessible(instrumentationNode, commit) && guard.test(instrumentationNode))) {
                     continue;
                 }

@@ -23,7 +23,7 @@
 package com.oracle.graal.phases.common.inlining;
 
 import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
-import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.internal.jvmci.meta.DeoptimizationReason.NullCheckException;
 
@@ -95,7 +95,7 @@ import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
-import com.oracle.graal.phases.common.query.nodes.InstrumentationNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 
 public class InliningUtil {
 
@@ -365,7 +365,7 @@ public class InliningUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
-        if (UseGraalQueries.getValue()) {
+        if (UseGraalInstrumentation.getValue()) {
             removeAttachedInstrumentation(invoke);
         }
         finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
@@ -761,7 +761,7 @@ public class InliningUtil {
 
     // exclude InstrumentationNode for inlining heuristics
     public static int getNodeCount(StructuredGraph graph) {
-        if (UseGraalQueries.getValue()) {
+        if (UseGraalInstrumentation.getValue()) {
             return graph.getNodeCount() - graph.getNodes().filter(InstrumentationNode.class).count();
         } else {
             return graph.getNodeCount();

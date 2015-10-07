@@ -20,14 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.query.nodes;
+package com.oracle.graal.phases.common.instrumentation.nodes;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
-
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
@@ -39,41 +36,45 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.DeoptimizingFixedWithNextNode;
+import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.debug.RuntimeStringNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.EscapeObjectState;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
+import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.JavaKind;
+
 @NodeInfo
-public class InstrumentationNode extends FixedWithNextNode implements Virtualizable {
+public class InstrumentationNode extends DeoptimizingFixedWithNextNode implements Virtualizable {
 
     public static final NodeClass<InstrumentationNode> TYPE = NodeClass.create(InstrumentationNode.class);
 
     @OptionalInput(value = InputType.Association) protected ValueNode target;
     @OptionalInput protected NodeInputList<ValueNode> weakDependencies;
 
-    protected StructuredGraph icg;
+    protected StructuredGraph instrumentationGraph;
     protected final int offset;
-    protected final int type;
 
-    public InstrumentationNode(ValueNode target, int offset, int type) {
+    public InstrumentationNode(ValueNode target, int offset) {
         super(TYPE, StampFactory.forVoid());
 
         this.target = target;
-        this.icg = new StructuredGraph(AllowAssumptions.YES);
+        this.instrumentationGraph = new StructuredGraph(AllowAssumptions.YES);
         this.offset = offset;
-        this.type = type;
 
         this.weakDependencies = new NodeInputList<>(this);
     }
@@ -86,16 +87,12 @@ public class InstrumentationNode extends FixedWithNextNode implements Virtualiza
         return target;
     }
 
-    public StructuredGraph icg() {
-        return icg;
+    public StructuredGraph instrumentationGraph() {
+        return instrumentationGraph;
     }
 
     public int offset() {
         return offset;
-    }
-
-    public int type() {
-        return type;
     }
 
     public NodeInputList<ValueNode> getWeakDependencies() {
@@ -119,19 +116,27 @@ public class InstrumentationNode extends FixedWithNextNode implements Virtualiza
         }
     }
 
+    public void onMidTierReconcileInstrumentation() {
+        for (RootNameNode rootNameNode : instrumentationGraph.getNodes().filter(RootNameNode.class)) {
+            RuntimeStringNode runtimeString = new RuntimeStringNode(RootNameNode.genRootName(graph().method()), rootNameNode.stamp());
+            instrumentationGraph.addWithoutUnique(runtimeString);
+            instrumentationGraph.replaceFixedWithFixed(rootNameNode, runtimeString);
+        }
+    }
+
     public void inlineAt(FixedNode position) {
-        ArrayList<Node> nodes = new ArrayList<>(icg.getNodes().count());
-        final StartNode entryPointNode = icg.start();
+        ArrayList<Node> nodes = new ArrayList<>(instrumentationGraph.getNodes().count());
+        final StartNode entryPointNode = instrumentationGraph.start();
         FixedNode firstCFGNode = entryPointNode.next();
         ArrayList<ReturnNode> returnNodes = new ArrayList<>(4);
 
-        for (Node icgnode : icg.getNodes()) {
-            if (icgnode == entryPointNode || icgnode == entryPointNode.stateAfter() || icgnode instanceof ParameterNode) {
+        for (Node node : instrumentationGraph.getNodes()) {
+            if (node == entryPointNode || node == entryPointNode.stateAfter() || node instanceof ParameterNode) {
                 // Do nothing.
             } else {
-                nodes.add(icgnode);
-                if (icgnode instanceof ReturnNode) {
-                    returnNodes.add((ReturnNode) icgnode);
+                nodes.add(node);
+                if (node instanceof ReturnNode) {
+                    returnNodes.add((ReturnNode) node);
                 }
             }
         }
@@ -155,7 +160,7 @@ public class InstrumentationNode extends FixedWithNextNode implements Virtualiza
 
         };
 
-        Map<Node, Node> duplicates = graph().addDuplicates(nodes, icg, icg.getNodeCount(), localReplacement);
+        Map<Node, Node> duplicates = graph().addDuplicates(nodes, instrumentationGraph, instrumentationGraph.getNodeCount(), localReplacement);
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
         position.replaceAtPredecessor(firstCFGNodeDuplicate);
 
@@ -190,6 +195,33 @@ public class InstrumentationNode extends FixedWithNextNode implements Virtualiza
                 oldState.replaceAtUsages(newState);
             }
         }
+
+        for (Node replacee : duplicates.values()) {
+            // we cannot assign a random FrameState with valid bci to Invoke because it is used for
+            // resolving virtual call at runtime.
+            if (replacee instanceof DeoptimizingNode && !(replacee instanceof Invoke)) {
+                DeoptimizingNode deoptDup = (DeoptimizingNode) replacee;
+                if (deoptDup.canDeoptimize()) {
+                    if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
+                        ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore());
+                    }
+                    if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
+                        DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
+                        assert !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
+                        deoptDupDuring.setStateDuring(stateBefore());
+                    }
+                    if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
+                        DeoptimizingNode.DeoptAfter deoptDupAfter = (DeoptimizingNode.DeoptAfter) deoptDup;
+                        assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
+                        deoptDupAfter.setStateAfter(stateBefore());
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean canDeoptimize() {
+        return true;
     }
 
 }

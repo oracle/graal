@@ -20,10 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements.query;
-
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaKind;
+package com.oracle.graal.phases.common.instrumentation.nodes;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
@@ -36,15 +33,15 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.ValuePhiNode;
-import com.oracle.graal.phases.common.query.nodes.GraalQueryNode;
-import com.oracle.graal.phases.common.query.nodes.InstrumentationNode;
+
+import jdk.internal.jvmci.meta.JavaKind;
 
 @NodeInfo
-public final class GetRuntimePathNode extends GraalQueryNode {
+public final class RuntimePathNode extends InstrumentationContentNode {
 
-    public static final NodeClass<GetRuntimePathNode> TYPE = NodeClass.create(GetRuntimePathNode.class);
+    public static final NodeClass<RuntimePathNode> TYPE = NodeClass.create(RuntimePathNode.class);
 
-    public GetRuntimePathNode() {
+    public RuntimePathNode() {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
     }
 
@@ -64,7 +61,7 @@ public final class GetRuntimePathNode extends GraalQueryNode {
     }
 
     @Override
-    public void onInlineICG(InstrumentationNode instrumentation, FixedNode position, ConstantReflectionProvider constantReflection) {
+    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
         if (instrumentation.target() instanceof AbstractMergeNode) {
             AbstractMergeNode merge = (AbstractMergeNode) instrumentation.target();
 
@@ -79,8 +76,5 @@ public final class GetRuntimePathNode extends GraalQueryNode {
         }
         graph().replaceFixedWithFloating(this, ConstantNode.forInt(-1, graph()));
     }
-
-    @NodeIntrinsic
-    public static native int instantiate();
 
 }

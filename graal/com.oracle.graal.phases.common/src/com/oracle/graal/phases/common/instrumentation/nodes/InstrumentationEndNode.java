@@ -20,18 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.query;
+package com.oracle.graal.phases.common.instrumentation.nodes;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.FixedWithNextNode;
 
-public class SpecialIntrinsicGuard {
+@NodeInfo
+public final class InstrumentationEndNode extends FixedWithNextNode {
 
-    public static final String CN_DELIMITATIONAPI = DelimitationAPI.class.getName();
-    public static final String CN_GRAALQUERYAPI = GraalQueryAPI.class.getName();
+    public static final NodeClass<InstrumentationEndNode> TYPE = NodeClass.create(InstrumentationEndNode.class);
 
-    public static boolean isQueryIntrinsic(ResolvedJavaMethod method) {
-        String klass = method.getDeclaringClass().toJavaName();
-        return CN_DELIMITATIONAPI.equals(klass) || CN_GRAALQUERYAPI.equals(klass);
+    public InstrumentationEndNode() {
+        super(TYPE, StampFactory.forVoid());
     }
 
 }

@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.query;
+package com.oracle.graal.phases.common.instrumentation;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
-import com.oracle.graal.nodes.java.AccessMonitorNode;
+import com.oracle.graal.nodes.java.RawMonitorEnterNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.Phase;
-import com.oracle.graal.phases.common.query.nodes.InstrumentationNode;
-import com.oracle.graal.phases.common.query.nodes.MonitorProxyNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 
-public class MidTierReconcileICGPhase extends Phase {
+public class MidTierReconcileInstrumentationPhase extends Phase {
 
-    private static AccessMonitorNode unproxify(MonitorProxyNode proxy) {
-        for (AccessMonitorNode monitorEnter : proxy.getMonitorId().usages().filter(AccessMonitorNode.class)) {
+    private static RawMonitorEnterNode unproxify(MonitorProxyNode proxy) {
+        for (RawMonitorEnterNode monitorEnter : proxy.getMonitorId().usages().filter(RawMonitorEnterNode.class)) {
             if (monitorEnter.object() == proxy.target()) {
                 return monitorEnter;
             }
@@ -45,6 +45,7 @@ public class MidTierReconcileICGPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
+            instrumentationNode.onMidTierReconcileInstrumentation();
             ValueNode target = instrumentationNode.target();
             if (target instanceof MonitorProxyNode) {
                 instrumentationNode.replaceFirstInput(target, unproxify((MonitorProxyNode) target));

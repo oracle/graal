@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.phases;
 import static com.oracle.graal.compiler.common.GraalOptions.ConditionalElimination;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
-import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 import jdk.internal.jvmci.options.Option;
 import jdk.internal.jvmci.options.OptionType;
@@ -41,7 +41,7 @@ import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.common.ProfileCompiledMethodsPhase;
 import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.common.UseTrappingNullChecksPhase;
-import com.oracle.graal.phases.common.query.InlineICGPhase;
+import com.oracle.graal.phases.common.instrumentation.InlineInstrumentationPhase;
 import com.oracle.graal.phases.tiers.LowTierContext;
 
 public class LowTier extends PhaseSuite<LowTierContext> {
@@ -66,8 +66,8 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER));
-        if (UseGraalQueries.getValue()) {
-            appendPhase(new InlineICGPhase());
+        if (UseGraalInstrumentation.getValue()) {
+            appendPhase(new InlineInstrumentationPhase());
         }
 
         appendPhase(new RemoveValueProxyPhase());

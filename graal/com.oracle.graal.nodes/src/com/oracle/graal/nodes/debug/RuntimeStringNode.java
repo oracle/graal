@@ -20,36 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.query.nodes;
+package com.oracle.graal.nodes.debug;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringTool;
 
 @NodeInfo
-public final class InstrumentationBeginNode extends FixedWithNextNode {
+public final class RuntimeStringNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
+    public static final NodeClass<RuntimeStringNode> TYPE = NodeClass.create(RuntimeStringNode.class);
 
-    protected final int offset;
-    protected final int type;
+    private final String value;
 
-    public InstrumentationBeginNode(int offset, int type) {
-        super(TYPE, StampFactory.forVoid());
-        this.offset = offset;
-        this.type = type;
+    public RuntimeStringNode(String value, Stamp stamp) {
+        super(TYPE, stamp);
+        this.value = value;
     }
 
-    public int getOffset() {
-        return offset;
+    public String getValue() {
+        return value;
     }
 
-    public int getType() {
-        return type;
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
-
-    @NodeIntrinsic
-    public static native void instantiate(@ConstantNodeParameter int offset, @ConstantNodeParameter int type);
 
 }
