@@ -801,6 +801,11 @@ public class PolyglotEngine {
                 throw (InterruptedIOException) new InterruptedIOException(ex.getMessage()).initCause(ex);
             }
         }
+
+        @Override
+        public String toString() {
+            return "PolyglotEngine.Value[value=" + result[0] + ",exception=" + result[1] + ",computed=" + (ready.getCount() == 0) + "]";
+        }
     }
 
     /**
