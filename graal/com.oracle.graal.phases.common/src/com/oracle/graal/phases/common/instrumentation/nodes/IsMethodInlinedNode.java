@@ -20,23 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.query.nodes;
+package com.oracle.graal.phases.common.instrumentation.nodes;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedNode;
+
+import jdk.internal.jvmci.meta.JavaKind;
 
 @NodeInfo
-public final class InstrumentationEndNode extends FixedWithNextNode {
+public final class IsMethodInlinedNode extends InstrumentationContentNode {
 
-    public static final NodeClass<InstrumentationEndNode> TYPE = NodeClass.create(InstrumentationEndNode.class);
+    public static final NodeClass<IsMethodInlinedNode> TYPE = NodeClass.create(IsMethodInlinedNode.class);
 
-    public InstrumentationEndNode() {
-        super(TYPE, StampFactory.forVoid());
+    protected int original;
+
+    public IsMethodInlinedNode() {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
     }
 
-    @NodeIntrinsic
-    public static native void instantiate();
+    @Override
+    public void onExtractInstrumentation(InstrumentationNode instrumentation) {
+        original = System.identityHashCode(instrumentation.graph());
+    }
+
+    @Override
+    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
+        graph().replaceFixedWithFloating(this, ConstantNode.forBoolean(original != System.identityHashCode(instrumentation.graph()), graph()));
+    }
 
 }

@@ -312,7 +312,7 @@ public final class GraalOptions {
         }
     };
 
-    @Option(help = "Enable compiler decision queries")
-    public static final OptionValue<Boolean> UseGraalQueries = new OptionValue<>(false);
+    @Option(help = "Enable Graal instrumentation")
+    public static final OptionValue<Boolean> UseGraalInstrumentation = new OptionValue<>(false);
 
 }

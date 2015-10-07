@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
-import static com.oracle.graal.compiler.common.GraalOptions.UseGraalQueries;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -243,7 +243,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.next() == continuation;
         invoke.setNext(null);
         returnMerge.setNext(continuation);
-        if (UseGraalQueries.getValue()) {
+        if (UseGraalInstrumentation.getValue()) {
             InliningUtil.removeAttachedInstrumentation(invoke);
         }
         if (returnValuePhi != null) {

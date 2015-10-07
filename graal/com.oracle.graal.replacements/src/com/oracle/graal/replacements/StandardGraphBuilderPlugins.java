@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static jdk.internal.jvmci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
 import static jdk.internal.jvmci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
 import static jdk.internal.jvmci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
@@ -30,19 +31,6 @@ import static jdk.internal.jvmci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
-
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionValue;
-import sun.misc.Unsafe;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -97,6 +85,11 @@ import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.RegisterFinalizerNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.virtual.EnsureVirtualizedNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationBeginNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationEndNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.IsMethodInlinedNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.RootNameNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.RuntimePathNode;
 import com.oracle.graal.replacements.nodes.DeferredPiNode;
 import com.oracle.graal.replacements.nodes.DirectReadNode;
 import com.oracle.graal.replacements.nodes.DirectStoreNode;
@@ -105,6 +98,19 @@ import com.oracle.graal.replacements.nodes.VirtualizableInvokeMacroNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerAddExactNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerMulExactNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerSubExactNode;
+
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.JavaKind;
+import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaField;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.options.Option;
+import jdk.internal.jvmci.options.OptionValue;
+import sun.misc.Unsafe;
 
 /**
  * Provides non-runtime specific {@link InvocationPlugin}s.
@@ -703,6 +709,39 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register0("rootName", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Object, new RootNameNode(b.getInvokeReturnStamp()));
+                return true;
+            }
+        });
+
+        if (UseGraalInstrumentation.getValue()) {
+            r.register1("instrumentationBegin", int.class, new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode offset) {
+                    b.add(new InstrumentationBeginNode(offset));
+                    return true;
+                }
+            });
+            r.register0("instrumentationEnd", new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    b.add(new InstrumentationEndNode());
+                    return true;
+                }
+            });
+            r.register0("isMethodInlined", new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    b.addPush(JavaKind.Boolean, new IsMethodInlinedNode());
+                    return true;
+                }
+            });
+            r.register0("runtimePath", new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    b.addPush(JavaKind.Int, new RuntimePathNode());
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerJMHBlackholePlugins(InvocationPlugins plugins) {

@@ -20,30 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.phases.common.instrumentation.nodes;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.debug.query.DelimitationAPI;
-import com.oracle.graal.phases.common.query.nodes.InstrumentationBeginNode;
-import com.oracle.graal.phases.common.query.nodes.InstrumentationEndNode;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
 
-@ClassSubstitution(DelimitationAPI.class)
-public class DelimitationAPISubstitutions {
+@NodeInfo
+public abstract class InstrumentationContentNode extends FixedWithNextNode {
 
-    @MethodSubstitution(isStatic = true)
-    public static void instrumentationBegin(int target) {
-        InstrumentationBeginNode.instantiate(target, 0);
+    public static final NodeClass<InstrumentationContentNode> TYPE = NodeClass.create(InstrumentationContentNode.class);
+
+    public InstrumentationContentNode(NodeClass<? extends FixedWithNextNode> c, Stamp stamp) {
+        super(c, stamp);
     }
 
-    @MethodSubstitution(isStatic = true)
-    public static void instrumentationBegin(int target, int type) {
-        InstrumentationBeginNode.instantiate(target, type);
+    public void onExtractInstrumentation(@SuppressWarnings("unused") InstrumentationNode instrumentation) {
     }
 
-    @MethodSubstitution(isStatic = true)
-    public static void instrumentationEnd() {
-        InstrumentationEndNode.instantiate();
+    public void onInlineInstrumentation(@SuppressWarnings("unused") InstrumentationNode instrumentation, @SuppressWarnings("unused") FixedNode position) {
     }
 
 }

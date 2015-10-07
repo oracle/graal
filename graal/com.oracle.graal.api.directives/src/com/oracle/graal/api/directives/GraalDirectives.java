@@ -296,4 +296,70 @@ public final class GraalDirectives {
      */
     public static void ensureVirtualizedHere(@SuppressWarnings("unused") Object object) {
     }
+
+    /**
+     * Marks the beginning of the instrumentation boundary. The instrumentation will be folded
+     * during compilation and will not affect inlining heuristics regarding graph size except the
+     * one on compiled low-level graph size (see GraalOptions.SmallCompiledLowLevelGraphSize). The
+     * offset specifies a target node to whom the instrumentation is associated. If the target node
+     * is a NewInstanceNode or a MonitorEnterNode, the instrumentation will be duplicated and
+     * inserted after the relocated CommitAllocationNode.
+     *
+     * Example (the instrumentation is associated with the allocation):
+     *
+     * <blockquote>
+     *
+     * <pre>
+     * new java.lang.Object
+     * iconst_m1
+     * invokestatic GraalDirectives.instrumentationBegin(int)
+     * invokestatic AllocationProfiler.countActualAllocation()
+     * invokestatic GraalDirectives.instrumentationEnd()
+     * invokespecial java.lang.Object()
+     * </pre>
+     *
+     * </blockquote>
+     *
+     * @param offset the length of a sequential path from a target node to the invocation to this
+     *            API (if negative), or from the invocation to {@link #instrumentationEnd()} to a
+     *            target node (if positive). Pass 0 to anchor the instrumentation.
+     */
+    public static void instrumentationBegin(int offset) {
+    }
+
+    /**
+     * Marks the end of the instrumentation boundary. See {@link #instrumentationBegin(int)}.
+     */
+    public static void instrumentationEnd() {
+    }
+
+    /**
+     * @return an integer representing a runtime path taken for a @Snippet. This API is valid only
+     *         if invoked within an instrumentation (see {@link #instrumentationBegin(int)} and
+     *         {@link #instrumentationEnd()} , and the associated target node of the instrumentation
+     *         is a preceding node that will be substituted by a @Snippet with multiple runtime
+     *         paths. It will be replaced with a ValuePhiNode with constant integer inputs [0, N-1],
+     *         where N denotes the number of runtime paths of the snippet.
+     */
+    public static int runtimePath() {
+        return -1;
+    }
+
+    /**
+     * @return true if the enclosing method is inlined. This API is valid only if invoked within an
+     *         instrumentation (see {@link #instrumentationBegin(int)} and
+     *         {@link #instrumentationEnd()} .
+     */
+    public static boolean isMethodInlined() {
+        return false;
+    }
+
+    /**
+     * @return the name of the root method for the current compilation task. If the enclosing method
+     *         is inlined, it returns the name of the method into which it is inlined.
+     */
+    public static String rootName() {
+        return "unknown";
+    }
+
 }

@@ -20,41 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements.query;
-
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaKind;
+package com.oracle.graal.phases.common.instrumentation.nodes;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.phases.common.query.nodes.GraalQueryNode;
-import com.oracle.graal.phases.common.query.nodes.InstrumentationNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.ValueNode;
+
+import jdk.internal.jvmci.common.JVMCIError;
+import jdk.internal.jvmci.meta.JavaConstant;
 
 @NodeInfo
-public final class IsMethodInlinedNode extends GraalQueryNode {
+public final class InstrumentationBeginNode extends FixedWithNextNode {
 
-    public static final NodeClass<IsMethodInlinedNode> TYPE = NodeClass.create(IsMethodInlinedNode.class);
+    public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
 
-    protected int original;
+    private final int offset;
 
-    public IsMethodInlinedNode() {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+    public InstrumentationBeginNode(ValueNode offset) {
+        super(TYPE, StampFactory.forVoid());
+
+        if (!(offset instanceof ConstantNode)) {
+            throw JVMCIError.shouldNotReachHere("should pass constant integer to instrumentationBegin(int)");
+        }
+
+        ConstantNode constantNode = (ConstantNode) offset;
+        JavaConstant constant = (JavaConstant) constantNode.asConstant();
+        this.offset = constant.asInt();
     }
 
-    @Override
-    public void onExtractICG(InstrumentationNode instrumentation) {
-        original = System.identityHashCode(instrumentation.graph());
+    public int getOffset() {
+        return offset;
     }
-
-    @Override
-    public void onInlineICG(InstrumentationNode instrumentation, FixedNode position, ConstantReflectionProvider constantReflection) {
-        graph().replaceFixedWithFloating(this, ConstantNode.forBoolean(original != System.identityHashCode(instrumentation.graph()), graph()));
-    }
-
-    @NodeIntrinsic
-    public static native boolean instantiate();
 
 }

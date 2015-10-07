@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.query;
+package com.oracle.graal.phases.common.instrumentation;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -36,39 +36,39 @@ import com.oracle.graal.phases.common.FloatingReadPhase;
 import com.oracle.graal.phases.common.FrameStateAssignmentPhase;
 import com.oracle.graal.phases.common.GuardLoweringPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.common.query.nodes.GraalQueryNode;
-import com.oracle.graal.phases.common.query.nodes.InstrumentationNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationContentNode;
+import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 import com.oracle.graal.phases.tiers.LowTierContext;
 
-public class InlineICGPhase extends BasePhase<LowTierContext> {
+public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
-        // ICG may be shared amongst multiple InstrumentationNode
-        Set<StructuredGraph> icgs = new HashSet<>();
+        // instrumentation may be shared amongst multiple InstrumentationNode
+        Set<StructuredGraph> instrumentationGraphs = new HashSet<>();
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
-            icgs.add(instrumentationNode.icg());
+            instrumentationGraphs.add(instrumentationNode.instrumentationGraph());
         }
-        for (StructuredGraph icg : icgs) {
-            new GuardLoweringPhase().apply(icg, null);
-            new FrameStateAssignmentPhase().apply(icg, false);
-            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.LOW_TIER).apply(icg, context);
-            new FloatingReadPhase(true, true).apply(icg, false);
+        for (StructuredGraph instrumentation : instrumentationGraphs) {
+            new GuardLoweringPhase().apply(instrumentation, null);
+            new FrameStateAssignmentPhase().apply(instrumentation, false);
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.LOW_TIER).apply(instrumentation, context);
+            new FloatingReadPhase(true, true).apply(instrumentation, false);
 
-            MemoryAnchorNode anchor = icg.add(new MemoryAnchorNode());
-            icg.start().replaceAtUsages(InputType.Memory, anchor);
+            MemoryAnchorNode anchor = instrumentation.add(new MemoryAnchorNode());
+            instrumentation.start().replaceAtUsages(InputType.Memory, anchor);
             if (anchor.hasNoUsages()) {
                 anchor.safeDelete();
             } else {
-                icg.addAfterFixed(icg.start(), anchor);
+                instrumentation.addAfterFixed(instrumentation.start(), anchor);
             }
         }
 
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
             instrumentationNode.inlineAt(instrumentationNode);
 
-            for (GraalQueryNode query : graph.getNodes().filter(GraalQueryNode.class)) {
-                query.onInlineICG(instrumentationNode, instrumentationNode, context.getConstantReflection());
+            for (InstrumentationContentNode query : graph.getNodes().filter(InstrumentationContentNode.class)) {
+                query.onInlineInstrumentation(instrumentationNode, instrumentationNode);
             }
 
             GraphUtil.unlinkFixedNode(instrumentationNode);
