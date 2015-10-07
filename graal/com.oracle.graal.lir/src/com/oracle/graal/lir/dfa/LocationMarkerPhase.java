@@ -75,7 +75,7 @@ public final class LocationMarkerPhase extends AllocationPhase {
         protected boolean shouldProcessValue(Value operand) {
             if (isRegister(operand)) {
                 Register reg = asRegister(operand);
-                if (reg.getReferenceMapIndex() < 0 || !attributes(reg).isAllocatable()) {
+                if (!reg.mayContainReference() || !attributes(reg).isAllocatable()) {
                     // register that's not allocatable or not part of the reference map
                     return false;
                 }
