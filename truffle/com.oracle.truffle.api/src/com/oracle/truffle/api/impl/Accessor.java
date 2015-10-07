@@ -342,4 +342,8 @@ public abstract class Accessor {
     protected void dispose(TruffleLanguage<?> impl, Env env) {
         API.dispose(impl, env);
     }
+
+    protected String toString(TruffleLanguage<?> language, Env env, Object obj) {
+        return API.toString(language, env, obj);
+    }
 }

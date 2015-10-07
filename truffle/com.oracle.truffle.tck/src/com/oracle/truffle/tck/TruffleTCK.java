@@ -375,8 +375,8 @@ public abstract class TruffleTCK {
         final PolyglotEngine.Value result = apply.invoke(null, fn);
 
         try {
-            String res = result.as(String.class);
-            fail("Cannot be converted to String: " + res);
+            Boolean res = result.as(Boolean.class);
+            fail("Cannot be converted to Boolean: " + res);
         } catch (ClassCastException ex) {
             // correct
         }

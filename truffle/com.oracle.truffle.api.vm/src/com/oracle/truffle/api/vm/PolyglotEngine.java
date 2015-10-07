@@ -707,7 +707,10 @@ public class PolyglotEngine {
          * Obtains Java view of the object represented by this symbol. The method basically
          * delegates to
          * {@link JavaInterop#asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)}
-         * just handles primitive types as well.
+         * . The method handles primitive types (like {@link Number}, etc.) by casting and returning
+         * them. When a {@link String}.<code>class</code> is requested, the method let's the
+         * language that produced the value to do the
+         * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) necessary formating}.
          *
          * @param <T> the type of the view one wants to obtain
          * @param representation the class of the view interface (it has to be an interface)
@@ -722,6 +725,10 @@ public class PolyglotEngine {
                 if (representation.isInstance(eto.getDelegate())) {
                     return representation.cast(eto.getDelegate());
                 }
+            }
+            if (representation == String.class) {
+                final Class<? extends TruffleLanguage> clazz = language.getClass();
+                return representation.cast(SPI.toString(language, findEnv(clazz), obj));
             }
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
@@ -1042,6 +1049,11 @@ public class PolyglotEngine {
         @Override
         protected void dispose(TruffleLanguage<?> impl, TruffleLanguage.Env env) {
             super.dispose(impl, env);
+        }
+
+        @Override
+        protected String toString(TruffleLanguage language, TruffleLanguage.Env env, Object obj) {
+            return super.toString(language, env, obj);
         }
     } // end of SPIAccessor
 }
