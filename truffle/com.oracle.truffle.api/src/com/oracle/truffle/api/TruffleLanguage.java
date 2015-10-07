@@ -78,6 +78,8 @@ import com.oracle.truffle.api.source.Source;
  */
 @SuppressWarnings("javadoc")
 public abstract class TruffleLanguage<C> {
+    private final Map<Source, CallTarget> COMPILED = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
+
     /**
      * Constructor to be called by subclasses.
      */
@@ -446,17 +448,15 @@ public abstract class TruffleLanguage<C> {
             return super.importSymbol(vm, queryingLang, globalName);
         }
 
-        private static final Map<Source, CallTarget> COMPILED = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
-
         @Override
         protected Object eval(TruffleLanguage<?> language, Source source) throws IOException {
-            CallTarget target = COMPILED.get(source);
+            CallTarget target = language.COMPILED.get(source);
             if (target == null) {
                 target = language.parse(source, null);
                 if (target == null) {
                     throw new IOException("Parsing has not produced a CallTarget for " + source);
                 }
-                COMPILED.put(source, target);
+                language.COMPILED.put(source, target);
             }
             try {
                 return target.call();
