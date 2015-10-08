@@ -22,17 +22,16 @@
  */
 package com.oracle.truffle.object;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
-import java.util.EnumSet;
-import java.util.Objects;
 
 /**
  * Property objects represent the mapping between property identifiers (keys) and storage locations.
@@ -213,27 +212,32 @@ public class PropertyImpl extends Property {
     }
 
     private void setSlowCase(DynamicObject store, Object value) {
-        if (getLocation() instanceof DeclaredLocation) {
-            setDeclaredLocation(store, value);
-        } else {
-            generalize(store, value);
-        }
-    }
-
-    private void setDeclaredLocation(DynamicObject store, Object value) {
-        store.updateShape();
         Shape oldShape = store.getShape();
-        Shape newShape = oldShape.addProperty(this.relocateShadow(oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull))));
-        store.updateShape();
-        newShape.getLastProperty().setGeneric(store, value, oldShape, newShape);
+        Shape newShape = oldShape.defineProperty(getKey(), value, getFlags());
+        if (store.updateShape()) {
+            oldShape = store.getShape();
+        }
+        assert newShape.isValid() && oldShape.isValid();
+        Property newProperty = newShape.getProperty(getKey());
+        newProperty.setSafe(store, value, oldShape, newShape);
     }
 
-    private Property generalize(DynamicObject store, Object value) {
-        return ((LayoutImpl) store.getShape().getLayout()).getStrategy().generalizeProperty(store, this, value);
-    }
+    private void setWithShapeSlowCase(DynamicObject store, Object value, Shape currentShape, Shape nextShape) {
+        Shape oldShape = currentShape;
+        if (store.updateShape()) {
+            oldShape = store.getShape();
+        }
+        LayoutStrategy strategy = ((LayoutImpl) currentShape.getLayout()).getStrategy();
+        LayoutStrategy.ShapeAndProperty newShapeAndProperty = strategy.generalizeProperty(this, value, (ShapeImpl) oldShape, (ShapeImpl) nextShape);
+        if (store.updateShape()) {
+            oldShape = store.getShape();
+        }
 
-    private void setWithShapeSlowCase(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
-        ((LayoutImpl) store.getShape().getLayout()).getStrategy().generalizeProperty(store, this, value, oldShape, newShape);
+        Shape newNextShape = newShapeAndProperty.getShape();
+        Property newProperty = newShapeAndProperty.getProperty();
+
+        assert newNextShape.isValid() && oldShape.isValid();
+        newProperty.setSafe(store, value, oldShape, newNextShape);
     }
 
     @Override
@@ -246,7 +250,7 @@ public class PropertyImpl extends Property {
         return shadow;
     }
 
-    private Property relocateShadow(Location newLocation) {
+    Property relocateShadow(Location newLocation) {
         assert !isShadow() && getLocation() instanceof DeclaredLocation && relocatable;
         return new PropertyImpl(key, newLocation, flags, true, relocatable);
     }

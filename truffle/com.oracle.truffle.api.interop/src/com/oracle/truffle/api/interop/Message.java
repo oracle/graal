@@ -413,7 +413,11 @@ public abstract class Message {
                 return (Message) Message.class.getMethod(factory, int.class).invoke(null, 0);
             } catch (Exception ex2) {
                 try {
-                    return (Message) Class.forName(message).newInstance();
+                    ClassLoader l = Message.class.getClassLoader();
+                    if (l == null) {
+                        l = ClassLoader.getSystemClassLoader();
+                    }
+                    return (Message) Class.forName(message, false, l).newInstance();
                 } catch (Exception ex1) {
                     throw new IllegalArgumentException("Cannot find message for " + message, ex);
                 }

@@ -135,9 +135,12 @@ public final class JavaInterop {
      *
      * @param <T> type of requested and returned value
      * @param type interface modeling structure of <code>foreignObject</code> in <b>Java</b>
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}
+     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
+     *            <code>null</code>, in such case the returned value will likely be
+     *            <code>null</code> as well
      * @return instance of requested interface granting access to specified
-     *         <code>foreignObject</code>
+     *         <code>foreignObject</code>, can be <code>null</code>, if the foreignObject parameter
+     *         was <code>null</code>
      */
     public static <T> T asJavaObject(Class<T> type, TruffleObject foreignObject) {
         return asJavaObject(type, null, foreignObject);
@@ -150,6 +153,9 @@ public final class JavaInterop {
         } else {
             if (!clazz.isInterface()) {
                 throw new IllegalArgumentException();
+            }
+            if (foreignObject == null) {
+                return null;
             }
             if (clazz == List.class && Boolean.TRUE.equals(message(Message.HAS_SIZE, foreignObject))) {
                 Class<?> elementType = Object.class;

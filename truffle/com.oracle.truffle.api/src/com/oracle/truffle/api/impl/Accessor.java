@@ -267,10 +267,11 @@ public abstract class Accessor {
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
-    protected Closeable executionStart(Object vm, Debugger debugger, Source s) {
+    @SuppressWarnings("unused")
+    protected Closeable executionStart(Object vm, int currentDepth, Debugger debugger, Source s) {
         vm.getClass();
-        final Closeable debugClose = DEBUG.executionStart(vm, debugger, s);
         final Object prev = CURRENT_VM.get();
+        final Closeable debugClose = DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
         if (!(vm == previousVM.get())) {
             previousVM = new WeakReference<>(vm);
             oneVM.invalidate();
@@ -338,4 +339,7 @@ public abstract class Accessor {
         return API.parse(truffleLanguage, code, context, argumentNames);
     }
 
+    protected String toString(TruffleLanguage<?> language, Env env, Object obj) {
+        return API.toString(language, env, obj);
+    }
 }

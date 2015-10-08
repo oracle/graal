@@ -23,26 +23,41 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
 
-public interface LayoutStrategy {
-    boolean updateShape(DynamicObject object);
+public abstract class LayoutStrategy {
+    public abstract boolean updateShape(DynamicObject object);
 
-    Shape returnCached(Shape newShape);
+    public abstract ShapeImpl ensureValid(ShapeImpl newShape);
 
-    Shape ensureSpace(Shape shape, Location location);
+    public abstract ShapeImpl ensureSpace(ShapeImpl shape, Location location);
 
-    boolean isAutoExtArray();
+    public abstract boolean isAutoExtArray();
 
-    Property generalizeProperty(DynamicObject object, Property oldProperty, Object value);
+    public abstract BaseAllocator createAllocator(LayoutImpl shape);
 
-    Property generalizeProperty(DynamicObject object, Property oldProperty, Object value, Shape oldShape, Shape newShape);
+    public abstract BaseAllocator createAllocator(ShapeImpl shape);
 
-    BaseAllocator createAllocator(Layout shape);
+    protected abstract ShapeAndProperty generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape);
 
-    BaseAllocator createAllocator(Shape shape);
+    public static class ShapeAndProperty {
+        private final Shape shape;
+        private final Property property;
+
+        public ShapeAndProperty(Shape shape, Property property) {
+            this.shape = shape;
+            this.property = property;
+        }
+
+        public Shape getShape() {
+            return shape;
+        }
+
+        public Property getProperty() {
+            return property;
+        }
+    }
 }

@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.tck;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Random;
@@ -142,6 +144,19 @@ public abstract class TruffleTCK {
     }
 
     /**
+     * Name of a function to return global object. The function can be executed without providing
+     * any arguments and should return global object of the language, if the language supports it.
+     * Global object is the one accessible via
+     * {@link TruffleLanguage#getLanguageGlobal(java.lang.Object)}.
+     *
+     * @return name of globally exported symbol, return <code>null</code> if the language doesn't
+     *         support the concept of global object
+     */
+    protected String globalObject() {
+        throw new UnsupportedOperationException("globalObject() method not implemented");
+    }
+
+    /**
      * Name of a function that counts number of its invocations in current {@link PolyglotEngine}
      * context. Your function should somehow keep a counter to remember number of its invocations
      * and always increment it. The first invocation should return <code>1</code>, the second
@@ -227,6 +242,15 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value retNull = findGlobalSymbol(returnsNull());
 
         Object res = retNull.invoke(null).get();
+
+        assertNull("Should yield real Java null", res);
+    }
+
+    @Test
+    public void testNullCanBeCastToAnything() throws Exception {
+        PolyglotEngine.Value retNull = findGlobalSymbol(returnsNull());
+
+        Object res = retNull.invoke(null).as(CompoundObject.class);
 
         assertNull("Should yield real Java null", res);
     }
@@ -351,8 +375,8 @@ public abstract class TruffleTCK {
         final PolyglotEngine.Value result = apply.invoke(null, fn);
 
         try {
-            String res = result.as(String.class);
-            fail("Cannot be converted to String: " + res);
+            Boolean res = result.as(Boolean.class);
+            fail("Cannot be converted to Boolean: " + res);
         } catch (ClassCastException ex) {
             // correct
         }
@@ -553,7 +577,21 @@ public abstract class TruffleTCK {
             }
             assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2;
         }
+    }
 
+    @Test
+    public void testGlobalObjectIsAccessible() throws Exception {
+        String globalObjectFunction = globalObject();
+        if (globalObjectFunction == null) {
+            return;
+        }
+
+        Language language = vm().getLanguages().get(mimeType());
+        assertNotNull("Langugage for " + mimeType() + " found", language);
+
+        PolyglotEngine.Value function = vm().findGlobalSymbol(globalObjectFunction);
+        Object global = function.invoke(null).get();
+        assertEquals("Global from the language same with Java obtained one", language.getGlobalObject().get(), global);
     }
 
     private PolyglotEngine.Value findGlobalSymbol(String name) throws Exception {

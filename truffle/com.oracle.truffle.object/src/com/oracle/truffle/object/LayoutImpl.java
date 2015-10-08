@@ -48,8 +48,8 @@ public abstract class LayoutImpl extends Layout {
     private static final int INT_TO_DOUBLE_FLAG = 1;
     private static final int INT_TO_LONG_FLAG = 2;
 
-    private final LayoutStrategy strategy;
-    private final Class<? extends DynamicObject> clazz;
+    protected final LayoutStrategy strategy;
+    protected final Class<? extends DynamicObject> clazz;
     private final int allowedImplicitCasts;
 
     protected LayoutImpl(EnumSet<ImplicitCast> allowedImplicitCasts, Class<? extends DynamicObjectImpl> clazz, LayoutStrategy strategy) {

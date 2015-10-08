@@ -26,42 +26,75 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class DebugCounter {
-    private static final ArrayList<DebugCounter> allCounters = new ArrayList<>();
-
-    private final String name;
-    private final AtomicLong value;
-
-    private DebugCounter(String name) {
-        this.name = name;
-        this.value = new AtomicLong();
-        allCounters.add(this);
+public abstract class DebugCounter {
+    private DebugCounter() {
     }
+
+    public abstract long get();
+
+    public abstract void inc();
 
     public static DebugCounter create(String name) {
-        return new DebugCounter(name);
-    }
-
-    public long get() {
-        return value.get();
-    }
-
-    public void inc() {
-        value.incrementAndGet();
-    }
-
-    @Override
-    public String toString() {
-        return name + ": " + value;
+        return ObjectStorageOptions.DebugCounters ? DebugCounterImpl.createImpl(name) : Dummy.INSTANCE;
     }
 
     public static void dumpCounters() {
-        dumpCounters(System.out);
+        if (ObjectStorageOptions.DebugCounters) {
+            DebugCounterImpl.dumpCounters(System.out);
+        }
     }
 
-    public static void dumpCounters(PrintStream out) {
-        for (DebugCounter counter : allCounters) {
-            out.println(counter);
+    private static final class DebugCounterImpl extends DebugCounter {
+        private static final ArrayList<DebugCounter> allCounters = new ArrayList<>();
+
+        private final String name;
+        private final AtomicLong value;
+
+        private DebugCounterImpl(String name) {
+            this.name = name;
+            this.value = new AtomicLong();
+            allCounters.add(this);
+        }
+
+        private static DebugCounter createImpl(String name) {
+            return new DebugCounterImpl(name);
+        }
+
+        @Override
+        public long get() {
+            return value.get();
+        }
+
+        @Override
+        public void inc() {
+            value.incrementAndGet();
+        }
+
+        @Override
+        public String toString() {
+            return name + ": " + get();
+        }
+
+        private static void dumpCounters(PrintStream out) {
+            for (DebugCounter counter : allCounters) {
+                out.println(counter);
+            }
+        }
+    }
+
+    private static final class Dummy extends DebugCounter {
+        static final DebugCounter INSTANCE = new Dummy();
+
+        private Dummy() {
+        }
+
+        @Override
+        public long get() {
+            return 0;
+        }
+
+        @Override
+        public void inc() {
         }
     }
 }

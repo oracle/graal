@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.object;
 
 import com.oracle.truffle.api.Assumption;
+
 import java.util.EnumSet;
 import java.util.List;
 
@@ -55,6 +56,20 @@ public abstract class Shape {
      * @return the new Shape
      */
     public abstract Shape addProperty(Property property);
+
+    /**
+     * Add or change property in the map, yielding a new or cached Shape object.
+     *
+     * @return the shape after defining the property
+     */
+    public abstract Shape defineProperty(Object key, Object value, int flags);
+
+    /**
+     * Add or change property in the map, yielding a new or cached Shape object.
+     *
+     * @return the shape after defining the property
+     */
+    public abstract Shape defineProperty(Object key, Object value, int flags, LocationFactory locationFactory);
 
     /**
      * An {@link Iterable} over the shape's properties in insertion order.

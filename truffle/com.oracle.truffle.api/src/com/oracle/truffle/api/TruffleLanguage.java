@@ -53,6 +53,7 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.Objects;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing an
@@ -75,6 +76,8 @@ import com.oracle.truffle.api.source.Source;
  */
 @SuppressWarnings("javadoc")
 public abstract class TruffleLanguage<C> {
+    private final Map<Source, CallTarget> compiled = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
+
     /**
      * Constructor to be called by subclasses.
      */
@@ -266,6 +269,23 @@ public abstract class TruffleLanguage<C> {
     protected abstract Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException;
 
     /**
+     * Generates language specific textual representation of a value. Each language may have special
+     * formating conventions - even primitive values may not follow the traditional Java formating
+     * rules. As such when
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class)
+     * value.as(String.class)} is requested, it consults the language that produced the value by
+     * calling this method. By default this method calls {@link Objects#toString(java.lang.Object)}.
+     *
+     * @param context the execution context for doing the conversion
+     * @param value the value to convert. Either primitive type or
+     *            {@link com.oracle.truffle.api.interop.TruffleObject}
+     * @return textual representation of the value in this language
+     */
+    protected String toString(C context, Object value) {
+        return Objects.toString(value);
+    }
+
+    /**
      * Allows a language implementor to create a node that can effectively lookup up the context
      * associated with current execution. The context is created by
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} method.
@@ -322,6 +342,11 @@ public abstract class TruffleLanguage<C> {
 
         void dispose() {
             lang.disposeContext(ctx);
+        }
+
+        String toString(TruffleLanguage<?> language, Object obj) {
+            assert lang == language;
+            return lang.toString(ctx, obj);
         }
     }
 
@@ -428,8 +453,6 @@ public abstract class TruffleLanguage<C> {
             return super.importSymbol(vm, queryingLang, globalName);
         }
 
-        private static final Map<Source, CallTarget> COMPILED = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
-
         @Override
         protected CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) throws IOException {
             return truffleLanguage.parse(code, context, argumentNames);
@@ -437,13 +460,13 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         protected Object eval(TruffleLanguage<?> language, Source source) throws IOException {
-            CallTarget target = COMPILED.get(source);
+            CallTarget target = language.compiled.get(source);
             if (target == null) {
                 target = language.parse(source, null);
                 if (target == null) {
                     throw new IOException("Parsing has not produced a CallTarget for " + source);
                 }
-                COMPILED.put(source, target);
+                language.compiled.put(source, target);
             }
             try {
                 return target.call();
@@ -503,6 +526,11 @@ public abstract class TruffleLanguage<C> {
         protected void dispose(TruffleLanguage<?> impl, Env env) {
             assert impl == env.langCtx.lang;
             env.langCtx.dispose();
+        }
+
+        @Override
+        protected String toString(TruffleLanguage<?> language, Env env, Object obj) {
+            return env.langCtx.toString(language, obj);
         }
     }
 

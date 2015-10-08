@@ -22,6 +22,16 @@
  */
 package com.oracle.truffle.object;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -34,6 +44,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
@@ -53,15 +64,6 @@ import com.oracle.truffle.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.object.Transition.PropertyTransition;
 import com.oracle.truffle.object.Transition.RemovePropertyTransition;
 import com.oracle.truffle.object.Transition.ReservePrimitiveArrayTransition;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Shape objects create a mapping of Property objects to indexes. The mapping of those indexes to an
@@ -312,7 +314,7 @@ public abstract class ShapeImpl extends Shape {
         ShapeImpl cachedShape = this.getTransitionMapForRead().get(transition);
         if (cachedShape != null) { // Shape already exists?
             shapeCacheHitCount.inc();
-            return (ShapeImpl) layout.getStrategy().returnCached(cachedShape);
+            return layout.getStrategy().ensureValid(cachedShape);
         }
         shapeCacheMissCount.inc();
 
@@ -339,6 +341,40 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
+    @TruffleBoundary
+    @Override
+    public ShapeImpl defineProperty(Object key, Object value, int flags) {
+        return defineProperty(key, value, flags, DEFAULT_LAYOUT_FACTORY);
+    }
+
+    @TruffleBoundary
+    @Override
+    public ShapeImpl defineProperty(Object key, Object value, int flags, LocationFactory locationFactory) {
+        ShapeImpl oldShape = this;
+        if (!oldShape.isValid()) {
+            oldShape = layout.getStrategy().ensureValid(oldShape);
+        }
+        PropertyImpl existing = (PropertyImpl) oldShape.getProperty(key);
+        if (existing == null) {
+            return oldShape.addProperty(Property.create(key, locationFactory.createLocation(oldShape, value), flags));
+        } else {
+            if (existing.getFlags() == flags) {
+                if (existing.getLocation().canSet(value)) {
+                    return oldShape;
+                } else {
+                    if (existing.getLocation() instanceof DeclaredLocation) {
+                        return oldShape.addProperty(existing.relocateShadow(locationFactory.createLocation(oldShape, value)));
+                    } else {
+                        return (ShapeImpl) layout.getStrategy().generalizeProperty(existing, value, oldShape, oldShape).getShape();
+                    }
+                }
+            } else {
+                Property newProperty = Property.create(key, oldShape.getLayout().existingLocationForValue(value, existing.getLocation(), oldShape), flags);
+                return oldShape.replaceProperty(existing, newProperty);
+            }
+        }
+    }
+
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
      *
@@ -357,7 +393,7 @@ public abstract class ShapeImpl extends Shape {
             return cachedShape;
         }
 
-        ShapeImpl oldShape = (ShapeImpl) layout.getStrategy().ensureSpace(this, prop.getLocation());
+        ShapeImpl oldShape = layout.getStrategy().ensureSpace(this, prop.getLocation());
 
         ShapeImpl newShape = makeShapeWithAddedProperty(oldShape, addTransition);
         oldShape.addDirectTransition(addTransition, newShape);
@@ -424,7 +460,7 @@ public abstract class ShapeImpl extends Shape {
             return cachedShape;
         }
 
-        ShapeImpl oldShape = (ShapeImpl) layout.getStrategy().ensureSpace(this, layout.getPrimitiveArrayLocation());
+        ShapeImpl oldShape = layout.getStrategy().ensureSpace(this, layout.getPrimitiveArrayLocation());
         ShapeImpl newShape = makeShapeWithPrimitiveExtensionArray(oldShape, transition);
         oldShape.addDirectTransition(transition, newShape);
         return newShape;
@@ -1102,6 +1138,12 @@ public abstract class ShapeImpl extends Shape {
     private static final Pred<Property> ALL = new Pred<Property>() {
         public boolean test(Property t) {
             return true;
+        }
+    };
+
+    static final LocationFactory DEFAULT_LAYOUT_FACTORY = new LocationFactory() {
+        public Location createLocation(Shape shape, Object value) {
+            return ((ShapeImpl) shape).allocator().locationForValue(value, true, value != null);
         }
     };
 

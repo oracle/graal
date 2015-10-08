@@ -51,6 +51,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.Objects;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
@@ -268,6 +269,19 @@ public class ImplicitExplicitExportTest {
 
         public ExportImportLanguage1() {
         }
+
+        @Override
+        protected String toString(Ctx ctx, Object value) {
+            if (value instanceof String) {
+                try {
+                    int number = Integer.parseInt((String) value);
+                    return number + ": Int";
+                } catch (NumberFormatException ex) {
+                    // go on
+                }
+            }
+            return Objects.toString(value);
+        }
     }
 
     @TruffleLanguage.Registration(mimeType = L2, name = "ImportExport2", version = "0")
@@ -275,6 +289,19 @@ public class ImplicitExplicitExportTest {
         public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage2();
 
         public ExportImportLanguage2() {
+        }
+
+        @Override
+        protected String toString(Ctx ctx, Object value) {
+            if (value instanceof String) {
+                try {
+                    double number = Double.parseDouble((String) value);
+                    return number + ": Double";
+                } catch (NumberFormatException ex) {
+                    // go on
+                }
+            }
+            return Objects.toString(value);
         }
     }
 

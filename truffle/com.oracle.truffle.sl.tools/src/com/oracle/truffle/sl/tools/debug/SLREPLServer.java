@@ -78,7 +78,7 @@ public final class SLREPLServer extends REPLServer {
     public static void main(String[] args) {
         // Cheating for the prototype: start from SL, rather than from the client.
         final SLREPLServer server = new SLREPLServer();
-        final SimpleREPLClient client = new SimpleREPLClient(server.language.getShortName(), server);
+        final SimpleREPLClient client = new SimpleREPLClient(getShortName(server.language), server);
 
         // Cheating for the prototype: allow server access to client for recursive debugging
         server.setClient(client);
@@ -87,6 +87,10 @@ public final class SLREPLServer extends REPLServer {
             client.start();
         } catch (QuitException ex) {
         }
+    }
+
+    private static String getShortName(Language language) {
+        return language.getName() + "(" + language.getVersion() + ")";
     }
 
     private final Language language;
@@ -145,7 +149,7 @@ public final class SLREPLServer extends REPLServer {
         assert language != null;
 
         this.vm = newVM;
-        this.statusPrefix = language.getShortName() + " REPL:";
+        this.statusPrefix = getShortName(language) + " REPL:";
     }
 
     private void setClient(SimpleREPLClient replClient) {
@@ -160,7 +164,7 @@ public final class SLREPLServer extends REPLServer {
         // SL doesn't load modules (like other languages), so we just return a success
         final REPLMessage reply = new REPLMessage();
         reply.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
-        reply.put(REPLMessage.DISPLAY_MSG, language.getShortName() + " started");
+        reply.put(REPLMessage.DISPLAY_MSG, getShortName(language) + " started");
         return reply;
     }
 

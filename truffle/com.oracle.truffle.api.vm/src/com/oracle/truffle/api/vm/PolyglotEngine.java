@@ -510,7 +510,7 @@ public class PolyglotEngine {
 
     @SuppressWarnings("try")
     private void evalImpl(TruffleLanguage<?>[] fillLang, Source s, Object[] result, Language l, CountDownLatch ready) {
-        try (Closeable d = SPI.executionStart(this, debugger, s)) {
+        try (Closeable d = SPI.executionStart(this, -1, debugger, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
             result[0] = SPI.eval(langImpl, s);
@@ -527,7 +527,7 @@ public class PolyglotEngine {
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                try (final Closeable c = SPI.executionStart(PolyglotEngine.this, debugger, null)) {
+                try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
                     res[0] = ForeignAccess.execute(foreignNode, frame, receiver, ForeignAccess.getArguments(frame).toArray());
                 } catch (IOException ex) {
                     res[1] = ex;
@@ -707,7 +707,10 @@ public class PolyglotEngine {
          * Obtains Java view of the object represented by this symbol. The method basically
          * delegates to
          * {@link JavaInterop#asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)}
-         * just handles primitive types as well.
+         * . The method handles primitive types (like {@link Number}, etc.) by casting and returning
+         * them. When a {@link String}.<code>class</code> is requested, the method let's the
+         * language that produced the value to do the
+         * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) necessary formating}.
          *
          * @param <T> the type of the view one wants to obtain
          * @param representation the class of the view interface (it has to be an interface)
@@ -722,6 +725,10 @@ public class PolyglotEngine {
                 if (representation.isInstance(eto.getDelegate())) {
                     return representation.cast(eto.getDelegate());
                 }
+            }
+            if (representation == String.class) {
+                final Class<? extends TruffleLanguage> clazz = language.getClass();
+                return representation.cast(SPI.toString(language, findEnv(clazz), obj));
             }
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
@@ -758,7 +765,7 @@ public class PolyglotEngine {
 
         @SuppressWarnings("try")
         private void invokeImpl(Object thiz, Object[] args, Object[] res, CountDownLatch done) {
-            try (final Closeable c = SPI.executionStart(PolyglotEngine.this, debugger, null)) {
+            try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
                 List<Object> arr = new ArrayList<>();
                 if (thiz == null) {
                     if (language != null) {
@@ -794,10 +801,17 @@ public class PolyglotEngine {
         private void waitForSymbol() throws InterruptedIOException {
             checkThread();
             try {
-                ready.await();
+                if (ready != null) {
+                    ready.await();
+                }
             } catch (InterruptedException ex) {
                 throw (InterruptedIOException) new InterruptedIOException(ex.getMessage()).initCause(ex);
             }
+        }
+
+        @Override
+        public String toString() {
+            return "PolyglotEngine.Value[value=" + result[0] + ",exception=" + result[1] + ",computed=" + (ready.getCount() == 0) + "]";
         }
     }
 
@@ -847,10 +861,38 @@ public class PolyglotEngine {
         }
 
         /**
-         * Human readable string that identifies the language and version.
-         *
-         * @return string describing the specific language version
+         * Evaluates provided source. Ignores the particular {@link Source#getMimeType() MIME type}
+         * and forces evaluation in the context of <code>this</code> language.
+         * 
+         * @param source code snippet to execute
+         * @return a {@link Value} object that holds result of an execution, never <code>null</code>
+         * @throws IOException thrown to signal errors while processing the code
          */
+        public Value eval(Source source) throws IOException {
+            checkThread();
+            return PolyglotEngine.this.eval(this, source);
+        }
+
+        /**
+         * Returns value representing global object of the language.
+         * <p>
+         * The object is expected to be <code>TruffleObject</code> (e.g. a native object from the
+         * other language) but technically it can be one of Java primitive wrappers ({@link Integer}, {@link Double}, {@link Short}, etc.).
+         *
+         * @return the global object or <code>null</code> if the language does not support such
+         *         concept
+         */
+        public Value getGlobalObject() {
+            checkThread();
+
+            Object[] res = {SPI.languageGlobal(getEnv(true)), null};
+            return res[0] == null ? null : new Value(info.getImpl(true), res, null);
+        }
+
+        /**
+         * @deprecated concatenate {@link #getName()} and {@link #getVersion()} the way you want.
+         */
+        @Deprecated
         public String getShortName() {
             return getName() + "(" + getVersion() + ")";
         }
@@ -993,9 +1035,9 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Closeable executionStart(Object obj, Debugger debugger, Source s) {
+        protected Closeable executionStart(Object obj, int currentDepth, Debugger debugger, Source s) {
             PolyglotEngine vm = (PolyglotEngine) obj;
-            return super.executionStart(vm, debugger, s);
+            return super.executionStart(vm, -1, debugger, s);
         }
 
         @Override
@@ -1007,6 +1049,11 @@ public class PolyglotEngine {
         @Override
         protected void dispose(TruffleLanguage<?> impl, TruffleLanguage.Env env) {
             super.dispose(impl, env);
+        }
+
+        @Override
+        protected String toString(TruffleLanguage language, TruffleLanguage.Env env, Object obj) {
+            return super.toString(language, env, obj);
         }
     } // end of SPIAccessor
 }

@@ -70,7 +70,7 @@ public final class ExecutionEvent {
      * </ul>
      */
     public void prepareContinue() {
-        debugger.prepareContinue();
+        debugger.prepareContinue(-1);
     }
 
     /**
