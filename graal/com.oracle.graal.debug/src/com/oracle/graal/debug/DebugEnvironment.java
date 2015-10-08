@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.debug;
 
-import static com.oracle.graal.debug.GraalDebugConfig.Dump;
-import static com.oracle.graal.debug.GraalDebugConfig.Log;
-import static com.oracle.graal.debug.GraalDebugConfig.Meter;
-import static com.oracle.graal.debug.GraalDebugConfig.MethodFilter;
-import static com.oracle.graal.debug.GraalDebugConfig.Time;
-import static com.oracle.graal.debug.GraalDebugConfig.TrackMemUse;
-import static com.oracle.graal.debug.GraalDebugConfig.Verify;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Meter;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Time;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.TrackMemUse;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
 
 import java.io.PrintStream;
 import java.util.ArrayList;

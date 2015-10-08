@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.debug.GraalDebugConfig.DebugValueSummary;
-import static com.oracle.graal.debug.GraalDebugConfig.DebugValueThreadFilter;
-import static com.oracle.graal.debug.GraalDebugConfig.SuppressZeroDebugValues;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueThreadFilter;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.SuppressZeroDebugValues;
 
 import java.io.PrintStream;
 import java.util.ArrayList;

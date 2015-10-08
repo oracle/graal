@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.debug.GraalDebugConfig.DebugValueSummary;
-import static com.oracle.graal.debug.GraalDebugConfig.Dump;
-import static com.oracle.graal.debug.GraalDebugConfig.Log;
-import static com.oracle.graal.debug.GraalDebugConfig.MethodFilter;
-import static com.oracle.graal.debug.GraalDebugConfig.Verify;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
 import static com.oracle.graal.debug.GraalDebugConfig.areScopedMetricsOrTimersEnabled;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;

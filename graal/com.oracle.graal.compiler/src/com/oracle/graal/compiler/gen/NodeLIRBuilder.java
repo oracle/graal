@@ -24,7 +24,7 @@ package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.compiler.common.BackendOptions.ConstructionSSAlirDuringLirBuilding;
 import static com.oracle.graal.compiler.common.GraalOptions.MatchExpressions;
-import static com.oracle.graal.debug.GraalDebugConfig.LogVerbose;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.LogVerbose;
 import static com.oracle.graal.lir.LIR.verifyBlock;
 import static jdk.internal.jvmci.code.ValueUtil.asRegister;
 import static jdk.internal.jvmci.code.ValueUtil.isLegal;
