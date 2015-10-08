@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,10 +33,29 @@ import com.oracle.graal.phases.tiers.PhaseContext;
 public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
 
     @Test
+    public void testSubtractEqualsZero() {
+        test("testSubtractEqualsZeroSnippet", "testSubtractEqualsZeroReference");
+    }
+
+    public static int testSubtractEqualsZeroReference(int a, int b) {
+        if (a == b) {
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int testSubtractEqualsZeroSnippet(int a, int b) {
+        if (a - b == 0) {
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Tests the canonicalization of (x >>> const) == 0 to x |test| (-1 << const).
+     */
+    @Test
     public void testShiftEquals() {
-        /*
-         * tests the canonicalization of (x >>> const) == 0 to x |test| (-1 << const)
-         */
         test("testShiftEqualsSnippet", "testShiftEqualsReference");
     }
 

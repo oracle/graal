@@ -60,6 +60,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
         canonicalizer.apply(graph, context);
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.YES);
+        new ConvertDeoptimizeToGuardPhase().apply(referenceGraph, context);
         if (applyConditionalEliminationOnReference) {
             new DominatorConditionalEliminationPhase(true).apply(referenceGraph, context);
             canonicalizer.apply(referenceGraph, context);

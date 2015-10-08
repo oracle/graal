@@ -126,6 +126,9 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
             if (nonConstant instanceof AndNode) {
                 AndNode andNode = (AndNode) nonConstant;
                 return new IntegerTestNode(andNode.getX(), andNode.getY());
+            } else if (nonConstant instanceof SubNode) {
+                SubNode subNode = (SubNode) nonConstant;
+                return IntegerEqualsNode.create(subNode.getX(), subNode.getY(), tool.getConstantReflection());
             } else if (nonConstant instanceof ShiftNode && nonConstant.stamp() instanceof IntegerStamp) {
                 if (nonConstant instanceof LeftShiftNode) {
                     LeftShiftNode shift = (LeftShiftNode) nonConstant;
