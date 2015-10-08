@@ -105,7 +105,6 @@ import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.extended.SwitchNode;
-import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.NodeValueMap;
@@ -427,8 +426,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         }
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
-        } else if (node instanceof ArithmeticLIRLowerable) {
-            ((ArithmeticLIRLowerable) node).generate(this, gen);
         } else {
             throw JVMCIError.shouldNotReachHere("node is not LIRLowerable: " + node);
         }

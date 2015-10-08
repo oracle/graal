@@ -43,13 +43,14 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.CodeGenProviders;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 
-public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCounterFactory {
+public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
     /**
      * Factory for creating spill moves.
@@ -73,6 +74,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
         public abstract void close();
 
     }
+
+    ArithmeticLIRGeneratorTool getArithmetic();
 
     CodeGenProviders getProviders();
 
@@ -228,26 +231,11 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
     CallingConvention getCallingConvention();
 
-    Variable emitBitCount(Value operand);
-
-    Variable emitBitScanForward(Value operand);
-
-    Variable emitBitScanReverse(Value operand);
-
     Variable emitByteSwap(Value operand);
 
     Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length);
 
     void emitBlackhole(Value operand);
 
-    @SuppressWarnings("unused")
-    default Value emitCountLeadingZeros(Value value) {
-        throw JVMCIError.unimplemented();
-    }
-
-    @SuppressWarnings("unused")
-    default Value emitCountTrailingZeros(Value value) {
-        throw JVMCIError.unimplemented();
-    }
-
+    LIRKind getLIRKind(Stamp stamp);
 }

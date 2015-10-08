@@ -34,12 +34,12 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * The {@code ReinterpretNode} class represents a reinterpreting conversion that changes the stamp
@@ -90,9 +90,9 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
     }
 
     @Override
-    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
-        LIRKind kind = gen.getLIRKind(stamp());
-        nodeValueMap.setResult(this, gen.emitReinterpret(kind, nodeValueMap.operand(getValue())));
+    public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
+        LIRKind kind = builder.getLIRGeneratorTool().getLIRKind(stamp());
+        builder.setResult(this, gen.emitReinterpret(kind, builder.operand(getValue())));
     }
 
     public static ValueNode reinterpret(JavaKind toKind, ValueNode value) {

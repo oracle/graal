@@ -119,7 +119,7 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitDiv(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitDiv(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override

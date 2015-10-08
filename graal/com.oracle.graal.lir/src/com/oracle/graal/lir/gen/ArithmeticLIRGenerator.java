@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,71 +22,111 @@
  */
 package com.oracle.graal.lir.gen;
 
+import jdk.internal.jvmci.meta.AllocatableValue;
 import jdk.internal.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.PlatformKind;
 import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.calc.FloatConvert;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.Variable;
 
 /**
- * This interface can be used to generate LIR for arithmetic operations.
- *
- * The setFlags flag in emitAdd, emitSub and emitMul indicates, that the instruction must set the
- * flags register to be used for a later branch. (On AMD64, the condition codes are set in every
- * arithmetic instruction, but other architectures optionally set the flags register) If setFlags is
- * set, the instruction must set the flags register; if false, the instruction may or may not set
- * the flags register.
+ * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public interface ArithmeticLIRGenerator {
+public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTool {
 
-    LIRKind getLIRKind(Stamp stamp);
+    LIRGenerator lirGen;
 
-    Value emitNegate(Value input);
+    public LIRGenerator getLIRGen() {
+        return lirGen;
+    }
 
-    Value emitAdd(Value a, Value b, boolean setFlags);
+    // automatic derived reference handling
 
-    Value emitSub(Value a, Value b, boolean setFlags);
+    protected abstract boolean isNumericInteger(PlatformKind kind);
 
-    Value emitMul(Value a, Value b, boolean setFlags);
+    protected abstract Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags);
 
-    Value emitMulHigh(Value a, Value b);
+    @Override
+    public final Variable emitAdd(Value aVal, Value bVal, boolean setFlags) {
+        LIRKind resultKind;
+        Value a = aVal;
+        Value b = bVal;
 
-    Value emitUMulHigh(Value a, Value b);
+        if (isNumericInteger(a.getPlatformKind())) {
+            LIRKind aKind = a.getLIRKind();
+            LIRKind bKind = b.getLIRKind();
+            assert a.getPlatformKind() == b.getPlatformKind();
 
-    Value emitDiv(Value a, Value b, LIRFrameState state);
+            if (aKind.isUnknownReference()) {
+                resultKind = aKind;
+            } else if (bKind.isUnknownReference()) {
+                resultKind = bKind;
+            } else if (aKind.isValue() && bKind.isValue()) {
+                resultKind = aKind;
+            } else if (aKind.isValue()) {
+                if (bKind.isDerivedReference()) {
+                    resultKind = bKind;
+                } else {
+                    AllocatableValue allocatable = getLIRGen().asAllocatable(b);
+                    resultKind = bKind.makeDerivedReference(allocatable);
+                    b = allocatable;
+                }
+            } else if (bKind.isValue()) {
+                if (aKind.isDerivedReference()) {
+                    resultKind = aKind;
+                } else {
+                    AllocatableValue allocatable = getLIRGen().asAllocatable(a);
+                    resultKind = aKind.makeDerivedReference(allocatable);
+                    a = allocatable;
+                }
+            } else {
+                resultKind = aKind.makeUnknownReference();
+            }
+        } else {
+            resultKind = LIRKind.combine(a, b);
+        }
 
-    Value emitRem(Value a, Value b, LIRFrameState state);
+        return emitAdd(resultKind, a, b, setFlags);
+    }
 
-    Value emitUDiv(Value a, Value b, LIRFrameState state);
+    protected abstract Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags);
 
-    Value emitURem(Value a, Value b, LIRFrameState state);
+    @Override
+    public final Variable emitSub(Value aVal, Value bVal, boolean setFlags) {
+        LIRKind resultKind;
+        Value a = aVal;
+        Value b = bVal;
 
-    Value emitNot(Value input);
+        if (isNumericInteger(a.getPlatformKind())) {
+            LIRKind aKind = a.getLIRKind();
+            LIRKind bKind = b.getLIRKind();
+            assert a.getPlatformKind() == b.getPlatformKind();
 
-    Value emitAnd(Value a, Value b);
+            if (aKind.isUnknownReference()) {
+                resultKind = aKind;
+            } else if (bKind.isUnknownReference()) {
+                resultKind = bKind;
+            }
 
-    Value emitOr(Value a, Value b);
+            if (aKind.isValue() && bKind.isValue()) {
+                resultKind = aKind;
+            } else if (bKind.isValue()) {
+                if (aKind.isDerivedReference()) {
+                    resultKind = aKind;
+                } else {
+                    AllocatableValue allocatable = getLIRGen().asAllocatable(a);
+                    resultKind = aKind.makeDerivedReference(allocatable);
+                    a = allocatable;
+                }
+            } else if (aKind.isDerivedReference() && bKind.isDerivedReference() && aKind.getDerivedReferenceBase().equals(bKind.getDerivedReferenceBase())) {
+                resultKind = LIRKind.value(a.getPlatformKind());
+            } else {
+                resultKind = aKind.makeUnknownReference();
+            }
+        } else {
+            resultKind = LIRKind.combine(a, b);
+        }
 
-    Value emitXor(Value a, Value b);
-
-    Value emitShl(Value a, Value b);
-
-    Value emitShr(Value a, Value b);
-
-    Value emitUShr(Value a, Value b);
-
-    Value emitFloatConvert(FloatConvert op, Value inputVal);
-
-    Value emitReinterpret(LIRKind to, Value inputVal);
-
-    Value emitNarrow(Value inputVal, int bits);
-
-    Value emitSignExtend(Value inputVal, int fromBits, int toBits);
-
-    Value emitZeroExtend(Value inputVal, int fromBits, int toBits);
-
-    Value emitMathAbs(Value input);
-
-    Value emitMathSqrt(Value input);
+        return emitSub(resultKind, a, b, setFlags);
+    }
 }

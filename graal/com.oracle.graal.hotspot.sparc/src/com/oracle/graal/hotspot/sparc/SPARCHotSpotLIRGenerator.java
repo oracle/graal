@@ -98,6 +98,7 @@ import jdk.internal.jvmci.sparc.SPARCKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.compiler.sparc.SPARCArithmeticLIRGenerator;
 import com.oracle.graal.compiler.sparc.SPARCLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -132,12 +133,13 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private HotSpotLockStack lockStack;
     private LIRFrameState currentRuntimeCallInfo;
 
-    public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(new SPARCHotSpotLIRKindTool(), providers, config, cc, lirGenRes);
+    public SPARCHotSpotLIRGenerator(SPARCArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        this(new SPARCHotSpotLIRKindTool(), arithmeticLIRGen, providers, config, cc, lirGenRes);
     }
 
-    protected SPARCHotSpotLIRGenerator(LIRKindTool lirKindTool, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, providers, cc, lirGenRes);
+    protected SPARCHotSpotLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc,
+                    LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
         this.config = config;
     }

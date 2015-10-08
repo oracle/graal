@@ -66,6 +66,7 @@ import jdk.internal.jvmci.meta.Value;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
+import com.oracle.graal.compiler.amd64.AMD64ArithmeticLIRGenerator;
 import com.oracle.graal.compiler.amd64.AMD64LIRGenerator;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
@@ -112,12 +113,13 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     final HotSpotVMConfig config;
     private HotSpotLockStack lockStack;
 
-    protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(new AMD64HotSpotLIRKindTool(), providers, config, cc, lirGenRes);
+    protected AMD64HotSpotLIRGenerator(AMD64ArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        this(new AMD64HotSpotLIRKindTool(), arithmeticLIRGen, providers, config, cc, lirGenRes);
     }
 
-    protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, providers, cc, lirGenRes);
+    protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc,
+                    LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
         this.config = config;
     }

@@ -25,25 +25,26 @@ package com.oracle.graal.replacements.amd64;
 import jdk.internal.jvmci.code.CodeUtil;
 import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Count the number of leading zeros using the {@code lzcntq} or {@code lzcntl} instructions.
  */
 @NodeInfo
-public final class AMD64CountLeadingZerosNode extends UnaryNode implements LIRLowerable {
+public final class AMD64CountLeadingZerosNode extends UnaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64CountLeadingZerosNode> TYPE = NodeClass.create(AMD64CountLeadingZerosNode.class);
 
     public AMD64CountLeadingZerosNode(ValueNode value) {
@@ -83,8 +84,7 @@ public final class AMD64CountLeadingZerosNode extends UnaryNode implements LIRLo
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitCountLeadingZeros(gen.operand(getValue()));
-        gen.setResult(this, result);
+    public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
+        builder.setResult(this, ((AMD64ArithmeticLIRGeneratorTool) gen).emitCountLeadingZeros(builder.operand(getValue())));
     }
 }

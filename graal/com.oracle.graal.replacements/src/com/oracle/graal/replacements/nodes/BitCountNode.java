@@ -25,22 +25,22 @@ package com.oracle.graal.replacements.nodes;
 import jdk.internal.jvmci.code.CodeUtil;
 import jdk.internal.jvmci.meta.JavaConstant;
 import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo
-public final class BitCountNode extends UnaryNode implements LIRLowerable {
+public final class BitCountNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     public static final NodeClass<BitCountNode> TYPE = NodeClass.create(BitCountNode.class);
 
@@ -67,8 +67,7 @@ public final class BitCountNode extends UnaryNode implements LIRLowerable {
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitBitCount(gen.operand(getValue()));
-        gen.setResult(this, result);
+    public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
+        builder.setResult(this, gen.emitBitCount(builder.operand(getValue())));
     }
 }

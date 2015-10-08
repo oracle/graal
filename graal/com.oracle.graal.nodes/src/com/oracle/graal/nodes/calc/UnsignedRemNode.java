@@ -75,7 +75,7 @@ public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLo
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitURem(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitURem(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override

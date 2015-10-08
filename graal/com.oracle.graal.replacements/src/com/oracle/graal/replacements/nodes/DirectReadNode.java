@@ -28,6 +28,7 @@ import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.StateSplit;
@@ -66,23 +67,24 @@ public final class DirectReadNode extends FixedWithNextNode implements LIRLowera
      * @see com.oracle.graal.replacements.DefaultJavaLoweringProvider#createUnsafeRead
      */
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        LIRKind kind = gen.getLIRGeneratorTool().target().getLIRKind(readKind);
-        Value loaded = gen.getLIRGeneratorTool().emitLoad(kind, gen.operand(address), null);
+    public void generate(NodeLIRBuilderTool builder) {
+        LIRGeneratorTool gen = builder.getLIRGeneratorTool();
+        LIRKind kind = gen.target().getLIRKind(readKind);
+        Value loaded = gen.emitLoad(kind, builder.operand(address), null);
         switch (readKind) {
             case Byte:
-                loaded = gen.getLIRGeneratorTool().emitSignExtend(loaded, 8, 32);
+                loaded = gen.getArithmetic().emitSignExtend(loaded, 8, 32);
                 break;
             case Short:
-                loaded = gen.getLIRGeneratorTool().emitSignExtend(loaded, 16, 32);
+                loaded = gen.getArithmetic().emitSignExtend(loaded, 16, 32);
                 break;
             case Boolean:
-                loaded = gen.getLIRGeneratorTool().emitZeroExtend(loaded, 8, 32);
+                loaded = gen.getArithmetic().emitZeroExtend(loaded, 8, 32);
                 break;
             case Char:
-                loaded = gen.getLIRGeneratorTool().emitZeroExtend(loaded, 16, 32);
+                loaded = gen.getArithmetic().emitZeroExtend(loaded, 16, 32);
                 break;
         }
-        gen.setResult(this, loaded);
+        builder.setResult(this, loaded);
     }
 }

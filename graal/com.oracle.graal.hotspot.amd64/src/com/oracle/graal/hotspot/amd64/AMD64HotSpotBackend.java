@@ -50,6 +50,7 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.amd64.AMD64ArithmeticLIRGenerator;
 import com.oracle.graal.compiler.amd64.AMD64NodeMatchRules;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.gen.BytecodeLIRBuilder;
@@ -96,7 +97,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new AMD64HotSpotLIRGenerator(getProviders(), config(), cc, lirGenRes);
+        return new AMD64HotSpotLIRGenerator(new AMD64ArithmeticLIRGenerator(), getProviders(), config(), cc, lirGenRes);
     }
 
     @Override

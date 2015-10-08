@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+
 import jdk.internal.jvmci.meta.Value;
 
 /**
  * This interface can be used to generate AMD64 LIR for arithmetic operations.
  */
-public interface AMD64ArithmeticLIRGenerator {
+public interface AMD64ArithmeticLIRGeneratorTool extends ArithmeticLIRGeneratorTool {
 
     Value emitMathLog(Value input, boolean base10);
 
@@ -36,4 +38,8 @@ public interface AMD64ArithmeticLIRGenerator {
     Value emitMathSin(Value input);
 
     Value emitMathTan(Value input);
+
+    Value emitCountLeadingZeros(Value value);
+
+    Value emitCountTrailingZeros(Value value);
 }

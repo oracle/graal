@@ -64,6 +64,7 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.sparc.SPARCArithmeticLIRGenerator;
 import com.oracle.graal.compiler.sparc.SPARCNodeMatchRules;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
@@ -135,7 +136,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new SPARCHotSpotLIRGenerator(getProviders(), config(), cc, lirGenRes);
+        return new SPARCHotSpotLIRGenerator(new SPARCArithmeticLIRGenerator(), getProviders(), config(), cc, lirGenRes);
     }
 
     @Override

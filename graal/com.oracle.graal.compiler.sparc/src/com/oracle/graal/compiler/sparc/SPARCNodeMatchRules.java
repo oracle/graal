@@ -88,7 +88,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         SPARCKind localToKind = toKind;
         return builder -> {
             Value v = getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
-            return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
+            return getArithmeticLIRGenerator().emitReinterpret(LIRKind.value(localToKind), v);
         };
     }
 
@@ -123,7 +123,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         return builder -> {
             // Loads are always zero extending load
             Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
-            return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
+            return getArithmeticLIRGenerator().emitReinterpret(LIRKind.value(localToKind), v);
         };
     }
 
@@ -142,5 +142,9 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
     @Override
     public SPARCLIRGenerator getLIRGeneratorTool() {
         return (SPARCLIRGenerator) super.getLIRGeneratorTool();
+    }
+
+    protected SPARCArithmeticLIRGenerator getArithmeticLIRGenerator() {
+        return (SPARCArithmeticLIRGenerator) getLIRGeneratorTool().getArithmetic();
     }
 }

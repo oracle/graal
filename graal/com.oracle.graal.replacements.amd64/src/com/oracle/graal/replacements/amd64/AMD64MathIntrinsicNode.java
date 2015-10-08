@@ -31,14 +31,14 @@ import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGenerator;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo
 public final class AMD64MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable {
@@ -81,8 +81,8 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
     }
 
     @Override
-    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator lirGen) {
-        AMD64ArithmeticLIRGenerator gen = (AMD64ArithmeticLIRGenerator) lirGen;
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool lirGen) {
+        AMD64ArithmeticLIRGeneratorTool gen = (AMD64ArithmeticLIRGeneratorTool) lirGen;
         Value input = nodeValueMap.operand(getValue());
         Value result;
         switch (operation()) {

@@ -196,7 +196,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         return builder -> {
             AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
             LIRFrameState state = getState(access);
-            return getLIRGeneratorTool().emitConvertMemoryOp(kind, op, size, address, state);
+            return getArithmeticLIRGenerator().emitConvertMemoryOp(kind, op, size, address, state);
         };
     }
 
@@ -276,7 +276,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Or (LeftShift=lshift value Constant) (UnsignedRightShift=rshift value Constant))")
     public ComplexMatchResult rotateLeftConstant(LeftShiftNode lshift, UnsignedRightShiftNode rshift) {
         if ((lshift.getShiftAmountMask() & (lshift.getY().asJavaConstant().asInt() + rshift.getY().asJavaConstant().asInt())) == 0) {
-            return builder -> getLIRGeneratorTool().emitRol(operand(lshift.getX()), operand(lshift.getY()));
+            return builder -> getArithmeticLIRGenerator().emitRol(operand(lshift.getX()), operand(lshift.getY()));
         }
         return null;
     }
@@ -284,7 +284,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Or (LeftShift value (Sub Constant=delta shiftAmount)) (UnsignedRightShift value shiftAmount))")
     public ComplexMatchResult rotateRightVariable(ValueNode value, ConstantNode delta, ValueNode shiftAmount) {
         if (delta.asJavaConstant().asLong() == 0 || delta.asJavaConstant().asLong() == 32) {
-            return builder -> getLIRGeneratorTool().emitRor(operand(value), operand(shiftAmount));
+            return builder -> getArithmeticLIRGenerator().emitRor(operand(value), operand(shiftAmount));
         }
         return null;
     }
@@ -292,13 +292,14 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Or (LeftShift value shiftAmount) (UnsignedRightShift value (Sub Constant=delta shiftAmount)))")
     public ComplexMatchResult rotateLeftVariable(ValueNode value, ValueNode shiftAmount, ConstantNode delta) {
         if (delta.asJavaConstant().asLong() == 0 || delta.asJavaConstant().asLong() == 32) {
-            return builder -> getLIRGeneratorTool().emitRol(operand(value), operand(shiftAmount));
+            return builder -> getArithmeticLIRGenerator().emitRol(operand(value), operand(shiftAmount));
         }
         return null;
     }
 
     private ComplexMatchResult binaryRead(AMD64RMOp op, OperandSize size, ValueNode value, Access access) {
-        return builder -> getLIRGeneratorTool().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), (AMD64AddressValue) operand(access.getAddress()), getState(access));
+        return builder -> getArithmeticLIRGenerator().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), (AMD64AddressValue) operand(access.getAddress()),
+                        getState(access));
     }
 
     @MatchRule("(Add value Read=access)")
@@ -386,7 +387,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(ZeroExtend FloatingRead=access)")
     public ComplexMatchResult zeroExtend(ZeroExtendNode root, Access access) {
         AMD64Kind memoryKind = getMemoryKind(access);
-        return builder -> getLIRGeneratorTool().emitZeroExtendMemory(memoryKind, root.getResultBits(), (AMD64AddressValue) operand(access.getAddress()), getState(access));
+        return builder -> getArithmeticLIRGenerator().emitZeroExtendMemory(memoryKind, root.getResultBits(), (AMD64AddressValue) operand(access.getAddress()), getState(access));
     }
 
     @MatchRule("(FloatConvert Read=access)")
@@ -431,5 +432,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @Override
     public AMD64LIRGenerator getLIRGeneratorTool() {
         return (AMD64LIRGenerator) gen;
+    }
+
+    protected AMD64ArithmeticLIRGenerator getArithmeticLIRGenerator() {
+        return (AMD64ArithmeticLIRGenerator) getLIRGeneratorTool().getArithmetic();
     }
 }
