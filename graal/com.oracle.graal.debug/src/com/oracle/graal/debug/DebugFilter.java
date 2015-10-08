@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,19 +25,18 @@ package com.oracle.graal.debug;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
+import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.debug.internal.DebugScope;
 
 /**
- * Implements the filter specified by the {@link GraalDebugConfig#Dump},
- * {@link GraalDebugConfig#Log}, {@link GraalDebugConfig#Meter} and {@link GraalDebugConfig#Time}
- * options.
+ * Implements the filter specified by the {@link Options#Dump}, {@link Options#Log},
+ * {@link Options#Meter} and {@link Options#Time} options.
  * <p>
  * These options enable the associated debug facility if their filter matches the
  * {@linkplain DebugScope#getQualifiedName() name} of the {@linkplain Debug#currentScope() current
- * scope}. For the {@link GraalDebugConfig#Dump} and {@link GraalDebugConfig#Log} options, the log
- * or dump level is set. The {@link GraalDebugConfig#Meter} and {@link GraalDebugConfig#Time}
- * options don't have a level, for them {@code level = 0} means disabled and a {@code level > 0}
- * means enabled.
+ * scope}. For the {@link Options#Dump} and {@link Options#Log} options, the log or dump level is
+ * set. The {@link Options#Meter} and {@link Options#Time} options don't have a level, for them
+ * {@code level = 0} means disabled and a {@code level > 0} means enabled.
  * <p>
  * A filter is a list of comma-separated terms of the form {@code <pattern>[:<level>]}.
  * {@code <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character.

@@ -40,13 +40,13 @@ public class GraalDebugInitializationPropertyProvider implements DebugInitializa
         if (GraalDebugConfig.areDebugScopePatternsEnabled()) {
             System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
         }
-        if ("".equals(GraalDebugConfig.Meter.getValue())) {
+        if ("".equals(GraalDebugConfig.Options.Meter.getValue())) {
             System.setProperty(Debug.ENABLE_UNSCOPED_METRICS_PROPERTY_NAME, "true");
         }
-        if ("".equals(GraalDebugConfig.Time.getValue())) {
+        if ("".equals(GraalDebugConfig.Options.Time.getValue())) {
             System.setProperty(Debug.ENABLE_UNSCOPED_TIMERS_PROPERTY_NAME, "true");
         }
-        if ("".equals(GraalDebugConfig.TrackMemUse.getValue())) {
+        if ("".equals(GraalDebugConfig.Options.TrackMemUse.getValue())) {
             System.setProperty(Debug.ENABLE_UNSCOPED_MEM_USE_TRACKERS_PROPERTY_NAME, "true");
         }
     }

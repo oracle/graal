@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,64 +43,66 @@ public class GraalDebugConfig implements DebugConfig {
         return assertionsEnabled;
     }
 
-    // @formatter:off
-    @Option(help = "Pattern for scope(s) in which dumping is enabled (see DebugFilter and Debug.dump)", type = OptionType.Debug)
-    public static final OptionValue<String> Dump = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which metering is enabled (see DebugFilter and Debug.metric). " +
-                   "An empty value enables all metrics unconditionally.", type = OptionType.Debug)
-    public static final OptionValue<String> Meter = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which verification is enabled (see DebugFilter and Debug.verify).", type = OptionType.Debug)
-    public static final OptionValue<String> Verify = new OptionValue<String>() {
-        @Override
-        protected String defaultValue() {
-            return assertionsEnabled() ? "" : null;
-        }
-    };
-    @Option(help = "Pattern for scope(s) in which memory use tracking is enabled (see DebugFilter and Debug.metric). " +
-                   "An empty value enables all memory use trackers unconditionally.", type = OptionType.Debug)
-    public static final OptionValue<String> TrackMemUse = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which timing is enabled (see DebugFilter and Debug.timer). " +
-                   "An empty value enables all timers unconditionally.", type = OptionType.Debug)
-    public static final OptionValue<String> Time = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which logging is enabled (see DebugFilter and Debug.log)", type = OptionType.Debug)
-    public static final OptionValue<String> Log = new OptionValue<>(null);
-    @Option(help = "Pattern for filtering debug scope output based on method context (see MethodFilter)", type = OptionType.Debug)
-    public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
-    @Option(help = "Only check MethodFilter against the root method in the context if true, otherwise check all methods", type = OptionType.Debug)
-    public static final OptionValue<Boolean> MethodFilterRootOnly = new OptionValue<>(false);
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Pattern for scope(s) in which dumping is enabled (see DebugFilter and Debug.dump)", type = OptionType.Debug)
+        public static final OptionValue<String> Dump = new OptionValue<>(null);
+        @Option(help = "Pattern for scope(s) in which metering is enabled (see DebugFilter and Debug.metric). " +
+                       "An empty value enables all metrics unconditionally.", type = OptionType.Debug)
+        public static final OptionValue<String> Meter = new OptionValue<>(null);
+        @Option(help = "Pattern for scope(s) in which verification is enabled (see DebugFilter and Debug.verify).", type = OptionType.Debug)
+        public static final OptionValue<String> Verify = new OptionValue<String>() {
+            @Override
+            protected String defaultValue() {
+                return assertionsEnabled() ? "" : null;
+            }
+        };
+        @Option(help = "Pattern for scope(s) in which memory use tracking is enabled (see DebugFilter and Debug.metric). " +
+                       "An empty value enables all memory use trackers unconditionally.", type = OptionType.Debug)
+        public static final OptionValue<String> TrackMemUse = new OptionValue<>(null);
+        @Option(help = "Pattern for scope(s) in which timing is enabled (see DebugFilter and Debug.timer). " +
+                       "An empty value enables all timers unconditionally.", type = OptionType.Debug)
+        public static final OptionValue<String> Time = new OptionValue<>(null);
+        @Option(help = "Pattern for scope(s) in which logging is enabled (see DebugFilter and Debug.log)", type = OptionType.Debug)
+        public static final OptionValue<String> Log = new OptionValue<>(null);
+        @Option(help = "Pattern for filtering debug scope output based on method context (see MethodFilter)", type = OptionType.Debug)
+        public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
+        @Option(help = "Only check MethodFilter against the root method in the context if true, otherwise check all methods", type = OptionType.Debug)
+        public static final OptionValue<Boolean> MethodFilterRootOnly = new OptionValue<>(false);
 
-    @Option(help = "How to print metric and timing values:%n" +
-                   "Name - aggregate by unqualified name%n" +
-                   "Partial - aggregate by partially qualified name (e.g., A.B.C.D.Counter and X.Y.Z.D.Counter will be merged to D.Counter)%n" +
-                   "Complete - aggregate by qualified name%n" +
-                   "Thread - aggregate by qualified name and thread", type = OptionType.Debug)
-    public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Name");
-    @Option(help = "Omit reporting 0-value metrics", type = OptionType.Debug)
-    public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(true);
-    @Option(help = "Only report debug values for maps which match the regular expression.", type = OptionType.Debug)
-    public static final OptionValue<String> DebugValueThreadFilter = new OptionValue<>(null);
-    @Option(help = "Send JVMCI compiler IR to dump handlers on error", type = OptionType.Debug)
-    public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
-    @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
-    public static final OptionValue<Boolean> InterceptBailout = new OptionValue<>(false);
-    @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
-    public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
-    // @formatter:on
+        @Option(help = "How to print metric and timing values:%n" +
+                       "Name - aggregate by unqualified name%n" +
+                       "Partial - aggregate by partially qualified name (e.g., A.B.C.D.Counter and X.Y.Z.D.Counter will be merged to D.Counter)%n" +
+                       "Complete - aggregate by qualified name%n" +
+                       "Thread - aggregate by qualified name and thread", type = OptionType.Debug)
+        public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Name");
+        @Option(help = "Omit reporting 0-value metrics", type = OptionType.Debug)
+        public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(true);
+        @Option(help = "Only report debug values for maps which match the regular expression.", type = OptionType.Debug)
+        public static final OptionValue<String> DebugValueThreadFilter = new OptionValue<>(null);
+        @Option(help = "Send JVMCI compiler IR to dump handlers on error", type = OptionType.Debug)
+        public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
+        @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
+        public static final OptionValue<Boolean> InterceptBailout = new OptionValue<>(false);
+        @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
+        public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
+        // @formatter:on
+    }
 
     static boolean isNotEmpty(OptionValue<String> option) {
         return option.getValue() != null && !option.getValue().isEmpty();
     }
 
     public static boolean areDebugScopePatternsEnabled() {
-        return DumpOnError.getValue() || Dump.getValue() != null || Log.getValue() != null || areScopedMetricsOrTimersEnabled();
+        return Options.DumpOnError.getValue() || Options.Dump.getValue() != null || Options.Log.getValue() != null || areScopedMetricsOrTimersEnabled();
     }
 
     /**
-     * Determines if any of {@link #Meter}, {@link #Time} or {@link #TrackMemUse} has a non-null,
-     * non-empty value.
+     * Determines if any of {@link Options#Meter}, {@link Options#Time} or
+     * {@link Options#TrackMemUse} has a non-null, non-empty value.
      */
     public static boolean areScopedMetricsOrTimersEnabled() {
-        return isNotEmpty(Meter) || isNotEmpty(Time) || isNotEmpty(TrackMemUse);
+        return isNotEmpty(Options.Meter) || isNotEmpty(Options.Time) || isNotEmpty(Options.TrackMemUse);
     }
 
     private final DebugFilter logFilter;
@@ -222,7 +224,7 @@ public class GraalDebugConfig implements DebugConfig {
                 } else if (methodFilter != null) {
                     JavaMethod method = asJavaMethod(o);
                     if (method != null) {
-                        if (!MethodFilterRootOnly.getValue()) {
+                        if (!Options.MethodFilterRootOnly.getValue()) {
                             if (com.oracle.graal.debug.MethodFilter.matches(methodFilter, method)) {
                                 return true;
                             }
@@ -271,13 +273,13 @@ public class GraalDebugConfig implements DebugConfig {
 
     @Override
     public RuntimeException interceptException(Throwable e) {
-        if (e instanceof BailoutException && !InterceptBailout.getValue()) {
+        if (e instanceof BailoutException && !Options.InterceptBailout.getValue()) {
             return null;
         }
         Debug.setConfig(Debug.fixedConfig(Debug.DEFAULT_LOG_LEVEL, Debug.DEFAULT_LOG_LEVEL, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
-            if (DumpOnError.getValue()) {
+            if (Options.DumpOnError.getValue()) {
                 Debug.dump(o, "Exception: " + e.toString());
             } else {
                 Debug.log("Context obj %s", o);

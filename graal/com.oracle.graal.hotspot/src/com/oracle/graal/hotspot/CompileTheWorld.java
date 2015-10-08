@@ -227,8 +227,8 @@ public final class CompileTheWorld {
      */
     public void compile() throws Throwable {
         // By default only report statistics for the CTW threads themselves
-        if (GraalDebugConfig.DebugValueThreadFilter.hasDefaultValue()) {
-            GraalDebugConfig.DebugValueThreadFilter.setValue("^CompileTheWorld");
+        if (GraalDebugConfig.Options.DebugValueThreadFilter.hasDefaultValue()) {
+            GraalDebugConfig.Options.DebugValueThreadFilter.setValue("^CompileTheWorld");
         }
 
         if (SUN_BOOT_CLASS_PATH.equals(files)) {
