@@ -437,7 +437,13 @@ final class TraceInterval extends IntervalHint {
         return intFrom == Integer.MAX_VALUE && intTo == Integer.MAX_VALUE;
     }
 
+    public void setTo(int pos) {
+        assert intFrom == Integer.MAX_VALUE || intFrom < pos;
+        intTo = pos;
+    }
+
     public void setFrom(int pos) {
+        assert intTo == Integer.MAX_VALUE || pos < intTo;
         intFrom = pos;
     }
 
@@ -892,10 +898,10 @@ final class TraceInterval extends IntervalHint {
         assert from < to : "invalid range";
 
         if (from < intFrom) {
-            intFrom = from;
+            setFrom(from);
         }
         if (intTo == Integer.MAX_VALUE || intTo < to) {
-            intTo = to;
+            setTo(to);
         }
     }
 
@@ -942,8 +948,8 @@ final class TraceInterval extends IntervalHint {
         TraceInterval result = newSplitChild(allocator);
 
         // split the ranges
-        result.intTo = intTo;
-        result.intFrom = splitPos;
+        result.setTo(intTo);
+        result.setFrom(splitPos);
         intTo = splitPos;
 
         // split list of use positions
