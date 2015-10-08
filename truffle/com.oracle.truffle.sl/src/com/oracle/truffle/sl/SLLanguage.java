@@ -56,8 +56,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.GraphPrintVisitor;
@@ -507,11 +505,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
         throw new IllegalStateException("evalInContext not supported in this language");
-    }
-
-    @Override
-    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
-        throw new IllegalStateException("createAdvancedInstrumentRootFactory not supported in this language");
     }
 
     public Node createFindContextNode0() {

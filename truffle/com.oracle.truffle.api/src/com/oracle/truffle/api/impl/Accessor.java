@@ -41,8 +41,6 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -106,11 +104,6 @@ public abstract class Accessor {
 
             @Override
             protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-                return null;
-            }
-
-            @Override
-            protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
                 return null;
             }
         };
@@ -207,13 +200,6 @@ public abstract class Accessor {
 
     protected WrapperNode createWrapperNode(Node node, TruffleLanguage<?> language) {
         return API.createWrapperNode(node, language);
-    }
-
-    @Deprecated
-    @SuppressWarnings("rawtypes")
-    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr, AdvancedInstrumentResultListener resultListener)
-                    throws IOException {
-        return API.createAdvancedInstrumentRootFactory(vm, languageClass, expr, resultListener);
     }
 
     @SuppressWarnings("rawtypes")
@@ -341,4 +327,15 @@ public abstract class Accessor {
     protected void dispose(TruffleLanguage<?> impl, Env env) {
         API.dispose(impl, env);
     }
+
+    @SuppressWarnings("rawtypes")
+    protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) throws IOException {
+        final TruffleLanguage<?> truffleLanguage = findLanguageImpl(null, languageClass);
+        return parse(truffleLanguage, code, context, argumentNames);
+    }
+
+    protected CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) throws IOException {
+        return API.parse(truffleLanguage, code, context, argumentNames);
+    }
+
 }

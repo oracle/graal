@@ -69,7 +69,7 @@ public class InstrumentationTest {
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
         instrumenter.registerASTProber(new TestASTProber(instrumenter));
-        final Source source = Source.fromText("testProbing text", "testProbing").withMimeType("text/x-instTest");
+        final Source source = InstrumentationTestingLanguage.createAdditionSource13("testProbing");
 
         final Probe[] probes = new Probe[3];
         instrumenter.addProbeListener(new DefaultProbeListener() {
@@ -110,7 +110,7 @@ public class InstrumentationTest {
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
-        final Source source = Source.fromText("testTagging text", "testTagging").withMimeType("text/x-instTest");
+        final Source source = InstrumentationTestingLanguage.createAdditionSource13("testTagging");
 
         // Applies appropriate tags
         final TestASTProber astProber = new TestASTProber(instrumenter);

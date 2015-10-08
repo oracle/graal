@@ -27,8 +27,6 @@ import java.io.IOException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -77,11 +75,6 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        return null;
-    }
-
-    @Override
-    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
         return null;
     }
 

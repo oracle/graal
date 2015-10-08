@@ -24,12 +24,18 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import java.io.IOException;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.DefaultDirectCallNode;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -49,15 +55,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public abstract class ProbeInstrument extends Instrument {
 
-    /**
-     * Optional documentation, mainly for debugging.
-     */
-    private final String instrumentInfo;
-
-    /**
-     * Has this instrument been disposed? stays true once set.
-     */
-    private boolean isDisposed = false;
+    private static final String[] NO_ARGS = new String[0];
 
     protected Probe probe = null;
 
@@ -117,44 +115,31 @@ public abstract class ProbeInstrument extends Instrument {
      * </ul>
      */
     private ProbeInstrument(String instrumentInfo) {
-        this.instrumentInfo = instrumentInfo;
+        super(instrumentInfo);
     }
 
     /**
      * Removes this Instrument from the Probe to which it attached and renders this Instrument
      * inert.
-     *
-     * @throws IllegalStateException if this instrument has already been disposed
      */
     @Override
-    public void dispose() throws IllegalStateException {
-        if (isDisposed) {
-            throw new IllegalStateException("Attempt to dispose an already disposed Instrumennt");
-        }
+    protected void innerDispose() {
         if (probe != null) {
             // It's attached
             probe.disposeInstrument(this);
             probe = null;
         }
-        this.isDisposed = true;
-    }
-
-    @Override
-    public boolean isDisposed() {
-        return isDisposed;
     }
 
     /**
-     * Gets the {@link Probe} to which this Instrument is currently attached: {@code null} if not
-     * yet attached to a Probe or if this Instrument has been {@linkplain #dispose() disposed}.
+     * Gets the {@link Probe} to which this {@link Instrument} is currently attached: {@code null}
+     * if not yet attached to a Probe or if this Instrument has been {@linkplain #dispose()
+     * disposed}.
      */
     public Probe getProbe() {
         return probe;
     }
 
-    /**
-     * For internal implementation only.
-     */
     void setAttachedTo(Probe probe) {
         this.probe = probe;
     }
@@ -250,6 +235,11 @@ public abstract class ProbeInstrument extends Instrument {
                 final String info = getInstrumentInfo();
                 return info != null ? info : simpleListener.getClass().getSimpleName();
             }
+
+            @Override
+            public Probe getProbe() {
+                return SimpleInstrument.this.probe;
+            }
         }
     }
 
@@ -337,30 +327,36 @@ public abstract class ProbeInstrument extends Instrument {
                 final String info = getInstrumentInfo();
                 return info != null ? info : standardListener.getClass().getSimpleName();
             }
+
+            @Override
+            public Probe getProbe() {
+                return StandardInstrument.this.probe;
+            }
         }
     }
 
     /**
-     * An instrument that allows clients to provide an AST fragment to be executed directly from
+     * An instrument that allows clients to provide guest language code to be executed directly from
      * within a Probe's <em>instrumentation chain</em>, and thus directly in the executing Truffle
      * AST with potential for full optimization.
      */
-    static final class AdvancedInstrument extends ProbeInstrument {
+    static final class EvalInstrument extends ProbeInstrument {
 
-        private final AdvancedInstrumentResultListener resultListener;
-        private final AdvancedInstrumentRootFactory rootFactory;
-        private final Class<?> requiredResultType;
+        @SuppressWarnings("rawtypes") private final Class<? extends TruffleLanguage> languageClass;
+        private final Source source;
+        private final EvalInstrumentListener evalListener;
 
-        AdvancedInstrument(AdvancedInstrumentResultListener resultListener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
+        @SuppressWarnings("rawtypes")
+        EvalInstrument(Class<? extends TruffleLanguage> languageClass, Source source, EvalInstrumentListener evalListener, String instrumentInfo) {
             super(instrumentInfo);
-            this.resultListener = resultListener;
-            this.rootFactory = rootFactory;
-            this.requiredResultType = requiredResultType;
+            this.languageClass = languageClass;
+            this.source = source;
+            this.evalListener = evalListener;
         }
 
         @Override
         AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode) {
-            return new AdvancedInstrumentNode(nextNode);
+            return new EvalInstrumentNode(nextNode);
         }
 
         @Override
@@ -372,7 +368,7 @@ public abstract class ProbeInstrument extends Instrument {
                     return instrumentNode.nextInstrumentNode;
                 }
                 // Match not at the head of the chain; remove it.
-                found = instrumentNode.removeFromChain(AdvancedInstrument.this);
+                found = instrumentNode.removeFromChain(EvalInstrument.this);
             }
             if (!found) {
                 throw new IllegalStateException("Couldn't find instrument node to remove: " + this);
@@ -381,71 +377,48 @@ public abstract class ProbeInstrument extends Instrument {
         }
 
         /**
-         * Node that implements a {@link AdvancedInstrument} in a particular AST.
+         * Node that implements an {@link EvalInstrument} in a particular AST.
          */
         @NodeInfo(cost = NodeCost.NONE)
-        private final class AdvancedInstrumentNode extends AbstractInstrumentNode {
+        private final class EvalInstrumentNode extends AbstractInstrumentNode {
 
-            @Child private AdvancedInstrumentRoot instrumentRoot;
+            @Child private DirectCallNode callNode;
 
-            private AdvancedInstrumentNode(AbstractInstrumentNode nextNode) {
+            private EvalInstrumentNode(AbstractInstrumentNode nextNode) {
                 super(nextNode);
             }
 
             @Override
             public void enter(Node node, VirtualFrame vFrame) {
-                if (instrumentRoot == null) {
+                if (callNode == null) {
                     try {
-                        final AdvancedInstrumentRoot newInstrumentRoot = AdvancedInstrument.this.rootFactory.createInstrumentRoot(AdvancedInstrument.this.probe, node);
-                        if (newInstrumentRoot != null) {
-                            instrumentRoot = newInstrumentRoot;
+                        final CallTarget callTarget = Instrumenter.ACCESSOR.parse(languageClass, source, node, NO_ARGS);
+                        if (callTarget != null) {
+                            callNode = new DefaultDirectCallNode(callTarget);  // force inlining?
                             adoptChildren();
-                            AdvancedInstrument.this.probe.invalidateProbeUnchanged();
+                            EvalInstrument.this.probe.invalidateProbeUnchanged();
                         }
-                    } catch (RuntimeException ex) {
-                        if (resultListener != null) {
-                            resultListener.onFailure(node, vFrame, ex);
+                    } catch (RuntimeException | IOException ex) {
+                        if (evalListener != null) {
+                            evalListener.onFailure(node, vFrame, ex);
                         }
                     }
                 }
-                if (instrumentRoot != null) {
+                if (callNode != null) {
                     try {
-                        final Object result = instrumentRoot.executeRoot(node, vFrame);
-                        if (resultListener != null) {
-                            checkResultType(result);
-                            resultListener.onExecution(node, vFrame, result);
+                        final Object result = callNode.call(vFrame, null);
+                        if (evalListener != null) {
+                            evalListener.onExecution(node, vFrame, result);
                         }
                     } catch (RuntimeException ex) {
-                        if (resultListener != null) {
-                            resultListener.onFailure(node, vFrame, ex);
+                        if (evalListener != null) {
+                            evalListener.onFailure(node, vFrame, ex);
                         }
                     }
                 }
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.enter(node, vFrame);
                 }
-            }
-
-            private void checkResultType(Object result) {
-                if (requiredResultType == null) {
-                    return;
-                }
-                if (result == null) {
-                    throw instrumentResultNull();
-                }
-                if (!(requiredResultType.isAssignableFrom(result.getClass()))) {
-                    throw instrumentResultWrongType(result);
-                }
-            }
-
-            @TruffleBoundary
-            private RuntimeException instrumentResultNull() {
-                return new RuntimeException("Instrument result null: " + requiredResultType.getSimpleName() + " is required");
-            }
-
-            @TruffleBoundary
-            private RuntimeException instrumentResultWrongType(Object result) {
-                return new RuntimeException("Instrument result " + result.toString() + " not assignable to " + requiredResultType.getSimpleName());
             }
 
             @Override
@@ -472,7 +445,7 @@ public abstract class ProbeInstrument extends Instrument {
             @Override
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
-                return info != null ? info : rootFactory.getClass().getSimpleName();
+                return info != null ? info : getInstrumentInfo();
             }
         }
     }
@@ -612,7 +585,7 @@ public abstract class ProbeInstrument extends Instrument {
         }
 
         protected String getInstrumentInfo() {
-            return ProbeInstrument.this.instrumentInfo;
+            return ProbeInstrument.this.getInstrumentInfo();
         }
     }
 }

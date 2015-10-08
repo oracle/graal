@@ -30,8 +30,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -50,6 +48,19 @@ import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValue
 public final class InstrumentationTestingLanguage extends TruffleLanguage<Object> {
 
     public static final InstrumentationTestingLanguage INSTANCE = new InstrumentationTestingLanguage();
+
+    private static final String ADD_SOURCE_TEXT = "Fake source text for testing:  parses to 6 + 7";
+    private static final String CONSTANT_SOURCE_TEXT = "Fake source text for testing: parses to 42";
+
+    /** Use a unique test name to avoid unexpected CallTarget sharing. */
+    static Source createAdditionSource13(String testName) {
+        return Source.fromText(ADD_SOURCE_TEXT, testName).withMimeType("text/x-instTest");
+    }
+
+    /** Use a unique test name to avoid unexpected CallTarget sharing. */
+    static Source createConstantSource42(String testName) {
+        return Source.fromText(CONSTANT_SOURCE_TEXT, testName).withMimeType("text/x-instTest");
+    }
 
     static enum InstrumentTestTag implements SyntaxTag {
 
@@ -78,14 +89,24 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-        final TestValueNode leftValueNode = new TestValueNode(6);
-        final TestValueNode rightValueNode = new TestValueNode(7);
-        final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
-        final InstrumentationTestRootNode rootNode = new InstrumentationTestRootNode(addNode);
-        final TruffleRuntime runtime = Truffle.getRuntime();
-        final CallTarget callTarget = runtime.createCallTarget(rootNode);
-        return callTarget;
+    protected CallTarget parse(Source source, Node context, String... argumentNames) throws IOException {
+        if (source.getCode().equals(ADD_SOURCE_TEXT)) {
+            final TestValueNode leftValueNode = new TestValueNode(6);
+            final TestValueNode rightValueNode = new TestValueNode(7);
+            final TestAdditionNode addNode = new TestAdditionNode(leftValueNode, rightValueNode);
+            final InstrumentationTestRootNode rootNode = new InstrumentationTestRootNode(addNode);
+            final TruffleRuntime runtime = Truffle.getRuntime();
+            final CallTarget callTarget = runtime.createCallTarget(rootNode);
+            return callTarget;
+        }
+        if (source.getCode().equals(CONSTANT_SOURCE_TEXT)) {
+            final TestValueNode constantNode = new TestValueNode(42);
+            final InstrumentationTestRootNode rootNode = new InstrumentationTestRootNode(constantNode);
+            final TruffleRuntime runtime = Truffle.getRuntime();
+            final CallTarget callTarget = runtime.createCallTarget(rootNode);
+            return callTarget;
+        }
+        return null;
     }
 
     @Override
@@ -123,11 +144,6 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        return null;
-    }
-
-    @Override
-    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
         return null;
     }
 

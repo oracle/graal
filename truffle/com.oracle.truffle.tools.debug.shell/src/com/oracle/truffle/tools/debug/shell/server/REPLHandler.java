@@ -111,7 +111,7 @@ public abstract class REPLHandler {
         infoMessage.put(REPLMessage.BREAKPOINT_IGNORE_COUNT, Integer.toString(breakpoint.getIgnoreCount()));
         infoMessage.put(REPLMessage.INFO_VALUE, breakpoint.getLocationDescription().toString());
         if (breakpoint.getCondition() != null) {
-            infoMessage.put(REPLMessage.BREAKPOINT_CONDITION, breakpoint.getCondition());
+            infoMessage.put(REPLMessage.BREAKPOINT_CONDITION, breakpoint.getCondition().getCode());
         }
         infoMessage.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
         return infoMessage;

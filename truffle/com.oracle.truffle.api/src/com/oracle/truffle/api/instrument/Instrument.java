@@ -39,19 +39,39 @@ package com.oracle.truffle.api.instrument;
  */
 public abstract class Instrument {
 
-    protected Instrument() {
+    /** Optional string for debugging. */
+    private final String instrumentInfo;
+
+    private boolean isDisposed = false;
+
+    protected Instrument(String instrumentInfo) {
+        this.instrumentInfo = instrumentInfo;
     }
 
     /**
-     * Detaches this from its source of execution events and renders itself unusable.
+     * Detaches this from its source of execution events and makes itself unusable.
      *
      * @throws IllegalStateException if this has already been disposed
      */
-    public abstract void dispose() throws IllegalStateException;
+    public void dispose() throws IllegalStateException {
+        if (isDisposed) {
+            throw new IllegalStateException("Istruments only dispose once");
+        }
+        innerDispose();
+        this.isDisposed = true;
+    }
 
     /**
-     * Has this been detached from its source of execution events.
+     * Has this been detached from its source of execution events?
      */
-    public abstract boolean isDisposed();
+    public boolean isDisposed() {
+        return isDisposed;
+    }
+
+    protected final String getInstrumentInfo() {
+        return instrumentInfo;
+    }
+
+    protected abstract void innerDispose();
 
 }

@@ -29,40 +29,36 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Listener for receiving the result a client-provided {@linkplain AdvancedInstrumentRoot AST
- * fragment}, when executed by a
- * {@linkplain Instrumenter#attach(Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
- * Advanced Instrument}.
+ * Listener for receiving the result a client-provided Guest Language expression
+ * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalListener, String) attached} to a
+ * {@link Probe}.
  * <p>
- * Notification is fully synchronous, so overrides have performance implications. Non-trivial
+ * Notification is fully synchronous, so method bodies have performance implications. Non-trivial
  * methods should be coded with Truffle guidelines and cautions in mind.
  *
- * @see ProbeInstrument
- * @see AdvancedInstrumentRoot
- * @see AdvancedInstrumentRootFactory
+ * @see Instrumenter
  */
-public interface AdvancedInstrumentResultListener {
+public interface EvalInstrumentListener {
 
     /**
-     * Notifies listener that a client-provided {@linkplain AdvancedInstrumentRoot AST fragment} has
-     * been executed by an
-     * {@linkplain Instrumenter#attach(Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
-     * Advanced Instrument} with the specified result, possibly {@code null}.
+     * Notifies listener that a client-provided Guest Language expression
+     * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalListener, String) attached} to a
+     * {@link Probe} has just been executed with the specified result, possibly {@code null}.
      * <p>
      * <strong>Note: </strong> Truffle will attempt to optimize implementations through partial
      * evaluation; annotate with {@link TruffleBoundary} if this should not be permitted.
      *
-     * @param node the guest-language AST node to which the host Instrument's {@link Probe} is
-     *            attached
+     * @param node the guest language AST node at which the expression was evaluated
      * @param vFrame execution frame at the guest-language AST node
-     * @param result the result of this AST fragment's execution
+     * @param result expression evaluation
      */
     void onExecution(Node node, VirtualFrame vFrame, Object result);
 
     /**
-     * Notifies listener that execution of client-provided {@linkplain AdvancedInstrumentRoot AST
-     * fragment} filed during execution by a @linkplain
-     * Instrument#create(AdvancedInstrumentRootFactory, String) Advanced Instrument}.
+     * Notifies listener that a client-provided Guest Language expression
+     * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalListener, String) attached} to a
+     * {@link Probe} has just been executed and generated an exception. The exception does not
+     * affect Guest language evaluation; the only report is to listeners implementing this methods.
      * <p>
      * <strong>Note: </strong> Truffle will attempt to optimize implementations through partial
      * evaluation; annotate with {@link TruffleBoundary} if this should not be permitted.
@@ -72,6 +68,6 @@ public interface AdvancedInstrumentResultListener {
      * @param vFrame execution frame at the guest-language AST node
      * @param ex the exception
      */
-    void onFailure(Node node, VirtualFrame vFrame, RuntimeException ex);
+    void onFailure(Node node, VirtualFrame vFrame, Exception ex);
 
 }

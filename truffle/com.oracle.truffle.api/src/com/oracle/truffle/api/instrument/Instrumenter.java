@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -34,9 +35,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.instrument.ProbeInstrument.EvalInstrument;
 import com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument;
 import com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument;
 import com.oracle.truffle.api.nodes.Node;
@@ -422,13 +425,13 @@ public final class Instrumenter {
      * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
      * the listener.
      *
-     * @param probe source of AST execution events
+     * @param probe source of AST execution events, non-null
      * @param listener receiver of execution events
      * @param instrumentInfo optional documentation about the Instrument
      * @return a handle for access to the binding
      */
-    @SuppressWarnings("static-method")
     public ProbeInstrument attach(Probe probe, SimpleInstrumentListener listener, String instrumentInfo) {
+        assert probe.getInstrumenter() == this;
         final ProbeInstrument instrument = new ProbeInstrument.SimpleInstrument(listener, instrumentInfo);
         probe.attach(instrument);
         return instrument;
@@ -441,42 +444,45 @@ public final class Instrumenter {
      * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
      * the listener.
      *
-     * @param probe source of AST execution events
+     * @param probe source of AST execution events, non-null
      * @param listener receiver of execution events
      * @param instrumentInfo optional documentation about the Instrument
      * @return a handle for access to the binding
      */
-    @SuppressWarnings("static-method")
     public ProbeInstrument attach(Probe probe, StandardInstrumentListener listener, String instrumentInfo) {
+        assert probe.getInstrumenter() == this;
         final ProbeInstrument instrument = new ProbeInstrument.StandardInstrument(listener, instrumentInfo);
         probe.attach(instrument);
         return instrument;
     }
 
     /**
-     * <em>Attaches</em> a {@link AdvancedInstrumentResultListener listener} to a {@link Probe},
-     * creating a <em>binding</em> called an {@link ProbeInstrument}. Until the Instrument is
-     * {@linkplain ProbeInstrument#dispose() disposed}, it routes synchronous notification of
-     * {@linkplain EventHandlerNode execution events} taking place at the Probe's AST location to
-     * the listener.
+     * <em>Attaches</em> a fragment of source text that is to be evaluated just before execution
+     * enters the location of a {@link Probe}, creating a <em>binding</em> called an
+     * {@link ProbeInstrument}. The outcome of the evaluation is reported to an optional
+     * {@link EvalInstrumentListener listener}, but the outcome does not affect the flow of guest
+     * language execution, even if the evaluation produces an exception.
      * <p>
-     * This Instrument executes efficiently, subject to full Truffle optimization, a client-provided
-     * AST fragment every time the Probed node is entered.
+     * The source text is assumed to be expressed in the language identified by its associated
+     * {@linkplain Source#getMimeType() MIME type}, if specified, otherwise by the language
+     * associated with the AST location associated with the {@link Probe}.
      * <p>
-     * Any {@link RuntimeException} thrown by execution of the fragment is caught by the framework
-     * and reported to the listener; there is no other notification.
+     * The source text is parsed in the lexical context of the AST location associated with the
+     * {@link Probe}.
+     * <p>
+     * The source text executes subject to full Truffle optimization.
      *
-     * @param probe source of AST execution events
+     * @param probe source of AST execution events, non-null
+     * @param languageClass the language in which the source text is to be executed
+     * @param source the source code to be evaluated, non-null and non-empty
      * @param listener optional client callback for results/failure notification
-     * @param rootFactory provider of AST fragments on behalf of the client
-     * @param requiredResultType optional requirement, any non-assignable result is reported to the
-     *            the listener, if any, as a failure
      * @param instrumentInfo instrumentInfo optional documentation about the Instrument
      * @return a handle for access to the binding
      */
-    @SuppressWarnings("static-method")
-    public ProbeInstrument attach(Probe probe, AdvancedInstrumentResultListener listener, AdvancedInstrumentRootFactory rootFactory, Class<?> requiredResultType, String instrumentInfo) {
-        final ProbeInstrument instrument = new ProbeInstrument.AdvancedInstrument(listener, rootFactory, requiredResultType, instrumentInfo);
+    @SuppressWarnings("rawtypes")
+    public ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo) {
+        assert probe.getInstrumenter() == this;
+        final EvalInstrument instrument = new EvalInstrument(languageClass, source, listener, instrumentInfo);
         probe.attach(instrument);
         return instrument;
     }
@@ -630,7 +636,7 @@ public final class Instrumenter {
         }
 
         @Override
-        public WrapperNode createWrapperNode(Object vm, Node node) {
+        protected WrapperNode createWrapperNode(Object vm, Node node) {
             return super.createWrapperNode(vm, node);
         }
 
@@ -644,6 +650,12 @@ public final class Instrumenter {
         @Override
         protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
             return probe.getLanguage();
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) throws IOException {
+            return super.parse(languageClass, code, context, argumentNames);
         }
 
         @Override

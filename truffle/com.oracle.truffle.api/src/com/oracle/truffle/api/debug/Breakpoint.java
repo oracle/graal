@@ -142,10 +142,10 @@ public abstract class Breakpoint {
     public abstract void setCondition(String expr) throws IOException;
 
     /**
-     * Gets the string, expressed in the Guest Language, that defines the current condition on this
-     * breakpoint; {@code null} if this breakpoint is currently unconditional.
+     * Gets the text that defines the current condition on this breakpoint; {@code null} if this
+     * breakpoint is currently unconditional.
      */
-    public String getCondition() {
+    public Source getCondition() {
         return null;
     }
 

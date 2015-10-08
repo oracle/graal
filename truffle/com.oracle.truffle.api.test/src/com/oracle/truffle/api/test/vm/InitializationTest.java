@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -42,8 +42,6 @@ import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.EventHandlerNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
@@ -101,22 +99,17 @@ public class InitializationTest {
 
         Source source = Source.fromText("accessProbeForAbstractLanguage text", "accessProbeForAbstractLanguage").withMimeType("application/x-abstrlang");
 
-        vm.eval(source);
+        assertEquals(vm.eval(source).get(), 1);
 
         assertNotNull("Debugger found", arr[0]);
 
-        try {
-            Debugger d = arr[0];
-            Breakpoint b = d.setLineBreakpoint(0, source.createLineLocation(1), true);
-            assertTrue(b.isEnabled());
-            b.setCondition("true");
+        Debugger d = arr[0];
+        Breakpoint b = d.setLineBreakpoint(0, source.createLineLocation(1), true);
+        assertTrue(b.isEnabled());
+        b.setCondition("true");
 
-            vm.eval(source);
-        } catch (InstrumentOKException ex) {
-            // OK
-            return;
-        }
-        fail("We should properly call up to TestLanguage.createAdvancedInstrumentRootFactory");
+        assertEquals(vm.eval(source).get(), 1);
+        vm.dispose();
     }
 
     private static final class MMRootNode extends RootNode {
@@ -220,11 +213,6 @@ public class InitializationTest {
         }
 
         @Override
-        public AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) {
-            throw new InstrumentOKException();
-        }
-
-        @Override
         public Visualizer getVisualizer() {
             throw new UnsupportedOperationException();
         }
@@ -238,9 +226,5 @@ public class InitializationTest {
         protected WrapperNode createWrapperNode(Node node) {
             return node instanceof ANode ? new ANodeWrapper((ANode) node) : null;
         }
-    }
-
-    private static final class InstrumentOKException extends RuntimeException {
-        static final long serialVersionUID = 1L;
     }
 }

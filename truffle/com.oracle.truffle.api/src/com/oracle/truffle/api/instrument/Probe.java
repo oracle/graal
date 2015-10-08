@@ -329,4 +329,8 @@ public final class Probe {
         sb.append("]");
         return sb.toString();
     }
+
+    Instrumenter getInstrumenter() {
+        return instrumenter;
+    }
 }

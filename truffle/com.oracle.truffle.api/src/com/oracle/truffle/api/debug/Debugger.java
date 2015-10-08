@@ -34,14 +34,11 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
@@ -271,26 +268,6 @@ public final class Debugger {
             throw new IllegalArgumentException();
         }
         debugContext.setStrategy(new StepOver(stepCount));
-    }
-
-    // TODO (mlvdv) used by the breakpoint factories; to be deprecated/replaced.
-    /**
-     * Creates a language-specific factory to produce instances of {@link AdvancedInstrumentRoot}
-     * that, when executed, computes the result of a textual expression in the language; used to
-     * create an
-     * {@linkplain Instrumenter#attach(Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
-     * Advanced Instrument}.
-     *
-     * @param expr a guest language expression
-     * @param resultListener optional listener for the result of each evaluation.
-     * @return a new factory
-     * @throws IOException if the factory cannot be created, for example if the expression is badly
-     *             formed.
-     */
-    @SuppressWarnings("rawtypes")
-    AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Probe probe, String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
-        Class<? extends TruffleLanguage> languageClass = ACCESSOR.findLanguage(probe);
-        return ACCESSOR.createAdvancedInstrumentRootFactory(vm, languageClass, expr, resultListener);
     }
 
     Instrumenter getInstrumenter() {
@@ -860,7 +837,7 @@ public final class Debugger {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final class AccessorDebug extends Accessor {
+    static final class AccessorDebug extends Accessor {
 
         @Override
         protected Closeable executionStart(Object vm, final Debugger debugger, Source s) {
@@ -883,13 +860,6 @@ public final class Debugger {
             return super.findLanguage(probe);
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr,
-                        AdvancedInstrumentResultListener resultListener) throws IOException {
-            return super.createAdvancedInstrumentRootFactory(vm, languageClass, expr, resultListener);
-        }
-
         @Override
         protected void dispatchEvent(Object vm, Object event) {
             super.dispatchEvent(vm, event);
@@ -902,5 +872,5 @@ public final class Debugger {
     }
 
     // registers into Accessor.DEBUG
-    private static final AccessorDebug ACCESSOR = new AccessorDebug();
+    static final AccessorDebug ACCESSOR = new AccessorDebug();
 }

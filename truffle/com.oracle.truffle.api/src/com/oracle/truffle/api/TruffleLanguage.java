@@ -46,9 +46,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -269,21 +266,6 @@ public abstract class TruffleLanguage<C> {
     protected abstract Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException;
 
     /**
-     * Creates a language-specific factory to produce instances of {@link AdvancedInstrumentRoot}
-     * that, when executed, computes the result of a textual expression in the language; used to
-     * create an
-     * {@linkplain Instrumenter#attach(com.oracle.truffle.api.instrument.Probe, AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)}
-     * .
-     *
-     * @param expr a guest language expression
-     * @param resultListener optional listener for the result of each evaluation.
-     * @return a new factory
-     * @throws IOException if the factory cannot be created, for example if the expression is badly
-     *             formed.
-     */
-    protected abstract AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException;
-
-    /**
      * Allows a language implementor to create a node that can effectively lookup up the context
      * associated with current execution. The context is created by
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} method.
@@ -449,6 +431,11 @@ public abstract class TruffleLanguage<C> {
         private static final Map<Source, CallTarget> COMPILED = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
 
         @Override
+        protected CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) throws IOException {
+            return truffleLanguage.parse(code, context, argumentNames);
+        }
+
+        @Override
         protected Object eval(TruffleLanguage<?> language, Source source) throws IOException {
             CallTarget target = COMPILED.get(source);
             if (target == null) {
@@ -475,15 +462,6 @@ public abstract class TruffleLanguage<C> {
             Source source = Source.fromText(code, "eval in context");
             CallTarget target = lang.parse(source, n);
             return target.call();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Object vm, Class<? extends TruffleLanguage> languageClass, String expr,
-                        AdvancedInstrumentResultListener resultListener) throws IOException {
-
-            final TruffleLanguage language = findLanguageImpl(vm, languageClass);
-            return language.createAdvancedInstrumentRootFactory(expr, resultListener);
         }
 
         @Override
