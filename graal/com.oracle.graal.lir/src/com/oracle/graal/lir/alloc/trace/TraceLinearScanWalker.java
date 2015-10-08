@@ -396,7 +396,8 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             // must calculate this before the actual split is performed and before split position is
             // moved to odd opId
             final int optimalSplitPosFinal;
-            if (allocator.isBlockBegin(optimalSplitPos)) {
+            boolean blockBegin = allocator.isBlockBegin(optimalSplitPos);
+            if (blockBegin) {
                 assert (optimalSplitPos & 1) == 0 : "Block begins must be even: " + optimalSplitPos;
                 // move position after the label (odd optId)
                 optimalSplitPosFinal = optimalSplitPos + 1;
@@ -405,7 +406,8 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                 optimalSplitPosFinal = (optimalSplitPos - 1) | 1;
             }
 
-            assert minSplitPos <= optimalSplitPosFinal && optimalSplitPosFinal <= maxSplitPos : "out of range";
+            // TODO( je) better define what min split pos max split pos mean.
+            assert minSplitPos <= optimalSplitPosFinal && optimalSplitPosFinal <= maxSplitPos || minSplitPos == maxSplitPos && optimalSplitPosFinal == minSplitPos - 1 : "out of range";
             assert optimalSplitPosFinal <= interval.to() : "cannot split after end of interval";
             assert optimalSplitPosFinal > interval.from() : "cannot split at start of interval";
 
@@ -421,6 +423,15 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             // "split pos must be even on block boundary";
             assert (optimalSplitPosFinal & 1) == 1 : "split pos must be odd";
 
+            // TODO (je) duplicate code. try to fold
+            if (optimalSplitPosFinal == interval.to() && interval.nextUsage(RegisterPriority.MustHaveRegister, minSplitPos) == Integer.MAX_VALUE) {
+                // the split position would be just before the end of the interval
+                // . no split at all necessary
+                if (Debug.isLogEnabled()) {
+                    Debug.log("no split necessary because optimal split position is at end of interval");
+                }
+                return;
+            }
             TraceInterval splitPart = interval.split(optimalSplitPosFinal, allocator);
 
             boolean moveNecessary = true;
