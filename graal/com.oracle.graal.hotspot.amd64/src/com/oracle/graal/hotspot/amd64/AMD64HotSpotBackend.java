@@ -50,6 +50,7 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.amd64.AMD64NodeMatchRules;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.gen.BytecodeLIRBuilder;
 import com.oracle.graal.compiler.gen.BytecodeParserTool;
@@ -105,7 +106,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        return new AMD64HotSpotNodeLIRBuilder(graph, lirGen);
+        return new AMD64HotSpotNodeLIRBuilder(graph, lirGen, new AMD64NodeMatchRules(lirGen));
     }
 
     @Override

@@ -64,6 +64,7 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.sparc.SPARCNodeMatchRules;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
@@ -144,7 +145,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        return new SPARCHotSpotNodeLIRBuilder(graph, lirGen);
+        return new SPARCHotSpotNodeLIRBuilder(graph, lirGen, new SPARCNodeMatchRules(lirGen));
     }
 
     /**

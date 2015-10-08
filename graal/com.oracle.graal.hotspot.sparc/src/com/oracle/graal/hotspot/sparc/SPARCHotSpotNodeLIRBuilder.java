@@ -39,6 +39,7 @@ import jdk.internal.jvmci.sparc.SPARCKind;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
 import com.oracle.graal.compiler.sparc.SPARCNodeLIRBuilder;
+import com.oracle.graal.compiler.sparc.SPARCNodeMatchRules;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
 import com.oracle.graal.hotspot.HotSpotLockStack;
@@ -61,8 +62,8 @@ import com.oracle.graal.nodes.spi.NodeValueMap;
 
 public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        super(graph, lirGen);
+    public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen, SPARCNodeMatchRules nodeMatchRules) {
+        super(graph, lirGen, nodeMatchRules);
         assert gen instanceof SPARCHotSpotLIRGenerator;
         assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
         ((SPARCHotSpotLIRGenerator) gen).setLockStack(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());

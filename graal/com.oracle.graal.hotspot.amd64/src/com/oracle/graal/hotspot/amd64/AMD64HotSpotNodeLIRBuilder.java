@@ -40,6 +40,7 @@ import jdk.internal.jvmci.meta.LIRKind;
 import jdk.internal.jvmci.meta.Value;
 
 import com.oracle.graal.compiler.amd64.AMD64NodeLIRBuilder;
+import com.oracle.graal.compiler.amd64.AMD64NodeMatchRules;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
 import com.oracle.graal.debug.Debug;
@@ -68,8 +69,8 @@ import com.oracle.graal.nodes.spi.NodeValueMap;
  */
 public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
-        super(graph, gen);
+    public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
+        super(graph, gen, nodeMatchRules);
         assert gen instanceof AMD64HotSpotLIRGenerator;
         assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
         ((AMD64HotSpotLIRGenerator) gen).setLockStack(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());

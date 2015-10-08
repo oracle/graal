@@ -33,7 +33,7 @@ import java.util.Map.Entry;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.service.Services;
 
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Edges;
@@ -68,7 +68,7 @@ public class MatchRuleRegistry {
         return result;
     }
 
-    private static final HashMap<Class<? extends NodeLIRBuilder>, Map<Class<? extends Node>, List<MatchStatement>>> registry = new HashMap<>();
+    private static final HashMap<Class<? extends NodeMatchRules>, Map<Class<? extends Node>, List<MatchStatement>>> registry = new HashMap<>();
 
     /**
      * Collect all the {@link MatchStatement}s defined by the superclass chain of theClass.
@@ -77,7 +77,7 @@ public class MatchRuleRegistry {
      * @return the set of {@link MatchStatement}s applicable to theClass.
      */
     @SuppressWarnings("try")
-    public static synchronized Map<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeLIRBuilder> theClass) {
+    public static synchronized Map<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeMatchRules> theClass) {
         Map<Class<? extends Node>, List<MatchStatement>> result = registry.get(theClass);
 
         if (result == null) {
@@ -109,8 +109,8 @@ public class MatchRuleRegistry {
      * This is a separate, public method so that external clients can create rules with a custom
      * lookup and without the default caching behavior.
      */
-    public static Map<Class<? extends Node>, List<MatchStatement>> createRules(Class<? extends NodeLIRBuilder> theClass) {
-        HashMap<Class<? extends NodeLIRBuilder>, MatchStatementSet> matchSets = new HashMap<>();
+    public static Map<Class<? extends Node>, List<MatchStatement>> createRules(Class<? extends NodeMatchRules> theClass) {
+        HashMap<Class<? extends NodeMatchRules>, MatchStatementSet> matchSets = new HashMap<>();
         Iterable<MatchStatementSet> sl = Services.load(MatchStatementSet.class);
         for (MatchStatementSet rules : sl) {
             matchSets.put(rules.forClass(), rules);
@@ -135,7 +135,7 @@ public class MatchRuleRegistry {
                 }
             }
             currentClass = currentClass.getSuperclass();
-        } while (currentClass != NodeLIRBuilder.class);
+        } while (currentClass != NodeMatchRules.class);
         return rules;
     }
 }

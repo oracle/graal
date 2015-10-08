@@ -54,7 +54,6 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.match.ComplexMatchValue;
 import com.oracle.graal.compiler.match.MatchRuleRegistry;
 import com.oracle.graal.compiler.match.MatchStatement;
-import com.oracle.graal.compiler.match.MatchableNode;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.TTY;
@@ -79,7 +78,6 @@ import com.oracle.graal.lir.gen.PhiResolver;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
-import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.FixedNode;
@@ -95,41 +93,18 @@ import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.LoweredCallTargetNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.SimpleInfopointNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
-import com.oracle.graal.nodes.calc.AddNode;
-import com.oracle.graal.nodes.calc.AndNode;
 import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.calc.ConditionalNode;
-import com.oracle.graal.nodes.calc.FloatConvertNode;
-import com.oracle.graal.nodes.calc.FloatEqualsNode;
-import com.oracle.graal.nodes.calc.FloatLessThanNode;
-import com.oracle.graal.nodes.calc.IntegerBelowNode;
-import com.oracle.graal.nodes.calc.IntegerEqualsNode;
-import com.oracle.graal.nodes.calc.IntegerLessThanNode;
 import com.oracle.graal.nodes.calc.IntegerTestNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
-import com.oracle.graal.nodes.calc.LeftShiftNode;
-import com.oracle.graal.nodes.calc.MulNode;
-import com.oracle.graal.nodes.calc.NarrowNode;
-import com.oracle.graal.nodes.calc.ObjectEqualsNode;
-import com.oracle.graal.nodes.calc.OrNode;
-import com.oracle.graal.nodes.calc.ReinterpretNode;
-import com.oracle.graal.nodes.calc.SignExtendNode;
-import com.oracle.graal.nodes.calc.SubNode;
-import com.oracle.graal.nodes.calc.UnsignedRightShiftNode;
-import com.oracle.graal.nodes.calc.XorNode;
-import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.extended.SwitchNode;
-import com.oracle.graal.nodes.memory.FloatingReadNode;
-import com.oracle.graal.nodes.memory.ReadNode;
-import com.oracle.graal.nodes.memory.WriteNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -139,32 +114,6 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-@MatchableNode(nodeClass = ConstantNode.class, shareable = true)
-@MatchableNode(nodeClass = FloatConvertNode.class, inputs = {"value"})
-@MatchableNode(nodeClass = FloatingReadNode.class, inputs = {"address"})
-@MatchableNode(nodeClass = IfNode.class, inputs = {"condition"})
-@MatchableNode(nodeClass = SubNode.class, inputs = {"x", "y"})
-@MatchableNode(nodeClass = LeftShiftNode.class, inputs = {"x", "y"})
-@MatchableNode(nodeClass = NarrowNode.class, inputs = {"value"})
-@MatchableNode(nodeClass = ReadNode.class, inputs = {"address"})
-@MatchableNode(nodeClass = ReinterpretNode.class, inputs = {"value"})
-@MatchableNode(nodeClass = SignExtendNode.class, inputs = {"value"})
-@MatchableNode(nodeClass = UnsignedRightShiftNode.class, inputs = {"x", "y"})
-@MatchableNode(nodeClass = WriteNode.class, inputs = {"address", "value"})
-@MatchableNode(nodeClass = ZeroExtendNode.class, inputs = {"value"})
-@MatchableNode(nodeClass = AndNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = FloatEqualsNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = FloatLessThanNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = AddNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = IntegerBelowNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = IntegerEqualsNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = IntegerLessThanNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = MulNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = IntegerTestNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = ObjectEqualsNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = OrNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = XorNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = PiNode.class, inputs = {"object"})
 public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGenerationDebugContext {
 
     private final NodeMap<Value> nodeOperands;
@@ -175,15 +124,24 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
+    private final NodeMatchRules nodeMatchRules;
     private Map<Class<? extends Node>, List<MatchStatement>> matchRules;
 
-    public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
+    public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, NodeMatchRules nodeMatchRules) {
         this.gen = gen;
+        this.nodeMatchRules = nodeMatchRules;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(graph, this);
         if (MatchExpressions.getValue()) {
-            matchRules = MatchRuleRegistry.lookup(getClass());
+            matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass());
         }
+
+        assert nodeMatchRules.lirBuilder == null;
+        nodeMatchRules.lirBuilder = this;
+    }
+
+    public NodeMatchRules getNodeMatchRules() {
+        return nodeMatchRules;
     }
 
     @SuppressWarnings({"unused"})

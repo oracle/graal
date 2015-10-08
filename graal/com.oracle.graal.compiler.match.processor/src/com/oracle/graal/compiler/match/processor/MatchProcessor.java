@@ -66,7 +66,7 @@ import javax.tools.StandardLocation;
 import jdk.internal.jvmci.common.JVMCIError;
 import jdk.internal.jvmci.service.ServiceProvider;
 
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.compiler.match.ComplexMatchResult;
 import com.oracle.graal.compiler.match.MatchRule;
 import com.oracle.graal.compiler.match.MatchRules;
@@ -520,7 +520,7 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("");
             out.println("import java.util.*;");
             out.println("import " + MatchStatementSet.class.getPackage().getName() + ".*;");
-            out.println("import " + NodeLIRBuilder.class.getName() + ";");
+            out.println("import " + NodeMatchRules.class.getName() + ";");
             out.println("import " + Position.class.getName() + ";");
             out.println("import " + ServiceProvider.class.getName() + ";");
             for (String p : info.requiredPackages) {
@@ -552,8 +552,8 @@ public class MatchProcessor extends AbstractProcessor {
                 out.printf("    private static final String[] %s = new String[] {%s};\n", invoker.argumentsListName(), args);
                 out.printf("    private static final class %s implements MatchGenerator {\n", invoker.wrapperClass());
                 out.printf("        static MatchGenerator instance = new %s();\n", invoker.wrapperClass());
-                out.printf("        public ComplexMatchResult match(NodeLIRBuilder builder, Object...args) {\n");
-                out.printf("            return ((%s) builder).%s(%s);\n", invoker.nodeLIRBuilderClass, invoker.methodName, types);
+                out.printf("        public ComplexMatchResult match(NodeMatchRules nodeMatchRules, Object...args) {\n");
+                out.printf("            return ((%s) nodeMatchRules).%s(%s);\n", invoker.nodeLIRBuilderClass, invoker.methodName, types);
                 out.printf("        }\n");
                 out.printf("        public String getName() {\n");
                 out.printf("             return \"%s\";\n", invoker.methodName);
@@ -565,7 +565,7 @@ public class MatchProcessor extends AbstractProcessor {
 
             String desc = MatchStatement.class.getSimpleName();
 
-            out.println("    public Class<? extends NodeLIRBuilder> forClass() {");
+            out.println("    public Class<? extends NodeMatchRules> forClass() {");
             out.println("        return " + topDeclaringClass + ".class;");
             out.println("    }");
             out.println();
