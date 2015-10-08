@@ -27,11 +27,12 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * Listener for receiving the result a client-provided Guest Language expression
- * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalListener, String) attached} to a
- * {@link Probe}.
+ * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalInstrumentListener, String) attached}
+ * to a {@link Probe}.
  * <p>
  * Notification is fully synchronous, so method bodies have performance implications. Non-trivial
  * methods should be coded with Truffle guidelines and cautions in mind.
@@ -42,8 +43,9 @@ public interface EvalInstrumentListener {
 
     /**
      * Notifies listener that a client-provided Guest Language expression
-     * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalListener, String) attached} to a
-     * {@link Probe} has just been executed with the specified result, possibly {@code null}.
+     * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalInstrumentListener, String)
+     * attached} to a {@link Probe} has just been executed with the specified result, possibly
+     * {@code null}.
      * <p>
      * <strong>Note: </strong> Truffle will attempt to optimize implementations through partial
      * evaluation; annotate with {@link TruffleBoundary} if this should not be permitted.
@@ -56,9 +58,10 @@ public interface EvalInstrumentListener {
 
     /**
      * Notifies listener that a client-provided Guest Language expression
-     * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalListener, String) attached} to a
-     * {@link Probe} has just been executed and generated an exception. The exception does not
-     * affect Guest language evaluation; the only report is to listeners implementing this methods.
+     * {@linkplain Instrumenter#attach(Probe, Class, Source, EvalInstrumentListener, String)
+     * attached} to a {@link Probe} has just been executed and generated an exception. The exception
+     * does not affect Guest language evaluation; the only report is to listeners implementing this
+     * methods.
      * <p>
      * <strong>Note: </strong> Truffle will attempt to optimize implementations through partial
      * evaluation; annotate with {@link TruffleBoundary} if this should not be permitted.
