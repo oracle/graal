@@ -39,16 +39,11 @@ import com.oracle.graal.nodes.extended.ForeignCallNode;
 public final class Log {
 
     public static final ForeignCallDescriptor LOG_PRIMITIVE = new ForeignCallDescriptor("logPrimitive", void.class, int.class, long.class, boolean.class);
-    public static final ForeignCallDescriptor LOG_OBJECT = new ForeignCallDescriptor("logObject", void.class, Object.class, int.class);
+    public static final ForeignCallDescriptor LOG_OBJECT = new ForeignCallDescriptor("logObject", void.class, Object.class, boolean.class, boolean.class);
     public static final ForeignCallDescriptor LOG_PRINTF = new ForeignCallDescriptor("logPrintf", void.class, Object.class, long.class, long.class, long.class);
 
-    // Note: Must be kept in sync with constants in jvmciRuntime.hpp
-    private static final int LOG_OBJECT_NEWLINE = 0x01;
-    private static final int LOG_OBJECT_STRING = 0x02;
-    private static final int LOG_OBJECT_ADDRESS = 0x04;
-
     @NodeIntrinsic(ForeignCallNode.class)
-    private static native void log(@ConstantNodeParameter ForeignCallDescriptor logObject, Object object, int flags);
+    private static native void log(@ConstantNodeParameter ForeignCallDescriptor logObject, Object object, boolean asString, boolean newline);
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void log(@ConstantNodeParameter ForeignCallDescriptor logPrimitive, int typeChar, long value, boolean newline);
@@ -124,15 +119,11 @@ public final class Log {
     }
 
     public static void print(String value) {
-        log(LOG_OBJECT, value, LOG_OBJECT_STRING);
-    }
-
-    public static void printAddress(Object o) {
-        log(LOG_OBJECT, o, LOG_OBJECT_ADDRESS);
+        log(LOG_OBJECT, value, true, false);
     }
 
     public static void printObject(Object o) {
-        log(LOG_OBJECT, o, 0);
+        log(LOG_OBJECT, o, false, false);
     }
 
     public static void println(boolean value) {
@@ -184,15 +175,11 @@ public final class Log {
     }
 
     public static void println(String value) {
-        log(LOG_OBJECT, value, LOG_OBJECT_NEWLINE | LOG_OBJECT_STRING);
-    }
-
-    public static void printlnAddress(Object o) {
-        log(LOG_OBJECT, o, LOG_OBJECT_NEWLINE | LOG_OBJECT_ADDRESS);
+        log(LOG_OBJECT, value, true, true);
     }
 
     public static void printlnObject(Object o) {
-        log(LOG_OBJECT, o, LOG_OBJECT_NEWLINE);
+        log(LOG_OBJECT, o, false, true);
     }
 
     public static void println() {
