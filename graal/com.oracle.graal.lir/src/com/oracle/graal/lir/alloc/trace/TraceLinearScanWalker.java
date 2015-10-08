@@ -249,16 +249,13 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         AbstractBlockBase<?> toBlock = allocator.blockForId(opId);
         AbstractBlockBase<?> fromBlock = allocator.blockForId(opId - 2);
 
-        final int operandId;
         if (fromBlock.getSuccessorCount() == 1) {
             // insert move in predecessor
-            operandId = opId - 2;
-        } else {
-            assert toBlock.getPredecessorCount() == 1 : String.format("Critical Edge? %s->%s", fromBlock, toBlock);
-            // insert move in predecessor
-            operandId = opId + 2;
+            return opId - 2;
         }
-        return operandId;
+        assert toBlock.getPredecessorCount() == 1 : String.format("Critical Edge? %s->%s", fromBlock, toBlock);
+        // insert move in successor
+        return opId + 2;
     }
 
     private void insertMove(int operandId, TraceInterval srcIt, TraceInterval dstIt) {
