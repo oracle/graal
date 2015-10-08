@@ -287,7 +287,6 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         moveResolver.addMapping(srcIt, dstIt);
     }
 
-    @SuppressWarnings("unused")
     private int findOptimalSplitPos(AbstractBlockBase<?> minBlock, AbstractBlockBase<?> maxBlock, int maxSplitPos) {
         int fromBlockNr = minBlock.getLinearScanNumber();
         int toBlockNr = maxBlock.getLinearScanNumber();
@@ -303,13 +302,14 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             optimalSplitPos = allocator.getFirstLirInstructionId(maxBlock);
         }
 
-        int minLoopDepth = maxBlock.getLoopDepth();
+        // minimal block probability
+        double minProbability = maxBlock.probability();
         for (int i = toBlockNr - 1; i >= fromBlockNr; i--) {
             AbstractBlockBase<?> cur = blockAt(i);
 
-            if (cur.getLoopDepth() < minLoopDepth) {
-                // block with lower loop-depth found . split at the end of this block
-                minLoopDepth = cur.getLoopDepth();
+            if (cur.probability() < minProbability) {
+                // Block with lower probability found. Split at the end of this block.
+                minProbability = cur.probability();
                 optimalSplitPos = allocator.getLastLirInstructionId(cur) + 2;
             }
         }
@@ -318,14 +318,55 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         return optimalSplitPos;
     }
 
-    @SuppressWarnings({"static-method", "unused"})
     private int findOptimalSplitPos(TraceInterval interval, int minSplitPos, int maxSplitPos, boolean doLoopOptimization) {
-        // TODO (je) implement
-        int optimalSplitPos = maxSplitPos;
+        int optimalSplitPos = findOptimalSplitPos0(interval, minSplitPos, maxSplitPos, doLoopOptimization);
         if (Debug.isLogEnabled()) {
             Debug.log("optimal split position: %d", optimalSplitPos);
         }
         return optimalSplitPos;
+    }
+
+    @SuppressWarnings({"unused"})
+    private int findOptimalSplitPos0(TraceInterval interval, int minSplitPos, int maxSplitPos, boolean doLoopOptimization) {
+        // TODO (je) implement
+        if (minSplitPos == maxSplitPos) {
+            // trivial case, no optimization of split position possible
+            if (Debug.isLogEnabled()) {
+                Debug.log("min-pos and max-pos are equal, no optimization possible");
+            }
+            return minSplitPos;
+
+        }
+        assert minSplitPos < maxSplitPos : "must be true then";
+        assert minSplitPos > 0 : "cannot access minSplitPos - 1 otherwise";
+
+        // reason for using minSplitPos - 1: when the minimal split pos is exactly at the
+        // beginning of a block, then minSplitPos is also a possible split position.
+        // Use the block before as minBlock, because then minBlock.lastLirInstructionId() + 2 ==
+        // minSplitPos
+        AbstractBlockBase<?> minBlock = allocator.blockForId(minSplitPos - 1);
+
+        // reason for using maxSplitPos - 1: otherwise there would be an assert on failure
+        // when an interval ends at the end of the last block of the method
+        // (in this case, maxSplitPos == allocator().maxLirOpId() + 2, and there is no
+        // block at this opId)
+        AbstractBlockBase<?> maxBlock = allocator.blockForId(maxSplitPos - 1);
+
+        assert minBlock.getLinearScanNumber() <= maxBlock.getLinearScanNumber() : "invalid order";
+        if (minBlock == maxBlock) {
+            // split position cannot be moved to block boundary : so split as late as possible
+            if (Debug.isLogEnabled()) {
+                Debug.log("cannot move split pos to block boundary because minPos and maxPos are in same block");
+            }
+            return maxSplitPos;
+
+        }
+        // seach optimal block boundary between minSplitPos and maxSplitPos
+        if (Debug.isLogEnabled()) {
+            Debug.log("moving split pos to optimal block boundary between block B%d and B%d", minBlock.getId(), maxBlock.getId());
+        }
+
+        return findOptimalSplitPos(minBlock, maxBlock, maxSplitPos);
     }
 
     // split an interval at the optimal position between minSplitPos and
@@ -342,11 +383,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             assert minSplitPos <= maxSplitPos : "invalid order";
             assert maxSplitPos <= interval.to() : "cannot split after end of interval";
 
-            int optimalSplitPos = findOptimalSplitPos(interval, minSplitPos, maxSplitPos, true);
-
-            assert minSplitPos <= optimalSplitPos && optimalSplitPos <= maxSplitPos : "out of range";
-            assert optimalSplitPos <= interval.to() : "cannot split after end of interval";
-            assert optimalSplitPos > interval.from() : "cannot split at start of interval";
+            final int optimalSplitPos = findOptimalSplitPos(interval, minSplitPos, maxSplitPos, true);
 
             if (optimalSplitPos == interval.to() && interval.nextUsage(RegisterPriority.MustHaveRegister, minSplitPos) == Integer.MAX_VALUE) {
                 // the split position would be just before the end of the interval
@@ -356,27 +393,37 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                 }
                 return;
             }
-
             // must calculate this before the actual split is performed and before split position is
             // moved to odd opId
-            boolean isBlockBegin = allocator.isBlockBegin(optimalSplitPos);
-            boolean moveNecessary = true;
-
-            if (isBlockBegin) {
-                optimalSplitPos = insertIdAtBasicBlockBoundary(optimalSplitPos);
+            final int optimalSplitPosFinal;
+            if (allocator.isBlockBegin(optimalSplitPos)) {
+                assert (optimalSplitPos & 1) == 0 : "Block begins must be even: " + optimalSplitPos;
+                // move position after the label (odd optId)
+                optimalSplitPosFinal = optimalSplitPos + 1;
+            } else {
+                // move position before actual instruction (odd opId)
+                optimalSplitPosFinal = (optimalSplitPos - 1) | 1;
             }
-            // move position before actual instruction (odd opId)
-            optimalSplitPos = (optimalSplitPos - 1) | 1;
+
+            assert minSplitPos <= optimalSplitPosFinal && optimalSplitPosFinal <= maxSplitPos : "out of range";
+            assert optimalSplitPosFinal <= interval.to() : "cannot split after end of interval";
+            assert optimalSplitPosFinal > interval.from() : "cannot split at start of interval";
 
             if (Debug.isLogEnabled()) {
-                Debug.log("splitting at position %d", optimalSplitPos);
+                Debug.log("splitting at position %d", optimalSplitPosFinal);
             }
+            assert optimalSplitPosFinal > currentPosition : "Can not split interval " + interval + " at current position: " + currentPosition;
 
-            assert isBlockBegin || ((optimalSplitPos & 1) == 1) : "split pos must be odd when not on block boundary";
-            assert !isBlockBegin || ((optimalSplitPos & 1) == 0) : "split pos must be even on block boundary";
+            // was:
+            // assert isBlockBegin || ((optimalSplitPos1 & 1) == 1) :
+            // "split pos must be odd when not on block boundary";
+            // assert !isBlockBegin || ((optimalSplitPos1 & 1) == 0) :
+            // "split pos must be even on block boundary";
+            assert (optimalSplitPosFinal & 1) == 1 : "split pos must be odd";
 
-            TraceInterval splitPart = interval.split(optimalSplitPos, allocator);
+            TraceInterval splitPart = interval.split(optimalSplitPosFinal, allocator);
 
+            boolean moveNecessary = true;
             splitPart.setInsertMoveWhenActivated(moveNecessary);
 
             assert splitPart.from() >= currentPosition : "cannot append new interval before current walk position";
