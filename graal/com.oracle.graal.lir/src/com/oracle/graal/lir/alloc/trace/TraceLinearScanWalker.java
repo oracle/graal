@@ -526,7 +526,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                         optimalSplitPos = insertIdAtBasicBlockBoundary(optimalSplitPos);
                     }
                     if (Debug.isLogEnabled()) {
-                        Debug.log("inserting move from interval %s to %d", interval, spilledPart);
+                        Debug.log("inserting move from interval %s to %s", interval, spilledPart);
                     }
                     insertMove(optimalSplitPos, interval, spilledPart);
 
