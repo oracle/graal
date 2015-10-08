@@ -291,7 +291,9 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     public void define(Object id, Object value, int flags, LocationFactory locationFactory) {
         ShapeImpl oldShape = getShape();
         ShapeImpl newShape = oldShape.defineProperty(id, value, flags, locationFactory);
-        updateShape();
+        if (updateShape()) {
+            oldShape = getShape();
+        }
         Property property = newShape.getProperty(id);
 
         if (oldShape == newShape) {
