@@ -33,12 +33,12 @@ import json
 import re
 
 import mx
-from mx_jvmci import JvmciJDKDeployedDist, add_bootclasspath_prepend
+from mx_jvmci import JvmciJDKDeployedDist, add_bootclasspath_prepend, buildvms
 from mx_jvmci import jdkDeployedDists #pylint: disable=unused-import
+from mx_gate import Task
 
 try:
-    from mx_jvmci import run_vm, VM, Task, get_vm, \
-    isJVMCIEnabled, relativeVmLibDirInJdk, get_jvmci_jdk, get_jvmci_jdk_dir, buildvms
+    from mx_jvmci import run_vm, VM, get_vm, isJVMCIEnabled, relativeVmLibDirInJdk, get_jvmci_jdk, get_jvmci_jdk_dir #pylint: disable=no-name-in-module
 except ImportError:
     pass
 from mx_unittest import unittest
