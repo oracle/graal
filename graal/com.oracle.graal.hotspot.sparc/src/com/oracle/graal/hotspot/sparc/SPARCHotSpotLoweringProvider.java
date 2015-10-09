@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.sparc;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 public class SPARCHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
     public SPARCHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    ConstantReflectionProvider constantReflection, TargetDescription target) {
+                    HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
         super(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
     }
 
