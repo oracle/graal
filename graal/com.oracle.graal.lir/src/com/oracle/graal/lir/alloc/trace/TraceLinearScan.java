@@ -172,9 +172,10 @@ final class TraceLinearScan {
     private AbstractBlockBase<?>[] opIdToBlockMap;
 
     protected final TraceBuilderResult<?> traceBuilderResult;
+    private final boolean neverSpillConstants;
 
     protected TraceLinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
-                    List<? extends AbstractBlockBase<?>> sortedBlocks, TraceBuilderResult<?> traceBuilderResult) {
+                    List<? extends AbstractBlockBase<?>> sortedBlocks, TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -186,6 +187,7 @@ final class TraceLinearScan {
         this.fixedIntervals = new FixedInterval[registers.length];
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.traceBuilderResult = traceBuilderResult;
+        this.neverSpillConstants = neverSpillConstants;
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -985,6 +987,10 @@ final class TraceLinearScan {
 
     public boolean callKillsRegisters() {
         return regAllocConfig.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
+    }
+
+    boolean neverSpillConstants() {
+        return neverSpillConstants;
     }
 
 }

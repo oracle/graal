@@ -48,7 +48,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.common.BackendOptions;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -826,10 +825,6 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
-    protected static Boolean neverSpillConstants() {
-        return BackendOptions.UserOptions.NeverSpillConstants.getValue();
-    }
-
     /**
      * Returns a value for a interval definition, which can be used for re-materialization.
      *
@@ -840,12 +835,12 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      *         reload-locations in case the interval of this instruction is spilled. Currently this
      *         can only be a {@link JavaConstant}.
      */
-    protected static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
+    protected JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
         if (op instanceof LoadConstantOp) {
             LoadConstantOp move = (LoadConstantOp) op;
             if (move.getConstant() instanceof JavaConstant) {
 
-                if (!neverSpillConstants()) {
+                if (!allocator.neverSpillConstants()) {
                     /*
                      * Check if the interval has any uses which would accept an stack location
                      * (priority == ShouldHaveRegister). Rematerialization of such intervals can

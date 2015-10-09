@@ -31,6 +31,7 @@ import jdk.vm.ci.options.Option;
 import jdk.vm.ci.options.OptionType;
 import jdk.vm.ci.options.OptionValue;
 
+import com.oracle.graal.compiler.common.BackendOptions;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -79,6 +80,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceBuilderResult<B> resultTraces = TraceBuilder.computeTraces(startBlock, linearScanOrder);
         TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
 
+        boolean neverSpillConstants = BackendOptions.UserOptions.NeverSpillConstants.getValue();
         Debug.dump(lir, "Before TraceRegisterAllocation");
         int traceNumber = 0;
         for (List<B> trace : resultTraces.getTraces()) {
@@ -91,7 +93,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                 if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
                     new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, new TraceAllocationContext(spillMoveFactory, registerAllocationConfig), false);
                 } else {
-                    TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces);
+                    TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, neverSpillConstants);
                     allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
                 }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "After Trace" + traceNumber + ": " + trace);

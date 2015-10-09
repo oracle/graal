@@ -27,7 +27,6 @@ import jdk.vm.ci.options.DerivedOptionValue.OptionSupplier;
 import jdk.vm.ci.options.Option;
 import jdk.vm.ci.options.OptionType;
 import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.StableOptionValue;
 
 /**
  * Options to control the backend configuration.
@@ -43,7 +42,7 @@ public final class BackendOptions {
         @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
         public static final OptionValue<Boolean> TraceRA = new OptionValue<>(false);
         @Option(help = "Never spill constant intervals.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> NeverSpillConstants = new StableOptionValue<>(false);
+        public static final OptionValue<Boolean> NeverSpillConstants = new OptionValue<>(false);
         // @formatter:on
     }
 
