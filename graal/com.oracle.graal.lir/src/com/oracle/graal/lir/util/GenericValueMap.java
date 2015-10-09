@@ -24,7 +24,7 @@ package com.oracle.graal.lir.util;
 
 import java.util.Map;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 

@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MethodHandleAccessProvider;
-import jdk.internal.jvmci.meta.MethodHandleAccessProvider.IntrinsicMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graphbuilderconf.GraphBuilderContext;

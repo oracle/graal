@@ -28,9 +28,9 @@ import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.LocationIdentity;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.api.replacements.Fold;

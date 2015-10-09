@@ -40,7 +40,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.service.Services;
 
 import com.oracle.graal.debug.DelegatingDebugConfig.Level;
 import com.oracle.graal.debug.internal.DebugHistogramImpl;

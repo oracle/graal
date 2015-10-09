@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import jdk.internal.jvmci.code.SourceStackTrace;
+import jdk.vm.ci.code.SourceStackTrace;
 
 import org.junit.Test;
 

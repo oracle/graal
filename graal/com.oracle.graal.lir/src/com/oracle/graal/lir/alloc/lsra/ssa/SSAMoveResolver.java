@@ -22,21 +22,21 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlotValue;
-import static jdk.internal.jvmci.code.ValueUtil.asVirtualStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
-import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asStackSlotValue;
+import static jdk.vm.ci.code.ValueUtil.asVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
+import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.StackSlotValue;
+import jdk.vm.ci.code.VirtualStackSlot;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.alloc.lsra.Interval;

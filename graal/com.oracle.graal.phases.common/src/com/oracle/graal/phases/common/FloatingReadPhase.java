@@ -24,7 +24,7 @@ package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.graph.Graph.NodeEvent.NODE_ADDED;
 import static com.oracle.graal.graph.Graph.NodeEvent.ZERO_USAGES;
-import static jdk.internal.jvmci.meta.LocationIdentity.any;
+import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.util.Collection;
 import java.util.EnumSet;
@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.cfg.Loop;

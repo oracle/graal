@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePostWriteBarrier;

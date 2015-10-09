@@ -24,8 +24,8 @@ package com.oracle.graal.nodes;
 
 import java.util.Set;
 
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.NodeClass;
 

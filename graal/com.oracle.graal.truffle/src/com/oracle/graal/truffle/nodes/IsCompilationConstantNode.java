@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;

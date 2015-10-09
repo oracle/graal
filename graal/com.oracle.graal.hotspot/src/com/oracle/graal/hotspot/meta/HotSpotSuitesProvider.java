@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.compiler.common.GraalOptions.VerifyPhases;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.options.DerivedOptionValue;
-import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.options.DerivedOptionValue;
+import jdk.vm.ci.options.DerivedOptionValue.OptionSupplier;
 
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;

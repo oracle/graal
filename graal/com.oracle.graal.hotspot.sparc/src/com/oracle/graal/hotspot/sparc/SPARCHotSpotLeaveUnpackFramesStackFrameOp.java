@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static jdk.internal.jvmci.sparc.SPARC.g0;
-import static jdk.internal.jvmci.sparc.SPARC.i0;
-import static jdk.internal.jvmci.sparc.SPARC.l7;
-import jdk.internal.jvmci.code.Register;
+import static jdk.vm.ci.sparc.SPARC.g0;
+import static jdk.vm.ci.sparc.SPARC.i0;
+import static jdk.vm.ci.sparc.SPARC.l7;
+import jdk.vm.ci.code.Register;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;

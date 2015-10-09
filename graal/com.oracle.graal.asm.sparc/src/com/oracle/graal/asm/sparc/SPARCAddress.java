@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import static jdk.internal.jvmci.sparc.SPARC.STACK_BIAS;
-import static jdk.internal.jvmci.sparc.SPARC.fp;
-import static jdk.internal.jvmci.sparc.SPARC.sp;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.sparc.SPARC;
+import static jdk.vm.ci.sparc.SPARC.STACK_BIAS;
+import static jdk.vm.ci.sparc.SPARC.fp;
+import static jdk.vm.ci.sparc.SPARC.sp;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.sparc.SPARC;
 
 import com.oracle.graal.asm.AbstractAddress;
 

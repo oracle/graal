@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.match.MatchableNode;
 import com.oracle.graal.graph.Node;

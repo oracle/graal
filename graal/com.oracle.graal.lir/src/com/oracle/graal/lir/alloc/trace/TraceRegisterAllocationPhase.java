@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder;

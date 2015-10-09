@@ -31,15 +31,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.BytecodePosition;
-import jdk.internal.jvmci.code.ReferenceMap;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterSaveLayout;
-import jdk.internal.jvmci.code.VirtualObject;
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.meta.JavaValue;
-import jdk.internal.jvmci.meta.MetaUtil;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.ReferenceMap;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaValue;
+import jdk.vm.ci.meta.MetaUtil;
 
 import com.oracle.graal.debug.LogStream;
 import com.oracle.graal.debug.TTY;

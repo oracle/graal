@@ -25,8 +25,8 @@ package com.oracle.graal.microbenchmarks.graal.util;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;

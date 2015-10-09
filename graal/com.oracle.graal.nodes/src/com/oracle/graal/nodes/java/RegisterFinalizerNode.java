@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.type.ObjectStamp;

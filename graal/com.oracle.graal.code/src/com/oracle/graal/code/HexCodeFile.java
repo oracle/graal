@@ -32,10 +32,10 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.code.CompilationResult.CodeAnnotation;
-import jdk.internal.jvmci.code.CompilationResult.CodeComment;
-import jdk.internal.jvmci.code.CompilationResult.JumpTable;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.CompilationResult.CodeAnnotation;
+import jdk.vm.ci.code.CompilationResult.CodeComment;
+import jdk.vm.ci.code.CompilationResult.JumpTable;
 
 /**
  * A HexCodeFile is a textual format for representing a chunk of machine code along with extra

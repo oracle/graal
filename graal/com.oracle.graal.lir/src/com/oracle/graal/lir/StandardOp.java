@@ -32,14 +32,14 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterSaveLayout;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.StackSlotValue;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;

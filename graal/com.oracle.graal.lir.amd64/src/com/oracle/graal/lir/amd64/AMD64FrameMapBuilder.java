@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.StackSlot;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
 
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilderImpl;

@@ -27,7 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.nodes.ValueNode;

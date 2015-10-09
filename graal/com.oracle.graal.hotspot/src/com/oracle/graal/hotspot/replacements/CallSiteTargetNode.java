@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;

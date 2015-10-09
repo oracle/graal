@@ -25,7 +25,7 @@ package com.oracle.graal.phases.schedule;
 import java.util.List;
 import java.util.Set;
 
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.cfg.BlockMap;

@@ -24,7 +24,7 @@ package com.oracle.graal.api.runtime;
 
 import java.util.Formatter;
 
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.service.Services;
 
 /**
  * Access point for {@linkplain #getRuntime() retrieving} the single {@link GraalRuntime} instance.

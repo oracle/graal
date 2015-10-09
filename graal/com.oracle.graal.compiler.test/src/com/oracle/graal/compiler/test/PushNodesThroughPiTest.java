@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import org.junit.Assert;
 import org.junit.Test;

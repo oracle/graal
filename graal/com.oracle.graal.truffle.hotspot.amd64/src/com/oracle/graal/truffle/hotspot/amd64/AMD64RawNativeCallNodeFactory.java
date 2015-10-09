@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.hotspot.amd64.AMD64RawNativeCallNode;
 import com.oracle.graal.nodes.FixedWithNextNode;

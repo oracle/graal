@@ -24,7 +24,7 @@ package com.oracle.graal.truffle.debug;
 
 import java.util.Map;
 
-import jdk.internal.jvmci.code.CompilationResult;
+import jdk.vm.ci.code.CompilationResult;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.GraalTruffleCompilationListener;

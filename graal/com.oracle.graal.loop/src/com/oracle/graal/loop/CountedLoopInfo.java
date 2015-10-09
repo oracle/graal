@@ -25,10 +25,10 @@ package com.oracle.graal.loop;
 import static com.oracle.graal.loop.MathUtil.add;
 import static com.oracle.graal.loop.MathUtil.divBefore;
 import static com.oracle.graal.loop.MathUtil.sub;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;

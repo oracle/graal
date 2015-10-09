@@ -24,23 +24,23 @@ package com.oracle.graal.truffle;
 
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
-import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
+import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.Assumptions.Assumption;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.SpeculationLog;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;

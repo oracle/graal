@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.test.backend;
 
 import java.util.HashSet;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.Value;
 
 import org.junit.Assert;
 

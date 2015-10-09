@@ -33,9 +33,9 @@ import static com.oracle.graal.compiler.common.GraalOptions.OptLoopTransform;
 import static com.oracle.graal.compiler.common.GraalOptions.PartialEscapeAnalysis;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.loop.phases.LoopFullUnrollPhase;
 import com.oracle.graal.loop.phases.LoopPeelingPhase;

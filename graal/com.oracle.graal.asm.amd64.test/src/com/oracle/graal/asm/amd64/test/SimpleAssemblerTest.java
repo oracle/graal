@@ -27,17 +27,17 @@ import static org.junit.Assume.assumeTrue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import jdk.internal.jvmci.amd64.AMD64;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.CompilationResult.DataSectionReference;
-import jdk.internal.jvmci.code.DataSection.Data;
-import jdk.internal.jvmci.code.DataSection.DataBuilder;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompilationResult.DataSectionReference;
+import jdk.vm.ci.code.DataSection.Data;
+import jdk.vm.ci.code.DataSection.DataBuilder;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 import org.junit.Before;
 import org.junit.Test;

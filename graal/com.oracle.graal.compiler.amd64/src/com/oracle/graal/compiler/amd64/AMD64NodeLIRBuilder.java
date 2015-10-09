@@ -23,11 +23,11 @@
 
 package com.oracle.graal.compiler.amd64;
 
-import jdk.internal.jvmci.amd64.AMD64;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.lir.LIRFrameState;

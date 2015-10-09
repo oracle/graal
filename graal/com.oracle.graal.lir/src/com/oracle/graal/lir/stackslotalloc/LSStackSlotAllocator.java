@@ -23,8 +23,8 @@
 package com.oracle.graal.lir.stackslotalloc;
 
 import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
-import static jdk.internal.jvmci.code.ValueUtil.asVirtualStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -36,14 +36,14 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.options.NestedBooleanOptionValue;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.VirtualStackSlot;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.options.NestedBooleanOptionValue;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;

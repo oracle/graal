@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import static jdk.internal.jvmci.meta.MetaUtil.getSimpleName;
+import static jdk.vm.ci.meta.MetaUtil.getSimpleName;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -30,8 +30,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Add;

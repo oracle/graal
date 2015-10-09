@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.microbenchmarks.graal.util;
 
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;

@@ -26,8 +26,8 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.meta.LIRKind;
+import jdk.vm.ci.code.StackSlotValue;
+import jdk.vm.ci.meta.LIRKind;
 
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstructionClass;

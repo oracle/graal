@@ -24,9 +24,9 @@ package com.oracle.graal.replacements.test;
 
 import java.lang.reflect.InvocationTargetException;
 
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.InvalidInstalledCodeException;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.test.GraalCompilerTest;

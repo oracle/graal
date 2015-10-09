@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.Value;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.common.type.StampFactory;

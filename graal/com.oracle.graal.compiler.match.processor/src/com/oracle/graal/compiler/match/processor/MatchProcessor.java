@@ -63,8 +63,8 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.compiler.match.ComplexMatchResult;

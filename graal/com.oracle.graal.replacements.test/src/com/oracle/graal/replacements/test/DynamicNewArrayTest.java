@@ -24,7 +24,7 @@ package com.oracle.graal.replacements.test;
 
 import java.lang.reflect.Array;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 

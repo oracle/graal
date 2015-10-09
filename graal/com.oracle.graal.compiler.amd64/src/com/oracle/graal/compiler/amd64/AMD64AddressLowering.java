@@ -23,8 +23,8 @@
 
 package com.oracle.graal.compiler.amd64;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;

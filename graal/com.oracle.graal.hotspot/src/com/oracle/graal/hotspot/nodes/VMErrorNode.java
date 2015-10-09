@@ -24,10 +24,10 @@ package com.oracle.graal.hotspot.nodes;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.VM_ERROR;
 import static com.oracle.graal.hotspot.nodes.CStringNode.emitCString;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.meta.MetaUtil;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.type.StampFactory;

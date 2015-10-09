@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
 public final class RuntimePathNode extends InstrumentationContentNode {

@@ -31,10 +31,10 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.regi
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writePendingDeoptimization;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeRegisterAsWord;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.asm.NumUtil;

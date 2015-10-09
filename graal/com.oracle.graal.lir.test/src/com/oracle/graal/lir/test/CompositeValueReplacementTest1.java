@@ -29,8 +29,8 @@ import static org.junit.Assert.fail;
 
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import org.junit.Test;
 

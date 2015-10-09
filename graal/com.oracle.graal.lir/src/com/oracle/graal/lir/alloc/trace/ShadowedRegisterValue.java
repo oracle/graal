@@ -27,8 +27,8 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlotValue;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlotValue;
 
 import com.oracle.graal.lir.CompositeValue;
 import com.oracle.graal.lir.InstructionValueConsumer;

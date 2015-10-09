@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.compiler.common;
 
-import jdk.internal.jvmci.options.DerivedOptionValue;
-import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.options.StableOptionValue;
+import jdk.vm.ci.options.DerivedOptionValue;
+import jdk.vm.ci.options.DerivedOptionValue.OptionSupplier;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.options.StableOptionValue;
 
 /**
  * Options to control the backend configuration.

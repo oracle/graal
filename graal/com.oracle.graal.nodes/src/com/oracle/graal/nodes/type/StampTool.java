@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.type;
 import java.util.Collection;
 import java.util.Iterator;
 
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;

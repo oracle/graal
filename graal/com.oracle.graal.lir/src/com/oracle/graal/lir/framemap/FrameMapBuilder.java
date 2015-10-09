@@ -25,11 +25,11 @@ package com.oracle.graal.lir.framemap;
 import java.util.BitSet;
 import java.util.List;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.meta.LIRKind;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.VirtualStackSlot;
+import jdk.vm.ci.meta.LIRKind;
 
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.stackslotalloc.StackSlotAllocator;

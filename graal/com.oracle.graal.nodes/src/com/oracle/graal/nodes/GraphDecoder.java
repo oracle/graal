@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import static jdk.internal.jvmci.common.JVMCIError.shouldNotReachHere;
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -35,8 +35,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.util.TypeReader;

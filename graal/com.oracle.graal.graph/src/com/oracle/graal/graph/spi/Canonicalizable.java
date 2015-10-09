@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph.spi;
 
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;

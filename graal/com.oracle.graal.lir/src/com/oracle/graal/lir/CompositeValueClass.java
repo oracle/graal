@@ -26,7 +26,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.FieldIntrospection;
 import com.oracle.graal.compiler.common.Fields;

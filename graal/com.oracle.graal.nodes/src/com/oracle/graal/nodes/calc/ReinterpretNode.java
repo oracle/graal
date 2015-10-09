@@ -25,9 +25,9 @@ package com.oracle.graal.nodes.calc;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.SerializableConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.SerializableConstant;
 
 import com.oracle.graal.compiler.common.type.ArithmeticStamp;
 import com.oracle.graal.compiler.common.type.Stamp;

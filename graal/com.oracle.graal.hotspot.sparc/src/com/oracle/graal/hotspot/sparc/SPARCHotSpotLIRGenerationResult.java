@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.StackSlot;
+import jdk.vm.ci.code.StackSlot;
 
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.lir.LIR;

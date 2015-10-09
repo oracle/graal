@@ -24,8 +24,8 @@ package com.oracle.graal.nodes.virtual;
 
 import java.nio.ByteOrder;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.graph.NodeClass;

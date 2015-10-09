@@ -25,8 +25,8 @@ package com.oracle.graal.nodes.calc;
 import java.io.Serializable;
 import java.util.function.Function;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Constant;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
 
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;

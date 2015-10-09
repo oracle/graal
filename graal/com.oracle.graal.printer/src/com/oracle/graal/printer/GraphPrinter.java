@@ -25,7 +25,7 @@ package com.oracle.graal.printer;
 import java.io.Closeable;
 import java.io.IOException;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.phases.schedule.SchedulePhase;

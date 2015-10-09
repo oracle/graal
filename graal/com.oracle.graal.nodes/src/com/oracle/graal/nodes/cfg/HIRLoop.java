@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.cfg;
 
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.nodes.LoopBeginNode;

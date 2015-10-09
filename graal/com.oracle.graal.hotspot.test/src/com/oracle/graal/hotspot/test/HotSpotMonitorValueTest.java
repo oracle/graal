@@ -30,14 +30,14 @@ import static org.junit.Assert.assertThat;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.CompilationResult.Call;
-import jdk.internal.jvmci.code.CompilationResult.Infopoint;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.StackLockValue;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompilationResult.Call;
+import jdk.vm.ci.code.CompilationResult.Infopoint;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.StackLockValue;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 

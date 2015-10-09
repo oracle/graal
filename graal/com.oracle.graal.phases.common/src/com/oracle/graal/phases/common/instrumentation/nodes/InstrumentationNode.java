@@ -55,8 +55,8 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.EscapeObjectState;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
 public class InstrumentationNode extends DeoptimizingFixedWithNextNode implements Virtualizable {

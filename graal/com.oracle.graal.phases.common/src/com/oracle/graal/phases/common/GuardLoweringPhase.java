@@ -28,7 +28,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.debug.Debug;

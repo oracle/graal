@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
+import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -37,9 +37,9 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

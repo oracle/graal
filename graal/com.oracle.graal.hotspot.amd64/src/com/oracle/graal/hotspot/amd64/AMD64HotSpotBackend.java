@@ -24,25 +24,25 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.compiler.common.GraalOptions.CanOmitFrame;
 import static com.oracle.graal.compiler.common.GraalOptions.ZapStackOnMethodEntry;
-import static jdk.internal.jvmci.amd64.AMD64.r10;
-import static jdk.internal.jvmci.amd64.AMD64.rax;
-import static jdk.internal.jvmci.amd64.AMD64.rsp;
-import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCallee;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
+import static jdk.vm.ci.amd64.AMD64.r10;
+import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rsp;
+import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.lang.reflect.Field;
 import java.util.Set;
 
-import jdk.internal.jvmci.amd64.AMD64;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.asm.Assembler;

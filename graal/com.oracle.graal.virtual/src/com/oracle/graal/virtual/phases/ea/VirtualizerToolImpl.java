@@ -26,9 +26,9 @@ import static com.oracle.graal.compiler.common.GraalOptions.MaximumEscapeAnalysi
 
 import java.util.List;
 
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.CanonicalizerTool;

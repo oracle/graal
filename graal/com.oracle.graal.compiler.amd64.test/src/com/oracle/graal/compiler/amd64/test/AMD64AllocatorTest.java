@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.amd64.test;
 import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceRA;
 import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
 import static org.junit.Assume.assumeTrue;
-import jdk.internal.jvmci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64;
 
 import org.junit.Before;
 import org.junit.Ignore;

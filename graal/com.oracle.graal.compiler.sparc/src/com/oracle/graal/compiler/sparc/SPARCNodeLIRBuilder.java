@@ -23,9 +23,9 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.lir.LabelRef;

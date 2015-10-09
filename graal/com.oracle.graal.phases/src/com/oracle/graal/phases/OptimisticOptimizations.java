@@ -25,8 +25,8 @@ package com.oracle.graal.phases;
 import java.util.EnumSet;
 import java.util.Set;
 
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ProfilingInfo;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.debug.Debug;

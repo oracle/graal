@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;

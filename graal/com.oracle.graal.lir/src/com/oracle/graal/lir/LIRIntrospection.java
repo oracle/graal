@@ -36,9 +36,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.FieldIntrospection;
 import com.oracle.graal.compiler.common.Fields;

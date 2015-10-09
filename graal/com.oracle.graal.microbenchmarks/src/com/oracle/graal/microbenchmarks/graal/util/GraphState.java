@@ -24,7 +24,7 @@ package com.oracle.graal.microbenchmarks.graal.util;
 
 import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getGraph;
 import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getMethodFromMethodSpec;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;

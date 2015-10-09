@@ -27,7 +27,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.osThreadInterruptedOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.osThreadOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.threadObjectOffset;
-import static jdk.internal.jvmci.meta.LocationIdentity.any;
+import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;

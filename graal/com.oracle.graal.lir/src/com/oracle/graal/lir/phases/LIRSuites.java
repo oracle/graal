@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.phases;
 
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.VirtualStackSlot;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.VirtualStackSlot;
 
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.Variable;

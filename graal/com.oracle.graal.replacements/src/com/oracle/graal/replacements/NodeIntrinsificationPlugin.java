@@ -23,19 +23,19 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.replacements.NodeIntrinsificationPhase.COULD_NOT_FOLD;
-import static jdk.internal.jvmci.meta.MetaUtil.resolveJavaTypes;
+import static jdk.vm.ci.meta.MetaUtil.resolveJavaTypes;
 
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Signature;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.type.ObjectStamp;

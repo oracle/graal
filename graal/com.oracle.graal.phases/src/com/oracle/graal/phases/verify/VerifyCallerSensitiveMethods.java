@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.phases.verify;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.CallerSensitive;
 import sun.reflect.Reflection;
 

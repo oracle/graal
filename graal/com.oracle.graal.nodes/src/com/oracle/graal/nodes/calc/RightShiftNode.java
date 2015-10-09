@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.internal.jvmci.code.CodeUtil;
+import jdk.vm.ci.code.CodeUtil;
 
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.Shr;

@@ -31,8 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

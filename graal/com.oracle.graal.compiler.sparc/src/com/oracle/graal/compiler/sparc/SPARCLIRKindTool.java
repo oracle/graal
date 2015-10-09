@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.sparc;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 

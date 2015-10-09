@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Random;
 
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaConstant;
 
 import org.junit.Test;
 

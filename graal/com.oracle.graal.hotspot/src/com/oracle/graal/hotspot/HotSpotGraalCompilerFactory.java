@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.inittimer.InitTimer.timer;
-import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.compiler.CompilerFactory;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.inittimer.InitTimer;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.runtime.JVMCIRuntime;
-import jdk.internal.jvmci.service.Services;
+import static jdk.vm.ci.inittimer.InitTimer.timer;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.compiler.Compiler;
+import jdk.vm.ci.compiler.CompilerFactory;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.inittimer.InitTimer;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.runtime.JVMCIRuntime;
+import jdk.vm.ci.service.Services;
 
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
@@ -82,7 +82,7 @@ public abstract class HotSpotGraalCompilerFactory implements CompilerFactory {
     @Override
     public String[] getTrivialPrefixes() {
         if (Options.CompileGraalWithC1Only.getValue()) {
-            return new String[]{"jdk/internal/jvmci", "com/oracle/graal"};
+            return new String[]{"jdk/vm/ci", "com/oracle/graal"};
         }
         return null;
     }

@@ -27,10 +27,10 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.refe
 
 import java.lang.ref.WeakReference;
 
-import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

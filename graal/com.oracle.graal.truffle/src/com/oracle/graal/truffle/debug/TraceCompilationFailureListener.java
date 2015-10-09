@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static jdk.internal.jvmci.compiler.Compiler.PrintBailout;
+import static jdk.vm.ci.compiler.Compiler.PrintBailout;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.BailoutException;
+import jdk.vm.ci.code.BailoutException;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.GraalTruffleRuntime;

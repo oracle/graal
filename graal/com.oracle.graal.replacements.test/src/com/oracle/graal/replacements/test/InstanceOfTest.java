@@ -28,10 +28,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import jdk.internal.jvmci.code.CompilationResult.Call;
-import jdk.internal.jvmci.code.CompilationResult.Mark;
-import jdk.internal.jvmci.code.CompilationResult.Site;
-import jdk.internal.jvmci.meta.JavaTypeProfile;
+import jdk.vm.ci.code.CompilationResult.Call;
+import jdk.vm.ci.code.CompilationResult.Mark;
+import jdk.vm.ci.code.CompilationResult.Site;
+import jdk.vm.ci.meta.JavaTypeProfile;
 
 import org.junit.Test;
 

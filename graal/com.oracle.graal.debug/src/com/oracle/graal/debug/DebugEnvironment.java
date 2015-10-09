@@ -34,8 +34,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.internal.jvmci.runtime.JVMCI;
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.service.Services;
 
 public class DebugEnvironment {
 

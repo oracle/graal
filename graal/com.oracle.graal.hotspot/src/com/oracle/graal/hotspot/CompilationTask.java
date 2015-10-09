@@ -22,34 +22,34 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.compiler.Compiler.ExitVMOnBailout;
-import static jdk.internal.jvmci.compiler.Compiler.ExitVMOnException;
-import static jdk.internal.jvmci.compiler.Compiler.PrintAfterCompilation;
-import static jdk.internal.jvmci.compiler.Compiler.PrintBailout;
-import static jdk.internal.jvmci.compiler.Compiler.PrintCompilation;
-import static jdk.internal.jvmci.compiler.Compiler.PrintFilter;
-import static jdk.internal.jvmci.compiler.Compiler.PrintStackTraceOnException;
+import static jdk.vm.ci.compiler.Compiler.ExitVMOnBailout;
+import static jdk.vm.ci.compiler.Compiler.ExitVMOnException;
+import static jdk.vm.ci.compiler.Compiler.PrintAfterCompilation;
+import static jdk.vm.ci.compiler.Compiler.PrintBailout;
+import static jdk.vm.ci.compiler.Compiler.PrintCompilation;
+import static jdk.vm.ci.compiler.Compiler.PrintFilter;
+import static jdk.vm.ci.compiler.Compiler.PrintStackTraceOnException;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.TimeUnit;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
-import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
-import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.hotspot.HotSpotNmethod;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.hotspot.events.EmptyEventProvider;
-import jdk.internal.jvmci.hotspot.events.EventProvider;
-import jdk.internal.jvmci.hotspot.events.EventProvider.CompilationEvent;
-import jdk.internal.jvmci.hotspot.events.EventProvider.CompilerFailureEvent;
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.compiler.Compiler;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotNmethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.hotspot.events.EmptyEventProvider;
+import jdk.vm.ci.hotspot.events.EventProvider;
+import jdk.vm.ci.hotspot.events.EventProvider.CompilationEvent;
+import jdk.vm.ci.hotspot.events.EventProvider.CompilerFailureEvent;
+import jdk.vm.ci.service.Services;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.debug.Debug;

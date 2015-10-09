@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import static jdk.internal.jvmci.code.ValueUtil.asVirtualStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
@@ -33,8 +33,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.VirtualStackSlot;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;

@@ -27,12 +27,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.BytecodePosition;
-import jdk.internal.jvmci.code.SourceStackTrace;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.SourceStackTrace;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeWorkList;

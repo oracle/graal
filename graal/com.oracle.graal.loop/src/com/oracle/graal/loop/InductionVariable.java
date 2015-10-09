@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.loop;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.nodes.StructuredGraph;

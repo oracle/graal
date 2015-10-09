@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind;
 
 import org.junit.Assert;
 import org.junit.Test;

@@ -26,8 +26,8 @@ import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
 import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assume;
 import org.junit.Test;

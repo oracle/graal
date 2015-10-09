@@ -44,10 +44,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.SpeculationLog;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.SpeculationLog;
 
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.truffle.api.Assumption;

@@ -25,8 +25,8 @@ package com.oracle.graal.nodes.java;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;

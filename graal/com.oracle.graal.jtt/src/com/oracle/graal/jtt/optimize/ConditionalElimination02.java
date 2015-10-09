@@ -24,7 +24,7 @@ package com.oracle.graal.jtt.optimize;
 
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.DeoptimizationReason;
 
 import org.junit.Test;
 

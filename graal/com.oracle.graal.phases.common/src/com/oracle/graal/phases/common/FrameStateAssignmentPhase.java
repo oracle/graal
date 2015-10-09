@@ -25,7 +25,7 @@ package com.oracle.graal.phases.common;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodePredicate;

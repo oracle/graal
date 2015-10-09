@@ -26,11 +26,11 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 
 import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Local;
-import jdk.internal.jvmci.meta.LocalVariableTable;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Local;
+import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;

@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.amd64.test;
 
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import org.junit.Assert;
 import org.junit.Assume;

@@ -22,20 +22,20 @@
  */
 package com.oracle.graal.nodes;
 
-import static jdk.internal.jvmci.code.BytecodeFrame.getPlaceholderBciName;
-import static jdk.internal.jvmci.code.BytecodeFrame.isPlaceholderBci;
+import static jdk.vm.ci.code.BytecodeFrame.getPlaceholderBciName;
+import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.BytecodePosition;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaUtil;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.common.type.StampFactory;

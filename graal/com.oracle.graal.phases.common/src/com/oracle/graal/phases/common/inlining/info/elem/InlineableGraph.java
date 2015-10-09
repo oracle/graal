@@ -29,8 +29,8 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.Debug;

@@ -27,7 +27,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.internal.jvmci.code.BailoutException;
+import jdk.vm.ci.code.BailoutException;
 
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.NodePosIterator;

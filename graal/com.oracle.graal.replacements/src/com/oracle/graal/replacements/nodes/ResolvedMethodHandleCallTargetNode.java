@@ -29,9 +29,9 @@ import static sun.misc.Version.jdkUpdateVersion;
 
 import java.lang.invoke.MethodHandle;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;

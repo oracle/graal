@@ -26,8 +26,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.CodeUtil;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.CodeUtil;
 
 import com.oracle.graal.debug.TTY;
 

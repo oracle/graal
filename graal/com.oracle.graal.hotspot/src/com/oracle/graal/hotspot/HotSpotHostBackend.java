@@ -24,12 +24,12 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.BootstrapReplacements;
 import static com.oracle.graal.compiler.common.GraalOptions.Intrinsify;
-import static jdk.internal.jvmci.inittimer.InitTimer.timer;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.inittimer.InitTimer;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.service.Services;
+import static jdk.vm.ci.inittimer.InitTimer.timer;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.inittimer.InitTimer;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.service.Services;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.debug.Debug;

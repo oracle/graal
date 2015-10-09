@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.nodes.memory.MemoryNode;
 

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.Stamp;

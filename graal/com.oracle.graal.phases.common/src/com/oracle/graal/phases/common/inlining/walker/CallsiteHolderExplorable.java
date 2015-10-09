@@ -28,7 +28,7 @@ import java.util.LinkedList;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.FixedNode;

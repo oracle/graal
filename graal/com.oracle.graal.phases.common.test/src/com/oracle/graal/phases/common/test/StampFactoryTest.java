@@ -24,8 +24,8 @@ package com.oracle.graal.phases.common.test;
 
 import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import org.junit.Assert;
 import org.junit.Test;

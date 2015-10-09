@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
-import jdk.internal.jvmci.hotspot.HotSpotConstant;
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
-import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.vm.ci.hotspot.HotSpotConstant;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;

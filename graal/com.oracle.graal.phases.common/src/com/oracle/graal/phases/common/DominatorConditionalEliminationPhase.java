@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
-import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.UnreachedCode;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -33,8 +33,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
 import com.oracle.graal.compiler.common.cfg.BlockMap;

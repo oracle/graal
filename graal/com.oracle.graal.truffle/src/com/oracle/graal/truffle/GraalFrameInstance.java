@@ -24,8 +24,8 @@ package com.oracle.graal.truffle;
 
 import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.code.stack.InspectedFrame;
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.code.stack.InspectedFrame;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

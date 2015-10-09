@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import org.junit.Test;
 

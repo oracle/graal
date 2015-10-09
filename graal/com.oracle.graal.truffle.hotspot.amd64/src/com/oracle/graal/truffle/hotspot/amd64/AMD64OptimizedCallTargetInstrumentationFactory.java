@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
-import jdk.internal.jvmci.amd64.AMD64;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;

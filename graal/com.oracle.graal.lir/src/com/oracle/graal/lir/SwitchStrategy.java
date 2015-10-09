@@ -25,8 +25,8 @@ package com.oracle.graal.lir;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;

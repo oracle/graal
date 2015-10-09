@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaConstant;
 
 import org.junit.Assert;
 import org.junit.Test;

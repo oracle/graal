@@ -24,7 +24,7 @@ package com.oracle.graal.lir.framemap;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.VirtualStackSlot;
+import jdk.vm.ci.code.VirtualStackSlot;
 
 /**
  * A {@link FrameMapBuilder} that allows access to the underlying {@link FrameMap}.

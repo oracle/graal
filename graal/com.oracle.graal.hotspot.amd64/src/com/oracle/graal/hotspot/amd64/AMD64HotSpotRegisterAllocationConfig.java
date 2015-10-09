@@ -22,42 +22,42 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static jdk.internal.jvmci.amd64.AMD64.r10;
-import static jdk.internal.jvmci.amd64.AMD64.r11;
-import static jdk.internal.jvmci.amd64.AMD64.r12;
-import static jdk.internal.jvmci.amd64.AMD64.r13;
-import static jdk.internal.jvmci.amd64.AMD64.r14;
-import static jdk.internal.jvmci.amd64.AMD64.r8;
-import static jdk.internal.jvmci.amd64.AMD64.r9;
-import static jdk.internal.jvmci.amd64.AMD64.rax;
-import static jdk.internal.jvmci.amd64.AMD64.rbp;
-import static jdk.internal.jvmci.amd64.AMD64.rbx;
-import static jdk.internal.jvmci.amd64.AMD64.rcx;
-import static jdk.internal.jvmci.amd64.AMD64.rdi;
-import static jdk.internal.jvmci.amd64.AMD64.rdx;
-import static jdk.internal.jvmci.amd64.AMD64.rsi;
-import static jdk.internal.jvmci.amd64.AMD64.xmm0;
-import static jdk.internal.jvmci.amd64.AMD64.xmm1;
-import static jdk.internal.jvmci.amd64.AMD64.xmm10;
-import static jdk.internal.jvmci.amd64.AMD64.xmm11;
-import static jdk.internal.jvmci.amd64.AMD64.xmm12;
-import static jdk.internal.jvmci.amd64.AMD64.xmm13;
-import static jdk.internal.jvmci.amd64.AMD64.xmm14;
-import static jdk.internal.jvmci.amd64.AMD64.xmm15;
-import static jdk.internal.jvmci.amd64.AMD64.xmm2;
-import static jdk.internal.jvmci.amd64.AMD64.xmm3;
-import static jdk.internal.jvmci.amd64.AMD64.xmm4;
-import static jdk.internal.jvmci.amd64.AMD64.xmm5;
-import static jdk.internal.jvmci.amd64.AMD64.xmm6;
-import static jdk.internal.jvmci.amd64.AMD64.xmm7;
-import static jdk.internal.jvmci.amd64.AMD64.xmm8;
-import static jdk.internal.jvmci.amd64.AMD64.xmm9;
+import static jdk.vm.ci.amd64.AMD64.r10;
+import static jdk.vm.ci.amd64.AMD64.r11;
+import static jdk.vm.ci.amd64.AMD64.r12;
+import static jdk.vm.ci.amd64.AMD64.r13;
+import static jdk.vm.ci.amd64.AMD64.r14;
+import static jdk.vm.ci.amd64.AMD64.r8;
+import static jdk.vm.ci.amd64.AMD64.r9;
+import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rbp;
+import static jdk.vm.ci.amd64.AMD64.rbx;
+import static jdk.vm.ci.amd64.AMD64.rcx;
+import static jdk.vm.ci.amd64.AMD64.rdi;
+import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.rsi;
+import static jdk.vm.ci.amd64.AMD64.xmm0;
+import static jdk.vm.ci.amd64.AMD64.xmm1;
+import static jdk.vm.ci.amd64.AMD64.xmm10;
+import static jdk.vm.ci.amd64.AMD64.xmm11;
+import static jdk.vm.ci.amd64.AMD64.xmm12;
+import static jdk.vm.ci.amd64.AMD64.xmm13;
+import static jdk.vm.ci.amd64.AMD64.xmm14;
+import static jdk.vm.ci.amd64.AMD64.xmm15;
+import static jdk.vm.ci.amd64.AMD64.xmm2;
+import static jdk.vm.ci.amd64.AMD64.xmm3;
+import static jdk.vm.ci.amd64.AMD64.xmm4;
+import static jdk.vm.ci.amd64.AMD64.xmm5;
+import static jdk.vm.ci.amd64.AMD64.xmm6;
+import static jdk.vm.ci.amd64.AMD64.xmm7;
+import static jdk.vm.ci.amd64.AMD64.xmm8;
+import static jdk.vm.ci.amd64.AMD64.xmm9;
 
 import java.util.ArrayList;
 import java.util.BitSet;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;

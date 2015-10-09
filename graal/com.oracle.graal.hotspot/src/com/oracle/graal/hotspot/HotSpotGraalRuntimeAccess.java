@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.api.runtime.GraalRuntimeAccess;

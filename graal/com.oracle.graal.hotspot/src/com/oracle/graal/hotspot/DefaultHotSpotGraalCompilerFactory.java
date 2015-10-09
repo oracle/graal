@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot;
 
 import java.util.IdentityHashMap;
 
-import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.compiler.CompilerFactory;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.compiler.CompilerFactory;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.compiler.phases.BasicCompilerConfiguration;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;

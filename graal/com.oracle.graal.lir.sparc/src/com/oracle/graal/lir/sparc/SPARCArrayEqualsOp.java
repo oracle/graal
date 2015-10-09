@@ -32,18 +32,18 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Less;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.NotEqual;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.sparc.SPARC.g0;
-import static jdk.internal.jvmci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.sparc.SPARC.g0;
+import static jdk.vm.ci.sparc.SPARCKind.WORD;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARCKind;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.asm.Label;

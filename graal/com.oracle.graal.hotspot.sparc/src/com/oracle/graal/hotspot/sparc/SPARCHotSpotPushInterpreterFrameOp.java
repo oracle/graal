@@ -23,22 +23,22 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.sparc.SPARC.i0;
-import static jdk.internal.jvmci.sparc.SPARC.i1;
-import static jdk.internal.jvmci.sparc.SPARC.i2;
-import static jdk.internal.jvmci.sparc.SPARC.i3;
-import static jdk.internal.jvmci.sparc.SPARC.i4;
-import static jdk.internal.jvmci.sparc.SPARC.i7;
-import static jdk.internal.jvmci.sparc.SPARC.o0;
-import static jdk.internal.jvmci.sparc.SPARC.o1;
-import static jdk.internal.jvmci.sparc.SPARC.o2;
-import static jdk.internal.jvmci.sparc.SPARC.o3;
-import static jdk.internal.jvmci.sparc.SPARC.o4;
-import static jdk.internal.jvmci.sparc.SPARC.o5;
-import static jdk.internal.jvmci.sparc.SPARC.sp;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.meta.AllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.sparc.SPARC.i0;
+import static jdk.vm.ci.sparc.SPARC.i1;
+import static jdk.vm.ci.sparc.SPARC.i2;
+import static jdk.vm.ci.sparc.SPARC.i3;
+import static jdk.vm.ci.sparc.SPARC.i4;
+import static jdk.vm.ci.sparc.SPARC.i7;
+import static jdk.vm.ci.sparc.SPARC.o0;
+import static jdk.vm.ci.sparc.SPARC.o1;
+import static jdk.vm.ci.sparc.SPARC.o2;
+import static jdk.vm.ci.sparc.SPARC.o3;
+import static jdk.vm.ci.sparc.SPARC.o4;
+import static jdk.vm.ci.sparc.SPARC.o5;
+import static jdk.vm.ci.sparc.SPARC.sp;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;

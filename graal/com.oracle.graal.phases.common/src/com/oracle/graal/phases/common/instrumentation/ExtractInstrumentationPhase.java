@@ -55,7 +55,7 @@ import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 

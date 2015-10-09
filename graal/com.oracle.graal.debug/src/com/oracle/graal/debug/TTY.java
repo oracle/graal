@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.service.Services;
 
 /**
  * A collection of static methods for printing debug and informational output to a global

@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.hotspot.amd64.test;
 
-import static jdk.internal.jvmci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rax;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Ignore;

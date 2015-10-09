@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.spi;
 import java.lang.reflect.Type;
 import java.util.Collection;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;

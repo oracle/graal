@@ -26,20 +26,20 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.code.CodeUtil.DefaultRefMapFormatter;
-import jdk.internal.jvmci.code.CodeUtil.RefMapFormatter;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.CompilationResult.Call;
-import jdk.internal.jvmci.code.CompilationResult.DataPatch;
-import jdk.internal.jvmci.code.CompilationResult.Infopoint;
-import jdk.internal.jvmci.code.CompilationResult.Mark;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.CodeUtil.DefaultRefMapFormatter;
+import jdk.vm.ci.code.CodeUtil.RefMapFormatter;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompilationResult.Call;
+import jdk.vm.ci.code.CompilationResult.DataPatch;
+import jdk.vm.ci.code.CompilationResult.Infopoint;
+import jdk.vm.ci.code.CompilationResult.Mark;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.service.ServiceProvider;
 
 /**
  * {@link HexCodeFile} based implementation of {@link DisassemblerProvider}.

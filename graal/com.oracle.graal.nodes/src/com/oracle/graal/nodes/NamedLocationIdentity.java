@@ -25,9 +25,9 @@ package com.oracle.graal.nodes;
 import java.util.EnumMap;
 import java.util.HashSet;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaKind.FormatWithToString;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind.FormatWithToString;
+import jdk.vm.ci.meta.LocationIdentity;
 
 /**
  * A {@link LocationIdentity} with a name.

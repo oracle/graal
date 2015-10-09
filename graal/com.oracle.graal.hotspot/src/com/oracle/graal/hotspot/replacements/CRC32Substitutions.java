@@ -27,7 +27,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.conf
 
 import java.util.zip.CRC32;
 
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;

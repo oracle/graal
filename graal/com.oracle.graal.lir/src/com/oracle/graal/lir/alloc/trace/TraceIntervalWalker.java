@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;

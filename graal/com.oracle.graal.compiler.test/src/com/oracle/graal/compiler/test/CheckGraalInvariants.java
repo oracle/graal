@@ -40,18 +40,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.Register.RegisterCategory;
-import jdk.internal.jvmci.meta.JavaField;
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Value;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -98,7 +98,7 @@ public class CheckGraalInvariants extends GraalTest {
     private static boolean shouldVerifyEquals(ResolvedJavaMethod m) {
         if (m.getName().equals("identityEquals")) {
             ResolvedJavaType c = m.getDeclaringClass();
-            if (c.getName().equals("Ljdk/internal/jvmci/meta/AbstractValue;") || c.getName().equals("jdk/internal/jvmci/meta/Value")) {
+            if (c.getName().equals("Ljdk/vm/ci/meta/AbstractValue;") || c.getName().equals("jdk/vm/ci/meta/Value")) {
                 return false;
             }
         }

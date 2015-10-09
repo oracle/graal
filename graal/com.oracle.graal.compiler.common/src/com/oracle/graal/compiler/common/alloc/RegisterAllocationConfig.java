@@ -27,9 +27,9 @@ import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.meta.PlatformKind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.meta.PlatformKind;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 

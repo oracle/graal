@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.test.inlining;
 
-import jdk.internal.jvmci.code.InfopointReason;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InfopointReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Ignore;
 import org.junit.Test;

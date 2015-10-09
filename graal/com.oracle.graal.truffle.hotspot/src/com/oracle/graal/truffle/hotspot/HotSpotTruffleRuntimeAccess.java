@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;

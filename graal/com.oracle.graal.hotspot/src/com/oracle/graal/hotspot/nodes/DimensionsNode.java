@@ -26,8 +26,8 @@ import static com.oracle.graal.asm.NumUtil.roundUp;
 
 import java.util.BitSet;
 
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.VirtualStackSlot;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;

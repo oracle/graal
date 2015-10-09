@@ -75,12 +75,12 @@ import static com.oracle.graal.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.graal.bytecode.Bytecodes.RET;
 import static com.oracle.graal.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.graal.bytecode.Bytecodes.TABLESWITCH;
-import jdk.internal.jvmci.meta.ConstantPool;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaField;
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.bytecode.BytecodeLookupSwitch;
 import com.oracle.graal.bytecode.BytecodeStream;

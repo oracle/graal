@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 

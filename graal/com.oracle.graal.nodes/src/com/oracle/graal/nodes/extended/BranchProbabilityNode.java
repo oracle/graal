@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.graph.NodeClass;

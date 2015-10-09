@@ -25,7 +25,7 @@ package com.oracle.graal.printer;
 import static com.oracle.graal.compiler.common.GraalOptions.PrintBackendCFG;
 import static com.oracle.graal.compiler.common.GraalOptions.PrintBinaryGraphs;
 import static com.oracle.graal.compiler.common.GraalOptions.PrintCFG;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfig;

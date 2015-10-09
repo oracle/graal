@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.word;
 
-import jdk.internal.jvmci.meta.TrustedInterface;
+import jdk.vm.ci.meta.TrustedInterface;
 
 public interface WordBase extends TrustedInterface {
 

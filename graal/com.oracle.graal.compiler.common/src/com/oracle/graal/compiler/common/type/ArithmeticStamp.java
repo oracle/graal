@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.common.type;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import jdk.internal.jvmci.meta.SerializableConstant;
+import jdk.vm.ci.meta.SerializableConstant;
 
 /**
  * Type describing values that support arithmetic operations.

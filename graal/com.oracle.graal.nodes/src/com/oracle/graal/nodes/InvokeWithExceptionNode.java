@@ -24,8 +24,8 @@ package com.oracle.graal.nodes;
 
 import java.util.Map;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;

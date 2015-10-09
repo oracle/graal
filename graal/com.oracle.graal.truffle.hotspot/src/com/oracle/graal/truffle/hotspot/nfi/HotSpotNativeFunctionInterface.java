@@ -23,19 +23,19 @@
 package com.oracle.graal.truffle.hotspot.nfi;
 
 import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.getGraph;
-import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
-import static jdk.internal.jvmci.common.UnsafeUtil.createCString;
-import static jdk.internal.jvmci.common.UnsafeUtil.writeCString;
+import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
+import static jdk.vm.ci.common.UnsafeUtil.createCString;
+import static jdk.vm.ci.common.UnsafeUtil.writeCString;
 
 import java.lang.reflect.Field;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.DefaultProfilingInfo;
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.DefaultProfilingInfo;
+import jdk.vm.ci.meta.TriState;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.GraalCompiler;

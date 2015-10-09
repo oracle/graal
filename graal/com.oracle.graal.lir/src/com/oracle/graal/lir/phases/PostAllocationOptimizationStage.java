@@ -23,10 +23,10 @@
 package com.oracle.graal.lir.phases;
 
 import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
-import jdk.internal.jvmci.options.NestedBooleanOptionValue;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.options.NestedBooleanOptionValue;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.lir.ControlFlowOptimizer;
 import com.oracle.graal.lir.EdgeMoveOptimizer;

@@ -42,9 +42,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
-import jdk.internal.jvmci.options.OptionDescriptor;
-import jdk.internal.jvmci.options.OptionDescriptors;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.options.OptionDescriptor;
+import jdk.vm.ci.options.OptionDescriptors;
+import jdk.vm.ci.options.OptionValue;
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.ClassVisitor;
 import jdk.internal.org.objectweb.asm.Label;

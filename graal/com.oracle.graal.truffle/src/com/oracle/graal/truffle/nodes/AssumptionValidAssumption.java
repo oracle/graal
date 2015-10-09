@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import jdk.internal.jvmci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions;
 
 import com.oracle.graal.truffle.OptimizedAssumption;
 

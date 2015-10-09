@@ -24,8 +24,8 @@ package com.oracle.graal.lir.jtt;
 
 import java.util.HashMap;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 

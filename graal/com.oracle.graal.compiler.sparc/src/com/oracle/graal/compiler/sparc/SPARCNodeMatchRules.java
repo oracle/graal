@@ -23,14 +23,14 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import static jdk.internal.jvmci.sparc.SPARCKind.BYTE;
-import static jdk.internal.jvmci.sparc.SPARCKind.DWORD;
-import static jdk.internal.jvmci.sparc.SPARCKind.HWORD;
-import static jdk.internal.jvmci.sparc.SPARCKind.WORD;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import static jdk.vm.ci.sparc.SPARCKind.BYTE;
+import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.HWORD;
+import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.compiler.match.ComplexMatchResult;

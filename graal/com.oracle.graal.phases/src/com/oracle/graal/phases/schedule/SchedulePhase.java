@@ -31,7 +31,7 @@ import java.util.BitSet;
 import java.util.Formatter;
 import java.util.List;
 
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;

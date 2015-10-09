@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.ValueNode;

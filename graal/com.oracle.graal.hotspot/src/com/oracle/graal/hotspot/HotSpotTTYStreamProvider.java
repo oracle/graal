@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot;
 
 import java.io.PrintStream;
 
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.debug.TTYStreamProvider;
 

@@ -40,9 +40,9 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.handlePendingException;
 import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
 import static com.oracle.graal.hotspot.stubs.StubUtil.verifyObject;
-import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.computeArrayAllocationSize;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
+import static jdk.vm.ci.hotspot.HotSpotMetaAccessProvider.computeArrayAllocationSize;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;

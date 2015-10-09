@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.code.TargetDescription;
+import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.test;
 
-import jdk.internal.jvmci.meta.TrustedInterface;
+import jdk.vm.ci.meta.TrustedInterface;
 
 import org.junit.Assert;
 import org.junit.Test;

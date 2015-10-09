@@ -22,19 +22,19 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static jdk.internal.jvmci.sparc.SPARC.g1;
-import static jdk.internal.jvmci.sparc.SPARC.g3;
-import static jdk.internal.jvmci.sparc.SPARC.g4;
-import static jdk.internal.jvmci.sparc.SPARC.g5;
-import static jdk.internal.jvmci.sparc.SPARC.o0;
-import static jdk.internal.jvmci.sparc.SPARC.o1;
-import static jdk.internal.jvmci.sparc.SPARC.o2;
-import static jdk.internal.jvmci.sparc.SPARC.o3;
-import static jdk.internal.jvmci.sparc.SPARC.o4;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.sparc.SPARCHotSpotRegisterConfig;
+import static jdk.vm.ci.sparc.SPARC.g1;
+import static jdk.vm.ci.sparc.SPARC.g3;
+import static jdk.vm.ci.sparc.SPARC.g4;
+import static jdk.vm.ci.sparc.SPARC.g5;
+import static jdk.vm.ci.sparc.SPARC.o0;
+import static jdk.vm.ci.sparc.SPARC.o1;
+import static jdk.vm.ci.sparc.SPARC.o2;
+import static jdk.vm.ci.sparc.SPARC.o3;
+import static jdk.vm.ci.sparc.SPARC.o4;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.sparc.SPARCHotSpotRegisterConfig;
 
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.PrimitiveConstant;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;

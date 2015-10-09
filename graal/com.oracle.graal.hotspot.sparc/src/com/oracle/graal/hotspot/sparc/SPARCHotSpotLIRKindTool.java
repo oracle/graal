@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.compiler.sparc.SPARCLIRKindTool;
 import com.oracle.graal.hotspot.nodes.type.HotSpotLIRKindTool;

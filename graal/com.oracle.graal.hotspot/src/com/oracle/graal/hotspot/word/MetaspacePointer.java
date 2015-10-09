@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.word;
 
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.FROM_POINTER;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.IS_NULL;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.word.Pointer;

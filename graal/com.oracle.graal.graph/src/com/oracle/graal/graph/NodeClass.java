@@ -28,7 +28,7 @@ import static com.oracle.graal.graph.InputEdges.translateInto;
 import static com.oracle.graal.graph.Node.WithAllEdges;
 import static com.oracle.graal.graph.Node.newIdentityMap;
 import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
-import static jdk.internal.jvmci.common.JVMCIError.shouldNotReachHere;
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -40,7 +40,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.FieldIntrospection;
 import com.oracle.graal.compiler.common.Fields;

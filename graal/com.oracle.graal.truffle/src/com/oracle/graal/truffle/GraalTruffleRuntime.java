@@ -31,13 +31,13 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.stack.InspectedFrame;
-import jdk.internal.jvmci.code.stack.InspectedFrameVisitor;
-import jdk.internal.jvmci.code.stack.StackIntrospection;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.stack.InspectedFrame;
+import jdk.vm.ci.code.stack.InspectedFrameVisitor;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.service.Services;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;

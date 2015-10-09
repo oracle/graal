@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.internal.jvmci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
