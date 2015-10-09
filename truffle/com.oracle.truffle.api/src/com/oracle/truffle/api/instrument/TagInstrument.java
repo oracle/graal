@@ -41,7 +41,7 @@ package com.oracle.truffle.api.instrument;
  */
 public abstract class TagInstrument extends Instrument {
 
-    protected Instrumenter instrumenter;
+    private Instrumenter instrumenter;
 
     private SyntaxTag tag = null;
 
@@ -51,8 +51,12 @@ public abstract class TagInstrument extends Instrument {
         this.tag = tag;
     }
 
-    public SyntaxTag getTag() {
+    public final SyntaxTag getTag() {
         return tag;
+    }
+
+    protected final Instrumenter getInstrumenter() {
+        return instrumenter;
     }
 
     static final class BeforeTagInstrument extends TagInstrument {
@@ -70,7 +74,7 @@ public abstract class TagInstrument extends Instrument {
 
         @Override
         protected void innerDispose() {
-            instrumenter.disposeBeforeTagInstrument();
+            getInstrumenter().disposeBeforeTagInstrument();
         }
     }
 
@@ -89,7 +93,7 @@ public abstract class TagInstrument extends Instrument {
 
         @Override
         protected void innerDispose() {
-            instrumenter.disposeAfterTagInstrument();
+            getInstrumenter().disposeAfterTagInstrument();
         }
     }
 }

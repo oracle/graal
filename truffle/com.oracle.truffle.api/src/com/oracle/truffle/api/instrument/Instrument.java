@@ -44,7 +44,7 @@ public abstract class Instrument {
 
     private boolean isDisposed = false;
 
-    protected Instrument(String instrumentInfo) {
+    Instrument(String instrumentInfo) {
         this.instrumentInfo = instrumentInfo;
     }
 
@@ -68,10 +68,10 @@ public abstract class Instrument {
         return isDisposed;
     }
 
-    protected final String getInstrumentInfo() {
+    public final String getInstrumentInfo() {
         return instrumentInfo;
     }
 
-    protected abstract void innerDispose();
+    abstract void innerDispose();
 
 }
