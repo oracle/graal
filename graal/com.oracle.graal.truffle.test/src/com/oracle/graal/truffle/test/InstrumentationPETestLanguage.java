@@ -31,9 +31,6 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentResultListener;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRoot;
-import com.oracle.truffle.api.instrument.AdvancedInstrumentRootFactory;
 import com.oracle.truffle.api.instrument.EventHandlerNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
@@ -123,11 +120,6 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        return null;
-    }
-
-    @Override
-    protected AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
         return null;
     }
 
@@ -285,25 +277,6 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
         /** for testing. */
         public TestLanguageNode getBody() {
             return body;
-        }
-    }
-
-    static class TestAdvancedInstrumentCounterRoot extends AdvancedInstrumentRoot {
-
-        private long count;
-
-        @Override
-        public Object executeRoot(Node node, VirtualFrame vFrame) {
-            count++;
-            return null;
-        }
-
-        public long getCount() {
-            return count;
-        }
-
-        public String instrumentationInfo() {
-            return null;
         }
     }
 
