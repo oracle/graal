@@ -61,8 +61,14 @@ public class Truffle {
                 TruffleRuntimeAccess access = null;
                 Class<?> servicesClass = null;
                 try {
-                    servicesClass = Class.forName("jdk.internal.jvmci.service.Services");
+                    servicesClass = Class.forName("jdk.vm.ci.service.Services");
                 } catch (ClassNotFoundException e) {
+                }
+                if (servicesClass == null) {
+                    try {
+                        servicesClass = Class.forName("jdk.internal.jvmci.service.Services");
+                    } catch (ClassNotFoundException e) {
+                    }
                 }
                 if (servicesClass == null) {
                     try {
