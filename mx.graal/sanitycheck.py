@@ -190,17 +190,17 @@ def getSPECjvm2008(benchArgs=None):
 
     return Test("SPECjvm2008", ['-jar', 'SPECjvm2008.jar'] + _noneAsEmptyList(benchArgs), [success], [error], [matcher], vmOpts=['-Xms3g', '-XX:+' + gc, '-XX:-UseCompressedOops'], defaultCwd=specjvm2008)
 
-def getDacapos(level=SanityCheckLevel.Normal, gateBuildLevel=None, dacapoArgs=None):
+def getDacapos(level=SanityCheckLevel.Normal, gateBuildLevel=None, dacapoArgs=None, extraVmArguments=None):
     checks = []
 
     for (bench, ns) in dacapoSanityWarmup.items():
         if ns[level] > 0:
             if gateBuildLevel is None or gateBuildLevel in dacapoGateBuildLevels[bench]:
-                checks.append(getDacapo(bench, ['-n', str(ns[level])] + _noneAsEmptyList(dacapoArgs)))
+                checks.append(getDacapo(bench, ['-n', str(ns[level])] + _noneAsEmptyList(dacapoArgs), extraVmArguments=extraVmArguments))
 
     return checks
 
-def getDacapo(name, dacapoArgs=None):
+def getDacapo(name, dacapoArgs=None, extraVmArguments=None):
     dacapo = mx.get_env('DACAPO_CP')
     if dacapo is None:
         l = mx.library('DACAPO', False)
@@ -221,19 +221,19 @@ def getDacapo(name, dacapoArgs=None):
     dacapoMatcher1 = ValuesMatcher(dacapoTime1, {'group' : 'DaCapo-1stRun', 'name' : '<benchmark>', 'score' : '<time>'})
 
     # Use ipv4 stack for dacapos; tomcat+solaris+ipv6_interface fails (see also: JDK-8072384)
-    return Test("DaCapo-" + name, ['-jar', mx._cygpathU2W(dacapo), name] + _noneAsEmptyList(dacapoArgs), [dacapoSuccess], [dacapoFail], [dacapoMatcher, dacapoMatcher1], ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops', "-Djava.net.preferIPv4Stack=true"])
+    return Test("DaCapo-" + name, ['-jar', mx._cygpathU2W(dacapo), name] + _noneAsEmptyList(dacapoArgs), [dacapoSuccess], [dacapoFail], [dacapoMatcher, dacapoMatcher1], ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops', "-Djava.net.preferIPv4Stack=true"] + _noneAsEmptyList(extraVmArguments))
 
-def getScalaDacapos(level=SanityCheckLevel.Normal, gateBuildLevel=None, dacapoArgs=None):
+def getScalaDacapos(level=SanityCheckLevel.Normal, gateBuildLevel=None, dacapoArgs=None, extraVmArguments=None):
     checks = []
 
     for (bench, ns) in dacapoScalaSanityWarmup.items():
         if ns[level] > 0:
             if gateBuildLevel is None or gateBuildLevel in dacapoScalaGateBuildLevels[bench]:
-                checks.append(getScalaDacapo(bench, ['-n', str(ns[level])] + _noneAsEmptyList(dacapoArgs)))
+                checks.append(getScalaDacapo(bench, ['-n', str(ns[level])] + _noneAsEmptyList(dacapoArgs), extraVmArguments=extraVmArguments))
 
     return checks
 
-def getScalaDacapo(name, dacapoArgs=None):
+def getScalaDacapo(name, dacapoArgs=None, extraVmArguments=None):
     dacapo = mx.get_env('DACAPO_SCALA_CP')
     if dacapo is None:
         l = mx.library('DACAPO_SCALA', False)
@@ -251,7 +251,7 @@ def getScalaDacapo(name, dacapoArgs=None):
 
     dacapoMatcher = ValuesMatcher(dacapoTime, {'group' : "Scala-DaCapo", 'name' : '<benchmark>', 'score' : '<time>'})
 
-    return Test("Scala-DaCapo-" + name, ['-jar', mx._cygpathU2W(dacapo), name] + _noneAsEmptyList(dacapoArgs), [dacapoSuccess], [dacapoFail], [dacapoMatcher], ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops'])
+    return Test("Scala-DaCapo-" + name, ['-jar', mx._cygpathU2W(dacapo), name] + _noneAsEmptyList(dacapoArgs), [dacapoSuccess], [dacapoFail], [dacapoMatcher], ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops'] + _noneAsEmptyList(extraVmArguments))
 
 def getBootstraps():
     time = re.compile(r"Bootstrapping Graal\.+ in (?P<time>[0-9]+) ms( \(compiled (?P<methods>[0-9]+) methods\))?")

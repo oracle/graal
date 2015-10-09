@@ -36,6 +36,7 @@ import mx
 from mx_jvmci import JvmciJDKDeployedDist, add_bootclasspath_prepend, buildvms
 from mx_jvmci import jdkDeployedDists #pylint: disable=unused-import
 from mx_gate import Task
+from sanitycheck import _noneAsEmptyList
 
 try:
     from mx_jvmci import run_vm, VM, get_vm, isJVMCIEnabled, relativeVmLibDirInJdk, get_jvmci_jdk, get_jvmci_jdk_dir #pylint: disable=no-name-in-module
@@ -196,7 +197,7 @@ def microbench(args):
         args += ['--jvmArgsPrepend', ' '.join(['-' + jvm] + forkedVmArgs)]
     run_vm(args + jmhArgs)
 
-def ctw(args):
+def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
 
     defaultCtwopts = '-Inline'
@@ -229,17 +230,17 @@ def ctw(args):
     else:
         vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + jar]
 
-    run_vm(vmargs)
+    run_vm(vmargs + _noneAsEmptyList(extraVMarguments))
 
 class UnitTestRun:
     def __init__(self, name, args):
         self.name = name
         self.args = args
 
-    def run(self, suites, tasks):
+    def run(self, suites, tasks, extraVMarguments=None):
         for suite in suites:
             with Task(self.name + ': hosted-product ' + suite, tasks) as t:
-                if t: unittest(['--suite', suite, '--enable-timing', '--verbose', '--fail-fast'] + self.args)
+                if t: unittest(['--suite', suite, '--enable-timing', '--verbose', '--fail-fast'] + self.args + _noneAsEmptyList(extraVMarguments))
 
 class BootstrapTest:
     def __init__(self, name, vmbuild, args, suppress=None):
@@ -248,7 +249,7 @@ class BootstrapTest:
         self.args = args
         self.suppress = suppress
 
-    def run(self, tasks):
+    def run(self, tasks, extraVMarguments=None):
         with VM('jvmci', self.vmbuild):
             with Task(self.name + ':' + self.vmbuild, tasks) as t:
                 if t:
@@ -256,9 +257,9 @@ class BootstrapTest:
                         out = mx.DuplicateSuppressingStream(self.suppress).write
                     else:
                         out = None
-                    run_vm(self.args + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
+                    run_vm(self.args + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'] + _noneAsEmptyList(extraVMarguments), out=out)
 
-def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
+def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
     # Build server-hosted-jvmci now so we can run the unit tests
     with Task('BuildHotSpotGraalHosted: product', tasks) as t:
@@ -267,12 +268,12 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
     # Run unit tests on server-hosted-jvmci
     with VM('server', 'product'):
         for r in unit_test_runs:
-            r.run(suites, tasks)
+            r.run(suites, tasks, extraVMarguments)
 
     # Run ctw against rt.jar on server-hosted-jvmci
     with VM('server', 'product'):
         with Task('CTW:hosted-product', tasks) as t:
-            if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose', '-XX:ReservedCodeCacheSize=300m'])
+            if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
 
     # Build the jvmci VMs so we can run the other tests
     with Task('BuildHotSpotGraalOthers: fastdebug,product', tasks) as t:
@@ -280,11 +281,12 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
 
     # bootstrap tests
     for b in bootstrap_tests:
-        b.run(tasks)
+        b.run(tasks, extraVMarguments)
 
     # run dacapo sanitychecks
     for vmbuild in ['fastdebug', 'product']:
-        for test in sanitycheck.getDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel=vmbuild) + sanitycheck.getScalaDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel=vmbuild):
+        for test in sanitycheck.getDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel=vmbuild, extraVmArguments=extraVMarguments) \
+                + sanitycheck.getScalaDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel=vmbuild, extraVmArguments=extraVMarguments):
             with Task(str(test) + ':' + vmbuild, tasks) as t:
                 if t and not test.test('jvmci'):
                     t.abort(test.name + ' Failed')
@@ -292,12 +294,12 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
     # ensure -Xbatch still works
     with VM('jvmci', 'product'):
         with Task('DaCapo_pmd:BatchMode:product', tasks) as t:
-            if t: dacapo(['-Xbatch', 'pmd'])
+            if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-Xbatch', 'pmd'])
 
     # ensure -Xcomp still works
     with VM('jvmci', 'product'):
         with Task('XCompMode:product', tasks) as t:
-            if t: run_vm(['-Xcomp', '-version'])
+            if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-Xcomp', '-version'])
 
 
 graal_unit_test_runs = [
@@ -322,9 +324,10 @@ graal_bootstrap_tests = [
 ]
 
 def _graal_gate_runner(args, tasks):
-    compiler_gate_runner(['graal'], graal_unit_test_runs, graal_bootstrap_tests, tasks)
+    compiler_gate_runner(['graal'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
+mx_gate.add_gate_argument('--extra-vm-argument', action='append', help='add extra vm argument to gate tasks if applicable (multiple occurrences allowed)')
 
 def deoptalot(args):
     """bootstrap a VM with DeoptimizeALot and VerifyOops on
