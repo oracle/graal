@@ -30,7 +30,6 @@ suite = {
     # ------------- Libraries -------------
 
     "DACAPO" : {
-      "path" : "lib/dacapo-9.12-bach.jar",
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach.jar",
         "http://softlayer.dl.sourceforge.net/project/dacapobench/9.12-bach/dacapo-9.12-bach.jar",
@@ -39,7 +38,6 @@ suite = {
     },
 
     "DACAPO_SCALA" : {
-      "path" : "lib/dacapo-scala-0.1.0-20120216.jar",
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar",
         "http://repo.scalabench.org/snapshots/org/scalabench/benchmarks/scala-benchmark-suite/0.1.0-SNAPSHOT/scala-benchmark-suite-0.1.0-20120216.103539-3.jar",
@@ -48,15 +46,12 @@ suite = {
     },
 
     "JAVA_ALLOCATION_INSTRUMENTER" : {
-      "path" : "lib/java-allocation-instrumenter.jar",
-      "sourcePath" : "lib/java-allocation-instrumenter.jar",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/java-allocation-instrumenter/java-allocation-instrumenter-8f0db117e64e.jar"],
       "sha1" : "476d9a44cd19d6b55f81571077dfa972a4f8a083",
       "bootClassPathAgent" : "true",
     },
 
     "JMH" : {
-      "path" : "lib/jmh-runner-1.10.4.jar",
       "sha1" : "be2e08e6776191e9c559a65b7d34e92e86b4fa5c",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.10.4.jar"],
     },
