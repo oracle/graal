@@ -64,7 +64,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     private void processImpl(RoundEnvironment env) {
         // TODO run verifications that other annotations are not processed out of scope of the
-        // operation or typelattice.
+        // operation or type lattice.
         try {
             ProcessorContext.setThreadLocalInstance(new ProcessorContext(processingEnv, this));
             for (AnnotationProcessor<?> generator : getGenerators()) {
