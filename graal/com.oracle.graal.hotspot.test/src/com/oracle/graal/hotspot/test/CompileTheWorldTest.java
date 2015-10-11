@@ -42,10 +42,8 @@ public class CompileTheWorldTest extends GraalCompilerTest {
     public void testRtJar() throws Throwable {
         boolean originalSetting = ExitVMOnException.getValue();
         // Compile a couple classes in rt.jar
-        String file = System.getProperty("java.home") + "/lib/rt.jar";
         HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
-        new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), file, new Config(null), 1, 5, null, null, false).compile();
+        new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), CompileTheWorld.SUN_BOOT_CLASS_PATH, new Config(null), 1, 5, null, null, false).compile();
         assert ExitVMOnException.getValue() == originalSetting;
     }
-
 }

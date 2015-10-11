@@ -33,13 +33,13 @@ import json
 import re
 
 import mx
-from mx_jvmci import JvmciJDKDeployedDist, add_bootclasspath_prepend, buildvms
+from mx_jvmci import JvmciJDKDeployedDist, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, get_vm, run_vm, VM
 from mx_jvmci import jdkDeployedDists #pylint: disable=unused-import
 from mx_gate import Task
 from sanitycheck import _noneAsEmptyList
 
 try:
-    from mx_jvmci import run_vm, VM, get_vm, isJVMCIEnabled, relativeVmLibDirInJdk, get_jvmci_jdk, get_jvmci_jdk_dir #pylint: disable=no-name-in-module
+    from mx_jvmci import isJVMCIEnabled, relativeVmLibDirInJdk, get_jvmci_jdk_dir #pylint: disable=no-name-in-module
 except ImportError:
     pass
 from mx_unittest import unittest
@@ -204,7 +204,7 @@ def ctw(args, extraVMarguments=None):
 
     parser = ArgumentParser(prog='mx ctw')
     parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
-    parser.add_argument('--jar', action='store', help='jar of classes to compiled instead of rt.jar', metavar='<path>')
+    parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
 
     args, vmargs = parser.parse_known_args(args)
 
@@ -213,22 +213,33 @@ def ctw(args, extraVMarguments=None):
         # when they are collated in the "jvmci.options" system property
         vmargs.append('-G:CompileTheWorldConfig=' + re.sub(r'\s+', '#', args.ctwopts))
 
-    if args.jar:
-        jar = os.path.abspath(args.jar)
+    if args.cp:
+        cp = os.path.abspath(args.cp)
     else:
-        jar = join(get_jvmci_jdk_dir(deployDists=False), 'jre', 'lib', 'rt.jar')
+        if get_jvmci_jdk().javaCompliance < '9':
+            cp = join(get_jvmci_jdk().home, 'jre', 'lib', 'rt.jar')
+        else:
+            cp = join(get_jvmci_jdk().home, 'modules', 'java.base')
         vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
     # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
     vmargs = ['-Djava.awt.headless=true'] + vmargs
 
-    vm_ = get_vm()
-    if isJVMCIEnabled(vm_):
-        if vm_ == 'jvmci':
-            vmargs += ['-XX:+BootstrapJVMCI']
-        vmargs += ['-G:CompileTheWorldClasspath=' + jar, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld']
+    vm = get_vm()
+    if isinstance(vm, VM):
+        if vm.jvmciMode == 'disabled':
+            vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp]
+        else:
+            if vm.jvmciMode == 'jit':
+                vmargs += ['-XX:+BootstrapJVMCI']
+            vmargs += ['-G:CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld']
     else:
-        vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + jar]
+        if isJVMCIEnabled(vm):
+            if vm == 'jvmci':
+                vmargs += ['-XX:+BootstrapJVMCI']
+            vmargs += ['-G:CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld']
+        else:
+            vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp]
 
     run_vm(vmargs + _noneAsEmptyList(extraVMarguments))
 

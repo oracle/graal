@@ -35,7 +35,7 @@ import jdk.vm.ci.options.OptionValue;
  */
 public class CompileTheWorldOptions {
     // @formatter:off
-    @Option(help = "Compile all methods in all classes on given class path", type = OptionType.Debug)
+    @Option(help = "Class path denoting methods to compile", type = OptionType.Debug)
     public static final OptionValue<String> CompileTheWorldClasspath = new OptionValue<>(CompileTheWorld.SUN_BOOT_CLASS_PATH);
     @Option(help = "Verbose CompileTheWorld operation", type = OptionType.Debug)
     public static final OptionValue<Boolean> CompileTheWorldVerbose = new OptionValue<>(true);

@@ -34,6 +34,7 @@ import static jdk.vm.ci.compiler.Compiler.PrintBailout;
 import static jdk.vm.ci.compiler.Compiler.PrintStackTraceOnException;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -42,9 +43,16 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -87,8 +95,11 @@ import com.oracle.graal.debug.internal.MemUseTrackerImpl;
  */
 public final class CompileTheWorld {
 
+    private static final String JAVA_VERSION = System.getProperty("java.specification.version");
+
     /**
-     * Magic token to trigger reading files from the boot class path.
+     * Magic token to trigger reading files from {@code rt.jar} if {@link #JAVA_VERSION} denotes a
+     * JDK earlier than 9 otherwise from {@code java.base} module.
      */
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
@@ -144,20 +155,23 @@ public final class CompileTheWorld {
     private final HotSpotGraalCompiler compiler;
 
     /**
-     * List of Zip/Jar files to compile (see {@link CompileTheWorldOptions#CompileTheWorldClasspath}
-     * ).
+     * Class path denoting classes to compile.
+     *
+     * @see CompileTheWorldOptions#CompileTheWorldClasspath
      */
-    private final String files;
+    private final String inputClassPath;
 
     /**
-     * Class index to start compilation at (see
-     * {@link CompileTheWorldOptions#CompileTheWorldStartAt}).
+     * Class index to start compilation at.
+     *
+     * @see CompileTheWorldOptions#CompileTheWorldStartAt
      */
     private final int startAt;
 
     /**
-     * Class index to stop compilation at (see {@link CompileTheWorldOptions#CompileTheWorldStopAt}
-     * ).
+     * Class index to stop compilation at.
+     *
+     * @see CompileTheWorldOptions#CompileTheWorldStopAt
      */
     private final int stopAt;
 
@@ -196,7 +210,7 @@ public final class CompileTheWorld {
                     String excludeMethodFilters, boolean verbose) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
-        this.files = files;
+        this.inputClassPath = files;
         this.startAt = startAt;
         this.stopAt = stopAt;
         this.methodFilters = methodFilters == null || methodFilters.isEmpty() ? null : MethodFilter.parse(methodFilters);
@@ -219,36 +233,35 @@ public final class CompileTheWorld {
     }
 
     /**
-     * Compiles all methods in all classes in the Zip/Jar archive files in
-     * {@link CompileTheWorldOptions#CompileTheWorldClasspath}. If
-     * {@link CompileTheWorldOptions#CompileTheWorldClasspath} contains the magic token
-     * {@link #SUN_BOOT_CLASS_PATH} passed up from HotSpot we take the files from the boot class
-     * path.
+     * Compiles all methods in all classes in {@link #inputClassPath}. If {@link #inputClassPath}
+     * equals {@link #SUN_BOOT_CLASS_PATH} the boot class path is used.
      */
     public void compile() throws Throwable {
         // By default only report statistics for the CTW threads themselves
         if (GraalDebugConfig.Options.DebugValueThreadFilter.hasDefaultValue()) {
             GraalDebugConfig.Options.DebugValueThreadFilter.setValue("^CompileTheWorld");
         }
-
-        if (SUN_BOOT_CLASS_PATH.equals(files)) {
+        if (SUN_BOOT_CLASS_PATH.equals(inputClassPath)) {
             final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
-            String bcpFiles = "";
-            for (int i = 0; i < entries.length; i++) {
-                final String entry = entries[i];
-
-                // We stop at rt.jar, unless it is the first boot class path entry.
-                if (entry.endsWith("rt.jar") && (i > 0)) {
-                    break;
+            String bcpEntry = null;
+            boolean useRtJar = JAVA_VERSION.compareTo("1.9") < 0;
+            for (int i = 0; i < entries.length && bcpEntry == null; i++) {
+                String entry = entries[i];
+                File entryFile = new File(entry);
+                if (useRtJar) {
+                    // We stop at rt.jar, unless it is the first boot class path entry.
+                    if (entryFile.getName().endsWith("rt.jar") && entryFile.isFile()) {
+                        bcpEntry = entry;
+                    }
+                } else {
+                    if (entryFile.getName().endsWith("java.base") && entryFile.isDirectory()) {
+                        bcpEntry = entry;
+                    }
                 }
-                if (i > 0) {
-                    bcpFiles += File.pathSeparator;
-                }
-                bcpFiles += entry;
             }
-            compile(bcpFiles);
+            compile(bcpEntry);
         } else {
-            compile(files);
+            compile(inputClassPath);
         }
     }
 
@@ -270,15 +283,111 @@ public final class CompileTheWorld {
     private static void dummy() {
     }
 
+    abstract static class ClassPathEntry implements Closeable {
+        final String name;
+
+        public ClassPathEntry(String name) {
+            this.name = name;
+        }
+
+        public abstract ClassLoader createClassLoader() throws IOException;
+
+        public abstract List<String> getClassNames() throws IOException;
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    static class DirClassPathEntry extends ClassPathEntry {
+
+        private final File dir;
+
+        public DirClassPathEntry(String name) {
+            super(name);
+            dir = new File(name);
+            assert dir.isDirectory();
+        }
+
+        @Override
+        public ClassLoader createClassLoader() throws IOException {
+            URL url = dir.toURI().toURL();
+            return new URLClassLoader(new URL[]{url});
+        }
+
+        @Override
+        public List<String> getClassNames() throws IOException {
+            List<String> classNames = new ArrayList<>();
+            String root = dir.getPath();
+            SimpleFileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    if (attrs.isRegularFile()) {
+                        File path = file.toFile();
+                        if (path.getName().endsWith(".class")) {
+                            String pathString = path.getPath();
+                            assert pathString.startsWith(root);
+                            String classFile = pathString.substring(root.length() + 1);
+                            String className = classFile.replace(File.separatorChar, '.');
+                            classNames.add(className.replace('/', '.').substring(0, className.length() - ".class".length()));
+                        }
+                    }
+                    return super.visitFile(file, attrs);
+                }
+            };
+            Files.walkFileTree(dir.toPath(), visitor);
+            return classNames;
+        }
+
+        public void close() throws IOException {
+        }
+    }
+
+    static class JarClassPathEntry extends ClassPathEntry {
+
+        private final JarFile jarFile;
+
+        public JarClassPathEntry(String name) throws IOException {
+            super(name);
+            jarFile = new JarFile(name);
+        }
+
+        @Override
+        public ClassLoader createClassLoader() throws IOException {
+            URL url = new URL("jar", "", "file:" + name + "!/");
+            return new URLClassLoader(new URL[]{url});
+        }
+
+        @Override
+        public List<String> getClassNames() throws IOException {
+            Enumeration<JarEntry> e = jarFile.entries();
+            List<String> classNames = new ArrayList<>(jarFile.size());
+            while (e.hasMoreElements()) {
+                JarEntry je = e.nextElement();
+                if (je.isDirectory() || !je.getName().endsWith(".class")) {
+                    continue;
+                }
+                String className = je.getName().substring(0, je.getName().length() - ".class".length());
+                classNames.add(className.replace('/', '.'));
+            }
+            return classNames;
+        }
+
+        public void close() throws IOException {
+            jarFile.close();
+        }
+    }
+
     /**
-     * Compiles all methods in all classes in the Zip/Jar files passed.
+     * Compiles all methods in all classes in a given class path.
      *
-     * @param fileList {@link File#pathSeparator} separated list of Zip/Jar files to compile
+     * @param classPath class path denoting classes to compile
      * @throws IOException
      */
     @SuppressWarnings("try")
-    private void compile(String fileList) throws IOException {
-        final String[] entries = fileList.split(File.pathSeparator);
+    private void compile(String classPath) throws IOException {
+        final String[] entries = classPath.split(File.pathSeparator);
         long start = System.currentTimeMillis();
 
         CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
@@ -291,7 +400,8 @@ public final class CompileTheWorld {
         });
 
         try {
-            // compile dummy method to get compiler initilized outside of the config debug override.
+            // compile dummy method to get compiler initialized outside of the
+            // config debug override.
             HotSpotResolvedJavaMethod dummyMethod = (HotSpotResolvedJavaMethod) JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(
                             CompileTheWorld.class.getDeclaredMethod("dummy"));
             int entryBCI = Compiler.INVOCATION_ENTRY_BCI;
@@ -320,11 +430,16 @@ public final class CompileTheWorld {
             for (int i = 0; i < entries.length; i++) {
                 final String entry = entries[i];
 
-                // For now we only compile all methods in all classes in zip/jar files.
+                ClassPathEntry cpe;
                 if (!entry.endsWith(".zip") && !entry.endsWith(".jar")) {
-                    println("CompileTheWorld : Skipped classes in " + entry);
-                    println();
-                    continue;
+                    if (!new File(entry).isDirectory()) {
+                        println("CompileTheWorld : Skipped classes in " + entry);
+                        println();
+                        continue;
+                    }
+                    cpe = new DirClassPathEntry(entry);
+                } else {
+                    cpe = new JarClassPathEntry(entry);
                 }
 
                 if (methodFilters == null || methodFilters.length == 0) {
@@ -339,41 +454,31 @@ public final class CompileTheWorld {
                 }
                 println();
 
-                URL url = new URL("jar", "", "file:" + entry + "!/");
-                ClassLoader loader = new URLClassLoader(new URL[]{url});
+                ClassLoader loader = cpe.createClassLoader();
 
-                JarFile jarFile = new JarFile(entry);
-                Enumeration<JarEntry> e = jarFile.entries();
-
-                while (e.hasMoreElements()) {
-                    JarEntry je = e.nextElement();
-                    if (je.isDirectory() || !je.getName().endsWith(".class")) {
-                        continue;
-                    }
+                for (String className : cpe.getClassNames()) {
 
                     // Are we done?
                     if (classFileCounter >= stopAt) {
                         break;
                     }
 
-                    String className = je.getName().substring(0, je.getName().length() - ".class".length());
-                    String dottedClassName = className.replace('/', '.');
                     classFileCounter++;
 
-                    if (methodFilters != null && !MethodFilter.matchesClassName(methodFilters, dottedClassName)) {
+                    if (methodFilters != null && !MethodFilter.matchesClassName(methodFilters, className)) {
                         continue;
                     }
-                    if (excludeMethodFilters != null && MethodFilter.matchesClassName(excludeMethodFilters, dottedClassName)) {
+                    if (excludeMethodFilters != null && MethodFilter.matchesClassName(excludeMethodFilters, className)) {
                         continue;
                     }
 
-                    if (dottedClassName.startsWith("jdk.management.") || dottedClassName.startsWith("jdk.internal.cmm.*")) {
+                    if (className.startsWith("jdk.management.") || className.startsWith("jdk.internal.cmm.*")) {
                         continue;
                     }
 
                     try {
                         // Load and initialize class
-                        Class<?> javaClass = Class.forName(dottedClassName, true, loader);
+                        Class<?> javaClass = Class.forName(className, true, loader);
 
                         // Pre-load all classes in the constant pool.
                         try {
@@ -411,7 +516,7 @@ public final class CompileTheWorld {
                         t.printStackTrace();
                     }
                 }
-                jarFile.close();
+                cpe.close();
             }
         }
 
