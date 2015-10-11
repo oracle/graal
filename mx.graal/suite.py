@@ -902,18 +902,14 @@ suite = {
     # ------------- Distributions -------------
 
     "GRAAL_NODEINFO" : {
-      "path" : "build/graal-nodeinfo.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-nodeinfo.src.zip",
       "dependencies" : [
         "com.oracle.graal.nodeinfo",
       ],
     },
 
     "GRAAL_API" : {
-      "path" : "build/graal-api.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-api.src.zip",
       "dependencies" : [
         "com.oracle.graal.api.replacements",
         "com.oracle.graal.graph",
@@ -925,9 +921,7 @@ suite = {
     },
 
     "GRAAL_COMPILER" : {
-      "path" : "build/graal-compiler.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-compiler.src.zip",
       "dependencies" : [
         "com.oracle.graal.compiler",
       ],
@@ -937,9 +931,7 @@ suite = {
     },
 
     "GRAAL" : {
-      "path" : "build/graal.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal.src.zip",
       "dependencies" : [
         "com.oracle.graal.replacements",
         "com.oracle.graal.runtime",
@@ -957,9 +949,7 @@ suite = {
     },
 
     "GRAAL_HOTSPOT" : {
-      "path" : "build/graal-hotspot.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-hotspot.src.zip",
       "dependencies" : [
         "com.oracle.graal.hotspot.amd64",
         "com.oracle.graal.hotspot.sparc",
@@ -974,9 +964,7 @@ suite = {
     },
 
     "GRAAL_TEST" : {
-      "path" : "build/graal-test.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-test.src.zip",
       "dependencies" : [
         "com.oracle.graal.api.test",
         "com.oracle.graal.api.directives.test",
@@ -1001,9 +989,7 @@ suite = {
     },
 
     "GRAAL_TRUFFLE" : {
-      "path" : "build/graal-truffle.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-truffle.src.zip",
       "dependencies" : [
         "com.oracle.graal.truffle",
       ],
@@ -1014,9 +1000,7 @@ suite = {
     },
 
     "GRAAL_TRUFFLE_HOTSPOT" : {
-      "path" : "build/graal-truffle-hotspot.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-truffle-hotspot.src.zip",
       "dependencies" : [
         "com.oracle.graal.truffle.hotspot.amd64",
         "com.oracle.graal.truffle.hotspot.sparc"
@@ -1029,9 +1013,7 @@ suite = {
     },
 
     "GRAAL_TRUFFLE_TEST" : {
-      "path" : "build/graal-truffle-test.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-truffle-test.src.zip",
       "dependencies" : [
         "com.oracle.graal.truffle.test"
       ],
@@ -1043,9 +1025,7 @@ suite = {
     },
 
     "GRAAL_NODEINFO_PROCESSOR" : {
-      "path" : "build/graal-nodeinfo-processor.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-nodeinfo-processor.src.zip",
       "dependencies" : ["com.oracle.graal.nodeinfo.processor"],
       "distDependencies" : [
         "GRAAL_NODEINFO",
@@ -1053,9 +1033,7 @@ suite = {
     },
 
     "GRAAL_REPLACEMENTS_VERIFIER" : {
-      "path" : "build/graal-replacements-verifier.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-replacements-verifier.src.zip",
       "dependencies" : ["com.oracle.graal.replacements.verifier"],
       "distDependencies" : [
         "GRAAL_API",
@@ -1063,9 +1041,7 @@ suite = {
     },
 
     "GRAAL_COMPILER_MATCH_PROCESSOR" : {
-      "path" : "build/graal-compiler-match-processor.jar",
       "subDir" : "graal",
-      "sourcesPath" : "build/graal-compiler-match-processor.src.zip",
       "dependencies" : ["com.oracle.graal.compiler.match.processor"],
       "distDependencies" : [
         "GRAAL_COMPILER",
