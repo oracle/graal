@@ -33,19 +33,28 @@ import json
 import re
 
 import mx
-from mx_jvmci import JvmciJDKDeployedDist, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, get_vm, run_vm, VM
-from mx_jvmci import jdkDeployedDists #pylint: disable=unused-import
+from mx_jvmci import JvmciJDKDeployedDist, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, run_vm, VM, relativeVmLibDirInJdk, isJVMCIEnabled
+from mx_jvmci import get_vm as _jvmci_get_vm
 from mx_gate import Task
 from sanitycheck import _noneAsEmptyList
 
-try:
-    from mx_jvmci import isJVMCIEnabled, relativeVmLibDirInJdk, get_jvmci_jdk_dir #pylint: disable=no-name-in-module
-except ImportError:
-    pass
 from mx_unittest import unittest
 import mx_gate
 
 _suite = mx.suite('graal')
+
+def get_vm():
+    """
+    Gets the name of the currently selected JVM variant.
+    """
+    vm = _jvmci_get_vm()
+    if isinstance(vm, VM):
+        # mx_jvmci:9
+        return vm.jvmVariant
+    else:
+        # mx_jvmci:8
+        assert isinstance(vm, str)
+        return vm
 
 class GraalJDKDeployedDist(JvmciJDKDeployedDist):
     def __init__(self):
@@ -144,8 +153,9 @@ def microbench(args):
     known_args, args = parser.parse_known_args(args)
 
     vmArgs, jmhArgs = mx.extract_VM_args(args, useDoubleDash=True)
-    if isJVMCIEnabled(get_vm()) and  '-XX:-UseJVMCIClassLoader' not in vmArgs:
-        vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
+    if get_jvmci_jdk().javaCompliance < '9':
+        if isJVMCIEnabled(get_vm()) and '-XX:-UseJVMCIClassLoader' not in vmArgs:
+            vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
 
     # look for -f in JMH arguments
     containsF = False
@@ -226,11 +236,12 @@ def ctw(args, extraVMarguments=None):
     vmargs = ['-Djava.awt.headless=true'] + vmargs
 
     vm = get_vm()
-    if isinstance(vm, VM):
-        if vm.jvmciMode == 'disabled':
+    if get_jvmci_jdk().javaCompliance >= '9':
+        jvmciMode = _jvmci_get_vm().jvmciMode
+        if jvmciMode == 'disabled':
             vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp]
         else:
-            if vm.jvmciMode == 'jit':
+            if jvmciMode == 'jit':
                 vmargs += ['-XX:+BootstrapJVMCI']
             vmargs += ['-G:CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld']
     else:
@@ -497,25 +508,35 @@ def specjbb2005(args):
 
 def jdkartifactstats(args):
     """show stats about JDK deployed Graal artifacts"""
-    jdkDir = get_jvmci_jdk_dir()
     artifacts = {}
-    for root, _, filenames in os.walk(join(jdkDir, 'jre', 'lib')):
-        for f in filenames:
-            if f.endswith('.jar') and not f.endswith('.stripped.jar'):
-                jar = join(root, f)
-                if 'truffle' in f:
-                    if 'enterprise' in f:
-                        artifacts.setdefault('GraalEnterpriseTruffle', []).append(jar)
-                    else:
-                        artifacts.setdefault('GraalTruffle', []).append(jar)
-                elif 'enterprise' in f:
-                    artifacts.setdefault('GraalEnterprise', []).append(jar)
-                elif 'jvmci' in f:
-                    artifacts.setdefault('JVMCI', []).append(jar)
-                elif 'graal' in f:
-                    artifacts.setdefault('Graal', []).append(jar)
-                else:
-                    mx.logv('ignored: ' + jar)
+    jdkDir = get_jvmci_jdk().home
+    def _getDeployedJars():
+        if get_jvmci_jdk().javaCompliance < '9':
+            for root, _, filenames in os.walk(join(jdkDir, 'jre', 'lib')):
+                for f in filenames:
+                    if f.endswith('.jar') and not f.endswith('.stripped.jar'):
+                        yield join(root, f)
+        else:
+            for jdkDist in jdkDeployedDists:
+                dist = jdkDist.dist()
+                if isinstance(jdkDist, JvmciJDKDeployedDist):
+                    yield dist.path
+
+    for jar in _getDeployedJars():
+        f = basename(jar)
+        if 'truffle' in f:
+            if 'enterprise' in f:
+                artifacts.setdefault('GraalEnterpriseTruffle', []).append(jar)
+            else:
+                artifacts.setdefault('GraalTruffle', []).append(jar)
+        elif 'enterprise' in f:
+            artifacts.setdefault('GraalEnterprise', []).append(jar)
+        elif 'jvmci' in f:
+            artifacts.setdefault('JVMCI', []).append(jar)
+        elif 'graal' in f:
+            artifacts.setdefault('Graal', []).append(jar)
+        else:
+            mx.logv('ignored: ' + jar)
 
     print '{:>10}  {:>10}  {:>10}  {}'.format('All', 'NoVars', 'None', 'Jar')
     for category in sorted(artifacts.viewkeys()):
