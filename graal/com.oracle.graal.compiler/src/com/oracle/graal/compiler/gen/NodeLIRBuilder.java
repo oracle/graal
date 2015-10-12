@@ -48,6 +48,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
+import com.oracle.graal.compiler.common.BackendOptions;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -78,6 +79,7 @@ import com.oracle.graal.lir.gen.PhiResolver;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.FixedNode;
@@ -115,6 +117,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
  */
 public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGenerationDebugContext {
 
+    private final boolean allowObjectConstantToStackMove;
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
@@ -137,6 +140,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         assert nodeMatchRules.lirBuilder == null;
         nodeMatchRules.lirBuilder = this;
+        allowObjectConstantToStackMove = BackendOptions.UserOptions.AllowObjectConstantToStackMove.getValue();
     }
 
     public NodeMatchRules getNodeMatchRules() {
@@ -279,7 +283,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     private Value[] createPhiOut(AbstractMergeNode merge, AbstractEndNode pred) {
         List<Value> values = new ArrayList<>();
         for (PhiNode phi : merge.valuePhis()) {
-            Value value = operand(phi.valueAt(pred));
+            ValueNode node = phi.valueAt(pred);
+            Value value = operand(node);
             assert value != null;
             if (isRegister(value)) {
                 /*
@@ -287,6 +292,14 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                  * new Variable.
                  */
                 value = gen.emitMove(value);
+            } else if (!allowObjectConstantToStackMove && node instanceof ConstantNode && !value.getLIRKind().isValue()) {
+                /*
+                 * Object constants are not allowed as inputs for PHIs. Explicitly create a copy of
+                 * this value to force it into a register. The new variable is only used in the PHI.
+                 */
+                Variable result = gen.newVariable(value.getLIRKind());
+                gen.emitMove(result, value);
+                value = result;
             }
             values.add(value);
         }
