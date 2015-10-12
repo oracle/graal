@@ -1159,6 +1159,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                 assumptionExpression.addError("Error parsing expression '%s': %s", assumption, e.getMessage());
             }
             assumptionExpressions.add(assumptionExpression);
+            assumptionId++;
         }
         specialization.setAssumptionExpressions(assumptionExpressions);
     }

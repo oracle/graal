@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.2.2",
+  "mxversion" : "5.5.7",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -20,7 +20,6 @@ suite = {
     # ------------- Libraries -------------
 
     "JLINE" : {
-      "path" : "lib/jline-2.11.jar",
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline-2.11.jar",
         "https://search.maven.org/remotecontent?filepath=jline/jline/2.11/jline-2.11.jar",
@@ -258,9 +257,7 @@ suite = {
     # ------------- Distributions -------------
 
     "TRUFFLE_API" : {
-      "path" : "build/truffle-api.jar",
       "subDir" : "truffle",
-      "sourcesPath" : "build/truffle-api.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
@@ -275,9 +272,7 @@ suite = {
     },
 
     "TRUFFLE_TCK" : {
-      "path" : "build/truffle-tck.jar",
       "subDir" : "truffle",
-      "sourcesPath" : "build/truffle-tck.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.tck"
@@ -289,9 +284,7 @@ suite = {
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
-      "path" : "build/truffle-dsl-processor.jar",
       "subDir" : "truffle",
-      "sourcesPath" : "build/truffle-dsl-processor.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : ["com.oracle.truffle.dsl.processor"],
       "distDependencies" : ["TRUFFLE_API"],
@@ -299,9 +292,7 @@ suite = {
     },
 
     "TRUFFLE_SL" : {
-      "path" : "build/truffle-sl.jar",
       "subDir" : "truffle",
-      "sourcesPath" : "build/truffle-sl.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.sl",
@@ -317,9 +308,7 @@ suite = {
     },
 
      "TRUFFLE_DEBUG" : {
-      "path" : "build/truffle-debug.jar",
       "subDir" : "truffle",
-      "sourcesPath" : "build/truffle-debug.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.tools.debug.shell",

@@ -44,6 +44,8 @@ import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArrayTes
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.CacheAssumptionTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.FieldTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MethodTestFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MultipleAssumptionArraysTestFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MultipleAssumptionsTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.NodeFieldTest2Factory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.StaticFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
@@ -206,6 +208,46 @@ public class AssumptionsTest {
     }
 
     @Test
+    public void testMultipleAssumptions() {
+        CallTarget root = createCallTarget(MultipleAssumptionsTestFactory.getInstance());
+        MultipleAssumptionsTest node = getNode(root);
+        node.assumption1 = Truffle.getRuntime().createAssumption();
+        node.assumption2 = Truffle.getRuntime().createAssumption();
+
+        assertEquals("do1", root.call(42));
+        node.assumption1.invalidate();
+        assertEquals("do2", root.call(42));
+
+        CallTarget root2 = createCallTarget(MultipleAssumptionsTestFactory.getInstance());
+        MultipleAssumptionsTest node2 = getNode(root2);
+        node2.assumption1 = Truffle.getRuntime().createAssumption();
+        node2.assumption2 = Truffle.getRuntime().createAssumption();
+
+        assertEquals("do1", root2.call(42));
+        node2.assumption2.invalidate();
+        assertEquals("do2", root2.call(42));
+    }
+
+    @NodeChild
+    @SuppressWarnings("unused")
+    static class MultipleAssumptionsTest extends ValueNode {
+
+        Assumption assumption1;
+        Assumption assumption2;
+
+        @Specialization(assumptions = {"assumption1", "assumption2"})
+        static String do1(int value) {
+            return "do1";
+        }
+
+        @Specialization
+        static String do2(int value) {
+            return "do2";
+        }
+
+    }
+
+    @Test
     public void testAssumptionArrays() {
         CallTarget root = createCallTarget(AssumptionArrayTestFactory.getInstance());
         AssumptionArrayTest node = getNode(root);
@@ -229,6 +271,43 @@ public class AssumptionsTest {
         Assumption[] assumptions;
 
         @Specialization(assumptions = "assumptions")
+        static String do1(int value) {
+            return "do1";
+        }
+
+        @Specialization
+        static String do2(int value) {
+            return "do2";
+        }
+
+    }
+
+    @Test
+    public void testMultipleAssumptionArrays() {
+        CallTarget root = createCallTarget(MultipleAssumptionArraysTestFactory.getInstance());
+        MultipleAssumptionArraysTest node = getNode(root);
+
+        Assumption a1 = Truffle.getRuntime().createAssumption();
+        Assumption a2 = Truffle.getRuntime().createAssumption();
+
+        node.assumptions1 = new Assumption[]{a1};
+        node.assumptions2 = new Assumption[]{a2};
+
+        assertEquals("do1", root.call(42));
+
+        a2.invalidate();
+
+        assertEquals("do2", root.call(42));
+    }
+
+    @NodeChild
+    @SuppressWarnings("unused")
+    static class MultipleAssumptionArraysTest extends ValueNode {
+
+        Assumption[] assumptions1;
+        Assumption[] assumptions2;
+
+        @Specialization(assumptions = {"assumptions1", "assumptions2"})
         static String do1(int value) {
             return "do1";
         }
