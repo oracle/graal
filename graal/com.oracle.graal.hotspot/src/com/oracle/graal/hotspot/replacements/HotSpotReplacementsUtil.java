@@ -29,6 +29,9 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PR
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+
+import java.lang.reflect.Field;
+
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.common.JVMCIError;
@@ -438,9 +441,30 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity ARRAY_KLASS_COMPONENT_MIRROR = NamedLocationIdentity.immutable("ArrayKlass::_component_mirror");
 
+    /**
+     * Employ reflection to read values not available in JDK9.
+     */
+    static class Lazy {
+        static final int arrayKlassComponentMirrorOffset;
+        static {
+            int value = Integer.MAX_VALUE;
+            try {
+                Field f = HotSpotVMConfig.class.getDeclaredField("arrayKlassComponentMirrorOffset");
+                f.setAccessible(true);
+                value = f.getInt(config());
+            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+                // ArrayKlass::_component_mirror was removed in JDK9.
+            }
+            arrayKlassComponentMirrorOffset = value;
+        }
+    }
+
     @Fold
     public static int arrayKlassComponentMirrorOffset() {
-        return config().arrayKlassComponentMirrorOffset;
+        if (Lazy.arrayKlassComponentMirrorOffset == Integer.MAX_VALUE) {
+            throw new JVMCIError("ArrayKlass::_component_mirror does not exist");
+        }
+        return Lazy.arrayKlassComponentMirrorOffset;
     }
 
     public static final LocationIdentity KLASS_SUPER_KLASS_LOCATION = NamedLocationIdentity.immutable("Klass::_super");
