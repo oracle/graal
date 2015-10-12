@@ -103,6 +103,8 @@ import com.oracle.truffle.api.source.Source;
  */
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
+    static final boolean JAVA_INTEROP_ENABLED = !Boolean.getBoolean("com.oracle.truffle.aot");
+
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
     private final Thread initThread;
@@ -733,7 +735,10 @@ public class PolyglotEngine {
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
             }
-            return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+            if (JAVA_INTEROP_ENABLED) {
+                return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+            }
+            throw new IllegalArgumentException("Value cannot be represented as " + representation.getName());
         }
 
         /**
@@ -863,7 +868,7 @@ public class PolyglotEngine {
         /**
          * Evaluates provided source. Ignores the particular {@link Source#getMimeType() MIME type}
          * and forces evaluation in the context of <code>this</code> language.
-         * 
+         *
          * @param source code snippet to execute
          * @return a {@link Value} object that holds result of an execution, never <code>null</code>
          * @throws IOException thrown to signal errors while processing the code
