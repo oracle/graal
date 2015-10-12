@@ -268,7 +268,7 @@ class BootstrapTest:
                         out = mx.DuplicateSuppressingStream(self.suppress).write
                     else:
                         out = None
-                    run_vm(self.args + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'] + _noneAsEmptyList(extraVMarguments), out=out)
+                    run_vm(self.args + _noneAsEmptyList(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
