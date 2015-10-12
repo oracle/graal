@@ -141,7 +141,7 @@ public class SLDebugTest {
                 assertEquals("one var slot", 1, frame.getFrameDescriptor().getSlots().size());
                 Object resName = frame.getFrameDescriptor().getSlots().get(0).getFrameDescriptor().getIdentifiers().iterator().next();
                 assertEquals("res", resName);
-                suspendedEvent.prepareStepInto(2);
+                suspendedEvent.prepareStepInto(1);
                 suspendedEvent = null;
                 return null;
             }
@@ -150,7 +150,7 @@ public class SLDebugTest {
         run(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
-                assertLine(6);
+                assertLine(7);
 
                 final MaterializedFrame frame = suspendedEvent.getFrame();
                 assertEquals("One argument", 1, frame.getArguments().length);
@@ -165,10 +165,7 @@ public class SLDebugTest {
             @Override
             public Void call() throws Exception {
                 assertNotNull(suspendedEvent);
-
-                // XXX wrong step over:
-                // assertLine(7);
-
+                assertLine(10);
                 suspendedEvent.prepareContinue();
                 suspendedEvent = null;
                 return null;

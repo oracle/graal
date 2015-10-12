@@ -53,7 +53,10 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLWhileNode;
+import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 
 /**
@@ -65,16 +68,22 @@ public class SLStandardASTProber implements ASTProber {
     public void probeAST(final Instrumenter instrumenter, RootNode startNode) {
         startNode.accept(new NodeVisitor() {
 
-            /**
-             * Instruments and tags all relevant {@link SLStatementNode}s and
-             * {@link SLExpressionNode}s. Currently, only SLStatementNodes that are not
-             * SLExpressionNodes are tagged as statements.
-             */
             public boolean visit(Node node) {
 
                 if (!(node instanceof InstrumentationNode) && node instanceof SLStatementNode && node.getParent() != null && node.getSourceSection() != null) {
-                    // All SL nodes are instrumentable, but treat expressions specially
 
+                    // Skip nodes that don't really correspond to statements
+                    if (node instanceof SLFunctionBodyNode || node instanceof SLBlockNode || node instanceof SLReadArgumentNode) {
+                        return true;
+                    }
+
+                    // Skip synthetic statements at beginning of function body that assign locals
+                    if (node instanceof SLWriteLocalVariableNode) {
+                        final Node child = node.getChildren().iterator().next();
+                        if (child instanceof SLReadArgumentNode) {
+                            return true;
+                        }
+                    }
                     if (node instanceof SLExpressionNode) {
                         SLExpressionNode expressionNode = (SLExpressionNode) node;
                         final Probe probe = instrumenter.probe(expressionNode);
@@ -83,11 +92,13 @@ public class SLStandardASTProber implements ASTProber {
                             probe.tagAs(ASSIGNMENT, null);
                         }
                     } else {
-                        SLStatementNode statementNode = (SLStatementNode) node;
-                        final Probe probe = instrumenter.probe(statementNode);
-                        probe.tagAs(STATEMENT, null);
-                        if (node instanceof SLWhileNode) {
-                            probe.tagAs(START_LOOP, null);
+                        if (!(node.getParent() instanceof SLFunctionBodyNode)) {
+                            SLStatementNode statementNode = (SLStatementNode) node;
+                            final Probe probe = instrumenter.probe(statementNode);
+                            probe.tagAs(STATEMENT, null);
+                            if (node instanceof SLWhileNode) {
+                                probe.tagAs(START_LOOP, null);
+                            }
                         }
                     }
                 }
