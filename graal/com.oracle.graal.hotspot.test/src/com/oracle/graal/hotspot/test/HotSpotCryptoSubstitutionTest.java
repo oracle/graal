@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
+import static sun.misc.Version.jdkMajorVersion;
+import static sun.misc.Version.jdkMinorVersion;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -89,7 +91,8 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testAESCryptIntrinsics() throws Exception {
-        if (compileAndInstall("com.sun.crypto.provider.AESCrypt", "encryptBlock", "decryptBlock")) {
+        String[] methods = jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8 ? new String[]{"encryptBlock", "decryptBlock"} : new String[]{"implEncryptBlock", "implDecryptBlock"};
+        if (compileAndInstall("com.sun.crypto.provider.AESCrypt", methods)) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));
@@ -99,7 +102,8 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testCipherBlockChainingIntrinsics() throws Exception {
-        if (compileAndInstall("com.sun.crypto.provider.CipherBlockChaining", "encrypt", "decrypt")) {
+        String[] methods = jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8 ? new String[]{"encrypt", "decrypt"} : new String[]{"implEncrypt", "implDecrypt"};
+        if (compileAndInstall("com.sun.crypto.provider.CipherBlockChaining", methods)) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));
