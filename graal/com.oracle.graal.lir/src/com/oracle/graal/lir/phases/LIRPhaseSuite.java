@@ -61,6 +61,17 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> {
         }
     }
 
+    public final <T extends LIRPhase<C>> T findPhaseInstance(Class<T> phaseClass) {
+        ListIterator<LIRPhase<C>> it = phases.listIterator();
+        while (it.hasNext()) {
+            LIRPhase<C> phase = it.next();
+            if (phaseClass.isInstance(phase)) {
+                return phaseClass.cast(phase);
+            }
+        }
+        return null;
+    }
+
     public static <C> boolean findNextPhase(ListIterator<LIRPhase<C>> it, Class<? extends LIRPhase<C>> phaseClass) {
         while (it.hasNext()) {
             LIRPhase<C> phase = it.next();

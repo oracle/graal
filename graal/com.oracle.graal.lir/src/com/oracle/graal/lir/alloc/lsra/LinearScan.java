@@ -52,7 +52,6 @@ import jdk.vm.ci.options.Option;
 import jdk.vm.ci.options.OptionType;
 import jdk.vm.ci.options.OptionValue;
 
-import com.oracle.graal.compiler.common.BackendOptions;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
@@ -175,7 +174,7 @@ public class LinearScan {
     private final boolean neverSpillConstants;
 
     protected LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
-                    List<? extends AbstractBlockBase<?>> sortedBlocks) {
+                    List<? extends AbstractBlockBase<?>> sortedBlocks, boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -186,7 +185,7 @@ public class LinearScan {
         this.registers = target.arch.getRegisters();
         this.firstVariableNumber = getRegisters().length;
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
-        this.neverSpillConstants = BackendOptions.UserOptions.NeverSpillConstants.getValue();
+        this.neverSpillConstants = neverSpillConstants;
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {

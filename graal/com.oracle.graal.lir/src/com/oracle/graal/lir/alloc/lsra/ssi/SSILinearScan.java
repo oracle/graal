@@ -41,8 +41,8 @@ import com.oracle.graal.lir.ssi.SSIVerifier;
 public final class SSILinearScan extends LinearScan {
 
     public SSILinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
-                    List<? extends AbstractBlockBase<?>> sortedBlocks) {
-        super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks);
+                    List<? extends AbstractBlockBase<?>> sortedBlocks, boolean neverSpillConstants) {
+        super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants);
     }
 
     @Override

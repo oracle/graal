@@ -42,8 +42,8 @@ import com.oracle.graal.lir.ssa.SSAUtil;
 public final class SSALinearScan extends LinearScan {
 
     public SSALinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
-                    List<? extends AbstractBlockBase<?>> sortedBlocks) {
-        super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks);
+                    List<? extends AbstractBlockBase<?>> sortedBlocks, boolean neverSpillConstants) {
+        super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants);
     }
 
     @Override

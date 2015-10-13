@@ -41,8 +41,6 @@ public final class BackendOptions {
         public static final OptionValue<Boolean> LIROptSSILinearScan = new OptionValue<>(false);
         @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
         public static final OptionValue<Boolean> TraceRA = new OptionValue<>(false);
-        @Option(help = "Never spill constant intervals.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> NeverSpillConstants = new OptionValue<>(false);
         @Option(help = "Support object constant to stack move.", type = OptionType.Debug)
         public static final OptionValue<Boolean> AllowObjectConstantToStackMove = new OptionValue<>(true);
         // @formatter:on
