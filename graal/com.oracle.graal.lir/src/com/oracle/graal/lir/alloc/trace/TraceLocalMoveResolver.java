@@ -495,6 +495,8 @@ public class TraceLocalMoveResolver {
             resolveMappings();
         }
 
+        assert insertionBuffer.lirList() != newInsertList || newInsertIdx >= insertIdx : String.format("Decreasing insert index: old=%d new=%d", insertIdx, newInsertIdx);
+
         if (insertionBuffer.lirList() != newInsertList) {
             // block changed . append insertionBuffer because it is
             // bound to a specific block and create a new insertionBuffer
