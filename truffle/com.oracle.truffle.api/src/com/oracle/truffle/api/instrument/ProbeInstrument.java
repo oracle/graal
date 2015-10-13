@@ -28,9 +28,9 @@ import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultDirectCallNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -394,7 +394,8 @@ public abstract class ProbeInstrument extends Instrument {
                     try {
                         final CallTarget callTarget = Instrumenter.ACCESSOR.parse(languageClass, source, node, NO_ARGS);
                         if (callTarget != null) {
-                            callNode = new DefaultDirectCallNode(callTarget);  // force inlining?
+                            callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
+                            callNode.forceInlining();
                             adoptChildren();
                             EvalInstrument.this.probe.invalidateProbeUnchanged();
                         }
@@ -406,7 +407,7 @@ public abstract class ProbeInstrument extends Instrument {
                 }
                 if (callNode != null) {
                     try {
-                        final Object result = callNode.call(vFrame, null);
+                        final Object result = callNode.call(vFrame, NO_ARGS);
                         if (evalListener != null) {
                             evalListener.onExecution(node, vFrame, result);
                         }
