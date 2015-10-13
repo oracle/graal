@@ -24,8 +24,10 @@ package com.oracle.graal.jtt.hotspot;
 
 import java.util.ArrayList;
 
+import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.graal.compiler.common.util.ArraySet;
 import com.oracle.graal.jtt.JTTTest;
 
 // @formatter:off
@@ -66,6 +68,12 @@ public class Test6186134 extends JTTTest {
             }
         }
         return 0;
+    }
+
+    @Before
+    public void setUp() {
+        /* Ensure that ArrayList is _not_ a leaf class (otherwise code installation may fail due to a failed leaf type dependency). */
+        UNSAFE.ensureClassInitialized(ArraySet.class);
     }
 
     @Test
