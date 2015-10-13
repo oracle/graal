@@ -135,7 +135,7 @@ public final class TruffleVM extends PolyglotEngine {
     }
 
     @Override
-    Value createValue(TruffleLanguage lang, Object[] result, CountDownLatch ready) {
+    Value createValue(TruffleLanguage[] lang, Object[] result, CountDownLatch ready) {
         return new Symbol(lang, result, ready);
     }
 
@@ -172,7 +172,7 @@ public final class TruffleVM extends PolyglotEngine {
 
     @Deprecated
     public class Symbol extends Value {
-        Symbol(TruffleLanguage<?> language, Object[] result, CountDownLatch ready) {
+        Symbol(TruffleLanguage<?>[] language, Object[] result, CountDownLatch ready) {
             super(language, result, ready);
         }
 
