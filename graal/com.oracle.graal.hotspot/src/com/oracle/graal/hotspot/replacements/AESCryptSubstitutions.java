@@ -78,7 +78,15 @@ public class AESCryptSubstitutions {
         crypt(rcvr, in, inOffset, out, outOffset, true);
     }
 
+    static void implEncryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
+        crypt(rcvr, in, inOffset, out, outOffset, true);
+    }
+
     static void decryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
+        crypt(rcvr, in, inOffset, out, outOffset, false);
+    }
+
+    static void implDecryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, false);
     }
 

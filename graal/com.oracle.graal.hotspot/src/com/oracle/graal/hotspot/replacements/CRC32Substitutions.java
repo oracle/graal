@@ -63,16 +63,26 @@ public class CRC32Substitutions {
 
     static int updateBytes(int crc, byte[] buf, int off, int len) {
         Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, arrayBaseOffset(JavaKind.Byte) + off));
-        return updateBytes(UPDATE_BYTES_CRC32, crc, bufAddr, len);
+        return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
+    }
+
+    static int updateBytes0(int crc, byte[] buf, int off, int len) {
+        Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, arrayBaseOffset(JavaKind.Byte) + off));
+        return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 
     static int updateByteBuffer(int crc, long addr, int off, int len) {
         Word bufAddr = Word.unsigned(addr).add(off);
-        return updateBytes(UPDATE_BYTES_CRC32, crc, bufAddr, len);
+        return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
+    }
+
+    static int updateByteBuffer0(int crc, long addr, int off, int len) {
+        Word bufAddr = Word.unsigned(addr).add(off);
+        return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 
     public static final ForeignCallDescriptor UPDATE_BYTES_CRC32 = new ForeignCallDescriptor("updateBytesCRC32", int.class, int.class, Word.class, int.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
-    public static native int updateBytes(@ConstantNodeParameter ForeignCallDescriptor descriptor, int crc, Word buf, int length);
+    public static native int updateBytesCRC32(@ConstantNodeParameter ForeignCallDescriptor descriptor, int crc, Word buf, int length);
 }

@@ -278,14 +278,24 @@ public class HotSpotGraphBuilderPlugins {
             Class<?> c = MethodSubstitutionPlugin.resolveClass("com.sun.crypto.provider.CipherBlockChaining", true);
             if (c != null) {
                 Registration r = new Registration(plugins, c);
-                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "encrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
-                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "decrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                if (jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8) {
+                    r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "encrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                    r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "decrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                } else {
+                    r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "implEncrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                    r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "implDecrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                }
             }
             c = MethodSubstitutionPlugin.resolveClass("com.sun.crypto.provider.AESCrypt", true);
             if (c != null) {
                 Registration r = new Registration(plugins, c);
-                r.registerMethodSubstitution(AESCryptSubstitutions.class, "encryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
-                r.registerMethodSubstitution(AESCryptSubstitutions.class, "decryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                if (jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8) {
+                    r.registerMethodSubstitution(AESCryptSubstitutions.class, "encryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                    r.registerMethodSubstitution(AESCryptSubstitutions.class, "decryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                } else {
+                    r.registerMethodSubstitution(AESCryptSubstitutions.class, "implEncryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                    r.registerMethodSubstitution(AESCryptSubstitutions.class, "implDecryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                }
             }
         }
     }
@@ -298,8 +308,13 @@ public class HotSpotGraphBuilderPlugins {
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
             Registration r = new Registration(plugins, CRC32.class);
             r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
-            r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
-            r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
+            if (jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8) {
+                r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+                r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
+            } else {
+                r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes0", int.class, byte[].class, int.class, int.class);
+                r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer0", int.class, long.class, int.class, int.class);
+            }
         }
     }
 }

@@ -86,6 +86,18 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
+    static int implEncrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
+        Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
+        Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());
+        if (getAESCryptClass().isInstance(embeddedCipher)) {
+            Object aesCipher = PiNode.piCastNonNull(embeddedCipher, AESCryptSubstitutions.AESCryptClass);
+            crypt(realReceiver, in, inOffset, inLength, out, outOffset, aesCipher, true);
+            return inLength;
+        } else {
+            return implEncrypt(realReceiver, in, inOffset, inLength, out, outOffset);
+        }
+    }
+
     static int decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());
@@ -95,6 +107,18 @@ public class CipherBlockChainingSubstitutions {
             return inLength;
         } else {
             return decrypt(realReceiver, in, inOffset, inLength, out, outOffset);
+        }
+    }
+
+    static int implDecrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
+        Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
+        Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());
+        if (in != out && getAESCryptClass().isInstance(embeddedCipher)) {
+            Object aesCipher = PiNode.piCastNonNull(embeddedCipher, AESCryptSubstitutions.AESCryptClass);
+            crypt(realReceiver, in, inOffset, inLength, out, outOffset, aesCipher, false);
+            return inLength;
+        } else {
+            return implDecrypt(realReceiver, in, inOffset, inLength, out, outOffset);
         }
     }
 
