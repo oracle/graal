@@ -22,9 +22,14 @@
  */
 package com.oracle.graal.hotspot;
 
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.compiler.CompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionValue;
 import jdk.vm.ci.service.ServiceProvider;
+import jdk.vm.ci.service.Services;
 
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.api.runtime.GraalRuntimeAccess;
@@ -32,10 +37,31 @@ import com.oracle.graal.api.runtime.GraalRuntimeAccess;
 @ServiceProvider(GraalRuntimeAccess.class)
 public class HotSpotGraalRuntimeAccess implements GraalRuntimeAccess {
 
+    static class Options {
+        @Option(help = "") public static final OptionValue<String> UserCompiler = new OptionValue<>(null);
+    }
+
     @Override
     public GraalRuntime getRuntime() {
-        HotSpotJVMCIRuntimeProvider jvmciRuntime = HotSpotJVMCIRuntime.runtime();
-        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
+        HotSpotGraalCompiler compiler = getCompiler(Options.UserCompiler.getValue());
         return compiler.getGraalRuntime();
+    }
+
+    private static HotSpotGraalCompiler getCompiler(String config) {
+        HotSpotJVMCIRuntimeProvider jvmciRuntime = HotSpotJVMCIRuntime.runtime();
+        if (config == null) {
+            // default: fall back to the JVMCI system compiler
+            return (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
+        } else {
+            for (CompilerFactory factory : Services.load(CompilerFactory.class)) {
+                if (factory instanceof HotSpotGraalCompilerFactory) {
+                    HotSpotGraalCompilerFactory graalFactory = (HotSpotGraalCompilerFactory) factory;
+                    if (config.equals(factory.getCompilerName())) {
+                        return graalFactory.createCompiler(jvmciRuntime);
+                    }
+                }
+            }
+            throw new JVMCIError("Graal compiler configuration '" + config + "' not found");
+        }
     }
 }

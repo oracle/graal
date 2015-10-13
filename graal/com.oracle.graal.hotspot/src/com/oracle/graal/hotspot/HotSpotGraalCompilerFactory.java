@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot;
 
 import static jdk.vm.ci.inittimer.InitTimer.timer;
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.compiler.Compiler;
 import jdk.vm.ci.compiler.CompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.inittimer.InitTimer;
@@ -69,7 +68,7 @@ public abstract class HotSpotGraalCompilerFactory implements CompilerFactory {
 
     @SuppressWarnings("try")
     @Override
-    public Compiler createCompiler(JVMCIRuntime runtime) {
+    public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
             Lazy.registerBackends();
