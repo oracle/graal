@@ -241,6 +241,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         }
     }
 
+    @SuppressWarnings("unused")
     private int insertIdAtBasicBlockBoundary(int opId) {
         assert allocator.isBlockBegin(opId) : "Not a block begin: " + opId;
         assert allocator.instructionForId(opId) instanceof LabelOp;
@@ -518,11 +519,10 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                 assert optimalSplitPos < interval.to() : "cannot split at end of interval";
                 assert optimalSplitPos >= interval.from() : "cannot split before start of interval";
 
-                if (allocator.isBlockBegin(optimalSplitPos)) {
-                    optimalSplitPos = insertIdAtBasicBlockBoundary(optimalSplitPos);
+                if (!allocator.isBlockBegin(optimalSplitPos)) {
+                    // move position before actual instruction (odd opId)
+                    optimalSplitPos = (optimalSplitPos - 1) | 1;
                 }
-                // move position before actual instruction (odd opId)
-                optimalSplitPos = (optimalSplitPos - 1) | 1;
 
                 try (Indent indent2 = Debug.logAndIndent("splitting at position %d", optimalSplitPos)) {
                     assert allocator.isBlockBegin(optimalSplitPos) || ((optimalSplitPos & 1) == 1) : "split pos must be odd when not on block boundary";
@@ -533,13 +533,16 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                     handleSpillSlot(spilledPart);
                     changeSpillState(spilledPart, optimalSplitPos);
 
-                    if (allocator.isBlockBegin(optimalSplitPos)) {
-                        optimalSplitPos = insertIdAtBasicBlockBoundary(optimalSplitPos);
+                    if (!allocator.isBlockBegin(optimalSplitPos)) {
+                        if (Debug.isLogEnabled()) {
+                            Debug.log("inserting move from interval %s to %s", interval, spilledPart);
+                        }
+                        insertMove(optimalSplitPos, interval, spilledPart);
+                    } else {
+                        if (Debug.isLogEnabled()) {
+                            Debug.log("no need to insert move. done by data-flow resolution");
+                        }
                     }
-                    if (Debug.isLogEnabled()) {
-                        Debug.log("inserting move from interval %s to %s", interval, spilledPart);
-                    }
-                    insertMove(optimalSplitPos, interval, spilledPart);
 
                     // the currentSplitChild is needed later when moves are inserted for reloading
                     assert spilledPart.currentSplitChild() == interval : "overwriting wrong currentSplitChild";
