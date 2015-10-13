@@ -169,8 +169,13 @@ public abstract class Layout {
             return this;
         }
 
+        @Deprecated
         public EnumSet<ImplicitCast> getAllowedImplicitCasts() {
             return allowedImplicitCasts;
         }
+    }
+
+    protected static EnumSet<ImplicitCast> getAllowedImplicitCasts(Builder builder) {
+        return builder.allowedImplicitCasts;
     }
 }

@@ -30,7 +30,7 @@ import com.oracle.truffle.object.PropertyImpl;
 
 public class DefaultLayoutFactory implements LayoutFactory {
     public Layout createLayout(Layout.Builder layoutBuilder) {
-        return BasicLayout.createLayoutImpl(layoutBuilder.getAllowedImplicitCasts(), new DefaultStrategy());
+        return BasicLayout.createLayoutImpl(layoutBuilder, new DefaultStrategy());
     }
 
     public Property createProperty(Object id, Location location) {
