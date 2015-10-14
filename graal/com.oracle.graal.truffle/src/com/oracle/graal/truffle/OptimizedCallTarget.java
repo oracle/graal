@@ -199,7 +199,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             Object result = doInvoke(args);
             Class<?> klass = profiledReturnType;
             if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
-                result = FrameWithoutBoxing.unsafeCast(result, klass, true, true);
+                result = unsafeCast(result, klass, true, true);
             }
             return result;
         } catch (Throwable t) {
@@ -300,7 +300,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     public final Object callRoot(Object[] originalArguments) {
         Object[] args = originalArguments;
         if (this.profiledArgumentTypesAssumption != null && CompilerDirectives.inCompiledCode() && profiledArgumentTypesAssumption.isValid()) {
-            args = FrameWithoutBoxing.unsafeCast(castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true);
+            args = unsafeCast(castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true);
             if (TruffleArgumentTypeSpeculation.getValue()) {
                 args = castArguments(args);
             }
@@ -464,7 +464,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private Object[] castArguments(Object[] originalArguments) {
         Object[] castArguments = new Object[profiledArgumentTypes.length];
         for (int i = 0; i < profiledArgumentTypes.length; i++) {
-            castArguments[i] = profiledArgumentTypes[i] != null ? FrameWithoutBoxing.unsafeCast(originalArguments[i], profiledArgumentTypes[i], true, true) : originalArguments[i];
+            castArguments[i] = profiledArgumentTypes[i] != null ? unsafeCast(originalArguments[i], profiledArgumentTypes[i], true, true) : originalArguments[i];
         }
         return castArguments;
     }
@@ -581,8 +581,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return context.getCompilerOptions();
     }
 
-    private static final class NonTrivialNodeCountVisitor implements NodeVisitor {
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+        return (T) value;
+    }
 
+    private static final class NonTrivialNodeCountVisitor implements NodeVisitor {
         public int nodeCount;
 
         public boolean visit(Node node) {
@@ -591,7 +595,5 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             }
             return true;
         }
-
     }
-
 }

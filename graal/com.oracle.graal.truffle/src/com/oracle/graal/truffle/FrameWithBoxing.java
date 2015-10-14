@@ -234,7 +234,7 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
     }
 }

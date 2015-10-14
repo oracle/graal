@@ -388,57 +388,57 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
     }
 
     @SuppressWarnings("unused")
-    static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    private static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getInt(receiver, offset);
     }
 
     @SuppressWarnings("unused")
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    private static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getLong(receiver, offset);
     }
 
     @SuppressWarnings("unused")
-    static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    private static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getFloat(receiver, offset);
     }
 
     @SuppressWarnings("unused")
-    static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    private static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getDouble(receiver, offset);
     }
 
     @SuppressWarnings("unused")
-    static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    private static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getObject(receiver, offset);
     }
 
     @SuppressWarnings("unused")
-    static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
+    private static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
         UNSAFE.putInt(receiver, offset, value);
     }
 
     @SuppressWarnings("unused")
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
+    private static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
         UNSAFE.putLong(receiver, offset, value);
     }
 
     @SuppressWarnings("unused")
-    static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
+    private static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
         UNSAFE.putFloat(receiver, offset, value);
     }
 
     @SuppressWarnings("unused")
-    static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
+    private static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
         UNSAFE.putDouble(receiver, offset, value);
     }
 
     @SuppressWarnings("unused")
-    static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
+    private static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
         UNSAFE.putObject(receiver, offset, value);
     }
 
