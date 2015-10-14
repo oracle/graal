@@ -473,6 +473,9 @@ public class PartialEvaluator {
     private static void reportPerformanceWarnings(OptimizedCallTarget target, StructuredGraph graph) {
         ArrayList<ValueNode> warnings = new ArrayList<>();
         for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            if (call.targetMethod().isNative()) {
+                continue; // native methods cannot be inlined
+            }
             if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
                 TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
                 warnings.add(call);
