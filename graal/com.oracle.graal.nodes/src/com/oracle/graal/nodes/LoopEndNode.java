@@ -39,7 +39,7 @@ public final class LoopEndNode extends AbstractEndNode {
 
     public static final NodeClass<LoopEndNode> TYPE = NodeClass.create(LoopEndNode.class);
     @Input(InputType.Association) LoopBeginNode loopBegin;
-    protected boolean canSafepoint;
+    private boolean canSafepoint;
     protected int endIndex;
 
     public LoopEndNode(LoopBeginNode begin) {
@@ -65,12 +65,16 @@ public final class LoopEndNode extends AbstractEndNode {
         this.loopBegin = x;
     }
 
+    /**
+     * Disables safepoints for only this loop end (in contrast to disabling it for
+     * {@link LoopBeginNode#disableSafepoint() the whole loop}.
+     */
     public void disableSafepoint() {
         this.canSafepoint = false;
     }
 
     public boolean canSafepoint() {
-        return canSafepoint;
+        return canSafepoint && loopBegin.canSafepoint;
     }
 
     @Override

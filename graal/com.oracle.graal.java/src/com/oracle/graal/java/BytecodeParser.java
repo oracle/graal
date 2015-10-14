@@ -928,9 +928,6 @@ public class BytecodeParser implements GraphBuilderContext {
                         }
                         LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
                         LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-                        if (parsingIntrinsic()) {
-                            loopEnd.disableSafepoint();
-                        }
                         endNode.replaceAndDelete(loopEnd);
                     } else if (visited.contains(n)) {
                         // Normal merge into a branch we are already exploring.
@@ -2309,9 +2306,6 @@ public class BytecodeParser implements GraphBuilderContext {
              */
             LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block, operatingDimension);
             LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-            if (parsingIntrinsic()) {
-                loopEnd.disableSafepoint();
-            }
             Target target = checkLoopExit(loopEnd, block, state);
             FixedNode result = target.fixed;
             getEntryState(block, operatingDimension).merge(loopBegin, target.state);
@@ -2700,9 +2694,17 @@ public class BytecodeParser implements GraphBuilderContext {
         return true;
     }
 
+    /* Also a hook for subclasses. */
+    protected boolean disableLoopSafepoint() {
+        return parsingIntrinsic();
+    }
+
     private LoopBeginNode appendLoopBegin(FixedWithNextNode fixedWithNext) {
         EndNode preLoopEnd = graph.add(new EndNode());
         LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
+        if (disableLoopSafepoint()) {
+            loopBegin.disableSafepoint();
+        }
         fixedWithNext.setNext(preLoopEnd);
         // Add the single non-loop predecessor of the loop header.
         loopBegin.addForwardEnd(preLoopEnd);

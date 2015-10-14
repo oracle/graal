@@ -36,7 +36,6 @@ import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
@@ -134,9 +133,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
      */
     private static void removeLoopSafepoint(StructuredGraph graph) {
         LoopBeginNode loopBegin = findFirstLoop(graph);
-        for (LoopEndNode end : loopBegin.loopEnds()) {
-            end.disableSafepoint();
-        }
+        loopBegin.disableSafepoint();
     }
 
     @Test
