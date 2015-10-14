@@ -229,7 +229,8 @@ def ctw(args, extraVMarguments=None):
         if get_jvmci_jdk().javaCompliance < '9':
             cp = join(get_jvmci_jdk().home, 'jre', 'lib', 'rt.jar')
         else:
-            cp = join(get_jvmci_jdk().home, 'modules', 'java.base')
+            cp = join(get_jvmci_jdk().home, 'modules', 'java.base') + os.pathsep + \
+                 join(get_jvmci_jdk().home, 'lib', 'modules', 'bootmodules.jimage')
         vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
     # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)

@@ -256,6 +256,8 @@ public final class CompileTheWorld {
                 } else {
                     if (entryFile.getName().endsWith("java.base") && entryFile.isDirectory()) {
                         bcpEntry = entry;
+                    } else if (entryFile.getName().equals("bootmodules.jimage")) {
+                        bcpEntry = entry;
                     }
                 }
             }
@@ -283,6 +285,9 @@ public final class CompileTheWorld {
     private static void dummy() {
     }
 
+    /**
+     * Abstraction over different types of class path entries.
+     */
     abstract static class ClassPathEntry implements Closeable {
         final String name;
 
@@ -290,16 +295,28 @@ public final class CompileTheWorld {
             this.name = name;
         }
 
+        /**
+         * Creates a {@link ClassLoader} for loading classes from this entry.
+         */
         public abstract ClassLoader createClassLoader() throws IOException;
 
+        /**
+         * Gets the list of classes available under this entry.
+         */
         public abstract List<String> getClassNames() throws IOException;
 
         @Override
         public String toString() {
             return name;
         }
+
+        public void close() throws IOException {
+        }
     }
 
+    /**
+     * A class path entry that is a normal file system directory.
+     */
     static class DirClassPathEntry extends ClassPathEntry {
 
         private final File dir;
@@ -339,11 +356,11 @@ public final class CompileTheWorld {
             Files.walkFileTree(dir.toPath(), visitor);
             return classNames;
         }
-
-        public void close() throws IOException {
-        }
     }
 
+    /**
+     * A class path entry that is a jar or zip file.
+     */
     static class JarClassPathEntry extends ClassPathEntry {
 
         private final JarFile jarFile;
@@ -374,8 +391,63 @@ public final class CompileTheWorld {
             return classNames;
         }
 
+        @Override
         public void close() throws IOException {
             jarFile.close();
+        }
+    }
+
+    /**
+     * A class path entry that is a jimage file.
+     */
+    static class ImageClassPathEntry extends ClassPathEntry {
+
+        private final File jimage;
+
+        public ImageClassPathEntry(String name) {
+            super(name);
+            jimage = new File(name);
+            assert jimage.isFile();
+        }
+
+        @Override
+        public ClassLoader createClassLoader() throws IOException {
+            URL url = jimage.toURI().toURL();
+            return new URLClassLoader(new URL[]{url});
+        }
+
+        @Override
+        public List<String> getClassNames() throws IOException {
+            List<String> classNames = new ArrayList<>();
+            String[] entries = readJimageEntries();
+            for (String e : entries) {
+                if (e.endsWith(".class")) {
+                    assert e.charAt(0) == '/' : e;
+                    int endModule = e.indexOf('/', 1);
+                    assert endModule != -1 : e;
+                    // Strip the module prefix and convert to dotted form
+                    String className = e.substring(endModule + 1).replace('/', '.');
+                    // Strip ".class" suffix
+                    className = className.replace('/', '.').substring(0, className.length() - ".class".length());
+                    classNames.add(className);
+                }
+            }
+            return classNames;
+        }
+
+        private String[] readJimageEntries() {
+            try {
+                // Use reflection so this can be compiled on JDK8
+                Method open = Class.forName("jdk.internal.jimage.BasicImageReader").getDeclaredMethod("open", String.class);
+                Object reader = open.invoke(null, name);
+                Method getEntryNames = reader.getClass().getDeclaredMethod("getEntryNames");
+                getEntryNames.setAccessible(true);
+                String[] entries = (String[]) getEntryNames.invoke(reader);
+                return entries;
+            } catch (Exception e) {
+                TTY.println("Error reading entries from " + name + ": " + e);
+                return new String[0];
+            }
         }
     }
 
@@ -431,15 +503,18 @@ public final class CompileTheWorld {
                 final String entry = entries[i];
 
                 ClassPathEntry cpe;
-                if (!entry.endsWith(".zip") && !entry.endsWith(".jar")) {
+                if (entry.endsWith(".zip") || entry.endsWith(".jar")) {
+                    cpe = new JarClassPathEntry(entry);
+                } else if (entry.endsWith(".jimage")) {
+                    assert JAVA_VERSION.compareTo("1.9") >= 0;
+                    cpe = new ImageClassPathEntry(entry);
+                } else {
                     if (!new File(entry).isDirectory()) {
                         println("CompileTheWorld : Skipped classes in " + entry);
                         println();
                         continue;
                     }
                     cpe = new DirClassPathEntry(entry);
-                } else {
-                    cpe = new JarClassPathEntry(entry);
                 }
 
                 if (methodFilters == null || methodFilters.length == 0) {
