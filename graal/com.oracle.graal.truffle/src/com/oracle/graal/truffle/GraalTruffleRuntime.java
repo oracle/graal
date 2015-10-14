@@ -115,8 +115,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);
         CompilationStatisticsListener.install(this);
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+        installShutdownHooks();
         compilationNotify.notifyStartup(this);
+    }
+
+    protected void installShutdownHooks() {
+        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
     }
 
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {
