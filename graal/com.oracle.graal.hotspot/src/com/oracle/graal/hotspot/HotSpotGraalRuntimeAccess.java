@@ -38,12 +38,15 @@ import com.oracle.graal.api.runtime.GraalRuntimeAccess;
 public class HotSpotGraalRuntimeAccess implements GraalRuntimeAccess {
 
     static class Options {
-        @Option(help = "") public static final OptionValue<String> UserCompiler = new OptionValue<>(null);
+        // @formatter:off
+        @Option(help = "Select a graal compiler for hosted compilation (default: use JVMCI system compiler).")
+        public static final OptionValue<String> HostedCompiler = new OptionValue<>(null);
+        // @formatter:on
     }
 
     @Override
     public GraalRuntime getRuntime() {
-        HotSpotGraalCompiler compiler = getCompiler(Options.UserCompiler.getValue());
+        HotSpotGraalCompiler compiler = getCompiler(Options.HostedCompiler.getValue());
         return compiler.getGraalRuntime();
     }
 
