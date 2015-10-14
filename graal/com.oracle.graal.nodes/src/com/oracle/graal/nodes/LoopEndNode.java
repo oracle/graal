@@ -48,7 +48,7 @@ public final class LoopEndNode extends AbstractEndNode {
         assert idx >= 0;
         this.endIndex = idx;
         this.loopBegin = begin;
-        this.canSafepoint = true;
+        this.canSafepoint = begin.canSafepoint;
     }
 
     @Override
@@ -74,7 +74,8 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     public boolean canSafepoint() {
-        return canSafepoint && loopBegin.canSafepoint;
+        assert !canSafepoint || loopBegin.canSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
+        return canSafepoint;
     }
 
     @Override
