@@ -192,7 +192,7 @@ public class TruffleExpansionLogger {
                     return String.format("(%s)", e.getFileName());
                 }
             } else {
-                return String.format("(Unknown Source)");
+                return "(Unknown Source)";
             }
         }
     }

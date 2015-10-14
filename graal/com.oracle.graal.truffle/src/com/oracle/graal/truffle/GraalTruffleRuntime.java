@@ -50,7 +50,6 @@ import com.oracle.graal.truffle.debug.TraceCompilationFailureListener;
 import com.oracle.graal.truffle.debug.TraceCompilationListener;
 import com.oracle.graal.truffle.debug.TraceCompilationPolymorphismListener;
 import com.oracle.graal.truffle.debug.TraceInliningListener;
-import com.oracle.graal.truffle.debug.TracePerformanceWarningsListener;
 import com.oracle.graal.truffle.debug.TraceSplittingListener;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -113,7 +112,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceCompilationListener.install(this);
         TraceCompilationPolymorphismListener.install(this);
         TraceCompilationCallTreeListener.install(this);
-        TracePerformanceWarningsListener.install(this);
         TraceInliningListener.install(this);
         TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);

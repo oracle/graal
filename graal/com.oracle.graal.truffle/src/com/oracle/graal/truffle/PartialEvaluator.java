@@ -82,8 +82,8 @@ import com.oracle.graal.replacements.CachingPEGraphDecoder;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
 import com.oracle.graal.replacements.PEGraphDecoder;
 import com.oracle.graal.replacements.ReplacementsImpl;
+import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.graal.truffle.debug.HistogramInlineInvokePlugin;
-import com.oracle.graal.truffle.debug.TracePerformanceWarningsListener;
 import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
 import com.oracle.graal.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import com.oracle.graal.truffle.nodes.frame.MaterializeFrameNode;
@@ -477,7 +477,7 @@ public class PartialEvaluator {
                 continue; // native methods cannot be inlined
             }
             if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
-                TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
+                logPerformanceWarning(target, String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
                 warnings.add(call);
             }
         }
@@ -492,7 +492,7 @@ public class PartialEvaluator {
             }
         }
         for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
-            TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("non-leaf type checkcast: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+            logPerformanceInfo(target, String.format("non-leaf type checkcast: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
         }
 
         groupedByType = new HashMap<>();
@@ -504,7 +504,7 @@ public class PartialEvaluator {
             }
         }
         for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
-            TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("non-leaf type instanceof: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+            logPerformanceInfo(target, String.format("non-leaf type instanceof: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
         }
 
         if (Debug.isEnabled() && !warnings.isEmpty()) {
@@ -552,7 +552,7 @@ public class PartialEvaluator {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("callNode", callNode);
-                TracePerformanceWarningsListener.logPerformanceWarning(target, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
+                logPerformanceWarning(target, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
             }
         }
 
@@ -561,10 +561,22 @@ public class PartialEvaluator {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("originalTarget", decision.getTarget());
                 properties.put("callNode", callNode);
-                TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("CallTarget changed during compilation. Call node could not be inlined."), properties);
+                logPerformanceWarning(target, "CallTarget changed during compilation. Call node could not be inlined.", properties);
             }
             return null;
         }
         return decision;
+    }
+
+    private static void logPerformanceWarning(OptimizedCallTarget target, String details, Map<String, Object> properties) {
+        logPerformanceWarning(target, "perf warn", details, properties);
+    }
+
+    private static void logPerformanceInfo(OptimizedCallTarget target, String details, Map<String, Object> properties) {
+        logPerformanceWarning(target, "perf info", details, properties);
+    }
+
+    private static void logPerformanceWarning(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
+        AbstractDebugCompilationListener.log(target, 0, msg, String.format("%-60s|%s", target, details), properties);
     }
 }
