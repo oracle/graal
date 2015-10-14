@@ -82,7 +82,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected CallMethods callMethods;
 
     public GraalTruffleRuntime() {
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
     }
 
     public abstract TruffleCompiler getTruffleCompiler();
@@ -116,6 +115,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);
         CompilationStatisticsListener.install(this);
+        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
         compilationNotify.notifyStartup(this);
     }
 
