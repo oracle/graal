@@ -1146,7 +1146,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      */
     public static Constant[] constantValues(ValueNode node, AbstractMergeNode merge, boolean allowNull) {
         if (node.isConstant()) {
-            JavaConstant[] result = new JavaConstant[merge.forwardEndCount()];
+            Constant[] result = new Constant[merge.forwardEndCount()];
             Arrays.fill(result, node.asConstant());
             return result;
         }
