@@ -102,13 +102,16 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
     public void virtualize(VirtualizerTool tool) {
         // InstrumentationNode allows non-materialized inputs. During the inlining of the
         // InstrumentationNode, non-materialized inputs will be replaced by null.
-        if (target != null) {
+        if (!(target == null || (target instanceof VirtualObjectNode))) {
             ValueNode alias = tool.getAlias(target);
             if (alias instanceof VirtualObjectNode) {
                 tool.replaceFirstInput(target, alias);
             }
         }
         for (ValueNode input : weakDependencies) {
+            if (input instanceof VirtualObjectNode) {
+                continue;
+            }
             ValueNode alias = tool.getAlias(input);
             if (alias instanceof VirtualObjectNode) {
                 tool.replaceFirstInput(input, alias);

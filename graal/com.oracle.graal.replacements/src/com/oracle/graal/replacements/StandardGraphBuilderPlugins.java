@@ -719,7 +719,13 @@ public class StandardGraphBuilderPlugins {
         if (UseGraalInstrumentation.getValue()) {
             r.register1("instrumentationBegin", int.class, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode offset) {
-                    b.add(new InstrumentationBeginNode(offset));
+                    b.add(new InstrumentationBeginNode(offset, false));
+                    return true;
+                }
+            });
+            r.register1("instrumentationToInvokeBegin", int.class, new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode offset) {
+                    b.add(new InstrumentationBeginNode(offset, true));
                     return true;
                 }
             });
