@@ -49,20 +49,22 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected int nextEndIndex;
     protected int unswitches;
     protected int inversionCount;
-    boolean canSafepoint;
+
+    /** See {@link LoopEndNode#canSafepoint} for more information. */
+    boolean canEndsSafepoint;
 
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
     public LoopBeginNode() {
         super(TYPE);
         loopFrequency = 1;
-        this.canSafepoint = true;
+        this.canEndsSafepoint = true;
     }
 
     /** Disables safepoint for the whole loop, i.e., for all {@link LoopEndNode loop ends}. */
     public void disableSafepoint() {
         /* Store flag locally in case new loop ends are created later on. */
-        this.canSafepoint = false;
+        this.canEndsSafepoint = false;
         /* Propagate flag to all existing loop ends. */
         for (LoopEndNode loopEnd : loopEnds()) {
             loopEnd.disableSafepoint();

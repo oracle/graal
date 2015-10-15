@@ -39,8 +39,23 @@ public final class LoopEndNode extends AbstractEndNode {
 
     public static final NodeClass<LoopEndNode> TYPE = NodeClass.create(LoopEndNode.class);
     @Input(InputType.Association) LoopBeginNode loopBegin;
-    private boolean canSafepoint;
     protected int endIndex;
+
+    /**
+     * Most loop ends need a safepoint (flag set to true) so that garbage collection can interrupt a
+     * long-running (possibly endless) loop. Safepoints may be disabled for two reasons: 1) Some
+     * code must be safepoint free, i.e., uninterruptible by garbage collection. 2) An optimization
+     * phase determined that the loop already has another safepoint or cannot be endless, so there
+     * is no need for a loop-end safepoint.
+     *
+     * Note that 1) is a hard correctness issue: emitting a safepoint in uninterruptible code is a
+     * bug, i.e., it is not allowed to set the flag back to true once it is false. To ensure that
+     * loop ends that are created late, e.g., during control flow simplifications, have no
+     * safepoints in such cases, the safepoints are actually disabled for the
+     * {@link LoopBeginNode#canEndsSafepoint loop begin}. New loop ends inherit the flag value from
+     * the loop begin.
+     */
+    boolean canSafepoint;
 
     public LoopEndNode(LoopBeginNode begin) {
         super(TYPE);
@@ -48,7 +63,7 @@ public final class LoopEndNode extends AbstractEndNode {
         assert idx >= 0;
         this.endIndex = idx;
         this.loopBegin = begin;
-        this.canSafepoint = begin.canSafepoint;
+        this.canSafepoint = begin.canEndsSafepoint;
     }
 
     @Override
@@ -74,7 +89,7 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     public boolean canSafepoint() {
-        assert !canSafepoint || loopBegin.canSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
+        assert !canSafepoint || loopBegin.canEndsSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
         return canSafepoint;
     }
 
