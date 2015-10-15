@@ -48,7 +48,6 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.common.BackendOptions;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -117,7 +116,6 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
  */
 public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGenerationDebugContext {
 
-    private final boolean allowObjectConstantToStackMove;
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
@@ -140,7 +138,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         assert nodeMatchRules.lirBuilder == null;
         nodeMatchRules.lirBuilder = this;
-        allowObjectConstantToStackMove = BackendOptions.UserOptions.AllowObjectConstantToStackMove.getValue();
+    }
+
+    /**
+     * @return {@code true} if object constant to stack moves are supported.
+     */
+    protected boolean allowObjectConstantToStackMove() {
+        return true;
     }
 
     public NodeMatchRules getNodeMatchRules() {
@@ -292,7 +296,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                  * new Variable.
                  */
                 value = gen.emitMove(value);
-            } else if (!allowObjectConstantToStackMove && node instanceof ConstantNode && !value.getLIRKind().isValue()) {
+            } else if (!allowObjectConstantToStackMove() && node instanceof ConstantNode && !value.getLIRKind().isValue()) {
                 /*
                  * Object constants are not allowed as inputs for PHIs. Explicitly create a copy of
                  * this value to force it into a register. The new variable is only used in the PHI.
