@@ -40,7 +40,6 @@ import java.util.List;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -61,7 +60,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
@@ -323,21 +321,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             }
         }
 
-        /**
-         * Optimizes moves related to incoming stack based arguments. The interval for the
-         * destination of such moves is assigned the stack slot (which is in the caller's frame) as
-         * its spill slot.
-         */
-        private void handleMethodArguments(LIRInstruction op) {
-            if (op instanceof StackStoreOp) {
-                StackStoreOp store = (StackStoreOp) op;
-                StackSlot slot = asStackSlot(store.getStackSlot());
-                TraceInterval interval = allocator.intervalFor(store.getResult());
-                interval.setSpillSlot(slot);
-                interval.setSpillState(SpillState.StartInMemory);
-            }
-        }
-
         private void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
             if (flags.contains(OperandFlag.HINT) && TraceLinearScan.isVariableOrRegister(targetValue)) {
 
@@ -443,8 +426,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                 if (optimizeMethodArgument(move.getInput())) {
                     return RegisterPriority.None;
                 }
-            } else if (op instanceof StackStoreOp) {
-                return RegisterPriority.ShouldHaveRegister;
             }
 
             // all other operands require a register
@@ -558,10 +539,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                                  * would be in a register at the call otherwise).
                                  */
                                 op.visitEachState(stateProc);
-
-                                // special steps for some instructions (especially moves)
-                                handleMethodArguments(op);
-
                             }
 
                         } // end of instruction iteration

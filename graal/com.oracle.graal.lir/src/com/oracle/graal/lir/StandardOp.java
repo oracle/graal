@@ -35,7 +35,6 @@ import java.util.Set;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -311,19 +310,6 @@ public class StandardOp {
          */
         RegisterSaveLayout getMap(FrameMap frameMap);
 
-    }
-
-    /**
-     * An operation that takes one input and stores it in a stack slot as well as to an ordinary
-     * variable.
-     */
-    public interface StackStoreOp {
-
-        Value getInput();
-
-        AllocatableValue getResult();
-
-        StackSlotValue getStackSlot();
     }
 
     /**

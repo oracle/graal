@@ -60,7 +60,6 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
@@ -578,12 +577,6 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 interval.setSpillSlot(slot);
                 interval.assignLocation(slot);
             }
-        } else if (op instanceof StackStoreOp) {
-            StackStoreOp store = (StackStoreOp) op;
-            StackSlot slot = asStackSlot(store.getStackSlot());
-            Interval interval = allocator.intervalFor(store.getResult());
-            interval.setSpillSlot(slot);
-            interval.setSpillState(SpillState.StartInMemory);
         }
     }
 
@@ -665,8 +658,6 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             if (optimizeMethodArgument(move.getInput())) {
                 return RegisterPriority.None;
             }
-        } else if (op instanceof StackStoreOp) {
-            return RegisterPriority.ShouldHaveRegister;
         }
 
         // all other operands require a register
