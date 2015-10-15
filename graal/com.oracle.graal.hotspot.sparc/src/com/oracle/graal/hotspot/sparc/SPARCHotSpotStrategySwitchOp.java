@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CBCOND;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.INSTRUCTION_SIZE;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
 import static com.oracle.graal.lir.sparc.SPARCMove.loadFromConstantTable;
@@ -33,7 +34,6 @@ import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.Assembler.LabelHint;
@@ -70,7 +70,7 @@ final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitch
                 LabelHint hint = requestHint(masm, target);
 
                 // Load constant takes one instruction
-                int cbCondPosition = masm.position() + SPARC.INSTRUCTION_SIZE;
+                int cbCondPosition = masm.position() + INSTRUCTION_SIZE;
                 boolean canUseShortBranch = masm.hasFeature(CPUFeature.CBCOND) && SPARCControlFlow.isShortBranch(masm, cbCondPosition, hint, target);
 
                 Register scratchRegister = asRegister(scratch);

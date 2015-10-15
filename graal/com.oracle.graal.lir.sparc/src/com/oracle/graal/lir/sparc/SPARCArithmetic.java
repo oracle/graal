@@ -42,7 +42,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import jdk.vm.ci.code.Register;
@@ -169,10 +169,10 @@ public class SPARCArithmetic {
                 switch (opcode) {
                     case LUREM:
                         crb.recordImplicitException(masm.position(), state);
-                        masm.udivx(asRegister(x, DWORD), crb.asIntConst(y), asRegister(scratch1, DWORD));
-                        masm.mulx(asRegister(scratch1, DWORD), crb.asIntConst(y), asRegister(scratch2, DWORD));
+                        masm.udivx(asRegister(x, XWORD), crb.asIntConst(y), asRegister(scratch1, XWORD));
+                        masm.mulx(asRegister(scratch1, XWORD), crb.asIntConst(y), asRegister(scratch2, XWORD));
                         getDelayedControlTransfer().emitControlTransfer(crb, masm);
-                        masm.sub(asRegister(x, DWORD), asRegister(scratch2, DWORD), asRegister(result, DWORD));
+                        masm.sub(asRegister(x, XWORD), asRegister(scratch2, XWORD), asRegister(result, XWORD));
                         break;
                     case IUREM:
                         JVMCIError.unimplemented();
@@ -185,16 +185,16 @@ public class SPARCArithmetic {
                 switch (opcode) {
                     case LUREM:
                         if (isJavaConstant(x)) {
-                            new Setx(crb.asLongConst(x), asRegister(scratch2, DWORD), false).emit(masm);
+                            new Setx(crb.asLongConst(x), asRegister(scratch2, XWORD), false).emit(masm);
                             xLeft = scratch2;
                         }
-                        assert !asRegister(xLeft, DWORD).equals(asRegister(scratch1, DWORD));
-                        assert !asRegister(y, DWORD).equals(asRegister(scratch1, DWORD));
+                        assert !asRegister(xLeft, XWORD).equals(asRegister(scratch1, XWORD));
+                        assert !asRegister(y, XWORD).equals(asRegister(scratch1, XWORD));
                         crb.recordImplicitException(masm.position(), state);
-                        masm.udivx(asRegister(xLeft, DWORD), asRegister(y, DWORD), asRegister(scratch1, DWORD));
-                        masm.mulx(asRegister(scratch1, DWORD), asRegister(y, DWORD), asRegister(scratch1, DWORD));
+                        masm.udivx(asRegister(xLeft, XWORD), asRegister(y, XWORD), asRegister(scratch1, XWORD));
+                        masm.mulx(asRegister(scratch1, XWORD), asRegister(y, XWORD), asRegister(scratch1, XWORD));
                         getDelayedControlTransfer().emitControlTransfer(crb, masm);
-                        masm.sub(asRegister(xLeft, DWORD), asRegister(scratch1, DWORD), asRegister(result, DWORD));
+                        masm.sub(asRegister(xLeft, XWORD), asRegister(scratch1, XWORD), asRegister(result, XWORD));
                         break;
                     case IUREM:
                         assert !asRegister(result, WORD).equals(asRegister(scratch1, WORD));
@@ -270,21 +270,21 @@ public class SPARCArithmetic {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             Label noOverflow = new Label();
-            masm.mulx(asRegister(x, DWORD), asRegister(y, DWORD), asRegister(result, DWORD));
+            masm.mulx(asRegister(x, XWORD), asRegister(y, XWORD), asRegister(result, XWORD));
 
             // Calculate the upper 64 bit signed := (umulxhi product - (x{63}&y + y{63}&x))
-            masm.umulxhi(asRegister(x, DWORD), asRegister(y, DWORD), asRegister(scratch1, DWORD));
-            masm.srax(asRegister(x, DWORD), 63, asRegister(scratch2, DWORD));
-            masm.and(asRegister(scratch2, DWORD), asRegister(y, DWORD), asRegister(scratch2, DWORD));
-            masm.sub(asRegister(scratch1, DWORD), asRegister(scratch2, DWORD), asRegister(scratch1, DWORD));
+            masm.umulxhi(asRegister(x, XWORD), asRegister(y, XWORD), asRegister(scratch1, XWORD));
+            masm.srax(asRegister(x, XWORD), 63, asRegister(scratch2, XWORD));
+            masm.and(asRegister(scratch2, XWORD), asRegister(y, XWORD), asRegister(scratch2, XWORD));
+            masm.sub(asRegister(scratch1, XWORD), asRegister(scratch2, XWORD), asRegister(scratch1, XWORD));
 
-            masm.srax(asRegister(y, DWORD), 63, asRegister(scratch2, DWORD));
-            masm.and(asRegister(scratch2, DWORD), asRegister(x, DWORD), asRegister(scratch2, DWORD));
-            masm.sub(asRegister(scratch1, DWORD), asRegister(scratch2, DWORD), asRegister(scratch1, DWORD));
+            masm.srax(asRegister(y, XWORD), 63, asRegister(scratch2, XWORD));
+            masm.and(asRegister(scratch2, XWORD), asRegister(x, XWORD), asRegister(scratch2, XWORD));
+            masm.sub(asRegister(scratch1, XWORD), asRegister(scratch2, XWORD), asRegister(scratch1, XWORD));
 
             // Now construct the lower half and compare
-            masm.srax(asRegister(result, DWORD), 63, asRegister(scratch2, DWORD));
-            masm.cmp(asRegister(scratch1, DWORD), asRegister(scratch2, DWORD));
+            masm.srax(asRegister(result, XWORD), 63, asRegister(scratch2, XWORD));
+            masm.cmp(asRegister(scratch1, XWORD), asRegister(scratch2, XWORD));
             masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
             masm.nop();
             masm.wrccr(g0, 1 << (CCR_XCC_SHIFT + CCR_V_SHIFT));
@@ -327,16 +327,16 @@ public class SPARCArithmetic {
                     masm.srax(asRegister(result, WORD), 32, asRegister(result, WORD));
                     break;
                 case LMUL:
-                    assert !asRegister(scratch, DWORD).equals(asRegister(result, DWORD));
-                    masm.umulxhi(asRegister(x, DWORD), asRegister(y, DWORD), asRegister(result, DWORD));
+                    assert !asRegister(scratch, XWORD).equals(asRegister(result, XWORD));
+                    masm.umulxhi(asRegister(x, XWORD), asRegister(y, XWORD), asRegister(result, XWORD));
 
-                    masm.srlx(asRegister(x, DWORD), 63, asRegister(scratch, DWORD));
-                    masm.mulx(asRegister(scratch, DWORD), asRegister(y, DWORD), asRegister(scratch, DWORD));
-                    masm.sub(asRegister(result, DWORD), asRegister(scratch, DWORD), asRegister(result, DWORD));
+                    masm.srlx(asRegister(x, XWORD), 63, asRegister(scratch, XWORD));
+                    masm.mulx(asRegister(scratch, XWORD), asRegister(y, XWORD), asRegister(scratch, XWORD));
+                    masm.sub(asRegister(result, XWORD), asRegister(scratch, XWORD), asRegister(result, XWORD));
 
-                    masm.srlx(asRegister(y, DWORD), 63, asRegister(scratch, DWORD));
-                    masm.mulx(asRegister(scratch, DWORD), asRegister(x, DWORD), asRegister(scratch, DWORD));
-                    masm.sub(asRegister(result, DWORD), asRegister(scratch, DWORD), asRegister(result, DWORD));
+                    masm.srlx(asRegister(y, XWORD), 63, asRegister(scratch, XWORD));
+                    masm.mulx(asRegister(scratch, XWORD), asRegister(x, XWORD), asRegister(scratch, XWORD));
+                    masm.sub(asRegister(result, XWORD), asRegister(scratch, XWORD), asRegister(result, XWORD));
                     break;
                 default:
                     throw JVMCIError.shouldNotReachHere();

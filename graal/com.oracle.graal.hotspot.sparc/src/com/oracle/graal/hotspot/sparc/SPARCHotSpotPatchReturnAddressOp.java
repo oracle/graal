@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.i7;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -53,7 +53,7 @@ final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        Register addrRegister = asRegister(address, DWORD);
+        Register addrRegister = asRegister(address, XWORD);
         masm.sub(addrRegister, SPARCAssembler.PC_RETURN_OFFSET, i7);
     }
 }

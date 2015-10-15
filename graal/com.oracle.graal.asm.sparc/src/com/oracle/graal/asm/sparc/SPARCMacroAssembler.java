@@ -32,7 +32,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.Rc_z;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARC.g3;
 import static jdk.vm.ci.sparc.SPARC.i7;
-import static jdk.vm.ci.sparc.SPARC.isCPURegister;
 import static jdk.vm.ci.sparc.SPARC.o7;
 
 import java.util.function.Consumer;
@@ -40,7 +39,6 @@ import java.util.function.Consumer;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.AbstractAddress;
@@ -423,7 +421,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
                 int positionBefore = position();
                 delaySlotInstruction.run();
                 int positionAfter = position();
-                assert positionBefore - positionAfter > SPARC.INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
+                assert positionBefore - positionAfter > INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
             } else {
                 nop();
             }
@@ -449,7 +447,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
                 int positionBefore = position();
                 delaySlotInstruction.run();
                 int positionAfter = position();
-                assert positionBefore - positionAfter > SPARC.INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
+                assert positionBefore - positionAfter > INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
             } else {
                 nop();
             }

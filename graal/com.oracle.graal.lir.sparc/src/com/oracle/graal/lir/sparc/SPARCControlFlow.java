@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CBCOND;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.INSTRUCTION_SIZE;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm10;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm11;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm13;
@@ -67,7 +68,7 @@ import static com.oracle.graal.lir.sparc.SPARCOP3Op.emitOp3;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.CPU;
 import static jdk.vm.ci.sparc.SPARC.g0;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 
 import java.util.ArrayList;
@@ -83,7 +84,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARC.CPUFeature;
 import jdk.vm.ci.sparc.SPARCKind;
 
@@ -140,7 +140,7 @@ public class SPARCControlFlow {
     public static final class CompareBranchOp extends SPARCBlockEndOp implements SPARCDelayedControlTransfer {
         public static final LIRInstructionClass<CompareBranchOp> TYPE = LIRInstructionClass.create(CompareBranchOp.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(3);
-        static final EnumSet<SPARCKind> SUPPORTED_KINDS = EnumSet.of(DWORD, WORD);
+        static final EnumSet<SPARCKind> SUPPORTED_KINDS = EnumSet.of(XWORD, WORD);
 
         @Use({REG}) protected Value x;
         @Use({REG, CONST}) protected Value y;
@@ -282,7 +282,7 @@ public class SPARCControlFlow {
 
         private void emitCBCond(SPARCMacroAssembler masm, Value actualX, Value actualY, Label actualTrueTarget, ConditionFlag cFlag) {
             PlatformKind xKind = actualX.getPlatformKind();
-            boolean isLong = kind == SPARCKind.DWORD;
+            boolean isLong = kind == SPARCKind.XWORD;
             if (isJavaConstant(actualY)) {
                 JavaConstant c = asJavaConstant(actualY);
                 long constantY = c.isNull() ? 0 : c.asLong();
@@ -512,7 +512,7 @@ public class SPARCControlFlow {
                 boolean isShortConstant = isSimm5(constant);
                 int cbCondPosition = masm.position();
                 if (!isShortConstant) { // Load constant takes one instruction
-                    cbCondPosition += SPARC.INSTRUCTION_SIZE;
+                    cbCondPosition += INSTRUCTION_SIZE;
                 }
                 boolean canUseShortBranch = masm.hasFeature(CPUFeature.CBCOND) && isShortBranch(masm, cbCondPosition, hint, target);
                 if (bits != null && canUseShortBranch) {
@@ -586,7 +586,7 @@ public class SPARCControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             Register value = asRegister(index, SPARCKind.WORD);
-            Register scratchReg = asRegister(scratch, SPARCKind.DWORD);
+            Register scratchReg = asRegister(scratch, SPARCKind.XWORD);
 
             // Compare index against jump table bounds
             int highKey = lowKey + targets.length - 1;

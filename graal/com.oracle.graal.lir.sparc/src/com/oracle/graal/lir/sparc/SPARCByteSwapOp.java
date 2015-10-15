@@ -27,7 +27,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlotValue;
@@ -58,8 +58,8 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
         super(TYPE, SIZE);
         this.result = result;
         this.input = input;
-        this.tmpSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(DWORD));
-        this.tempIndex = tool.newVariable(LIRKind.value(DWORD));
+        this.tmpSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(XWORD));
+        this.tempIndex = tool.newVariable(LIRKind.value(XWORD));
     }
 
     @Override
@@ -67,7 +67,7 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
         SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
         SPARCMove.emitStore(input, addr, result.getPlatformKind(), SPARCDelayedControlTransfer.DUMMY, null, crb, masm);
         if (addr.getIndex().equals(Register.None)) {
-            Register tempReg = ValueUtil.asRegister(tempIndex, DWORD);
+            Register tempReg = ValueUtil.asRegister(tempIndex, XWORD);
             new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
             addr = new SPARCAddress(addr.getBase(), tempReg);
         }
@@ -76,8 +76,8 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
             case WORD:
                 masm.lduwa(addr.getBase(), addr.getIndex(), asRegister(result, WORD), Asi.ASI_PRIMARY_LITTLE);
                 break;
-            case DWORD:
-                masm.ldxa(addr.getBase(), addr.getIndex(), asRegister(result, DWORD), Asi.ASI_PRIMARY_LITTLE);
+            case XWORD:
+                masm.ldxa(addr.getBase(), addr.getIndex(), asRegister(result, XWORD), Asi.ASI_PRIMARY_LITTLE);
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();

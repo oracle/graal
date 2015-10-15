@@ -59,7 +59,7 @@ import static jdk.vm.ci.code.CodeUtil.mask;
 import static jdk.vm.ci.meta.JavaConstant.forLong;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import jdk.vm.ci.common.JVMCIError;
@@ -124,7 +124,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
     @Override
     public Variable emitBitScanReverse(Value operand) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(operand).changeType(SPARCKind.WORD));
-        if (operand.getPlatformKind() == SPARCKind.DWORD) {
+        if (operand.getPlatformKind() == SPARCKind.XWORD) {
             getLIRGen().append(new SPARCBitManipulationOp(LBSR, result, getLIRGen().asAllocatable(operand), getLIRGen()));
         } else {
             getLIRGen().append(new SPARCBitManipulationOp(IBSR, result, getLIRGen().asAllocatable(operand), getLIRGen()));
@@ -261,7 +261,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
         if (isNumericInteger(aKind)) {
             if (setFlags) {
                 Variable result = getLIRGen().newVariable(LIRKind.combine(a, b));
-                if (aKind == DWORD) {
+                if (aKind == XWORD) {
                     getLIRGen().append(new SPARCLMulccOp(result, getLIRGen().load(a), getLIRGen().load(b), getLIRGen()));
                 } else if (aKind == WORD) {
                     getLIRGen().append(new SPARCIMulccOp(result, getLIRGen().load(a), getLIRGen().load(b)));
@@ -285,7 +285,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case WORD:
                 opcode = MulHigh.IMUL;
                 break;
-            case DWORD:
+            case XWORD:
                 opcode = MulHigh.LMUL;
                 break;
             default:
@@ -302,7 +302,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 Value bExtended = emitBinary(LIRKind.combine(b), Srl, b, 0);
                 Value result = emitBinary(LIRKind.combine(a, b), Mulx, aExtended, bExtended);
                 return emitBinary(LIRKind.combine(a, b), Srax, result, WORD.getSizeInBits());
-            case DWORD:
+            case XWORD:
                 return emitBinary(LIRKind.combine(a, b), UMulxhi, a, b);
             default:
                 throw JVMCIError.shouldNotReachHere();
@@ -351,7 +351,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 q3 = emitBinary(q2.getLIRKind(), Op3s.Mulx, q2, b);
                 result = emitSub(q1, q3, false);
                 break;
-            case DWORD:
+            case XWORD:
                 aLoaded = getLIRGen().load(a); // Reuse the loaded value
                 q1 = emitBinary(result.getLIRKind(), Sdivx, aLoaded, b, state);
                 q2 = emitBinary(result.getLIRKind(), Mulx, q1, b);
@@ -393,7 +393,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case WORD:
                 opcode = Rem.IUREM;
                 break;
-            case DWORD:
+            case XWORD:
                 opcode = Rem.LUREM;
                 break;
             default:
@@ -413,7 +413,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 actualA = emitZeroExtend(actualA, 32, 64);
                 actualB = emitZeroExtend(actualB, 32, 64);
                 break;
-            case DWORD:
+            case XWORD:
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();
@@ -448,7 +448,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case WORD:
                 op = Op3s.Sll;
                 break;
-            case DWORD:
+            case XWORD:
                 op = Op3s.Sllx;
                 break;
             default:
@@ -466,7 +466,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case WORD:
                 op = Op3s.Sra;
                 break;
-            case DWORD:
+            case XWORD:
                 op = Op3s.Srax;
                 break;
             default:
@@ -484,7 +484,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case WORD:
                 op = Op3s.Srl;
                 break;
-            case DWORD:
+            case XWORD:
                 op = Op3s.Srlx;
                 break;
             default:
@@ -547,7 +547,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case F2L: {
                 AllocatableValue convertedDoubleReg = getLIRGen().newVariable(LIRKind.combine(input).changeType(DOUBLE));
                 getLIRGen().append(new SPARCArithmetic.FloatConvertOp(FloatConvertOp.FloatConvert.F2L, input, convertedDoubleReg));
-                AllocatableValue convertedLongReg = getLIRGen().newVariable(LIRKind.combine(convertedDoubleReg).changeType(DWORD));
+                AllocatableValue convertedLongReg = getLIRGen().newVariable(LIRKind.combine(convertedDoubleReg).changeType(XWORD));
                 moveBetweenFpGp(convertedLongReg, convertedDoubleReg);
                 result = convertedLongReg;
                 break;
@@ -563,7 +563,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case D2L: {
                 AllocatableValue convertedDoubleReg = getLIRGen().newVariable(LIRKind.combine(input).changeType(DOUBLE));
                 getLIRGen().append(new SPARCArithmetic.FloatConvertOp(FloatConvertOp.FloatConvert.D2L, input, convertedDoubleReg));
-                AllocatableValue convertedLongReg = getLIRGen().newVariable(LIRKind.combine(convertedDoubleReg).changeType(DWORD));
+                AllocatableValue convertedLongReg = getLIRGen().newVariable(LIRKind.combine(convertedDoubleReg).changeType(XWORD));
                 moveBetweenFpGp(convertedLongReg, convertedDoubleReg);
                 result = convertedLongReg;
                 break;
@@ -586,14 +586,14 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
         if (getLIRGen().getArchitecture().getFeatures().contains(CPUFeature.VIS3)) {
             tempSlot = AllocatableValue.ILLEGAL;
         } else {
-            tempSlot = getLIRGen().getTempSlot(LIRKind.value(DWORD));
+            tempSlot = getLIRGen().getTempSlot(LIRKind.value(XWORD));
         }
         getLIRGen().append(new MoveFpGp(dst, src, tempSlot));
     }
 
     @Override
     public Value emitNarrow(Value inputVal, int bits) {
-        if (inputVal.getPlatformKind() == DWORD && bits <= 32) {
+        if (inputVal.getPlatformKind() == XWORD && bits <= 32) {
             LIRKind resultKind = LIRKind.combine(inputVal).changeType(WORD);
             Variable result = getLIRGen().newVariable(resultKind);
             getLIRGen().emitMove(result, inputVal);
@@ -605,11 +605,11 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
 
     @Override
     public Value emitSignExtend(Value inputVal, int fromBits, int toBits) {
-        assert fromBits <= toBits && toBits <= DWORD.getSizeInBits();
+        assert fromBits <= toBits && toBits <= XWORD.getSizeInBits();
         LIRKind shiftKind = LIRKind.value(WORD);
-        LIRKind resultKind = LIRKind.combine(inputVal).changeType(toBits > 32 ? DWORD : WORD);
+        LIRKind resultKind = LIRKind.combine(inputVal).changeType(toBits > 32 ? XWORD : WORD);
         Value result;
-        int shiftCount = DWORD.getSizeInBits() - fromBits;
+        int shiftCount = XWORD.getSizeInBits() - fromBits;
         if (fromBits == toBits) {
             result = inputVal;
         } else if (isJavaConstant(inputVal)) {
@@ -621,11 +621,11 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 constant = javaConstant.asLong();
             }
             return new ConstantValue(resultKind, JavaConstant.forLong((constant << shiftCount) >> shiftCount));
-        } else if (fromBits == WORD.getSizeInBits() && toBits == DWORD.getSizeInBits()) {
+        } else if (fromBits == WORD.getSizeInBits() && toBits == XWORD.getSizeInBits()) {
             result = getLIRGen().newVariable(resultKind);
             getLIRGen().append(new SPARCOP3Op(Sra, inputVal, SPARC.g0.asValue(LIRKind.value(WORD)), result));
         } else {
-            Variable tmp = getLIRGen().newVariable(resultKind.changeType(DWORD));
+            Variable tmp = getLIRGen().newVariable(resultKind.changeType(XWORD));
             result = getLIRGen().newVariable(resultKind);
             getLIRGen().append(new SPARCOP3Op(Sllx, inputVal, new ConstantValue(shiftKind, JavaConstant.forInt(shiftCount)), tmp));
             getLIRGen().append(new SPARCOP3Op(Srax, tmp, new ConstantValue(shiftKind, JavaConstant.forInt(shiftCount)), result));
@@ -639,11 +639,11 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
         if (fromBits == toBits) {
             return inputVal;
         }
-        Variable result = getLIRGen().newVariable(LIRKind.combine(inputVal).changeType(toBits > WORD.getSizeInBits() ? DWORD : WORD));
+        Variable result = getLIRGen().newVariable(LIRKind.combine(inputVal).changeType(toBits > WORD.getSizeInBits() ? XWORD : WORD));
         if (fromBits == 32) {
             getLIRGen().append(new SPARCOP3Op(Srl, inputVal, g0.asValue(), result));
         } else {
-            Value mask = getLIRGen().emitConstant(LIRKind.value(DWORD), forLong(mask(fromBits)));
+            Value mask = getLIRGen().emitConstant(LIRKind.value(XWORD), forLong(mask(fromBits)));
             getLIRGen().append(new SPARCOP3Op(And, inputVal, mask, result));
         }
         return result;

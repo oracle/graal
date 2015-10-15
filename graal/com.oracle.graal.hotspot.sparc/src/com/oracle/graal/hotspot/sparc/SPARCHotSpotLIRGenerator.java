@@ -66,7 +66,7 @@ import static jdk.vm.ci.sparc.SPARC.g1;
 import static jdk.vm.ci.sparc.SPARC.g3;
 import static jdk.vm.ci.sparc.SPARC.g4;
 import static jdk.vm.ci.sparc.SPARC.g5;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 
 import java.util.Map;
@@ -214,7 +214,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         if (linkage.destroysRegisters() || hotspotLinkage.needsJavaFrameAnchor()) {
             HotSpotRegistersProvider registers = getProviders().getRegisters();
             Register thread = registers.getThreadRegister();
-            Value threadTemp = newVariable(LIRKind.value(SPARCKind.DWORD));
+            Value threadTemp = newVariable(LIRKind.value(SPARCKind.XWORD));
             Register stackPointer = registers.getStackPointerRegister();
             Variable spScratch = newVariable(LIRKind.value(target().arch.getWordKind()));
             append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer, threadTemp, spScratch));
@@ -384,7 +384,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getLIRKind();
-        assert inputKind.getPlatformKind() == DWORD : inputKind;
+        assert inputKind.getPlatformKind() == XWORD : inputKind;
         if (inputKind.isReference(0)) {
             // oop
             Variable result = newVariable(LIRKind.reference(WORD));
@@ -395,7 +395,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             Variable result = newVariable(LIRKind.value(WORD));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitLoadConstant(LIRKind.value(DWORD), JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(XWORD), JavaConstant.forLong(encoding.base));
             }
             append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -408,15 +408,15 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         assert inputKind.getPlatformKind() == WORD;
         if (inputKind.isReference(0)) {
             // oop
-            Variable result = newVariable(LIRKind.reference(DWORD));
+            Variable result = newVariable(LIRKind.reference(XWORD));
             append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
             // metaspace pointer
-            Variable result = newVariable(LIRKind.value(DWORD));
+            Variable result = newVariable(LIRKind.value(XWORD));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitLoadConstant(LIRKind.value(DWORD), JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(XWORD), JavaConstant.forLong(encoding.base));
             }
             append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;

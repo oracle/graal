@@ -24,7 +24,7 @@
 package com.oracle.graal.compiler.sparc;
 
 import static jdk.vm.ci.sparc.SPARCKind.BYTE;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.HWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import jdk.vm.ci.common.JVMCIError;
@@ -65,7 +65,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         if (fromBits == toBits) {
             return null;
         } else if (toBits > WORD.getSizeInBits()) {
-            toKind = DWORD;
+            toKind = XWORD;
         } else if (toBits > HWORD.getSizeInBits()) {
             toKind = WORD;
         } else if (toBits > BYTE.getSizeInBits()) {
@@ -99,7 +99,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         if (fromBits == toBits) {
             return null;
         } else if (toBits > WORD.getSizeInBits()) {
-            toKind = DWORD;
+            toKind = XWORD;
         } else if (toBits > HWORD.getSizeInBits()) {
             toKind = WORD;
         } else if (toBits > BYTE.getSizeInBits()) {

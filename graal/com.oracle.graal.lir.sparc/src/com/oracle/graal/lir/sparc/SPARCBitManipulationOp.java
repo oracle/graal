@@ -26,7 +26,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.common.JVMCIError;
@@ -82,7 +82,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                         masm.andn(dst, src, dst);
                         masm.srl(dst, g0, dst);
                         masm.popc(dst, dst);
-                    } else if (tkind == DWORD) {
+                    } else if (tkind == XWORD) {
                         masm.sub(src, 1, dst);
                         masm.andn(dst, src, dst);
                         masm.popc(dst, dst);
@@ -112,7 +112,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                 }
                 case LBSR: {
                     PlatformKind lkind = input.getPlatformKind();
-                    assert lkind == DWORD;
+                    assert lkind == XWORD;
                     Register tmp = asRegister(scratch);
                     assert !tmp.equals(dst);
                     masm.srlx(src, 1, tmp);

@@ -33,7 +33,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmps;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlotValue;
@@ -160,7 +160,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 return JavaConstant.forShort((short) dead);
             case WORD:
                 return JavaConstant.forInt((int) dead);
-            case DWORD:
+            case XWORD:
                 return JavaConstant.forLong(dead);
             case SINGLE:
             case V32_BYTE:
@@ -430,10 +430,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         int compareBytes = cmpKind.getSizeInBytes();
         // SPARC compares 32 or 64 bits
         if (compareBytes < left.getPlatformKind().getSizeInBytes()) {
-            left = arithmeticLIRGen.emitSignExtend(left, compareBytes * 8, DWORD.getSizeInBytes() * 8);
+            left = arithmeticLIRGen.emitSignExtend(left, compareBytes * 8, XWORD.getSizeInBytes() * 8);
         }
         if (compareBytes < right.getPlatformKind().getSizeInBytes()) {
-            right = arithmeticLIRGen.emitSignExtend(right, compareBytes * 8, DWORD.getSizeInBytes() * 8);
+            right = arithmeticLIRGen.emitSignExtend(right, compareBytes * 8, XWORD.getSizeInBytes() * 8);
         }
         append(SPARCOP3Op.newBinaryVoid(Subcc, left, right));
         return mirrored;
@@ -545,12 +545,12 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     public void emitNullCheck(Value address, LIRFrameState state) {
         PlatformKind kind = address.getPlatformKind();
-        assert kind == DWORD : address + " - " + kind + " not an object!";
+        assert kind == XWORD : address + " - " + kind + " not an object!";
         append(new NullCheckOp(asAddressValue(address), state));
     }
 
     public void emitLoadConstantTableBase() {
-        constantTableBase = newVariable(LIRKind.value(DWORD));
+        constantTableBase = newVariable(LIRKind.value(XWORD));
         int nextPosition = getResult().getLIR().getLIRforBlock(getCurrentBlock()).size();
         NoOp placeHolder = append(new NoOp(getCurrentBlock(), nextPosition));
         loadConstantTableBaseOp = new SPARCLoadConstantTableBaseOp(constantTableBase, placeHolder);

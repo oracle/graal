@@ -39,7 +39,7 @@ public class SPARCLIRKindTool implements LIRKindTool {
             return LIRKind.value(SPARCKind.WORD);
         } else {
             assert bits <= 64;
-            return LIRKind.value(SPARCKind.DWORD);
+            return LIRKind.value(SPARCKind.XWORD);
         }
     }
 
@@ -55,10 +55,10 @@ public class SPARCLIRKindTool implements LIRKindTool {
     }
 
     public LIRKind getObjectKind() {
-        return LIRKind.reference(SPARCKind.DWORD);
+        return LIRKind.reference(SPARCKind.XWORD);
     }
 
     public LIRKind getWordKind() {
-        return LIRKind.value(SPARCKind.DWORD);
+        return LIRKind.value(SPARCKind.XWORD);
     }
 }

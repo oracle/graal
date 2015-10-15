@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.isGlobalRegister;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
@@ -33,7 +34,6 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARC.g5;
-import static jdk.vm.ci.sparc.SPARC.isGlobalRegister;
 import static jdk.vm.ci.sparc.SPARC.sp;
 
 import java.lang.reflect.Field;

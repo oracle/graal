@@ -23,7 +23,10 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.MEMBAR_STORE_LOAD;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.isCPURegister;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.isDoubleFloatRegister;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm13;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.isSingleFloatRegister;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
@@ -39,7 +42,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
-import static jdk.vm.ci.sparc.SPARCKind.DWORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 
@@ -222,7 +225,7 @@ public class SPARCMove {
                 if (inputKind == WORD) {
                     masm.movxtod(asRegister(input, WORD), asRegister(result, DOUBLE));
                 } else {
-                    masm.movxtod(asRegister(input, DWORD), asRegister(result, DOUBLE));
+                    masm.movxtod(asRegister(input, XWORD), asRegister(result, DOUBLE));
                 }
             } else if (inputKind == SINGLE) {
                 if (resultKind == WORD) {
@@ -231,8 +234,8 @@ public class SPARCMove {
                     masm.movstouw(asRegister(input, SINGLE), asRegister(result, WORD));
                 }
             } else if (inputKind == DOUBLE) {
-                if (resultKind == DWORD) {
-                    masm.movdtox(asRegister(input, DOUBLE), asRegister(result, DWORD));
+                if (resultKind == XWORD) {
+                    masm.movdtox(asRegister(input, DOUBLE), asRegister(result, XWORD));
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
@@ -321,7 +324,7 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress address = addressValue.toAddress();
-            loadEffectiveAddress(crb, masm, address, asRegister(result, DWORD), getDelayedControlTransfer());
+            loadEffectiveAddress(crb, masm, address, asRegister(result, XWORD), getDelayedControlTransfer());
         }
     }
 
@@ -448,7 +451,7 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress address = (SPARCAddress) crb.asAddress(slot);
-            loadEffectiveAddress(crb, masm, address, asRegister(result, DWORD), getDelayedControlTransfer());
+            loadEffectiveAddress(crb, masm, address, asRegister(result, XWORD), getDelayedControlTransfer());
         }
     }
 
@@ -593,11 +596,11 @@ public class SPARCMove {
             return;
         }
         delaySlotLir.emitControlTransfer(crb, masm);
-        if (SPARC.isCPURegister(src) && SPARC.isCPURegister(dst)) {
+        if (isCPURegister(src) && isCPURegister(dst)) {
             masm.mov(src, dst);
-        } else if (SPARC.isSingleFloatRegister(src) && SPARC.isSingleFloatRegister(dst)) {
+        } else if (isSingleFloatRegister(src) && isSingleFloatRegister(dst)) {
             masm.fsrc2s(src, dst);
-        } else if (SPARC.isDoubleFloatRegister(src) && SPARC.isDoubleFloatRegister(dst)) {
+        } else if (isDoubleFloatRegister(src) && isDoubleFloatRegister(dst)) {
             masm.fsrc2d(src, dst);
         } else {
             throw JVMCIError.shouldNotReachHere(String.format("Trying to move between register domains src: %s dst: %s", src, dst));
@@ -716,7 +719,7 @@ public class SPARCMove {
             case WORD:
                 masm.cas(asRegister(address), asRegister(cmpValue), asRegister(newValue));
                 break;
-            case DWORD:
+            case XWORD:
                 masm.casx(asRegister(address), asRegister(cmpValue), asRegister(newValue));
                 break;
             default:

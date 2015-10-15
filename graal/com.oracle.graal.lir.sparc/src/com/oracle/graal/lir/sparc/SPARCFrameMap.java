@@ -110,7 +110,7 @@ public final class SPARCFrameMap extends FrameMap {
      */
     @Override
     public int spillSlotSize(LIRKind kind) {
-        return Math.max(kind.getPlatformKind().getSizeInBytes(), SPARC.MEMORY_ACCESS_ALIGN);
+        return kind.getPlatformKind().getSizeInBytes();
     }
 
     @Override
@@ -131,6 +131,6 @@ public final class SPARCFrameMap extends FrameMap {
 
     public StackSlot allocateDeoptimizationRescueSlot() {
         assert spillSize == initialSpillSize : "Deoptimization rescue slot must be the first stack slot";
-        return allocateSpillSlot(LIRKind.value(SPARCKind.DWORD));
+        return allocateSpillSlot(LIRKind.value(SPARCKind.XWORD));
     }
 }
