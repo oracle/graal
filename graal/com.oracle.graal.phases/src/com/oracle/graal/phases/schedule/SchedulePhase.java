@@ -158,7 +158,7 @@ public final class SchedulePhase extends Phase {
                 this.nodeToBlockMap = graph.createNodeMap();
                 this.blockToNodesMap = new BlockMap<>(cfg);
                 NodeBitMap visited = graph.createNodeBitMap();
-                scheduleEarliestIterative(blockToNodesMap, nodeToBlockMap, visited, graph);
+                scheduleEarliestIterative(blockToNodesMap, nodeToBlockMap, visited, graph, null);
                 return;
             } else {
                 boolean isOutOfLoops = selectedStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS;
@@ -166,19 +166,20 @@ public final class SchedulePhase extends Phase {
                     NodeMap<Block> currentNodeMap = graph.createNodeMap();
                     BlockMap<List<Node>> earliestBlockToNodesMap = new BlockMap<>(cfg);
                     NodeBitMap visited = graph.createNodeBitMap();
+                    NodeBitMap unreachableNodes = immutableGraph ? graph.createNodeBitMap() : null;
 
                     // Assign early so we are getting a context in case of an exception.
                     this.blockToNodesMap = earliestBlockToNodesMap;
                     this.nodeToBlockMap = currentNodeMap;
 
-                    scheduleEarliestIterative(earliestBlockToNodesMap, currentNodeMap, visited, graph);
+                    scheduleEarliestIterative(earliestBlockToNodesMap, currentNodeMap, visited, graph, unreachableNodes);
                     BlockMap<List<Node>> latestBlockToNodesMap = new BlockMap<>(cfg);
 
                     for (Block b : cfg.getBlocks()) {
                         latestBlockToNodesMap.put(b, new ArrayList<Node>());
                     }
 
-                    BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(isOutOfLoops, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap);
+                    BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(isOutOfLoops, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap, unreachableNodes);
                     sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
 
                     assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
@@ -195,7 +196,7 @@ public final class SchedulePhase extends Phase {
 
     @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "false positive found by findbugs")
     private BlockMap<ArrayList<FloatingReadNode>> calcLatestBlocks(boolean isOutOfLoops, NodeMap<Block> currentNodeMap, BlockMap<List<Node>> earliestBlockToNodesMap, NodeBitMap visited,
-                    BlockMap<List<Node>> latestBlockToNodesMap) {
+                    BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap unreachableNodes) {
         BlockMap<ArrayList<FloatingReadNode>> watchListMap = null;
         for (Block b : cfg.postOrder()) {
             List<Node> blockToNodes = earliestBlockToNodesMap.get(b);
@@ -212,7 +213,7 @@ public final class SchedulePhase extends Phase {
                     Block currentBlock = b;
                     assert currentBlock != null;
 
-                    Block latestBlock = calcLatestBlock(b, isOutOfLoops, currentNode, currentNodeMap);
+                    Block latestBlock = calcLatestBlock(b, isOutOfLoops, currentNode, currentNodeMap, unreachableNodes);
                     assert checkLatestEarliestRelation(currentNode, currentBlock, latestBlock);
                     if (latestBlock != currentBlock) {
                         if (currentNode instanceof FloatingReadNode) {
@@ -480,10 +481,19 @@ public final class SchedulePhase extends Phase {
 
     }
 
-    private static Block calcLatestBlock(Block earliestBlock, boolean scheduleOutOfLoops, Node currentNode, NodeMap<Block> currentNodeMap) {
+    private Block calcLatestBlock(Block earliestBlock, boolean scheduleOutOfLoops, Node currentNode, NodeMap<Block> currentNodeMap, NodeBitMap unreachableNodes) {
         Block block = null;
         assert currentNode.hasUsages();
         for (Node usage : currentNode.usages()) {
+            if (unreachableNodes != null && unreachableNodes.contains(usage)) {
+                /*
+                 * Normally, dead nodes are deleted by the scheduler before we reach this point.
+                 * Only when the scheduler is asked to not modify a graph, we can see dead nodes
+                 * here.
+                 */
+                assert immutableGraph;
+                continue;
+            }
             block = calcBlockForUsage(currentNode, usage, block, currentNodeMap);
             assert checkLatestEarliestRelation(currentNode, earliestBlock, block);
             if (scheduleOutOfLoops) {
@@ -525,7 +535,7 @@ public final class SchedulePhase extends Phase {
         return currentBlock;
     }
 
-    private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph) {
+    private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph, NodeBitMap unreachableNodes) {
 
         BitSet floatingReads = new BitSet(cfg.getBlocks().size());
 
@@ -593,11 +603,16 @@ public final class SchedulePhase extends Phase {
         } while (unmarkedPhi && changed);
 
         // Check for dead nodes.
-        if (!immutableGraph && visited.getCounter() < graph.getNodeCount()) {
+        if (visited.getCounter() < graph.getNodeCount()) {
             for (Node n : graph.getNodes()) {
                 if (!visited.isMarked(n)) {
-                    n.clearInputs();
-                    n.markDeleted();
+                    if (!immutableGraph) {
+                        n.clearInputs();
+                        n.markDeleted();
+                    } else if (unreachableNodes != null) {
+                        /* We are not allowed to modify the graph, so remember that node is dead. */
+                        unreachableNodes.mark(n);
+                    }
                 }
             }
         }
