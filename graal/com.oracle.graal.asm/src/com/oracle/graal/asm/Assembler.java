@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.asm;
 
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,11 +46,7 @@ public abstract class Assembler {
 
     public Assembler(TargetDescription target) {
         this.target = target;
-        if (target.arch.getByteOrder() == ByteOrder.BIG_ENDIAN) {
-            this.codeBuffer = new Buffer.BigEndian();
-        } else {
-            this.codeBuffer = new Buffer.LittleEndian();
-        }
+        this.codeBuffer = new Buffer(target.arch.getByteOrder());
     }
 
     /**

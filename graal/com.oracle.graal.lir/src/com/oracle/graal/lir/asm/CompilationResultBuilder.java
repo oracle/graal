@@ -150,7 +150,8 @@ public class CompilationResultBuilder {
      * the compilation result.
      */
     public void finish() {
-        compilationResult.setTargetCode(asm.close(false), asm.position());
+        int position = asm.position();
+        compilationResult.setTargetCode(asm.close(false), position);
 
         // Record exception handlers if they exist
         if (exceptionInfoList != null) {
