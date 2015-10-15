@@ -33,7 +33,7 @@ public class EngineAsynchTest {
     PolyglotEngine tvm;
 
     @Before
-    public void initInDifferentThread() throws InterruptedException {
+    public void initEngine() {
         tvm = PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor()).build();
     }
 
