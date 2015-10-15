@@ -125,15 +125,19 @@ public final class CompileTheWorld {
          */
         public Config(String options) {
             if (options != null) {
+                List<String> optionSettings = new ArrayList<>();
                 for (String optionSetting : options.split("\\s+|#")) {
                     if (optionSetting.charAt(0) == '-') {
-                        OptionsParser.parseOptionSetting(optionSetting.substring(1) + "=false", this, null);
+                        optionSettings.add(optionSetting.substring(1));
+                        optionSettings.add("false");
                     } else if (optionSetting.charAt(0) == '+') {
-                        OptionsParser.parseOptionSetting(optionSetting.substring(1) + "=true", this, null);
+                        optionSettings.add(optionSetting.substring(1));
+                        optionSettings.add("true");
                     } else {
-                        OptionsParser.parseOptionSetting(optionSetting, this, null);
+                        OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
                     }
                 }
+                OptionsParser.parseOptions(optionSettings.toArray(new String[optionSettings.size()]), this, null, null);
             }
         }
 
