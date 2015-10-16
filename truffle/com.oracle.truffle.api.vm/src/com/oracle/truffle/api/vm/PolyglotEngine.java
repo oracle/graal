@@ -525,24 +525,14 @@ public class PolyglotEngine {
 
     @SuppressWarnings("try")
     final Object invokeForeign(final Node foreignNode, final VirtualFrame frame, final TruffleObject receiver) throws IOException {
-        final Object[] res = {null, null};
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
-                    res[0] = ForeignAccess.execute(foreignNode, frame, receiver, ForeignAccess.getArguments(frame).toArray());
-                } catch (IOException ex) {
-                    res[1] = ex;
-                } catch (Throwable ex) {
-                    res[1] = ex;
-                }
-            }
-        });
-        exceptionCheck(res);
-        if (res[0] instanceof TruffleObject) {
-            return new EngineTruffleObject(this, (TruffleObject) res[0]);
+        Object res;
+        try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+            res = ForeignAccess.execute(foreignNode, frame, receiver, ForeignAccess.getArguments(frame).toArray());
+        }
+        if (res instanceof TruffleObject) {
+            return new EngineTruffleObject(this, (TruffleObject) res);
         } else {
-            return res[0];
+            return res;
         }
     }
 
@@ -720,8 +710,8 @@ public class PolyglotEngine {
          * @throws IOException in case it is not possible to obtain the value of the object
          * @throws ClassCastException if the value cannot be converted to desired view
          */
-        public <T> T as(Class<T> representation) throws IOException {
-            Object obj = get();
+        public <T> T as(final Class<T> representation) throws IOException {
+            final Object obj = get();
             if (obj instanceof EngineTruffleObject) {
                 EngineTruffleObject eto = (EngineTruffleObject) obj;
                 if (representation.isInstance(eto.getDelegate())) {
@@ -740,7 +730,27 @@ public class PolyglotEngine {
                 return representation.cast(obj);
             }
             if (JAVA_INTEROP_ENABLED) {
-                return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+                final Object[] ret = {null, null};
+                final CountDownLatch computed = new CountDownLatch(1);
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            ret[0] = JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+                        } catch (Exception ex) {
+                            ret[1] = ex;
+                        } finally {
+                            computed.countDown();
+                        }
+                    }
+                });
+                try {
+                    computed.await();
+                } catch (InterruptedException ex) {
+                    throw new InterruptedIOException(ex.getMessage());
+                }
+                exceptionCheck(ret);
+                return representation.cast(ret[0]);
             }
             throw new ClassCastException("Value cannot be represented as " + representation.getName());
         }

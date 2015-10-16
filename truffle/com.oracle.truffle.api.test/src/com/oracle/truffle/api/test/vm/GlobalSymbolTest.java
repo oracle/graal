@@ -32,7 +32,6 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -57,7 +56,7 @@ public class GlobalSymbolTest {
 
     @Test
     public void globalSymbolFoundByLanguage() throws IOException {
-        PolyglotEngine vm = PolyglotEngine.buildNew().globalSymbol("ahoj", "42").executor(Executors.newSingleThreadExecutor()).build();
+        PolyglotEngine vm = createEngineBuilder().globalSymbol("ahoj", "42").build();
         // @formatter:off
         Object ret = vm.eval(
             Source.fromText("return=ahoj", "Return").withMimeType(L3)
@@ -68,15 +67,19 @@ public class GlobalSymbolTest {
 
     @Test
     public void globalSymbolFoundByVMUser() throws IOException {
-        PolyglotEngine vm = PolyglotEngine.buildNew().globalSymbol("ahoj", "42").build();
+        PolyglotEngine vm = createEngineBuilder().globalSymbol("ahoj", "42").build();
         PolyglotEngine.Value ret = vm.findGlobalSymbol("ahoj");
         assertNotNull("Symbol found", ret);
         assertEquals("42", ret.get());
     }
 
+    protected PolyglotEngine.Builder createEngineBuilder() {
+        return PolyglotEngine.buildNew();
+    }
+
     @Test
     public void passingArray() throws IOException {
-        PolyglotEngine vm = PolyglotEngine.buildNew().globalSymbol("arguments", new Object[]{"one", "two", "three"}).build();
+        PolyglotEngine vm = createEngineBuilder().globalSymbol("arguments", new Object[]{"one", "two", "three"}).build();
         PolyglotEngine.Value value = vm.findGlobalSymbol("arguments");
         assertFalse("Not instance of array", value.get() instanceof Object[]);
         assertTrue("Instance of TruffleObject", value.get() instanceof TruffleObject);
