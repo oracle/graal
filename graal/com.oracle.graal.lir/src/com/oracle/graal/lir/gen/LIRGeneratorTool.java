@@ -26,7 +26,6 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -49,6 +48,7 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 
 public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
@@ -169,7 +169,7 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
      */
     void emitData(AllocatableValue dst, byte[] data);
 
-    Variable emitAddress(StackSlotValue slot);
+    Variable emitAddress(VirtualStackSlot slot);
 
     void emitMembar(int barriers);
 

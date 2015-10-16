@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
+import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
-import static jdk.vm.ci.code.ValueUtil.asVirtualStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -38,7 +38,6 @@ import java.util.function.Consumer;
 
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.VirtualStackSlot;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.options.NestedBooleanOptionValue;
@@ -54,6 +53,7 @@ import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.ValueProcedure;

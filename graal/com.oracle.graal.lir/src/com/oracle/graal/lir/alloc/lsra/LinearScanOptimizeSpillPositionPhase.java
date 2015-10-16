@@ -24,7 +24,7 @@ package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.commonDominator;
 import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.dominates;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.Iterator;
 import java.util.List;

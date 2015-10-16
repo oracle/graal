@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.extended.MonitorEnter;
@@ -70,7 +70,7 @@ public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implement
     public void generate(NodeLIRBuilderTool gen) {
         assert lockDepth != -1;
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
-        StackSlotValue slot = hsGen.getLockSlot(lockDepth);
+        VirtualStackSlot slot = hsGen.getLockSlot(lockDepth);
         Value result = gen.getLIRGeneratorTool().emitAddress(slot);
         gen.setResult(this, result);
     }

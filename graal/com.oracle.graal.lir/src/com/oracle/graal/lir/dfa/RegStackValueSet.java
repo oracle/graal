@@ -75,7 +75,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
             return;
         }
         if (isRegister(v)) {
-            int index = asRegister(v).getReferenceMapIndex();
+            int index = asRegister(v).number;
             registers.put(index, v);
         } else if (isStackSlot(v)) {
             int index = frameMap.offsetForStackSlot(asStackSlot(v));
@@ -109,7 +109,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
             return;
         }
         if (isRegister(v)) {
-            int index = asRegister(v).getReferenceMapIndex();
+            int index = asRegister(v).number;
             registers.put(index, null);
         } else if (isStackSlot(v)) {
             int index = frameMap.offsetForStackSlot(asStackSlot(v));

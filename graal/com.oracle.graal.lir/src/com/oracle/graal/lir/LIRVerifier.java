@@ -24,11 +24,11 @@ package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 
 import java.util.Arrays;
 import java.util.BitSet;

@@ -24,7 +24,6 @@ package com.oracle.graal.lir.jtt;
 
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -36,6 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.lir.ConstantValue;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
@@ -62,7 +62,7 @@ public class ConstantStackCastTest extends LIRTest {
         public void generate(LIRGeneratorTool gen, Value value) {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
-            StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(dstKind);
+            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(dstKind);
             // move stuff around
             Value srcValue;
             if (isJavaConstant(value)) {

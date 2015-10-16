@@ -24,8 +24,8 @@ package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 
 import java.util.List;
 

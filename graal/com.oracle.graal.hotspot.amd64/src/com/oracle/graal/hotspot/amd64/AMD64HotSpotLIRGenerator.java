@@ -43,8 +43,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.StackSlotValue;
-import jdk.vm.ci.code.VirtualStackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
@@ -89,6 +87,7 @@ import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
 import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
 import com.oracle.graal.lir.amd64.AMD64CCall;
@@ -186,14 +185,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private static final class RescueSlotDummyOp extends LIRInstruction {
         public static final LIRInstructionClass<RescueSlotDummyOp> TYPE = LIRInstructionClass.create(RescueSlotDummyOp.class);
 
-        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private StackSlotValue slot;
+        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue slot;
 
         public RescueSlotDummyOp(FrameMapBuilder frameMapBuilder, LIRKind kind) {
             super(TYPE);
             slot = frameMapBuilder.allocateSpillSlot(kind);
         }
 
-        public StackSlotValue getSlot() {
+        public AllocatableValue getSlot() {
             return slot;
         }
 
@@ -204,9 +203,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     private RescueSlotDummyOp rescueSlotOp;
 
-    private StackSlotValue getOrInitRescueSlot() {
+    private VirtualStackSlot getOrInitRescueSlot() {
         RescueSlotDummyOp op = getOrInitRescueSlotOp();
-        return op.getSlot();
+        return (VirtualStackSlot) op.getSlot();
     }
 
     private RescueSlotDummyOp getOrInitRescueSlotOp() {
@@ -232,7 +231,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public StackSlotValue getLockSlot(int lockDepth) {
+    public VirtualStackSlot getLockSlot(int lockDepth) {
         return getLockStack().makeLockSlot(lockDepth);
     }
 
@@ -333,7 +332,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      * @param savedRegisterLocations the slots to which the registers are saved
      * @param supportsRemove determines if registers can be pruned
      */
-    protected AMD64SaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+    protected AMD64SaveRegistersOp emitSaveRegisters(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
         AMD64SaveRegistersOp save = new AMD64SaveRegistersOp(savedRegisters, savedRegisterLocations, supportsRemove);
         append(save);
         return save;
@@ -342,7 +341,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     /**
      * Allocate a stack slot for saving a register.
      */
-    protected StackSlotValue allocateSaveRegisterLocation(Register register) {
+    protected VirtualStackSlot allocateSaveRegisterLocation(Register register) {
         PlatformKind kind = target().arch.getLargestStorableKind(register.getRegisterCategory());
         if (kind.getVectorLength() > 1) {
             // we don't use vector registers, so there is no need to save them
@@ -358,7 +357,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      * @return the register save node
      */
     private AMD64SaveRegistersOp emitSaveAllRegisters(Register[] savedRegisters, boolean supportsRemove) {
-        StackSlotValue[] savedRegisterLocations = new StackSlotValue[savedRegisters.length];
+        AllocatableValue[] savedRegisterLocations = new AllocatableValue[savedRegisters.length];
         for (int i = 0; i < savedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
             VirtualStackSlot spillSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));

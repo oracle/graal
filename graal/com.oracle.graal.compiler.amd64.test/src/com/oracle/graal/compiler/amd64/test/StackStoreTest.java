@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.amd64.test;
 import static org.junit.Assume.assumeTrue;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
@@ -33,6 +32,7 @@ import jdk.vm.ci.meta.Value;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.jtt.LIRTest;
@@ -49,8 +49,8 @@ public class StackStoreTest extends LIRTest {
         public void generate(LIRGeneratorTool gen, Value a) {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
-            StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
+            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
+            VirtualStackSlot s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
             // move stuff around
             gen.emitMove(s1, a);
             gen.emitMoveConstant(s2, JavaConstant.forShort(Short.MIN_VALUE));
@@ -65,8 +65,8 @@ public class StackStoreTest extends LIRTest {
         public void generate(LIRGeneratorTool gen, Value a) {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
-            StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
+            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
+            VirtualStackSlot s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
             // move stuff around
             gen.emitMove(s1, a);
             Value v = gen.emitLoadConstant(LIRKind.value(AMD64Kind.WORD), JavaConstant.forShort(Short.MIN_VALUE));
@@ -82,8 +82,8 @@ public class StackStoreTest extends LIRTest {
         public void generate(LIRGeneratorTool gen, Value a) {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
-            StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
+            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
+            VirtualStackSlot s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(AMD64Kind.WORD));
             // move stuff around
             gen.emitMoveConstant(s2, JavaConstant.forShort(Short.MIN_VALUE));
             gen.emitMove(s1, a);

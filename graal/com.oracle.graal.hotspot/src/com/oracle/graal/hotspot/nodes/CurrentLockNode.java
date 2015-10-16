@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -53,7 +53,7 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRLower
     public void generate(NodeLIRBuilderTool gen) {
         assert lockDepth != -1;
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
-        StackSlotValue slot = hsGen.getLockSlot(lockDepth);
+        VirtualStackSlot slot = hsGen.getLockSlot(lockDepth);
         // The register allocator cannot handle stack -> register moves so we use an LEA here
         Value result = gen.getLIRGeneratorTool().emitAddress(slot);
         gen.setResult(this, result);

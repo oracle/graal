@@ -22,15 +22,14 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
-import static jdk.vm.ci.code.ValueUtil.asStackSlotValue;
-import static jdk.vm.ci.code.ValueUtil.asVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,8 +37,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.StackSlotValue;
-import jdk.vm.ci.code.VirtualStackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -51,6 +48,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 
@@ -72,14 +70,14 @@ public class TraceLocalMoveResolver {
     private int[] stackBlocked;
     private final int firstVirtualStackIndex;
 
-    private int getStackArrayIndex(StackSlotValue stackSlotValue) {
+    private int getStackArrayIndex(Value stackSlotValue) {
         if (isStackSlot(stackSlotValue)) {
             return getStackArrayIndex(asStackSlot(stackSlotValue));
         }
         if (isVirtualStackSlot(stackSlotValue)) {
             return getStackArrayIndex(asVirtualStackSlot(stackSlotValue));
         }
-        throw JVMCIError.shouldNotReachHere("Unhandled StackSlotValue: " + stackSlotValue);
+        throw JVMCIError.shouldNotReachHere("value is not a stack slot: " + stackSlotValue);
     }
 
     private int getStackArrayIndex(StackSlot stackSlot) {
@@ -103,7 +101,7 @@ public class TraceLocalMoveResolver {
     protected void setValueBlocked(Value location, int direction) {
         assert direction == 1 || direction == -1 : "out of bounds";
         if (isStackSlotValue(location)) {
-            int stackIdx = getStackArrayIndex(asStackSlotValue(location));
+            int stackIdx = getStackArrayIndex(location);
             if (stackIdx == STACK_SLOT_IN_CALLER_FRAME_IDX) {
                 // incoming stack arguments can be ignored
                 return;
@@ -132,7 +130,7 @@ public class TraceLocalMoveResolver {
 
     protected int valueBlocked(Value location) {
         if (isStackSlotValue(location)) {
-            int stackIdx = getStackArrayIndex(asStackSlotValue(location));
+            int stackIdx = getStackArrayIndex(location);
             if (stackIdx == STACK_SLOT_IN_CALLER_FRAME_IDX) {
                 // incoming stack arguments are always blocked (aka they can not be written)
                 return 1;
@@ -423,7 +421,7 @@ public class TraceLocalMoveResolver {
             // do not allocate a new spill slot for temporary interval, but
             // use spill slot assigned to fromInterval. Otherwise moves from
             // one stack slot to another can happen (not allowed by LIRAssembler
-            StackSlotValue spillSlot1 = fromInterval1.spillSlot();
+            AllocatableValue spillSlot1 = fromInterval1.spillSlot();
             if (spillSlot1 == null) {
                 spillSlot1 = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval1.kind());
                 fromInterval1.setSpillSlot(spillSlot1);
@@ -437,11 +435,11 @@ public class TraceLocalMoveResolver {
         TraceInterval fromInterval = getMappingFrom(stackSpillCandidate);
         assert isStackSlotValue(fromInterval.location());
         // allocate new stack slot
-        StackSlotValue spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
+        VirtualStackSlot spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
         spillInterval(stackSpillCandidate, fromInterval, spillSlot);
     }
 
-    protected void spillInterval(int spillCandidate, TraceInterval fromInterval, StackSlotValue spillSlot) {
+    protected void spillInterval(int spillCandidate, TraceInterval fromInterval, AllocatableValue spillSlot) {
         assert mappingFrom.get(spillCandidate).equals(fromInterval);
         TraceInterval spillInterval = getAllocator().createDerivedInterval(fromInterval);
         spillInterval.setKind(fromInterval.kind());

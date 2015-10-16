@@ -24,8 +24,8 @@
 package com.oracle.graal.lir.ssa;
 
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 
 import java.util.BitSet;
 import java.util.EnumSet;

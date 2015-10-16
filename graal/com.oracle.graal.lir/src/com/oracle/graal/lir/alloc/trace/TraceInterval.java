@@ -23,13 +23,13 @@
 package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,7 +38,6 @@ import java.util.List;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -315,7 +314,7 @@ final class TraceInterval extends IntervalHint {
     /**
      * The stack slot to which all splits of this interval are spilled if necessary.
      */
-    private StackSlotValue spillSlot;
+    private AllocatableValue spillSlot;
 
     /**
      * The kind of this interval.
@@ -483,11 +482,12 @@ final class TraceInterval extends IntervalHint {
     /**
      * Gets the canonical spill slot for this interval.
      */
-    public StackSlotValue spillSlot() {
+    public AllocatableValue spillSlot() {
         return splitParent().spillSlot;
     }
 
-    public void setSpillSlot(StackSlotValue slot) {
+    public void setSpillSlot(AllocatableValue slot) {
+        assert isStackSlotValue(slot);
         assert splitParent().spillSlot == null || (isVirtualStackSlot(splitParent().spillSlot) && isStackSlot(slot)) : "connot overwrite existing spill slot";
         splitParent().spillSlot = slot;
     }

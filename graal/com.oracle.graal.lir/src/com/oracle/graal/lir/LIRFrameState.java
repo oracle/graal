@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.lir;
 
-import static jdk.vm.ci.code.ValueUtil.asStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isConstantJavaValue;
 import static jdk.vm.ci.code.ValueUtil.isIllegalJavaValue;
 import static jdk.vm.ci.code.ValueUtil.isVirtualObject;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -136,7 +136,7 @@ public class LIRFrameState {
                 }
                 Value slot = monitor.getSlot();
                 if (isVirtualStackSlot(slot)) {
-                    monitor.setSlot(asStackSlotValue(proc.doValue(inst, slot, OperandMode.ALIVE, STATE_FLAGS)));
+                    monitor.setSlot(asAllocatableValue(proc.doValue(inst, slot, OperandMode.ALIVE, STATE_FLAGS)));
                 }
             } else {
                 assert unprocessed(value);

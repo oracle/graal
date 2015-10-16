@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,12 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.Arrays;
 
-import jdk.vm.ci.code.StackSlotValue;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.LIRKind;
 
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 
@@ -40,9 +41,9 @@ import com.oracle.graal.lir.framemap.FrameMapBuilder;
  */
 public class HotSpotLockStack extends LIRInstruction {
     public static final LIRInstructionClass<HotSpotLockStack> TYPE = LIRInstructionClass.create(HotSpotLockStack.class);
-    private static final StackSlotValue[] EMPTY = new StackSlotValue[0];
+    private static final AllocatableValue[] EMPTY = new AllocatableValue[0];
 
-    @Def({STACK}) private StackSlotValue[] locks;
+    @Def({STACK}) private AllocatableValue[] locks;
     private final FrameMapBuilder frameMapBuilder;
     private final LIRKind slotKind;
 
@@ -56,16 +57,16 @@ public class HotSpotLockStack extends LIRInstruction {
     /**
      * Gets a stack slot for a lock at a given lock nesting depth, allocating it first if necessary.
      */
-    public StackSlotValue makeLockSlot(int lockDepth) {
+    public VirtualStackSlot makeLockSlot(int lockDepth) {
         if (locks == EMPTY) {
-            locks = new StackSlotValue[lockDepth + 1];
+            locks = new AllocatableValue[lockDepth + 1];
         } else if (locks.length < lockDepth + 1) {
             locks = Arrays.copyOf(locks, lockDepth + 1);
         }
         if (locks[lockDepth] == null) {
             locks[lockDepth] = frameMapBuilder.allocateSpillSlot(slotKind);
         }
-        return locks[lockDepth];
+        return (VirtualStackSlot) locks[lockDepth];
     }
 
     @Override

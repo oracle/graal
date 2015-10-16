@@ -27,12 +27,12 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.sparc.SPARCKind;
@@ -52,7 +52,7 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
     @Def({REG, HINT}) protected Value result;
     @Use({REG}) protected Value input;
     @Temp({REG}) protected Value tempIndex;
-    @Use({STACK, UNINITIALIZED}) protected StackSlotValue tmpSlot;
+    @Use({STACK, UNINITIALIZED}) protected AllocatableValue tmpSlot;
 
     public SPARCByteSwapOp(LIRGeneratorTool tool, Value result, Value input) {
         super(TYPE, SIZE);

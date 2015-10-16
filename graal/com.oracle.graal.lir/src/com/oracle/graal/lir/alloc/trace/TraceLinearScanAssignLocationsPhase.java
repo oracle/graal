@@ -24,19 +24,19 @@ package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAshareSpillInformation;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlotValue;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -63,7 +63,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 /**
  * Specialization of {@link com.oracle.graal.lir.alloc.lsra.LinearScanAssignLocationsPhase} that
  * inserts {@link ShadowedRegisterValue}s to describe {@link RegisterValue}s that are also available
- * on the {@link StackSlotValue stack}.
+ * on the {@link StackSlot stack}.
  */
 final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocationPhase {
 

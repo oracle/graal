@@ -30,9 +30,9 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
@@ -41,20 +41,21 @@ import com.oracle.graal.hotspot.HotSpotCounterOp;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 @Opcode("BenchMarkCounter")
 public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
     public static final LIRInstructionClass<AMD64HotSpotCounterOp> TYPE = LIRInstructionClass.create(AMD64HotSpotCounterOp.class);
 
-    @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private StackSlotValue backupSlot;
+    @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue backupSlot;
 
-    public AMD64HotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config, StackSlotValue backupSlot) {
+    public AMD64HotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config, VirtualStackSlot backupSlot) {
         super(TYPE, name, group, increment, registers, config);
         this.backupSlot = backupSlot;
     }
 
-    public AMD64HotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config, StackSlotValue backupSlot) {
+    public AMD64HotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config, VirtualStackSlot backupSlot) {
         super(TYPE, names, groups, increments, registers, config);
         this.backupSlot = backupSlot;
     }

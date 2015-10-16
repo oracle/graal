@@ -42,15 +42,14 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
-import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import java.util.Set;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -75,6 +74,7 @@ import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public class SPARCMove {
@@ -440,9 +440,9 @@ public class SPARCMove {
         public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
         @Def({REG}) protected AllocatableValue result;
-        @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
+        @Use({STACK, UNINITIALIZED}) protected AllocatableValue slot;
 
-        public StackLoadAddressOp(AllocatableValue result, StackSlotValue address) {
+        public StackLoadAddressOp(AllocatableValue result, VirtualStackSlot address) {
             super(TYPE, SIZE);
             this.result = result;
             this.slot = address;

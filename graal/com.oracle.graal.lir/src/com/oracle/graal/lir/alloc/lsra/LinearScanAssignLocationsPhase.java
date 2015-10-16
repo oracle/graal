@@ -24,10 +24,10 @@ package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.Collections;
 import java.util.EnumSet;

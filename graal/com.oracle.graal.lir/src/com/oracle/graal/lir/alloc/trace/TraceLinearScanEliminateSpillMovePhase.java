@@ -23,8 +23,8 @@
 package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 
 import java.util.List;
 

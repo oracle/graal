@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.List;
 

@@ -23,10 +23,10 @@
 package com.oracle.graal.lir.stackslotalloc;
 
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.VirtualStackSlot;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 

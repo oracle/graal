@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static jdk.vm.ci.code.CodeUtil.isOdd;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;

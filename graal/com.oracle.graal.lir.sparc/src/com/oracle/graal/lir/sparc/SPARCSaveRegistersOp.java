@@ -34,13 +34,13 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.StackSlotValue;
-import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.sparc.SPARC;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
@@ -62,7 +62,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
     /**
      * The slots to which the registers are saved.
      */
-    @Def(STACK) protected final StackSlotValue[] slots;
+    @Def(STACK) protected final AllocatableValue[] slots;
 
     /**
      * Specifies if {@link #remove(Set)} should have an effect.
@@ -76,9 +76,9 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
      * @param savedRegisterLocations the slots to which the registers are saved
      * @param supportsRemove determines if registers can be {@linkplain #remove(Set) pruned}
      */
-    public SPARCSaveRegistersOp(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+    public SPARCSaveRegistersOp(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
         super(TYPE, SIZE);
-        assert Arrays.asList(savedRegisterLocations).stream().allMatch(ValueUtil::isVirtualStackSlot);
+        assert Arrays.asList(savedRegisterLocations).stream().allMatch(LIRValueUtil::isVirtualStackSlot);
         this.savedRegisters = savedRegisters;
         this.slots = savedRegisterLocations;
         this.supportsRemove = supportsRemove;
@@ -107,7 +107,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
         }
     }
 
-    public StackSlotValue[] getSlots() {
+    public AllocatableValue[] getSlots() {
         return slots;
     }
 

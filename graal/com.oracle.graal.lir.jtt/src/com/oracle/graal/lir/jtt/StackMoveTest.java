@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
@@ -32,6 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
@@ -52,8 +52,8 @@ public class StackMoveTest extends LIRTest {
             LIRKind lirKind = getLIRKind(a);
 
             // create slots
-            StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(lirKind);
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(lirKind);
+            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(lirKind);
+            VirtualStackSlot s2 = frameMapBuilder.allocateSpillSlot(lirKind);
 
             // start emit
             gen.emitMove(s1, a);

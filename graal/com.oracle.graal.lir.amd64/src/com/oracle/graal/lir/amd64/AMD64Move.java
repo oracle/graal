@@ -34,11 +34,9 @@ import static java.lang.Float.floatToRawIntBits;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -57,6 +55,7 @@ import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public class AMD64Move {
@@ -163,11 +162,11 @@ public class AMD64Move {
 
         @Def({STACK}) protected AllocatableValue result;
         @Use({STACK, HINT}) protected AllocatableValue input;
-        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private StackSlotValue backupSlot;
+        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue backupSlot;
 
         private Register scratch;
 
-        public AMD64StackMove(AllocatableValue result, AllocatableValue input, Register scratch, StackSlotValue backupSlot) {
+        public AMD64StackMove(AllocatableValue result, AllocatableValue input, Register scratch, AllocatableValue backupSlot) {
             super(TYPE);
             this.result = result;
             this.input = input;
@@ -189,7 +188,7 @@ public class AMD64Move {
             return scratch;
         }
 
-        public StackSlotValue getBackupSlot() {
+        public AllocatableValue getBackupSlot() {
             return backupSlot;
         }
 
@@ -217,11 +216,11 @@ public class AMD64Move {
 
         @Def({STACK}) protected AllocatableValue[] results;
         @Use({STACK}) protected Value[] inputs;
-        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private StackSlotValue backupSlot;
+        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue backupSlot;
 
         private Register scratch;
 
-        public AMD64MultiStackMove(AllocatableValue[] results, Value[] inputs, Register scratch, StackSlotValue backupSlot) {
+        public AMD64MultiStackMove(AllocatableValue[] results, Value[] inputs, Register scratch, AllocatableValue backupSlot) {
             super(TYPE);
             this.results = results;
             this.inputs = inputs;
@@ -323,11 +322,10 @@ public class AMD64Move {
         public static final LIRInstructionClass<StackLeaOp> TYPE = LIRInstructionClass.create(StackLeaOp.class);
 
         @Def({REG}) protected AllocatableValue result;
-        @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
+        @Use({STACK, UNINITIALIZED}) protected AllocatableValue slot;
 
-        public StackLeaOp(AllocatableValue result, StackSlotValue slot) {
+        public StackLeaOp(AllocatableValue result, VirtualStackSlot slot) {
             super(TYPE);
-            assert isStackSlotValue(slot) : "Not a stack slot: " + slot;
             this.result = result;
             this.slot = slot;
         }

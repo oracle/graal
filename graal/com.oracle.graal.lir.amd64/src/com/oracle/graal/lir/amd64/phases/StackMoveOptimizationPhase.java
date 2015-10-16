@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -83,7 +82,7 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
         private Register reg = null;
         private List<AllocatableValue> dst;
         private List<Value> src;
-        private StackSlotValue slot;
+        private AllocatableValue slot;
         private boolean removed = false;
 
         public void process(List<LIRInstruction> instructions) {

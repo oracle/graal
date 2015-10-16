@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,9 +40,7 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.VirtualStackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.LIRKind;
@@ -64,6 +62,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -614,7 +613,7 @@ public class LinearScan {
         throw new BailoutException("LinearScan: interval is null");
     }
 
-    static StackSlotValue canonicalSpillOpr(Interval interval) {
+    static AllocatableValue canonicalSpillOpr(Interval interval) {
         assert interval.spillSlot() != null : "canonical spill slot not set";
         return interval.spillSlot();
     }

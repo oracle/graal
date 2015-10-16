@@ -23,9 +23,9 @@
 package com.oracle.graal.lir.util;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
+import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static jdk.vm.ci.code.ValueUtil.asVirtualStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Value;
 

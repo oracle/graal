@@ -23,10 +23,10 @@
 package com.oracle.graal.lir.phases;
 
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.VirtualStackSlot;
 
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;

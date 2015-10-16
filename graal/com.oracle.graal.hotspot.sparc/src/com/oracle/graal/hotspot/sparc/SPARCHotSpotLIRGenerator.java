@@ -66,8 +66,8 @@ import static jdk.vm.ci.sparc.SPARC.g1;
 import static jdk.vm.ci.sparc.SPARC.g3;
 import static jdk.vm.ci.sparc.SPARC.g4;
 import static jdk.vm.ci.sparc.SPARC.g5;
-import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import java.util.Map;
 
@@ -75,8 +75,6 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.StackSlotValue;
-import jdk.vm.ci.code.VirtualStackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
@@ -114,6 +112,7 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.sparc.SPARCAddressValue;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
@@ -162,7 +161,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private AllocatableValue safepointAddressValue;
 
     @Override
-    public StackSlotValue getLockSlot(int lockDepth) {
+    public VirtualStackSlot getLockSlot(int lockDepth) {
         return getLockStack().makeLockSlot(lockDepth);
     }
 
@@ -428,7 +427,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
      * @param savedRegisterLocations the slots to which the registers are saved
      * @param supportsRemove determines if registers can be pruned
      */
-    protected SPARCSaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+    protected SPARCSaveRegistersOp emitSaveRegisters(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
         SPARCSaveRegistersOp save = new SPARCSaveRegistersOp(savedRegisters, savedRegisterLocations, supportsRemove);
         append(save);
         return save;
@@ -451,7 +450,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
                         d56,          d58,          d60,          d62
         };
         // @formatter:on
-        StackSlotValue[] savedRegisterLocations = new StackSlotValue[savedRegisters.length];
+        AllocatableValue[] savedRegisterLocations = new AllocatableValue[savedRegisters.length];
         for (int i = 0; i < savedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
             VirtualStackSlot spillSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));

@@ -23,9 +23,9 @@
 package com.oracle.graal.lir.ssi;
 
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
 
 import java.util.EnumSet;
 import java.util.HashMap;

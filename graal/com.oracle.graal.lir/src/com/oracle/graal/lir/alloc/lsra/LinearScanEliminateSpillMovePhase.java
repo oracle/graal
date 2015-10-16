@@ -23,10 +23,10 @@
 package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 
 import java.util.List;
 

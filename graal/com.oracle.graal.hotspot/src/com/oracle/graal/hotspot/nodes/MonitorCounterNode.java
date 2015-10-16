@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,11 @@ package com.oracle.graal.hotspot.nodes;
 
 import java.util.BitSet;
 
-import jdk.vm.ci.code.VirtualStackSlot;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;

@@ -24,8 +24,9 @@ package com.oracle.graal.lir.framemap;
 
 import java.util.BitSet;
 
+import com.oracle.graal.lir.VirtualStackSlot;
+
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.VirtualStackSlot;
 import jdk.vm.ci.meta.LIRKind;
 
 /**

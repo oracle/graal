@@ -42,9 +42,9 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
 import static com.oracle.graal.lir.LIRValueUtil.asConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,8 +56,6 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlotValue;
-import jdk.vm.ci.code.VirtualStackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -86,6 +84,7 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
 import com.oracle.graal.lir.amd64.AMD64ArrayEqualsOp;
 import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
@@ -127,9 +126,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     private static class RegisterBackupPair {
         public final Register register;
-        public final StackSlotValue backupSlot;
+        public final VirtualStackSlot backupSlot;
 
-        RegisterBackupPair(Register register, StackSlotValue backupSlot) {
+        RegisterBackupPair(Register register, VirtualStackSlot backupSlot) {
             this.register = register;
             this.backupSlot = backupSlot;
         }
@@ -244,12 +243,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             default:
                 RegisterBackupPair backup = getScratchRegister(input.getPlatformKind());
                 Register scratchRegister = backup.register;
-                StackSlotValue backupSlot = backup.backupSlot;
+                VirtualStackSlot backupSlot = backup.backupSlot;
                 return createStackMove(result, input, scratchRegister, backupSlot);
         }
     }
 
-    protected LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input, Register scratchRegister, StackSlotValue backupSlot) {
+    protected LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input, Register scratchRegister, AllocatableValue backupSlot) {
         return new AMD64StackMove(result, input, scratchRegister, backupSlot);
     }
 
@@ -311,7 +310,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAddress(StackSlotValue address) {
+    public Variable emitAddress(VirtualStackSlot address) {
         Variable result = newVariable(LIRKind.value(target().arch.getWordKind()));
         append(new StackLeaOp(result, address));
         return result;

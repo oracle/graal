@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -366,7 +365,7 @@ public class MoveResolver {
         // do not allocate a new spill slot for temporary interval, but
         // use spill slot assigned to fromInterval. Otherwise moves from
         // one stack slot to another can happen (not allowed by LIRAssembler
-        StackSlotValue spillSlot = fromInterval.spillSlot();
+        AllocatableValue spillSlot = fromInterval.spillSlot();
         if (spillSlot == null) {
             spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
             fromInterval.setSpillSlot(spillSlot);
@@ -374,7 +373,7 @@ public class MoveResolver {
         spillInterval(spillCandidate, fromInterval, spillSlot);
     }
 
-    protected void spillInterval(int spillCandidate, Interval fromInterval, StackSlotValue spillSlot) {
+    protected void spillInterval(int spillCandidate, Interval fromInterval, AllocatableValue spillSlot) {
         assert mappingFrom.get(spillCandidate).equals(fromInterval);
         Interval spillInterval = getAllocator().createDerivedInterval(fromInterval);
         spillInterval.setKind(fromInterval.kind());

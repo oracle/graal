@@ -23,7 +23,7 @@
 package com.oracle.graal.lir.ssi;
 
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static jdk.vm.ci.code.ValueUtil.isVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

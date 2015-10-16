@@ -32,11 +32,10 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmpd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmps;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static jdk.vm.ci.code.ValueUtil.isStackSlotValue;
-import static jdk.vm.ci.sparc.SPARCKind.XWORD;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.StackSlotValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -66,6 +65,7 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.lir.gen.SpillMoveFactoryBase;
@@ -257,7 +257,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAddress(StackSlotValue address) {
+    public Variable emitAddress(VirtualStackSlot address) {
         Variable result = newVariable(LIRKind.value(target().arch.getWordKind()));
         append(new StackLoadAddressOp(result, address));
         return result;
@@ -501,7 +501,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(LIRKind.value(target().arch.getWordKind()))));
     }
 
-    protected StackSlotValue getTempSlot(LIRKind kind) {
+    protected VirtualStackSlot getTempSlot(LIRKind kind) {
         return getResult().getFrameMapBuilder().allocateSpillSlot(kind);
     }
 
