@@ -42,9 +42,9 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
-import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -56,7 +56,6 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -185,7 +184,7 @@ public class SPARCArithmetic {
                 switch (opcode) {
                     case LUREM:
                         if (isJavaConstant(x)) {
-                            new Setx(crb.asLongConst(x), asRegister(scratch2, XWORD), false).emit(masm);
+                            masm.setx(crb.asLongConst(x), asRegister(scratch2, XWORD), false);
                             xLeft = scratch2;
                         }
                         assert !asRegister(xLeft, XWORD).equals(asRegister(scratch1, XWORD));

@@ -68,7 +68,7 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
         SPARCMove.emitStore(input, addr, result.getPlatformKind(), SPARCDelayedControlTransfer.DUMMY, null, crb, masm);
         if (addr.getIndex().equals(Register.None)) {
             Register tempReg = ValueUtil.asRegister(tempIndex, XWORD);
-            new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
+            masm.setx(addr.getDisplacement(), tempReg, false);
             addr = new SPARCAddress(addr.getBase(), tempReg);
         }
         getDelayedControlTransfer().emitControlTransfer(crb, masm);

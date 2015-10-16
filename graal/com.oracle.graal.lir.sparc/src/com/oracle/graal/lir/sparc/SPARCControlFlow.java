@@ -68,8 +68,8 @@ import static com.oracle.graal.lir.sparc.SPARCOP3Op.emitOp3;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.CPU;
 import static jdk.vm.ci.sparc.SPARC.g0;
-import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -98,7 +98,6 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.CMOV;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.LabelRef;
@@ -597,7 +596,7 @@ public class SPARCControlFlow {
             } else {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch2 = sc.getRegister();
-                    new Setx(lowKey, scratch2).emit(masm);
+                    masm.setx(lowKey, scratch2, false);
                     masm.sub(value, scratch2, scratchReg);
                 }
             }
@@ -607,7 +606,7 @@ public class SPARCControlFlow {
                 if (isSimm13(upperLimit)) {
                     masm.cmp(scratchReg, upperLimit);
                 } else {
-                    new Setx(upperLimit, scratch2).emit(masm);
+                    masm.setx(upperLimit, scratch2, false);
                     masm.cmp(scratchReg, upperLimit);
                 }
 

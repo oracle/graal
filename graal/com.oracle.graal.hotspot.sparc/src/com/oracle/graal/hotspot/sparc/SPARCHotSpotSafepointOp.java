@@ -32,7 +32,6 @@ import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -89,7 +88,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            new Setx(config.safepointPollingAddress, ValueUtil.asRegister(result)).emit(masm);
+            masm.setx(config.safepointPollingAddress, ValueUtil.asRegister(result), false);
         }
     }
 }

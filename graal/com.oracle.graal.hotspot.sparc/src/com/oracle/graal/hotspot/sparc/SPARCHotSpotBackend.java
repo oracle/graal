@@ -61,7 +61,6 @@ import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.sparc.SPARCArithmeticLIRGenerator;
@@ -176,7 +175,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                         try (ScratchRegister sc = masm.getScratchRegister()) {
                             Register scratch = sc.getRegister();
                             assert afterFrameInit || isGlobalRegister(scratch) : "Only global (g1-g7) registers are allowed if the frame was not initialized here. Got register " + scratch;
-                            new Setx(address.getDisplacement(), scratch).emit(masm);
+                            masm.setx(address.getDisplacement(), scratch, false);
                             masm.stx(g0, new SPARCAddress(sp, scratch));
                         }
                     }
@@ -212,7 +211,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
                     assert isGlobalRegister(scratch) : "Only global registers are allowed before save. Got register " + scratch;
-                    new Setx(stackpoinerChange, scratch).emit(masm);
+                    masm.setx(stackpoinerChange, scratch, false);
                     masm.save(sp, scratch, sp);
                 }
             }

@@ -36,7 +36,6 @@ import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.hotspot.HotSpotCounterOp;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.LIRInstructionClass;
@@ -132,7 +131,7 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
             } else {
                 try (ScratchRegister scratch = masm.getScratchRegister()) {
                     Register tempOffsetRegister = scratch.getRegister();
-                    new Setx(relativeDisplacement, tempOffsetRegister, false).emit(masm);
+                    masm.setx(relativeDisplacement, tempOffsetRegister, false);
                     masm.add(countersArrayReg, tempOffsetRegister, countersArrayReg);
                 }
                 lastDisplacement = displacement;

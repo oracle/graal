@@ -29,7 +29,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -62,6 +61,6 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
         // instruction that loads the Klass from the inline cache.
         crb.recordMark(invokeKind == InvokeKind.Virtual ? config.MARKID_INVOKEVIRTUAL : config.MARKID_INVOKEINTERFACE);
         Register scratchRegister = g5;
-        new Setx(config.nonOopBits, scratchRegister, true).emit(masm);
+        masm.setx(config.nonOopBits, scratchRegister, true);
     }
 }

@@ -75,8 +75,7 @@ final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitch
 
                 Register scratchRegister = asRegister(scratch);
                 final int byteCount = constant.isCompressed() ? 4 : 8;
-                Runnable recordReference = () -> crb.recordDataReferenceInCode(constant, byteCount);
-                loadFromConstantTable(crb, masm, byteCount, asRegister(constantTableBase), scratchRegister, SPARCDelayedControlTransfer.DUMMY, recordReference);
+                loadFromConstantTable(crb, masm, byteCount, asRegister(constantTableBase), constant, scratchRegister, SPARCDelayedControlTransfer.DUMMY);
 
                 if (canUseShortBranch) {
                     CBCOND.emit(masm, conditionFlag, conditionCode == CC.Xcc, keyRegister, scratchRegister, target);

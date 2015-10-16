@@ -55,7 +55,7 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
  * CodeInstaller::pd_patch_DataSectionReference
  *
  * @see SPARCMove#loadFromConstantTable(CompilationResultBuilder, SPARCMacroAssembler, int,
- *      Register, Register, SPARCDelayedControlTransfer, Runnable)
+ *      Register, jdk.vm.ci.meta.Constant, Register, SPARCDelayedControlTransfer)
  */
 public class SPARCLoadConstantTableBaseOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCLoadConstantTableBaseOp> TYPE = LIRInstructionClass.create(SPARCLoadConstantTableBaseOp.class);
