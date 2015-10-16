@@ -89,5 +89,10 @@ public class GlobalSymbolTest {
         assertEquals("one", args.get(0));
         assertEquals("two", args.get(1));
         assertEquals("three", args.get(2));
+        String[] arr = args.toArray(new String[0]);
+        assertEquals("Three items in array", 3, arr.length);
+        assertEquals("one", arr[0]);
+        assertEquals("two", arr[1]);
+        assertEquals("three", arr[2]);
     }
 }

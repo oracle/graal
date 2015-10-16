@@ -22,29 +22,17 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.util.concurrent.Executors;
-import static org.junit.Assert.assertNotNull;
-import org.junit.Before;
 import org.junit.Test;
 
-public class EngineAsynchTest {
-    PolyglotEngine tvm;
-
-    @Before
-    public void initEngine() {
-        tvm = PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor()).build();
+public class EngineAsynchTest extends EngineTest {
+    @Test
+    public void marker() {
     }
 
-    @Test
-    public void npeWhenCastingAs() throws Exception {
-        PolyglotEngine.Language language1 = tvm.getLanguages().get("application/x-test-import-export-1");
-        PolyglotEngine.Language language2 = tvm.getLanguages().get("application/x-test-import-export-2");
-        language2.eval(Source.fromText("explicit.value=42", "define 42"));
-
-        PolyglotEngine.Value value = language1.eval(Source.fromText("return=value", "42.value"));
-        String res = value.as(String.class);
-        assertNotNull(res);
+    @Override
+    protected PolyglotEngine.Builder createBuilder() {
+        return PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor());
     }
 }
