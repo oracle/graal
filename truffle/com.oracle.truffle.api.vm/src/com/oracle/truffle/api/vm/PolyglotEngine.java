@@ -742,7 +742,7 @@ public class PolyglotEngine {
             if (JAVA_INTEROP_ENABLED) {
                 return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
             }
-            throw new IllegalArgumentException("Value cannot be represented as " + representation.getName());
+            throw new ClassCastException("Value cannot be represented as " + representation.getName());
         }
 
         /**
