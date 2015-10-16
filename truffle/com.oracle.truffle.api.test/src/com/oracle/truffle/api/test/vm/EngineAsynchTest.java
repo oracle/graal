@@ -32,6 +32,11 @@ public class EngineAsynchTest extends EngineTest {
     }
 
     @Override
+    protected Thread forbiddenThread() {
+        return Thread.currentThread();
+    }
+
+    @Override
     protected PolyglotEngine.Builder createBuilder() {
         return PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor());
     }

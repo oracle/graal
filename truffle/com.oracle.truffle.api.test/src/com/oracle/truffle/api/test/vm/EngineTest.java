@@ -47,7 +47,13 @@ public class EngineTest {
         assertNotNull(res);
     }
 
+    protected Thread forbiddenThread() {
+        return null;
+    }
+
     private interface AccessArray {
+        AccessArray dupl();
+
         List<? extends Number> get(int index);
     }
 
@@ -55,10 +61,11 @@ public class EngineTest {
     public void wrappedAsArray() throws Exception {
         Object[][] matrix = {{1, 2, 3}};
 
-        PolyglotEngine tvm = createBuilder().globalSymbol("arr", new ArrayTruffleObject(matrix)).build();
+        PolyglotEngine tvm = createBuilder().globalSymbol("arr", new ArrayTruffleObject(matrix, forbiddenThread())).build();
         PolyglotEngine.Language language1 = tvm.getLanguages().get("application/x-test-import-export-1");
         AccessArray access = language1.eval(Source.fromText("return=arr", "get the array")).as(AccessArray.class);
         assertNotNull("Array converted to list", access);
+        access = access.dupl();
         List<? extends Number> list = access.get(0);
         assertEquals("Size 3", 3, list.size());
         assertEquals(1, list.get(0));

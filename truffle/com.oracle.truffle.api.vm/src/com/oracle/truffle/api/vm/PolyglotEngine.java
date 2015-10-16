@@ -51,6 +51,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -65,6 +66,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -525,14 +527,38 @@ public class PolyglotEngine {
 
     @SuppressWarnings("try")
     final Object invokeForeign(final Node foreignNode, final VirtualFrame frame, final TruffleObject receiver) throws IOException {
-        Object res;
-        try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
-            res = ForeignAccess.execute(foreignNode, frame, receiver, ForeignAccess.getArguments(frame).toArray());
+        final Object[] res = {null, null};
+        final CountDownLatch computed = new CountDownLatch(1);
+        final Thread caller = Thread.currentThread();
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+                    final Object[] args = ForeignAccess.getArguments(frame).toArray();
+                    if (caller != Thread.currentThread()) {
+                        RootNode node = SymbolInvokerImpl.createTemporaryRoot(TruffleLanguage.class, foreignNode, receiver, args.length);
+                        final CallTarget target = Truffle.getRuntime().createCallTarget(node);
+                        res[0] = target.call(args);
+                    } else {
+                        res[0] = ForeignAccess.execute(foreignNode, frame, receiver, args);
+                    }
+                } catch (Exception ex) {
+                    res[1] = ex;
+                } finally {
+                    computed.countDown();
+                }
+            }
+        });
+        try {
+            computed.await();
+        } catch (InterruptedException ex) {
+            throw new InterruptedIOException(ex.getMessage());
         }
-        if (res instanceof TruffleObject) {
-            return new EngineTruffleObject(this, (TruffleObject) res);
+        exceptionCheck(res);
+        if (res[0] instanceof TruffleObject) {
+            return new EngineTruffleObject(this, (TruffleObject) res[0]);
         } else {
-            return res;
+            return res[0];
         }
     }
 
@@ -730,27 +756,7 @@ public class PolyglotEngine {
                 return representation.cast(obj);
             }
             if (JAVA_INTEROP_ENABLED) {
-                final Object[] ret = {null, null};
-                final CountDownLatch computed = new CountDownLatch(1);
-                executor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            ret[0] = JavaInterop.asJavaObject(representation, (TruffleObject) obj);
-                        } catch (Exception ex) {
-                            ret[1] = ex;
-                        } finally {
-                            computed.countDown();
-                        }
-                    }
-                });
-                try {
-                    computed.await();
-                } catch (InterruptedException ex) {
-                    throw new InterruptedIOException(ex.getMessage());
-                }
-                exceptionCheck(ret);
-                return representation.cast(ret[0]);
+                return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
             }
             throw new ClassCastException("Value cannot be represented as " + representation.getName());
         }

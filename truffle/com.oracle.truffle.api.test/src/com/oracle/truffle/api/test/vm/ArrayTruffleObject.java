@@ -31,19 +31,26 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.List;
+import static org.junit.Assert.assertNotEquals;
 
 final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10 {
     private final ForeignAccess access;
     private final Object[] values;
+    private final Thread forbiddenDupl;
 
     ArrayTruffleObject(Object[] values) {
-        this.access = ForeignAccess.create(getClass(), this);
+        this(values, null);
+    }
+
+    ArrayTruffleObject(Object[] values, Thread forbiddenDupl) {
+        this.access = forbiddenDupl == null ? ForeignAccess.create(getClass(), this) : null;
         this.values = values;
+        this.forbiddenDupl = forbiddenDupl;
     }
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return access;
+        return access != null ? access : ForeignAccess.create(getClass(), this);
     }
 
     @Override
@@ -93,6 +100,9 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10
 
     @Override
     public CallTarget accessInvoke(int argumentsLength) {
+        if (argumentsLength == 1) {
+            return target(new DuplNode());
+        }
         if (argumentsLength == 2) {
             return target(new InvokeNode());
         }
@@ -146,6 +156,22 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10
             } else {
                 return values[index];
             }
+        }
+    }
+
+    private final class DuplNode extends RootNode {
+        public DuplNode() {
+            super(TruffleLanguage.class, null, null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            final List<Object> args = ForeignAccess.getArguments(frame);
+            if (!"dupl".equals(args.get(0))) {
+                return null;
+            }
+            assertNotEquals("Cannot allocate duplicate on forbidden thread", forbiddenDupl, Thread.currentThread());
+            return new ArrayTruffleObject(values);
         }
     }
 }
