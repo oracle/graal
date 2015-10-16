@@ -24,6 +24,7 @@ package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.List;
@@ -59,7 +60,10 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
-        eliminateSpillMoves(allocator);
+        int traceNr = traceBuilderResult.getTraceForBlock(allocator.sortedBlocks().get(0));
+        if (!traceBuilderResult.incomingEdges(traceNr)) {
+            eliminateSpillMoves(allocator);
+        }
     }
 
     // called once before assignment of register numbers
@@ -94,7 +98,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
                              * be correct. Only moves that have been inserted by LinearScan can be
                              * removed.
                              */
-                            if (canEliminateSpillMove(block, move)) {
+                            if (canEliminateSpillMove(allocator, block, move)) {
                                 /*
                                  * Move target is a stack slot that is always correct, so eliminate
                                  * instruction.
@@ -164,12 +168,25 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
     }
 
     /**
+     * @param allocator
      * @param block The block {@code move} is located in.
      * @param move Spill move.
      */
-    private static boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
-        // TODO (je) do not eliminate spill moves yet!
+    private static boolean canEliminateSpillMove(TraceLinearScan allocator, AbstractBlockBase<?> block, MoveOp move) {
+        assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " + move;
+
+        TraceInterval curInterval = allocator.intervalFor(move.getResult());
+
+        if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory() && isPhiResolutionMove(allocator, move)) {
+            assert isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
+            return true;
+        }
         return false;
+    }
+
+    private static boolean isPhiResolutionMove(TraceLinearScan allocator, MoveOp move) {
+        TraceInterval curInterval = allocator.intervalFor(move.getResult());
+        return !curInterval.isSplitParent();
     }
 
     private static void checkIntervals(TraceInterval interval) {
