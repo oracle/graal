@@ -185,6 +185,18 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         jmpl(i7, 8, g0);
     }
 
+    /**
+     * Generates sethi hi22(value), dst; or dst, lo10(value), dst; code.
+     */
+    public void setw(int value, Register dst, boolean forceRelocatable) {
+        if (!forceRelocatable && isSimm13(value)) {
+            or(g0, value, dst);
+        } else {
+            sethi(hi22(value), dst);
+            or(dst, lo10(value), dst);
+        }
+    }
+
     public void setx(long value, Register dst, boolean forceRelocatable) {
         int lo = (int) (value & ~0);
         sethix(value, dst, forceRelocatable);

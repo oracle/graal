@@ -30,6 +30,7 @@ import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
 import static jdk.vm.ci.meta.JavaConstant.INT_0;
+import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 import static jdk.vm.ci.sparc.SPARC.d32;
 import static jdk.vm.ci.sparc.SPARC.d34;
 import static jdk.vm.ci.sparc.SPARC.d36;
@@ -77,6 +78,7 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
+import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
@@ -98,6 +100,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.sparc.SPARCArithmeticLIRGenerator;
 import com.oracle.graal.compiler.sparc.SPARCLIRGenerator;
+import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
@@ -118,7 +121,6 @@ import com.oracle.graal.lir.sparc.SPARCAddressValue;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.sparc.SPARCFrameMapBuilder;
 import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
-import com.oracle.graal.lir.sparc.SPARCMove;
 import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
@@ -333,11 +335,18 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Constant usedSource;
         if (COMPRESSED_NULL.equals(src)) {
             usedSource = INT_0;
+        } else if (src instanceof HotSpotObjectConstant && ((HotSpotObjectConstant) src).isNull()) {
+            usedSource = LONG_0;
         } else {
             usedSource = src;
         }
-        if (usedSource instanceof HotSpotMetaspaceConstant) {
-            return new SPARCMove.LoadConstantFromTable(usedSource, getConstantTableBase(), dst);
+        if (usedSource instanceof HotSpotConstant) {
+            HotSpotConstant constant = (HotSpotConstant) usedSource;
+            if (constant.isCompressed()) {
+                return new SPARCHotSpotMove.LoadHotSpotObjectConstantInline(constant, dst);
+            } else {
+                return new SPARCHotSpotMove.LoadHotSpotObjectConstantFromTable(constant, dst, getConstantTableBase());
+            }
         } else {
             return super.createMoveConstant(dst, usedSource);
         }
