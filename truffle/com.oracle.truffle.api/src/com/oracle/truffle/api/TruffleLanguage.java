@@ -470,7 +470,7 @@ public abstract class TruffleLanguage<C> {
             }
             try {
                 return target.call();
-            } catch (Exception ex) {
+            } catch (Throwable ex) {
                 throw new IOException(ex);
             }
         }
