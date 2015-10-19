@@ -37,6 +37,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -324,10 +325,11 @@ public class AMD64Move {
         @Def({REG}) protected AllocatableValue result;
         @Use({STACK, UNINITIALIZED}) protected AllocatableValue slot;
 
-        public StackLeaOp(AllocatableValue result, VirtualStackSlot slot) {
+        public StackLeaOp(AllocatableValue result, AllocatableValue slot) {
             super(TYPE);
             this.result = result;
             this.slot = slot;
+            assert slot instanceof VirtualStackSlot || slot instanceof StackSlot;
         }
 
         @Override

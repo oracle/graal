@@ -442,10 +442,11 @@ public class SPARCMove {
         @Def({REG}) protected AllocatableValue result;
         @Use({STACK, UNINITIALIZED}) protected AllocatableValue slot;
 
-        public StackLoadAddressOp(AllocatableValue result, VirtualStackSlot address) {
+        public StackLoadAddressOp(AllocatableValue result, AllocatableValue slot) {
             super(TYPE, SIZE);
             this.result = result;
-            this.slot = address;
+            this.slot = slot;
+            assert slot instanceof VirtualStackSlot || slot instanceof StackSlot;
         }
 
         @Override

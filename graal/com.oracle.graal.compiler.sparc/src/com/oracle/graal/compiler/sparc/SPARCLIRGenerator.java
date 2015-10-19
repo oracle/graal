@@ -257,9 +257,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAddress(VirtualStackSlot address) {
+    public Variable emitAddress(AllocatableValue stackslot) {
         Variable result = newVariable(LIRKind.value(target().arch.getWordKind()));
-        append(new StackLoadAddressOp(result, address));
+        append(new StackLoadAddressOp(result, stackslot));
         return result;
     }
 

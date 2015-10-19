@@ -310,9 +310,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAddress(VirtualStackSlot address) {
+    public Variable emitAddress(AllocatableValue stackslot) {
         Variable result = newVariable(LIRKind.value(target().arch.getWordKind()));
-        append(new StackLeaOp(result, address));
+        append(new StackLeaOp(result, stackslot));
         return result;
     }
 
