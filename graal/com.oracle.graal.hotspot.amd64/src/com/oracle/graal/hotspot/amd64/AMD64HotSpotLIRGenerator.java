@@ -359,9 +359,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private AMD64SaveRegistersOp emitSaveAllRegisters(Register[] savedRegisters, boolean supportsRemove) {
         AllocatableValue[] savedRegisterLocations = new AllocatableValue[savedRegisters.length];
         for (int i = 0; i < savedRegisters.length; i++) {
-            PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
-            VirtualStackSlot spillSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));
-            savedRegisterLocations[i] = spillSlot;
+            savedRegisterLocations[i] = allocateSaveRegisterLocation(savedRegisters[i]);
         }
         return emitSaveRegisters(savedRegisters, savedRegisterLocations, supportsRemove);
     }
