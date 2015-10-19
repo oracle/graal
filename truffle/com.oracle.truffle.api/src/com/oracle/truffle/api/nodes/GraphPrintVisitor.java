@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -36,11 +35,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.Socket;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -50,9 +52,12 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+
+import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 
 /**
  * Utility class for creating output for the ideal graph visualizer.
@@ -68,10 +73,10 @@ public class GraphPrintVisitor {
     private Map<Object, Element> prevNodeMap;
     private int id;
     private Element graphDocument;
-    private Element groupElement;
     private Element graphElement;
     private Element nodesElement;
     private Element edgesElement;
+    private Deque<Element> groupElementStack;
 
     public GraphPrintVisitor() {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -85,11 +90,16 @@ public class GraphPrintVisitor {
 
         graphDocument = dom.createElement("graphDocument");
         dom.appendChild(graphDocument);
+        groupElementStack = new ArrayDeque<>();
     }
 
     public GraphPrintVisitor beginGroup(String groupName) {
-        groupElement = dom.createElement("group");
-        graphDocument.appendChild(groupElement);
+        Element parent = groupElement() != null ? groupElement() : graphDocument;
+
+        Element groupElement = dom.createElement("group");
+        groupElementStack.push(groupElement);
+        parent.appendChild(groupElement);
+
         Element properties = dom.createElement("properties");
         groupElement.appendChild(properties);
 
@@ -108,15 +118,20 @@ public class GraphPrintVisitor {
         return this;
     }
 
+    public GraphPrintVisitor endGroup() {
+        groupElementStack.pop();
+        return this;
+    }
+
     public GraphPrintVisitor beginGraph(String graphName) {
-        if (null == groupElement) {
+        if (null == groupElement()) {
             beginGroup("");
         } else if (null != prevNodeMap) {
             // TODO: difference (create removeNode,removeEdge elements)
         }
 
         graphElement = dom.createElement("graph");
-        groupElement.appendChild(graphElement);
+        groupElement().appendChild(graphElement);
         Element properties = dom.createElement("properties");
         graphElement.appendChild(properties);
         nodesElement = dom.createElement("nodes");
@@ -136,6 +151,10 @@ public class GraphPrintVisitor {
         edgeList = new ArrayList<>();
 
         return this;
+    }
+
+    private Element groupElement() {
+        return groupElementStack.peek();
     }
 
     @Override
