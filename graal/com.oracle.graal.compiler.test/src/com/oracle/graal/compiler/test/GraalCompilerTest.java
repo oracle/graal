@@ -763,13 +763,18 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            be obtained from {@code installedCodeOwner} via
      *            {@link #parseForCompile(ResolvedJavaMethod)}.
      */
+    @SuppressWarnings("try")
     protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
-        Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                        getProfilingInfo(graphToCompile), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
-        return GraalCompiler.compile(request);
+        try (Scope s = Debug.scope("Compile", graphToCompile)) {
+            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
+            Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+                            getProfilingInfo(graphToCompile), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+            return GraalCompiler.compile(request);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     protected StructuredGraph lastCompiledGraph;
@@ -869,8 +874,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     @SuppressWarnings("try")
     private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
-        try (Scope ds = Debug.scope("Parsing", javaMethod)) {
-            StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog());
+        StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog());
+        try (Scope ds = Debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;
         } catch (Throwable e) {
