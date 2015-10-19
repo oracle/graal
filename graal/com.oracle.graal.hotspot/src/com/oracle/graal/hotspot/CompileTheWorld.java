@@ -511,6 +511,11 @@ public final class CompileTheWorld {
                     cpe = new JarClassPathEntry(entry);
                 } else if (entry.endsWith(".jimage")) {
                     assert JAVA_VERSION.compareTo("1.9") >= 0;
+                    if (!new File(entry).isFile()) {
+                        println("CompileTheWorld : Skipped classes in " + entry);
+                        println();
+                        continue;
+                    }
                     cpe = new ImageClassPathEntry(entry);
                 } else {
                     if (!new File(entry).isDirectory()) {
