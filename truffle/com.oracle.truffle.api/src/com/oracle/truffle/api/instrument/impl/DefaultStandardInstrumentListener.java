@@ -44,7 +44,6 @@ public class DefaultStandardInstrumentListener implements StandardInstrumentList
     public void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
     }
 
-    public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
+    public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception) {
     }
-
 }

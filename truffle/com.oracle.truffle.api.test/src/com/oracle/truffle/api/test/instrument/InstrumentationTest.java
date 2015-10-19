@@ -243,10 +243,9 @@ public class InstrumentationTest {
                     leaveCount++;
                 }
 
-                public void onReturnExceptional(Probe p, Exception exception) {
+                public void onReturnExceptional(Probe p, Throwable exception) {
                     leaveCount++;
                 }
-
             }, "Instrumentation Test Counter");
         }
 
@@ -296,10 +295,9 @@ public class InstrumentationTest {
                     leaveCount++;
                 }
 
-                public void onReturnExceptional(Probe p, Node node, VirtualFrame vFrame, Exception exception) {
+                public void onReturnExceptional(Probe p, Node node, VirtualFrame vFrame, Throwable exception) {
                     leaveCount++;
                 }
-
             }, "Instrumentation Test Counter");
         }
 

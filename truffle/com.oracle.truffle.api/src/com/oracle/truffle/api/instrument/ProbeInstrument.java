@@ -223,7 +223,7 @@ public abstract class ProbeInstrument extends Instrument {
             }
 
             @Override
-            public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
+            public void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception) {
                 SimpleInstrument.this.simpleListener.onReturnExceptional(SimpleInstrument.this.probe, exception);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
@@ -315,7 +315,7 @@ public abstract class ProbeInstrument extends Instrument {
             }
 
             @Override
-            public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
+            public void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception) {
                 standardListener.onReturnExceptional(StandardInstrument.this.probe, node, vFrame, exception);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
@@ -437,7 +437,7 @@ public abstract class ProbeInstrument extends Instrument {
             }
 
             @Override
-            public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
+            public void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception) {
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
@@ -524,7 +524,7 @@ public abstract class ProbeInstrument extends Instrument {
             }
 
             @Override
-            public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
+            public void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception) {
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }

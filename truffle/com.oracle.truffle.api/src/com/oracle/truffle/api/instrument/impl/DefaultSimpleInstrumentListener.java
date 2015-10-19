@@ -41,6 +41,6 @@ public class DefaultSimpleInstrumentListener implements SimpleInstrumentListener
     public void onReturnValue(Probe probe, Object result) {
     }
 
-    public void onReturnExceptional(Probe probe, Exception exception) {
+    public void onReturnExceptional(Probe probe, Throwable exception) {
     }
 }
