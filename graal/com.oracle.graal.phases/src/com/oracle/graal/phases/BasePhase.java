@@ -142,9 +142,9 @@ public abstract class BasePhase<C> {
             if (dumpGraph && Debug.isDumpEnabled(BEFORE_PHASE_DUMP_LEVEL)) {
                 Debug.dump(BEFORE_PHASE_DUMP_LEVEL, graph, "Before phase %s", getName());
             }
+            inputNodesCount.add(graph.getNodeCount());
             this.run(graph, context);
             executionCount.increment();
-            inputNodesCount.add(graph.getNodeCount());
             if (dumpGraph && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
                 Debug.dump(PHASE_DUMP_LEVEL, graph, "%s", getName());
             }
