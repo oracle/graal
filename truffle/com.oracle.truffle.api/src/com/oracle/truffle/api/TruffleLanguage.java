@@ -47,12 +47,15 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.KillException;
+import com.oracle.truffle.api.instrument.QuitException;
 import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+
 import java.util.Objects;
 
 /**
@@ -470,6 +473,8 @@ public abstract class TruffleLanguage<C> {
             }
             try {
                 return target.call();
+            } catch (KillException | QuitException ex) {
+                throw ex;
             } catch (Throwable ex) {
                 throw new IOException(ex);
             }
