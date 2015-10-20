@@ -48,7 +48,6 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.VirtualStackSlot;
 
 public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
@@ -169,7 +168,7 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
      */
     void emitData(AllocatableValue dst, byte[] data);
 
-    Variable emitAddress(VirtualStackSlot slot);
+    Variable emitAddress(AllocatableValue stackslot);
 
     void emitMembar(int barriers);
 
