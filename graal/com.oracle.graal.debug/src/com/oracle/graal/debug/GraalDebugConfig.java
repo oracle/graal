@@ -278,13 +278,16 @@ public class GraalDebugConfig implements DebugConfig {
         }
         Debug.setConfig(Debug.fixedConfig(Debug.DEFAULT_LOG_LEVEL, Debug.DEFAULT_LOG_LEVEL, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
+        HashSet<Object> firstSeen = new HashSet<>();
         for (Object o : Debug.context()) {
-            if (Options.DumpOnError.getValue()) {
-                Debug.dump(o, "Exception: " + e.toString());
-            } else {
-                Debug.log("Context obj %s", o);
+            // Only dump a context object once.
+            if (firstSeen.add(o)) {
+                if (Options.DumpOnError.getValue()) {
+                    Debug.dump(o, "Exception: " + e.toString());
+                } else {
+                    Debug.log("Context obj %s", o);
+                }
             }
-
         }
         return null;
     }
