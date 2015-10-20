@@ -142,7 +142,7 @@ public abstract class SLREPLHandler extends REPLHandler {
         } catch (KillException ex) {
             return finishReplySucceeded(reply, fileName + " killed");
         } catch (Exception ex) {
-            return finishReplyFailed(reply, "error loading file \"" + fileName + "\": " + ex.getMessage());
+            return finishReplyFailed(reply, ex);
         }
     }
 }
