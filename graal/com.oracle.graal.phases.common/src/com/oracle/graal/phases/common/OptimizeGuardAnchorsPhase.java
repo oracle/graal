@@ -63,6 +63,9 @@ public class OptimizeGuardAnchorsPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        if (!graph.getGuardsStage().allowsFloatingGuards()) {
+            return;
+        }
         LazyCFG cfg = new LazyCFG(graph);
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             if (!(begin instanceof StartNode || begin.predecessor() instanceof ControlSplitNode)) {
