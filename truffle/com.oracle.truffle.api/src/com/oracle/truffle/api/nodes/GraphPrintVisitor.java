@@ -48,6 +48,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
@@ -67,6 +68,9 @@ public class GraphPrintVisitor {
     public static final String GraphVisualizerAddress = "127.0.0.1";
     public static final int GraphVisualizerPort = 4444;
 
+    private static DocumentBuilderFactory documentBuilderFactory;
+    private static TransformerFactory transformerFactory;
+
     private Document dom;
     private Map<Object, Element> nodeMap;
     private List<Element> edgeList;
@@ -79,14 +83,8 @@ public class GraphPrintVisitor {
     private Deque<Element> groupElementStack;
 
     public GraphPrintVisitor() {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        try {
-            DocumentBuilder db = dbf.newDocumentBuilder();
-
-            dom = db.newDocument();
-        } catch (ParserConfigurationException ex) {
-            throw new RuntimeException(ex);
-        }
+        DocumentBuilder db = newDocumentBuilder();
+        dom = db.newDocument();
 
         graphDocument = dom.createElement("graphDocument");
         dom.appendChild(graphDocument);
@@ -125,9 +123,7 @@ public class GraphPrintVisitor {
 
     public GraphPrintVisitor beginGraph(String graphName) {
         if (null == groupElement()) {
-            beginGroup("");
-        } else if (null != prevNodeMap) {
-            // TODO: difference (create removeNode,removeEdge elements)
+            beginGroup(graphName);
         }
 
         graphElement = dom.createElement("graph");
@@ -161,7 +157,7 @@ public class GraphPrintVisitor {
     public String toString() {
         if (null != dom) {
             try {
-                Transformer tr = TransformerFactory.newInstance().newTransformer();
+                Transformer tr = newTransformer();
                 tr.setOutputProperty(OutputKeys.INDENT, "yes");
                 tr.setOutputProperty(OutputKeys.METHOD, "xml");
                 tr.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
@@ -178,7 +174,7 @@ public class GraphPrintVisitor {
 
     public void printToFile(File f) {
         try {
-            Transformer tr = TransformerFactory.newInstance().newTransformer();
+            Transformer tr = newTransformer();
             tr.setOutputProperty(OutputKeys.INDENT, "yes");
             tr.setOutputProperty(OutputKeys.METHOD, "xml");
             tr.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
@@ -191,7 +187,7 @@ public class GraphPrintVisitor {
 
     public void printToSysout() {
         try {
-            Transformer tr = TransformerFactory.newInstance().newTransformer();
+            Transformer tr = newTransformer();
             tr.setOutputProperty(OutputKeys.INDENT, "yes");
             tr.setOutputProperty(OutputKeys.METHOD, "xml");
             tr.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
@@ -204,7 +200,7 @@ public class GraphPrintVisitor {
 
     public void printToNetwork(boolean ignoreErrors) {
         try {
-            Transformer tr = TransformerFactory.newInstance().newTransformer();
+            Transformer tr = newTransformer();
             tr.setOutputProperty(OutputKeys.METHOD, "xml");
 
             Socket socket = new Socket(GraphVisualizerAddress, GraphVisualizerPort);
@@ -279,9 +275,9 @@ public class GraphPrintVisitor {
 
     protected void setNodeProperty(Object node, String propertyName, Object value) {
         Element nodeElem = getElementByObject(node);
-        Element propElem = getPropertyElement(node, propertyName); // if property exists, replace
-        // its value
-        if (null == propElem) { // if property doesn't exist, create one
+        Element propElem = getPropertyElement(node, propertyName);
+        // if property exists, replace its value, otherwise create a new one
+        if (null == propElem) {
             propElem = dom.createElement("p");
             propElem.setAttribute("name", propertyName);
             nodeElem.getElementsByTagName("properties").item(0).appendChild(propElem);
@@ -310,12 +306,12 @@ public class GraphPrintVisitor {
     }
 
     protected void connectNodes(Object a, Object b, String label) {
-        if (nodeMap.get(a) == null || nodeMap.get(b) == null) {
+        if (getElementByObject(a) == null || getElementByObject(b) == null) {
             return;
         }
 
-        String fromId = nodeMap.get(a).getAttribute("id");
-        String toId = nodeMap.get(b).getAttribute("id");
+        String fromId = getElementByObject(a).getAttribute("id");
+        String toId = getElementByObject(b).getAttribute("id");
 
         // count existing to-edges
         int count = 0;
@@ -348,28 +344,28 @@ public class GraphPrintVisitor {
 
         // respect node's custom handler
         if (NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class) != null) {
-            Class<? extends GraphPrintHandler> customHandlerClass = NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class).handler();
-            try {
-                GraphPrintHandler customHandler = customHandlerClass.newInstance();
-                customHandler.visit(node, new GraphPrintAdapter());
-            } catch (InstantiationException | IllegalAccessException e) {
-                assert false : e;
-            }
+            visit(node, createGraphPrintHandlerFromClass(NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class).handler()));
         } else if (NodeUtil.findAnnotation(node.getClass(), NullGraphPrintHandler.class) != null) {
             // ignore
         } else {
-            // default handler
-            createElementForNode(node);
-
-            if (node instanceof Node) {
-                for (Map.Entry<String, Node> child : findNamedNodeChildren((Node) node).entrySet()) {
-                    visit(child.getValue());
-                    connectNodes(node, child.getValue(), child.getKey());
-                }
-            }
+            visit(node, new DefaultGraphPrintHandler());
         }
 
         return this;
+    }
+
+    public GraphPrintVisitor visit(Object node, GraphPrintHandler handler) {
+        handler.visit(node, new GraphPrintAdapter());
+
+        return this;
+    }
+
+    private static GraphPrintHandler createGraphPrintHandlerFromClass(Class<? extends GraphPrintHandler> customHandlerClass) {
+        try {
+            return customHandlerClass.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
     }
 
     private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
@@ -398,6 +394,28 @@ public class GraphPrintVisitor {
         return nodes;
     }
 
+    private static DocumentBuilder newDocumentBuilder() {
+        try {
+            if (documentBuilderFactory == null) {
+                documentBuilderFactory = DocumentBuilderFactory.newInstance();
+            }
+            return documentBuilderFactory.newDocumentBuilder();
+        } catch (ParserConfigurationException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private static Transformer newTransformer() {
+        try {
+            if (transformerFactory == null) {
+                transformerFactory = TransformerFactory.newInstance();
+            }
+            return transformerFactory.newTransformer();
+        } catch (TransformerConfigurationException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
     public class GraphPrintAdapter {
 
         public void createElementForNode(Object node) {
@@ -408,18 +426,43 @@ public class GraphPrintVisitor {
             GraphPrintVisitor.this.visit(node);
         }
 
+        public void visit(Object node, GraphPrintHandler handler) {
+            GraphPrintVisitor.this.visit(node, handler);
+        }
+
         public void connectNodes(Object node, Object child) {
             GraphPrintVisitor.this.connectNodes(node, child, null);
         }
 
+        public void connectNodes(Object node, Object child, String label) {
+            GraphPrintVisitor.this.connectNodes(node, child, label);
+        }
+
         public void setNodeProperty(Object node, String propertyName, Object value) {
             GraphPrintVisitor.this.setNodeProperty(node, propertyName, value);
+        }
+
+        public boolean visited(Object node) {
+            return GraphPrintVisitor.this.getElementByObject(node) != null;
         }
     }
 
     public interface GraphPrintHandler {
 
         void visit(Object node, GraphPrintAdapter gPrinter);
+    }
+
+    private static final class DefaultGraphPrintHandler implements GraphPrintHandler {
+        public void visit(Object node, GraphPrintAdapter gPrinter) {
+            gPrinter.createElementForNode(node);
+
+            if (node instanceof Node) {
+                for (Map.Entry<String, Node> child : findNamedNodeChildren((Node) node).entrySet()) {
+                    gPrinter.visit(child.getValue());
+                    gPrinter.connectNodes(node, child.getValue(), child.getKey());
+                }
+            }
+        }
     }
 
     @Retention(RetentionPolicy.RUNTIME)
