@@ -24,19 +24,41 @@
  */
 package com.oracle.truffle.api.interop;
 
-final class ForeignAccessArguments {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
+
+final class ForeignAccessArguments extends Node {
+
     static final Object[] EMPTY_ARGUMENTS_ARRAY = new Object[0];
     static final int RECEIVER_INDEX = 0;
     static final int RUNTIME_ARGUMENT_COUNT = 1;
 
-    static Object[] create(Object receiver, Object... arguments) {
-        if (arguments.length == 0) {
-            return new Object[]{receiver};
-        }
-        Object[] objectArguments = new Object[RUNTIME_ARGUMENT_COUNT + arguments.length];
+    @CompilationFinal private int previousLength = -2;
+
+    public Object[] executeCreate(Object receiver, Object... arguments) {
+        int length = profileLength(arguments.length);
+        Object[] objectArguments = new Object[RUNTIME_ARGUMENT_COUNT + length];
         objectArguments[RECEIVER_INDEX] = receiver;
-        arraycopy(arguments, 0, objectArguments, RUNTIME_ARGUMENT_COUNT, arguments.length);
+        arraycopy(arguments, 0, objectArguments, RUNTIME_ARGUMENT_COUNT, length);
         return objectArguments;
+    }
+
+    private int profileLength(int length) {
+        int returnLength = length;
+        if (previousLength != -1) {
+            if (previousLength == length) {
+                returnLength = previousLength;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (previousLength == -2) {
+                    previousLength = length;
+                } else {
+                    previousLength = -1;
+                }
+            }
+        }
+        return returnLength;
     }
 
     private static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
