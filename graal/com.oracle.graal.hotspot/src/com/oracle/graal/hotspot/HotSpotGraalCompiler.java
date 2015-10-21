@@ -39,6 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
+import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
@@ -64,7 +65,7 @@ import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 
-public class HotSpotGraalCompiler implements JVMCICompiler {
+public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     private final HotSpotGraalRuntimeProvider graalRuntime;
@@ -74,7 +75,8 @@ public class HotSpotGraalCompiler implements JVMCICompiler {
         this.graalRuntime = graalRuntime;
     }
 
-    HotSpotGraalRuntimeProvider getGraalRuntime() {
+    @Override
+    public HotSpotGraalRuntimeProvider getGraalRuntime() {
         return graalRuntime;
     }
 

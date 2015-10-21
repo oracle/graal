@@ -150,7 +150,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "jvmci:JVMCI_SERVICE",
+        "jvmci:JVMCI_API",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
