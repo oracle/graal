@@ -267,7 +267,6 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.InfopointReason;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.compiler.Compiler;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -288,6 +287,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.bytecode.BytecodeLookupSwitch;
 import com.oracle.graal.bytecode.BytecodeStream;
@@ -1853,7 +1853,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
         try (IntrinsicScope s = calleeIntrinsicContext != null && !parsingIntrinsic() ? new IntrinsicScope(this, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args) : null) {
 
-            BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, Compiler.INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
+            BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, JVMCICompiler.INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
             FrameStateBuilder startFrameState = new FrameStateBuilder(parser, targetMethod, graph);
             if (!targetMethod.isStatic()) {
                 args[0] = nullCheckedValue(args[0]);

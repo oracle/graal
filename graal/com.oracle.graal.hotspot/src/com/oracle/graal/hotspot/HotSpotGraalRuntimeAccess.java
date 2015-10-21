@@ -23,11 +23,11 @@
 package com.oracle.graal.hotspot;
 
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.compiler.CompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.options.Option;
 import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.service.ServiceProvider;
 import jdk.vm.ci.service.Services;
 
@@ -56,7 +56,7 @@ public class HotSpotGraalRuntimeAccess implements GraalRuntimeAccess {
             // default: fall back to the JVMCI system compiler
             return (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
         } else {
-            for (CompilerFactory factory : Services.load(CompilerFactory.class)) {
+            for (JVMCICompilerFactory factory : Services.load(JVMCICompilerFactory.class)) {
                 if (factory instanceof HotSpotGraalCompilerFactory) {
                     HotSpotGraalCompilerFactory graalFactory = (HotSpotGraalCompilerFactory) factory;
                     if (config.equals(factory.getCompilerName())) {

@@ -23,11 +23,11 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.debug.internal.MemUseTrackerImpl.getCurrentThreadAllocatedBytes;
-import jdk.vm.ci.compiler.Compiler;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.api.runtime.Graal;
 import com.oracle.graal.compiler.test.AllocSpy;
@@ -141,7 +141,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
 
         try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
-            int entryBCI = Compiler.INVOCATION_ENTRY_BCI;
+            int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, jvmciEnv);
             CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, false);
             task.runCompilation();
@@ -159,7 +159,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             long jvmciEnv = 0L;
             try (AllocSpy as = AllocSpy.open(methodName)) {
                 HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
-                HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, Compiler.INVOCATION_ENTRY_BCI, jvmciEnv);
+                HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, JVMCICompiler.INVOCATION_ENTRY_BCI, jvmciEnv);
                 CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, false);
                 task.runCompilation();
             }

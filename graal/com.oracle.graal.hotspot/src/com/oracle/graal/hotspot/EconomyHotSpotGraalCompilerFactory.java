@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.vm.ci.compiler.CompilerFactory;
+import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.compiler.phases.EconomyCompilerConfiguration;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
-@ServiceProvider(CompilerFactory.class)
+@ServiceProvider(JVMCICompilerFactory.class)
 public class EconomyHotSpotGraalCompilerFactory extends DefaultHotSpotGraalCompilerFactory {
 
     @Override

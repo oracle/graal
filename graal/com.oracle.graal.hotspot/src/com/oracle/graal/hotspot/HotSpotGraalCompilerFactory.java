@@ -24,18 +24,18 @@ package com.oracle.graal.hotspot;
 
 import static jdk.vm.ci.inittimer.InitTimer.timer;
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.compiler.CompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.options.Option;
 import jdk.vm.ci.options.OptionType;
 import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 import jdk.vm.ci.service.Services;
 
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
-public abstract class HotSpotGraalCompilerFactory implements CompilerFactory {
+public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
     static class Options {
 

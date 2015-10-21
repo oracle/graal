@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static jdk.vm.ci.compiler.Compiler.PrintBailout;
+import static jdk.vm.ci.runtime.JVMCICompiler.PrintBailout;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

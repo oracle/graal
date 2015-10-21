@@ -30,12 +30,12 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import jdk.vm.ci.compiler.Compiler;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.JavaMethodContext;
@@ -154,19 +154,19 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * start} node.
      */
     public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
+        this(name, method, uniqueGraphIds.incrementAndGet(), JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
     }
 
     public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
+        this(name, method, uniqueGraphIds.incrementAndGet(), JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
+        this(null, method, uniqueGraphIds.incrementAndGet(), JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
+        this(null, method, uniqueGraphIds.incrementAndGet(), JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
@@ -237,7 +237,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public boolean isOSR() {
-        return entryBCI != Compiler.INVOCATION_ENTRY_BCI;
+        return entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
     }
 
     public long graphId() {

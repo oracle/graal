@@ -30,7 +30,6 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationResult;
-import jdk.vm.ci.compiler.Compiler;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -38,6 +37,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.debug.Debug;
@@ -64,7 +64,7 @@ import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 
-public class HotSpotGraalCompiler implements Compiler {
+public class HotSpotGraalCompiler implements JVMCICompiler {
 
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     private final HotSpotGraalRuntimeProvider graalRuntime;
@@ -107,7 +107,7 @@ public class HotSpotGraalCompiler implements Compiler {
     public CompilationResult compile(ResolvedJavaMethod method, int entryBCI, boolean mustRecordMethodInlining) {
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
-        final boolean isOSR = entryBCI != Compiler.INVOCATION_ENTRY_BCI;
+        final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
         StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers);
 
         if (graph == null) {
