@@ -184,6 +184,7 @@ suite = {
       "dependencies" : [
         "jvmci:JVMCI_HOTSPOT",
         "jvmci:JVMCI_OPTIONS_PROCESSOR",
+        "com.oracle.graal.api.runtime",
         "com.oracle.graal.replacements",
         "com.oracle.graal.runtime",
         "com.oracle.graal.code",
@@ -283,7 +284,6 @@ suite = {
         "com.oracle.graal.nodeinfo",
         "com.oracle.graal.compiler.common",
         "com.oracle.graal.api.collections",
-        "com.oracle.graal.api.runtime",
       ],
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
@@ -299,6 +299,7 @@ suite = {
       "checkstyle" : "com.oracle.graal.graph",
       "dependencies" : [
         "mx:JUNIT",
+        "com.oracle.graal.api.runtime",
         "com.oracle.graal.graph",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
@@ -570,6 +571,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.graal.api.runtime",
         "com.oracle.graal.runtime",
         "mx:JUNIT",
       ],
@@ -606,6 +608,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JMH",
+        "com.oracle.graal.api.runtime",
         "com.oracle.graal.java",
         "com.oracle.graal.runtime",
       ],
@@ -820,6 +823,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "com.oracle.graal.api.runtime",
         "com.oracle.graal.runtime",
         "com.oracle.graal.replacements",
       ],
@@ -912,6 +916,7 @@ suite = {
       "subDir" : "graal",
       "dependencies" : [
         "com.oracle.graal.api.replacements",
+        "com.oracle.graal.api.runtime",
         "com.oracle.graal.graph",
       ],
       "distDependencies" : [
