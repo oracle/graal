@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
-import static sun.misc.Version.jdkMajorVersion;
-import static sun.misc.Version.jdkMinorVersion;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -49,6 +47,7 @@ import org.junit.Test;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.hotspot.meta.HotSpotGraphBuilderPlugins;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -91,8 +90,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testAESCryptIntrinsics() throws Exception {
-        String[] methods = jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8 ? new String[]{"encryptBlock", "decryptBlock"} : new String[]{"implEncryptBlock", "implDecryptBlock"};
-        if (compileAndInstall("com.sun.crypto.provider.AESCrypt", methods)) {
+        if (compileAndInstall("com.sun.crypto.provider.AESCrypt", HotSpotGraphBuilderPlugins.aesEncryptName, HotSpotGraphBuilderPlugins.aesDecryptName)) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));
@@ -102,8 +100,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testCipherBlockChainingIntrinsics() throws Exception {
-        String[] methods = jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8 ? new String[]{"encrypt", "decrypt"} : new String[]{"implEncrypt", "implDecrypt"};
-        if (compileAndInstall("com.sun.crypto.provider.CipherBlockChaining", methods)) {
+        if (compileAndInstall("com.sun.crypto.provider.CipherBlockChaining", HotSpotGraphBuilderPlugins.cbcEncryptName, HotSpotGraphBuilderPlugins.cbcDecryptName)) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));

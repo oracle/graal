@@ -459,6 +459,10 @@ public class HotSpotReplacementsUtil {
         }
     }
 
+    public static boolean arrayKlassComponentMirrorOffsetExists() {
+        return Lazy.arrayKlassComponentMirrorOffset != Integer.MAX_VALUE;
+    }
+
     @Fold
     public static int arrayKlassComponentMirrorOffset() {
         if (Lazy.arrayKlassComponentMirrorOffset == Integer.MAX_VALUE) {
