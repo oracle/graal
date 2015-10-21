@@ -50,17 +50,18 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.ByteArrayOutputStream;
+import java.util.LinkedList;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class SLDebugTest {
     private Source factorial;
     private Debugger debugger;
-    private Callable<?> run;
+    private final LinkedList<Callable<?>> run = new LinkedList<>();
     private SuspendedEvent suspendedEvent;
     private Throwable ex;
     private ExecutionEvent executionEvent;
@@ -89,7 +90,7 @@ public class SLDebugTest {
 
         ByteArrayOutputStream os = new ByteArrayOutputStream();
 
-        PolyglotEngine engine = PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor()).onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+        PolyglotEngine engine = PolyglotEngine.buildNew().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
                 onExecution(event);
@@ -101,14 +102,7 @@ public class SLDebugTest {
             }
         }).setOut(os).build();
 
-        PolyglotEngine.Value value;
-        synchronized (this) {
-            value = engine.eval(factorial);
-            wait();
-        }
-        assertNotNull("Debugger initalized", debugger);
-
-        run(new Callable<Void>() {
+        onEvent(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
                 LineLocation nMinusOne = factorial.createLineLocation(7);
@@ -118,10 +112,11 @@ public class SLDebugTest {
             }
         });
 
+        PolyglotEngine.Value value = engine.eval(factorial);
+
         assertNull("Parsing done", value.get());
 
-        PolyglotEngine.Value main = engine.findGlobalSymbol("main");
-        value = main.invoke(null);
+        assertExecutedOK();
 
         run(new Callable<Void>() {
             @Override
@@ -172,67 +167,62 @@ public class SLDebugTest {
             }
         });
 
-        run(null);
+        PolyglotEngine.Value main = engine.findGlobalSymbol("main");
+        value = main.invoke(null);
+
+        assertExecutedOK();
 
         Number n = value.as(Number.class);
         assertNotNull(n);
         assertEquals("Factorial computed OK", 2, n.intValue());
     }
 
-    synchronized void onExecution(ExecutionEvent event) {
+    void onExecution(ExecutionEvent event) {
         executionEvent = event;
         debugger = event.getDebugger();
-        notifyAll();
-        waitForWork();
+        performWork();
     }
 
-    synchronized void onSuspended(SuspendedEvent event) {
+    void onSuspended(SuspendedEvent event) {
         suspendedEvent = event;
-        notifyAll();
-        waitForWork();
+        performWork();
     }
 
-    private synchronized void run(Callable<?> callable) throws Throwable {
+    private void run(Callable<?> callable) throws Throwable {
         if (ex != null) {
             throw ex;
         }
-        while (run != null) {
-            wait();
+        if (callable == null) {
+            assertTrue("Assuming all requests processed: " + run, run.isEmpty());
+            return;
         }
-        run = callable;
-        notifyAll();
+        run.addLast(callable);
         if (ex != null) {
             throw ex;
         }
     }
 
-    private void waitForWork() {
+    private void performWork() {
+        Callable<?> c = run.removeFirst();
         try {
-            waitForWork0().call();
-        } catch (Throwable tmpEx) {
-            this.ex = tmpEx;
+            c.call();
+        } catch (Exception e) {
+            this.ex = e;
         }
-
     }
 
-    private synchronized Callable<?> waitForWork0() {
-        while (run == null) {
-            try {
-                wait();
-            } catch (InterruptedException tmpEx) {
-                throw new IllegalStateException(tmpEx);
-            }
-        }
-        Callable<?> c = run;
-        run = null;
-        notifyAll();
-        return c;
+    private void assertExecutedOK() throws Throwable {
+        run(null);
     }
 
-    void assertLine(int line) {
+    private void assertLine(int line) {
         assertNotNull(suspendedEvent);
         final SourceSection expLoc = factorial.createSection("Line " + line, line);
         final SourceSection sourceLoc = suspendedEvent.getNode().getEncapsulatingSourceSection();
         assertEquals("Exp\n" + expLoc + "\nbut was\n" + sourceLoc, line, sourceLoc.getLineLocation().getLineNumber());
+    }
+
+    private void onEvent(Callable<Void> callable) throws Throwable {
+        run(callable);
     }
 }
