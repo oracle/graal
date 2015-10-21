@@ -221,7 +221,10 @@ def getDacapo(name, dacapoArgs=None, extraVmArguments=None):
     dacapoMatcher1 = ValuesMatcher(dacapoTime1, {'group' : 'DaCapo-1stRun', 'name' : '<benchmark>', 'score' : '<time>'})
 
     # Use ipv4 stack for dacapos; tomcat+solaris+ipv6_interface fails (see also: JDK-8072384)
-    return Test("DaCapo-" + name, ['-jar', mx._cygpathU2W(dacapo), name] + _noneAsEmptyList(dacapoArgs), [dacapoSuccess], [dacapoFail], [dacapoMatcher, dacapoMatcher1], ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops', "-Djava.net.preferIPv4Stack=true"] + _noneAsEmptyList(extraVmArguments))
+    return Test("DaCapo-" + name, ['-jar', mx._cygpathU2W(dacapo), name] + _noneAsEmptyList(dacapoArgs), [dacapoSuccess], [dacapoFail],
+                [dacapoMatcher, dacapoMatcher1],
+                ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops', "-Djava.net.preferIPv4Stack=true", '-G:+ExitVMOnException'] +
+                _noneAsEmptyList(extraVmArguments))
 
 def getScalaDacapos(level=SanityCheckLevel.Normal, gateBuildLevel=None, dacapoArgs=None, extraVmArguments=None):
     checks = []
