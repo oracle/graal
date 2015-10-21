@@ -23,9 +23,9 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
-import static jdk.vm.ci.runtime.JVMCICompiler.PrintCompilation;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

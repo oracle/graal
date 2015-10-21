@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldClasspath;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldConfig;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldExcludeMethodFilter;
@@ -30,9 +33,6 @@ import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldSta
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldStopAt;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldVerbose;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
-import static jdk.vm.ci.runtime.JVMCICompiler.ExitVMOnException;
-import static jdk.vm.ci.runtime.JVMCICompiler.PrintBailout;
-import static jdk.vm.ci.runtime.JVMCICompiler.PrintStackTraceOnException;
 
 import java.io.Closeable;
 import java.io.File;

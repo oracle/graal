@@ -28,15 +28,26 @@ import jdk.vm.ci.options.OptionValue;
 
 /**
  * Options related to {@link GraalCompiler}.
- *
- * Note: This must be a top level class to work around for <a
- * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
  */
-class GraalCompilerOptions {
+public class GraalCompilerOptions {
 
     // @formatter:off
     @Option(help = "Repeatedly run the LIR code generation pass to improve statistical profiling results.", type = OptionType.Debug)
     public static final OptionValue<Integer> EmitLIRRepeatCount = new OptionValue<>(0);
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<String> PrintFilter = new OptionValue<>(null);
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Boolean> PrintCompilation = new OptionValue<>(false);
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Boolean> PrintAfterCompilation = new OptionValue<>(false);
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Boolean> PrintBailout = new OptionValue<>(false);
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Boolean> ExitVMOnBailout = new OptionValue<>(false);
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Boolean> ExitVMOnException = new OptionValue<>(false);
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Boolean> PrintStackTraceOnException = new OptionValue<>(false);
     // @formatter:on
 
 }

@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.vm.ci.runtime.JVMCICompiler.ExitVMOnBailout;
-import static jdk.vm.ci.runtime.JVMCICompiler.ExitVMOnException;
-import static jdk.vm.ci.runtime.JVMCICompiler.PrintAfterCompilation;
-import static jdk.vm.ci.runtime.JVMCICompiler.PrintBailout;
-import static jdk.vm.ci.runtime.JVMCICompiler.PrintCompilation;
-import static jdk.vm.ci.runtime.JVMCICompiler.PrintFilter;
-import static jdk.vm.ci.runtime.JVMCICompiler.PrintStackTraceOnException;
+import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnBailout;
+import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintAfterCompilation;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintFilter;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.TimeUnit;

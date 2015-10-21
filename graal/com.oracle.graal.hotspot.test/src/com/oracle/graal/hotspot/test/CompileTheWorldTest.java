@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static jdk.vm.ci.runtime.JVMCICompiler.ExitVMOnException;
+import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 
