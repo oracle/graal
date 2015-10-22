@@ -192,7 +192,7 @@ public class CompilationTask {
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(getId()), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
-                result = compiler.compile(method, entryBCI, mustRecordMethodInlining(config));
+                result = compiler.compile(method, entryBCI);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             } finally {
@@ -283,20 +283,6 @@ public class CompilationTask {
                 codeCache.notifyCompilationStatistics(getId(), method, entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
             }
         }
-    }
-
-    /**
-     * Determines whether to disable method inlining recording for the method being compiled.
-     */
-    private boolean mustRecordMethodInlining(HotSpotVMConfig config) {
-        if (config.ciTime || config.ciTimeEach || CompiledBytecodes.isEnabled()) {
-            return true;
-        }
-        long jvmciEnv = request.getJvmciEnv();
-        if (jvmciEnv == 0 || UNSAFE.getByte(jvmciEnv + config.jvmciEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0) {
-            return true;
-        }
-        return false;
     }
 
     private String getMethodDescription() {

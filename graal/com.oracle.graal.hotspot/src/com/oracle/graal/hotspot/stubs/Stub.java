@@ -165,10 +165,8 @@ public abstract class Stub {
             try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
                 final StructuredGraph graph = getGraph();
 
-                // Stubs cannot be recompiled so they cannot be compiled with
-                // assumptions and there is no point in recording evol_method dependencies
+                // Stubs cannot be recompiled so they cannot be compiled with assumptions
                 assert graph.getAssumptions() == null;
-                assert !graph.isInlinedMethodRecordingEnabled() : graph;
 
                 if (!(graph.start() instanceof StubStartNode)) {
                     StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
@@ -216,7 +214,6 @@ public abstract class Stub {
         // Stubs cannot be recompiled so they cannot be compiled with
         // assumptions and there is no point in recording evol_method dependencies
         assert compResult.getAssumptions() == null : "stubs should not use assumptions: " + this;
-        assert compResult.getMethods() == null : "stubs should not record evol_method dependencies: " + this;
 
         for (DataPatch data : compResult.getDataPatches()) {
             if (data.reference instanceof ConstantReference) {

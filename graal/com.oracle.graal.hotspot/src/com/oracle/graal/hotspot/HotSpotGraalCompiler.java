@@ -104,7 +104,7 @@ public class HotSpotGraalCompiler implements JVMCICompiler {
         System.exit(0);
     }
 
-    public CompilationResult compile(ResolvedJavaMethod method, int entryBCI, boolean mustRecordMethodInlining) {
+    public CompilationResult compile(ResolvedJavaMethod method, int entryBCI) {
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
@@ -116,9 +116,6 @@ public class HotSpotGraalCompiler implements JVMCICompiler {
                 speculationLog.collectFailedSpeculations();
             }
             graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()), speculationLog);
-            if (!mustRecordMethodInlining) {
-                graph.disableInlinedMethodRecording();
-            }
         }
 
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);

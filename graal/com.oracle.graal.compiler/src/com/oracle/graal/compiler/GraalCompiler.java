@@ -29,7 +29,6 @@ import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.AL
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import java.util.List;
-import java.util.Set;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationResult;
@@ -337,7 +336,7 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    public static void emitCode(Backend backend, Assumptions assumptions, ResolvedJavaMethod rootMethod, Set<ResolvedJavaMethod> inlinedMethods, int bytecodeSize, LIRGenerationResult lirGenRes,
+    public static void emitCode(Backend backend, Assumptions assumptions, ResolvedJavaMethod rootMethod, List<ResolvedJavaMethod> inlinedMethods, int bytecodeSize, LIRGenerationResult lirGenRes,
                     CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner, CompilationResultBuilderFactory factory) {
         try (DebugCloseable a = EmitCode.start()) {
             FrameMap frameMap = lirGenRes.getFrameMap();
@@ -347,7 +346,7 @@ public class GraalCompiler {
             if (assumptions != null && !assumptions.isEmpty()) {
                 compilationResult.setAssumptions(assumptions.toArray());
             }
-            if (inlinedMethods != null) {
+            if (rootMethod != null) {
                 compilationResult.setMethods(rootMethod, inlinedMethods);
                 compilationResult.setBytecodeSize(bytecodeSize);
             }

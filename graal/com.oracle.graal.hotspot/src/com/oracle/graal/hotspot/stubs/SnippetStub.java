@@ -106,10 +106,8 @@ public abstract class SnippetStub extends Stub implements Snippets {
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         // Stubs cannot have optimistic assumptions since they have
-        // to be valid for the entire run of the VM. Nor can they be
-        // evolved or have breakpoints.
+        // to be valid for the entire run of the VM.
         final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
-        graph.disableInlinedMethodRecording();
         graph.disableUnsafeAccessTracking();
 
         if (SnippetGraphUnderConstruction != null) {

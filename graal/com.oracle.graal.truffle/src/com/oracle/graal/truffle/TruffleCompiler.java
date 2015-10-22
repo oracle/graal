@@ -192,12 +192,8 @@ public abstract class TruffleCompiler {
 
         compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
 
-        if (graph.isInlinedMethodRecordingEnabled()) {
-            result.setMethods(graph.method(), graph.getInlinedMethods());
-            result.setBytecodeSize(graph.getBytecodeSize());
-        } else {
-            assert result.getMethods() == null;
-        }
+        result.setMethods(graph.method(), graph.getInlinedMethods());
+        result.setBytecodeSize(graph.getBytecodeSize());
 
         List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
         Set<Assumption> newAssumptions = new HashSet<>();

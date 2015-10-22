@@ -598,8 +598,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             // to be valid for the entire run of the VM.
             final StructuredGraph graph = new StructuredGraph(methodToParse, AllowAssumptions.NO);
 
-            // They will also never evolve or have breakpoints set in them
-            graph.disableInlinedMethodRecording();
             // They are not user code so they do not participate in unsafe access tracking
             graph.disableUnsafeAccessTracking();
 

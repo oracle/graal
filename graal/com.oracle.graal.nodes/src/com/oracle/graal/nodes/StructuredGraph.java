@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -128,10 +127,10 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     private final SpeculationLog speculationLog;
 
     /**
-     * Records the methods that were inlined while constructing this graph along with how many times
-     * each method was inlined.
+     * Records the methods that were inlined while constructing this graph, one entry for each time
+     * a specific method is inlined.
      */
-    private Map<ResolvedJavaMethod, Integer> inlinedMethods = new HashMap<>();
+    private final List<ResolvedJavaMethod> inlinedMethods = new ArrayList<>();
 
     private static enum UnsafeAccessState {
         NO_ACCESS,
@@ -257,13 +256,9 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     @Override
     protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
         AllowAssumptions allowAssumptions = AllowAssumptions.from(assumptions != null);
-        boolean enableInlinedMethodRecording = isInlinedMethodRecordingEnabled();
         StructuredGraph copy = new StructuredGraph(newName, method, graphId, entryBCI, allowAssumptions, speculationLog);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
-        }
-        if (!enableInlinedMethodRecording) {
-            copy.disableInlinedMethodRecording();
         }
         copy.hasUnsafeAccess = hasUnsafeAccess;
         copy.setGuardsStage(getGuardsStage());
@@ -546,83 +541,38 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
-     * Disables method inlining recording while constructing this graph. This can be done at most
-     * once and must be done before any inlined methods are recorded.
-     */
-    public void disableInlinedMethodRecording() {
-        assert inlinedMethods != null : "cannot disable method inlining recording more than once";
-        assert inlinedMethods.isEmpty() : "cannot disable method inlining recording once methods have been recorded";
-        inlinedMethods = null;
-    }
-
-    public boolean isInlinedMethodRecordingEnabled() {
-        return inlinedMethods != null;
-    }
-
-    /**
      * Gets the methods that were inlined while constructing this graph.
-     *
-     * @return {@code null} if method inlining recording has been
-     *         {@linkplain #disableInlinedMethodRecording() disabled}
      */
-    public Set<ResolvedJavaMethod> getInlinedMethods() {
-        return inlinedMethods == null ? null : inlinedMethods.keySet();
+    public List<ResolvedJavaMethod> getInlinedMethods() {
+        return inlinedMethods;
     }
 
     /**
-     * If method inlining recording has not been {@linkplain #disableInlinedMethodRecording()
-     * disabled}, records that {@code inlinedMethod} was inlined to this graph. Otherwise, this
-     * method does nothing.
+     * Records that {@code inlinedMethod} was inlined to this graph.
      */
     public void recordInlinedMethod(ResolvedJavaMethod inlinedMethod) {
-        if (inlinedMethods != null) {
-            Integer count = inlinedMethods.get(inlinedMethod);
-            if (count != null) {
-                inlinedMethods.put(inlinedMethod, count + 1);
-            } else {
-                inlinedMethods.put(inlinedMethod, 1);
-            }
-        }
+        inlinedMethods.add(inlinedMethod);
     }
 
     /**
-     * If method inlining recording has not been {@linkplain #disableInlinedMethodRecording()
-     * disabled}, updates the {@linkplain #getInlinedMethods() inlined methods} of this graph with
-     * the inlined methods of another graph. Otherwise, this method does nothing.
+     * Updates the {@linkplain #getInlinedMethods() inlined methods} of this graph with the inlined
+     * methods of another graph.
      */
     public void updateInlinedMethods(StructuredGraph other) {
-        if (inlinedMethods != null) {
-            assert this != other;
-            Map<ResolvedJavaMethod, Integer> otherInlinedMethods = other.inlinedMethods;
-            if (otherInlinedMethods != null) {
-                for (Map.Entry<ResolvedJavaMethod, Integer> e : otherInlinedMethods.entrySet()) {
-                    ResolvedJavaMethod key = e.getKey();
-                    Integer count = inlinedMethods.get(key);
-                    if (count != null) {
-                        inlinedMethods.put(key, count + e.getValue());
-                    } else {
-                        inlinedMethods.put(key, e.getValue());
-                    }
-                }
-            }
-        }
+        assert this != other;
+        this.inlinedMethods.addAll(other.inlinedMethods);
     }
 
     /**
      * Gets the input bytecode {@linkplain ResolvedJavaMethod#getCodeSize() size} from which this
      * graph is constructed. This ignores how many bytecodes in each constituent method are actually
      * parsed (which may be none for methods whose IR is retrieved from a cache or less than the
-     * full amount for any given method due to profile guided branch pruning). If method inlining
-     * recording has been {@linkplain #disableInlinedMethodRecording() disabled} for this graph,
-     * bytecode counts for inlined methods are not included in the returned value.
+     * full amount for any given method due to profile guided branch pruning).
      */
     public int getBytecodeSize() {
         int res = method.getCodeSize();
-        if (inlinedMethods != null) {
-            for (Map.Entry<ResolvedJavaMethod, Integer> e : inlinedMethods.entrySet()) {
-                int inlinedBytes = e.getValue() * e.getKey().getCodeSize();
-                res += inlinedBytes;
-            }
+        for (ResolvedJavaMethod e : inlinedMethods) {
+            res += e.getCodeSize();
         }
         return res;
     }

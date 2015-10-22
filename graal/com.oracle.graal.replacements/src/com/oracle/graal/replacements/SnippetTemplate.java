@@ -655,9 +655,6 @@ public class SnippetTemplate {
         final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method(), AllowAssumptions.NO);
 
         try (Debug.Scope scope = Debug.scope("SpecializeSnippet", snippetCopy)) {
-            if (!snippetGraph.isInlinedMethodRecordingEnabled()) {
-                snippetCopy.disableInlinedMethodRecording();
-            }
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
                 snippetCopy.disableUnsafeAccessTracking();
             }
