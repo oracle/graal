@@ -30,6 +30,9 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 
@@ -50,6 +53,17 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest implement
 
         public int m2(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) {
             return 1;
+        }
+
+    }
+
+    static class M2Thrower implements I {
+        public int m() {
+            return 0;
+        }
+
+        public int m2(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) {
+            throw new InternalError();
         }
 
     }
@@ -84,20 +98,29 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest implement
         return (int) INTERFACE_HANDLE_M2.invokeExact(o, a, b, c, d, e, f, g, h, i, j);
     }
 
-    @Test
-    public void testInvokeInterface03() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-        A goodInstance = new A();
-        try {
-            invokeInterfaceHandle2(goodInstance, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-        } catch (Throwable t) {
-
+    @Override
+    protected InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {
+        if (method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(M2Thrower.class))) {
+            // Make sure M2Thrower.m2 is invoked from normal code
+            return getCodeCache().setDefaultCode(method, compResult);
         }
-        System.err.println(getCode(getMetaAccess().lookupJavaMethod(getMethod("invokeInterfaceHandle2"))));
-        I badInstance = (I) loader.findClass(NAME).newInstance();
-        for (int i = 0; i < 100001; i++) {
+        return super.addMethod(method, compResult);
+    }
+
+    /**
+     * Try to exercise a mixed calling sequence with regular JIT code calling a method handle that
+     * can't be inlined with an implementation compiled by Graal that throws an exception.
+     */
+    @Test
+    public void testInvokeInterface03() throws Throwable {
+        A goodInstance = new A();
+        I badInstance = new M2Thrower();
+        getCode(getMetaAccess().lookupJavaMethod(getMethod(M2Thrower.class, "m2")));
+        final int limit = 20000;
+        for (int i = 0; i <= limit; i++) {
             try {
-                invokeInterfaceHandle2(i < 100000 ? goodInstance : badInstance, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-            } catch (Throwable e) {
+                invokeInterfaceHandle2(i < limit - 1 ? goodInstance : badInstance, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+            } catch (InternalError e) {
 
             }
         }
