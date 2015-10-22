@@ -27,12 +27,18 @@ import jdk.vm.ci.service.ServiceProvider;
 import com.oracle.graal.truffle.hotspot.HotSpotTruffleRuntime;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionInterfaceAccess;
+import com.oracle.truffle.api.Truffle;
 
 @ServiceProvider(NativeFunctionInterfaceAccess.class)
 public class HotSpotNativeFunctionInterfaceAccess implements NativeFunctionInterfaceAccess {
-    private final NativeFunctionInterface instance = HotSpotTruffleRuntime.createNativeFunctionInterface();
+    private final NativeFunctionInterface instance = createNativeFunctionInterface();
 
     public NativeFunctionInterface getNativeFunctionInterface() {
         return instance;
+    }
+
+    private static NativeFunctionInterface createNativeFunctionInterface() {
+        HotSpotTruffleRuntime runtime = (HotSpotTruffleRuntime) Truffle.getRuntime();
+        return runtime.createNativeFunctionInterface();
     }
 }

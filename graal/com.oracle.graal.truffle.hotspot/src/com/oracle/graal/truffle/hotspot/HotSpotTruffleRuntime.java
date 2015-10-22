@@ -46,6 +46,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jdk.vm.ci.code.BailoutException;
@@ -66,7 +67,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.service.Services;
 
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.compiler.CompilerThreadFactory;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
@@ -108,7 +109,6 @@ import com.oracle.graal.truffle.hotspot.nfi.RawNativeCallNodeFactory;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -117,10 +117,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
-
-    public static TruffleRuntime makeInstance() {
-        return new HotSpotTruffleRuntime();
-    }
 
     static class Lazy {
         private Map<OptimizedCallTarget, Future<?>> compilations = Collections.synchronizedMap(new IdentityHashMap<>());
@@ -157,7 +153,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         }
     }
 
-    private HotSpotTruffleRuntime() {
+    public HotSpotTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
+        super(graalRuntime);
         setDontInlineCallBoundaryMethod();
     }
 
@@ -191,7 +188,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public TruffleCompiler getTruffleCompiler() {
         if (truffleCompiler == null) {
-            truffleCompiler = DefaultTruffleCompiler.create();
+            truffleCompiler = DefaultTruffleCompiler.create(this);
         }
         return truffleCompiler;
     }
@@ -231,7 +228,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @SuppressWarnings("try")
-    public static void installOptimizedCallTargetCallMethod() {
+    public void installOptimizedCallTargetCallMethod() {
         Providers providers = getHotSpotProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
@@ -248,7 +245,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         }
     }
 
-    private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
+    private CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
         for (OptimizedCallTargetInstrumentationFactory factory : Services.load(OptimizedCallTargetInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
                 factory.init(config(), getHotSpotProviders().getRegisters());
@@ -259,7 +256,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return CompilationResultBuilderFactory.Default;
     }
 
-    private static CompilationResult compileMethod(ResolvedJavaMethod javaMethod) {
+    private CompilationResult compileMethod(ResolvedJavaMethod javaMethod) {
         HotSpotProviders providers = getHotSpotProviders();
         SuitesProvider suitesProvider = providers.getSuites();
         Suites suites = suitesProvider.createSuites();
@@ -281,12 +278,12 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return compileGraph(graph, cc, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), suites, lirSuites, new CompilationResult(), factory);
     }
 
-    private static HotSpotBackend getHotSpotBackend() {
-        RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
+    private HotSpotBackend getHotSpotBackend() {
+        RuntimeProvider runtimeProvider = getRequiredGraalCapability(RuntimeProvider.class);
         return (HotSpotBackend) runtimeProvider.getHostBackend();
     }
 
-    private static HotSpotProviders getHotSpotProviders() {
+    private HotSpotProviders getHotSpotProviders() {
         return getHotSpotBackend().getProviders();
     }
 
@@ -438,7 +435,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return null;
     }
 
-    public static NativeFunctionInterface createNativeFunctionInterface() {
+    public NativeFunctionInterface createNativeFunctionInterface() {
         HotSpotVMConfig config = config();
         Backend backend = getHotSpotBackend();
         RawNativeCallNodeFactory factory = getRawNativeCallNodeFactory(backend.getTarget().arch.getName());

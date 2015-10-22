@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ package com.oracle.graal.truffle;
 import java.util.ListIterator;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.api.runtime.Graal;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -38,22 +37,26 @@ import com.oracle.graal.runtime.RuntimeProvider;
 
 public final class DefaultTruffleCompiler extends TruffleCompiler {
 
-    public static TruffleCompiler create() {
-        Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
+    private final SnippetReflectionProvider snippetReflection;
+
+    public static TruffleCompiler create(GraalTruffleRuntime runtime) {
+        Backend backend = runtime.getRequiredGraalCapability(RuntimeProvider.class).getHostBackend();
         Suites suites = backend.getSuites().getDefaultSuites();
         LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites();
         GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
-        return new DefaultTruffleCompiler(plugins, suites, lirSuites, backend);
+        SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
+        return new DefaultTruffleCompiler(plugins, suites, lirSuites, backend, snippetReflection);
     }
 
-    private DefaultTruffleCompiler(Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend) {
+    private DefaultTruffleCompiler(Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
         super(plugins, suites, lirSuites, backend);
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
     protected PartialEvaluator createPartialEvaluator() {
-        return new PartialEvaluator(providers, config, Graal.getRequiredCapability(SnippetReflectionProvider.class), backend.getTarget().arch);
+        return new PartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch);
     }
 
     @Override

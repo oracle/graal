@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,15 +30,18 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.service.Services;
 
+import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.TTY;
@@ -81,10 +84,21 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected LoopNodeFactory loopNodeFactory;
     protected CallMethods callMethods;
 
-    public GraalTruffleRuntime() {
+    private final Supplier<GraalRuntime> graalRuntime;
+
+    public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
+        this.graalRuntime = graalRuntime;
     }
 
     public abstract TruffleCompiler getTruffleCompiler();
+
+    public <T> T getRequiredGraalCapability(Class<T> clazz) {
+        T ret = graalRuntime.get().getCapability(clazz);
+        if (ret == null) {
+            throw new JVMCIError("The VM does not expose the required Graal capability %s.", clazz.getName());
+        }
+        return ret;
+    }
 
     private static <T extends PrioritizedServiceProvider> T loadPrioritizedServiceProvider(Class<T> clazz) {
         Iterable<T> providers = Services.load(clazz);

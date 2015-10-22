@@ -868,7 +868,10 @@ suite = {
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
-      "annotationProcessors" : ["jvmci:JVMCI_SERVICE_PROCESSOR"],
+      "annotationProcessors" : [
+        "jvmci:JVMCI_OPTIONS_PROCESSOR",
+        "jvmci:JVMCI_SERVICE_PROCESSOR"
+      ],
       "workingSets" : "Graal,Truffle",
     },
 
