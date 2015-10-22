@@ -41,7 +41,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.iterators.NodeIterable;

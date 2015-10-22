@@ -37,8 +37,6 @@ import com.oracle.graal.runtime.RuntimeProvider;
 
 public final class DefaultTruffleCompiler extends TruffleCompiler {
 
-    private final SnippetReflectionProvider snippetReflection;
-
     public static TruffleCompiler create(GraalTruffleRuntime runtime) {
         Backend backend = runtime.getRequiredGraalCapability(RuntimeProvider.class).getHostBackend();
         Suites suites = backend.getSuites().getDefaultSuites();
@@ -50,8 +48,7 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
     }
 
     private DefaultTruffleCompiler(Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
-        super(plugins, suites, lirSuites, backend);
-        this.snippetReflection = snippetReflection;
+        super(plugins, suites, lirSuites, backend, snippetReflection);
     }
 
     @Override

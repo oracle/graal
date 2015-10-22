@@ -35,7 +35,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.compiler.test.tutorial.StaticAnalysis.MethodState;
 import com.oracle.graal.compiler.test.tutorial.StaticAnalysis.TypeFlow;

@@ -32,7 +32,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.DelegatingDebugConfig;

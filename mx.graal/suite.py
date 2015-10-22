@@ -299,7 +299,7 @@ suite = {
       "checkstyle" : "com.oracle.graal.graph",
       "dependencies" : [
         "mx:JUNIT",
-        "com.oracle.graal.api.runtime",
+        "com.oracle.graal.api.test",
         "com.oracle.graal.graph",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
@@ -571,7 +571,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.graal.api.runtime",
+        "com.oracle.graal.api.test",
         "com.oracle.graal.runtime",
         "mx:JUNIT",
       ],
@@ -608,7 +608,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JMH",
-        "com.oracle.graal.api.runtime",
+        "com.oracle.graal.api.test",
         "com.oracle.graal.java",
         "com.oracle.graal.runtime",
       ],

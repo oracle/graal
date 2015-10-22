@@ -42,6 +42,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -76,6 +77,7 @@ public abstract class TruffleCompiler {
     protected final LIRSuites lirSuites;
     protected final PartialEvaluator partialEvaluator;
     protected final Backend backend;
+    protected final SnippetReflectionProvider snippetReflection;
     protected final GraalTruffleCompilationListener compilationNotify;
 
     // @formatter:off
@@ -93,10 +95,11 @@ public abstract class TruffleCompiler {
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
 
-    public TruffleCompiler(Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend) {
+    public TruffleCompiler(Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
         GraalTruffleRuntime graalTruffleRuntime = ((GraalTruffleRuntime) Truffle.getRuntime());
         this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
         this.backend = backend;
+        this.snippetReflection = snippetReflection;
         Providers backendProviders = backend.getProviders();
         ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backendProviders.getConstantReflection(), backendProviders.getMetaAccess());
         this.providers = backendProviders.copyWith(constantReflection);

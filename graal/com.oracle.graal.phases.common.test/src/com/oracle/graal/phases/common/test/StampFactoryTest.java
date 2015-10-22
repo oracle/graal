@@ -30,7 +30,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.runtime.RuntimeProvider;
