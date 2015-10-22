@@ -248,39 +248,49 @@ public class CompilationTask {
                 System.exit(-1);
             }
         } finally {
-            int compiledBytecodes = 0;
-            int codeSize = 0;
-            if (result != null) {
-                compiledBytecodes = result.getBytecodeSize();
-            }
-            if (installedCode != null) {
-                codeSize = installedCode.getSize();
-            }
-            CompiledBytecodes.add(compiledBytecodes);
+            try {
+                int compiledBytecodes = 0;
+                int codeSize = 0;
+                if (result != null) {
+                    compiledBytecodes = result.getBytecodeSize();
+                }
+                if (installedCode != null) {
+                    codeSize = installedCode.getSize();
+                }
+                CompiledBytecodes.add(compiledBytecodes);
 
-            // Log a compilation event.
-            if (compilationEvent.shouldWrite()) {
-                compilationEvent.setMethod(method.format("%H.%n(%p)"));
-                compilationEvent.setCompileId(getId());
-                compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
-                compilationEvent.setSucceeded(result != null && installedCode != null);
-                compilationEvent.setIsOsr(isOSR);
-                compilationEvent.setCodeSize(codeSize);
-                compilationEvent.setInlinedBytes(compiledBytecodes);
-                compilationEvent.commit();
-            }
+                // Log a compilation event.
+                if (compilationEvent.shouldWrite()) {
+                    compilationEvent.setMethod(method.format("%H.%n(%p)"));
+                    compilationEvent.setCompileId(getId());
+                    compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
+                    compilationEvent.setSucceeded(result != null && installedCode != null);
+                    compilationEvent.setIsOsr(isOSR);
+                    compilationEvent.setCodeSize(codeSize);
+                    compilationEvent.setInlinedBytes(compiledBytecodes);
+                    compilationEvent.commit();
+                }
 
-            long jvmciEnv = request.getJvmciEnv();
-            if (jvmciEnv != 0) {
-                long ctask = UNSAFE.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
-                assert ctask != 0L;
-                UNSAFE.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
-            }
-            long compilationTime = System.nanoTime() - startCompilationTime;
-            if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
-                long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
-                final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
-                codeCache.notifyCompilationStatistics(getId(), method, entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
+                long jvmciEnv = request.getJvmciEnv();
+                if (jvmciEnv != 0) {
+                    long ctask = UNSAFE.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
+                    assert ctask != 0L;
+                    UNSAFE.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
+                }
+                long compilationTime = System.nanoTime() - startCompilationTime;
+                if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
+                    long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
+                    final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
+                    codeCache.notifyCompilationStatistics(getId(), method, entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
+                }
+            } catch (Throwable t) {
+                // Don't allow exceptions during recording of statistics to leak out
+                if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
+                    t.printStackTrace(TTY.out);
+                }
+                if (ExitVMOnException.getValue()) {
+                    System.exit(-1);
+                }
             }
         }
     }
