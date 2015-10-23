@@ -637,6 +637,10 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
+    protected GraphBuilderPhase.Instance getGraphBuilderInstance() {
+        return graphBuilderInstance;
+    }
+
     public ValueNode getReturnValue() {
         return returnValue;
     }
@@ -1220,16 +1224,6 @@ public class BytecodeParser implements GraphBuilderContext {
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
-        BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
-        /*
-         * The exception dispatch block is always for the last bytecode of a block, so if we are not
-         * at the endBci yet, there is no exception handler for this bci and we can unwind
-         * immediately.
-         */
-        if (bci != currentBlock.endBci || dispatchBlock == null) {
-            dispatchBlock = blockMap.getUnwindBlock();
-        }
-
         FrameStateBuilder dispatchState = frameState.copy();
         dispatchState.clearStack();
 
@@ -1246,10 +1240,26 @@ public class BytecodeParser implements GraphBuilderContext {
             dispatchBegin.setStateAfter(dispatchState.create(bci, dispatchBegin));
         }
         this.controlFlowSplit = true;
-        FixedNode target = createTarget(dispatchBlock, dispatchState);
         FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
-        finishedDispatch.setNext(target);
+
+        createHandleExceptionTarget(finishedDispatch, bci, dispatchState);
+
         return dispatchBegin;
+    }
+
+    protected void createHandleExceptionTarget(FixedWithNextNode finishedDispatch, int bci, FrameStateBuilder dispatchState) {
+        BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
+        /*
+         * The exception dispatch block is always for the last bytecode of a block, so if we are not
+         * at the endBci yet, there is no exception handler for this bci and we can unwind
+         * immediately.
+         */
+        if (bci != currentBlock.endBci || dispatchBlock == null) {
+            dispatchBlock = blockMap.getUnwindBlock();
+        }
+
+        FixedNode target = createTarget(dispatchBlock, dispatchState);
+        finishedDispatch.setNext(target);
     }
 
     protected ValueNode genLoadIndexed(ValueNode array, ValueNode index, JavaKind kind) {
