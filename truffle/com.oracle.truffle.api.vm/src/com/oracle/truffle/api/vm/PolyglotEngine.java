@@ -25,17 +25,10 @@
 package com.oracle.truffle.api.vm;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -94,11 +87,12 @@ import com.oracle.truffle.api.source.Source;
  * Use {@link #buildNew()} multiple times to create different, isolated portal environment
  * completely separated from each other.
  * <p>
- * Once instantiated use {@link #eval(java.net.URI)} with a reference to a file or URL or directly
- * pass code snippet into the virtual machine via {@link #eval(java.lang.String, java.lang.String)}.
- * Support for individual languages is initialized on demand - e.g. once a file of certain MIME type
- * is about to be processed, its appropriate engine (if found), is initialized. Once an engine gets
- * initialized, it remains so, until the virtual machine isn't garbage collected.
+ * Once instantiated use {@link #eval(com.oracle.truffle.api.source.Source)} with a reference to a
+ * file or URL or directly pass code snippet into the virtual machine via
+ * {@link #eval(com.oracle.truffle.api.source.Source)}. Support for individual languages is
+ * initialized on demand - e.g. once a file of certain MIME type is about to be processed, its
+ * appropriate engine (if found), is initialized. Once an engine gets initialized, it remains so,
+ * until the virtual machine isn't garbage collected.
  * <p>
  * The engine is single-threaded and tries to enforce that. It records the thread it has been
  * {@link Builder#build() created} by and checks that all subsequent calls are coming from the same
@@ -184,7 +178,7 @@ public class PolyglotEngine {
      *
      * It searches for {@link Registration languages registered} in the system class loader and
      * makes them available for later evaluation via
-     * {@link #eval(java.lang.String, java.lang.String)} methods.
+     * {@link #eval(com.oracle.truffle.api.source.Source)} method.
      *
      * @return new, isolated virtual machine with pre-registered languages
      */
@@ -232,15 +226,6 @@ public class PolyglotEngine {
         }
 
         /**
-         * @deprecated does nothing
-         */
-        @Deprecated
-        @SuppressWarnings("unused")
-        public Builder stdOut(Writer w) {
-            return this;
-        }
-
-        /**
          * Changes the error output for languages running in <em>to be created</em>
          * {@link PolyglotEngine virtual machine}. The default is to use {@link System#err}.
          *
@@ -253,15 +238,6 @@ public class PolyglotEngine {
         }
 
         /**
-         * @deprecated does nothing
-         */
-        @Deprecated
-        @SuppressWarnings("unused")
-        public Builder stdErr(Writer w) {
-            return this;
-        }
-
-        /**
          * Changes the default input for languages running in <em>to be created</em>
          * {@link PolyglotEngine virtual machine}. The default is to use {@link System#in}.
          *
@@ -270,15 +246,6 @@ public class PolyglotEngine {
          */
         public Builder setIn(InputStream is) {
             in = is;
-            return this;
-        }
-
-        /**
-         * @deprecated does nothing
-         */
-        @Deprecated
-        @SuppressWarnings("unused")
-        public Builder stdIn(Reader r) {
             return this;
         }
 
@@ -370,79 +337,6 @@ public class PolyglotEngine {
      */
     public Map<String, ? extends Language> getLanguages() {
         return Collections.unmodifiableMap(langs);
-    }
-
-    /**
-     * Evaluates file located on a given URL. Is equivalent to loading the content of a file and
-     * executing it via {@link #eval(java.lang.String, java.lang.String)} with a MIME type guess
-     * based on the file's extension and/or content.
-     *
-     * @param location the location of a file to execute
-     * @return result of a processing the file, possibly <code>null</code>
-     * @throws IOException exception to signal I/O problems or problems with processing the file's
-     *             content
-     * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
-     */
-    @Deprecated
-    public Object eval(URI location) throws IOException {
-        checkThread();
-        Source s;
-        String mimeType;
-        if (location.getScheme().equals("file")) {
-            File file = new File(location);
-            s = Source.fromFileName(file.getPath(), true);
-            mimeType = Files.probeContentType(file.toPath());
-        } else {
-            URL url = location.toURL();
-            s = Source.fromURL(url, location.toString());
-            URLConnection conn = url.openConnection();
-            mimeType = conn.getContentType();
-        }
-        Language l = langs.get(mimeType);
-        if (l == null) {
-            throw new IOException("No language for " + location + " with MIME type " + mimeType + " found. Supported types: " + langs.keySet());
-        }
-        return eval(l, s).get();
-    }
-
-    /**
-     * Evaluates code snippet. Chooses a language registered for a given MIME type (throws
-     * {@link IOException} if there is none). And passes the specified code to it for execution.
-     *
-     * @param mimeType MIME type of the code snippet - chooses the right language
-     * @param reader the source of code snippet to execute
-     * @return result of an execution, possibly <code>null</code>
-     * @throws IOException thrown to signal errors while processing the code
-     * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
-     */
-    @Deprecated
-    public Object eval(String mimeType, Reader reader) throws IOException {
-        checkThread();
-        Language l = langs.get(mimeType);
-        if (l == null) {
-            throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
-        }
-        return eval(l, Source.fromReader(reader, mimeType)).get();
-    }
-
-    /**
-     * Evaluates code snippet. Chooses a language registered for a given MIME type (throws
-     * {@link IOException} if there is none). And passes the specified code to it for execution.
-     *
-     * @param mimeType MIME type of the code snippet - chooses the right language
-     * @param code the code snippet to execute
-     * @return result of an execution, possibly <code>null</code>
-     * @throws IOException thrown to signal errors while processing the code
-     * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
-     */
-    @Deprecated
-    public Object eval(String mimeType, String code) throws IOException {
-        checkThread();
-        Language l = langs.get(mimeType);
-        if (l == null) {
-            throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
-        }
-        return eval(l, Source.fromText(code, mimeType)).get();
     }
 
     /**
@@ -576,7 +470,7 @@ public class PolyglotEngine {
 
     /**
      * Looks global symbol provided by one of initialized languages up. First of all execute your
-     * program via one of your {@link #eval(java.lang.String, java.lang.String)} and then look
+     * program via one of your {@link #eval(com.oracle.truffle.api.source.Source)} and then look
      * expected symbol up using this method.
      * <p>
      * The names of the symbols are language dependent, but for example the Java language bindings
@@ -860,7 +754,7 @@ public class PolyglotEngine {
      * {@link Language} objects to represent them. One can obtain a {@link #getName() name} or list
      * of supported {@link #getMimeTypes() MIME types} for each language. The actual language
      * implementation is not initialized until
-     * {@link PolyglotEngine#eval(java.lang.String, java.lang.String) a code is evaluated} in it.
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) a code is evaluated} in it.
      */
     public class Language {
         private final LanguageCache info;
@@ -926,14 +820,6 @@ public class PolyglotEngine {
             return res[0] == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res, null);
         }
 
-        /**
-         * @deprecated concatenate {@link #getName()} and {@link #getVersion()} the way you want.
-         */
-        @Deprecated
-        public String getShortName() {
-            return getName() + "(" + getVersion() + ")";
-        }
-
         TruffleLanguage<?> getImpl(boolean create) {
             getEnv(create);
             TruffleLanguage<?> impl = info.getImpl(false);
@@ -949,7 +835,7 @@ public class PolyglotEngine {
 
         @Override
         public String toString() {
-            return "[" + getShortName() + " for " + getMimeTypes() + "]";
+            return "[" + getName() + "@ " + getVersion() + " for " + getMimeTypes() + "]";
         }
     } // end of Language
 

@@ -24,10 +24,9 @@ package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
-import java.net.URI;
-import java.net.URISyntaxException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,23 +46,20 @@ public class EngineSingleThreadedTest {
         t.join();
     }
 
-    @SuppressWarnings("deprecation")
     @Test(expected = IllegalStateException.class)
-    public void evalURI() throws IOException, URISyntaxException {
-        tvm.eval(new URI("http://unknown.js"));
+    public void evalURI() throws IOException {
+        tvm.eval(Source.fromURL(new File(".").toURI().toURL(), "wrong.test"));
     }
 
-    @SuppressWarnings("deprecation")
     @Test(expected = IllegalStateException.class)
     public void evalString() throws IOException {
-        tvm.eval("text/javascript", "1 + 1");
+        tvm.eval(Source.fromText("1 + 1", "wrong.test").withMimeType("text/javascript"));
     }
 
-    @SuppressWarnings("deprecation")
     @Test(expected = IllegalStateException.class)
     public void evalReader() throws IOException {
         try (StringReader sr = new StringReader("1 + 1")) {
-            tvm.eval("text/javascript", sr);
+            tvm.eval(Source.fromReader(sr, "wrong.test").withMimeType("text/javascript"));
         }
     }
 

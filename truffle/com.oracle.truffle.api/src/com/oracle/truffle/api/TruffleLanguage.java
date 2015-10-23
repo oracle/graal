@@ -26,11 +26,7 @@ package com.oracle.truffle.api;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Reader;
-import java.io.Writer;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -398,11 +394,6 @@ public abstract class TruffleLanguage<C> {
             return in;
         }
 
-        @Deprecated
-        public Reader stdIn() {
-            return new InputStreamReader(in);
-        }
-
         /**
          * Standard output writer for {@link com.oracle.truffle.api.vm.PolyglotEngine} this language
          * is being executed in.
@@ -413,11 +404,6 @@ public abstract class TruffleLanguage<C> {
             return out;
         }
 
-        @Deprecated
-        public Writer stdOut() {
-            return new OutputStreamWriter(out);
-        }
-
         /**
          * Standard error writer for {@link com.oracle.truffle.api.vm.PolyglotEngine} this language
          * is being executed in.
@@ -426,11 +412,6 @@ public abstract class TruffleLanguage<C> {
          */
         public OutputStream err() {
             return err;
-        }
-
-        @Deprecated
-        public Writer stdErr() {
-            return new OutputStreamWriter(err);
         }
 
         public Instrumenter instrumenter() {

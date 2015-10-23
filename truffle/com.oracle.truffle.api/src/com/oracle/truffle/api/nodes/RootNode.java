@@ -49,33 +49,6 @@ public abstract class RootNode extends Node {
     @CompilationFinal private FrameDescriptor frameDescriptor;
 
     /**
-     * @deprecated each RootNode should be associated with a {@link TruffleLanguage} use constructor
-     *             that allows you to specify it. This method will be removed on Aug 15, 2015.
-     */
-    @Deprecated
-    protected RootNode() {
-        this(null, null, null, false);
-    }
-
-    /**
-     * @deprecated each RootNode should be associated with a {@link TruffleLanguage} use constructor
-     *             that allows you to specify it. This method will be removed on Aug 15, 2015.
-     */
-    @Deprecated
-    protected RootNode(SourceSection sourceSection) {
-        this(null, sourceSection, null, false);
-    }
-
-    /**
-     * @deprecated each RootNode should be associated with a {@link TruffleLanguage} use constructor
-     *             that allows you to specify it. This method will be removed on Aug 15, 2015.
-     */
-    @Deprecated
-    protected RootNode(SourceSection sourceSection, FrameDescriptor frameDescriptor) {
-        this(null, sourceSection, frameDescriptor, false);
-    }
-
-    /**
      * Creates new root node. Each {@link RootNode} is associated with a particular language - if
      * the root node represents a method it is assumed the method is written in such language.
      * <p>

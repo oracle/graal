@@ -91,15 +91,7 @@ public abstract class REPLServerContext {
     }
 
     public PolyglotEngine engine() {
-        return vm();
-    }
-
-    /**
-     * @deprecated use {@link #engine()}.
-     */
-    @Deprecated
-    public com.oracle.truffle.api.vm.PolyglotEngine vm() {
-        return engine();
+        throw new IllegalStateException();
     }
 
     protected abstract Debugger db();
