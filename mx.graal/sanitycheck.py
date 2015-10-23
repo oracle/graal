@@ -26,7 +26,6 @@
 from outputparser import OutputParser, ValuesMatcher
 import re, mx, mx_graal, os, sys, StringIO, subprocess
 from os.path import isfile, join, exists
-import mx_jvmci
 
 gc = 'UseSerialGC'
 
@@ -285,7 +284,7 @@ def getCTW(vm, mode):
     if vm == 'jvmci':
         args += ['-XX:+BootstrapGraal']
     if mode >= CTWMode.NoInline:
-        if not mx_jvmci.isJVMCIEnabled(vm):
+        if not mx_graal.isJVMCIEnabled(vm):
             args.append('-XX:-Inline')
         else:
             args.append('-G:CompileTheWordConfig=-Inline')
