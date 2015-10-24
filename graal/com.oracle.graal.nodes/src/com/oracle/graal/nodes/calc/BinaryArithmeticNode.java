@@ -86,6 +86,10 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return null;
     }
 
+    public Stamp tryFoldStamp(Stamp xStamp, Stamp yStamp) {
+        return getOp(getX(), getY()).foldStamp(xStamp, yStamp);
+    }
+
     @Override
     public boolean inferStamp() {
         return updateStamp(getOp(getX(), getY()).foldStamp(getX().stamp(), getY().stamp()));

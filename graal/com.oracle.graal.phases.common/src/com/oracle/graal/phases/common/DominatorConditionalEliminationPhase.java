@@ -62,6 +62,7 @@ import com.oracle.graal.nodes.ShortCircuitOrNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.UnaryOpLogicNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -415,6 +416,25 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     if (result.isKnown()) {
                         return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
+                }
+                /*
+                 * For complex expressions involving constants, see if it's possible to fold the
+                 * tests by using stamps one level up in the expression. For instance, (x + n < y)
+                 * might fold if something is known about x and y is a constant.
+                 */
+                if (x instanceof BinaryArithmeticNode<?> && y.isConstant()) {
+                    BinaryArithmeticNode<?> binary = (BinaryArithmeticNode<?>) x;
+                    for (InfoElement infoElement : getInfoElements(binary.getX())) {
+                        Stamp newStampX = binary.tryFoldStamp(infoElement.getStamp(), binary.getY().stamp());
+                        TriState result = binaryOpLogicNode.tryFold(newStampX, y.stamp());
+                        if (result.isKnown()) {
+                            return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
+                        }
+                    }
+                    /*
+                     * In all the interesting cases binary.getY() seems to be a constant so it's
+                     * doesn't seem worth checking that case here.s
+                     */
                 }
             } else if (node instanceof ShortCircuitOrNode) {
                 final ShortCircuitOrNode shortCircuitOrNode = (ShortCircuitOrNode) node;
