@@ -1,5 +1,5 @@
 import mx
-JDK9 = mx.get_jdk().javaCompliance >= "1.9"
+JDK9 = mx.get_jdk(tag='default').javaCompliance >= "1.9"
 _8_9 = "1.9" if JDK9 else "1.8"
 
 def deps(l):

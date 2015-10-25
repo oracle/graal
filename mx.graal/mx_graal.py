@@ -25,7 +25,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import mx
-JDK9 = mx.get_jdk().javaCompliance >= "1.9"
+JDK9 = mx.get_jdk(tag='default').javaCompliance >= "1.9"
 
 if JDK9:
     import mx_graal_9 # pylint: disable=unused-import
