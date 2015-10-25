@@ -82,22 +82,35 @@ class JVMCIMode:
 
 _vm = JVMCIMode(jvmciMode='hosted')
 
+class BootClasspathDist(object):
+    """
+    Extra info for a Distribution that must be put onto the boot class path.
+    """
+    def __init__(self, name):
+        self._name = name
+
+    def dist(self):
+        return mx.distribution(self._name)
+
+    def get_classpath_repr(self):
+        return self.dist().classpath_repr()
+
 _compilers = ['graal-economy', 'graal']
-_graalDists = [
-    'GRAAL_NODEINFO',
-    'GRAAL_API',
-    'GRAAL_COMPILER',
-    'GRAAL',
-    'GRAAL_HOTSPOT',
-    'GRAAL_TRUFFLE',
-    'GRAAL_TRUFFLE_HOTSPOT',
+_bootClasspathDists = [
+    BootClasspathDist('GRAAL_NODEINFO'),
+    BootClasspathDist('GRAAL_API'),
+    BootClasspathDist('GRAAL_COMPILER'),
+    BootClasspathDist('GRAAL'),
+    BootClasspathDist('GRAAL_HOTSPOT'),
+    BootClasspathDist('GRAAL_TRUFFLE'),
+    BootClasspathDist('GRAAL_TRUFFLE_HOTSPOT'),
 ]
 
 def add_compiler(compilerName):
     _compilers.append(compilerName)
 
-def add_graal_dist(distName):
-    _graalDists.append(distName)
+def add_boot_classpath_dist(dist):
+    _bootClasspathDists.append(dist)
 
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
@@ -511,9 +524,8 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
 
     bcp = [mx.distribution('truffle:TRUFFLE_API').classpath_repr()]
     if _jvmciModes[_vm.jvmciMode]:
-        bcpDeps = [mx.distribution(d) for d in _graalDists]
-        if bcpDeps:
-            bcp.extend([d.classpath_repr() for d in bcpDeps])
+        bcp.extend([d.get_classpath_repr() for d in _bootClasspathDists])
+
     args = ['-Xbootclasspath/p:' + os.pathsep.join(bcp)] + args
 
     # Set the default JVMCI compiler
@@ -587,5 +599,5 @@ mx.add_argument('-M', '--jvmci-mode', action='store', choices=sorted(_jvmciModes
 def mx_post_parse_cmd_line(opts):
     if opts.jvmci_mode is not None:
         _vm.update(opts.jvmci_mode)
-    for dist in [mx.distribution(d) for d in _graalDists]:
+    for dist in [d.dist() for d in _bootClasspathDists]:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist))
