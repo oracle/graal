@@ -258,6 +258,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     loopExits = oldLoopExits;
                 });
             }
+
             // For now conservatively collect guards only within the same block.
             pendingTests.clear();
             for (Node n : blockToNodes.apply(block)) {
@@ -507,21 +508,21 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 /*
                  * For complex expressions involving constants, see if it's possible to fold the
                  * tests by using stamps one level up in the expression. For instance, (x + n < y)
-                 * might fold if something is known about x and y is a constant.
+                 * might fold if something is known about x and all other values are constants. The
+                 * reason for the constant restriction is that if more than 1 real value is involved
+                 * the code might need to adopt multiple guards to have proper dependences.
                  */
                 if (x instanceof BinaryArithmeticNode<?> && y.isConstant()) {
                     BinaryArithmeticNode<?> binary = (BinaryArithmeticNode<?>) x;
-                    for (InfoElement infoElement : getInfoElements(binary.getX())) {
-                        Stamp newStampX = binary.tryFoldStamp(infoElement.getStamp(), binary.getY().stamp());
-                        TriState result = binaryOpLogicNode.tryFold(newStampX, y.stamp());
-                        if (result.isKnown()) {
-                            return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
+                    if (binary.getY().isConstant()) {
+                        for (InfoElement infoElement : getInfoElements(binary.getX())) {
+                            Stamp newStampX = binary.tryFoldStamp(infoElement.getStamp(), binary.getY().stamp());
+                            TriState result = binaryOpLogicNode.tryFold(newStampX, y.stamp());
+                            if (result.isKnown()) {
+                                return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
+                            }
                         }
                     }
-                    /*
-                     * In all the interesting cases binary.getY() seems to be a constant so it's
-                     * doesn't seem worth checking that case here.s
-                     */
                 }
             } else if (node instanceof ShortCircuitOrNode) {
                 final ShortCircuitOrNode shortCircuitOrNode = (ShortCircuitOrNode) node;
