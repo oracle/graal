@@ -23,6 +23,7 @@
 package com.oracle.truffle.dsl.processor.java.compiler;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -47,13 +49,20 @@ public class JDTCompiler extends AbstractCompiler {
         }
     }
 
-    public List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type) {
-        return sortBySourceOrder(new ArrayList<>(environment.getElementUtils().getAllMembers(type)));
+    /**
+     * @see "https://bugs.openjdk.java.net/browse/JDK-8039214"
+     */
+    private static List<Element> newElementList(List<? extends Element> src) {
+        List<Element> workaround = new ArrayList<>(src);
+        return workaround;
+    }
 
+    public List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type) {
+        return sortBySourceOrder(newElementList(environment.getElementUtils().getAllMembers(type)));
     }
 
     public List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type) {
-        return sortBySourceOrder(new ArrayList<>(type.getEnclosedElements()));
+        return sortBySourceOrder(newElementList(type.getEnclosedElements()));
     }
 
     private static List<? extends Element> sortBySourceOrder(List<Element> elements) {
