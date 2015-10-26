@@ -30,7 +30,6 @@ import java.util.Queue;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaValue;
@@ -41,6 +40,7 @@ import jdk.vm.ci.meta.Value;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.Variable;
@@ -289,8 +289,12 @@ public class DebugInfoBuilder {
                 } else if (value != null) {
                     STATE_VARIABLES.increment();
                     Value operand = nodeValueMap.operand(value);
-                    assert operand != null && (operand instanceof Variable || operand instanceof JavaConstant) : operand + " for " + value;
-                    return (JavaValue) operand;
+                    if (operand instanceof ConstantValue && ((ConstantValue) operand).isJavaConstant()) {
+                        return ((ConstantValue) operand).getJavaConstant();
+                    } else {
+                        assert operand instanceof Variable : operand + " for " + value;
+                        return (JavaValue) operand;
+                    }
 
                 } else {
                     // return a dummy value because real value not needed
