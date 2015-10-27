@@ -43,6 +43,16 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  */
 public class ConditionalEliminationTestBase extends GraalCompilerTest {
 
+    private final boolean disableSimplification;
+
+    protected ConditionalEliminationTestBase() {
+        disableSimplification = true;
+    }
+
+    protected ConditionalEliminationTestBase(boolean disableSimplification) {
+        this.disableSimplification = disableSimplification;
+    }
+
     protected void testConditionalElimination(String snippet, String referenceSnippet) {
         testConditionalElimination(snippet, referenceSnippet, false);
     }
@@ -52,7 +62,12 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         Debug.dump(graph, "Graph");
         PhaseContext context = new PhaseContext(getProviders());
         CanonicalizerPhase canonicalizer1 = new CanonicalizerPhase();
-        canonicalizer1.disableSimplification();
+        if (disableSimplification) {
+            /**
+             * Some tests break if simplification is done so only do it when needed.
+             */
+            canonicalizer1.disableSimplification();
+        }
         canonicalizer1.apply(graph, context);
         new ConvertDeoptimizeToGuardPhase().apply(graph, context);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
