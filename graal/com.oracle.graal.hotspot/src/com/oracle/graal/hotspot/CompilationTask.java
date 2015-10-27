@@ -232,10 +232,6 @@ public class CompilationTask {
                 bailout.printStackTrace(TTY.out);
             }
         } catch (Throwable t) {
-            if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
-                t.printStackTrace(TTY.out);
-            }
-
             // Log a failure event.
             CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
             if (event.shouldWrite()) {
@@ -244,9 +240,7 @@ public class CompilationTask {
                 event.commit();
             }
 
-            if (ExitVMOnException.getValue()) {
-                System.exit(-1);
-            }
+            handleException(t);
         } finally {
             try {
                 int compiledBytecodes = 0;
@@ -284,14 +278,22 @@ public class CompilationTask {
                     codeCache.notifyCompilationStatistics(getId(), method, entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
                 }
             } catch (Throwable t) {
-                // Don't allow exceptions during recording of statistics to leak out
-                if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
-                    t.printStackTrace(TTY.out);
-                }
-                if (ExitVMOnException.getValue()) {
-                    System.exit(-1);
-                }
+                handleException(t);
             }
+        }
+    }
+
+    protected void handleException(Throwable t) {
+        if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
+            try {
+                t.printStackTrace(TTY.out);
+            } catch (Throwable throwable) {
+                // Don't let an exception here change the other control flow
+            }
+        }
+
+        if (ExitVMOnException.getValue()) {
+            System.exit(-1);
         }
     }
 
