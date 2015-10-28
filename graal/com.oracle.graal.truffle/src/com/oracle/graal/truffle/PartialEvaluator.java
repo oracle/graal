@@ -159,7 +159,7 @@ public class PartialEvaluator {
     @SuppressWarnings("try")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, AllowAssumptions allowAssumptions) {
         try (Scope c = Debug.scope("TruffleTree")) {
-            Debug.dump(callTarget, "truffle tree");
+            Debug.dump(callTarget, callTarget.toString());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
