@@ -30,6 +30,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.oracle.truffle.tools.debug.shell.server.REPLServer;
+
 /**
  * A message for communication between a Read-Eval-Print-Loop server associated with a language
  * implementation and a possibly remote client.
@@ -53,6 +55,8 @@ public final class REPLMessage {
     public static final String BREAKPOINT_IGNORE_COUNT = "breakpoint-ignore-count";
     public static final String BREAKPOINT_INFO = "breakpoint-info";
     public static final String BREAKPOINT_STATE = "breakpoint-state";
+    public static final String CALL = "call";
+    public static final String CALL_NAME = "call-name";
     public static final String CLEAR_BREAK = "clear-breakpoint";
     public static final String CODE = "code";
     public static final String CONTINUE = "continue";
@@ -76,8 +80,7 @@ public final class REPLMessage {
     public static final String LANGUAGE = "language";
     public static final String LINE_NUMBER = "line-number";
     public static final String LIST = "list";
-    public static final String LOAD_RUN = "load-run-source";
-    public static final String LOAD_STEP = "load-step-into-source";
+    public static final String LOAD_SOURCE = "load-source";
     public static final String METHOD_NAME = "method-name";
     public static final String OP = "op";
     public static final String OPTION = "option";

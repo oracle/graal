@@ -200,6 +200,31 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
     };
 
+    public static final REPLRemoteCommand CALL_CMD = new REPLRemoteCommand("call", null, "call a method/function") {
+
+        private final String[] help = {"call <name>: calls a function by name, arguments not yet supported"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
+
+        @Override
+        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+            if (args.length == 1) {
+                context.displayFailReply("name to call not speciified");
+            } else if (args.length > 2) {
+                context.displayFailReply("call arguments not yet supported");
+            } else {
+                final REPLMessage request = new REPLMessage();
+                request.put(REPLMessage.OP, REPLMessage.CALL);
+                request.put(REPLMessage.CALL_NAME, args[1]);
+                return request;
+            }
+            return null;
+        }
+    };
+
     public static final REPLRemoteCommand CLEAR_BREAK_CMD = new REPLRemoteCommand("clear", null, "Clear a breakpoint") {
 
         private final String[] help = {"clear <n>: clear breakpoint number <n>"};
@@ -510,7 +535,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
     };
 
-    public static final REPLRemoteCommand LOAD_RUN_CMD = new REPLRemoteCommand("load-run", "loadr", "Load and run a source") {
+    public static final REPLRemoteCommand LOAD_CMD = new REPLRemoteCommand("load", null, "Load source") {
 
         @Override
         public REPLMessage createRequest(REPLClientContext context, String[] args) {
@@ -530,33 +555,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                 }
             }
             final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.LOAD_RUN);
-            request.put(REPLMessage.SOURCE_NAME, runSource.getPath());
-            return request;
-        }
-    };
-
-    public static final REPLRemoteCommand LOAD_STEP_CMD = new REPLRemoteCommand("load-step", "loads", "Load and step into a source") {
-
-        @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            Source runSource = null;
-            if (args.length == 1) {
-                runSource = context.getSelectedSource();
-                if (runSource == null) {
-                    context.displayFailReply("No file selected");
-                    return null;
-                }
-            } else {
-                try {
-                    runSource = Source.fromFileName(args[1]);
-                } catch (IOException e) {
-                    context.displayFailReply("Can't find file: " + args[1]);
-                    return null;
-                }
-            }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.LOAD_STEP);
+            request.put(REPLMessage.OP, REPLMessage.LOAD_SOURCE);
             request.put(REPLMessage.SOURCE_NAME, runSource.getPath());
             return request;
         }

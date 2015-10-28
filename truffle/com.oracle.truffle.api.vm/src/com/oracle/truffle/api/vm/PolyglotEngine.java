@@ -61,7 +61,9 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.Instrumenter;
+import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
+import com.oracle.truffle.api.instrument.QuitException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -814,6 +816,8 @@ public class PolyglotEngine {
                         target = null;
                     }
                 }
+            } catch (KillException | QuitException ex) {
+                throw ex;
             } catch (IOException ex) {
                 res[1] = ex;
             } catch (RuntimeException ex) {

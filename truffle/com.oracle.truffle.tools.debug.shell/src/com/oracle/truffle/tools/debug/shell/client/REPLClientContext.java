@@ -25,13 +25,14 @@
 package com.oracle.truffle.tools.debug.shell.client;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.debug.shell.REPLServer;
+import com.oracle.truffle.tools.debug.shell.server.REPLServer;
+
 import java.util.List;
 
 /**
  * Client context for interaction with a program halted by the {@link REPLServer}.
  */
-public interface REPLClientContext {
+interface REPLClientContext {
 
     /**
      * The source code halted in this context.

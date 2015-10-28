@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
+import com.oracle.truffle.api.instrument.QuitException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.REPLClient;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
-import com.oracle.truffle.tools.debug.shell.REPLServer;
+import com.oracle.truffle.tools.debug.shell.server.REPLServer;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -39,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+
 import jline.console.ConsoleReader;
 
 /**
@@ -108,7 +111,7 @@ public class SimpleREPLClient implements REPLClient {
     // Cheating for the prototype; prototype startup now happens from the language server.
     // So this isn't used.
     public static void main(String[] args) {
-        final SimpleREPLClient repl = new SimpleREPLClient(null, null);
+        final SimpleREPLClient repl = new SimpleREPLClient(null);
         repl.start();
     }
 
@@ -147,9 +150,9 @@ public class SimpleREPLClient implements REPLClient {
      */
     private Source selectedSource = null;
 
-    public SimpleREPLClient(String languageName, REPLServer replServer) {
-        this.languageName = languageName;
+    public SimpleREPLClient(REPLServer replServer) {
         this.replServer = replServer;
+        this.languageName = replServer.getLanguageName();
         this.writer = System.out;
         try {
             this.reader = new ConsoleReader();
@@ -162,6 +165,7 @@ public class SimpleREPLClient implements REPLClient {
         addCommand(REPLRemoteCommand.BREAK_AT_LINE_ONCE_CMD);
         addCommand(REPLRemoteCommand.BREAK_AT_THROW_CMD);
         addCommand(REPLRemoteCommand.BREAK_AT_THROW_ONCE_CMD);
+        addCommand(REPLRemoteCommand.CALL_CMD);
         addCommand(REPLRemoteCommand.CLEAR_BREAK_CMD);
         addCommand(REPLRemoteCommand.CONDITION_BREAK_CMD);
         addCommand(REPLRemoteCommand.CONTINUE_CMD);
@@ -176,8 +180,7 @@ public class SimpleREPLClient implements REPLClient {
         addCommand(infoCommand);
         addCommand(REPLRemoteCommand.KILL_CMD);
         addCommand(listCommand);
-        addCommand(REPLRemoteCommand.LOAD_RUN_CMD);
-        addCommand(REPLRemoteCommand.LOAD_STEP_CMD);
+        addCommand(REPLRemoteCommand.LOAD_CMD);
         addCommand(quitCommand);
         addCommand(setCommand);
         addCommand(REPLRemoteCommand.STEP_INTO_CMD);
@@ -207,18 +210,10 @@ public class SimpleREPLClient implements REPLClient {
 
     public void start() {
 
-        REPLMessage startReply = replServer.start();
-
-        if (startReply.get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
-            clientContext.displayFailReply(startReply.get(REPLMessage.DISPLAY_MSG));
-            throw new RuntimeException("Can't start REPL server");
-        }
-
         this.clientContext = new ClientContextImpl(null, null);
-
         try {
-            clientContext.startSession();
-        } finally {
+            clientContext.startContextSession();
+        } catch (QuitException ex) {
             clientContext.displayReply("Goodbye from " + languageName + "/REPL");
         }
 
@@ -476,7 +471,7 @@ public class SimpleREPLClient implements REPLClient {
             writer.println(TRACE_PREFIX + message);
         }
 
-        public void startSession() {
+        private void startContextSession() {
 
             while (true) {
                 try {
@@ -515,15 +510,19 @@ public class SimpleREPLClient implements REPLClient {
 
                     } else if (command instanceof REPLRemoteCommand) {
                         final REPLRemoteCommand remoteCommand = (REPLRemoteCommand) command;
-
                         final REPLMessage request = remoteCommand.createRequest(clientContext, args);
                         if (request == null) {
                             continue;
                         }
 
                         REPLMessage[] replies = sendToServer(request);
-
                         remoteCommand.processReply(clientContext, replies);
+
+                        final String path = replies[0].get(REPLMessage.FILE_PATH);
+                        if (path != null && !path.isEmpty()) {
+                            selectSource(path);
+                        }
+
                     } else {
                         assert false; // Should not happen.
                     }
@@ -651,7 +650,7 @@ public class SimpleREPLClient implements REPLClient {
         }
 
         try {
-            clientContext.startSession();
+            clientContext.startContextSession();
         } finally {
 
             // To continue execution, pop the context and return
