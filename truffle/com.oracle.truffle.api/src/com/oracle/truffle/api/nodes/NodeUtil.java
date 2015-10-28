@@ -421,9 +421,11 @@ public final class NodeUtil {
         if (clazz.getAnnotation(annotationClass) != null) {
             return clazz.getAnnotation(annotationClass);
         } else {
-            for (Class<?> intf : clazz.getInterfaces()) {
-                if (intf.getAnnotation(annotationClass) != null) {
-                    return intf.getAnnotation(annotationClass);
+            if (!TruffleOptions.AOT) {
+                for (Class<?> intf : clazz.getInterfaces()) {
+                    if (intf.getAnnotation(annotationClass) != null) {
+                        return intf.getAnnotation(annotationClass);
+                    }
                 }
             }
             if (clazz.getSuperclass() != null) {
