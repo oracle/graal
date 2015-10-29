@@ -926,7 +926,24 @@ suite = {
       "javaCompliance" : _8_9,
       "annotationProcessors" : [ap("SERVICE")],
       "workingSets" : "Graal,Truffle,SPARC",
-    }
+    },
+
+    # ------------- Salver -------------
+
+    "com.oracle.graal.salver" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.java",
+      ],
+      "annotationProcessors" : [
+        ap("OPTIONS"),
+        ap("SERVICE"),
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : _8_9,
+      "workingSets" : "Graal",
+    },
   },
 
   "distributions" : {
@@ -974,6 +991,7 @@ suite = {
         "com.oracle.graal.replacements.amd64",
         "com.oracle.graal.compiler.sparc",
         "com.oracle.graal.replacements.sparc",
+        "com.oracle.graal.salver",
       ],
       "distDependencies" : [
         "GRAAL_API",
