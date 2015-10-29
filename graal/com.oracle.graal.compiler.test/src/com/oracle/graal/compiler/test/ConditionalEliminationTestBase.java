@@ -57,6 +57,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         testConditionalElimination(snippet, referenceSnippet, false);
     }
 
+    @SuppressWarnings("try")
     protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(graph, "Graph");
@@ -68,21 +69,30 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
              */
             canonicalizer1.disableSimplification();
         }
-        canonicalizer1.apply(graph, context);
-        new ConvertDeoptimizeToGuardPhase().apply(graph, context);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        new DominatorConditionalEliminationPhase(true).apply(graph, context);
-        canonicalizer.apply(graph, context);
-        canonicalizer.apply(graph, context);
-        new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+        try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest", graph)) {
+            canonicalizer1.apply(graph, context);
+            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+            new DominatorConditionalEliminationPhase(true).apply(graph, context);
+            canonicalizer.apply(graph, context);
+            canonicalizer.apply(graph, context);
+            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+        } catch (Throwable t) {
+            Debug.handle(t);
+        }
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.YES);
-        new ConvertDeoptimizeToGuardPhase().apply(referenceGraph, context);
-        if (applyConditionalEliminationOnReference) {
-            new DominatorConditionalEliminationPhase(true).apply(referenceGraph, context);
-            canonicalizer.apply(referenceGraph, context);
-            canonicalizer.apply(referenceGraph, context);
-        } else {
-            canonicalizer.apply(referenceGraph, context);
+        try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest.ReferenceGraph", graph)) {
+
+            new ConvertDeoptimizeToGuardPhase().apply(referenceGraph, context);
+            if (applyConditionalEliminationOnReference) {
+                new DominatorConditionalEliminationPhase(true).apply(referenceGraph, context);
+                canonicalizer.apply(referenceGraph, context);
+                canonicalizer.apply(referenceGraph, context);
+            } else {
+                canonicalizer.apply(referenceGraph, context);
+            }
+        } catch (Throwable t) {
+            Debug.handle(t);
         }
         assertEquals(referenceGraph, graph);
     }
