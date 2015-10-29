@@ -22,7 +22,7 @@ suite = {
             {
                "name" : "jvmci",
                "optional" : "true",
-               "version" : "7e7573382a23216db2c177811ae083383af62e90",
+               "version" : "316e768645c07309a10dc9c150b4b968d06b66cc",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
