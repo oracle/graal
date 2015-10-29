@@ -83,7 +83,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
             if (currentNext.getGuard() == anchored) {
                 GraphUtil.removeFixedWithUnusedInputs(this);
                 return;
-            } else if (currentNext.getGuard() == null && anchored instanceof GuardNode && ((GuardNode) anchored).condition() instanceof IsNullNode) {
+            } else if (currentNext.getGuard() == null && anchored instanceof GuardNode && ((GuardNode) anchored).getCondition() instanceof IsNullNode) {
                 // coalesce null check guards into subsequent read/write
                 currentNext.setGuard((GuardingNode) anchored);
                 tool.addToWorkList(next());
