@@ -45,4 +45,6 @@ public interface DeoptimizingGuard extends NodeInterface {
     JavaConstant getSpeculation();
 
     boolean isNegated();
+
+    ValueNode asNode();
 }

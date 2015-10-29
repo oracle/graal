@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
 import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
+import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
@@ -73,7 +74,8 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest", graph)) {
             canonicalizer1.apply(graph, context);
             new ConvertDeoptimizeToGuardPhase().apply(graph, context);
-            new DominatorConditionalEliminationPhase(true).apply(graph, context);
+            // new DominatorConditionalEliminationPhase(true).apply(graph, context);
+            new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             canonicalizer.apply(graph, context);
             canonicalizer.apply(graph, context);
             new ConvertDeoptimizeToGuardPhase().apply(graph, context);
@@ -81,7 +83,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
             Debug.handle(t);
         }
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.YES);
-        try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest.ReferenceGraph", graph)) {
+        try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest.ReferenceGraph", referenceGraph)) {
 
             new ConvertDeoptimizeToGuardPhase().apply(referenceGraph, context);
             if (applyConditionalEliminationOnReference) {
