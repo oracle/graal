@@ -66,7 +66,7 @@ public abstract class SLWritePropertyCacheNode extends Node {
 
     public abstract void executeObject(DynamicObject receiver, Object value);
 
-    @Specialization(guards = {"location != null", "shape.check(receiver)", "location.canSet(receiver, value)"}, assumptions = {"shape.getValidAssumption()"}, limit = "CACHE_LIMIT")
+    @Specialization(guards = {"location != null", "shape.check(receiver)", "canSet(location, receiver, value)"}, assumptions = {"shape.getValidAssumption()"}, limit = "CACHE_LIMIT")
     public void writeExistingPropertyCached(DynamicObject receiver, Object value, //
                     @Cached("lookupLocation(receiver, value)") Location location, //
                     @Cached("receiver.getShape()") Shape shape, //
@@ -84,7 +84,7 @@ public abstract class SLWritePropertyCacheNode extends Node {
         }
     }
 
-    @Specialization(guards = {"existing == null", "shapeBefore.check(receiver)", "shapeAfter != null", "newLocation.canSet(receiver, value)"}, assumptions = {"shapeBefore.getValidAssumption()",
+    @Specialization(guards = {"existing == null", "shapeBefore.check(receiver)", "nonNull(shapeAfter)", "canSet(newLocation, receiver, value)"}, assumptions = {"shapeBefore.getValidAssumption()",
                     "shapeAfter.getValidAssumption()"}, limit = "CACHE_LIMIT")
     public void writeNewPropertyCached(DynamicObject receiver, Object value, //
                     @Cached("lookupLocation(receiver, value)") @SuppressWarnings("unused") Location existing, //
@@ -134,5 +134,13 @@ public abstract class SLWritePropertyCacheNode extends Node {
 
     protected static Assumption ensureValid(DynamicObject receiver) {
         return receiver.updateShape() ? NeverValidAssumption.INSTANCE : AlwaysValidAssumption.INSTANCE;
+    }
+
+    protected static boolean canSet(Location location, DynamicObject receiver, Object value) {
+        return location.canSet(receiver, value);
+    }
+
+    protected static boolean nonNull(Object value) {
+        return value != null;
     }
 }
