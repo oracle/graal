@@ -51,6 +51,25 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         return 0;
     }
 
+    @Test
+    public void testSubtractEqualsZeroLong() {
+        test("testSubtractEqualsZeroLongSnippet", "testSubtractEqualsZeroLongReference");
+    }
+
+    public static int testSubtractEqualsZeroLongReference(long a, long b) {
+        if (a == b) {
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int testSubtractEqualsZeroLongSnippet(long a, long b) {
+        if (a - b == 0) {
+            return 1;
+        }
+        return 0;
+    }
+
     /**
      * Tests the canonicalization of (x >>> const) == 0 to x |test| (-1 << const).
      */
