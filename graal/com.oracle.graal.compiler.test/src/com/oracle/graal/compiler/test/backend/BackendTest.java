@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
-import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
-import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CallingConvention.Type;
+import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CallingConvention.Type;
 
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.test.GraalCompilerTest;

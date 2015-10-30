@@ -24,8 +24,8 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.graphbuilderconf.InlineInvokePlugin;

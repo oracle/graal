@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 

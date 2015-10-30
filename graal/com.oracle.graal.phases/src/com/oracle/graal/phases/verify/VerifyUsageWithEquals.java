@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.phases.verify;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Signature;
-import jdk.internal.jvmci.meta.TrustedInterface;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.TrustedInterface;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.nodes.ParameterNode;

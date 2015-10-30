@@ -23,11 +23,11 @@
 package com.oracle.graal.hotspot.test;
 
 import static java.lang.reflect.Modifier.isStatic;
-import jdk.internal.jvmci.code.InvalidInstalledCodeException;
-import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

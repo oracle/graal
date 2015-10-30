@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.internal.jvmci.code.CodeUtil;
+import jdk.vm.ci.code.CodeUtil;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.graph.NodeClass;
@@ -76,7 +76,7 @@ public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLo
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitUDiv(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitUDiv(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
     }
 
     @Override

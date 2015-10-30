@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 /**
  * visible interface of bytecode parsers.

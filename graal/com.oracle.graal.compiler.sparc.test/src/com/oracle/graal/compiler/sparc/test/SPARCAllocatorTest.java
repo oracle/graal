@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.sparc.test;
 import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceRA;
 import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
 import static org.junit.Assume.assumeTrue;
-import jdk.internal.jvmci.sparc.SPARC;
+import jdk.vm.ci.sparc.SPARC;
 
 import org.junit.Before;
 import org.junit.Test;

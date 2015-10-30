@@ -26,9 +26,9 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

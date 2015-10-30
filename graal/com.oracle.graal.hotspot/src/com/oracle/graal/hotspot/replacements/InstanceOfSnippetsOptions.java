@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 /**
  * Options related to {@link InstanceOfSnippets}.

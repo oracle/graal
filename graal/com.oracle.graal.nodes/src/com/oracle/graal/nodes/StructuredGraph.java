@@ -22,20 +22,19 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.Assumptions.Assumption;
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.SpeculationLog;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.JavaMethodContext;
@@ -128,10 +127,10 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     private final SpeculationLog speculationLog;
 
     /**
-     * Records the methods that were inlined while constructing this graph along with how many times
-     * each method was inlined.
+     * Records the methods that were inlined while constructing this graph, one entry for each time
+     * a specific method is inlined.
      */
-    private Map<ResolvedJavaMethod, Integer> inlinedMethods = new HashMap<>();
+    private final List<ResolvedJavaMethod> inlinedMethods = new ArrayList<>();
 
     private static enum UnsafeAccessState {
         NO_ACCESS,
@@ -154,19 +153,19 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * start} node.
      */
     public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
+        this(name, method, uniqueGraphIds.incrementAndGet(), JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
     }
 
     public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
+        this(name, method, uniqueGraphIds.incrementAndGet(), JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
+        this(null, method, uniqueGraphIds.incrementAndGet(), JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
+        this(null, method, uniqueGraphIds.incrementAndGet(), JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
@@ -237,7 +236,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public boolean isOSR() {
-        return entryBCI != Compiler.INVOCATION_ENTRY_BCI;
+        return entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
     }
 
     public long graphId() {
@@ -257,13 +256,9 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     @Override
     protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
         AllowAssumptions allowAssumptions = AllowAssumptions.from(assumptions != null);
-        boolean enableInlinedMethodRecording = isInlinedMethodRecordingEnabled();
         StructuredGraph copy = new StructuredGraph(newName, method, graphId, entryBCI, allowAssumptions, speculationLog);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
-        }
-        if (!enableInlinedMethodRecording) {
-            copy.disableInlinedMethodRecording();
         }
         copy.hasUnsafeAccess = hasUnsafeAccess;
         copy.setGuardsStage(getGuardsStage());
@@ -546,83 +541,38 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
-     * Disables method inlining recording while constructing this graph. This can be done at most
-     * once and must be done before any inlined methods are recorded.
-     */
-    public void disableInlinedMethodRecording() {
-        assert inlinedMethods != null : "cannot disable method inlining recording more than once";
-        assert inlinedMethods.isEmpty() : "cannot disable method inlining recording once methods have been recorded";
-        inlinedMethods = null;
-    }
-
-    public boolean isInlinedMethodRecordingEnabled() {
-        return inlinedMethods != null;
-    }
-
-    /**
      * Gets the methods that were inlined while constructing this graph.
-     *
-     * @return {@code null} if method inlining recording has been
-     *         {@linkplain #disableInlinedMethodRecording() disabled}
      */
-    public Set<ResolvedJavaMethod> getInlinedMethods() {
-        return inlinedMethods == null ? null : inlinedMethods.keySet();
+    public List<ResolvedJavaMethod> getInlinedMethods() {
+        return inlinedMethods;
     }
 
     /**
-     * If method inlining recording has not been {@linkplain #disableInlinedMethodRecording()
-     * disabled}, records that {@code inlinedMethod} was inlined to this graph. Otherwise, this
-     * method does nothing.
+     * Records that {@code inlinedMethod} was inlined to this graph.
      */
     public void recordInlinedMethod(ResolvedJavaMethod inlinedMethod) {
-        if (inlinedMethods != null) {
-            Integer count = inlinedMethods.get(inlinedMethod);
-            if (count != null) {
-                inlinedMethods.put(inlinedMethod, count + 1);
-            } else {
-                inlinedMethods.put(inlinedMethod, 1);
-            }
-        }
+        inlinedMethods.add(inlinedMethod);
     }
 
     /**
-     * If method inlining recording has not been {@linkplain #disableInlinedMethodRecording()
-     * disabled}, updates the {@linkplain #getInlinedMethods() inlined methods} of this graph with
-     * the inlined methods of another graph. Otherwise, this method does nothing.
+     * Updates the {@linkplain #getInlinedMethods() inlined methods} of this graph with the inlined
+     * methods of another graph.
      */
     public void updateInlinedMethods(StructuredGraph other) {
-        if (inlinedMethods != null) {
-            assert this != other;
-            Map<ResolvedJavaMethod, Integer> otherInlinedMethods = other.inlinedMethods;
-            if (otherInlinedMethods != null) {
-                for (Map.Entry<ResolvedJavaMethod, Integer> e : otherInlinedMethods.entrySet()) {
-                    ResolvedJavaMethod key = e.getKey();
-                    Integer count = inlinedMethods.get(key);
-                    if (count != null) {
-                        inlinedMethods.put(key, count + e.getValue());
-                    } else {
-                        inlinedMethods.put(key, e.getValue());
-                    }
-                }
-            }
-        }
+        assert this != other;
+        this.inlinedMethods.addAll(other.inlinedMethods);
     }
 
     /**
      * Gets the input bytecode {@linkplain ResolvedJavaMethod#getCodeSize() size} from which this
      * graph is constructed. This ignores how many bytecodes in each constituent method are actually
      * parsed (which may be none for methods whose IR is retrieved from a cache or less than the
-     * full amount for any given method due to profile guided branch pruning). If method inlining
-     * recording has been {@linkplain #disableInlinedMethodRecording() disabled} for this graph,
-     * bytecode counts for inlined methods are not included in the returned value.
+     * full amount for any given method due to profile guided branch pruning).
      */
     public int getBytecodeSize() {
         int res = method.getCodeSize();
-        if (inlinedMethods != null) {
-            for (Map.Entry<ResolvedJavaMethod, Integer> e : inlinedMethods.entrySet()) {
-                int inlinedBytes = e.getValue() * e.getKey().getCodeSize();
-                res += inlinedBytes;
-            }
+        for (ResolvedJavaMethod e : inlinedMethods) {
+            res += e.getCodeSize();
         }
         return res;
     }

@@ -34,13 +34,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.service.Services;
 
 import com.oracle.graal.code.DisassemblerProvider;
 import com.oracle.graal.compiler.common.GraalOptions;

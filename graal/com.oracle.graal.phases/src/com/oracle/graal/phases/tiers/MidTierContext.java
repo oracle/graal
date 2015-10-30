@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.ProfilingInfo;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ProfilingInfo;
 
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.util.Providers;

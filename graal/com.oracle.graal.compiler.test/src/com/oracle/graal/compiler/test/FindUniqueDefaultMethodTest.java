@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.test;
 
-import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import org.junit.Ignore;
 import org.junit.Test;

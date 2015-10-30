@@ -26,15 +26,15 @@ import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK;
 import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
 import java.lang.reflect.Field;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
 import sun.misc.Launcher;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -78,7 +78,15 @@ public class AESCryptSubstitutions {
         crypt(rcvr, in, inOffset, out, outOffset, true);
     }
 
+    static void implEncryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
+        crypt(rcvr, in, inOffset, out, outOffset, true);
+    }
+
     static void decryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
+        crypt(rcvr, in, inOffset, out, outOffset, false);
+    }
+
+    static void implDecryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, false);
     }
 

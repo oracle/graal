@@ -25,10 +25,10 @@ package com.oracle.graal.hotspot.amd64.test;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import jdk.internal.jvmci.amd64.AMD64;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Constant;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
 
 import org.junit.Assume;
 import org.junit.Before;

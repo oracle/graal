@@ -24,10 +24,10 @@ package com.oracle.graal.nodes.spi;
 
 import java.util.List;
 
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.ValueNode;

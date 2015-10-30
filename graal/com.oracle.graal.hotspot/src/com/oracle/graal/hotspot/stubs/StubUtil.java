@@ -29,14 +29,14 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.getA
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOops;
 import static com.oracle.graal.word.Word.unsigned;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.RuntimeConstraint;
+import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationAction;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;

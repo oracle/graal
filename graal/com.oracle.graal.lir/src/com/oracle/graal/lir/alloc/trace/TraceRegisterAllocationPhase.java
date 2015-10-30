@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder;
@@ -91,7 +91,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                 if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
                     new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, new TraceAllocationContext(spillMoveFactory, registerAllocationConfig), false);
                 } else {
-                    TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces);
+                    TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
                     allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
                 }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "After Trace" + traceNumber + ": " + trace);

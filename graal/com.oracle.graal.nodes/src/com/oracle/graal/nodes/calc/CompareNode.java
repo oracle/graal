@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;

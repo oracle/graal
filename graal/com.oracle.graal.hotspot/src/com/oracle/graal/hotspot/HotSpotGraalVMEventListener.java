@@ -24,11 +24,11 @@ package com.oracle.graal.hotspot;
 
 import java.util.ArrayList;
 
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
-import jdk.internal.jvmci.hotspot.HotSpotVMEventListener;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotVMEventListener;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.debug.Debug;
 

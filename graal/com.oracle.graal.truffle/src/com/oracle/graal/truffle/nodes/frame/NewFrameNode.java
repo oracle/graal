@@ -26,13 +26,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.api.runtime.Graal;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.IterableNodeType;
@@ -62,7 +61,6 @@ import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * Intrinsic node representing the call for creating a frame in the {@link OptimizedCallTarget}
@@ -75,14 +73,22 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     @Input ValueNode descriptor;
     @Input ValueNode arguments;
 
-    public NewFrameNode(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
+    private final SnippetReflectionProvider snippetReflection;
+
+    public NewFrameNode(SnippetReflectionProvider snippetReflection, Stamp stamp, ValueNode descriptor, ValueNode arguments) {
         super(TYPE, stamp);
         this.descriptor = descriptor;
         this.arguments = arguments;
+
+        /*
+         * This class requires access to the objects encapsulated in Constants, and therefore breaks
+         * the compiler-VM separation of object constants.
+         */
+        this.snippetReflection = snippetReflection;
     }
 
-    public NewFrameNode(ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
-        this(StampFactory.exactNonNull(frameType), descriptor, arguments);
+    public NewFrameNode(SnippetReflectionProvider snippetReflection, ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
+        this(snippetReflection, StampFactory.exactNonNull(frameType), descriptor, arguments);
     }
 
     public ValueNode getDescriptor() {
@@ -93,17 +99,9 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         return arguments;
     }
 
-    private static SnippetReflectionProvider getSnippetReflection() {
-        /*
-         * This class requires access to the objects encapsulated in Constants, and therefore breaks
-         * the compiler-VM separation of object constants.
-         */
-        return Graal.getRequiredCapability(SnippetReflectionProvider.class);
-    }
-
     private FrameDescriptor getConstantFrameDescriptor() {
         assert descriptor.isConstant() && !descriptor.isNullConstant();
-        return getSnippetReflection().asObject(FrameDescriptor.class, descriptor.asJavaConstant());
+        return snippetReflection.asObject(FrameDescriptor.class, descriptor.asJavaConstant());
     }
 
     private int getFrameSize() {
@@ -190,7 +188,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
         if (frameSize > 0) {
             FrameDescriptor frameDescriptor = getConstantFrameDescriptor();
-            ConstantNode objectDefault = ConstantNode.forConstant(getSnippetReflection().forObject(frameDescriptor.getDefaultValue()), tool.getMetaAccessProvider(), graph());
+            ConstantNode objectDefault = ConstantNode.forConstant(snippetReflection.forObject(frameDescriptor.getDefaultValue()), tool.getMetaAccessProvider(), graph());
             ConstantNode tagDefault = ConstantNode.forByte((byte) 0, graph());
             Arrays.fill(objectArrayEntryState, objectDefault);
             if (virtualFrameTagArray != null) {
@@ -265,7 +263,4 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             return this;
         }
     }
-
-    @NodeIntrinsic
-    public static native VirtualFrame allocate(@ConstantNodeParameter Class<? extends VirtualFrame> frameType, FrameDescriptor descriptor, Object[] args);
 }

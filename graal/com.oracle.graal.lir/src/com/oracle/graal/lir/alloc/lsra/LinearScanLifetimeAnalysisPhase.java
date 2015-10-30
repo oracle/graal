@@ -26,10 +26,10 @@ import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.debug.LIRGenerationDebugContext.getSourceForOperandFromDebugContext;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
@@ -38,17 +38,16 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.common.BackendOptions;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -61,7 +60,6 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
@@ -579,12 +577,6 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 interval.setSpillSlot(slot);
                 interval.assignLocation(slot);
             }
-        } else if (op instanceof StackStoreOp) {
-            StackStoreOp store = (StackStoreOp) op;
-            StackSlot slot = asStackSlot(store.getStackSlot());
-            Interval interval = allocator.intervalFor(store.getResult());
-            interval.setSpillSlot(slot);
-            interval.setSpillState(SpillState.StartInMemory);
         }
     }
 
@@ -666,8 +658,6 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             if (optimizeMethodArgument(move.getInput())) {
                 return RegisterPriority.None;
             }
-        } else if (op instanceof StackStoreOp) {
-            return RegisterPriority.ShouldHaveRegister;
         }
 
         // all other operands require a register
@@ -826,10 +816,6 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
-    protected static Boolean neverSpillConstants() {
-        return BackendOptions.UserOptions.NeverSpillConstants.getValue();
-    }
-
     /**
      * Returns a value for a interval definition, which can be used for re-materialization.
      *
@@ -840,12 +826,12 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      *         reload-locations in case the interval of this instruction is spilled. Currently this
      *         can only be a {@link JavaConstant}.
      */
-    protected static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
+    protected JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
         if (op instanceof LoadConstantOp) {
             LoadConstantOp move = (LoadConstantOp) op;
             if (move.getConstant() instanceof JavaConstant) {
 
-                if (!neverSpillConstants()) {
+                if (!allocator.neverSpillConstants()) {
                     /*
                      * Check if the interval has any uses which would accept an stack location
                      * (priority == ShouldHaveRegister). Rematerialization of such intervals can

@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
+import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import org.junit.Assert;
 import org.junit.Test;

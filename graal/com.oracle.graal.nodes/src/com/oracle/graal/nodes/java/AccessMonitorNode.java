@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.internal.jvmci.code.BailoutException;
+import jdk.vm.ci.code.BailoutException;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;

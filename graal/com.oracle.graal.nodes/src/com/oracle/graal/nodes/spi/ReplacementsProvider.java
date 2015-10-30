@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 

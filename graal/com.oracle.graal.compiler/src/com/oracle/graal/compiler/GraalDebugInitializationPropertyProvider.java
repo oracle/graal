@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler;
 
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugInitializationPropertyProvider;

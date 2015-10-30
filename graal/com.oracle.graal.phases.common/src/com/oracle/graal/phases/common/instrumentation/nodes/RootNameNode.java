@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.debug.RuntimeStringNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo
 public final class RootNameNode extends InstrumentationContentNode implements Lowerable {

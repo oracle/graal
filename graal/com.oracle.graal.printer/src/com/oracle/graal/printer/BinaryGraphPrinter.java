@@ -37,10 +37,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.Signature;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;

@@ -35,21 +35,21 @@ import static com.oracle.graal.graph.iterators.NodePredicates.isA;
 import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
 import static com.oracle.graal.java.BytecodeParserOptions.HideSubstitutionStates;
 import static com.oracle.graal.nodes.FrameState.TWO_SLOT_MARKER;
-import static jdk.internal.jvmci.common.JVMCIError.shouldNotReachHere;
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.BytecodePosition;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Signature;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;

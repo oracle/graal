@@ -24,17 +24,17 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.NOT_LEAF;
-import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCall;
-import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCallee;
+import static jdk.vm.ci.code.CallingConvention.Type.JavaCall;
+import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;

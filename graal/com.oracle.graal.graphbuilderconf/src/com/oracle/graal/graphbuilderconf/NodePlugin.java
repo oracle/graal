@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaTypeProfile;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Signature;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.nodes.ValueNode;
 

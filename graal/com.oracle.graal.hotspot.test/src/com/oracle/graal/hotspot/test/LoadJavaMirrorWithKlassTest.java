@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot.test;
 
 import java.util.Objects;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import org.junit.Test;
 

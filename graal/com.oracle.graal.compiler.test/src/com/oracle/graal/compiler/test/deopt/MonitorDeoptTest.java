@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,7 +36,6 @@ import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
@@ -134,9 +133,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
      */
     private static void removeLoopSafepoint(StructuredGraph graph) {
         LoopBeginNode loopBegin = findFirstLoop(graph);
-        for (LoopEndNode end : loopBegin.loopEnds()) {
-            end.disableSafepoint();
-        }
+        loopBegin.disableSafepoint();
     }
 
     @Test

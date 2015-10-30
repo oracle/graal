@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import jdk.internal.jvmci.amd64.AMD64Kind;
-import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;

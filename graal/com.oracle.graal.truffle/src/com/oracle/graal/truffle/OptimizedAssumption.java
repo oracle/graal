@@ -29,7 +29,7 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import jdk.internal.jvmci.code.InstalledCode;
+import jdk.vm.ci.code.InstalledCode;
 
 import com.oracle.graal.debug.TTY;
 import com.oracle.truffle.api.CompilerDirectives;

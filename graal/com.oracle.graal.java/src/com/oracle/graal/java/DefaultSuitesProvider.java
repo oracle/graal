@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.java;
 
-import jdk.internal.jvmci.options.DerivedOptionValue;
-import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
+import jdk.vm.ci.options.DerivedOptionValue;
+import jdk.vm.ci.options.DerivedOptionValue.OptionSupplier;
 
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;

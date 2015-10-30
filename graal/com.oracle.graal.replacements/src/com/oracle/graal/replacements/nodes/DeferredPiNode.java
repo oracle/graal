@@ -24,7 +24,7 @@ package com.oracle.graal.replacements.nodes;
 
 //JaCoCo Exclude
 
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;

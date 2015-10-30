@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Signature;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 public class StampFactory {
 

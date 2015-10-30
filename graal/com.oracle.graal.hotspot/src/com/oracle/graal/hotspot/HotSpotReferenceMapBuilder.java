@@ -23,20 +23,20 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 
-import jdk.internal.jvmci.code.Location;
-import jdk.internal.jvmci.code.ReferenceMap;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotReferenceMap;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.PlatformKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.Location;
+import jdk.vm.ci.code.ReferenceMap;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotReferenceMap;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;

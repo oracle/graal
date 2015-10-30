@@ -40,8 +40,8 @@ import java.util.Deque;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 
 import com.oracle.graal.debug.Management;
 import com.sun.management.ThreadMXBean;

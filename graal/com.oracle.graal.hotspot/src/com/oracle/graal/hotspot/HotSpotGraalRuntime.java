@@ -28,23 +28,23 @@ import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
 import static com.oracle.graal.debug.GraalDebugConfig.areScopedMetricsOrTimersEnabled;
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
-import static jdk.internal.jvmci.inittimer.InitTimer.timer;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+import static jdk.vm.ci.inittimer.InitTimer.timer;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.code.stack.StackIntrospection;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotProxified;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.inittimer.InitTimer;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.runtime.JVMCIBackend;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotProxified;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.inittimer.InitTimer;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.runtime.JVMCIBackend;
 
 import com.oracle.graal.api.collections.CollectionsProvider;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;

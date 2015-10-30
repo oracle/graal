@@ -23,9 +23,9 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
-import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
-import static jdk.internal.jvmci.compiler.Compiler.PrintCompilation;
+import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -41,24 +41,24 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ProfilingInfo;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.SpeculationLog;
-import jdk.internal.jvmci.options.DerivedOptionValue;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.options.DerivedOptionValue;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -69,7 +69,7 @@ import org.junit.internal.AssumptionViolatedException;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.GraalCompiler.Request;
 import com.oracle.graal.compiler.target.Backend;
@@ -763,13 +763,18 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            be obtained from {@code installedCodeOwner} via
      *            {@link #parseForCompile(ResolvedJavaMethod)}.
      */
+    @SuppressWarnings("try")
     protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
-        Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                        getProfilingInfo(graphToCompile), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
-        return GraalCompiler.compile(request);
+        try (Scope s = Debug.scope("Compile", graphToCompile)) {
+            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
+            Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+                            getProfilingInfo(graphToCompile), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+            return GraalCompiler.compile(request);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     protected StructuredGraph lastCompiledGraph;
@@ -869,8 +874,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     @SuppressWarnings("try")
     private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
-        try (Scope ds = Debug.scope("Parsing", javaMethod)) {
-            StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog());
+        StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog());
+        try (Scope ds = Debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;
         } catch (Throwable e) {

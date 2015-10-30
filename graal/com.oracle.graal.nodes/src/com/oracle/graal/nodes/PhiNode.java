@@ -24,7 +24,7 @@ package com.oracle.graal.nodes;
 
 import java.util.Iterator;
 
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;

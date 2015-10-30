@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Graph;
@@ -75,7 +75,7 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     @SuppressWarnings("deprecation")
     public LogicNode maybeCommuteInputs() {
         assert this instanceof BinaryCommutative;
-        if (x.getId() > y.getId()) {
+        if (!y.isConstant() && x.getId() > y.getId()) {
             ValueNode tmp = x;
             x = y;
             y = tmp;

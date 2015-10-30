@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.lir.CompositeValue;

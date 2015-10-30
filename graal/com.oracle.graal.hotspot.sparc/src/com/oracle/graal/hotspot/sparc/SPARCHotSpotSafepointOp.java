@@ -22,17 +22,16 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.sparc.SPARC.g0;
-import jdk.internal.jvmci.code.InfopointReason;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.AllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.sparc.SPARC.g0;
+import jdk.vm.ci.code.InfopointReason;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -89,7 +88,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            new Setx(config.safepointPollingAddress, ValueUtil.asRegister(result)).emit(masm);
+            masm.setx(config.safepointPollingAddress, ValueUtil.asRegister(result), false);
         }
     }
 }

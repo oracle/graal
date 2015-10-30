@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.test;
 
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import org.junit.Assert;
 

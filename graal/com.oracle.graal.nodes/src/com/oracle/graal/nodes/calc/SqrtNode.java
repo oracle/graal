@@ -25,11 +25,11 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Square root.
@@ -44,7 +44,7 @@ public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements Arithme
     }
 
     @Override
-    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitMathSqrt(nodeValueMap.operand(getValue())));
     }
 }

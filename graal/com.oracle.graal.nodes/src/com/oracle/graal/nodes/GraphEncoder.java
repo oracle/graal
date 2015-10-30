@@ -28,7 +28,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 
-import jdk.internal.jvmci.code.Architecture;
+import jdk.vm.ci.code.Architecture;
 
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.util.FrequencyEncoder;

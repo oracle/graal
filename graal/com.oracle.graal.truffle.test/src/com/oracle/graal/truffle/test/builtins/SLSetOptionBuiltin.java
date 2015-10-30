@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
-import jdk.internal.jvmci.options.OptionDescriptor;
+import jdk.vm.ci.options.OptionDescriptor;
 
 import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.graal.truffle.TruffleCompilerOptions_OptionDescriptors;

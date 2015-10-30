@@ -23,18 +23,18 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CBCOND;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.INSTRUCTION_SIZE;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
 import static com.oracle.graal.lir.sparc.SPARCMove.loadFromConstantTable;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.sparc.SPARC.g0;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.sparc.SPARC;
-import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.sparc.SPARC.g0;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.Assembler.LabelHint;
 import com.oracle.graal.asm.Label;
@@ -70,13 +70,12 @@ final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitch
                 LabelHint hint = requestHint(masm, target);
 
                 // Load constant takes one instruction
-                int cbCondPosition = masm.position() + SPARC.INSTRUCTION_SIZE;
+                int cbCondPosition = masm.position() + INSTRUCTION_SIZE;
                 boolean canUseShortBranch = masm.hasFeature(CPUFeature.CBCOND) && SPARCControlFlow.isShortBranch(masm, cbCondPosition, hint, target);
 
                 Register scratchRegister = asRegister(scratch);
                 final int byteCount = constant.isCompressed() ? 4 : 8;
-                Runnable recordReference = () -> crb.recordDataReferenceInCode(constant, byteCount);
-                loadFromConstantTable(crb, masm, byteCount, asRegister(constantTableBase), scratchRegister, SPARCDelayedControlTransfer.DUMMY, recordReference);
+                loadFromConstantTable(crb, masm, byteCount, asRegister(constantTableBase), constant, scratchRegister, SPARCDelayedControlTransfer.DUMMY);
 
                 if (canUseShortBranch) {
                     CBCOND.emit(masm, conditionFlag, conditionCode == CC.Xcc, keyRegister, scratchRegister, target);

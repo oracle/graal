@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import java.util.Map;
 
-import jdk.internal.jvmci.code.StackSlot;
+import jdk.vm.ci.code.StackSlot;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.hotspot.stubs.Stub;

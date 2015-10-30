@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common.inlining.info.elem;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.phases.common.CanonicalizerPhase;

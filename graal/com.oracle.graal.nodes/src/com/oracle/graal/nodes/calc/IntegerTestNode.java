@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;

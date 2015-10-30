@@ -27,27 +27,25 @@ import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.alloc.trace.TraceLinearScan.isVariableOrRegister;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAshareSpillInformation;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAuseInterTraceHints;
-import static jdk.internal.jvmci.code.ValueUtil.asRegisterValue;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isIllegal;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.common.BackendOptions;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -62,7 +60,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
@@ -324,21 +321,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             }
         }
 
-        /**
-         * Optimizes moves related to incoming stack based arguments. The interval for the
-         * destination of such moves is assigned the stack slot (which is in the caller's frame) as
-         * its spill slot.
-         */
-        private void handleMethodArguments(LIRInstruction op) {
-            if (op instanceof StackStoreOp) {
-                StackStoreOp store = (StackStoreOp) op;
-                StackSlot slot = asStackSlot(store.getStackSlot());
-                TraceInterval interval = allocator.intervalFor(store.getResult());
-                interval.setSpillSlot(slot);
-                interval.setSpillState(SpillState.StartInMemory);
-            }
-        }
-
         private void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
             if (flags.contains(OperandFlag.HINT) && TraceLinearScan.isVariableOrRegister(targetValue)) {
 
@@ -444,8 +426,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                 if (optimizeMethodArgument(move.getInput())) {
                     return RegisterPriority.None;
                 }
-            } else if (op instanceof StackStoreOp) {
-                return RegisterPriority.ShouldHaveRegister;
             }
 
             // all other operands require a register
@@ -559,10 +539,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                                  * would be in a register at the call otherwise).
                                  */
                                 op.visitEachState(stateProc);
-
-                                // special steps for some instructions (especially moves)
-                                handleMethodArguments(op);
-
                             }
 
                         } // end of instruction iteration
@@ -628,10 +604,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             }
         }
 
-        protected static Boolean neverSpillConstants() {
-            return BackendOptions.UserOptions.NeverSpillConstants.getValue();
-        }
-
         /**
          * Returns a value for a interval definition, which can be used for re-materialization.
          *
@@ -642,11 +614,11 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
          *         all reload-locations in case the interval of this instruction is spilled.
          *         Currently this can only be a {@link JavaConstant}.
          */
-        private static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, TraceInterval interval) {
+        private JavaConstant getMaterializedValue(LIRInstruction op, Value operand, TraceInterval interval) {
             if (op instanceof LoadConstantOp) {
                 LoadConstantOp move = (LoadConstantOp) op;
                 if (move.getConstant() instanceof JavaConstant) {
-                    if (!neverSpillConstants()) {
+                    if (!allocator.neverSpillConstants()) {
                         /*
                          * Check if the interval has any uses which would accept an stack location
                          * (priority == ShouldHaveRegister). Rematerialization of such intervals can

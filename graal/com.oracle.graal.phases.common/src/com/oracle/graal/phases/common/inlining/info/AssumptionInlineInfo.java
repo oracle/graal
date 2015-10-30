@@ -24,8 +24,8 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.Collection;
 
-import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;

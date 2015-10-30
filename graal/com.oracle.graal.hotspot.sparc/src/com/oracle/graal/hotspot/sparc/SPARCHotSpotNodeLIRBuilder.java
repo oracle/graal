@@ -23,22 +23,23 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
-import static jdk.internal.jvmci.sparc.SPARC.g5;
-import static jdk.internal.jvmci.sparc.SPARC.o7;
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
+import static jdk.vm.ci.sparc.SPARC.g5;
+import static jdk.vm.ci.sparc.SPARC.o7;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
 import com.oracle.graal.compiler.sparc.SPARCNodeLIRBuilder;
+import com.oracle.graal.compiler.sparc.SPARCNodeMatchRules;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
 import com.oracle.graal.hotspot.HotSpotLockStack;
@@ -61,8 +62,8 @@ import com.oracle.graal.nodes.spi.NodeValueMap;
 
 public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
-    public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        super(graph, lirGen);
+    public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen, SPARCNodeMatchRules nodeMatchRules) {
+        super(graph, lirGen, nodeMatchRules);
         assert gen instanceof SPARCHotSpotLIRGenerator;
         assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
         ((SPARCHotSpotLIRGenerator) gen).setLockStack(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
@@ -70,7 +71,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(SPARCKind.DWORD));
+        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(SPARCKind.XWORD));
         return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack);
     }
 

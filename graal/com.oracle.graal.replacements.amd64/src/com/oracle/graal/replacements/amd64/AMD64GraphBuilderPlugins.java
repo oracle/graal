@@ -25,10 +25,10 @@ package com.oracle.graal.replacements.amd64;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_EXP;
 import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.LOG;
 import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.LOG10;
-import jdk.internal.jvmci.amd64.AMD64;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;

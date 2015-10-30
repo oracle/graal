@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.lir.dfa;
 
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -75,7 +75,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
             return;
         }
         if (isRegister(v)) {
-            int index = asRegister(v).getReferenceMapIndex();
+            int index = asRegister(v).number;
             registers.put(index, v);
         } else if (isStackSlot(v)) {
             int index = frameMap.offsetForStackSlot(asStackSlot(v));
@@ -109,7 +109,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
             return;
         }
         if (isRegister(v)) {
-            int index = asRegister(v).getReferenceMapIndex();
+            int index = asRegister(v).number;
             registers.put(index, null);
         } else if (isStackSlot(v)) {
             int index = frameMap.offsetForStackSlot(asStackSlot(v));

@@ -25,19 +25,18 @@ package com.oracle.graal.lir.sparc;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.sparc.SPARC.o7;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.InvokeTarget;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.sparc.SPARC.o7;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.InvokeTarget;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
@@ -202,7 +201,7 @@ public class SPARCCall {
             // offset might not fit a 30-bit displacement, generate an
             // indirect call with a 64-bit immediate
             before = masm.position();
-            new Sethix(0L, scratch, true).emit(masm);
+            masm.sethix(0L, scratch, true);
             masm.jmpl(scratch, 0, o7);
         } else {
             before = masm.call(0);
@@ -216,7 +215,7 @@ public class SPARCCall {
 
     public static void indirectJmp(CompilationResultBuilder crb, SPARCMacroAssembler masm, Register dst, InvokeTarget target) {
         int before = masm.position();
-        new Sethix(0L, dst, true).emit(masm);
+        masm.sethix(0L, dst, true);
         masm.jmp(new SPARCAddress(dst, 0));
         masm.nop();  // delay slot
         int after = masm.position();

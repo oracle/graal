@@ -24,13 +24,13 @@ package com.oracle.graal.phases.common.test;
 
 import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.runtime.RuntimeProvider;

@@ -23,8 +23,8 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.LIRKind;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
 
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.sparc.SPARCIndexedAddressValue;

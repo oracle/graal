@@ -35,9 +35,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;

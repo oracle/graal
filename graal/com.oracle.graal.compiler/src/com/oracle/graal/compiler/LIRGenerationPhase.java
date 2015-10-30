@@ -26,7 +26,7 @@ import static com.oracle.graal.compiler.common.BackendOptions.ConstructionSSAlir
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.TargetDescription;
+import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;

@@ -23,9 +23,9 @@
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import static com.oracle.graal.compiler.common.BackendOptions.LinearScanVariant;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import com.oracle.graal.compiler.common.BackendOptions.LSRAVariant;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;

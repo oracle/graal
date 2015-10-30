@@ -26,11 +26,11 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 
 import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Local;
-import jdk.internal.jvmci.meta.LocalVariableTable;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Local;
+import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -106,10 +106,8 @@ public abstract class SnippetStub extends Stub implements Snippets {
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         // Stubs cannot have optimistic assumptions since they have
-        // to be valid for the entire run of the VM. Nor can they be
-        // evolved or have breakpoints.
+        // to be valid for the entire run of the VM.
         final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
-        graph.disableInlinedMethodRecording();
         graph.disableUnsafeAccessTracking();
 
         if (SnippetGraphUnderConstruction != null) {

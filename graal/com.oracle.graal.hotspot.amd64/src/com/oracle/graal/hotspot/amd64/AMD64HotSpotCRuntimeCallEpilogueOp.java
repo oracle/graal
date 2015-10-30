@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.code.Register;
+import jdk.vm.ci.code.Register;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;

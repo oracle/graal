@@ -28,7 +28,7 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedNode;
 
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
 public final class IsMethodInlinedNode extends InstrumentationContentNode {

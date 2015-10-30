@@ -26,16 +26,16 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.sparc.SPARCKind.DWORD;
-import static jdk.internal.jvmci.sparc.SPARCKind.WORD;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Asi;
@@ -52,14 +52,14 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
     @Def({REG, HINT}) protected Value result;
     @Use({REG}) protected Value input;
     @Temp({REG}) protected Value tempIndex;
-    @Use({STACK, UNINITIALIZED}) protected StackSlotValue tmpSlot;
+    @Use({STACK, UNINITIALIZED}) protected AllocatableValue tmpSlot;
 
     public SPARCByteSwapOp(LIRGeneratorTool tool, Value result, Value input) {
         super(TYPE, SIZE);
         this.result = result;
         this.input = input;
-        this.tmpSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(DWORD));
-        this.tempIndex = tool.newVariable(LIRKind.value(DWORD));
+        this.tmpSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(XWORD));
+        this.tempIndex = tool.newVariable(LIRKind.value(XWORD));
     }
 
     @Override
@@ -67,8 +67,8 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
         SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
         SPARCMove.emitStore(input, addr, result.getPlatformKind(), SPARCDelayedControlTransfer.DUMMY, null, crb, masm);
         if (addr.getIndex().equals(Register.None)) {
-            Register tempReg = ValueUtil.asRegister(tempIndex, DWORD);
-            new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
+            Register tempReg = ValueUtil.asRegister(tempIndex, XWORD);
+            masm.setx(addr.getDisplacement(), tempReg, false);
             addr = new SPARCAddress(addr.getBase(), tempReg);
         }
         getDelayedControlTransfer().emitControlTransfer(crb, masm);
@@ -76,8 +76,8 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
             case WORD:
                 masm.lduwa(addr.getBase(), addr.getIndex(), asRegister(result, WORD), Asi.ASI_PRIMARY_LITTLE);
                 break;
-            case DWORD:
-                masm.ldxa(addr.getBase(), addr.getIndex(), asRegister(result, DWORD), Asi.ASI_PRIMARY_LITTLE);
+            case XWORD:
+                masm.ldxa(addr.getBase(), addr.getIndex(), asRegister(result, XWORD), Asi.ASI_PRIMARY_LITTLE);
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();

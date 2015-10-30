@@ -28,14 +28,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.options.NestedBooleanOptionValue;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.options.NestedBooleanOptionValue;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -83,7 +82,7 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
         private Register reg = null;
         private List<AllocatableValue> dst;
         private List<Value> src;
-        private StackSlotValue slot;
+        private AllocatableValue slot;
         private boolean removed = false;
 
         public void process(List<LIRInstruction> instructions) {

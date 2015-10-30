@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.LIRInstruction;
 

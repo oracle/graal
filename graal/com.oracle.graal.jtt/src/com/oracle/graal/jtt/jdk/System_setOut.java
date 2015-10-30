@@ -25,7 +25,6 @@ package com.oracle.graal.jtt.jdk;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.jtt.JTTTest;
@@ -62,7 +61,6 @@ public class System_setOut extends JTTTest {
     }
 
     @Test
-    @Ignore("Ignored temporarily as under certain conditions it creates too large code in TraceRA gate")
     public void run0() throws Throwable {
         runTest("test", 10000);
     }

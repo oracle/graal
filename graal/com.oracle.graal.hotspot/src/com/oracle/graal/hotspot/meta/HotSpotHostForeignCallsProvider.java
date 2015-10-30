@@ -79,19 +79,19 @@ import static com.oracle.graal.nodes.java.ForeignCallDescriptors.REGISTER_FINALI
 import static com.oracle.graal.replacements.Log.LOG_OBJECT;
 import static com.oracle.graal.replacements.Log.LOG_PRIMITIVE;
 import static com.oracle.graal.replacements.Log.LOG_PRINTF;
-import static jdk.internal.jvmci.code.CallingConvention.Type.NativeCall;
+import static jdk.vm.ci.code.CallingConvention.Type.NativeCall;
 
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;

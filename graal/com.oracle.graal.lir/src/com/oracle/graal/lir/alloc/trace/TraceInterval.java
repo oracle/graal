@@ -23,27 +23,26 @@
 package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isIllegal;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
-import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.TTY;
@@ -315,7 +314,7 @@ final class TraceInterval extends IntervalHint {
     /**
      * The stack slot to which all splits of this interval are spilled if necessary.
      */
-    private StackSlotValue spillSlot;
+    private AllocatableValue spillSlot;
 
     /**
      * The kind of this interval.
@@ -437,7 +436,13 @@ final class TraceInterval extends IntervalHint {
         return intFrom == Integer.MAX_VALUE && intTo == Integer.MAX_VALUE;
     }
 
+    public void setTo(int pos) {
+        assert intFrom == Integer.MAX_VALUE || intFrom < pos;
+        intTo = pos;
+    }
+
     public void setFrom(int pos) {
+        assert intTo == Integer.MAX_VALUE || pos < intTo;
         intFrom = pos;
     }
 
@@ -477,11 +482,12 @@ final class TraceInterval extends IntervalHint {
     /**
      * Gets the canonical spill slot for this interval.
      */
-    public StackSlotValue spillSlot() {
+    public AllocatableValue spillSlot() {
         return splitParent().spillSlot;
     }
 
-    public void setSpillSlot(StackSlotValue slot) {
+    public void setSpillSlot(AllocatableValue slot) {
+        assert isStackSlotValue(slot);
         assert splitParent().spillSlot == null || (isVirtualStackSlot(splitParent().spillSlot) && isStackSlot(slot)) : "connot overwrite existing spill slot";
         splitParent().spillSlot = slot;
     }
@@ -892,10 +898,10 @@ final class TraceInterval extends IntervalHint {
         assert from < to : "invalid range";
 
         if (from < intFrom) {
-            intFrom = from;
+            setFrom(from);
         }
         if (intTo == Integer.MAX_VALUE || intTo < to) {
-            intTo = to;
+            setTo(to);
         }
     }
 
@@ -942,8 +948,8 @@ final class TraceInterval extends IntervalHint {
         TraceInterval result = newSplitChild(allocator);
 
         // split the ranges
-        result.intTo = intTo;
-        result.intFrom = splitPos;
+        result.setTo(intTo);
+        result.setFrom(splitPos);
         intTo = splitPos;
 
         // split list of use positions

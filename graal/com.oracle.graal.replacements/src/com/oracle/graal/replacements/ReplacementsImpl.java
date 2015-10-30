@@ -29,7 +29,7 @@ import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 import static java.lang.String.format;
-import static jdk.internal.jvmci.meta.MetaUtil.toInternalName;
+import static jdk.vm.ci.meta.MetaUtil.toInternalName;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -46,17 +46,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Signature;
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.options.OptionValue.OverrideScope;
 import sun.misc.Launcher;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
@@ -598,8 +598,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             // to be valid for the entire run of the VM.
             final StructuredGraph graph = new StructuredGraph(methodToParse, AllowAssumptions.NO);
 
-            // They will also never evolve or have breakpoints set in them
-            graph.disableInlinedMethodRecording();
             // They are not user code so they do not participate in unsafe access tracking
             graph.disableUnsafeAccessTracking();
 

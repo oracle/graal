@@ -27,12 +27,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import jdk.internal.jvmci.code.DebugInfo;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaUtil;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;

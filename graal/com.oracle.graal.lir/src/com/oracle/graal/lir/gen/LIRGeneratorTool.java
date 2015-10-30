@@ -22,34 +22,34 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterAttributes;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.PlatformKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterAttributes;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.CodeGenProviders;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 
-public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCounterFactory {
+public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
     /**
      * Factory for creating spill moves.
@@ -73,6 +73,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
         public abstract void close();
 
     }
+
+    ArithmeticLIRGeneratorTool getArithmetic();
 
     CodeGenProviders getProviders();
 
@@ -166,7 +168,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
      */
     void emitData(AllocatableValue dst, byte[] data);
 
-    Variable emitAddress(StackSlotValue slot);
+    Variable emitAddress(AllocatableValue stackslot);
 
     void emitMembar(int barriers);
 
@@ -228,26 +230,11 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
     CallingConvention getCallingConvention();
 
-    Variable emitBitCount(Value operand);
-
-    Variable emitBitScanForward(Value operand);
-
-    Variable emitBitScanReverse(Value operand);
-
     Variable emitByteSwap(Value operand);
 
     Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length);
 
     void emitBlackhole(Value operand);
 
-    @SuppressWarnings("unused")
-    default Value emitCountLeadingZeros(Value value) {
-        throw JVMCIError.unimplemented();
-    }
-
-    @SuppressWarnings("unused")
-    default Value emitCountTrailingZeros(Value value) {
-        throw JVMCIError.unimplemented();
-    }
-
+    LIRKind getLIRKind(Stamp stamp);
 }

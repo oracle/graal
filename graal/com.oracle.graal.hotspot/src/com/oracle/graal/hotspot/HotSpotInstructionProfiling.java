@@ -24,10 +24,10 @@ package com.oracle.graal.hotspot;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Assembler.InstructionCounter;

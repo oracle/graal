@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 

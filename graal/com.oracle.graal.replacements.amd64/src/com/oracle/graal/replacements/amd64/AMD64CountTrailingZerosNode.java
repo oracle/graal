@@ -22,28 +22,29 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Count the number of trailing zeros using the {@code tzcntq} or {@code tzcntl} instructions.
  */
 @NodeInfo
-public final class AMD64CountTrailingZerosNode extends UnaryNode implements LIRLowerable {
+public final class AMD64CountTrailingZerosNode extends UnaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64CountTrailingZerosNode> TYPE = NodeClass.create(AMD64CountTrailingZerosNode.class);
 
     public AMD64CountTrailingZerosNode(ValueNode value) {
@@ -79,8 +80,7 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements LIRL
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitCountTrailingZeros(gen.operand(getValue()));
-        gen.setResult(this, result);
+    public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
+        builder.setResult(this, ((AMD64ArithmeticLIRGeneratorTool) gen).emitCountTrailingZeros(builder.operand(getValue())));
     }
 }

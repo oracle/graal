@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import static com.oracle.graal.nodes.calc.CompareNode.createCompareNode;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.IntegerStamp;

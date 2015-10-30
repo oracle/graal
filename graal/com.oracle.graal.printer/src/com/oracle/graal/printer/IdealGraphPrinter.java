@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;

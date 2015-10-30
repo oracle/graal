@@ -119,28 +119,28 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.UMulxhi;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Ops.ArithOp;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Ops.LdstOp;
 import static java.lang.String.format;
-import static jdk.internal.jvmci.sparc.SPARC.INSTRUCTION_SIZE;
-import static jdk.internal.jvmci.sparc.SPARC.g0;
-import static jdk.internal.jvmci.sparc.SPARC.isCPURegister;
-import static jdk.internal.jvmci.sparc.SPARC.isDoubleFloatRegister;
-import static jdk.internal.jvmci.sparc.SPARC.isSingleFloatRegister;
-import static jdk.internal.jvmci.sparc.SPARC.r15;
-import static jdk.internal.jvmci.sparc.SPARC.r2;
-import static jdk.internal.jvmci.sparc.SPARC.r5;
+import static jdk.vm.ci.sparc.SPARC.CPU;
+import static jdk.vm.ci.sparc.SPARC.FPUd;
+import static jdk.vm.ci.sparc.SPARC.FPUs;
+import static jdk.vm.ci.sparc.SPARC.g0;
+import static jdk.vm.ci.sparc.SPARC.g2;
+import static jdk.vm.ci.sparc.SPARC.g5;
+import static jdk.vm.ci.sparc.SPARC.g7;
+import static jdk.vm.ci.sparc.SPARC.o7;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.PlatformKind;
-import jdk.internal.jvmci.sparc.SPARC;
-import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.sparc.SPARC;
+import jdk.vm.ci.sparc.SPARC.CPUFeature;
+import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
@@ -162,6 +162,16 @@ public abstract class SPARCAssembler extends Assembler {
     public SPARCAssembler(TargetDescription target, RegisterConfig registerConfig) {
         super(target);
     }
+
+    /**
+     * Size of an SPARC assembler instruction in Bytes.
+     */
+    public static final int INSTRUCTION_SIZE = 4;
+
+    /**
+     * Size in bytes which are cleared by stxa %g0, [%rd] ASI_ST_BLKINIT_PRIMARY.
+     */
+    public static final int BLOCK_ZERO_LENGTH = 64;
 
     public static final int CCR_ICC_SHIFT = 0;
     public static final int CCR_XCC_SHIFT = 4;
@@ -621,7 +631,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public static CC forKind(PlatformKind kind) {
-            if (kind.equals(SPARCKind.DWORD)) {
+            if (kind.equals(SPARCKind.XWORD)) {
                 return Xcc;
             } else if (kind.equals(SPARCKind.WORD)) {
                 return Icc;
@@ -1630,6 +1640,31 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public static boolean isCPURegister(Register... regs) {
+        for (Register reg : regs) {
+            if (!isCPURegister(reg)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean isCPURegister(Register r) {
+        return r.getRegisterCategory().equals(CPU);
+    }
+
+    public static boolean isGlobalRegister(Register r) {
+        return isCPURegister(r) && g0.number <= r.number && r.number <= g7.number;
+    }
+
+    public static boolean isSingleFloatRegister(Register r) {
+        return r.getRegisterCategory().equals(FPUs);
+    }
+
+    public static boolean isDoubleFloatRegister(Register r) {
+        return r.getRegisterCategory().equals(FPUd);
+    }
+
     public boolean hasFeature(CPUFeature feature) {
         return ((SPARC) this.target.arch).features.contains(feature);
     }
@@ -2309,7 +2344,7 @@ public abstract class SPARCAssembler extends Assembler {
     // A.44 Read State Register
 
     public void rdpc(Register rd) {
-        op3(Rd, r5, g0, rd);
+        op3(Rd, g5, g0, rd);
     }
 
     public void restore(Register rs1, Register rs2, Register rd) {
@@ -2423,11 +2458,11 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void wrccr(Register rs1, Register rs2) {
-        op3(Wr, rs1, rs2, r2);
+        op3(Wr, rs1, rs2, g2);
     }
 
     public void wrccr(Register rs1, int simm13) {
-        op3(Wr, rs1, simm13, r2);
+        op3(Wr, rs1, simm13, g2);
     }
 
     public void xor(Register rs1, Register rs2, Register rd) {
@@ -2499,7 +2534,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void ld(SPARCAddress src, Register dst, int bytes, boolean signExtend) {
-        if (SPARC.isCPURegister(dst)) {
+        if (isCPURegister(dst)) {
             if (signExtend) {
                 switch (bytes) {
                     case 1:
@@ -2535,10 +2570,10 @@ public abstract class SPARCAssembler extends Assembler {
                         throw new InternalError();
                 }
             }
-        } else if (SPARC.isDoubleFloatRegister(dst) && bytes == 8) {
+        } else if (isDoubleFloatRegister(dst) && bytes == 8) {
             assert !signExtend;
             ld(Lddf, src, dst);
-        } else if (SPARC.isSingleFloatRegister(dst) && bytes == 4) {
+        } else if (isSingleFloatRegister(dst) && bytes == 4) {
             assert !signExtend;
             ld(Ldf, src, dst);
         } else {
@@ -2547,7 +2582,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void st(Register src, SPARCAddress dst, int bytes) {
-        if (SPARC.isCPURegister(src)) {
+        if (isCPURegister(src)) {
             switch (bytes) {
                 case 1:
                     st(Stb, src, dst);
@@ -2564,9 +2599,9 @@ public abstract class SPARCAssembler extends Assembler {
                 default:
                     throw new InternalError(Integer.toString(bytes));
             }
-        } else if (SPARC.isDoubleFloatRegister(src) && bytes == 8) {
+        } else if (isDoubleFloatRegister(src) && bytes == 8) {
             st(Stdf, src, dst);
-        } else if (SPARC.isSingleFloatRegister(src) && bytes == 4) {
+        } else if (isSingleFloatRegister(src) && bytes == 4) {
             st(Stf, src, dst);
         } else {
             throw new InternalError(String.format("src: %s dst: %s bytes: %d", src, dst, bytes));
@@ -2599,17 +2634,17 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void ldxa(Register rs1, Register rs2, Register rd, Asi asi) {
-        assert SPARC.isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
+        assert isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
         ld(Ldxa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
     public void lduwa(Register rs1, Register rs2, Register rd, Asi asi) {
-        assert SPARC.isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
+        assert isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
         ld(Lduwa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
     public void stxa(Register rd, Register rs1, Register rs2, Asi asi) {
-        assert SPARC.isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
+        assert isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
         ld(Stxa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
@@ -2648,7 +2683,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void membar(int barriers) {
-        op3(Membar, r15, barriers, g0);
+        op3(Membar, o7, barriers, g0);
     }
 
     public void casa(Register rs1, Register rs2, Register rd, Asi asi) {

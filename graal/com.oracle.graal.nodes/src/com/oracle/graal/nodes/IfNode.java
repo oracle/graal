@@ -28,16 +28,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaTypeProfile;
-import jdk.internal.jvmci.meta.JavaTypeProfile.ProfiledType;
-import jdk.internal.jvmci.meta.PrimitiveConstant;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
+import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -1146,7 +1146,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      */
     public static Constant[] constantValues(ValueNode node, AbstractMergeNode merge, boolean allowNull) {
         if (node.isConstant()) {
-            JavaConstant[] result = new JavaConstant[merge.forwardEndCount()];
+            Constant[] result = new Constant[merge.forwardEndCount()];
             Arrays.fill(result, node.asConstant());
             return result;
         }

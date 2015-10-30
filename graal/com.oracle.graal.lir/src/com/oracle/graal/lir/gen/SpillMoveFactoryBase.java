@@ -27,9 +27,9 @@ import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;

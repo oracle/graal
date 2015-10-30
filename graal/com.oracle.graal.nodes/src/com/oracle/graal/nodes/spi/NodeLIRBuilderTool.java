@@ -25,8 +25,8 @@ package com.oracle.graal.nodes.spi;
 import java.util.Collection;
 import java.util.List;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;

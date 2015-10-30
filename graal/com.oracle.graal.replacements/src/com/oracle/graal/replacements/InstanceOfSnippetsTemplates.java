@@ -26,7 +26,7 @@ import static com.oracle.graal.nodes.calc.CompareNode.createCompareNode;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.TargetDescription;
+import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
-import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.UnreachedCode;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -33,11 +33,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.And;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Or;
+import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
@@ -62,6 +67,9 @@ import com.oracle.graal.nodes.ShortCircuitOrNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.UnaryOpLogicNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.AndNode;
+import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
+import com.oracle.graal.nodes.calc.IntegerEqualsNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -70,6 +78,7 @@ import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.ValueAnchorNode;
 import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.TypeSwitchNode;
+import com.oracle.graal.nodes.spi.NodeWithState;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.common.LoweringPhase.Frame;
@@ -165,6 +174,18 @@ public class DominatorConditionalEliminationPhase extends Phase {
         instance.processBlock(startBlock);
     }
 
+    static class PendingTest {
+        private final LogicNode condition;
+        private final boolean negated;
+        private final ValueNode guard;
+
+        public PendingTest(LogicNode condition, boolean negated, ValueNode guard) {
+            this.condition = condition;
+            this.negated = negated;
+            this.guard = guard;
+        }
+    }
+
     private static class Instance {
 
         private NodeMap<Info> map;
@@ -172,11 +193,17 @@ public class DominatorConditionalEliminationPhase extends Phase {
         private final Function<Block, Iterable<? extends Node>> blockToNodes;
         private final Function<Node, Block> nodeToBlock;
 
+        /**
+         * Tests which may be eliminated because post dominating tests to prove a broader condition.
+         */
+        private Deque<PendingTest> pendingTests;
+
         public Instance(StructuredGraph graph, Function<Block, Iterable<? extends Node>> blockToNodes, Function<Node, Block> nodeToBlock) {
             map = graph.createNodeMap();
             loopExits = new ArrayDeque<>();
             this.blockToNodes = blockToNodes;
             this.nodeToBlock = nodeToBlock;
+            pendingTests = new ArrayDeque<>();
         }
 
         public void processBlock(Block startBlock) {
@@ -231,6 +258,9 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     loopExits = oldLoopExits;
                 });
             }
+
+            // For now conservatively collect guards only within the same block.
+            pendingTests.clear();
             for (Node n : blockToNodes.apply(block)) {
                 if (n.isAlive()) {
                     processNode(n, undoOperations);
@@ -239,6 +269,9 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         private void processNode(Node node, List<Runnable> undoOperations) {
+            if (node instanceof NodeWithState && !(node instanceof GuardingNode)) {
+                pendingTests.clear();
+            }
             if (node instanceof AbstractBeginNode) {
                 processAbstractBegin((AbstractBeginNode) node, undoOperations);
             } else if (node instanceof FixedGuardNode) {
@@ -315,8 +348,64 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated);
                     registerNewStamp(y, newStampY, guard, undoOperations);
                 }
+                if (condition instanceof IntegerEqualsNode && guard instanceof FixedGuardNode && !negated) {
+                    if (y.isConstant() && x instanceof AndNode) {
+                        AndNode and = (AndNode) x;
+                        if (and.getY() == y) {
+                            /*
+                             * This 'and' proves something about some of the bits in and.getX().
+                             * It's equivalent to or'ing in the mask value since those values are
+                             * known to be set.
+                             */
+                            BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp()).getOr();
+                            IntegerStamp newStampX = (IntegerStamp) op.foldStamp(and.getX().stamp(), y.stamp());
+                            registerNewStamp(and.getX(), newStampX, guard, undoOperations);
+                            foldPendingTest(negated, guard, and.getX(), newStampX);
+                        }
+                    }
+                }
             }
+            pendingTests.push(new PendingTest(condition, negated, guard));
             registerCondition(condition, negated, guard, undoOperations);
+        }
+
+        private void foldPendingTest(boolean negated, ValueNode guard, ValueNode originalX, IntegerStamp newStampX) {
+            for (PendingTest pending : pendingTests) {
+                if (pending.condition instanceof BinaryOpLogicNode) {
+                    TriState result = TriState.UNKNOWN;
+                    BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) pending.condition;
+                    ValueNode x = binaryOpLogicNode.getX();
+                    ValueNode y = binaryOpLogicNode.getY();
+                    if (binaryOpLogicNode.getX() == originalX) {
+                        result = binaryOpLogicNode.tryFold(newStampX, binaryOpLogicNode.getY().stamp());
+                    } else if (binaryOpLogicNode instanceof IntegerEqualsNode && y.isConstant() && x instanceof AndNode) {
+                        AndNode and2 = (AndNode) x;
+                        if (and2.getY() == y) {
+                            BinaryOp<And> andOp = ArithmeticOpTable.forStamp(originalX.stamp()).getAnd();
+                            result = binaryOpLogicNode.tryFold(andOp.foldStamp(newStampX, y.stamp()), y.stamp());
+                        }
+                    }
+                    /*
+                     * If the failure of the pending guard would also be triggered by the failure of
+                     * this guard, then it's safe to replace the earlier guard with this guard.
+                     */
+                    if (result.isKnown()) {
+                        if (pending.guard instanceof FixedGuardNode && guard instanceof FixedGuardNode) {
+                            FixedGuardNode fix = (FixedGuardNode) pending.guard;
+                            FixedGuardNode thisGuard = (FixedGuardNode) guard;
+                            if (fix.getAction() == thisGuard.getAction() && fix.getReason() == thisGuard.getReason() && fix.getSpeculation() == thisGuard.getSpeculation()) {
+                                if (pending.negated == negated && result.isTrue() || pending.negated && result.isFalse()) {
+                                    assert !negated;
+                                    FixedGuardNode newFix = (FixedGuardNode) thisGuard.copyWithInputs();
+                                    guard.graph().replaceFixedWithFixed(fix, newFix);
+                                    guard.replaceAtUsages(newFix);
+                                    guard.graph().removeFixed(thisGuard);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private void registerCondition(LogicNode condition, boolean negated, ValueNode guard, List<Runnable> undoOperations) {
@@ -416,6 +505,25 @@ public class DominatorConditionalEliminationPhase extends Phase {
                         return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
                 }
+                /*
+                 * For complex expressions involving constants, see if it's possible to fold the
+                 * tests by using stamps one level up in the expression. For instance, (x + n < y)
+                 * might fold if something is known about x and all other values are constants. The
+                 * reason for the constant restriction is that if more than 1 real value is involved
+                 * the code might need to adopt multiple guards to have proper dependences.
+                 */
+                if (x instanceof BinaryArithmeticNode<?> && y.isConstant()) {
+                    BinaryArithmeticNode<?> binary = (BinaryArithmeticNode<?>) x;
+                    if (binary.getY().isConstant()) {
+                        for (InfoElement infoElement : getInfoElements(binary.getX())) {
+                            Stamp newStampX = binary.tryFoldStamp(infoElement.getStamp(), binary.getY().stamp());
+                            TriState result = binaryOpLogicNode.tryFold(newStampX, y.stamp());
+                            if (result.isKnown()) {
+                                return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
+                            }
+                        }
+                    }
+                }
             } else if (node instanceof ShortCircuitOrNode) {
                 final ShortCircuitOrNode shortCircuitOrNode = (ShortCircuitOrNode) node;
                 if (this.loopExits.isEmpty()) {
@@ -468,11 +576,11 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         private void processGuard(GuardNode node, List<Runnable> undoOperations) {
-            if (!tryProofCondition(node.condition(), (guard, result) -> {
+            if (!tryProofCondition(node.getCondition(), (guard, result) -> {
                 if (result != node.isNegated()) {
                     node.replaceAndDelete(guard);
                 } else {
-                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.action(), node.reason()));
+                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.getAction(), node.getReason(), node.getSpeculation()));
                     AbstractBeginNode beginNode = (AbstractBeginNode) node.getAnchor();
                     FixedNode next = beginNode.next();
                     beginNode.setNext(deopt);
@@ -480,7 +588,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 }
                 return true;
             })) {
-                registerNewCondition(node.condition(), node.isNegated(), node, undoOperations);
+                registerNewCondition(node.getCondition(), node.isNegated(), node, undoOperations);
             }
         }
 

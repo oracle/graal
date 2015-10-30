@@ -24,12 +24,15 @@ package com.oracle.graal.compiler.test;
 
 import static java.lang.String.format;
 
-import java.io.DataInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -38,19 +41,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipException;
-import java.util.zip.ZipFile;
 
-import jdk.internal.jvmci.options.OptionDescriptor;
-import jdk.internal.jvmci.options.OptionDescriptors;
-import jdk.internal.jvmci.options.OptionValue;
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.ClassVisitor;
 import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.internal.org.objectweb.asm.Type;
+import jdk.vm.ci.options.OptionDescriptor;
+import jdk.vm.ci.options.OptionDescriptors;
+import jdk.vm.ci.options.OptionValue;
 
 import org.junit.Test;
 
@@ -76,15 +76,19 @@ public class OptionsVerifierTest {
     static class Classpath implements AutoCloseable {
         private final Map<String, Object> entries = new LinkedHashMap<>();
 
-        public Classpath() throws ZipException, IOException {
+        public Classpath() throws IOException {
             String[] names = (System.getProperty("sun.boot.class.path") + File.pathSeparatorChar + System.getProperty("java.class.path")).split(File.pathSeparator);
             for (String n : names) {
                 File path = new File(n);
                 if (path.exists()) {
                     if (path.isDirectory()) {
                         entries.put(n, path);
+                    } else if (n.endsWith(".jimage")) {
+                        URL url = path.toURI().toURL();
+                        entries.put(n, new URLClassLoader(new URL[]{url}));
                     } else if (n.endsWith(".jar") || n.endsWith(".zip")) {
-                        entries.put(n, new ZipFile(path));
+                        URL url = new URL("jar", "", "file:" + n + "!/");
+                        entries.put(n, new URLClassLoader(new URL[]{url}));
                     }
                 }
             }
@@ -92,8 +96,8 @@ public class OptionsVerifierTest {
 
         public void close() throws IOException {
             for (Object e : entries.values()) {
-                if (e instanceof ZipFile) {
-                    ((ZipFile) e).close();
+                if (e instanceof URLClassLoader) {
+                    ((URLClassLoader) e).close();
                 }
             }
         }
@@ -105,15 +109,17 @@ public class OptionsVerifierTest {
                     if (path.exists()) {
                         return Files.readAllBytes(path.toPath());
                     }
-                } else if (e instanceof ZipFile) {
-                    ZipFile zf = (ZipFile) e;
-                    ZipEntry ze = zf.getEntry(classFilePath);
-                    if (ze != null) {
-                        byte[] res = new byte[(int) ze.getSize()];
-                        DataInputStream dis = new DataInputStream(zf.getInputStream(ze));
-                        dis.readFully(res);
-                        dis.close();
-                        return res;
+                } else {
+                    assert e instanceof URLClassLoader;
+                    URLClassLoader ucl = (URLClassLoader) e;
+                    try (InputStream in = ucl.getResourceAsStream(classFilePath)) {
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                        int nRead;
+                        byte[] data = new byte[1024];
+                        while ((nRead = in.read(data, 0, data.length)) != -1) {
+                            buffer.write(data, 0, nRead);
+                        }
+                        return buffer.toByteArray();
                     }
                 }
             }

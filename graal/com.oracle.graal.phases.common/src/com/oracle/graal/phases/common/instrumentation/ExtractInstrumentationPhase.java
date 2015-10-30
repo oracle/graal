@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
@@ -55,7 +56,7 @@ import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 
@@ -63,11 +64,11 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
     protected void run(StructuredGraph graph, HighTierContext context) {
         for (InstrumentationBeginNode begin : graph.getNodes().filter(InstrumentationBeginNode.class)) {
             Instrumentation instrumentation = new Instrumentation(begin);
-            InstrumentationNode instrumentationNode = instrumentation.createInstrumentationNode();
-
-            graph.addBeforeFixed(begin, instrumentationNode);
-            Debug.dump(instrumentationNode.instrumentationGraph(), "After extracted instrumentation at " + instrumentation);
-
+            if (!instrumentation.inspectingIntrinsic()) {
+                InstrumentationNode instrumentationNode = instrumentation.createInstrumentationNode();
+                graph.addBeforeFixed(begin, instrumentationNode);
+                Debug.dump(instrumentationNode.instrumentationGraph(), "After extracted instrumentation at " + instrumentation);
+            }
             instrumentation.unlink();
         }
 
@@ -173,6 +174,10 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                 }
                 target = next;
             }
+        }
+
+        public boolean inspectingIntrinsic() {
+            return begin.inspectInvocation() && !(target instanceof Invoke);
         }
 
         public InstrumentationNode createInstrumentationNode() {

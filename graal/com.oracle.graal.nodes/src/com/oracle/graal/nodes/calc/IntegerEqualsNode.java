@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.PrimitiveConstant;
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
@@ -167,6 +167,15 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                         }
                     }
                 }
+            }
+        }
+        if (nonConstant instanceof AndNode) {
+            /*
+             * a & c == c is the same as a & c != 0, if c is a single bit.
+             */
+            AndNode andNode = (AndNode) nonConstant;
+            if (constant instanceof PrimitiveConstant && Long.bitCount(((PrimitiveConstant) constant).asLong()) == 1 && andNode.getY().isConstant() && andNode.getY().asJavaConstant().equals(constant)) {
+                return new LogicNegationNode(new IntegerTestNode(andNode.getX(), andNode.getY()));
             }
         }
         return super.canonicalizeSymmetricConstant(tool, constant, nonConstant, mirrored);

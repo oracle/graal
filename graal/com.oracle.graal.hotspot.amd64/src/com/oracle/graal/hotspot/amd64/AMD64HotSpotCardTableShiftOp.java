@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.PlatformKind;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PlatformKind;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;

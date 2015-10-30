@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.graph.spi;
 
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.graph.Node;
 

@@ -29,19 +29,14 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Always;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.Rc_z;
-import static jdk.internal.jvmci.sparc.SPARC.g0;
-import static jdk.internal.jvmci.sparc.SPARC.g3;
-import static jdk.internal.jvmci.sparc.SPARC.i7;
-import static jdk.internal.jvmci.sparc.SPARC.isCPURegister;
-import static jdk.internal.jvmci.sparc.SPARC.o7;
-
-import java.util.function.Consumer;
-
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.sparc.SPARC;
-import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
+import static jdk.vm.ci.sparc.SPARC.g0;
+import static jdk.vm.ci.sparc.SPARC.g3;
+import static jdk.vm.ci.sparc.SPARC.i7;
+import static jdk.vm.ci.sparc.SPARC.o7;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.AbstractAddress;
 import com.oracle.graal.asm.Label;
@@ -191,182 +186,74 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     }
 
     /**
-     * This instruction is like sethi but for 64-bit values.
+     * Generates sethi hi22(value), dst; or dst, lo10(value), dst; code.
      */
-    public static class Sethix {
-
-        private static final int INSTRUCTION_SIZE = 7;
-
-        private long value;
-        private Register dst;
-        private boolean forceRelocatable;
-        private boolean delayed = false;
-        private Consumer<SPARCAssembler> delayedInstructionEmitter;
-
-        public Sethix(long value, Register dst, boolean forceRelocatable, boolean delayed) {
-            this(value, dst, forceRelocatable);
-            assert !(forceRelocatable && delayed) : "Relocatable sethix cannot be delayed";
-            this.delayed = delayed;
-        }
-
-        public Sethix(long value, Register dst, boolean forceRelocatable) {
-            this.value = value;
-            this.dst = dst;
-            this.forceRelocatable = forceRelocatable;
-        }
-
-        public Sethix(long value, Register dst) {
-            this(value, dst, false);
-        }
-
-        private void emitInstruction(Consumer<SPARCAssembler> cb, SPARCMacroAssembler masm) {
-            if (delayed) {
-                if (this.delayedInstructionEmitter != null) {
-                    delayedInstructionEmitter.accept(masm);
-                }
-                delayedInstructionEmitter = cb;
-            } else {
-                cb.accept(masm);
-            }
-        }
-
-        public void emit(SPARCMacroAssembler masm) {
-            final int hi = (int) (value >> 32);
-            final int lo = (int) (value & ~0);
-
-            // This is the same logic as MacroAssembler::internal_set.
-            final int startPc = masm.position();
-
-            if (hi == 0 && lo >= 0) {
-                Consumer<SPARCAssembler> cb = eMasm -> eMasm.sethi(hi22(lo), dst);
-                emitInstruction(cb, masm);
-            } else if (hi == -1) {
-                Consumer<SPARCAssembler> cb = eMasm -> eMasm.sethi(hi22(~lo), dst);
-                emitInstruction(cb, masm);
-                cb = eMasm -> eMasm.xor(dst, ~lo10(~0), dst);
-                emitInstruction(cb, masm);
-            } else {
-                final int shiftcnt;
-                final int shiftcnt2;
-                Consumer<SPARCAssembler> cb = eMasm -> eMasm.sethi(hi22(hi), dst);
-                emitInstruction(cb, masm);
-                if ((hi & 0x3ff) != 0) {                                  // Any bits?
-                    // msb 32-bits are now in lsb 32
-                    cb = eMasm -> eMasm.or(dst, hi & 0x3ff, dst);
-                    emitInstruction(cb, masm);
-                }
-                if ((lo & 0xFFFFFC00) != 0) {                             // done?
-                    if (((lo >> 20) & 0xfff) != 0) {                      // Any bits set?
-                        // Make room for next 12 bits
-                        cb = eMasm -> eMasm.sllx(dst, 12, dst);
-                        emitInstruction(cb, masm);
-                        // Or in next 12
-                        cb = eMasm -> eMasm.or(dst, (lo >> 20) & 0xfff, dst);
-                        emitInstruction(cb, masm);
-                        shiftcnt = 0;                                     // We already shifted
-                    } else {
-                        shiftcnt = 12;
-                    }
-                    if (((lo >> 10) & 0x3ff) != 0) {
-                        // Make room for last 10 bits
-                        cb = eMasm -> eMasm.sllx(dst, shiftcnt + 10, dst);
-                        emitInstruction(cb, masm);
-                        // Or in next 10
-                        cb = eMasm -> eMasm.or(dst, (lo >> 10) & 0x3ff, dst);
-                        emitInstruction(cb, masm);
-                        shiftcnt2 = 0;
-                    } else {
-                        shiftcnt2 = 10;
-                    }
-                    // Shift leaving disp field 0'd
-                    cb = eMasm -> eMasm.sllx(dst, shiftcnt2 + 10, dst);
-                    emitInstruction(cb, masm);
-                } else {
-                    cb = eMasm -> eMasm.sllx(dst, 32, dst);
-                    emitInstruction(cb, masm);
-                }
-            }
-            // Pad out the instruction sequence so it can be patched later.
-            if (forceRelocatable) {
-                while (masm.position() < (startPc + (INSTRUCTION_SIZE * 4))) {
-                    Consumer<SPARCAssembler> cb = eMasm -> eMasm.nop();
-                    emitInstruction(cb, masm);
-                }
-            }
-        }
-
-        public void emitDelayed(SPARCMacroAssembler masm) {
-            assert delayedInstructionEmitter != null;
-            delayedInstructionEmitter.accept(masm);
+    public void setw(int value, Register dst, boolean forceRelocatable) {
+        if (!forceRelocatable && isSimm13(value)) {
+            or(g0, value, dst);
+        } else {
+            sethi(hi22(value), dst);
+            or(dst, lo10(value), dst);
         }
     }
 
-    public static class Setx {
-
-        private long value;
-        private Register dst;
-        private boolean forceRelocatable;
-        private boolean delayed = false;
-        private boolean delayedFirstEmitted = false;
-        private Sethix sethix;
-        private Consumer<SPARCMacroAssembler> delayedAdd;
-
-        public Setx(long value, Register dst, boolean forceRelocatable, boolean delayed) {
-            assert !(forceRelocatable && delayed) : "Cannot use relocatable setx as delayable";
-            this.value = value;
-            this.dst = dst;
-            this.forceRelocatable = forceRelocatable;
-            this.delayed = delayed;
+    public void setx(long value, Register dst, boolean forceRelocatable) {
+        int lo = (int) (value & ~0);
+        sethix(value, dst, forceRelocatable);
+        if (lo10(lo) != 0 || forceRelocatable) {
+            add(dst, lo10(lo), dst);
         }
+    }
 
-        public Setx(long value, Register dst, boolean forceRelocatable) {
-            this(value, dst, forceRelocatable, false);
-        }
+    public void sethix(long value, Register dst, boolean forceRelocatable) {
+        final int hi = (int) (value >> 32);
+        final int lo = (int) (value & ~0);
 
-        public Setx(long value, Register dst) {
-            this(value, dst, false);
-        }
-
-        public void emit(SPARCMacroAssembler masm) {
-            assert !delayed;
-            doEmit(masm);
-        }
-
-        private void doEmit(SPARCMacroAssembler masm) {
-            sethix = new Sethix(value, dst, forceRelocatable, delayed);
-            sethix.emit(masm);
-            int lo = (int) (value & ~0);
-            if (lo10(lo) != 0 || forceRelocatable) {
-                Consumer<SPARCMacroAssembler> add = eMasm -> eMasm.add(dst, lo10(lo), dst);
-                if (delayed) {
-                    sethix.emitDelayed(masm);
-                    sethix = null;
-                    delayedAdd = add;
+        // This is the same logic as MacroAssembler::internal_set.
+        final int startPc = position();
+        if (hi == 0 && lo >= 0) {
+            sethi(hi22(lo), dst);
+        } else if (hi == -1) {
+            sethi(hi22(~lo), dst);
+            xor(dst, ~lo10(~0), dst);
+        } else {
+            final int shiftcnt;
+            final int shiftcnt2;
+            sethi(hi22(hi), dst);
+            if ((hi & 0x3ff) != 0) {                                  // Any bits?
+                // msb 32-bits are now in lsb 32
+                or(dst, hi & 0x3ff, dst);
+            }
+            if ((lo & 0xFFFFFC00) != 0) {                             // done?
+                if (((lo >> 20) & 0xfff) != 0) {                      // Any bits set?
+                    // Make room for next 12 bits
+                    sllx(dst, 12, dst);
+                    // Or in next 12
+                    or(dst, (lo >> 20) & 0xfff, dst);
+                    shiftcnt = 0;                                     // We already shifted
                 } else {
-                    sethix = null;
-                    add.accept(masm);
+                    shiftcnt = 12;
                 }
-            }
-        }
-
-        public void emitFirstPartOfDelayed(SPARCMacroAssembler masm) {
-            assert !forceRelocatable : "Cannot use delayed mode with relocatable setx";
-            assert delayed : "Can only be used in delayed mode";
-            doEmit(masm);
-            delayedFirstEmitted = true;
-        }
-
-        public void emitSecondPartOfDelayed(SPARCMacroAssembler masm) {
-            assert !forceRelocatable : "Cannot use delayed mode with relocatable setx";
-            assert delayed : "Can only be used in delayed mode";
-            assert delayedFirstEmitted : "First part has not been emitted so far.";
-            assert delayedAdd == null && sethix != null || delayedAdd != null && sethix == null : "Either add or sethix must be set";
-            if (delayedAdd != null) {
-                delayedAdd.accept(masm);
+                if (((lo >> 10) & 0x3ff) != 0) {
+                    // Make room for last 10 bits
+                    sllx(dst, shiftcnt + 10, dst);
+                    // Or in next 10
+                    or(dst, (lo >> 10) & 0x3ff, dst);
+                    shiftcnt2 = 0;
+                } else {
+                    shiftcnt2 = 10;
+                }
+                // Shift leaving disp field 0'd
+                sllx(dst, shiftcnt2 + 10, dst);
             } else {
-                sethix.emitDelayed(masm);
+                sllx(dst, 32, dst);
             }
-
+        }
+        // Pad out the instruction sequence so it can be patched later.
+        if (forceRelocatable) {
+            while (position() < (startPc + (INSTRUCTION_SIZE * 7))) {
+                nop();
+            }
         }
     }
 
@@ -423,7 +310,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
                 int positionBefore = position();
                 delaySlotInstruction.run();
                 int positionAfter = position();
-                assert positionBefore - positionAfter > SPARC.INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
+                assert positionBefore - positionAfter > INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
             } else {
                 nop();
             }
@@ -449,7 +336,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
                 int positionBefore = position();
                 delaySlotInstruction.run();
                 int positionAfter = position();
-                assert positionBefore - positionAfter > SPARC.INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
+                assert positionBefore - positionAfter > INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
             } else {
                 nop();
             }

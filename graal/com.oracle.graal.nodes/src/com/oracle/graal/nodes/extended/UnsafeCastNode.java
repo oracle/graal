@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;

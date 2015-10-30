@@ -34,12 +34,12 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Graph.Mark;

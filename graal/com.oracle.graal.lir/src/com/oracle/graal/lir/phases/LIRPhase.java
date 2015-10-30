@@ -25,10 +25,10 @@ package com.oracle.graal.lir.phases;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;

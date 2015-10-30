@@ -40,8 +40,8 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.word.KlassPointer;

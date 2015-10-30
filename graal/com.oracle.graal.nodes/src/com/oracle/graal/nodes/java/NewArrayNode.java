@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import java.util.Collections;
 
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;

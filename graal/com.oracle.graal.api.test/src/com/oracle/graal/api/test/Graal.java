@@ -20,36 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.runtime;
+package com.oracle.graal.api.test;
 
 import java.util.Formatter;
 
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.runtime.JVMCICompiler;
+
+import com.oracle.graal.api.runtime.GraalJVMCICompiler;
+import com.oracle.graal.api.runtime.GraalRuntime;
 
 /**
- * Access point for {@linkplain #getRuntime() retrieving} the single {@link GraalRuntime} instance.
+ * Access point for {@linkplain #getRuntime() retrieving} the {@link GraalRuntime} instance of the
+ * system compiler from unit tests.
  */
 public class Graal {
 
-    private static final class Lazy {
-        private static final GraalRuntime runtime = initializeRuntime();
+    private static final GraalRuntime runtime = initializeRuntime();
 
-        private static GraalRuntime initializeRuntime() {
-            GraalRuntimeAccess access = Services.loadSingle(GraalRuntimeAccess.class, false);
-            if (access != null) {
-                GraalRuntime rt = access.getRuntime();
-                assert rt != null;
-                return rt;
-            }
+    private static GraalRuntime initializeRuntime() {
+        JVMCICompiler compiler = JVMCI.getRuntime().getCompiler();
+        if (compiler instanceof GraalJVMCICompiler) {
+            GraalJVMCICompiler graal = (GraalJVMCICompiler) compiler;
+            return graal.getGraalRuntime();
+        } else {
             return new InvalidGraalRuntime();
         }
     }
 
     /**
-     * Gets the singleton {@link GraalRuntime} instance available to the application.
+     * Gets the singleton {@link GraalRuntime} instance available to unit tests.
      */
     public static GraalRuntime getRuntime() {
-        return Lazy.runtime;
+        return runtime;
     }
 
     /**

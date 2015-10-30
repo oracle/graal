@@ -26,7 +26,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleCompil
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.CompilationResult;
+import jdk.vm.ci.code.CompilationResult;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.GraalTruffleRuntime;

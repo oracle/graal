@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.test.backend;
 
 import java.util.HashSet;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.Value;
 
 import org.junit.Assert;
 
@@ -35,6 +35,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.ValueProcedure;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -95,7 +96,7 @@ public class AllocatorTest extends BackendTest {
                     if (ValueUtil.isRegister(use)) {
                         regRegMoves++;
                     }
-                } else if (ValueUtil.isStackSlotValue(def)) {
+                } else if (LIRValueUtil.isStackSlotValue(def)) {
                     spillMoves++;
                 }
             }

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;

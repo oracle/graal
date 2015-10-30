@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.compiler.Compiler;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
@@ -53,7 +53,7 @@ public class OnStackReplacementPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        if (graph.getEntryBCI() == Compiler.INVOCATION_ENTRY_BCI) {
+        if (graph.getEntryBCI() == JVMCICompiler.INVOCATION_ENTRY_BCI) {
             // This happens during inlining in a OSR method, because the same phase plan will be
             // used.
             return;

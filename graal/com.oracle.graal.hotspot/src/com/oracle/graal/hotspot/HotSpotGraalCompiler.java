@@ -24,21 +24,22 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import static jdk.internal.jvmci.code.CallingConvention.Type.JavaCallee;
-import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.code.CompilationRequest;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
-import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ProfilingInfo;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.SpeculationLog;
+import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
+import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
+import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
@@ -64,7 +65,7 @@ import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 
-public class HotSpotGraalCompiler implements Compiler {
+public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     private final HotSpotGraalRuntimeProvider graalRuntime;
@@ -74,7 +75,8 @@ public class HotSpotGraalCompiler implements Compiler {
         this.graalRuntime = graalRuntime;
     }
 
-    HotSpotGraalRuntimeProvider getGraalRuntime() {
+    @Override
+    public HotSpotGraalRuntimeProvider getGraalRuntime() {
         return graalRuntime;
     }
 
@@ -104,10 +106,10 @@ public class HotSpotGraalCompiler implements Compiler {
         System.exit(0);
     }
 
-    public CompilationResult compile(ResolvedJavaMethod method, int entryBCI, boolean mustRecordMethodInlining) {
+    public CompilationResult compile(ResolvedJavaMethod method, int entryBCI) {
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
-        final boolean isOSR = entryBCI != Compiler.INVOCATION_ENTRY_BCI;
+        final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
         StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers);
 
         if (graph == null) {
@@ -116,9 +118,6 @@ public class HotSpotGraalCompiler implements Compiler {
                 speculationLog.collectFailedSpeculations();
             }
             graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()), speculationLog);
-            if (!mustRecordMethodInlining) {
-                graph.disableInlinedMethodRecording();
-            }
         }
 
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);

@@ -25,9 +25,9 @@ package com.oracle.graal.replacements.nodes.arithmetic;
 import static com.oracle.graal.compiler.common.type.IntegerStamp.addOverflowsNegatively;
 import static com.oracle.graal.compiler.common.type.IntegerStamp.addOverflowsPositively;
 import static com.oracle.graal.compiler.common.type.IntegerStamp.carryBits;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;

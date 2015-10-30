@@ -24,17 +24,17 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.nodes.ConstantNode.forInt;
 import static com.oracle.graal.nodes.ConstantNode.forIntegerKind;
-import static jdk.internal.jvmci.meta.LocationIdentity.any;
+import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.lang.reflect.Constructor;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaTypeProfile;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;

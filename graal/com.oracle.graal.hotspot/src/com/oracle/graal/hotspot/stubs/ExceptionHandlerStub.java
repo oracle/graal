@@ -34,8 +34,8 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.decipher;
 import static com.oracle.graal.hotspot.stubs.StubUtil.fatal;
 import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;

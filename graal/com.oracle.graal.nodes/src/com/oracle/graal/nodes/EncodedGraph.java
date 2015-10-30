@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.Set;
+import java.util.List;
 
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.NodeClass;
 
@@ -41,7 +41,7 @@ public class EncodedGraph {
     private final Object[] objects;
     private final NodeClass<?>[] types;
     private final Assumptions assumptions;
-    private final Set<ResolvedJavaMethod> inlinedMethods;
+    private final List<ResolvedJavaMethod> inlinedMethods;
 
     /**
      * The "table of contents" of the encoded graph, i.e., the mapping from orderId numbers to the
@@ -49,7 +49,7 @@ public class EncodedGraph {
      */
     protected long[] nodeStartOffsets;
 
-    public EncodedGraph(byte[] encoding, long startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, Set<ResolvedJavaMethod> inlinedMethods) {
+    public EncodedGraph(byte[] encoding, long startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, List<ResolvedJavaMethod> inlinedMethods) {
         this.encoding = encoding;
         this.startOffset = startOffset;
         this.objects = objects;
@@ -78,7 +78,7 @@ public class EncodedGraph {
         return assumptions;
     }
 
-    public Set<ResolvedJavaMethod> getInlinedMethods() {
+    public List<ResolvedJavaMethod> getInlinedMethods() {
         return inlinedMethods;
     }
 }

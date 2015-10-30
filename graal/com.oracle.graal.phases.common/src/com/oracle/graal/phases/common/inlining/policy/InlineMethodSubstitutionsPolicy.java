@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common.inlining.policy;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;

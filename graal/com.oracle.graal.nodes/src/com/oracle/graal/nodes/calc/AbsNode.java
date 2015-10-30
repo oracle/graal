@@ -26,11 +26,11 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Absolute value.
@@ -56,7 +56,7 @@ public final class AbsNode extends UnaryArithmeticNode<Abs> implements Arithmeti
     }
 
     @Override
-    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitMathAbs(nodeValueMap.operand(getValue())));
     }
 }

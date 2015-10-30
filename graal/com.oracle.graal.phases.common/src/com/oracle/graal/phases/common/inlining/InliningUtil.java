@@ -24,23 +24,23 @@ package com.oracle.graal.phases.common.inlining;
 
 import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
-import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.NullCheckException;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.BytecodePosition;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.Stamp;

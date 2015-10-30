@@ -238,16 +238,16 @@ import static com.oracle.graal.java.BytecodeParserOptions.TraceInlineDuringParsi
 import static com.oracle.graal.java.BytecodeParserOptions.TraceParserPlugins;
 import static com.oracle.graal.nodes.type.StampTool.isPointerNonNull;
 import static java.lang.String.format;
-import static jdk.internal.jvmci.common.JVMCIError.guarantee;
-import static jdk.internal.jvmci.common.JVMCIError.shouldNotReachHere;
-import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateRecompile;
-import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.JavaSubroutineMismatch;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.NullCheckException;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.RuntimeConstraint;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.TransferToInterpreter;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.UnreachedCode;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.Unresolved;
+import static jdk.vm.ci.common.JVMCIError.guarantee;
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.JavaSubroutineMismatch;
+import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
+import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
+import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
+import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -261,33 +261,33 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.BytecodePosition;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.code.InfopointReason;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.meta.ConstantPool;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaField;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.JavaTypeProfile;
-import jdk.internal.jvmci.meta.LineNumberTable;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.MetaUtil;
-import jdk.internal.jvmci.meta.ProfilingInfo;
-import jdk.internal.jvmci.meta.RawConstant;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.InfopointReason;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.LineNumberTable;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.RawConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.bytecode.BytecodeLookupSwitch;
 import com.oracle.graal.bytecode.BytecodeStream;
@@ -637,6 +637,10 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
+    protected GraphBuilderPhase.Instance getGraphBuilderInstance() {
+        return graphBuilderInstance;
+    }
+
     public ValueNode getReturnValue() {
         return returnValue;
     }
@@ -928,9 +932,6 @@ public class BytecodeParser implements GraphBuilderContext {
                         }
                         LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
                         LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-                        if (parsingIntrinsic()) {
-                            loopEnd.disableSafepoint();
-                        }
                         endNode.replaceAndDelete(loopEnd);
                     } else if (visited.contains(n)) {
                         // Normal merge into a branch we are already exploring.
@@ -1223,16 +1224,6 @@ public class BytecodeParser implements GraphBuilderContext {
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
-        BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
-        /*
-         * The exception dispatch block is always for the last bytecode of a block, so if we are not
-         * at the endBci yet, there is no exception handler for this bci and we can unwind
-         * immediately.
-         */
-        if (bci != currentBlock.endBci || dispatchBlock == null) {
-            dispatchBlock = blockMap.getUnwindBlock();
-        }
-
         FrameStateBuilder dispatchState = frameState.copy();
         dispatchState.clearStack();
 
@@ -1249,10 +1240,26 @@ public class BytecodeParser implements GraphBuilderContext {
             dispatchBegin.setStateAfter(dispatchState.create(bci, dispatchBegin));
         }
         this.controlFlowSplit = true;
-        FixedNode target = createTarget(dispatchBlock, dispatchState);
         FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
-        finishedDispatch.setNext(target);
+
+        createHandleExceptionTarget(finishedDispatch, bci, dispatchState);
+
         return dispatchBegin;
+    }
+
+    protected void createHandleExceptionTarget(FixedWithNextNode finishedDispatch, int bci, FrameStateBuilder dispatchState) {
+        BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
+        /*
+         * The exception dispatch block is always for the last bytecode of a block, so if we are not
+         * at the endBci yet, there is no exception handler for this bci and we can unwind
+         * immediately.
+         */
+        if (bci != currentBlock.endBci || dispatchBlock == null) {
+            dispatchBlock = blockMap.getUnwindBlock();
+        }
+
+        FixedNode target = createTarget(dispatchBlock, dispatchState);
+        finishedDispatch.setNext(target);
     }
 
     protected ValueNode genLoadIndexed(ValueNode array, ValueNode index, JavaKind kind) {
@@ -1856,7 +1863,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
         try (IntrinsicScope s = calleeIntrinsicContext != null && !parsingIntrinsic() ? new IntrinsicScope(this, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args) : null) {
 
-            BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, Compiler.INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
+            BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, JVMCICompiler.INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
             FrameStateBuilder startFrameState = new FrameStateBuilder(parser, targetMethod, graph);
             if (!targetMethod.isStatic()) {
                 args[0] = nullCheckedValue(args[0]);
@@ -2309,9 +2316,6 @@ public class BytecodeParser implements GraphBuilderContext {
              */
             LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block, operatingDimension);
             LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-            if (parsingIntrinsic()) {
-                loopEnd.disableSafepoint();
-            }
             Target target = checkLoopExit(loopEnd, block, state);
             FixedNode result = target.fixed;
             getEntryState(block, operatingDimension).merge(loopBegin, target.state);
@@ -2700,9 +2704,17 @@ public class BytecodeParser implements GraphBuilderContext {
         return true;
     }
 
+    /* Also a hook for subclasses. */
+    protected boolean disableLoopSafepoint() {
+        return parsingIntrinsic();
+    }
+
     private LoopBeginNode appendLoopBegin(FixedWithNextNode fixedWithNext) {
         EndNode preLoopEnd = graph.add(new EndNode());
         LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
+        if (disableLoopSafepoint()) {
+            loopBegin.disableSafepoint();
+        }
         fixedWithNext.setNext(preLoopEnd);
         // Add the single non-loop predecessor of the loop header.
         loopBegin.addForwardEnd(preLoopEnd);

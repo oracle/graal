@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;

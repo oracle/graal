@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static jdk.internal.jvmci.meta.LocationIdentity.any;
+import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.type.Stamp;

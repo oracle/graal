@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
-import jdk.internal.jvmci.meta.Assumptions.Assumption;
-import jdk.internal.jvmci.meta.Assumptions.ConcreteSubtype;
+import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.Assumptions.ConcreteSubtype;
 
 import org.junit.Test;
 

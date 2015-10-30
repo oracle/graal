@@ -24,23 +24,102 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.internal.jvmci.meta.AllocatableValue;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static com.oracle.graal.lir.sparc.SPARCMove.loadFromConstantTable;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotConstant;
+import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
 
 import com.oracle.graal.asm.Label;
+import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Annul;
 import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.SPARCAssembler.RCondition;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.sparc.SPARCDelayedControlTransfer;
 import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
+import com.oracle.graal.lir.sparc.SPARCTailDelayedLIRInstruction;
 
 public class SPARCHotSpotMove {
+
+    public static class LoadHotSpotObjectConstantInline extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction, LoadConstantOp {
+        public static final LIRInstructionClass<LoadHotSpotObjectConstantInline> TYPE = LIRInstructionClass.create(LoadHotSpotObjectConstantInline.class);
+
+        public static final SizeEstimate SIZE = SizeEstimate.create(8);
+        private HotSpotConstant constant;
+        @Def({REG, STACK}) AllocatableValue result;
+
+        public LoadHotSpotObjectConstantInline(HotSpotConstant constant, AllocatableValue result) {
+            super(TYPE, SIZE);
+            this.constant = constant;
+            this.result = result;
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            crb.recordInlineDataInCode(constant);
+            if (constant.isCompressed()) {
+                masm.setw(0, asRegister(result), true);
+            } else {
+                masm.setx(0, asRegister(result), true);
+            }
+        }
+
+        @Override
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public Constant getConstant() {
+            return constant;
+        }
+    }
+
+    public static class LoadHotSpotObjectConstantFromTable extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<LoadHotSpotObjectConstantFromTable> TYPE = LIRInstructionClass.create(LoadHotSpotObjectConstantFromTable.class);
+
+        public static final SizeEstimate SIZE = SizeEstimate.create(2, 8);
+        private final HotSpotConstant constant;
+        @Use({REG}) private AllocatableValue constantTableBase;
+        @Def({REG, STACK}) AllocatableValue result;
+
+        public LoadHotSpotObjectConstantFromTable(HotSpotConstant constant, AllocatableValue result, AllocatableValue constantTableBase) {
+            super(TYPE, SIZE);
+            this.constant = constant;
+            this.result = result;
+            this.constantTableBase = constantTableBase;
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            try (ScratchRegister scratch = masm.getScratchRegister()) {
+                boolean isStack = ValueUtil.isStackSlot(result);
+                Register register;
+                if (isStack) {
+                    register = scratch.getRegister();
+                } else {
+                    register = asRegister(result);
+                }
+                int bytes = result.getPlatformKind().getSizeInBytes();
+                loadFromConstantTable(crb, masm, bytes, asRegister(constantTableBase), constant, register, SPARCDelayedControlTransfer.DUMMY);
+                if (isStack) {
+                    masm.st(register, (SPARCAddress) crb.asAddress(result), bytes);
+                }
+            }
+        }
+    }
+
     public static final class CompressPointer extends SPARCLIRInstruction {
         public static final LIRInstructionClass<CompressPointer> TYPE = LIRInstructionClass.create(CompressPointer.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(5);

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
@@ -50,7 +50,7 @@ import com.oracle.graal.nodes.extended.GuardingNode;
  * control flow would have reached the guarded node (without taking exceptions into account).
  */
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
-public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, GuardingNode {
+public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, GuardingNode, DeoptimizingGuard {
 
     public static final NodeClass<GuardNode> TYPE = NodeClass.create(GuardNode.class);
     @Input(InputType.Condition) protected LogicNode condition;
@@ -75,19 +75,25 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
     /**
      * The instruction that produces the tested boolean value.
      */
-    public LogicNode condition() {
+    public LogicNode getCondition() {
         return condition;
+    }
+
+    public void setCondition(LogicNode x, boolean negated) {
+        updateUsages(condition, x);
+        condition = x;
+        this.negated = negated;
     }
 
     public boolean isNegated() {
         return negated;
     }
 
-    public DeoptimizationReason reason() {
+    public DeoptimizationReason getReason() {
         return reason;
     }
 
-    public DeoptimizationAction action() {
+    public DeoptimizationAction getAction() {
         return action;
     }
 
@@ -110,12 +116,12 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (condition() instanceof LogicNegationNode) {
-            LogicNegationNode negation = (LogicNegationNode) condition();
+        if (getCondition() instanceof LogicNegationNode) {
+            LogicNegationNode negation = (LogicNegationNode) getCondition();
             return new GuardNode(negation.getValue(), getAnchor(), reason, action, !negated, speculation);
         }
-        if (condition() instanceof LogicConstantNode) {
-            LogicConstantNode c = (LogicConstantNode) condition();
+        if (getCondition() instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) getCondition();
             if (c.getValue() != negated) {
                 return null;
             }

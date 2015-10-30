@@ -24,7 +24,7 @@ package com.oracle.graal.graphbuilderconf;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.nodes.FullInfopointNode;

@@ -25,12 +25,12 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
 import static com.oracle.graal.nodes.ConstantNode.forBoolean;
-import static jdk.internal.jvmci.meta.LocationIdentity.any;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import static jdk.vm.ci.meta.LocationIdentity.any;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.Stamp;

@@ -23,16 +23,15 @@
 //JaCoCo Exclude
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.PrimitiveConstant;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
-import com.oracle.graal.api.runtime.Graal;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -61,7 +60,6 @@ import com.oracle.graal.nodes.memory.MemoryNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.runtime.RuntimeProvider;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single, MemoryAccess, Canonicalizable {
@@ -162,7 +160,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
             if (len.stamp().getStackKind() != JavaKind.Long) {
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(JavaKind.Long), graph());
             }
-            ForeignCallNode call = graph.add(new ForeignCallNode(Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len));
+            ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len));
             call.setStateAfter(stateAfter());
             graph.replaceFixedWithFixed(this, call);
         }

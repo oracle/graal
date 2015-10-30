@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.JavaTypeProfile;
-import jdk.internal.jvmci.meta.JavaTypeProfile.ProfiledType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;

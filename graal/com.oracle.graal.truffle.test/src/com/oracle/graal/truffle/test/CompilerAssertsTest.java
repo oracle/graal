@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.test;
 
-import jdk.internal.jvmci.code.BailoutException;
+import jdk.vm.ci.code.BailoutException;
 
 import org.junit.After;
 import org.junit.Assert;

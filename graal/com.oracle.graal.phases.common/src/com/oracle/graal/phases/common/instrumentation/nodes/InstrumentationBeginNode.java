@@ -29,8 +29,8 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo
 public final class InstrumentationBeginNode extends FixedWithNextNode {
@@ -38,21 +38,25 @@ public final class InstrumentationBeginNode extends FixedWithNextNode {
     public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
 
     private final int offset;
+    private final boolean inspectInvocation;
 
-    public InstrumentationBeginNode(ValueNode offset) {
+    public InstrumentationBeginNode(ValueNode offset, boolean inspectInvocation) {
         super(TYPE, StampFactory.forVoid());
 
         if (!(offset instanceof ConstantNode)) {
             throw JVMCIError.shouldNotReachHere("should pass constant integer to instrumentationBegin(int)");
         }
-
-        ConstantNode constantNode = (ConstantNode) offset;
-        JavaConstant constant = (JavaConstant) constantNode.asConstant();
-        this.offset = constant.asInt();
+        JavaConstant constant = ((ConstantNode) offset).asJavaConstant();
+        this.offset = constant == null ? 0 : constant.asInt();
+        this.inspectInvocation = inspectInvocation;
     }
 
     public int getOffset() {
         return offset;
+    }
+
+    public boolean inspectInvocation() {
+        return inspectInvocation;
     }
 
 }

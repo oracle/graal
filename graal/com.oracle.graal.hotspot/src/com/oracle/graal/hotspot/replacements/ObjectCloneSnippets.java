@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.replacements;
 import java.lang.reflect.Method;
 import java.util.EnumMap;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyCallNode;

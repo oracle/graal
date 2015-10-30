@@ -27,21 +27,24 @@ import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.VERI
 import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedObjectType;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+
+import java.lang.reflect.Field;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.GraalOptions;
@@ -438,9 +441,34 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity ARRAY_KLASS_COMPONENT_MIRROR = NamedLocationIdentity.immutable("ArrayKlass::_component_mirror");
 
+    /**
+     * Employ reflection to read values not available in JDK9.
+     */
+    static class Lazy {
+        static final int arrayKlassComponentMirrorOffset;
+        static {
+            int value = Integer.MAX_VALUE;
+            try {
+                Field f = HotSpotVMConfig.class.getDeclaredField("arrayKlassComponentMirrorOffset");
+                f.setAccessible(true);
+                value = f.getInt(config());
+            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+                // ArrayKlass::_component_mirror was removed in JDK9.
+            }
+            arrayKlassComponentMirrorOffset = value;
+        }
+    }
+
+    public static boolean arrayKlassComponentMirrorOffsetExists() {
+        return Lazy.arrayKlassComponentMirrorOffset != Integer.MAX_VALUE;
+    }
+
     @Fold
     public static int arrayKlassComponentMirrorOffset() {
-        return config().arrayKlassComponentMirrorOffset;
+        if (Lazy.arrayKlassComponentMirrorOffset == Integer.MAX_VALUE) {
+            throw new JVMCIError("ArrayKlass::_component_mirror does not exist");
+        }
+        return Lazy.arrayKlassComponentMirrorOffset;
     }
 
     public static final LocationIdentity KLASS_SUPER_KLASS_LOCATION = NamedLocationIdentity.immutable("Klass::_super");

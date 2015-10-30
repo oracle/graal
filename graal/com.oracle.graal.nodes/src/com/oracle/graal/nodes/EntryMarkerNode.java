@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;

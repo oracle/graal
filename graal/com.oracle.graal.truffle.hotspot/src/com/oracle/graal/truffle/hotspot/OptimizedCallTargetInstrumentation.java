@@ -26,12 +26,12 @@ import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
 
 import java.lang.reflect.Field;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.CompilationResult.Mark;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompilationResult.Mark;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;

@@ -23,21 +23,21 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 import java.util.Set;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterSaveLayout;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.ValueUtil;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
@@ -58,7 +58,7 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
     /**
      * The slots to which the registers are saved.
      */
-    @Def(STACK) protected final StackSlotValue[] slots;
+    @Def(STACK) protected final AllocatableValue[] slots;
 
     /**
      * Specifies if {@link #remove(Set)} should have an effect.
@@ -72,13 +72,13 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
      * @param savedRegisterLocations the slots to which the registers are saved
      * @param supportsRemove determines if registers can be {@linkplain #remove(Set) pruned}
      */
-    public AMD64SaveRegistersOp(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+    public AMD64SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
         this(TYPE, savedRegisters, savedRegisterLocations, supportsRemove);
     }
 
-    public AMD64SaveRegistersOp(LIRInstructionClass<? extends AMD64SaveRegistersOp> c, Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+    public AMD64SaveRegistersOp(LIRInstructionClass<? extends AMD64SaveRegistersOp> c, Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
         super(c);
-        assert Arrays.asList(savedRegisterLocations).stream().allMatch(ValueUtil::isVirtualStackSlot);
+        assert Arrays.asList(savedRegisterLocations).stream().allMatch(LIRValueUtil::isVirtualStackSlot);
         this.savedRegisters = savedRegisters;
         this.slots = savedRegisterLocations;
         this.supportsRemove = supportsRemove;
@@ -99,7 +99,7 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
         }
     }
 
-    public StackSlotValue[] getSlots() {
+    public AllocatableValue[] getSlots() {
         return slots;
     }
 

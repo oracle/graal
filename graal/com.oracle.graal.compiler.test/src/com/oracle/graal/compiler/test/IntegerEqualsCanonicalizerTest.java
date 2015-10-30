@@ -145,6 +145,19 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         field = array1Length == (-array2Length) ? 1 : 0;
     }
 
+    public static boolean testNormalIntegerTest(int a) {
+        return (a & 8) != 0;
+    }
+
+    public static boolean testAlternateIntegerTest(int a) {
+        return (a & 8) == 8;
+    }
+
+    @Test
+    public void testIntegerTest() {
+        test("testNormalIntegerTest", "testAlternateIntegerTest");
+    }
+
     private void test(String snippet, String referenceSnippet) {
         StructuredGraph graph = getCanonicalizedGraph(snippet);
         StructuredGraph referenceGraph = getCanonicalizedGraph(referenceSnippet);

@@ -30,10 +30,10 @@ import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
@@ -105,7 +105,7 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow>
     }
 
     @Override
-    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitSignExtend(nodeValueMap.operand(getValue()), getInputBits(), getResultBits()));
     }
 }

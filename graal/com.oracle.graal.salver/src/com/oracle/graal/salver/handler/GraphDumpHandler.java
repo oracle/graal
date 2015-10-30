@@ -20,22 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.salver.handler;
 
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.service.ServiceProvider;
+import java.io.IOException;
 
-import com.oracle.graal.api.runtime.GraalRuntime;
-import com.oracle.graal.api.runtime.GraalRuntimeAccess;
+import com.oracle.graal.graph.Graph;
+import com.oracle.graal.salver.dumper.GraphDumper;
 
-@ServiceProvider(GraalRuntimeAccess.class)
-public class HotSpotGraalRuntimeAccess implements GraalRuntimeAccess {
+public class GraphDumpHandler extends AbstractGraalDumpHandler<GraphDumper> {
 
     @Override
-    public GraalRuntime getRuntime() {
-        HotSpotJVMCIRuntimeProvider jvmciRuntime = HotSpotJVMCIRuntime.runtime();
-        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
-        return compiler.getGraalRuntime();
+    protected GraphDumper createDumper() {
+        return new GraphDumper();
+    }
+
+    @Override
+    public void handle(Object obj, String msg) throws IOException {
+        if (obj instanceof Graph) {
+            ensureInitialized();
+            dumper.dump((Graph) obj, msg);
+        }
     }
 }

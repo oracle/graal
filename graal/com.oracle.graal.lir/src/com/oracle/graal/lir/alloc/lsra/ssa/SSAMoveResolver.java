@@ -22,23 +22,21 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlotValue;
-import static jdk.internal.jvmci.code.ValueUtil.asVirtualStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
-import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.alloc.lsra.Interval;
 import com.oracle.graal.lir.alloc.lsra.LinearScan;
 import com.oracle.graal.lir.alloc.lsra.MoveResolver;
@@ -93,14 +91,14 @@ public final class SSAMoveResolver extends MoveResolver {
         return false;
     }
 
-    private int getStackArrayIndex(StackSlotValue stackSlotValue) {
+    private int getStackArrayIndex(Value stackSlotValue) {
         if (isStackSlot(stackSlotValue)) {
             return getStackArrayIndex(asStackSlot(stackSlotValue));
         }
         if (isVirtualStackSlot(stackSlotValue)) {
             return getStackArrayIndex(asVirtualStackSlot(stackSlotValue));
         }
-        throw JVMCIError.shouldNotReachHere("Unhandled StackSlotValue: " + stackSlotValue);
+        throw JVMCIError.shouldNotReachHere("value is not a stack slot: " + stackSlotValue);
     }
 
     private int getStackArrayIndex(StackSlot stackSlot) {
@@ -125,7 +123,7 @@ public final class SSAMoveResolver extends MoveResolver {
     protected void setValueBlocked(Value location, int direction) {
         assert direction == 1 || direction == -1 : "out of bounds";
         if (isStackSlotValue(location)) {
-            int stackIdx = getStackArrayIndex(asStackSlotValue(location));
+            int stackIdx = getStackArrayIndex(location);
             if (stackIdx == STACK_SLOT_IN_CALLER_FRAME_IDX) {
                 // incoming stack arguments can be ignored
                 return;
@@ -142,7 +140,7 @@ public final class SSAMoveResolver extends MoveResolver {
     @Override
     protected int valueBlocked(Value location) {
         if (isStackSlotValue(location)) {
-            int stackIdx = getStackArrayIndex(asStackSlotValue(location));
+            int stackIdx = getStackArrayIndex(location);
             if (stackIdx == STACK_SLOT_IN_CALLER_FRAME_IDX) {
                 // incoming stack arguments are always blocked (aka they can not be written)
                 return 1;
@@ -175,7 +173,7 @@ public final class SSAMoveResolver extends MoveResolver {
         Interval fromInterval = getMappingFrom(stackSpillCandidate);
         assert isStackSlotValue(fromInterval.location());
         // allocate new stack slot
-        StackSlotValue spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
+        VirtualStackSlot spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
         spillInterval(stackSpillCandidate, fromInterval, spillSlot);
     }
 }

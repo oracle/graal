@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.code.BytecodeFrame.isPlaceholderBci;
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.StackLockValue;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.VirtualObject;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaValue;
+import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.StackLockValue;
+import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaValue;
 
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeValueMap;
@@ -57,7 +57,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         if (state.outerFrameState() != null) {
             lockDepth += state.outerFrameState().nestedLockDepth();
         }
-        StackSlotValue slot = lockStack.makeLockSlot(lockDepth);
+        VirtualStackSlot slot = lockStack.makeLockSlot(lockDepth);
         ValueNode lock = state.lockAt(lockIndex);
         JavaValue object = toJavaValue(lock);
         boolean eliminated = object instanceof VirtualObject || state.monitorIdAt(lockIndex) == null;

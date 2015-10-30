@@ -27,7 +27,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import jdk.internal.jvmci.meta.Signature;
+import jdk.vm.ci.meta.Signature;
 
 /**
  * Denotes a substitute method. A substitute method can call the original/substituted method by

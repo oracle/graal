@@ -24,7 +24,7 @@ package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;

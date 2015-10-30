@@ -27,7 +27,7 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.UNSAFE;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 import sun.misc.Unsafe;
 
 /**

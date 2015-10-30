@@ -26,9 +26,9 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.FieldsScanner;

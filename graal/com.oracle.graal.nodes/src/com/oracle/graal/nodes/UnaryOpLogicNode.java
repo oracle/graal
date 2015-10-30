@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;

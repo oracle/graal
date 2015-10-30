@@ -26,11 +26,11 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp;

@@ -30,7 +30,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.Loop;

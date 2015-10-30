@@ -26,13 +26,13 @@ import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.calc.UnaryArithmeticNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * This node has the semantics of the AMD64 floating point conversions. It is used in the lowering
@@ -56,7 +56,8 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
         return this;
     }
 
-    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+    @Override
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitFloatConvert(op, nodeValueMap.operand(getValue())));
     }
 }

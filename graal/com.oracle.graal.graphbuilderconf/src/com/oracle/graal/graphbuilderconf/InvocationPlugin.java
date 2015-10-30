@@ -25,9 +25,9 @@ package com.oracle.graal.graphbuilderconf;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ValueNode;

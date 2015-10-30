@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.meta.InvokeTarget;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.InvokeTarget;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.target.Backend;

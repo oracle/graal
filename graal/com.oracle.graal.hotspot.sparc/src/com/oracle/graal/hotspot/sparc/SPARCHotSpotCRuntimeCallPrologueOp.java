@@ -24,13 +24,13 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.sparc.SPARC.STACK_BIAS;
-import static jdk.internal.jvmci.sparc.SPARCKind.DWORD;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.sparc.SPARC.STACK_BIAS;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
@@ -69,6 +69,6 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction imple
         masm.stx(scratchRegister, new SPARCAddress(thread, threadLastJavaSpOffset));
 
         // Save the thread register when calling out to the runtime.
-        SPARCMove.move(crb, masm, threadTemp, thread.asValue(LIRKind.value(DWORD)), getDelayedControlTransfer());
+        SPARCMove.move(crb, masm, threadTemp, thread.asValue(LIRKind.value(XWORD)), getDelayedControlTransfer());
     }
 }

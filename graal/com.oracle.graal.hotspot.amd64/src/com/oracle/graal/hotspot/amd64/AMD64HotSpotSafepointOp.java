@@ -24,17 +24,17 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.asm.NumUtil.isInt;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static jdk.internal.jvmci.amd64.AMD64.rax;
-import static jdk.internal.jvmci.amd64.AMD64.rip;
-import jdk.internal.jvmci.code.InfopointReason;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rip;
+import jdk.vm.ci.code.InfopointReason;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;

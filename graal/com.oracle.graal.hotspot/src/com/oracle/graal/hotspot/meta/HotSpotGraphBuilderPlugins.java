@@ -26,21 +26,19 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_MILLIS;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_NANOS;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
-import static sun.misc.Version.jdkMajorVersion;
-import static sun.misc.Version.jdkMinorVersion;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
 import java.util.zip.CRC32;
 
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.options.StableOptionValue;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.options.StableOptionValue;
 import sun.reflect.Reflection;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
@@ -60,6 +58,7 @@ import com.oracle.graal.hotspot.replacements.CRC32Substitutions;
 import com.oracle.graal.hotspot.replacements.CallSiteTargetNode;
 import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
 import com.oracle.graal.hotspot.replacements.HotSpotClassSubstitutions;
+import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
 import com.oracle.graal.hotspot.replacements.IdentityHashCodeNode;
 import com.oracle.graal.hotspot.replacements.ObjectCloneNode;
 import com.oracle.graal.hotspot.replacements.ObjectSubstitutions;
@@ -154,7 +153,7 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isPrimitive", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
 
-        if (jdkMajorVersion() >= 1 && jdkMinorVersion() <= 8) {
+        if (HotSpotReplacementsUtil.arrayKlassComponentMirrorOffsetExists()) {
             r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
         }
 
@@ -269,6 +268,25 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
+    public static final String cbcEncryptName;
+    public static final String cbcDecryptName;
+    public static final String aesEncryptName;
+    public static final String aesDecryptName;
+
+    static {
+        if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
+            cbcEncryptName = "encrypt";
+            cbcDecryptName = "decrypt";
+            aesEncryptName = "encryptBlock";
+            aesDecryptName = "decryptBlock";
+        } else {
+            cbcEncryptName = "implEncrypt";
+            cbcDecryptName = "implDecrypt";
+            aesEncryptName = "implEncryptBlock";
+            aesDecryptName = "implDecryptBlock";
+        }
+    }
+
     private static void registerAESPlugins(InvocationPlugins plugins, HotSpotVMConfig config) {
         if (config.useAESIntrinsics) {
             assert config.aescryptEncryptBlockStub != 0L;
@@ -278,14 +296,14 @@ public class HotSpotGraphBuilderPlugins {
             Class<?> c = MethodSubstitutionPlugin.resolveClass("com.sun.crypto.provider.CipherBlockChaining", true);
             if (c != null) {
                 Registration r = new Registration(plugins, c);
-                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "encrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
-                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "decrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
             }
             c = MethodSubstitutionPlugin.resolveClass("com.sun.crypto.provider.AESCrypt", true);
             if (c != null) {
                 Registration r = new Registration(plugins, c);
-                r.registerMethodSubstitution(AESCryptSubstitutions.class, "encryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
-                r.registerMethodSubstitution(AESCryptSubstitutions.class, "decryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                r.registerMethodSubstitution(AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                r.registerMethodSubstitution(AESCryptSubstitutions.class, aesDecryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
             }
         }
     }
@@ -298,8 +316,13 @@ public class HotSpotGraphBuilderPlugins {
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
             Registration r = new Registration(plugins, CRC32.class);
             r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
-            r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
-            r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
+            if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
+                r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+                r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
+            } else {
+                r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes0", int.class, byte[].class, int.class, int.class);
+                r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer0", int.class, long.class, int.class, int.class);
+            }
         }
     }
 }

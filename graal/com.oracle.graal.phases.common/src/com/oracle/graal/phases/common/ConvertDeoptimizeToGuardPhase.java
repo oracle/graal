@@ -26,10 +26,10 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 
 import java.util.List;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
@@ -201,7 +201,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         FixedNode next = deoptPred.next();
 
         if (!(next instanceof DeoptimizeNode)) {
-            DeoptimizeNode newDeoptNode = graph.add(new DeoptimizeNode(deoptAction, deoptReason));
+            DeoptimizeNode newDeoptNode = graph.add(new DeoptimizeNode(deoptAction, deoptReason, speculation));
             deoptPred.setNext(newDeoptNode);
             assert deoptPred == newDeoptNode.predecessor();
             GraphUtil.killCFG(next);

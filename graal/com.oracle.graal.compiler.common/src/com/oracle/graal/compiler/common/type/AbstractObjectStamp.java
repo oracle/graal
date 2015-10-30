@@ -26,11 +26,11 @@ import java.util.AbstractList;
 import java.util.Objects;
 import java.util.RandomAccess;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Type describing all pointers to Java objects.

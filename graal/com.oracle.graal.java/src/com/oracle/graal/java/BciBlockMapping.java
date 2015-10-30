@@ -87,10 +87,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.meta.ExceptionHandler;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.ExceptionHandler;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.bytecode.BytecodeLookupSwitch;
 import com.oracle.graal.bytecode.BytecodeStream;

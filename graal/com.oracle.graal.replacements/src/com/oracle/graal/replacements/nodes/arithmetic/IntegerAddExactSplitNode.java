@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements.nodes.arithmetic;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
@@ -41,6 +41,6 @@ public final class IntegerAddExactSplitNode extends IntegerExactArithmeticSplitN
 
     @Override
     protected Value generateArithmetic(NodeLIRBuilderTool gen) {
-        return gen.getLIRGeneratorTool().emitAdd(gen.operand(getX()), gen.operand(getY()), true);
+        return gen.getLIRGeneratorTool().getArithmetic().emitAdd(gen.operand(getX()), gen.operand(getY()), true);
     }
 }

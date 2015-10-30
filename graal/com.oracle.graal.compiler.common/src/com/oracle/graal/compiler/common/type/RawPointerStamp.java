@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.MemoryAccessProvider;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 

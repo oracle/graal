@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.debug;
+package com.oracle.graal.salver.serialize;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
+import java.io.IOException;
 
-import java.util.Map;
+import com.oracle.graal.salver.writer.DumpWriter;
 
-import com.oracle.graal.truffle.GraalTruffleRuntime;
-import com.oracle.graal.truffle.OptimizedCallTarget;
+public abstract class AbstractSerializer implements Serializer {
 
-public final class TracePerformanceWarningsListener extends AbstractDebugCompilationListener {
+    protected DumpWriter writer;
 
-    private TracePerformanceWarningsListener() {
+    public AbstractSerializer() {
     }
 
-    public static void install(GraalTruffleRuntime runtime) {
-        if (isEnabled()) {
-            runtime.addCompilationListener(new TracePerformanceWarningsListener());
+    public AbstractSerializer(DumpWriter writer) {
+        if (writer != null) {
+            setWriter(writer);
         }
     }
 
-    public static boolean isEnabled() {
-        return TraceTrufflePerformanceWarnings.getValue();
+    public DumpWriter getWriter() {
+        return writer;
     }
 
-    public static void logPerformanceWarning(OptimizedCallTarget target, String details, Map<String, Object> properties) {
-        log(target, 0, "perf warn", String.format("%-60s|%s", target, details), properties);
+    public void setWriter(DumpWriter writer) {
+        this.writer = writer;
     }
 
+    public void reset() throws IOException {
+    }
+
+    public void flush() throws IOException {
+        if (writer != null) {
+            writer.flush();
+        }
+    }
 }

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.amd64;
 
-import jdk.internal.jvmci.amd64.AMD64Kind;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.LIRKind;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.LIRKind;
 
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 

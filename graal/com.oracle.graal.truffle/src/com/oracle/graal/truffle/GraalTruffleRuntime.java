@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,15 +30,18 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.stack.InspectedFrame;
-import jdk.internal.jvmci.code.stack.InspectedFrameVisitor;
-import jdk.internal.jvmci.code.stack.StackIntrospection;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.stack.InspectedFrame;
+import jdk.vm.ci.code.stack.InspectedFrameVisitor;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.service.Services;
 
+import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.TTY;
@@ -50,7 +53,6 @@ import com.oracle.graal.truffle.debug.TraceCompilationFailureListener;
 import com.oracle.graal.truffle.debug.TraceCompilationListener;
 import com.oracle.graal.truffle.debug.TraceCompilationPolymorphismListener;
 import com.oracle.graal.truffle.debug.TraceInliningListener;
-import com.oracle.graal.truffle.debug.TracePerformanceWarningsListener;
 import com.oracle.graal.truffle.debug.TraceSplittingListener;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -82,11 +84,21 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected LoopNodeFactory loopNodeFactory;
     protected CallMethods callMethods;
 
-    public GraalTruffleRuntime() {
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+    private final Supplier<GraalRuntime> graalRuntime;
+
+    public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
+        this.graalRuntime = graalRuntime;
     }
 
     public abstract TruffleCompiler getTruffleCompiler();
+
+    public <T> T getRequiredGraalCapability(Class<T> clazz) {
+        T ret = graalRuntime.get().getCapability(clazz);
+        if (ret == null) {
+            throw new JVMCIError("The VM does not expose the required Graal capability %s.", clazz.getName());
+        }
+        return ret;
+    }
 
     private static <T extends PrioritizedServiceProvider> T loadPrioritizedServiceProvider(Class<T> clazz) {
         Iterable<T> providers = Services.load(clazz);
@@ -113,12 +125,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceCompilationListener.install(this);
         TraceCompilationPolymorphismListener.install(this);
         TraceCompilationCallTreeListener.install(this);
-        TracePerformanceWarningsListener.install(this);
         TraceInliningListener.install(this);
         TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);
         CompilationStatisticsListener.install(this);
+        installShutdownHooks();
         compilationNotify.notifyStartup(this);
+    }
+
+    protected void installShutdownHooks() {
+        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
     }
 
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {
@@ -331,47 +347,69 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final class DispatchTruffleCompilationListener implements GraalTruffleCompilationListener {
 
         public void notifyCompilationQueued(OptimizedCallTarget target) {
-            compilationListeners.forEach(l -> l.notifyCompilationQueued(target));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationQueued(target);
+            }
         }
 
         public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
-            compilationListeners.forEach(l -> l.notifyCompilationInvalidated(target, source, reason));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationInvalidated(target, source, reason);
+            }
         }
 
         public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-            compilationListeners.forEach(l -> l.notifyCompilationDequeued(target, source, reason));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationDequeued(target, source, reason);
+            }
         }
 
         public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
-            compilationListeners.forEach(l -> l.notifyCompilationFailed(target, graph, t));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationFailed(target, graph, t);
+            }
         }
 
         public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
-            compilationListeners.forEach(l -> l.notifyCompilationSplit(callNode));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationSplit(callNode);
+            }
         }
 
         public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
-            compilationListeners.forEach(l -> l.notifyCompilationGraalTierFinished(target, graph));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationGraalTierFinished(target, graph);
+            }
         }
 
         public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
-            compilationListeners.forEach(l -> l.notifyCompilationSuccess(target, graph, result));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationSuccess(target, graph, result);
+            }
         }
 
         public void notifyCompilationStarted(OptimizedCallTarget target) {
-            compilationListeners.forEach(l -> l.notifyCompilationStarted(target));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationStarted(target);
+            }
         }
 
         public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
-            compilationListeners.forEach(l -> l.notifyCompilationTruffleTierFinished(target, graph));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationTruffleTierFinished(target, graph);
+            }
         }
 
         public void notifyShutdown(GraalTruffleRuntime runtime) {
-            compilationListeners.forEach(l -> l.notifyShutdown(runtime));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyShutdown(runtime);
+            }
         }
 
         public void notifyStartup(GraalTruffleRuntime runtime) {
-            compilationListeners.forEach(l -> l.notifyStartup(runtime));
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyStartup(runtime);
+            }
         }
 
     }

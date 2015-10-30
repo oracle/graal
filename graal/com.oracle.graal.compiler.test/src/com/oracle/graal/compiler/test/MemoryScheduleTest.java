@@ -31,8 +31,8 @@ import static org.junit.Assert.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import org.junit.Assert;
 import org.junit.Test;

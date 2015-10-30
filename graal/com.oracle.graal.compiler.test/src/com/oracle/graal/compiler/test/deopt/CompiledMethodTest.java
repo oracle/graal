@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.InvalidInstalledCodeException;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

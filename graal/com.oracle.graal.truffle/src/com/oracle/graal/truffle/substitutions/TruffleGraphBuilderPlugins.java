@@ -26,16 +26,16 @@ import static java.lang.Character.toUpperCase;
 
 import java.util.concurrent.Callable;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -98,7 +98,7 @@ public class TruffleGraphBuilderPlugins {
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
-        registerOptimizedCallTargetPlugins(metaAccess, plugins);
+        registerOptimizedCallTargetPlugins(metaAccess, plugins, snippetReflection, canDelayIntrinsification);
 
         if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
             registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification);
@@ -112,7 +112,7 @@ public class TruffleGraphBuilderPlugins {
         Registration r = new Registration(plugins, OptimizedAssumption.class);
         InvocationPlugin plugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (receiver.isConstant()) {
+                if (receiver.isConstant() && b.getAssumptions() != null) {
                     Constant constant = receiver.get().asConstant();
                     OptimizedAssumption assumption = snippetReflection.asObject(OptimizedAssumption.class, (JavaConstant) constant);
                     if (assumption.isValid()) {
@@ -227,7 +227,7 @@ public class TruffleGraphBuilderPlugins {
                      * and constant folding could still eliminate the call to bailout(). However, we
                      * also want to stop parsing, since we are sure that we will never need the
                      * graph beyond the bailout point.
-                     *
+                     * 
                      * Therefore, we manually emit the call to bailout, which will be intrinsified
                      * later when intrinsifications can no longer be delayed. The call is followed
                      * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
@@ -336,12 +336,12 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerOptimizedCallTargetPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    public static void registerOptimizedCallTargetPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode descriptor, ValueNode args) {
                 Class<?> frameClass = TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue() ? FrameWithoutBoxing.class : FrameWithBoxing.class;
-                b.addPush(JavaKind.Object, new NewFrameNode(StampFactory.exactNonNull(metaAccess.lookupJavaType(frameClass)), descriptor, args));
+                b.addPush(JavaKind.Object, new NewFrameNode(snippetReflection, StampFactory.exactNonNull(metaAccess.lookupJavaType(frameClass)), descriptor, args));
                 return true;
             }
         });
@@ -351,6 +351,7 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+        registerUnsafeCast(r, canDelayIntrinsification);
     }
 
     public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.lir;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Value;
 
 public final class LIRValueUtil {
 
@@ -58,5 +59,20 @@ public final class LIRValueUtil {
 
     public static JavaConstant asJavaConstant(Value value) {
         return asConstantValue(value).getJavaConstant();
+    }
+
+    public static boolean isStackSlotValue(Value value) {
+        assert value != null;
+        return value instanceof StackSlot || value instanceof VirtualStackSlot;
+    }
+
+    public static boolean isVirtualStackSlot(Value value) {
+        assert value != null;
+        return value instanceof VirtualStackSlot;
+    }
+
+    public static VirtualStackSlot asVirtualStackSlot(Value value) {
+        assert value != null;
+        return (VirtualStackSlot) value;
     }
 }

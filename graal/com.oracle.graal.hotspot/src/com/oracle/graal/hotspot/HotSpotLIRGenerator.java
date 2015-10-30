@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
@@ -39,6 +38,7 @@ import com.oracle.graal.hotspot.nodes.PushInterpreterFrameNode;
 import com.oracle.graal.hotspot.nodes.SaveAllRegistersNode;
 import com.oracle.graal.hotspot.nodes.UncommonTrapCallNode;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
@@ -149,7 +149,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
     /**
      * Gets a stack slot for a lock at a given lock nesting depth.
      */
-    StackSlotValue getLockSlot(int lockDepth);
+    VirtualStackSlot getLockSlot(int lockDepth);
 
     HotSpotProviders getProviders();
 

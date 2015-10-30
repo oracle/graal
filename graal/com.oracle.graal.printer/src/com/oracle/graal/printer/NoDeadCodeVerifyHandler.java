@@ -26,10 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.debug.DebugVerifyHandler;
 import com.oracle.graal.graph.Node;

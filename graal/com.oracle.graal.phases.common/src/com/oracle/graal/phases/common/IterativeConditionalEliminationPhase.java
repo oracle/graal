@@ -24,7 +24,7 @@ package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.graph.Graph.NodeEvent.NODE_ADDED;
 import static com.oracle.graal.graph.Graph.NodeEvent.ZERO_USAGES;
-import jdk.internal.jvmci.code.BailoutException;
+import jdk.vm.ci.code.BailoutException;
 
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.Node;

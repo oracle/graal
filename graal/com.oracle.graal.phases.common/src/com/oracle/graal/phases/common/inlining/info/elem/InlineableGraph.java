@@ -29,8 +29,8 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.Debug;
@@ -196,13 +196,6 @@ public class InlineableGraph implements Inlineable {
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
         StructuredGraph newGraph = new StructuredGraph(method, AllowAssumptions.from(caller.getAssumptions() != null));
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
-            if (!caller.isInlinedMethodRecordingEnabled()) {
-                // Don't record inlined methods in the callee if
-                // the caller doesn't want them. This decision is
-                // preserved in the graph cache (if used) which is
-                // ok since the graph cache is compilation local.
-                newGraph.disableInlinedMethodRecording();
-            }
             if (!caller.isUnsafeAccessTrackingEnabled()) {
                 newGraph.disableUnsafeAccessTracking();
             }

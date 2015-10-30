@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.api.runtime;
 
-/**
- * A service that provides access to a {@link GraalRuntime} implementation.
- */
-public interface GraalRuntimeAccess {
+import jdk.vm.ci.runtime.JVMCICompiler;
 
-    /**
-     * Gets the {@link GraalRuntime} implementation available via this access object.
-     */
-    GraalRuntime getRuntime();
+/**
+ * Graal specific extension of the {@link JVMCICompiler} interface.
+ */
+public interface GraalJVMCICompiler extends JVMCICompiler {
+
+    GraalRuntime getGraalRuntime();
 }

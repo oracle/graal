@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.internal.DebugValue;

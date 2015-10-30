@@ -30,10 +30,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.internal.jvmci.compiler.CompilerFactory;
-import jdk.internal.jvmci.options.OptionDescriptor;
-import jdk.internal.jvmci.options.OptionDescriptors;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.options.OptionDescriptor;
+import jdk.vm.ci.options.OptionDescriptors;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.runtime.JVMCICompilerFactory;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -51,7 +51,7 @@ public class LazyInitializationTest {
     private final Class<?> hotSpotGraalCompilerFactoryOptions;
 
     public LazyInitializationTest() {
-        hotSpotVMEventListener = forNameOrNull("jdk.internal.jvmci.hotspot.HotSpotVMEventListener");
+        hotSpotVMEventListener = forNameOrNull("jdk.vm.ci.hotspot.HotSpotVMEventListener");
         hotSpotGraalCompilerFactoryOptions = forNameOrNull("com.oracle.graal.hotspot.HotSpotGraalCompilerFactory$Options");
     }
 
@@ -166,7 +166,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (CompilerFactory.class.isAssignableFrom(cls)) {
+        if (JVMCICompilerFactory.class.isAssignableFrom(cls)) {
             // The compiler factories have to be loaded and instantiated by the JVMCI.
             return true;
         }

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.phases.util;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.spi.CodeGenProviders;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;

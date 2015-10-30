@@ -25,7 +25,7 @@ package com.oracle.graal.lir.util;
 import java.util.EnumSet;
 import java.util.Objects;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.InstructionValueProcedure;

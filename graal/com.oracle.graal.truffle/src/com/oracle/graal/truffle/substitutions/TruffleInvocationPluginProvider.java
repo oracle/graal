@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.substitutions;
 
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins;

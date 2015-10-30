@@ -27,9 +27,9 @@ import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.ReplacementsProvider;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.service.ServiceProvider;
 import sun.reflect.ConstantPool;
 import sun.reflect.Reflection;
 

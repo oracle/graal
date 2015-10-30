@@ -25,11 +25,11 @@ package com.oracle.graal.asm.amd64;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseIncDec;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
-import jdk.internal.jvmci.amd64.AMD64;
-import jdk.internal.jvmci.amd64.AMD64Kind;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.asm.NumUtil;
 

@@ -26,12 +26,12 @@ import static com.oracle.graal.lir.amd64.AMD64SaveRegistersOp.prune;
 
 import java.util.Set;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterSaveLayout;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.PlatformKind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;

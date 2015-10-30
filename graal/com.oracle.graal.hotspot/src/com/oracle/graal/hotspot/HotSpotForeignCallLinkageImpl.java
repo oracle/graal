@@ -23,24 +23,24 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.util.Set;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.HotSpotForeignCallTarget;
-import jdk.internal.jvmci.hotspot.HotSpotProxified;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotForeignCallTarget;
+import jdk.vm.ci.hotspot.HotSpotProxified;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.target.Backend;

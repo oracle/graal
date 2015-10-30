@@ -27,8 +27,8 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;

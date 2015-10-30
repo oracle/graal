@@ -25,11 +25,11 @@ package com.oracle.graal.jtt.lang;
 import java.util.EnumSet;
 import java.util.function.IntBinaryOperator;
 
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import org.junit.Test;
 

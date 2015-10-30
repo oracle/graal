@@ -40,10 +40,10 @@ import java.lang.annotation.Target;
 import java.util.EnumMap;
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;

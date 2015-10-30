@@ -35,6 +35,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObserver {
 
     private int interpreterLoopCount;
+    private int lastLoopCount;
     private OptimizedCallTarget compiledTarget;
 
     @Child private RepeatingNode repeatableNode;
@@ -105,6 +106,7 @@ public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObser
                     return false;
                 } else if (target.isValid()) {
                     Object result = target.callDirect(new Object[]{frame});
+                    iterations = lastLoopCount;
                     if (result == Boolean.TRUE) {
                         // loop is done. No further repetitions necessary.
                         return true;
@@ -157,6 +159,7 @@ public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObser
 
     private void reportLoopCount(int reportIterations) {
         if (reportIterations != 0) {
+            lastLoopCount = reportIterations;
             interpreterLoopCount += reportIterations;
             getRootNode().reportLoopCount(reportIterations);
         }

@@ -24,21 +24,21 @@ package com.oracle.graal.nodes.calc;
 
 import java.util.EnumMap;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java
@@ -117,7 +117,8 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         tool.getLowerer().lower(this, tool);
     }
 
-    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+    @Override
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitFloatConvert(getFloatConvert(), nodeValueMap.operand(getValue())));
     }
 }

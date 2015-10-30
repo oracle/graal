@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.debug.internal.MemUseTrackerImpl.getCurrentThreadAllocatedBytes;
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.test.AllocSpy;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugEnvironment;
@@ -141,7 +141,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
 
         try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
-            int entryBCI = Compiler.INVOCATION_ENTRY_BCI;
+            int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, jvmciEnv);
             CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, false);
             task.runCompilation();
@@ -159,7 +159,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             long jvmciEnv = 0L;
             try (AllocSpy as = AllocSpy.open(methodName)) {
                 HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
-                HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, Compiler.INVOCATION_ENTRY_BCI, jvmciEnv);
+                HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, JVMCICompiler.INVOCATION_ENTRY_BCI, jvmciEnv);
                 CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, false);
                 task.runCompilation();
             }

@@ -23,19 +23,19 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.ValueUtil;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
@@ -49,20 +49,20 @@ public class AMD64RestoreRegistersOp extends AMD64LIRInstruction {
     /**
      * The slots from which the registers are restored.
      */
-    @Use(STACK) protected final StackSlotValue[] slots;
+    @Use(STACK) protected final AllocatableValue[] slots;
 
     /**
      * The operation that saved the registers restored by this operation.
      */
     private final AMD64SaveRegistersOp save;
 
-    public AMD64RestoreRegistersOp(StackSlotValue[] values, AMD64SaveRegistersOp save) {
+    public AMD64RestoreRegistersOp(AllocatableValue[] values, AMD64SaveRegistersOp save) {
         this(TYPE, values, save);
     }
 
-    protected AMD64RestoreRegistersOp(LIRInstructionClass<? extends AMD64RestoreRegistersOp> c, StackSlotValue[] values, AMD64SaveRegistersOp save) {
+    protected AMD64RestoreRegistersOp(LIRInstructionClass<? extends AMD64RestoreRegistersOp> c, AllocatableValue[] values, AMD64SaveRegistersOp save) {
         super(c);
-        assert Arrays.asList(values).stream().allMatch(ValueUtil::isVirtualStackSlot);
+        assert Arrays.asList(values).stream().allMatch(LIRValueUtil::isVirtualStackSlot);
         this.slots = values;
         this.save = save;
     }

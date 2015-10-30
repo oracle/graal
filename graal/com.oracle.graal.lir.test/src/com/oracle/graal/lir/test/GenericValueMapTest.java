@@ -24,11 +24,11 @@ package com.oracle.graal.lir.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.Register.RegisterCategory;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.PlatformKind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
 
 import org.junit.Test;
 

@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;

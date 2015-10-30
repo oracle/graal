@@ -26,8 +26,8 @@ import static com.oracle.graal.phases.common.inlining.InliningPhase.Options.Alwa
 
 import java.util.Map;
 
-import jdk.internal.jvmci.meta.ProfilingInfo;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;

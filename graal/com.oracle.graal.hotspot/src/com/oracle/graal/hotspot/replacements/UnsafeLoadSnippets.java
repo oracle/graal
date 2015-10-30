@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
-import jdk.internal.jvmci.code.TargetDescription;
+import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.nodes.extended.FixedValueAnchorNode;

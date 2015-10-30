@@ -25,7 +25,7 @@ package com.oracle.nfi.test;
 import static java.io.File.separatorChar;
 import static java.lang.System.getProperty;
 import static java.lang.System.mapLibraryName;
-import static jdk.internal.jvmci.common.UnsafeUtil.writeCString;
+import static jdk.vm.ci.common.UnsafeUtil.writeCString;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

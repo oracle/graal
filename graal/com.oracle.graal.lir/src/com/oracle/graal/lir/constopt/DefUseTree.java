@@ -26,8 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIRInstruction;

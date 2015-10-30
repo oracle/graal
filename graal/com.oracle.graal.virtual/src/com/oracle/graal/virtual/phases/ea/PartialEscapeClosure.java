@@ -34,10 +34,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.IntFunction;
 
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.cfg.Loop;

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import static jdk.internal.jvmci.code.ValueUtil.asVirtualStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
@@ -33,8 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
@@ -44,6 +43,7 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 

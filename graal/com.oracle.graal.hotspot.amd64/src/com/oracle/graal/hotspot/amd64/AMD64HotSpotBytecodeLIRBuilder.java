@@ -22,19 +22,19 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static jdk.internal.jvmci.amd64.AMD64.rbp;
-import jdk.internal.jvmci.amd64.AMD64Kind;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.ValueUtil;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaField;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Signature;
-import jdk.internal.jvmci.meta.Value;
+import static jdk.vm.ci.amd64.AMD64.rbp;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.gen.BytecodeLIRBuilder;
 import com.oracle.graal.compiler.gen.BytecodeParserTool;

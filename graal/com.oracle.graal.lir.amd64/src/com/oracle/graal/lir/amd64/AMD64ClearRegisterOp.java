@@ -24,8 +24,8 @@ package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import jdk.internal.jvmci.meta.AllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;

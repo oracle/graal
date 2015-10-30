@@ -25,16 +25,16 @@ package com.oracle.graal.replacements.nodes;
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MethodHandleAccessProvider;
-import jdk.internal.jvmci.meta.MethodHandleAccessProvider.IntrinsicMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Signature;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
@@ -166,7 +166,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
      * @param target the target, already loaded from the member name node
      * @return invoke node for the member name target
      */
-    private static InvokeNode getTargetInvokeNode(Assumptions assumptions, IntrinsicMethod intrinsicMethod, int bci, JavaType returnType, ValueNode[] arguments, ResolvedJavaMethod target,
+    private static InvokeNode getTargetInvokeNode(Assumptions assumptions, IntrinsicMethod intrinsicMethod, int bci, JavaType returnType, ValueNode[] originalArguments, ResolvedJavaMethod target,
                     ResolvedJavaMethod original) {
         if (target == null) {
             return null;
@@ -179,6 +179,9 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
         Signature signature = target.getSignature();
         final boolean isStatic = target.isStatic();
         final int receiverSkip = isStatic ? 0 : 1;
+
+        // Don't mutate the passed in arguments
+        ValueNode[] arguments = originalArguments.clone();
 
         // Cast receiver to its type.
         if (!isStatic) {

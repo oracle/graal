@@ -25,9 +25,9 @@ package com.oracle.graal.debug;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.Signature;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.Signature;
 
 /**
  * This class implements a method filter that can filter based on class name, method name and

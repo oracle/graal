@@ -23,9 +23,9 @@
 
 package com.oracle.graal.compiler.amd64;
 
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.graph.NodeClass;

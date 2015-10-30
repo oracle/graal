@@ -23,7 +23,7 @@
 
 package com.oracle.graal.nodes.spi;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.ValueNode;

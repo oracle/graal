@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;

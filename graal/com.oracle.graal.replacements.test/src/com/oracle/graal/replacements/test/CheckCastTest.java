@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.JavaTypeProfile;
 
 import org.junit.Test;
 

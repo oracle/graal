@@ -23,9 +23,9 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.meta.AllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
@@ -55,7 +55,7 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
  * CodeInstaller::pd_patch_DataSectionReference
  *
  * @see SPARCMove#loadFromConstantTable(CompilationResultBuilder, SPARCMacroAssembler, int,
- *      Register, Register, SPARCDelayedControlTransfer, Runnable)
+ *      Register, jdk.vm.ci.meta.Constant, Register, SPARCDelayedControlTransfer)
  */
 public class SPARCLoadConstantTableBaseOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCLoadConstantTableBaseOp> TYPE = LIRInstructionClass.create(SPARCLoadConstantTableBaseOp.class);

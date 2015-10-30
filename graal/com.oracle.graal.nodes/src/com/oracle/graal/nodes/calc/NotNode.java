@@ -26,11 +26,11 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Not;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Binary negation of long or integer values.
@@ -57,7 +57,7 @@ public final class NotNode extends UnaryArithmeticNode<Not> implements Arithmeti
     }
 
     @Override
-    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitNot(nodeValueMap.operand(getValue())));
     }
 }

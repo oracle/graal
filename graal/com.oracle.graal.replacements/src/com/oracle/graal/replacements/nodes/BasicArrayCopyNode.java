@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static jdk.internal.jvmci.meta.LocationIdentity.any;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import static jdk.vm.ci.meta.LocationIdentity.any;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;

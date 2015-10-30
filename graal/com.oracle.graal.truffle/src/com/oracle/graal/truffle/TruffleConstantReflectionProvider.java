@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.truffle;
 
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaField;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MemoryAccessProvider;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.MethodHandleAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -118,10 +118,6 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
 
     public JavaConstant forString(String value) {
         return graalConstantReflection.forString(value);
-    }
-
-    public JavaConstant forObject(Object value) {
-        return graalConstantReflection.forObject(value);
     }
 
     public ResolvedJavaType asJavaType(Constant constant) {

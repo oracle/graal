@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.Iterator;
 
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;

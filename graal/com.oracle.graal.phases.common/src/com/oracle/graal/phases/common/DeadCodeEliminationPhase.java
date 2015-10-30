@@ -24,9 +24,9 @@ package com.oracle.graal.phases.common;
 
 import java.util.function.BiConsumer;
 
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;

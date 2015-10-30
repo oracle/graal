@@ -30,18 +30,18 @@ import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 import java.util.ListIterator;
 import java.util.Set;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.CompilationResult.Call;
-import jdk.internal.jvmci.code.CompilationResult.ConstantReference;
-import jdk.internal.jvmci.code.CompilationResult.DataPatch;
-import jdk.internal.jvmci.code.CompilationResult.Infopoint;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompilationResult.Call;
+import jdk.vm.ci.code.CompilationResult.ConstantReference;
+import jdk.vm.ci.code.CompilationResult.DataPatch;
+import jdk.vm.ci.code.CompilationResult.Infopoint;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
@@ -165,10 +165,8 @@ public abstract class Stub {
             try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
                 final StructuredGraph graph = getGraph();
 
-                // Stubs cannot be recompiled so they cannot be compiled with
-                // assumptions and there is no point in recording evol_method dependencies
+                // Stubs cannot be recompiled so they cannot be compiled with assumptions
                 assert graph.getAssumptions() == null;
-                assert !graph.isInlinedMethodRecordingEnabled() : graph;
 
                 if (!(graph.start() instanceof StubStartNode)) {
                     StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
@@ -216,7 +214,6 @@ public abstract class Stub {
         // Stubs cannot be recompiled so they cannot be compiled with
         // assumptions and there is no point in recording evol_method dependencies
         assert compResult.getAssumptions() == null : "stubs should not use assumptions: " + this;
-        assert compResult.getMethods() == null : "stubs should not record evol_method dependencies: " + this;
 
         for (DataPatch data : compResult.getDataPatches()) {
             if (data.reference instanceof ConstantReference) {

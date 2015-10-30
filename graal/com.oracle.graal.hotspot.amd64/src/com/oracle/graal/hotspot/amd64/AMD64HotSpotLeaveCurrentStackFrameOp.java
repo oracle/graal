@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static jdk.internal.jvmci.amd64.AMD64.rdx;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.RegisterSaveLayout;
-import jdk.internal.jvmci.meta.JavaKind;
+import static jdk.vm.ci.amd64.AMD64.rdx;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;

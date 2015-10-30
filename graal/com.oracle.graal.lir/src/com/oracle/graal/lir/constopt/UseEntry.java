@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.constopt;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIRInstruction;

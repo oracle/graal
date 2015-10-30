@@ -55,8 +55,8 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.EscapeObjectState;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
 public class InstrumentationNode extends DeoptimizingFixedWithNextNode implements Virtualizable {
@@ -102,13 +102,16 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
     public void virtualize(VirtualizerTool tool) {
         // InstrumentationNode allows non-materialized inputs. During the inlining of the
         // InstrumentationNode, non-materialized inputs will be replaced by null.
-        if (target != null) {
+        if (!(target == null || (target instanceof VirtualObjectNode))) {
             ValueNode alias = tool.getAlias(target);
             if (alias instanceof VirtualObjectNode) {
                 tool.replaceFirstInput(target, alias);
             }
         }
         for (ValueNode input : weakDependencies) {
+            if (input instanceof VirtualObjectNode) {
+                continue;
+            }
             ValueNode alias = tool.getAlias(input);
             if (alias instanceof VirtualObjectNode) {
                 tool.replaceFirstInput(input, alias);

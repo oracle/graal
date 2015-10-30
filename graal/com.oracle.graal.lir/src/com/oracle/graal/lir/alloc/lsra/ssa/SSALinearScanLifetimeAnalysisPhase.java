@@ -24,8 +24,8 @@ package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.lir.LIRInstruction;

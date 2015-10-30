@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;

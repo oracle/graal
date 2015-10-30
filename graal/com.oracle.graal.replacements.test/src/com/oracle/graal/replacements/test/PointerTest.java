@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,29 +24,27 @@ package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static jdk.internal.jvmci.code.CodeUtil.isEven;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.asRegisterValue;
-import static jdk.internal.jvmci.code.ValueUtil.isIllegal;
-import static jdk.internal.jvmci.code.ValueUtil.isLegal;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.CodeUtil.isEven;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isLegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterAttributes;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterAttributes;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -61,6 +59,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.alloc.trace.TraceLinearScanAllocationPhase.TraceLinearScanAllocationContext;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -172,9 +171,10 @@ final class TraceLinearScan {
     private AbstractBlockBase<?>[] opIdToBlockMap;
 
     protected final TraceBuilderResult<?> traceBuilderResult;
+    private final boolean neverSpillConstants;
 
     protected TraceLinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
-                    List<? extends AbstractBlockBase<?>> sortedBlocks, TraceBuilderResult<?> traceBuilderResult) {
+                    List<? extends AbstractBlockBase<?>> sortedBlocks, TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -186,6 +186,7 @@ final class TraceLinearScan {
         this.fixedIntervals = new FixedInterval[registers.length];
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.traceBuilderResult = traceBuilderResult;
+        this.neverSpillConstants = neverSpillConstants;
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -468,7 +469,7 @@ final class TraceLinearScan {
      * @return the block containing the instruction denoted by {@code opId}
      */
     public AbstractBlockBase<?> blockForId(int opId) {
-        assert opIdToBlockMap.length > 0 && opId >= 0 && opId <= maxOpId() + 1 : "opId out of range";
+        assert opIdToBlockMap.length > 0 && opId >= 0 && opId <= maxOpId() + 1 : "opId out of range: " + opId;
         return opIdToBlockMap[opIdToIndex(opId)];
     }
 
@@ -689,7 +690,7 @@ final class TraceLinearScan {
         throw new BailoutException("LinearScan: interval is null");
     }
 
-    static StackSlotValue canonicalSpillOpr(TraceInterval interval) {
+    static AllocatableValue canonicalSpillOpr(TraceInterval interval) {
         assert interval.spillSlot() != null : "canonical spill slot not set";
         return interval.spillSlot();
     }
@@ -985,6 +986,10 @@ final class TraceLinearScan {
 
     public boolean callKillsRegisters() {
         return regAllocConfig.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
+    }
+
+    boolean neverSpillConstants() {
+        return neverSpillConstants;
     }
 
 }

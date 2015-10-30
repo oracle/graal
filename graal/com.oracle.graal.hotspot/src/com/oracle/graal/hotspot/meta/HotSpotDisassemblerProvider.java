@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
-import jdk.internal.jvmci.service.ServiceProvider;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.code.DisassemblerProvider;
 

@@ -22,34 +22,34 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.compiler.Compiler.ExitVMOnBailout;
-import static jdk.internal.jvmci.compiler.Compiler.ExitVMOnException;
-import static jdk.internal.jvmci.compiler.Compiler.PrintAfterCompilation;
-import static jdk.internal.jvmci.compiler.Compiler.PrintBailout;
-import static jdk.internal.jvmci.compiler.Compiler.PrintCompilation;
-import static jdk.internal.jvmci.compiler.Compiler.PrintFilter;
-import static jdk.internal.jvmci.compiler.Compiler.PrintStackTraceOnException;
+import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnBailout;
+import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintAfterCompilation;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintFilter;
+import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.TimeUnit;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.hotspot.HotSpotCodeCacheProvider;
-import jdk.internal.jvmci.hotspot.HotSpotCompilationRequest;
-import jdk.internal.jvmci.hotspot.HotSpotInstalledCode;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.hotspot.HotSpotNmethod;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.hotspot.events.EmptyEventProvider;
-import jdk.internal.jvmci.hotspot.events.EventProvider;
-import jdk.internal.jvmci.hotspot.events.EventProvider.CompilationEvent;
-import jdk.internal.jvmci.hotspot.events.EventProvider.CompilerFailureEvent;
-import jdk.internal.jvmci.service.Services;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotNmethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.hotspot.events.EmptyEventProvider;
+import jdk.vm.ci.hotspot.events.EventProvider;
+import jdk.vm.ci.hotspot.events.EventProvider.CompilationEvent;
+import jdk.vm.ci.hotspot.events.EventProvider.CompilerFailureEvent;
+import jdk.vm.ci.runtime.JVMCICompiler;
+import jdk.vm.ci.service.Services;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.debug.Debug;
@@ -156,7 +156,7 @@ public class CompilationTask {
         long startCompilationTime = System.nanoTime();
         HotSpotInstalledCode installedCode = null;
         int entryBCI = getEntryBCI();
-        final boolean isOSR = entryBCI != Compiler.INVOCATION_ENTRY_BCI;
+        final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
         HotSpotResolvedJavaMethod method = getMethod();
 
         // Log a compilation event.
@@ -192,7 +192,7 @@ public class CompilationTask {
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(getId()), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
-                result = compiler.compile(method, entryBCI, mustRecordMethodInlining(config));
+                result = compiler.compile(method, entryBCI);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             } finally {
@@ -232,10 +232,6 @@ public class CompilationTask {
                 bailout.printStackTrace(TTY.out);
             }
         } catch (Throwable t) {
-            if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
-                t.printStackTrace(TTY.out);
-            }
-
             // Log a failure event.
             CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
             if (event.shouldWrite()) {
@@ -244,65 +240,67 @@ public class CompilationTask {
                 event.commit();
             }
 
-            if (ExitVMOnException.getValue()) {
-                System.exit(-1);
-            }
+            handleException(t);
         } finally {
-            int compiledBytecodes = 0;
-            int codeSize = 0;
-            if (result != null) {
-                compiledBytecodes = result.getBytecodeSize();
-            }
-            if (installedCode != null) {
-                codeSize = installedCode.getSize();
-            }
-            CompiledBytecodes.add(compiledBytecodes);
+            try {
+                int compiledBytecodes = 0;
+                int codeSize = 0;
+                if (result != null) {
+                    compiledBytecodes = result.getBytecodeSize();
+                }
+                if (installedCode != null) {
+                    codeSize = installedCode.getSize();
+                }
+                CompiledBytecodes.add(compiledBytecodes);
 
-            // Log a compilation event.
-            if (compilationEvent.shouldWrite()) {
-                compilationEvent.setMethod(method.format("%H.%n(%p)"));
-                compilationEvent.setCompileId(getId());
-                compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
-                compilationEvent.setSucceeded(result != null && installedCode != null);
-                compilationEvent.setIsOsr(isOSR);
-                compilationEvent.setCodeSize(codeSize);
-                compilationEvent.setInlinedBytes(compiledBytecodes);
-                compilationEvent.commit();
-            }
+                // Log a compilation event.
+                if (compilationEvent.shouldWrite()) {
+                    compilationEvent.setMethod(method.format("%H.%n(%p)"));
+                    compilationEvent.setCompileId(getId());
+                    compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
+                    compilationEvent.setSucceeded(result != null && installedCode != null);
+                    compilationEvent.setIsOsr(isOSR);
+                    compilationEvent.setCodeSize(codeSize);
+                    compilationEvent.setInlinedBytes(compiledBytecodes);
+                    compilationEvent.commit();
+                }
 
-            long jvmciEnv = request.getJvmciEnv();
-            if (jvmciEnv != 0) {
-                long ctask = UNSAFE.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
-                assert ctask != 0L;
-                UNSAFE.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
-            }
-            long compilationTime = System.nanoTime() - startCompilationTime;
-            if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
-                long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
-                final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
-                codeCache.notifyCompilationStatistics(getId(), method, entryBCI != Compiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
+                long jvmciEnv = request.getJvmciEnv();
+                if (jvmciEnv != 0) {
+                    long ctask = UNSAFE.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
+                    assert ctask != 0L;
+                    UNSAFE.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
+                }
+                long compilationTime = System.nanoTime() - startCompilationTime;
+                if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
+                    long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
+                    final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
+                    codeCache.notifyCompilationStatistics(getId(), method, entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
+                }
+            } catch (Throwable t) {
+                handleException(t);
             }
         }
     }
 
-    /**
-     * Determines whether to disable method inlining recording for the method being compiled.
-     */
-    private boolean mustRecordMethodInlining(HotSpotVMConfig config) {
-        if (config.ciTime || config.ciTimeEach || CompiledBytecodes.isEnabled()) {
-            return true;
+    protected void handleException(Throwable t) {
+        if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
+            try {
+                t.printStackTrace(TTY.out);
+            } catch (Throwable throwable) {
+                // Don't let an exception here change the other control flow
+            }
         }
-        long jvmciEnv = request.getJvmciEnv();
-        if (jvmciEnv == 0 || UNSAFE.getByte(jvmciEnv + config.jvmciEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0) {
-            return true;
+
+        if (ExitVMOnException.getValue()) {
+            System.exit(-1);
         }
-        return false;
     }
 
     private String getMethodDescription() {
         HotSpotResolvedJavaMethod method = getMethod();
         return String.format("%-6d JVMCI %-70s %-45s %-50s %s", getId(), method.getDeclaringClass().getName(), method.getName(), method.getSignature().toMethodDescriptor(),
-                        getEntryBCI() == Compiler.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + getEntryBCI() + ") ");
+                        getEntryBCI() == JVMCICompiler.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + getEntryBCI() + ") ");
     }
 
     @SuppressWarnings("try")
@@ -319,6 +317,6 @@ public class CompilationTask {
 
     @Override
     public String toString() {
-        return "Compilation[id=" + getId() + ", " + getMethod().format("%H.%n(%p)") + (getEntryBCI() == Compiler.INVOCATION_ENTRY_BCI ? "" : "@" + getEntryBCI()) + "]";
+        return "Compilation[id=" + getId() + ", " + getMethod().format("%H.%n(%p)") + (getEntryBCI() == JVMCICompiler.INVOCATION_ENTRY_BCI ? "" : "@" + getEntryBCI()) + "]";
     }
 }

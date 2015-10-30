@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.memory;
 
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;

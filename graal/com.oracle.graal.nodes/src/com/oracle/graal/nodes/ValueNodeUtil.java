@@ -25,7 +25,7 @@ package com.oracle.graal.nodes;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -88,9 +88,8 @@ public class ValueNodeUtil {
 
     /**
      * Converts a given instruction to a value string. The representation of an node as a value is
-     * formed by concatenating the {@linkplain jdk.internal.jvmci.meta.JavaKind#getTypeChar
-     * character} denoting its {@linkplain ValueNode#getStackKind kind} and its id. For example,
-     * {@code "i13"}.
+     * formed by concatenating the {@linkplain jdk.vm.ci.meta.JavaKind#getTypeChar character}
+     * denoting its {@linkplain ValueNode#getStackKind kind} and its id. For example, {@code "i13"}.
      *
      * @param value the instruction to convert to a value string. If {@code value == null}, then "-"
      *            is returned.

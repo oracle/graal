@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static jdk.internal.jvmci.sparc.SPARC.i0;
-import static jdk.internal.jvmci.sparc.SPARC.i1;
-import static jdk.internal.jvmci.sparc.SPARC.i2;
-import static jdk.internal.jvmci.sparc.SPARC.i3;
-import static jdk.internal.jvmci.sparc.SPARC.i4;
-import static jdk.internal.jvmci.sparc.SPARC.o0;
-import static jdk.internal.jvmci.sparc.SPARC.o1;
-import static jdk.internal.jvmci.sparc.SPARC.o2;
-import static jdk.internal.jvmci.sparc.SPARC.o3;
-import static jdk.internal.jvmci.sparc.SPARC.o4;
+import static jdk.vm.ci.sparc.SPARC.i0;
+import static jdk.vm.ci.sparc.SPARC.i1;
+import static jdk.vm.ci.sparc.SPARC.i2;
+import static jdk.vm.ci.sparc.SPARC.i3;
+import static jdk.vm.ci.sparc.SPARC.i4;
+import static jdk.vm.ci.sparc.SPARC.o0;
+import static jdk.vm.ci.sparc.SPARC.o1;
+import static jdk.vm.ci.sparc.SPARC.o2;
+import static jdk.vm.ci.sparc.SPARC.o3;
+import static jdk.vm.ci.sparc.SPARC.o4;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;

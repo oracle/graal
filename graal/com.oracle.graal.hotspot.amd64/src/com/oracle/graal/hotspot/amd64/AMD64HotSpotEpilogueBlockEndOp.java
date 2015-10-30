@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;

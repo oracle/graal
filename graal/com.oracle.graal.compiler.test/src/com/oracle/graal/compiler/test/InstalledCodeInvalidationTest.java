@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
 
 import org.junit.Test;
 

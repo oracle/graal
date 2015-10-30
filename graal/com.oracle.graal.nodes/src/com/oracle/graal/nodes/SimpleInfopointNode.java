@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.internal.jvmci.code.BytecodePosition;
-import jdk.internal.jvmci.code.InfopointReason;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.InfopointReason;
 
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;

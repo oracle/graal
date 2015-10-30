@@ -31,10 +31,10 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.debug.Debug;

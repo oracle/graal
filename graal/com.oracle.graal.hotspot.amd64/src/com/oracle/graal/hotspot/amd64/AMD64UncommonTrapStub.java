@@ -22,22 +22,22 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static jdk.internal.jvmci.amd64.AMD64.r10;
-import static jdk.internal.jvmci.amd64.AMD64.r11;
-import static jdk.internal.jvmci.amd64.AMD64.r13;
-import static jdk.internal.jvmci.amd64.AMD64.r14;
-import static jdk.internal.jvmci.amd64.AMD64.r8;
-import static jdk.internal.jvmci.amd64.AMD64.r9;
-import static jdk.internal.jvmci.amd64.AMD64.rbx;
-import static jdk.internal.jvmci.amd64.AMD64.rcx;
-import static jdk.internal.jvmci.amd64.AMD64.rdi;
-import static jdk.internal.jvmci.amd64.AMD64.rdx;
-import static jdk.internal.jvmci.amd64.AMD64.rsi;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.hotspot.amd64.AMD64HotSpotRegisterConfig;
+import static jdk.vm.ci.amd64.AMD64.r10;
+import static jdk.vm.ci.amd64.AMD64.r11;
+import static jdk.vm.ci.amd64.AMD64.r13;
+import static jdk.vm.ci.amd64.AMD64.r14;
+import static jdk.vm.ci.amd64.AMD64.r8;
+import static jdk.vm.ci.amd64.AMD64.r9;
+import static jdk.vm.ci.amd64.AMD64.rbx;
+import static jdk.vm.ci.amd64.AMD64.rcx;
+import static jdk.vm.ci.amd64.AMD64.rdi;
+import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.rsi;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.hotspot.amd64.AMD64HotSpotRegisterConfig;
 
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;

@@ -23,7 +23,7 @@
 package com.oracle.graal.phases.common.inlining.policy;
 
 import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
-import jdk.internal.jvmci.code.BailoutException;
+import jdk.vm.ci.code.BailoutException;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.Replacements;

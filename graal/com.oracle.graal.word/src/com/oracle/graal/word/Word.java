@@ -29,8 +29,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.LocationIdentity;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.UnsignedMath;

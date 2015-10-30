@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;

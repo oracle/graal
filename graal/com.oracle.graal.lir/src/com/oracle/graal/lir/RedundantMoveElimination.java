@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir;
 
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,11 +31,11 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;

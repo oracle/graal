@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * An interval that is a hint for an {@code TraceInterval interval}.

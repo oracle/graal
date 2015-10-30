@@ -24,8 +24,8 @@ package com.oracle.graal.replacements.test;
 
 import java.util.HashMap;
 
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 

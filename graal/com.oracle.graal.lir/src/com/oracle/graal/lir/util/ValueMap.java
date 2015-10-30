@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.util;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 /**
  * A map interface to map {@link Value}s to other objects.

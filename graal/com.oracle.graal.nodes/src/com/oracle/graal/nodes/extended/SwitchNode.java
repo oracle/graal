@@ -24,8 +24,8 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Constant;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
 
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;

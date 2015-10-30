@@ -27,7 +27,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import java.util.BitSet;
 import java.util.List;
 
-import jdk.internal.jvmci.code.TargetDescription;
+import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;

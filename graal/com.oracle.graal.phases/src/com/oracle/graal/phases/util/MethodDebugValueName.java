@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.util;
 
-import jdk.internal.jvmci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaMethod;
 
 import com.oracle.graal.phases.LazyName;
 

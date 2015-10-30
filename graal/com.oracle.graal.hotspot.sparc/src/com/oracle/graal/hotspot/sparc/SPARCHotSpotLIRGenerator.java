@@ -28,76 +28,76 @@ import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static jdk.internal.jvmci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
-import static jdk.internal.jvmci.meta.JavaConstant.INT_0;
-import static jdk.internal.jvmci.sparc.SPARC.d32;
-import static jdk.internal.jvmci.sparc.SPARC.d34;
-import static jdk.internal.jvmci.sparc.SPARC.d36;
-import static jdk.internal.jvmci.sparc.SPARC.d38;
-import static jdk.internal.jvmci.sparc.SPARC.d40;
-import static jdk.internal.jvmci.sparc.SPARC.d42;
-import static jdk.internal.jvmci.sparc.SPARC.d44;
-import static jdk.internal.jvmci.sparc.SPARC.d46;
-import static jdk.internal.jvmci.sparc.SPARC.d48;
-import static jdk.internal.jvmci.sparc.SPARC.d50;
-import static jdk.internal.jvmci.sparc.SPARC.d52;
-import static jdk.internal.jvmci.sparc.SPARC.d54;
-import static jdk.internal.jvmci.sparc.SPARC.d56;
-import static jdk.internal.jvmci.sparc.SPARC.d58;
-import static jdk.internal.jvmci.sparc.SPARC.d60;
-import static jdk.internal.jvmci.sparc.SPARC.d62;
-import static jdk.internal.jvmci.sparc.SPARC.f0;
-import static jdk.internal.jvmci.sparc.SPARC.f10;
-import static jdk.internal.jvmci.sparc.SPARC.f12;
-import static jdk.internal.jvmci.sparc.SPARC.f14;
-import static jdk.internal.jvmci.sparc.SPARC.f16;
-import static jdk.internal.jvmci.sparc.SPARC.f18;
-import static jdk.internal.jvmci.sparc.SPARC.f2;
-import static jdk.internal.jvmci.sparc.SPARC.f20;
-import static jdk.internal.jvmci.sparc.SPARC.f22;
-import static jdk.internal.jvmci.sparc.SPARC.f24;
-import static jdk.internal.jvmci.sparc.SPARC.f26;
-import static jdk.internal.jvmci.sparc.SPARC.f28;
-import static jdk.internal.jvmci.sparc.SPARC.f30;
-import static jdk.internal.jvmci.sparc.SPARC.f4;
-import static jdk.internal.jvmci.sparc.SPARC.f6;
-import static jdk.internal.jvmci.sparc.SPARC.f8;
-import static jdk.internal.jvmci.sparc.SPARC.g1;
-import static jdk.internal.jvmci.sparc.SPARC.g3;
-import static jdk.internal.jvmci.sparc.SPARC.g4;
-import static jdk.internal.jvmci.sparc.SPARC.g5;
-import static jdk.internal.jvmci.sparc.SPARCKind.DWORD;
-import static jdk.internal.jvmci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
+import static jdk.vm.ci.meta.JavaConstant.INT_0;
+import static jdk.vm.ci.meta.JavaConstant.LONG_0;
+import static jdk.vm.ci.sparc.SPARC.d32;
+import static jdk.vm.ci.sparc.SPARC.d34;
+import static jdk.vm.ci.sparc.SPARC.d36;
+import static jdk.vm.ci.sparc.SPARC.d38;
+import static jdk.vm.ci.sparc.SPARC.d40;
+import static jdk.vm.ci.sparc.SPARC.d42;
+import static jdk.vm.ci.sparc.SPARC.d44;
+import static jdk.vm.ci.sparc.SPARC.d46;
+import static jdk.vm.ci.sparc.SPARC.d48;
+import static jdk.vm.ci.sparc.SPARC.d50;
+import static jdk.vm.ci.sparc.SPARC.d52;
+import static jdk.vm.ci.sparc.SPARC.d54;
+import static jdk.vm.ci.sparc.SPARC.d56;
+import static jdk.vm.ci.sparc.SPARC.d58;
+import static jdk.vm.ci.sparc.SPARC.d60;
+import static jdk.vm.ci.sparc.SPARC.d62;
+import static jdk.vm.ci.sparc.SPARC.f0;
+import static jdk.vm.ci.sparc.SPARC.f10;
+import static jdk.vm.ci.sparc.SPARC.f12;
+import static jdk.vm.ci.sparc.SPARC.f14;
+import static jdk.vm.ci.sparc.SPARC.f16;
+import static jdk.vm.ci.sparc.SPARC.f18;
+import static jdk.vm.ci.sparc.SPARC.f2;
+import static jdk.vm.ci.sparc.SPARC.f20;
+import static jdk.vm.ci.sparc.SPARC.f22;
+import static jdk.vm.ci.sparc.SPARC.f24;
+import static jdk.vm.ci.sparc.SPARC.f26;
+import static jdk.vm.ci.sparc.SPARC.f28;
+import static jdk.vm.ci.sparc.SPARC.f30;
+import static jdk.vm.ci.sparc.SPARC.f4;
+import static jdk.vm.ci.sparc.SPARC.f6;
+import static jdk.vm.ci.sparc.SPARC.f8;
+import static jdk.vm.ci.sparc.SPARC.g1;
+import static jdk.vm.ci.sparc.SPARC.g3;
+import static jdk.vm.ci.sparc.SPARC.g4;
+import static jdk.vm.ci.sparc.SPARC.g5;
+import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import java.util.Map;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterValue;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotCompressedNullConstant;
-import jdk.internal.jvmci.hotspot.HotSpotMetaspaceConstant;
-import jdk.internal.jvmci.hotspot.HotSpotObjectConstant;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.PlatformKind;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.sparc.SPARC;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
+import jdk.vm.ci.hotspot.HotSpotConstant;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARC;
+import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.compiler.sparc.SPARCArithmeticLIRGenerator;
 import com.oracle.graal.compiler.sparc.SPARCLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -113,12 +113,12 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.sparc.SPARCAddressValue;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.sparc.SPARCFrameMapBuilder;
 import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
-import com.oracle.graal.lir.sparc.SPARCMove;
 import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
@@ -132,12 +132,13 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private HotSpotLockStack lockStack;
     private LIRFrameState currentRuntimeCallInfo;
 
-    public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(new SPARCHotSpotLIRKindTool(), providers, config, cc, lirGenRes);
+    public SPARCHotSpotLIRGenerator(SPARCArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        this(new SPARCHotSpotLIRKindTool(), arithmeticLIRGen, providers, config, cc, lirGenRes);
     }
 
-    protected SPARCHotSpotLIRGenerator(LIRKindTool lirKindTool, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, providers, cc, lirGenRes);
+    protected SPARCHotSpotLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc,
+                    LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
         this.config = config;
     }
@@ -160,7 +161,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private AllocatableValue safepointAddressValue;
 
     @Override
-    public StackSlotValue getLockSlot(int lockDepth) {
+    public VirtualStackSlot getLockSlot(int lockDepth) {
         return getLockStack().makeLockSlot(lockDepth);
     }
 
@@ -212,7 +213,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         if (linkage.destroysRegisters() || hotspotLinkage.needsJavaFrameAnchor()) {
             HotSpotRegistersProvider registers = getProviders().getRegisters();
             Register thread = registers.getThreadRegister();
-            Value threadTemp = newVariable(LIRKind.value(SPARCKind.DWORD));
+            Value threadTemp = newVariable(LIRKind.value(SPARCKind.XWORD));
             Register stackPointer = registers.getStackPointerRegister();
             Variable spScratch = newVariable(LIRKind.value(target().arch.getWordKind()));
             append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer, threadTemp, spScratch));
@@ -332,11 +333,18 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Constant usedSource;
         if (COMPRESSED_NULL.equals(src)) {
             usedSource = INT_0;
+        } else if (src instanceof HotSpotObjectConstant && ((HotSpotObjectConstant) src).isNull()) {
+            usedSource = LONG_0;
         } else {
             usedSource = src;
         }
-        if (usedSource instanceof HotSpotMetaspaceConstant) {
-            return new SPARCMove.LoadConstantFromTable(usedSource, getConstantTableBase(), dst);
+        if (usedSource instanceof HotSpotConstant) {
+            HotSpotConstant constant = (HotSpotConstant) usedSource;
+            if (constant.isCompressed()) {
+                return new SPARCHotSpotMove.LoadHotSpotObjectConstantInline(constant, dst);
+            } else {
+                return new SPARCHotSpotMove.LoadHotSpotObjectConstantFromTable(constant, dst, getConstantTableBase());
+            }
         } else {
             return super.createMoveConstant(dst, usedSource);
         }
@@ -382,7 +390,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getLIRKind();
-        assert inputKind.getPlatformKind() == DWORD : inputKind;
+        assert inputKind.getPlatformKind() == XWORD : inputKind;
         if (inputKind.isReference(0)) {
             // oop
             Variable result = newVariable(LIRKind.reference(WORD));
@@ -393,7 +401,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             Variable result = newVariable(LIRKind.value(WORD));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitLoadConstant(LIRKind.value(DWORD), JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(XWORD), JavaConstant.forLong(encoding.base));
             }
             append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -406,15 +414,15 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         assert inputKind.getPlatformKind() == WORD;
         if (inputKind.isReference(0)) {
             // oop
-            Variable result = newVariable(LIRKind.reference(DWORD));
+            Variable result = newVariable(LIRKind.reference(XWORD));
             append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
             // metaspace pointer
-            Variable result = newVariable(LIRKind.value(DWORD));
+            Variable result = newVariable(LIRKind.value(XWORD));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitLoadConstant(LIRKind.value(DWORD), JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(XWORD), JavaConstant.forLong(encoding.base));
             }
             append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -426,7 +434,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
      * @param savedRegisterLocations the slots to which the registers are saved
      * @param supportsRemove determines if registers can be pruned
      */
-    protected SPARCSaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+    protected SPARCSaveRegistersOp emitSaveRegisters(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
         SPARCSaveRegistersOp save = new SPARCSaveRegistersOp(savedRegisters, savedRegisterLocations, supportsRemove);
         append(save);
         return save;
@@ -449,7 +457,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
                         d56,          d58,          d60,          d62
         };
         // @formatter:on
-        StackSlotValue[] savedRegisterLocations = new StackSlotValue[savedRegisters.length];
+        AllocatableValue[] savedRegisterLocations = new AllocatableValue[savedRegisters.length];
         for (int i = 0; i < savedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
             VirtualStackSlot spillSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));

@@ -31,9 +31,9 @@ import static com.oracle.graal.nodes.PiNode.piCast;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
-import static jdk.internal.jvmci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.internal.jvmci.meta.DeoptimizationReason.ClassCastException;
-import jdk.internal.jvmci.code.TargetDescription;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.ClassCastException;
+import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;

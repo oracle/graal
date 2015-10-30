@@ -27,8 +27,8 @@ import static com.oracle.graal.api.directives.GraalDirectives.injectBranchProbab
 
 import java.lang.reflect.Method;
 
-import jdk.internal.jvmci.options.OptionValue;
-import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import org.junit.Test;
 

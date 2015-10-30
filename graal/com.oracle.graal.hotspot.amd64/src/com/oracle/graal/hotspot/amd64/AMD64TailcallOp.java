@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;

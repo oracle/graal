@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.graph.GraalGraphJVMCIError;

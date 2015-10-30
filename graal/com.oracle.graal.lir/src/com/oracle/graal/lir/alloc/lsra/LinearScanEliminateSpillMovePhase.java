@@ -23,14 +23,19 @@
 package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.meta.AllocatableValue;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.options.NestedBooleanOptionValue;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -48,6 +53,13 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
 
 public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Enable spill move elimination.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> LIROptLSRAEliminateSpillMoves = new NestedBooleanOptionValue(LIROptimization, true);
+        // @formatter:on
+    }
 
     private static final IntervalPredicate mustStoreAtDefinition = new LinearScan.IntervalPredicate() {
 
@@ -111,7 +123,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
                              * be correct. Only moves that have been inserted by LinearScan can be
                              * removed.
                              */
-                            if (canEliminateSpillMove(block, move)) {
+                            if (Options.LIROptLSRAEliminateSpillMoves.getValue() && canEliminateSpillMove(block, move)) {
                                 /*
                                  * Move target is a stack slot that is always correct, so eliminate
                                  * instruction.

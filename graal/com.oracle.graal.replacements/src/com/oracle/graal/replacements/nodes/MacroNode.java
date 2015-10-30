@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static jdk.internal.jvmci.code.BytecodeFrame.isPlaceholderBci;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.Stamp;

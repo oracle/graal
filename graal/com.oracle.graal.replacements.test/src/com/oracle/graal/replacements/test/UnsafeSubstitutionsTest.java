@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

@@ -24,8 +24,8 @@ package com.oracle.graal.compiler.test.ea;
 
 import java.util.List;
 
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 

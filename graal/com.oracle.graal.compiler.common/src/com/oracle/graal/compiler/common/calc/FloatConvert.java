@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common.calc;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 public enum FloatConvert {
     F2I,

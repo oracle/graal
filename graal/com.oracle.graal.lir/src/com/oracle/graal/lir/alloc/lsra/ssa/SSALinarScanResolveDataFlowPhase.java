@@ -24,12 +24,12 @@ package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.List;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;

@@ -24,11 +24,11 @@ package com.oracle.graal.nodes;
 
 import java.util.Arrays;
 
-import jdk.internal.jvmci.meta.Assumptions;
-import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
-import jdk.internal.jvmci.meta.JavaTypeProfile;
-import jdk.internal.jvmci.meta.JavaTypeProfile.ProfiledType;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Utility for deriving hint types for a type check instruction (e.g. checkcast or instanceof) based

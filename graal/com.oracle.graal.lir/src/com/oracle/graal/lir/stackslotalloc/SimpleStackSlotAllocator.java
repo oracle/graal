@@ -22,15 +22,14 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import static jdk.internal.jvmci.code.ValueUtil.asVirtualStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -39,6 +38,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.ValueProcedure;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.framemap.SimpleVirtualStackSlot;
 import com.oracle.graal.lir.framemap.VirtualStackSlotRange;

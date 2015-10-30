@@ -26,9 +26,9 @@ import static com.oracle.graal.lir.alloc.lsra.ssa.SSALinearScanLifetimeAnalysisP
 
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;

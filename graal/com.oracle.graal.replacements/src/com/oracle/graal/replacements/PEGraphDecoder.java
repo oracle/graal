@@ -25,25 +25,25 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.java.BytecodeParserOptions.DumpDuringGraphBuilding;
 import static com.oracle.graal.java.BytecodeParserOptions.FailedLoopExplosionIsFatal;
 import static com.oracle.graal.java.BytecodeParserOptions.MaximumLoopExplosionCount;
-import static jdk.internal.jvmci.common.JVMCIError.unimplemented;
+import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.internal.jvmci.code.Architecture;
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.code.BytecodePosition;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.DeoptimizationAction;
-import jdk.internal.jvmci.meta.DeoptimizationReason;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;

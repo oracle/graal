@@ -24,10 +24,10 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.BytecodeFrame;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
@@ -70,6 +70,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;
+        assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
     public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
@@ -84,6 +85,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;
+        assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
     @Override

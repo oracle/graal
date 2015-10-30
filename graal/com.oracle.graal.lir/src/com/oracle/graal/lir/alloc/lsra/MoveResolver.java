@@ -22,21 +22,20 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isIllegal;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
@@ -366,7 +365,7 @@ public class MoveResolver {
         // do not allocate a new spill slot for temporary interval, but
         // use spill slot assigned to fromInterval. Otherwise moves from
         // one stack slot to another can happen (not allowed by LIRAssembler
-        StackSlotValue spillSlot = fromInterval.spillSlot();
+        AllocatableValue spillSlot = fromInterval.spillSlot();
         if (spillSlot == null) {
             spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
             fromInterval.setSpillSlot(spillSlot);
@@ -374,7 +373,7 @@ public class MoveResolver {
         spillInterval(spillCandidate, fromInterval, spillSlot);
     }
 
-    protected void spillInterval(int spillCandidate, Interval fromInterval, StackSlotValue spillSlot) {
+    protected void spillInterval(int spillCandidate, Interval fromInterval, AllocatableValue spillSlot) {
         assert mappingFrom.get(spillCandidate).equals(fromInterval);
         Interval spillInterval = getAllocator().createDerivedInterval(fromInterval);
         spillInterval.setKind(fromInterval.kind());

@@ -23,8 +23,8 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.nodes.ValueNode;

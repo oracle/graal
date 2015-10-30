@@ -24,8 +24,8 @@ package com.oracle.graal.nodes.java;
 
 import java.lang.reflect.Modifier;
 
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;

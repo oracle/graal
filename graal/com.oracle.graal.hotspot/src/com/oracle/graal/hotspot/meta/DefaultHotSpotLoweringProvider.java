@@ -33,26 +33,26 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.HUB_
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_LAYOUT_HELPER_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.INIT_LOCATION;
-import static jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
-import static jdk.internal.jvmci.meta.LocationIdentity.any;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
+import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
+import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.lang.ref.Reference;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaField;
-import jdk.internal.jvmci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.LocationIdentity;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ResolvedJavaField;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
@@ -101,6 +101,7 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.LoweredCallTargetNode;
 import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.SafepointNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.UnwindNode;
@@ -157,7 +158,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected final HotSpotGraalRuntimeProvider runtime;
     protected final ForeignCallsProvider foreignCalls;
     protected final HotSpotRegistersProvider registers;
-    protected final ConstantReflectionProvider constantReflection;
+    protected final HotSpotConstantReflectionProvider constantReflection;
 
     protected CheckCastDynamicSnippets.Templates checkcastDynamicSnippets;
     protected InstanceOfSnippets.Templates instanceofSnippets;
@@ -171,7 +172,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected RuntimeStringSnippets.Templates runtimeStringSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    ConstantReflectionProvider constantReflection, TargetDescription target) {
+                    HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
         super(metaAccess, target);
         this.runtime = runtime;
         this.foreignCalls = foreignCalls;
@@ -286,7 +287,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
-        } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode) {
+        } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode || n instanceof SafepointNode) {
             /* No lowering, we generate LIR directly for these nodes. */
         } else if (n instanceof ClassGetHubNode) {
             lowerClassGetHubNode((ClassGetHubNode) n, tool);
@@ -530,32 +531,30 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
         StructuredGraph graph = node.graph();
-        if (graph.getGuardsStage().allowsFloatingGuards()) {
-            if (OmitHotExceptionStacktrace.getValue()) {
-                Throwable exception;
-                if (node.getExceptionClass() == NullPointerException.class) {
-                    exception = Exceptions.cachedNullPointerException;
-                } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
-                    exception = Exceptions.cachedArrayIndexOutOfBoundsException;
-                } else {
-                    throw JVMCIError.shouldNotReachHere();
-                }
-                FloatingNode exceptionNode = ConstantNode.forConstant(constantReflection.forObject(exception), metaAccess, graph);
-                graph.replaceFixedWithFloating(node, exceptionNode);
-
+        if (OmitHotExceptionStacktrace.getValue()) {
+            Throwable exception;
+            if (node.getExceptionClass() == NullPointerException.class) {
+                exception = Exceptions.cachedNullPointerException;
+            } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
+                exception = Exceptions.cachedArrayIndexOutOfBoundsException;
             } else {
-                ForeignCallDescriptor descriptor;
-                if (node.getExceptionClass() == NullPointerException.class) {
-                    descriptor = RuntimeCalls.CREATE_NULL_POINTER_EXCEPTION;
-                } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
-                    descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
-                } else {
-                    throw JVMCIError.shouldNotReachHere();
-                }
-
-                ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(), node.getArguments()));
-                graph.replaceFixedWithFixed(node, foreignCallNode);
+                throw JVMCIError.shouldNotReachHere();
             }
+            FloatingNode exceptionNode = ConstantNode.forConstant(constantReflection.forObject(exception), metaAccess, graph);
+            graph.replaceFixedWithFloating(node, exceptionNode);
+
+        } else {
+            ForeignCallDescriptor descriptor;
+            if (node.getExceptionClass() == NullPointerException.class) {
+                descriptor = RuntimeCalls.CREATE_NULL_POINTER_EXCEPTION;
+            } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
+                descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
+            } else {
+                throw JVMCIError.shouldNotReachHere();
+            }
+
+            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(), node.getArguments()));
+            graph.replaceFixedWithFixed(node, foreignCallNode);
         }
     }
 

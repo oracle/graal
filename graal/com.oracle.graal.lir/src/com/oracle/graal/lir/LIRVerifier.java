@@ -24,19 +24,19 @@ package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isIllegal;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlotValue;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.TTY;

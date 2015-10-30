@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot.nodes;
 
 import java.util.List;
 
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;

@@ -29,9 +29,9 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime;
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.options.OptionValue;
 
 /**
  * An option that encapsulates and configures a print stream.

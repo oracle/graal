@@ -22,19 +22,20 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static jdk.internal.jvmci.sparc.SPARC.g1;
-import static jdk.internal.jvmci.sparc.SPARC.g3;
-import static jdk.internal.jvmci.sparc.SPARC.g4;
-import static jdk.internal.jvmci.sparc.SPARC.g5;
-import static jdk.internal.jvmci.sparc.SPARC.o0;
-import static jdk.internal.jvmci.sparc.SPARC.o1;
-import static jdk.internal.jvmci.sparc.SPARC.o2;
-import static jdk.internal.jvmci.sparc.SPARC.o3;
-import static jdk.internal.jvmci.sparc.SPARC.o4;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.RegisterConfig;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.sparc.SPARCHotSpotRegisterConfig;
+import static jdk.vm.ci.sparc.SPARC.g1;
+import static jdk.vm.ci.sparc.SPARC.g3;
+import static jdk.vm.ci.sparc.SPARC.g4;
+import static jdk.vm.ci.sparc.SPARC.g5;
+import static jdk.vm.ci.sparc.SPARC.o0;
+import static jdk.vm.ci.sparc.SPARC.o1;
+import static jdk.vm.ci.sparc.SPARC.o2;
+import static jdk.vm.ci.sparc.SPARC.o3;
+import static jdk.vm.ci.sparc.SPARC.o4;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.hotspot.sparc.SPARCHotSpotRegisterConfig;
 
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -44,11 +45,11 @@ final class SPARCUncommonTrapStub extends UncommonTrapStub {
 
     private RegisterConfig registerConfig;
 
-    public SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+    public SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage, HotSpotVMConfig config) {
         super(providers, target, linkage);
         // This is basically the maximum we can spare. All other G and O register are used.
         Register[] allocatable = new Register[]{g1, g3, g4, g5, o0, o1, o2, o3, o4};
-        registerConfig = new SPARCHotSpotRegisterConfig(target, allocatable);
+        registerConfig = new SPARCHotSpotRegisterConfig(target.arch, allocatable, config);
     }
 
     @Override

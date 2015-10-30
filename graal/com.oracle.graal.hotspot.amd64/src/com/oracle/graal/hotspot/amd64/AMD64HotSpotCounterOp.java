@@ -24,16 +24,16 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static jdk.internal.jvmci.amd64.AMD64.rax;
-import static jdk.internal.jvmci.amd64.AMD64.rbx;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.common.JVMCIError.unimplemented;
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.Value;
+import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rbx;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.common.JVMCIError.unimplemented;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -41,20 +41,21 @@ import com.oracle.graal.hotspot.HotSpotCounterOp;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 @Opcode("BenchMarkCounter")
 public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
     public static final LIRInstructionClass<AMD64HotSpotCounterOp> TYPE = LIRInstructionClass.create(AMD64HotSpotCounterOp.class);
 
-    @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private StackSlotValue backupSlot;
+    @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue backupSlot;
 
-    public AMD64HotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config, StackSlotValue backupSlot) {
+    public AMD64HotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config, VirtualStackSlot backupSlot) {
         super(TYPE, name, group, increment, registers, config);
         this.backupSlot = backupSlot;
     }
 
-    public AMD64HotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config, StackSlotValue backupSlot) {
+    public AMD64HotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config, VirtualStackSlot backupSlot) {
         super(TYPE, names, groups, increments, registers, config);
         this.backupSlot = backupSlot;
     }

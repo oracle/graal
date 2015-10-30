@@ -23,8 +23,8 @@
 
 package com.oracle.graal.hotspot.test;
 
-import static jdk.internal.jvmci.hotspot.HotSpotVMConfig.config;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import org.junit.Assume;
 import org.junit.Before;

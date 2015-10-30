@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 /**
  * Options related to {@link CompileTheWorld}.
@@ -35,7 +35,7 @@ import jdk.internal.jvmci.options.OptionValue;
  */
 public class CompileTheWorldOptions {
     // @formatter:off
-    @Option(help = "Compile all methods in all classes on given class path", type = OptionType.Debug)
+    @Option(help = "Class path denoting methods to compile", type = OptionType.Debug)
     public static final OptionValue<String> CompileTheWorldClasspath = new OptionValue<>(CompileTheWorld.SUN_BOOT_CLASS_PATH);
     @Option(help = "Verbose CompileTheWorld operation", type = OptionType.Debug)
     public static final OptionValue<Boolean> CompileTheWorldVerbose = new OptionValue<>(true);

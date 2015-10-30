@@ -25,17 +25,17 @@ package com.oracle.graal.compiler.test.tutorial;
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.code.CodeCacheProvider;
-import jdk.internal.jvmci.code.CodeUtil;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.InstalledCode;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
-import jdk.internal.jvmci.meta.ProfilingInfo;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;

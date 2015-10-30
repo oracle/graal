@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.match;
 
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 

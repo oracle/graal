@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import jdk.internal.jvmci.code.Register;
+import jdk.vm.ci.code.Register;
 
 public class HotSpotRegisters implements HotSpotRegistersProvider {
 

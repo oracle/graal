@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;

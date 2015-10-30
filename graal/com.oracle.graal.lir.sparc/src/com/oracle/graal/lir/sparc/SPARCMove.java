@@ -23,7 +23,10 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.MEMBAR_STORE_LOAD;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.isCPURegister;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.isDoubleFloatRegister;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm13;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.isSingleFloatRegister;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
@@ -32,39 +35,36 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static jdk.internal.jvmci.code.MemoryBarriers.STORE_LOAD;
-import static jdk.internal.jvmci.code.ValueUtil.asRegister;
-import static jdk.internal.jvmci.code.ValueUtil.asStackSlot;
-import static jdk.internal.jvmci.code.ValueUtil.isRegister;
-import static jdk.internal.jvmci.code.ValueUtil.isStackSlot;
-import static jdk.internal.jvmci.sparc.SPARC.g0;
-import static jdk.internal.jvmci.sparc.SPARCKind.DOUBLE;
-import static jdk.internal.jvmci.sparc.SPARCKind.DWORD;
-import static jdk.internal.jvmci.sparc.SPARCKind.SINGLE;
-import static jdk.internal.jvmci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.sparc.SPARC.g0;
+import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
+import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
+import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import java.util.Set;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.code.StackSlot;
-import jdk.internal.jvmci.code.StackSlotValue;
-import jdk.internal.jvmci.common.JVMCIError;
-import jdk.internal.jvmci.meta.AllocatableValue;
-import jdk.internal.jvmci.meta.Constant;
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.PlatformKind;
-import jdk.internal.jvmci.meta.Value;
-import jdk.internal.jvmci.sparc.SPARC;
-import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
-import jdk.internal.jvmci.sparc.SPARCKind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARC;
+import jdk.vm.ci.sparc.SPARC.CPUFeature;
+import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -72,6 +72,7 @@ import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public class SPARCMove {
@@ -126,15 +127,14 @@ public class SPARCMove {
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             final int byteCount = result.getPlatformKind().getSizeInBytes();
             assert byteCount > 1 : "Byte values must not be loaded via constant table";
-            final Runnable recordReference = () -> crb.recordDataReferenceInCode(constant, byteCount);
             Register baseRegister = asRegister(constantTableBase);
             if (isRegister(result)) {
                 Register resultRegister = asRegister(result);
-                loadFromConstantTable(crb, masm, byteCount, baseRegister, resultRegister, getDelayedControlTransfer(), recordReference);
+                loadFromConstantTable(crb, masm, byteCount, baseRegister, constant, resultRegister, getDelayedControlTransfer());
             } else if (isStackSlot(result)) {
                 try (ScratchRegister scratch = masm.getScratchRegister()) {
                     Register scratchRegister = scratch.getRegister();
-                    loadFromConstantTable(crb, masm, byteCount, baseRegister, scratchRegister, getDelayedControlTransfer(), recordReference);
+                    loadFromConstantTable(crb, masm, byteCount, baseRegister, constant, scratchRegister, getDelayedControlTransfer());
                     StackSlot slot = asStackSlot(result);
                     reg2stack(crb, masm, slot, scratchRegister.asValue(), getDelayedControlTransfer());
                 }
@@ -222,7 +222,7 @@ public class SPARCMove {
                 if (inputKind == WORD) {
                     masm.movxtod(asRegister(input, WORD), asRegister(result, DOUBLE));
                 } else {
-                    masm.movxtod(asRegister(input, DWORD), asRegister(result, DOUBLE));
+                    masm.movxtod(asRegister(input, XWORD), asRegister(result, DOUBLE));
                 }
             } else if (inputKind == SINGLE) {
                 if (resultKind == WORD) {
@@ -231,8 +231,8 @@ public class SPARCMove {
                     masm.movstouw(asRegister(input, SINGLE), asRegister(result, WORD));
                 }
             } else if (inputKind == DOUBLE) {
-                if (resultKind == DWORD) {
-                    masm.movdtox(asRegister(input, DOUBLE), asRegister(result, DWORD));
+                if (resultKind == XWORD) {
+                    masm.movdtox(asRegister(input, DOUBLE), asRegister(result, XWORD));
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
@@ -321,7 +321,7 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress address = addressValue.toAddress();
-            loadEffectiveAddress(crb, masm, address, asRegister(result, DWORD), getDelayedControlTransfer());
+            loadEffectiveAddress(crb, masm, address, asRegister(result, XWORD), getDelayedControlTransfer());
         }
     }
 
@@ -343,7 +343,7 @@ public class SPARCMove {
             assert addr == masm.getPlaceholder();
             final boolean forceRelocatable = true;
             Register dstReg = asRegister(result);
-            new Setx(0, dstReg, forceRelocatable).emit(masm);
+            masm.setx(0, dstReg, forceRelocatable);
         }
 
         @Override
@@ -437,18 +437,19 @@ public class SPARCMove {
         public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
         @Def({REG}) protected AllocatableValue result;
-        @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
+        @Use({STACK, UNINITIALIZED}) protected AllocatableValue slot;
 
-        public StackLoadAddressOp(AllocatableValue result, StackSlotValue address) {
+        public StackLoadAddressOp(AllocatableValue result, AllocatableValue slot) {
             super(TYPE, SIZE);
             this.result = result;
-            this.slot = address;
+            this.slot = slot;
+            assert slot instanceof VirtualStackSlot || slot instanceof StackSlot;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress address = (SPARCAddress) crb.asAddress(slot);
-            loadEffectiveAddress(crb, masm, address, asRegister(result, DWORD), getDelayedControlTransfer());
+            loadEffectiveAddress(crb, masm, address, asRegister(result, XWORD), getDelayedControlTransfer());
         }
     }
 
@@ -459,7 +460,7 @@ public class SPARCMove {
                 masm.add(address.getBase(), address.getDisplacement(), result);
             } else {
                 assert result.encoding() != address.getBase().encoding();
-                new Setx(address.getDisplacement(), result).emit(masm);
+                masm.setx(address.getDisplacement(), result, false);
                 // No relocation, therefore, the add can be delayed as well
                 delaySlotHolder.emitControlTransfer(crb, masm);
                 masm.add(address.getBase(), result, result);
@@ -593,11 +594,11 @@ public class SPARCMove {
             return;
         }
         delaySlotLir.emitControlTransfer(crb, masm);
-        if (SPARC.isCPURegister(src) && SPARC.isCPURegister(dst)) {
+        if (isCPURegister(src) && isCPURegister(dst)) {
             masm.mov(src, dst);
-        } else if (SPARC.isSingleFloatRegister(src) && SPARC.isSingleFloatRegister(dst)) {
+        } else if (isSingleFloatRegister(src) && isSingleFloatRegister(dst)) {
             masm.fsrc2s(src, dst);
-        } else if (SPARC.isDoubleFloatRegister(src) && SPARC.isDoubleFloatRegister(dst)) {
+        } else if (isDoubleFloatRegister(src) && isDoubleFloatRegister(dst)) {
             masm.fsrc2d(src, dst);
         } else {
             throw JVMCIError.shouldNotReachHere(String.format("Trying to move between register domains src: %s dst: %s", src, dst));
@@ -617,7 +618,7 @@ public class SPARCMove {
     public static SPARCAddress generateSimm13OffsetLoad(SPARCAddress addr, SPARCMacroAssembler masm, Register scratch) {
         boolean displacementOutOfBound = addr.getIndex().equals(Register.None) && !SPARCAssembler.isSimm13(addr.getDisplacement());
         if (displacementOutOfBound) {
-            new Setx(addr.getDisplacement(), scratch, false).emit(masm);
+            masm.setx(addr.getDisplacement(), scratch, false);
             return new SPARCAddress(addr.getBase(), scratch);
         } else {
             return addr;
@@ -632,7 +633,6 @@ public class SPARCMove {
             boolean hasVIS3 = cpuFeatures.contains(CPUFeature.VIS3);
             Register resultRegister = asRegister(result);
             int byteCount = result.getPlatformKind().getSizeInBytes();
-            Runnable recordReference = () -> crb.recordDataReferenceInCode(input, byteCount);
             switch (input.getJavaKind().getStackKind()) {
                 case Int:
                     if (input.isDefaultForKind()) {
@@ -645,7 +645,7 @@ public class SPARCMove {
                         if (constantTableBase.equals(g0)) {
                             throw JVMCIError.shouldNotReachHere();
                         } else {
-                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, input, resultRegister, delaySlotLir);
                         }
                     }
                     break;
@@ -657,7 +657,7 @@ public class SPARCMove {
                         delaySlotLir.emitControlTransfer(crb, masm);
                         masm.or(g0, (int) input.asLong(), resultRegister);
                     } else {
-                        loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                        loadFromConstantTable(crb, masm, byteCount, constantTableBase, input, resultRegister, delaySlotLir);
                     }
                     break;
                 case Float: {
@@ -673,7 +673,7 @@ public class SPARCMove {
                             masm.movwtos(scratch, resultRegister);
                         } else {
                             // First load the address into the scratch register
-                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, input, resultRegister, delaySlotLir);
                         }
                     }
                     break;
@@ -690,7 +690,7 @@ public class SPARCMove {
                             delaySlotLir.emitControlTransfer(crb, masm);
                             masm.movxtod(scratch, resultRegister);
                         } else {
-                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, input, resultRegister, delaySlotLir);
                         }
                     }
                     break;
@@ -700,7 +700,7 @@ public class SPARCMove {
                         delaySlotLir.emitControlTransfer(crb, masm);
                         masm.clr(resultRegister);
                     } else {
-                        loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                        loadFromConstantTable(crb, masm, byteCount, constantTableBase, input, resultRegister, delaySlotLir);
                     }
                     break;
                 default:
@@ -716,7 +716,7 @@ public class SPARCMove {
             case WORD:
                 masm.cas(asRegister(address), asRegister(cmpValue), asRegister(newValue));
                 break;
-            case DWORD:
+            case XWORD:
                 masm.casx(asRegister(address), asRegister(cmpValue), asRegister(newValue));
                 break;
             default:
@@ -759,8 +759,8 @@ public class SPARCMove {
      * generated patterns by this method must be understood by
      * CodeInstaller::pd_patch_DataSectionReference (jvmciCodeInstaller_sparc.cpp).
      */
-    public static void loadFromConstantTable(CompilationResultBuilder crb, SPARCMacroAssembler masm, int byteCount, Register constantTableBase, Register dest,
-                    SPARCDelayedControlTransfer delaySlotInstruction, Runnable recordReference) {
+    public static void loadFromConstantTable(CompilationResultBuilder crb, SPARCMacroAssembler masm, int byteCount, Register constantTableBase, Constant input, Register dest,
+                    SPARCDelayedControlTransfer delaySlotInstruction) {
         SPARCAddress address;
         ScratchRegister scratch = null;
         try {
@@ -768,12 +768,12 @@ public class SPARCMove {
                 address = new SPARCAddress(constantTableBase, 0);
                 // Make delayed only, when using immediate constant load.
                 delaySlotInstruction.emitControlTransfer(crb, masm);
-                recordReference.run();
+                crb.recordDataReferenceInCode(input, byteCount);
             } else {
                 scratch = masm.getScratchRegister();
                 Register sr = scratch.getRegister();
-                recordReference.run();
-                new Sethix(0, sr, true).emit(masm);
+                crb.recordDataReferenceInCode(input, byteCount);
+                masm.sethix(0, sr, true);
                 address = new SPARCAddress(sr, 0);
             }
             masm.ld(address, dest, byteCount, false);

@@ -25,15 +25,15 @@ package com.oracle.graal.compiler.test;
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
 import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
-import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
+import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static org.junit.Assert.assertNotNull;
-import jdk.internal.jvmci.code.CallingConvention;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.code.CompilationResult;
-import jdk.internal.jvmci.code.CompilationResult.Call;
-import jdk.internal.jvmci.code.CompilationResult.Infopoint;
-import jdk.internal.jvmci.code.InfopointReason;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompilationResult.Call;
+import jdk.vm.ci.code.CompilationResult.Infopoint;
+import jdk.vm.ci.code.InfopointReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 

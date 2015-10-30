@@ -24,7 +24,7 @@ package com.oracle.graal.replacements.test;
 
 import java.util.Random;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

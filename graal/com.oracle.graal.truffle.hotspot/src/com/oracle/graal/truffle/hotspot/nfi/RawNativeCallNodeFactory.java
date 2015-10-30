@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import jdk.internal.jvmci.meta.JavaConstant;
-import jdk.internal.jvmci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;

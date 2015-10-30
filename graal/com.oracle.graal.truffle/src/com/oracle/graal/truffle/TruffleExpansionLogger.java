@@ -30,8 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
@@ -192,7 +192,7 @@ public class TruffleExpansionLogger {
                     return String.format("(%s)", e.getFileName());
                 }
             } else {
-                return String.format("(Unknown Source)");
+                return "(Unknown Source)";
             }
         }
     }

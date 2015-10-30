@@ -25,9 +25,6 @@ package com.oracle.graal.hotspot.test;
 
 import org.junit.Test;
 
-import sun.misc.SharedSecrets;
-import sun.reflect.ConstantPool;
-
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -35,6 +32,8 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+
+import sun.reflect.ConstantPool;
 
 public class ConstantPoolSubstitutionsTests extends GraalCompilerTest {
 
@@ -60,9 +59,22 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest {
         return graph;
     }
 
+    private static ConstantPool getConstantPoolForObject() {
+        String javaVersion = System.getProperty("java.specification.version");
+        String miscPackage = javaVersion.compareTo("1.9") < 0 ? "sun.misc" : "jdk.internal.misc";
+        try {
+            Class<?> sharedSecretsClass = Class.forName(miscPackage + ".SharedSecrets");
+            Class<?> javaLangAccessClass = Class.forName(miscPackage + ".JavaLangAccess");
+            Object jla = sharedSecretsClass.getDeclaredMethod("getJavaLangAccess").invoke(null);
+            return (ConstantPool) javaLangAccessClass.getDeclaredMethod("getConstantPool", Class.class).invoke(jla, Object.class);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
     @Test
     public void testGetSize() {
-        ConstantPool cp = SharedSecrets.getJavaLangAccess().getConstantPool(Object.class);
+        ConstantPool cp = getConstantPoolForObject();
         test("getSize", cp);
     }
 

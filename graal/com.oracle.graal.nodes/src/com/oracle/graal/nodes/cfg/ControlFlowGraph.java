@@ -28,7 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
-import jdk.internal.jvmci.common.JVMCIError;
+import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
 import com.oracle.graal.compiler.common.cfg.CFGVerifier;

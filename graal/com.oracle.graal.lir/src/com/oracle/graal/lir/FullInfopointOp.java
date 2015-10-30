@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir;
 
-import jdk.internal.jvmci.code.InfopointReason;
+import jdk.vm.ci.code.InfopointReason;
 
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 

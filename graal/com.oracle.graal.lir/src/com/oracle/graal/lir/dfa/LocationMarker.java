@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.lir.dfa;
 
-import static jdk.internal.jvmci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
 
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.internal.jvmci.code.Register;
-import jdk.internal.jvmci.meta.LIRKind;
-import jdk.internal.jvmci.meta.PlatformKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;

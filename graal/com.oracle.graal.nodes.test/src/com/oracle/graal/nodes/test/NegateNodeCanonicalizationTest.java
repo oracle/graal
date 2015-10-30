@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes.test;
 
 import static org.junit.Assert.assertEquals;
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaConstant;
 
 import org.junit.Before;
 import org.junit.Test;

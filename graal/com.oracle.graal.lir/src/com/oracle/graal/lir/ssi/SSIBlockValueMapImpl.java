@@ -23,14 +23,14 @@
 package com.oracle.graal.lir.ssi;
 
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static jdk.internal.jvmci.code.ValueUtil.isVirtualStackSlot;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;

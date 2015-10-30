@@ -29,11 +29,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.internal.jvmci.code.BailoutException;
-import jdk.internal.jvmci.meta.JavaMethod;
-import jdk.internal.jvmci.options.Option;
-import jdk.internal.jvmci.options.OptionType;
-import jdk.internal.jvmci.options.OptionValue;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.options.Option;
+import jdk.vm.ci.options.OptionType;
+import jdk.vm.ci.options.OptionValue;
 
 public class GraalDebugConfig implements DebugConfig {
     @SuppressWarnings("all")
@@ -278,13 +278,16 @@ public class GraalDebugConfig implements DebugConfig {
         }
         Debug.setConfig(Debug.fixedConfig(Debug.DEFAULT_LOG_LEVEL, Debug.DEFAULT_LOG_LEVEL, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
+        HashSet<Object> firstSeen = new HashSet<>();
         for (Object o : Debug.context()) {
-            if (Options.DumpOnError.getValue()) {
-                Debug.dump(o, "Exception: " + e.toString());
-            } else {
-                Debug.log("Context obj %s", o);
+            // Only dump a context object once.
+            if (firstSeen.add(o)) {
+                if (Options.DumpOnError.getValue()) {
+                    Debug.dump(o, "Exception: " + e.toString());
+                } else {
+                    Debug.log("Context obj %s", o);
+                }
             }
-
         }
         return null;
     }

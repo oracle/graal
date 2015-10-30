@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.extended;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import jdk.internal.jvmci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;

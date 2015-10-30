@@ -24,10 +24,10 @@ package com.oracle.graal.graphbuilderconf;
 
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import static jdk.internal.jvmci.code.BytecodeFrame.AFTER_BCI;
-import static jdk.internal.jvmci.code.BytecodeFrame.BEFORE_BCI;
-import static jdk.internal.jvmci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
+import static jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI;
+import static jdk.vm.ci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.FrameState;

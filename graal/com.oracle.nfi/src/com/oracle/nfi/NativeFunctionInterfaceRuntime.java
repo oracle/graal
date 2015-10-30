@@ -49,7 +49,7 @@ public final class NativeFunctionInterfaceRuntime {
         NativeFunctionInterfaceAccess access = null;
         Class<?> servicesClass = null;
         try {
-            servicesClass = Class.forName("jdk.internal.jvmci.service.Services");
+            servicesClass = Class.forName("jdk.vm.ci.service.Services");
         } catch (ClassNotFoundException e) {
             try {
                 // Legacy support

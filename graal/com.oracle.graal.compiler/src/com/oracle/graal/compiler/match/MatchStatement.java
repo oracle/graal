@@ -26,7 +26,7 @@ import static com.oracle.graal.debug.GraalDebugConfig.Options.LogVerbose;
 
 import java.util.List;
 
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
@@ -94,7 +94,7 @@ public class MatchStatement {
         result = pattern.matchUsage(node, context);
         if (result == Result.OK) {
             // Invoke the generator method and set the result if it's non null.
-            ComplexMatchResult value = generatorMethod.match(builder, buildArgList(context));
+            ComplexMatchResult value = generatorMethod.match(builder.getNodeMatchRules(), buildArgList(context));
             if (value != null) {
                 context.setResult(value);
                 MatchStatementSuccess.increment();

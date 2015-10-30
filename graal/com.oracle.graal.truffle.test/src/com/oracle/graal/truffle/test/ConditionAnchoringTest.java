@@ -26,9 +26,9 @@ import static com.oracle.graal.graph.test.matchers.NodeIterableCount.hasCount;
 import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.JavaType;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 

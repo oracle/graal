@@ -24,11 +24,11 @@ package com.oracle.graal.compiler.test;
 
 import java.io.Serializable;
 
-import jdk.internal.jvmci.meta.JavaTypeProfile;
-import jdk.internal.jvmci.meta.ProfilingInfo;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
-import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.TriState;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
 
 import org.junit.Assert;
 import org.junit.Test;

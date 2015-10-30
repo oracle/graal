@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.code.TargetDescription;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.ConstantReflectionProvider;
-import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.graph.Node;
@@ -42,7 +42,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     private AMD64ConvertSnippets.Templates convertSnippets;
 
     public AMD64HotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    ConstantReflectionProvider constantReflection, TargetDescription target) {
+                    HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
         super(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
     }
 

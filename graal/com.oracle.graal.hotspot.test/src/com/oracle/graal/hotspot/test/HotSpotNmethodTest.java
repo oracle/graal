@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import jdk.internal.jvmci.code.InvalidInstalledCodeException;
-import jdk.internal.jvmci.hotspot.HotSpotNmethod;
-import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.hotspot.HotSpotNmethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;

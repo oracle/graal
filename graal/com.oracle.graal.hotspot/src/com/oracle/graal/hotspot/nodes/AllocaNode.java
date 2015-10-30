@@ -24,12 +24,12 @@ package com.oracle.graal.hotspot.nodes;
 
 import java.util.BitSet;
 
-import jdk.internal.jvmci.code.VirtualStackSlot;
-import jdk.internal.jvmci.meta.JavaKind;
-import jdk.internal.jvmci.meta.Value;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
