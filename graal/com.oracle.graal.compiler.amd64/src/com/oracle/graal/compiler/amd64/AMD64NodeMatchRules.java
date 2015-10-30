@@ -35,13 +35,6 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SS;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -75,6 +68,14 @@ import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.extended.UnsafeCastNode;
 import com.oracle.graal.nodes.memory.Access;
 import com.oracle.graal.nodes.memory.WriteNode;
+
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 public class AMD64NodeMatchRules extends NodeMatchRules {
 
@@ -126,7 +127,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
         if (value.isConstant()) {
             JavaConstant constant = value.asJavaConstant();
-            if (kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {
+            if (constant != null && kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
                 return null;
             }
@@ -134,7 +135,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Debug.log("Skipping constant compares for float kinds");
                 return null;
             }
-            if (constant.getJavaKind() == JavaKind.Object && !constant.isNull()) {
+            if (constant != null && constant.getJavaKind() == JavaKind.Object && !constant.isNull()) {
                 Debug.log("Skipping constant compares for Object kinds");
                 return null;
             }
@@ -151,8 +152,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 boolean unorderedIsTrue = compare.unorderedIsTrue();
                 double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
                 Value other;
-                if (value.isConstant()) {
-                    other = gen.emitJavaConstant(value.asJavaConstant());
+                JavaConstant constant = value.asJavaConstant();
+                if (constant != null) {
+                    other = gen.emitJavaConstant(constant);
                 } else {
                     other = operand(value);
                 }
@@ -172,7 +174,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         OperandSize size = kind == AMD64Kind.QWORD ? QWORD : DWORD;
         if (value.isConstant()) {
             JavaConstant constant = value.asJavaConstant();
-            if (kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {
+            if (constant != null && kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
                 return null;
             }

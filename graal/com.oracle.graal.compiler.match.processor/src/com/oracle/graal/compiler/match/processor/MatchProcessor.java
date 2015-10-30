@@ -604,7 +604,7 @@ public class MatchProcessor extends AbstractProcessor {
     }
 
     private void createProviderFile(String pkg, String providerClassName, Element... originatingElements) throws IOException {
-        String filename = "META-INF/providers/" + pkg + "." + providerClassName;
+        String filename = "META-INF/jvmci.providers/" + pkg + "." + providerClassName;
         FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
         writer.println(MatchStatementSet.class.getName());
