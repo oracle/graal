@@ -73,11 +73,10 @@ public abstract class SLReadPropertyCacheNode extends Node {
      * We use a separate long specialization to avoid boxing for long.
      */
     @Specialization(limit = "CACHE_LIMIT", guards = {"longLocation != null", "shape.check(receiver)"}, assumptions = "shape.getValidAssumption()")
-    @SuppressWarnings("unused")
     protected long doCachedLong(DynamicObject receiver,   //
                     @Cached("receiver.getShape()") Shape shape,   //
                     @Cached("getLongLocation(shape)") LongLocation longLocation) {
-        return longLocation.getLong(receiver, true);
+        return longLocation.getLong(receiver, shape);
     }
 
     protected LongLocation getLongLocation(Shape shape) {

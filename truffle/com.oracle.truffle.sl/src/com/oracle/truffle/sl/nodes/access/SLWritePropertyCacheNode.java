@@ -42,9 +42,9 @@ package com.oracle.truffle.sl.nodes.access;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
@@ -52,8 +52,11 @@ import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 public abstract class SLWritePropertyCacheNode extends Node {
+    protected static final int CACHE_LIMIT = 3;
 
     protected final String propertyName;
 
@@ -63,105 +66,73 @@ public abstract class SLWritePropertyCacheNode extends Node {
 
     public abstract void executeObject(DynamicObject receiver, Object value);
 
-    @Specialization(guards = "location.isValid(receiver, value)", assumptions = "location.getAssumptions()")
-    public void writeCached(DynamicObject receiver, Object value,   //
-                    @Cached("createCachedWrite(receiver, value)") CachedWriteLocation location) {
-        if (location.writeUnchecked(receiver, value)) {
-            // write successful
-        } else {
+    @Specialization(guards = {"location != null", "shape.check(receiver)", "location.canSet(receiver, value)"}, assumptions = {"shape.getValidAssumption()"}, limit = "CACHE_LIMIT")
+    public void writeExistingPropertyCached(DynamicObject receiver, Object value, //
+                    @Cached("lookupLocation(receiver, value)") Location location, //
+                    @Cached("receiver.getShape()") Shape shape, //
+                    @Cached("ensureValid(receiver)") Assumption validAssumption) {
+        try {
+            validAssumption.check();
+        } catch (InvalidAssumptionException e) {
             executeObject(receiver, value);
+            return;
+        }
+        try {
+            location.set(receiver, value, shape);
+        } catch (IncompatibleLocationException | FinalLocationException e) {
+            throw new IllegalStateException(e);
         }
     }
 
-    @Specialization(contains = "writeCached")
+    @Specialization(guards = {"existing == null", "shapeBefore.check(receiver)", "shapeAfter != null", "newLocation.canSet(receiver, value)"}, assumptions = {"shapeBefore.getValidAssumption()",
+                    "shapeAfter.getValidAssumption()"}, limit = "CACHE_LIMIT")
+    public void writeNewPropertyCached(DynamicObject receiver, Object value, //
+                    @Cached("lookupLocation(receiver, value)") @SuppressWarnings("unused") Location existing, //
+                    @Cached("receiver.getShape()") Shape shapeBefore, //
+                    @Cached("defineProperty(receiver, value)") Shape shapeAfter, //
+                    @Cached("getLocation(shapeAfter)") Location newLocation, //
+                    @Cached("ensureValid(receiver)") Assumption validAssumption) {
+        try {
+            validAssumption.check();
+        } catch (InvalidAssumptionException e) {
+            executeObject(receiver, value);
+            return;
+        }
+        try {
+            newLocation.set(receiver, value, shapeBefore, shapeAfter);
+        } catch (IncompatibleLocationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached"})
     @TruffleBoundary
-    public void writeGeneric(DynamicObject receiver, Object value,   //
-                    @Cached("new(createCachedWrite(receiver, value))") LRUCachedWriteLocation lru) {
-        CachedWriteLocation location = lru.location;
-        if (!location.isValid(receiver, value) || !location.areAssumptionsValid()) {
-            location = createCachedWrite(receiver, value);
-            lru.location = location;
-        }
-        if (location.writeUnchecked(receiver, value)) {
-            // write successful
+    public void writeUncached(DynamicObject receiver, Object value) {
+        receiver.define(propertyName, value);
+    }
+
+    protected final Location lookupLocation(DynamicObject object, Object value) {
+        final Shape oldShape = object.getShape();
+        final Property property = oldShape.getProperty(propertyName);
+
+        if (property != null && property.getLocation().canSet(object, value)) {
+            return property.getLocation();
         } else {
-            executeObject(receiver, value);
+            return null;
         }
     }
 
-    protected CachedWriteLocation createCachedWrite(DynamicObject receiver, Object value) {
-        while (receiver.updateShape()) {
-            // multiple shape updates might be needed.
-        }
-
+    protected final Shape defineProperty(DynamicObject receiver, Object value) {
         Shape oldShape = receiver.getShape();
-        Shape newShape;
-        Property property = oldShape.getProperty(propertyName);
-
-        if (property != null && property.getLocation().canSet(receiver, value)) {
-            newShape = oldShape;
-        } else {
-            receiver.define(propertyName, value, 0);
-            newShape = receiver.getShape();
-            property = newShape.getProperty(propertyName);
-        }
-
-        if (!oldShape.check(receiver)) {
-            return createCachedWrite(receiver, value);
-        }
-
-        return new CachedWriteLocation(oldShape, newShape, property.getLocation());
-
+        Shape newShape = oldShape.defineProperty(propertyName, value, 0);
+        return newShape;
     }
 
-    protected static final class CachedWriteLocation {
-
-        private final Shape oldShape;
-        private final Shape newShape;
-        private final Location location;
-        private final Assumption validLocation = Truffle.getRuntime().createAssumption();
-
-        public CachedWriteLocation(Shape oldShape, Shape newShape, Location location) {
-            this.oldShape = oldShape;
-            this.newShape = newShape;
-            this.location = location;
-        }
-
-        public boolean areAssumptionsValid() {
-            return validLocation.isValid() && oldShape.getValidAssumption().isValid() && newShape.getValidAssumption().isValid();
-        }
-
-        public Assumption[] getAssumptions() {
-            return new Assumption[]{oldShape.getValidAssumption(), newShape.getValidAssumption(), validLocation};
-        }
-
-        public boolean isValid(DynamicObject receiver, Object value) {
-            return oldShape.check(receiver) && location.canSet(receiver, value);
-        }
-
-        public boolean writeUnchecked(DynamicObject receiver, Object value) {
-            try {
-                if (oldShape == newShape) {
-                    location.set(receiver, value, oldShape);
-                } else {
-                    location.set(receiver, value, oldShape, newShape);
-                }
-                return true;
-            } catch (IncompatibleLocationException | FinalLocationException e) {
-                validLocation.invalidate();
-                return false;
-            }
-        }
+    protected final Location getLocation(Shape newShape) {
+        return newShape.getProperty(propertyName).getLocation();
     }
 
-    protected static final class LRUCachedWriteLocation {
-
-        private CachedWriteLocation location;
-
-        public LRUCachedWriteLocation(CachedWriteLocation location) {
-            this.location = location;
-        }
-
+    protected static Assumption ensureValid(DynamicObject receiver) {
+        return receiver.updateShape() ? NeverValidAssumption.INSTANCE : AlwaysValidAssumption.INSTANCE;
     }
-
 }
