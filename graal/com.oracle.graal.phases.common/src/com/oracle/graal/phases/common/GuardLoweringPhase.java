@@ -173,7 +173,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                     PiNode piNode = (PiNode) guard;
                     guardNode = (GuardNode) piNode.getGuard();
                 }
-                LogicNode condition = guardNode.condition();
+                LogicNode condition = guardNode.getCondition();
                 guardNode.replaceAndDelete(fixedAccess);
                 if (condition.hasNoUsages()) {
                     GraphUtil.killWithUnusedFloatingInputs(condition);
@@ -184,8 +184,8 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
         private void processGuard(Node node) {
             GuardNode guard = (GuardNode) node;
-            if (guard.isNegated() && guard.condition() instanceof IsNullNode && (guard.getSpeculation() == null || guard.getSpeculation().equals(JavaConstant.NULL_POINTER))) {
-                ValueNode obj = ((IsNullNode) guard.condition()).getValue();
+            if (guard.isNegated() && guard.getCondition() instanceof IsNullNode && (guard.getSpeculation() == null || guard.getSpeculation().equals(JavaConstant.NULL_POINTER))) {
+                ValueNode obj = ((IsNullNode) guard.getCondition()).getValue();
                 nullGuarded.put(obj, guard);
             }
         }
@@ -228,7 +228,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             AbstractBeginNode fastPath = graph.add(new BeginNode());
             @SuppressWarnings("deprecation")
             int debugId = useGuardIdAsDebugId ? guard.getId() : DeoptimizeNode.DEFAULT_DEBUG_ID;
-            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason(), debugId, guard.getSpeculation(), null));
+            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.getAction(), guard.getReason(), debugId, guard.getSpeculation(), null));
             AbstractBeginNode deoptBranch = BeginNode.begin(deopt);
             AbstractBeginNode trueSuccessor;
             AbstractBeginNode falseSuccessor;
@@ -240,7 +240,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                 trueSuccessor = fastPath;
                 falseSuccessor = deoptBranch;
             }
-            IfNode ifNode = graph.add(new IfNode(guard.condition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0));
+            IfNode ifNode = graph.add(new IfNode(guard.getCondition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0));
             guard.replaceAndDelete(fastPath);
             insert(ifNode, fastPath);
         }

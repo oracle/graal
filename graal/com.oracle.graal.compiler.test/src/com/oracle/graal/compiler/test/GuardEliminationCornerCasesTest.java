@@ -94,7 +94,7 @@ public class GuardEliminationCornerCasesTest extends GraalCompilerTest {
         for (Node n : graph.getNodes()) {
             if (n instanceof GuardNode) {
                 GuardNode guardNode = (GuardNode) n;
-                LogicNode condition = guardNode.condition();
+                LogicNode condition = guardNode.getCondition();
                 if (condition instanceof InstanceOfNode) {
                     InstanceOfNode instanceOfNode = (InstanceOfNode) condition;
                     if (instanceOfNode.getValue() instanceof ValueProxy) {

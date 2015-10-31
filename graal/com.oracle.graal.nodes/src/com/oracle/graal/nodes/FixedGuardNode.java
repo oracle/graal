@@ -55,8 +55,8 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     public void simplify(SimplifierTool tool) {
         super.simplify(tool);
 
-        if (condition() instanceof LogicConstantNode) {
-            LogicConstantNode c = (LogicConstantNode) condition();
+        if (getCondition() instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) getCondition();
             if (c.getValue() == isNegated()) {
                 FixedNode currentNext = this.next();
                 if (currentNext != null) {
@@ -69,8 +69,8 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
             }
             this.replaceAtUsages(null);
             graph().removeFixed(this);
-        } else if (condition() instanceof ShortCircuitOrNode) {
-            ShortCircuitOrNode shortCircuitOr = (ShortCircuitOrNode) condition();
+        } else if (getCondition() instanceof ShortCircuitOrNode) {
+            ShortCircuitOrNode shortCircuitOr = (ShortCircuitOrNode) getCondition();
             if (isNegated() && hasNoUsages()) {
                 graph().addAfterFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getY(), getReason(), getAction(), getSpeculation(), !shortCircuitOr.isYNegated())));
                 graph().replaceFixedWithFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getX(), getReason(), getAction(), getSpeculation(), !shortCircuitOr.isXNegated())));
@@ -90,7 +90,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
              * case.
              */
             if (getAction() != DeoptimizationAction.None || getReason() != DeoptimizationReason.RuntimeConstraint) {
-                ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), getSpeculation(), isNegated()).asNode();
+                ValueNode guard = tool.createGuard(this, getCondition(), getReason(), getAction(), getSpeculation(), isNegated()).asNode();
                 this.replaceAtUsages(guard);
                 ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
                 graph().replaceFixedWithFixed(this, newAnchor);

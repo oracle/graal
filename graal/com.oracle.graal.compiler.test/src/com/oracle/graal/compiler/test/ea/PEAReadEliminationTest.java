@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import sun.misc.Unsafe;
 
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
@@ -49,7 +50,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testIndexed1() {
-        processMethod("testIndexed1Snippet");
+        StructuredGraph graph = processMethod("testIndexed1Snippet", false);
         assertDeepEquals(0, graph.getNodes().filter(LoadIndexedNode.class).count());
     }
 
@@ -69,7 +70,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testIndexed2() {
-        processMethod("testIndexed2Snippet");
+        StructuredGraph graph = processMethod("testIndexed2Snippet", false);
         assertDeepEquals(3, graph.getNodes().filter(LoadIndexedNode.class).count());
         assertDeepEquals(7, graph.getNodes().filter(StoreIndexedNode.class).count());
     }
@@ -93,7 +94,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testIndexed3() {
-        processMethod("testIndexed3Snippet");
+        StructuredGraph graph = processMethod("testIndexed3Snippet", false);
         assertDeepEquals(3, graph.getNodes().filter(LoadIndexedNode.class).count());
     }
 
@@ -112,7 +113,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testIndexed4() {
-        processMethod("testIndexed4Snippet");
+        StructuredGraph graph = processMethod("testIndexed4Snippet", false);
         assertDeepEquals(3, graph.getNodes().filter(LoadIndexedNode.class).count());
     }
 
@@ -128,7 +129,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testUnsafe1() {
-        processMethod("testUnsafe1Snippet");
+        StructuredGraph graph = processMethod("testUnsafe1Snippet", false);
         assertDeepEquals(1, graph.getNodes().filter(UnsafeLoadNode.class).count());
     }
 
@@ -141,7 +142,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testUnsafe2() {
-        processMethod("testUnsafe2Snippet");
+        StructuredGraph graph = processMethod("testUnsafe2Snippet", false);
         assertDeepEquals(3, graph.getNodes().filter(UnsafeLoadNode.class).count());
     }
 
@@ -157,7 +158,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testUnsafe3() {
-        processMethod("testUnsafe3Snippet");
+        StructuredGraph graph = processMethod("testUnsafe3Snippet", false);
         assertDeepEquals(1, graph.getNodes().filter(UnsafeLoadNode.class).count());
     }
 
@@ -171,7 +172,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testUnsafe4() {
-        processMethod("testUnsafe4Snippet");
+        StructuredGraph graph = processMethod("testUnsafe4Snippet", false);
         assertDeepEquals(3, graph.getNodes().filter(UnsafeLoadNode.class).count());
     }
 
@@ -187,15 +188,16 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
     @Test
     public void testUnsafe5() {
-        processMethod("testUnsafe5Snippet");
+        StructuredGraph graph = processMethod("testUnsafe5Snippet", false);
         assertDeepEquals(1, graph.getNodes().filter(UnsafeLoadNode.class).count());
     }
 
     @Override
-    protected void processMethod(final String snippet) {
-        graph = parseEager(snippet, AllowAssumptions.NO);
+    protected StructuredGraph processMethod(final String snippet, boolean doLowering) {
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
         new PartialEscapePhase(false, true, new CanonicalizerPhase(), null).apply(graph, context);
+        return graph;
     }
 }

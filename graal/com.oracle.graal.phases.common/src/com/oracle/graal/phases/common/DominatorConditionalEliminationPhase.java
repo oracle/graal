@@ -576,11 +576,11 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         private void processGuard(GuardNode node, List<Runnable> undoOperations) {
-            if (!tryProofCondition(node.condition(), (guard, result) -> {
+            if (!tryProofCondition(node.getCondition(), (guard, result) -> {
                 if (result != node.isNegated()) {
                     node.replaceAndDelete(guard);
                 } else {
-                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.action(), node.reason(), node.getSpeculation()));
+                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.getAction(), node.getReason(), node.getSpeculation()));
                     AbstractBeginNode beginNode = (AbstractBeginNode) node.getAnchor();
                     FixedNode next = beginNode.next();
                     beginNode.setNext(deopt);
@@ -588,7 +588,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 }
                 return true;
             })) {
-                registerNewCondition(node.condition(), node.isNegated(), node, undoOperations);
+                registerNewCondition(node.getCondition(), node.isNegated(), node, undoOperations);
             }
         }
 

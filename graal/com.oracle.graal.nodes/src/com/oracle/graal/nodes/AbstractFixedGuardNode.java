@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 
 @NodeInfo
-public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNode implements Simplifiable, GuardingNode {
+public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNode implements Simplifiable, GuardingNode, DeoptimizingGuard {
 
     public static final NodeClass<AbstractFixedGuardNode> TYPE = NodeClass.create(AbstractFixedGuardNode.class);
     @Input(InputType.Condition) protected LogicNode condition;
@@ -46,13 +46,18 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
     protected JavaConstant speculation;
     protected boolean negated;
 
-    public LogicNode condition() {
+    public LogicNode getCondition() {
         return condition;
     }
 
-    public void setCondition(LogicNode x) {
+    public LogicNode condition() {
+        return getCondition();
+    }
+
+    public void setCondition(LogicNode x, boolean negated) {
         updateUsages(condition, x);
         condition = x;
+        this.negated = negated;
     }
 
     protected AbstractFixedGuardNode(NodeClass<? extends AbstractFixedGuardNode> c, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, JavaConstant speculation,
@@ -94,8 +99,7 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
     public void simplify(SimplifierTool tool) {
         while (condition instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition;
-            setCondition(negation.getValue());
-            negated = !negated;
+            setCondition(negation.getValue(), !negated);
         }
     }
 
