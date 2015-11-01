@@ -95,6 +95,8 @@ suite = {
     "JVMCI" : {
         "sha1" : "f4f0d6cfa751fa644163008810d5123c4c298104",
         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-b0e383e27552.jar"],
+        "sourceSha1" : "9781af80d9f43b4f1a5b17802ea8d0c8c50d563c",
+        "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-b0e383e27552.src.zip"],
      },
   }),
 
