@@ -704,10 +704,11 @@ suite = {
         "com.oracle.graal.java",
       ],
       "checkstyle" : "com.oracle.graal.graph",
-      "annotationProcessors" : [
+      "annotationProcessors" : deps([
         "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_COMPILER_MATCH_PROCESSOR"
-      ],
+        "GRAAL_COMPILER_MATCH_PROCESSOR",
+        "jvmci:JVMCI_SERVICE_PROCESSOR",
+      ]),
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,AMD64",
     },
@@ -732,10 +733,11 @@ suite = {
         "com.oracle.graal.lir.sparc"
       ],
       "checkstyle" : "com.oracle.graal.graph",
-      "annotationProcessors" : [
+      "annotationProcessors" : deps([
         "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_COMPILER_MATCH_PROCESSOR"
-      ],
+        "GRAAL_COMPILER_MATCH_PROCESSOR",
+        "jvmci:JVMCI_SERVICE_PROCESSOR",
+      ]),
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,SPARC",
     },
