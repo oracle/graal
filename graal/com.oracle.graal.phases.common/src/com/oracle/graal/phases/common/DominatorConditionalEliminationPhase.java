@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -70,7 +71,9 @@ import com.oracle.graal.nodes.UnaryOpLogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.AndNode;
 import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
+import com.oracle.graal.nodes.calc.BinaryNode;
 import com.oracle.graal.nodes.calc.IntegerEqualsNode;
+import com.oracle.graal.nodes.calc.UnaryNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -372,6 +375,35 @@ public class DominatorConditionalEliminationPhase extends Phase {
             registerCondition(condition, negated, guard, undoOperations);
         }
 
+        /**
+         * Checks for safe nodes when moving pending tests up.
+         */
+        static class InputFilter implements BiConsumer<Node, Node> {
+            boolean ok;
+            private ValueNode value;
+
+            InputFilter(ValueNode value) {
+                this.value = value;
+                this.ok = true;
+            }
+
+            public void accept(Node node, Node curNode) {
+                if (!(curNode instanceof ValueNode)) {
+                    ok = false;
+                    return;
+                }
+                ValueNode curValue = (ValueNode) curNode;
+                if (curValue.isConstant() || curValue == value) {
+                    return;
+                }
+                if (curValue instanceof BinaryNode || curValue instanceof UnaryNode) {
+                    curValue.acceptInputs(this);
+                } else {
+                    ok = false;
+                }
+            }
+        }
+
         private boolean foldPendingTest(DeoptimizingGuard thisGuard, ValueNode original, Stamp newStamp, GuardRewirer rewireGuardFunction) {
             for (PendingTest pending : pendingTests) {
                 TriState result = TriState.UNKNOWN;
@@ -379,9 +411,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) pending.condition;
                     if (unaryLogicNode.getValue() == original) {
                         result = unaryLogicNode.tryFold(newStamp);
-                        if (result.isKnown()) {
-                            Debug.log("unary %s %s %1s", result, newStamp, unaryLogicNode);
-                        }
                     }
                 } else if (pending.condition instanceof BinaryOpLogicNode) {
                     BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) pending.condition;
@@ -398,7 +427,15 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     }
                 }
                 if (result.isKnown()) {
-                    if (foldGuard(thisGuard, pending.guard, result, rewireGuardFunction)) {
+                    /*
+                     * The test case be folded using the information available but the test can only
+                     * be moved up if we're sure there's no schedule dependence. For now limit it to
+                     * the original node and constants.
+                     */
+                    InputFilter v = new InputFilter(original);
+                    thisGuard.getCondition().acceptInputs(v);
+                    if (v.ok && foldGuard(thisGuard, pending.guard, result, rewireGuardFunction)) {
+                        Debug.log("foldPendingTest %s %s %1s", result, newStamp, pending.condition);
                         return true;
                     }
                 }
