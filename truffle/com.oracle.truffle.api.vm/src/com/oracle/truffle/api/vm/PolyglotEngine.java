@@ -273,16 +273,24 @@ public class PolyglotEngine {
          *
          * @param name name of the symbol to register
          * @param obj value of the object - expected to be primitive wrapper, {@link String} or
-         *            <code>TruffleObject</code> for mutual inter-operability
+         *            <code>TruffleObject</code> for mutual inter-operability. If the object isn't
+         *            of the previous types, the system tries to wrap it using
+         *            {@link JavaInterop#asTruffleObject(java.lang.Object)}, if available
          * @return instance of this builder
          * @see PolyglotEngine#findGlobalSymbol(java.lang.String)
+         * @throws IllegalArgumentException if the object isn't of primitive type and cannot be
+         *             converted to {@link TruffleObject}
          */
         public Builder globalSymbol(String name, Object obj) {
             final Object truffleReady;
             if (obj instanceof Number || obj instanceof String || obj instanceof Character || obj instanceof Boolean) {
                 truffleReady = obj;
             } else {
-                truffleReady = JavaInterop.asTruffleObject(obj);
+                if (JAVA_INTEROP_ENABLED) {
+                    truffleReady = JavaInterop.asTruffleObject(obj);
+                } else {
+                    throw new IllegalArgumentException();
+                }
             }
             globals.put(name, truffleReady);
             return this;
