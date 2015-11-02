@@ -47,7 +47,7 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
@@ -70,7 +70,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
     @Override
     @SuppressWarnings("try")
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
         LIR lir = lirGenRes.getLIR();
         assert SSIVerifier.verify(lir) : "LIR not in SSI form.";
@@ -148,7 +148,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
      *
      * TODO (je) find a better solution.
      */
-    private static boolean replaceStackToStackMoves(LIR lir, SpillMoveFactory spillMoveFactory) {
+    private static boolean replaceStackToStackMoves(LIR lir, MoveFactory spillMoveFactory) {
         boolean changed = false;
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             List<LIRInstruction> instructions = lir.getLIRforBlock(block);

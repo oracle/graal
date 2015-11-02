@@ -49,7 +49,7 @@ import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.alloc.lsra.LinearScan.IntervalPredicate;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
 
 public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
@@ -76,7 +76,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
         eliminateSpillMoves();
     }

@@ -41,7 +41,7 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.SSIUtil;
 
@@ -54,13 +54,13 @@ final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
         resolveGlobalDataFlow(resultTraces, lirGenRes, spillMoveFactory, target.arch);
     }
 
     @SuppressWarnings("try")
-    private static <B extends AbstractBlockBase<B>> void resolveGlobalDataFlow(TraceBuilderResult<B> resultTraces, LIRGenerationResult lirGenRes, SpillMoveFactory spillMoveFactory, Architecture arch) {
+    private static <B extends AbstractBlockBase<B>> void resolveGlobalDataFlow(TraceBuilderResult<B> resultTraces, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory, Architecture arch) {
         LIR lir = lirGenRes.getLIR();
         /* Resolve trace global data-flow mismatch. */
         TraceGlobalMoveResolver moveResolver = new TraceGlobalMoveResolver(lirGenRes, spillMoveFactory, arch);

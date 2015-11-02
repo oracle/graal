@@ -35,19 +35,19 @@ import com.oracle.graal.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
 import com.oracle.graal.lir.alloc.lsra.MoveResolver;
 import com.oracle.graal.lir.alloc.lsra.ssa.SSAMoveResolver;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 
 public final class SSILinearScan extends LinearScan {
 
-    public SSILinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
-                    List<? extends AbstractBlockBase<?>> sortedBlocks, boolean neverSpillConstants) {
+    public SSILinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, List<? extends AbstractBlockBase<?>> sortedBlocks,
+                    boolean neverSpillConstants) {
         super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants);
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
+    protected <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
+                    RegisterAllocationConfig registerAllocationConfig) {
         assert SSIVerifier.verify(lirGenRes.getLIR()) : "LIR not in SSI form.";
         super.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
     }

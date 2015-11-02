@@ -96,8 +96,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     private LIRGenerationResult res;
 
     protected final ArithmeticLIRGenerator arithmeticLIRGen;
+    private final MoveFactory moveFactory;
 
-    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, CodeGenProviders providers, CallingConvention cc, LIRGenerationResult res) {
+    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, CodeGenProviders providers, CallingConvention cc, LIRGenerationResult res) {
         this.lirKindTool = lirKindTool;
         this.arithmeticLIRGen = arithmeticLIRGen;
         this.res = res;
@@ -106,11 +107,32 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
         assert arithmeticLIRGen.lirGen == null;
         arithmeticLIRGen.lirGen = this;
+        this.moveFactory = moveFactory;
     }
 
     @Override
     public ArithmeticLIRGeneratorTool getArithmetic() {
         return arithmeticLIRGen;
+    }
+
+    @Override
+    public MoveFactory getMoveFactory() {
+        return moveFactory;
+    }
+
+    private MoveFactory spillMoveFactory;
+
+    public MoveFactory getSpillMoveFactory() {
+        if (spillMoveFactory == null) {
+            boolean verify = false;
+            assert (verify = true) == true;
+            if (verify) {
+                spillMoveFactory = new VerifyingMoveFactory(moveFactory);
+            } else {
+                spillMoveFactory = moveFactory;
+            }
+        }
+        return spillMoveFactory;
     }
 
     @Override
@@ -160,8 +182,18 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
+    public void emitMove(AllocatableValue dst, Value src) {
+        append(moveFactory.createMove(dst, src));
+    }
+
+    @Override
+    public void emitMoveConstant(AllocatableValue dst, Constant src) {
+        append(moveFactory.createLoad(dst, src));
+    }
+
+    @Override
     public Value emitConstant(LIRKind kind, Constant constant) {
-        if (constant instanceof JavaConstant && canInlineConstant((JavaConstant) constant)) {
+        if (constant instanceof JavaConstant && moveFactory.canInlineConstant((JavaConstant) constant)) {
             return new ConstantValue(toRegisterKind(kind), constant);
         } else {
             return emitLoadConstant(kind, constant);
@@ -197,18 +229,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return (Variable) value;
     }
 
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for most
-     * operations, i.e., for commonly used arithmetic, logical, and comparison operations.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    public abstract boolean canInlineConstant(JavaConstant c);
-
     public Value loadNonConst(Value value) {
-        if (isJavaConstant(value) && !canInlineConstant(asJavaConstant(value))) {
+        if (isJavaConstant(value) && !moveFactory.canInlineConstant(asJavaConstant(value))) {
             return emitMove(value);
         }
         return value;

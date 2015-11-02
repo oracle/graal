@@ -42,7 +42,7 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
 
 public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
@@ -57,7 +57,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
         optimizeSpillPosition();
         allocator.printIntervals("After optimize spill position");
@@ -125,7 +125,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             /*
              * The spill block is the begin of the first split child (aka the value is on the
              * stack).
-             * 
+             *
              * The problem is that if spill block has more than one predecessor, the values at the
              * end of the predecessors might differ. Therefore, we would need a spill move in all
              * predecessors. To avoid this we spill in the dominator.

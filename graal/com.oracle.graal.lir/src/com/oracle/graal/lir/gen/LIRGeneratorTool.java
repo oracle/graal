@@ -52,12 +52,19 @@ import com.oracle.graal.lir.Variable;
 public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
     /**
-     * Factory for creating spill moves.
-     *
-     * The instructions returned by the methods must only depend on the input values. References to
-     * values that require interaction with register allocation are strictly forbidden.
+     * Factory for creating moves.
      */
-    public interface SpillMoveFactory {
+    public interface MoveFactory {
+
+        /**
+         * Checks whether the supplied constant can be used without loading it into a register for
+         * most operations, i.e., for commonly used arithmetic, logical, and comparison operations.
+         *
+         * @param c The constant to check.
+         * @return True if the constant can be used directly, false if the constant needs to be in a
+         *         register.
+         */
+        boolean canInlineConstant(JavaConstant c);
 
         LIRInstruction createMove(AllocatableValue result, Value input);
 
@@ -92,7 +99,15 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
     boolean hasBlockEnd(AbstractBlockBase<?> block);
 
-    SpillMoveFactory getSpillMoveFactory();
+    MoveFactory getMoveFactory();
+
+    /**
+     * Get a special {@link MoveFactory} for spill moves.
+     *
+     * The instructions returned by this factory must only depend on the input values. References to
+     * values that require interaction with register allocation are strictly forbidden.
+     */
+    MoveFactory getSpillMoveFactory();
 
     BlockScope getBlockScope(AbstractBlockBase<?> block);
 

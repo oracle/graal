@@ -46,7 +46,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
-import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
@@ -66,6 +65,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.compiler.amd64.AMD64ArithmeticLIRGenerator;
 import com.oracle.graal.compiler.amd64.AMD64LIRGenerator;
+import com.oracle.graal.compiler.amd64.AMD64MoveFactoryBase.BackupSlotProvider;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
@@ -93,7 +93,6 @@ import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
 import com.oracle.graal.lir.amd64.AMD64CCall;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64FrameMapBuilder;
-import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.amd64.AMD64Move;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64RestoreRegistersOp;
@@ -111,13 +110,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     final HotSpotVMConfig config;
     private HotSpotLockStack lockStack;
 
-    protected AMD64HotSpotLIRGenerator(AMD64ArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(new AMD64HotSpotLIRKindTool(), arithmeticLIRGen, providers, config, cc, lirGenRes);
+    protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        this(providers, config, cc, lirGenRes, new BackupSlotProvider(lirGenRes.getFrameMapBuilder()));
     }
 
-    protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc,
-                    LIRGenerationResult lirGenRes) {
-        super(lirKindTool, arithmeticLIRGen, providers, cc, lirGenRes);
+    private AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes, BackupSlotProvider backupSlotProvider) {
+        this(new AMD64HotSpotLIRKindTool(), new AMD64ArithmeticLIRGenerator(), new AMD64HotSpotMoveFactory(backupSlotProvider, lirGenRes.getFrameMapBuilder()), providers, config, cc, lirGenRes);
+    }
+
+    protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, HotSpotProviders providers, HotSpotVMConfig config,
+                    CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
         this.config = config;
     }
@@ -624,19 +627,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected AMD64LIRInstruction createMoveConstant(AllocatableValue dst, Constant src) {
-        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-            return super.createMoveConstant(dst, JavaConstant.INT_0);
-        } else if (src instanceof HotSpotObjectConstant) {
-            return new AMD64HotSpotMove.HotSpotLoadObjectConstantOp(dst, (HotSpotObjectConstant) src);
-        } else if (src instanceof HotSpotMetaspaceConstant) {
-            return new AMD64HotSpotMove.HotSpotLoadMetaspaceConstantOp(dst, (HotSpotMetaspaceConstant) src);
-        } else {
-            return super.createMoveConstant(dst, src);
-        }
-    }
-
-    @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
         if (address.getLIRKind().getPlatformKind() == AMD64Kind.DWORD) {
             CompressEncoding encoding = config.getOopEncoding();
@@ -690,17 +680,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             return true;
         } else {
             return super.emitCompareMemoryConOp(size, a, b, state);
-        }
-    }
-
-    @Override
-    public boolean canInlineConstant(JavaConstant c) {
-        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-            return true;
-        } else if (c instanceof HotSpotObjectConstant) {
-            return ((HotSpotObjectConstant) c).isCompressed();
-        } else {
-            return super.canInlineConstant(c);
         }
     }
 

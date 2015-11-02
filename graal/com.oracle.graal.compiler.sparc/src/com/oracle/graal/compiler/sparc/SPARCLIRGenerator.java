@@ -32,7 +32,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmpd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmps;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import jdk.vm.ci.code.CallingConvention;
@@ -59,7 +58,6 @@ import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.NoOp;
@@ -68,7 +66,6 @@ import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
-import com.oracle.graal.lir.gen.SpillMoveFactoryBase;
 import com.oracle.graal.lir.sparc.SPARCAddressValue;
 import com.oracle.graal.lir.sparc.SPARCArrayEqualsOp;
 import com.oracle.graal.lir.sparc.SPARCByteSwapOp;
@@ -83,12 +80,9 @@ import com.oracle.graal.lir.sparc.SPARCFloatCompareOp;
 import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
 import com.oracle.graal.lir.sparc.SPARCJumpOp;
 import com.oracle.graal.lir.sparc.SPARCLoadConstantTableBaseOp;
-import com.oracle.graal.lir.sparc.SPARCMove;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadDataAddressOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
-import com.oracle.graal.lir.sparc.SPARCMove.Move;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.lir.sparc.SPARCOP3Op;
@@ -99,55 +93,23 @@ import com.oracle.graal.phases.util.Providers;
  */
 public abstract class SPARCLIRGenerator extends LIRGenerator {
 
-    private SPARCSpillMoveFactory moveFactory;
-    private Variable constantTableBase;
     private SPARCLoadConstantTableBaseOp loadConstantTableBaseOp;
+    private final ConstantTableBaseProvider constantTableBaseProvider;
 
-    private class SPARCSpillMoveFactory extends SpillMoveFactoryBase {
+    public static final class ConstantTableBaseProvider {
+        private Variable constantTableBase;
+        private boolean useConstantTableBase = false;
 
-        @Override
-        protected LIRInstruction createMoveIntern(AllocatableValue result, Value input) {
-            return SPARCLIRGenerator.this.createMove(result, input);
-        }
-
-        @Override
-        protected LIRInstruction createStackMoveIntern(AllocatableValue result, AllocatableValue input) {
-            return SPARCLIRGenerator.this.createStackMove(result, input);
-        }
-
-        @Override
-        protected LIRInstruction createLoadIntern(AllocatableValue result, Constant input) {
-            return SPARCLIRGenerator.this.createMoveConstant(result, input);
+        public Variable getConstantTableBase() {
+            useConstantTableBase = true;
+            return constantTableBase;
         }
     }
 
-    public SPARCLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, arithmeticLIRGen, providers, cc, lirGenRes);
-    }
-
-    public SpillMoveFactory getSpillMoveFactory() {
-        if (moveFactory == null) {
-            moveFactory = new SPARCSpillMoveFactory();
-        }
-        return moveFactory;
-    }
-
-    @Override
-    public boolean canInlineConstant(JavaConstant c) {
-        switch (c.getJavaKind()) {
-            case Boolean:
-            case Byte:
-            case Char:
-            case Short:
-            case Int:
-                return SPARCAssembler.isSimm13(c.asInt()) && !getCodeCache().needsDataPatch(c);
-            case Long:
-                return SPARCAssembler.isSimm13(c.asLong()) && !getCodeCache().needsDataPatch(c);
-            case Object:
-                return c.isNull();
-            default:
-                return false;
-        }
+    public SPARCLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes,
+                    ConstantTableBaseProvider constantTableBaseProvider) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes);
+        this.constantTableBaseProvider = constantTableBaseProvider;
     }
 
     @Override
@@ -176,36 +138,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    protected LIRInstruction createMove(AllocatableValue dst, Value src) {
-        boolean srcIsSlot = isStackSlotValue(src);
-        boolean dstIsSlot = isStackSlotValue(dst);
-        if (src instanceof ConstantValue) {
-            return createMoveConstant(dst, ((ConstantValue) src).getConstant());
-        } else if (src instanceof SPARCAddressValue) {
-            return new LoadAddressOp(dst, (SPARCAddressValue) src);
-        } else {
-            assert src instanceof AllocatableValue;
-            if (srcIsSlot && dstIsSlot) {
-                throw JVMCIError.shouldNotReachHere(src.getClass() + " " + dst.getClass());
-            } else {
-                return new Move(dst, (AllocatableValue) src);
-            }
-        }
-    }
-
-    protected LIRInstruction createMoveConstant(AllocatableValue dst, Constant src) {
-        if (src instanceof JavaConstant) {
-            JavaConstant javaConstant = (JavaConstant) src;
-            if (canInlineConstant(javaConstant)) {
-                return new SPARCMove.LoadInlineConstant(javaConstant, dst);
-            } else {
-                return new SPARCMove.LoadConstantFromTable(javaConstant, getConstantTableBase(), dst);
-            }
-        } else {
-            throw JVMCIError.shouldNotReachHere(src.getClass().toString());
-        }
-    }
-
     /**
      * The SPARC backend only uses WORD and DWORD values in registers because except to the ld/st
      * instructions no instruction deals either with 32 or 64 bits. This function converts small
@@ -220,20 +152,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             default:
                 return kind;
         }
-    }
-
-    protected LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
-        return new SPARCMove.Move(result, input);
-    }
-
-    @Override
-    public void emitMove(AllocatableValue dst, Value src) {
-        append(createMove(dst, src));
-    }
-
-    @Override
-    public void emitMoveConstant(AllocatableValue dst, Constant src) {
-        append(createMoveConstant(dst, src));
     }
 
     @Override
@@ -480,8 +398,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         AllocatableValue scratchValue = newVariable(key.getLIRKind());
         AllocatableValue base = AllocatableValue.ILLEGAL;
         for (Constant c : strategy.getKeyConstants()) {
-            if (!(c instanceof JavaConstant) || !canInlineConstant((JavaConstant) c)) {
-                base = getConstantTableBase();
+            if (!(c instanceof JavaConstant) || !getMoveFactory().canInlineConstant((JavaConstant) c)) {
+                base = constantTableBaseProvider.getConstantTableBase();
                 break;
             }
         }
@@ -550,22 +468,15 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     public void emitLoadConstantTableBase() {
-        constantTableBase = newVariable(LIRKind.value(XWORD));
+        constantTableBaseProvider.constantTableBase = newVariable(LIRKind.value(XWORD));
         int nextPosition = getResult().getLIR().getLIRforBlock(getCurrentBlock()).size();
         NoOp placeHolder = append(new NoOp(getCurrentBlock(), nextPosition));
-        loadConstantTableBaseOp = new SPARCLoadConstantTableBaseOp(constantTableBase, placeHolder);
-    }
-
-    boolean useConstantTableBase = false;
-
-    protected Variable getConstantTableBase() {
-        useConstantTableBase = true;
-        return constantTableBase;
+        loadConstantTableBaseOp = new SPARCLoadConstantTableBaseOp(constantTableBaseProvider.constantTableBase, placeHolder);
     }
 
     @Override
     public void beforeRegisterAllocation() {
         LIR lir = getResult().getLIR();
-        loadConstantTableBaseOp.setAlive(lir, useConstantTableBase);
+        loadConstantTableBaseOp.setAlive(lir, constantTableBaseProvider.useConstantTableBase);
     }
 }

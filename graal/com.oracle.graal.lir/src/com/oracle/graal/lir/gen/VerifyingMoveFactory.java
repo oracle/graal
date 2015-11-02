@@ -29,48 +29,50 @@ import java.util.EnumSet;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.StandardOp.StackMove;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 /**
- * Base class for {@link SpillMoveFactory} that checks that the instructions created adhere to the
- * contract of {@link SpillMoveFactory}.
+ * Wrapper for {@link MoveFactory} that checks that the instructions created adhere to the contract
+ * of {@link MoveFactory}.
  */
-public abstract class SpillMoveFactoryBase implements SpillMoveFactory {
+public final class VerifyingMoveFactory implements MoveFactory {
 
-    public final LIRInstruction createMove(AllocatableValue result, Value input) {
-        LIRInstruction inst = createMoveIntern(result, input);
+    private final MoveFactory inner;
+
+    public VerifyingMoveFactory(MoveFactory inner) {
+        this.inner = inner;
+    }
+
+    public boolean canInlineConstant(JavaConstant c) {
+        return inner.canInlineConstant(c);
+    }
+
+    public LIRInstruction createMove(AllocatableValue result, Value input) {
+        LIRInstruction inst = inner.createMove(result, input);
         assert checkResult(inst, result, input);
         return inst;
     }
 
-    public final LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
-        LIRInstruction inst = createStackMoveIntern(result, input);
+    public LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
+        LIRInstruction inst = inner.createStackMove(result, input);
         assert checkResult(inst, result, input);
         return inst;
     }
 
     public LIRInstruction createLoad(AllocatableValue result, Constant input) {
-        LIRInstruction inst = createLoadIntern(result, input);
+        LIRInstruction inst = inner.createLoad(result, input);
         assert inst instanceof LoadConstantOp && checkResult(inst, result, null);
         return inst;
     }
 
-    protected abstract LIRInstruction createMoveIntern(AllocatableValue result, Value input);
-
-    protected abstract LIRInstruction createLoadIntern(AllocatableValue result, Constant input);
-
-    protected LIRInstruction createStackMoveIntern(AllocatableValue result, AllocatableValue input) {
-        return new StackMove(result, input);
-    }
-
-    /** Closure for {@link SpillMoveFactoryBase#checkResult}. */
+    /** Closure for {@link VerifyingMoveFactory#checkResult}. */
     @SuppressWarnings("unused")
     private static class CheckClosure {
 
@@ -114,10 +116,12 @@ public abstract class SpillMoveFactoryBase implements SpillMoveFactory {
         }
     }
 
-    /** Checks that the instructions adheres to the contract of {@link SpillMoveFactory}. */
+    /**
+     * Checks that the instructions adheres to the contract of {@link MoveFactory}.
+     */
     private static boolean checkResult(LIRInstruction inst, AllocatableValue result, Value input) {
 
-        SpillMoveFactoryBase.CheckClosure c = new CheckClosure(result, input);
+        VerifyingMoveFactory.CheckClosure c = new CheckClosure(result, input);
         inst.visitEachInput(c::inputProc);
         inst.visitEachOutput(c::outputProc);
         inst.visitEachAlive(c::aliveProc);

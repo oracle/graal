@@ -42,23 +42,13 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
 import static com.oracle.graal.lir.LIRValueUtil.asConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
@@ -78,13 +68,11 @@ import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
 import com.oracle.graal.lir.amd64.AMD64ArrayEqualsOp;
 import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
@@ -97,23 +85,14 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.amd64.AMD64Move;
-import com.oracle.graal.lir.amd64.AMD64Move.AMD64PushPopStackMove;
-import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
-import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveFromConstOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.lir.amd64.AMD64Unary;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
-import com.oracle.graal.lir.gen.SpillMoveFactoryBase;
 import com.oracle.graal.phases.util.Providers;
 
 /**
@@ -121,58 +100,8 @@ import com.oracle.graal.phases.util.Providers;
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
-    private AMD64SpillMoveFactory moveFactory;
-    private Map<PlatformKind.Key, RegisterBackupPair> categorized;
-
-    private static class RegisterBackupPair {
-        public final Register register;
-        public final VirtualStackSlot backupSlot;
-
-        RegisterBackupPair(Register register, VirtualStackSlot backupSlot) {
-            this.register = register;
-            this.backupSlot = backupSlot;
-        }
-    }
-
-    private class AMD64SpillMoveFactory extends SpillMoveFactoryBase {
-
-        @Override
-        protected LIRInstruction createMoveIntern(AllocatableValue result, Value input) {
-            return AMD64LIRGenerator.this.createMove(result, input);
-        }
-
-        @Override
-        protected LIRInstruction createStackMoveIntern(AllocatableValue result, AllocatableValue input) {
-            return AMD64LIRGenerator.this.createStackMove(result, input);
-        }
-
-        @Override
-        protected LIRInstruction createLoadIntern(AllocatableValue result, Constant input) {
-            return AMD64LIRGenerator.this.createMoveConstant(result, input);
-        }
-    }
-
-    public AMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, arithmeticLIRGen, providers, cc, lirGenRes);
-    }
-
-    public SpillMoveFactory getSpillMoveFactory() {
-        if (moveFactory == null) {
-            moveFactory = new AMD64SpillMoveFactory();
-        }
-        return moveFactory;
-    }
-
-    @Override
-    public boolean canInlineConstant(JavaConstant c) {
-        switch (c.getJavaKind()) {
-            case Long:
-                return NumUtil.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
-            case Object:
-                return c.isNull();
-            default:
-                return true;
-        }
+    public AMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes);
     }
 
     /**
@@ -215,80 +144,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 // we don't support vector types, so just zap with double for all of them
                 return JavaConstant.forDouble(Double.longBitsToDouble(dead));
         }
-    }
-
-    protected AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
-        if (src instanceof AMD64AddressValue) {
-            return new LeaOp(dst, (AMD64AddressValue) src);
-        } else if (isJavaConstant(src)) {
-            return createMoveConstant(dst, asJavaConstant(src));
-        } else if (isRegister(src) || isStackSlotValue(dst)) {
-            return new MoveFromRegOp((AMD64Kind) dst.getPlatformKind(), dst, (AllocatableValue) src);
-        } else {
-            return new MoveToRegOp((AMD64Kind) dst.getPlatformKind(), dst, (AllocatableValue) src);
-        }
-    }
-
-    protected AMD64LIRInstruction createMoveConstant(AllocatableValue dst, Constant src) {
-        return new MoveFromConstOp(dst, (JavaConstant) src);
-    }
-
-    protected LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
-        AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
-        switch (kind.getSizeInBytes()) {
-            case 2:
-                return new AMD64PushPopStackMove(WORD, result, input);
-            case 8:
-                return new AMD64PushPopStackMove(QWORD, result, input);
-            default:
-                RegisterBackupPair backup = getScratchRegister(input.getPlatformKind());
-                Register scratchRegister = backup.register;
-                VirtualStackSlot backupSlot = backup.backupSlot;
-                return createStackMove(result, input, scratchRegister, backupSlot);
-        }
-    }
-
-    protected LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input, Register scratchRegister, AllocatableValue backupSlot) {
-        return new AMD64StackMove(result, input, scratchRegister, backupSlot);
-    }
-
-    protected RegisterBackupPair getScratchRegister(PlatformKind kind) {
-        PlatformKind.Key key = kind.getKey();
-        if (categorized == null) {
-            categorized = new HashMap<>();
-        } else if (categorized.containsKey(key)) {
-            return categorized.get(key);
-        }
-
-        FrameMapBuilder frameMapBuilder = getResult().getFrameMapBuilder();
-        RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
-
-        Register[] availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
-        assert availableRegister != null && availableRegister.length > 1;
-        Register scratchRegister = availableRegister[0];
-
-        Architecture arch = frameMapBuilder.getCodeCache().getTarget().arch;
-        LIRKind largestKind = LIRKind.value(arch.getLargestStorableKind(scratchRegister.getRegisterCategory()));
-        VirtualStackSlot backupSlot = frameMapBuilder.allocateSpillSlot(largestKind);
-
-        RegisterBackupPair value = new RegisterBackupPair(scratchRegister, backupSlot);
-        categorized.put(key, value);
-
-        return value;
-    }
-
-    @Override
-    public void emitMove(AllocatableValue dst, Value src) {
-        if (src instanceof ConstantValue) {
-            emitMoveConstant(dst, ((ConstantValue) src).getConstant());
-        } else {
-            append(createMove(dst, src));
-        }
-    }
-
-    @Override
-    public void emitMoveConstant(AllocatableValue dst, Constant src) {
-        append(createMoveConstant(dst, src));
     }
 
     public void emitData(AllocatableValue dst, byte[] data) {

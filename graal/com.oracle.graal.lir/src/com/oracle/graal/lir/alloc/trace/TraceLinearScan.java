@@ -63,7 +63,7 @@ import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.alloc.trace.TraceLinearScanAllocationPhase.TraceLinearScanAllocationContext;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 /**
  * An implementation of the linear scan register allocator algorithm described in <a
@@ -120,7 +120,7 @@ final class TraceLinearScan {
     private final RegisterAttributes[] registerAttributes;
     private final Register[] registers;
     private final RegisterAllocationConfig regAllocConfig;
-    private final SpillMoveFactory moveFactory;
+    private final MoveFactory moveFactory;
 
     private final BlockMap<BlockData> blockData;
 
@@ -173,7 +173,7 @@ final class TraceLinearScan {
     protected final TraceBuilderResult<?> traceBuilderResult;
     private final boolean neverSpillConstants;
 
-    protected TraceLinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
+    protected TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
                     List<? extends AbstractBlockBase<?>> sortedBlocks, TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
@@ -202,7 +202,7 @@ final class TraceLinearScan {
         return result;
     }
 
-    public SpillMoveFactory getSpillMoveFactory() {
+    public MoveFactory getSpillMoveFactory() {
         return moveFactory;
     }
 
@@ -715,8 +715,8 @@ final class TraceLinearScan {
     }
 
     @SuppressWarnings("try")
-    protected <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
+    protected <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
+                    RegisterAllocationConfig registerAllocationConfig) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.

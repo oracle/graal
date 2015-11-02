@@ -30,19 +30,18 @@ import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
 
 public abstract class TraceLinearScanAllocationPhase extends LIRPhase<TraceLinearScanAllocationPhase.TraceLinearScanAllocationContext> {
 
     public static final class TraceLinearScanAllocationContext {
-        private final SpillMoveFactory spillMoveFactory;
+        private final MoveFactory spillMoveFactory;
         private final RegisterAllocationConfig registerAllocationConfig;
         private final TraceBuilderResult<?> traceBuilderResult;
         private final TraceLinearScan allocator;
 
-        public TraceLinearScanAllocationContext(SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult,
-                        TraceLinearScan allocator) {
+        public TraceLinearScanAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
             this.spillMoveFactory = spillMoveFactory;
             this.registerAllocationConfig = registerAllocationConfig;
             this.traceBuilderResult = traceBuilderResult;
@@ -57,6 +56,6 @@ public abstract class TraceLinearScanAllocationPhase extends LIRPhase<TraceLinea
     }
 
     protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator);
+                    MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator);
 
 }

@@ -56,7 +56,7 @@ import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 /**
  */
@@ -71,7 +71,7 @@ final class TraceGlobalMoveResolver {
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private int[] stackBlocked;
     private final int firstVirtualStackIndex;
-    private final SpillMoveFactory spillMoveFactory;
+    private final MoveFactory spillMoveFactory;
     private final FrameMapBuilder frameMapBuilder;
 
     private void setValueBlocked(Value location, int direction) {
@@ -122,7 +122,7 @@ final class TraceGlobalMoveResolver {
         return mappingFrom.size() > 0;
     }
 
-    private SpillMoveFactory getSpillMoveFactory() {
+    private MoveFactory getSpillMoveFactory() {
         return spillMoveFactory;
     }
 
@@ -130,7 +130,7 @@ final class TraceGlobalMoveResolver {
         return frameMapBuilder.getRegisterConfig().getAllocatableRegisters();
     }
 
-    public TraceGlobalMoveResolver(LIRGenerationResult res, SpillMoveFactory spillMoveFactory, Architecture arch) {
+    public TraceGlobalMoveResolver(LIRGenerationResult res, MoveFactory spillMoveFactory, Architecture arch) {
 
         this.mappingFrom = new ArrayList<>(8);
         this.mappingTo = new ArrayList<>(8);

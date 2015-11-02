@@ -58,7 +58,7 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 /**
  * Specialization of {@link com.oracle.graal.lir.alloc.lsra.LinearScanAssignLocationsPhase} that
@@ -68,7 +68,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
         new Assigner(allocator, traceBuilderResult).assignLocations();
     }
@@ -149,7 +149,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                  * instruction is a branch, spill moves are inserted before this branch and so the
                  * wrong operand would be returned (spill moves at block boundaries are not
                  * considered in the live ranges of intervals).
-                 * 
+                 *
                  * Solution: use the first opId of the branch target block instead.
                  */
                 final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);

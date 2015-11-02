@@ -28,9 +28,6 @@ import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
-import static jdk.vm.ci.meta.JavaConstant.INT_0;
-import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 import static jdk.vm.ci.sparc.SPARC.d32;
 import static jdk.vm.ci.sparc.SPARC.d34;
 import static jdk.vm.ci.sparc.SPARC.d36;
@@ -78,7 +75,6 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
-import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
@@ -132,13 +128,18 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private HotSpotLockStack lockStack;
     private LIRFrameState currentRuntimeCallInfo;
 
-    public SPARCHotSpotLIRGenerator(SPARCArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(new SPARCHotSpotLIRKindTool(), arithmeticLIRGen, providers, config, cc, lirGenRes);
+    public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        this(providers, config, cc, lirGenRes, new ConstantTableBaseProvider());
     }
 
-    protected SPARCHotSpotLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc,
-                    LIRGenerationResult lirGenRes) {
-        super(lirKindTool, arithmeticLIRGen, providers, cc, lirGenRes);
+    private SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
+        this(new SPARCHotSpotLIRKindTool(), new SPARCArithmeticLIRGenerator(), new SPARCHotSpotMoveFactory(providers.getCodeCache(), constantTableBaseProvider), providers, config, cc, lirGenRes,
+                        constantTableBaseProvider);
+    }
+
+    protected SPARCHotSpotLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, HotSpotProviders providers, HotSpotVMConfig config,
+                    CallingConvention cc, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes, constantTableBaseProvider);
         assert config.basicLockSize == 8;
         this.config = config;
     }
@@ -286,17 +287,6 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public boolean canInlineConstant(JavaConstant c) {
-        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-            return true;
-        } else if (c instanceof HotSpotObjectConstant) {
-            return false;
-        } else {
-            return super.canInlineConstant(c);
-        }
-    }
-
-    @Override
     public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
         SPARCAddressValue storeAddress = asAddressValue(address);
         if (isJavaConstant(inputVal)) {
@@ -326,28 +316,6 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     public StackSlot getDeoptimizationRescueSlot() {
         return deoptimizationRescueSlot;
-    }
-
-    @Override
-    protected LIRInstruction createMoveConstant(AllocatableValue dst, Constant src) {
-        Constant usedSource;
-        if (COMPRESSED_NULL.equals(src)) {
-            usedSource = INT_0;
-        } else if (src instanceof HotSpotObjectConstant && ((HotSpotObjectConstant) src).isNull()) {
-            usedSource = LONG_0;
-        } else {
-            usedSource = src;
-        }
-        if (usedSource instanceof HotSpotConstant) {
-            HotSpotConstant constant = (HotSpotConstant) usedSource;
-            if (constant.isCompressed()) {
-                return new SPARCHotSpotMove.LoadHotSpotObjectConstantInline(constant, dst);
-            } else {
-                return new SPARCHotSpotMove.LoadHotSpotObjectConstantFromTable(constant, dst, getConstantTableBase());
-            }
-        } else {
-            return super.createMoveConstant(dst, usedSource);
-        }
     }
 
     @Override

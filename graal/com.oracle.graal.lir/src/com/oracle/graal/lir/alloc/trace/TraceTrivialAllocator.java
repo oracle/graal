@@ -42,7 +42,7 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.ValueProcedure;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.util.VariableVirtualStackValueMap;
 
@@ -59,7 +59,7 @@ final class TraceTrivialAllocator extends TraceAllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> trace, SpillMoveFactory spillMoveFactory,
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> trace, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
         LIR lir = lirGenRes.getLIR();
         assert isTrivialTrace(lir, trace) : "Not a trivial trace! " + trace;

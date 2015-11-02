@@ -29,16 +29,16 @@ import jdk.vm.ci.code.TargetDescription;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
 
 public abstract class TraceAllocationPhase extends LIRPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     public static final class TraceAllocationContext {
-        private final SpillMoveFactory spillMoveFactory;
+        private final MoveFactory spillMoveFactory;
         private final RegisterAllocationConfig registerAllocationConfig;
 
-        public TraceAllocationContext(SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
+        public TraceAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
             this.spillMoveFactory = spillMoveFactory;
             this.registerAllocationConfig = registerAllocationConfig;
         }
@@ -51,6 +51,6 @@ public abstract class TraceAllocationPhase extends LIRPhase<TraceAllocationPhase
     }
 
     protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig);
+                    MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig);
 
 }

@@ -43,13 +43,13 @@ import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.framemap.SimpleVirtualStackSlot;
 import com.oracle.graal.lir.framemap.VirtualStackSlotRange;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
 
 public class SimpleStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
         lirGenRes.buildFrameMap(this);
     }

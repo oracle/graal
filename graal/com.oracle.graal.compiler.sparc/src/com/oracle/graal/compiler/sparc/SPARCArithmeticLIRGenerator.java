@@ -203,7 +203,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
 
     private Variable emitBinary(LIRKind resultKind, Opfs opf, Value a, Value b, LIRFrameState state) {
         Variable result = getLIRGen().newVariable(resultKind);
-        if (opf.isCommutative() && isJavaConstant(a) && getLIRGen().canInlineConstant(asJavaConstant(a))) {
+        if (opf.isCommutative() && isJavaConstant(a) && getLIRGen().getMoveFactory().canInlineConstant(asJavaConstant(a))) {
             getLIRGen().append(new SPARCOPFOp(opf, b, a, result, state));
         } else {
             getLIRGen().append(new SPARCOPFOp(opf, a, b, result, state));
@@ -221,7 +221,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
 
     private Variable emitBinary(LIRKind resultKind, Op3s op3, Value a, Value b, LIRFrameState state) {
         Variable result = getLIRGen().newVariable(resultKind);
-        if (op3.isCommutative() && isJavaConstant(a) && getLIRGen().canInlineConstant(asJavaConstant(a))) {
+        if (op3.isCommutative() && isJavaConstant(a) && getLIRGen().getMoveFactory().canInlineConstant(asJavaConstant(a))) {
             getLIRGen().append(new SPARCOP3Op(op3, getLIRGen().load(b), a, result, state));
         } else {
             getLIRGen().append(new SPARCOP3Op(op3, getLIRGen().load(a), b, result, state));
