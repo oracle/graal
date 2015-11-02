@@ -49,6 +49,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.SuspendedEvent;
@@ -101,7 +102,7 @@ import com.oracle.truffle.api.source.Source;
  */
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
-    static final boolean JAVA_INTEROP_ENABLED = !Boolean.getBoolean("com.oracle.truffle.aot");
+    static final boolean JAVA_INTEROP_ENABLED = !TruffleOptions.AOT;
     private static final Executor DIRECT_EXECUTOR = new Executor() {
         @Override
         public void execute(Runnable command) {
