@@ -720,6 +720,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : deps([
         "com.oracle.graal.lir.jtt",
+        "com.oracle.graal.lir.amd64",
         "jvmci:JVMCI_HOTSPOT"
       ]),
       "checkstyle" : "com.oracle.graal.graph",
