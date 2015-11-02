@@ -22,14 +22,8 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
 import static com.oracle.graal.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
 import static com.oracle.graal.hotspot.HotSpotBackend.UNCOMMON_TRAP;
-import static com.oracle.graal.lir.LIRValueUtil.asConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 
 import java.util.ArrayList;
@@ -44,13 +38,9 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
-import jdk.vm.ci.hotspot.HotSpotConstant;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -61,12 +51,9 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.compiler.amd64.AMD64ArithmeticLIRGenerator;
 import com.oracle.graal.compiler.amd64.AMD64LIRGenerator;
 import com.oracle.graal.compiler.amd64.AMD64MoveFactoryBase.BackupSlotProvider;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.debug.Debug;
@@ -77,7 +64,6 @@ import com.oracle.graal.hotspot.HotSpotLockStack;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
@@ -89,7 +75,6 @@ import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
-import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
 import com.oracle.graal.lir.amd64.AMD64CCall;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64FrameMapBuilder;
@@ -565,26 +550,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {
-        Constant c = value.getConstant();
-        if (c instanceof HotSpotConstant && !JavaConstant.isNull(c)) {
-            HotSpotConstant hc = (HotSpotConstant) c;
-            if (hc.isCompressed()) {
-                assert kind == AMD64Kind.DWORD;
-                if (!target().inlineObjects && hc instanceof HotSpotObjectConstant) {
-                    emitStore(kind, address, asAllocatable(value), state);
-                } else {
-                    append(new AMD64HotSpotBinaryConsumer.MemoryConstOp(AMD64MIOp.MOV, address, hc, state));
-                }
-            } else {
-                emitStore(kind, address, asAllocatable(value), state);
-            }
-        } else {
-            super.emitStoreConst(kind, address, value, state);
-        }
-    }
-
-    @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getLIRKind();
         assert inputKind.getPlatformKind() == AMD64Kind.QWORD;
@@ -640,46 +605,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             append(new AMD64Move.NullCheckOp(asAddressValue(uncompressed), state));
         } else {
             super.emitNullCheck(address, state);
-        }
-    }
-
-    @Override
-    protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
-        if (isConstantValue(right)) {
-            Constant c = asConstant(right);
-            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-                append(new AMD64BinaryConsumer.Op(TEST, DWORD, left, left));
-                return;
-            } else if (c instanceof HotSpotConstant) {
-                HotSpotConstant hsc = (HotSpotConstant) c;
-
-                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
-                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
-                if (hsc.isCompressed() && !(isImmutable && generatePIC)) {
-                    append(new AMD64HotSpotBinaryConsumer.ConstOp(CMP.getMIOpcode(DWORD, false), left, hsc));
-                } else {
-                    OperandSize size = hsc.isCompressed() ? DWORD : QWORD;
-                    append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, hsc));
-                }
-                return;
-            }
-        }
-
-        super.emitCompareOp(cmpKind, left, right);
-    }
-
-    @Override
-    protected boolean emitCompareMemoryConOp(OperandSize size, ConstantValue a, AMD64AddressValue b, LIRFrameState state) {
-        if (JavaConstant.isNull(a.getConstant())) {
-            append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, 0, state));
-            return true;
-        } else if (a.getConstant() instanceof HotSpotConstant && size == DWORD) {
-            HotSpotConstant hc = (HotSpotConstant) a.getConstant();
-            assert hc.isCompressed();
-            append(new AMD64HotSpotBinaryConsumer.MemoryConstOp(CMP.getMIOpcode(size, false), b, hc, state));
-            return true;
-        } else {
-            return super.emitCompareMemoryConOp(size, a, b, state);
         }
     }
 

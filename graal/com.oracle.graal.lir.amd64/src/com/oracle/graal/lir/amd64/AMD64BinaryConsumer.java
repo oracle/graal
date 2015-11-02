@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
@@ -31,6 +32,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import jdk.vm.ci.code.CompilationResult.DataSectionReference;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
@@ -121,6 +123,27 @@ public class AMD64BinaryConsumer {
                 assert isStackSlot(x);
                 opcode.emit(masm, size, (AMD64Address) crb.asAddress(x), y);
             }
+        }
+    }
+
+    /**
+     * Instruction that has one {@link AllocatableValue} operand and one 32-bit immediate operand
+     * that needs to be patched at runtime.
+     */
+    public static class VMConstOp extends ConstOp {
+        public static final LIRInstructionClass<VMConstOp> TYPE = LIRInstructionClass.create(VMConstOp.class);
+
+        protected final VMConstant c;
+
+        public VMConstOp(AMD64MIOp opcode, AllocatableValue x, VMConstant c) {
+            super(TYPE, opcode, DWORD, x, 0xDEADDEAD);
+            this.c = c;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            crb.recordInlineDataInCode(c);
+            super.emitCode(crb, masm);
         }
     }
 
@@ -297,6 +320,27 @@ public class AMD64BinaryConsumer {
                 return true;
             }
             return false;
+        }
+    }
+
+    /**
+     * Instruction that has one {@link AMD64AddressValue memory} operand and one 32-bit immediate
+     * operand that needs to be patched at runtime.
+     */
+    public static class MemoryVMConstOp extends MemoryConstOp {
+        public static final LIRInstructionClass<MemoryVMConstOp> TYPE = LIRInstructionClass.create(MemoryVMConstOp.class);
+
+        protected final VMConstant c;
+
+        public MemoryVMConstOp(AMD64MIOp opcode, AMD64AddressValue x, VMConstant c, LIRFrameState state) {
+            super(TYPE, opcode, DWORD, x, 0xDEADDEAD, state);
+            this.c = c;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            crb.recordInlineDataInCode(c);
+            super.emitCode(crb, masm);
         }
     }
 }

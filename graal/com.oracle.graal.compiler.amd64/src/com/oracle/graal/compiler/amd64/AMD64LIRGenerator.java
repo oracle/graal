@@ -41,6 +41,7 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SS;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
 import static com.oracle.graal.lir.LIRValueUtil.asConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import jdk.vm.ci.amd64.AMD64;
@@ -49,10 +50,12 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
@@ -62,6 +65,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
+import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
@@ -217,12 +221,26 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {
-        JavaConstant c = value.getJavaConstant();
-        if (c.isNull()) {
+        Constant c = value.getConstant();
+        if (JavaConstant.isNull(c)) {
             assert kind == AMD64Kind.DWORD || kind == AMD64Kind.QWORD;
             OperandSize size = kind == AMD64Kind.DWORD ? DWORD : QWORD;
             append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.MOV, size, address, 0, state));
+            return;
+        } else if (c instanceof VMConstant) {
+            // only 32-bit constants can be patched
+            if (kind == AMD64Kind.DWORD) {
+                if (target().inlineObjects || !(c instanceof JavaConstant)) {
+                    // if c is a JavaConstant, it's an oop, otherwise it's a metaspace constant
+                    assert !(c instanceof JavaConstant) || ((JavaConstant) c).getJavaKind() == JavaKind.Object;
+                    append(new AMD64BinaryConsumer.MemoryVMConstOp(AMD64MIOp.MOV, address, (VMConstant) c, state));
+                    return;
+                }
+            }
         } else {
+            JavaConstant jc = (JavaConstant) c;
+            assert jc.getJavaKind().isPrimitive();
+
             AMD64MIOp op = AMD64MIOp.MOV;
             OperandSize size;
             long imm;
@@ -231,27 +249,27 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 case BYTE:
                     op = AMD64MIOp.MOVB;
                     size = BYTE;
-                    imm = c.asInt();
+                    imm = jc.asInt();
                     break;
                 case WORD:
                     size = WORD;
-                    imm = c.asInt();
+                    imm = jc.asInt();
                     break;
                 case DWORD:
                     size = DWORD;
-                    imm = c.asInt();
+                    imm = jc.asInt();
                     break;
                 case QWORD:
                     size = QWORD;
-                    imm = c.asLong();
+                    imm = jc.asLong();
                     break;
                 case SINGLE:
                     size = DWORD;
-                    imm = Float.floatToRawIntBits(c.asFloat());
+                    imm = Float.floatToRawIntBits(jc.asFloat());
                     break;
                 case DOUBLE:
                     size = QWORD;
-                    imm = Double.doubleToRawLongBits(c.asDouble());
+                    imm = Double.doubleToRawLongBits(jc.asDouble());
                     break;
                 default:
                     throw JVMCIError.shouldNotReachHere("unexpected kind " + kind);
@@ -259,10 +277,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
             if (NumUtil.isInt(imm)) {
                 append(new AMD64BinaryConsumer.MemoryConstOp(op, size, address, (int) imm, state));
-            } else {
-                emitStore(kind, address, asAllocatable(value), state);
+                return;
             }
         }
+
+        // fallback: load, then store
+        emitStore(kind, address, asAllocatable(value), state);
     }
 
     protected void emitStore(AMD64Kind kind, AMD64AddressValue address, AllocatableValue value, LIRFrameState state) {
@@ -294,7 +314,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public void emitStore(LIRKind lirKind, Value address, Value input, LIRFrameState state) {
         AMD64AddressValue storeAddress = asAddressValue(address);
         AMD64Kind kind = (AMD64Kind) lirKind.getPlatformKind();
-        if (isJavaConstant(input)) {
+        if (isConstantValue(input)) {
             emitStoreConst(kind, storeAddress, asConstantValue(input), state);
         } else {
             emitStore(kind, storeAddress, asAllocatable(input), state);
@@ -441,20 +461,36 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 throw JVMCIError.shouldNotReachHere("unexpected kind: " + cmpKind);
         }
 
-        if (isJavaConstant(right)) {
-            JavaConstant c = asJavaConstant(right);
-            if (c.isDefaultForKind()) {
-                AMD64RMOp op = size == BYTE ? TESTB : TEST;
-                append(new AMD64BinaryConsumer.Op(op, size, left, left));
+        if (isConstantValue(right)) {
+            Constant c = LIRValueUtil.asConstant(right);
+            if (JavaConstant.isNull(c)) {
+                append(new AMD64BinaryConsumer.Op(TEST, DWORD, left, left));
                 return;
-            } else if (NumUtil.is32bit(c.asLong())) {
-                append(new AMD64BinaryConsumer.ConstOp(CMP, size, left, (int) c.asLong()));
+            } else if (c instanceof VMConstant) {
+                VMConstant vc = (VMConstant) c;
+                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
+                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
+                if (size == DWORD && !(isImmutable && generatePIC)) {
+                    append(new AMD64BinaryConsumer.VMConstOp(CMP.getMIOpcode(DWORD, false), left, vc));
+                } else {
+                    append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, vc));
+                }
                 return;
+            } else if (c instanceof JavaConstant) {
+                JavaConstant jc = (JavaConstant) c;
+                if (jc.isDefaultForKind()) {
+                    AMD64RMOp op = size == BYTE ? TESTB : TEST;
+                    append(new AMD64BinaryConsumer.Op(op, size, left, left));
+                    return;
+                } else if (NumUtil.is32bit(jc.asLong())) {
+                    append(new AMD64BinaryConsumer.ConstOp(CMP, size, left, (int) jc.asLong()));
+                    return;
+                }
             }
         }
 
-        AMD64RMOp op = CMP.getRMOpcode(size);
-        append(new AMD64BinaryConsumer.Op(op, size, left, asAllocatable(right)));
+        // fallback: load, then compare
+        append(new AMD64BinaryConsumer.Op(CMP.getRMOpcode(size), size, left, asAllocatable(right)));
     }
 
     /**
@@ -497,12 +533,21 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     protected boolean emitCompareMemoryConOp(OperandSize size, ConstantValue a, AMD64AddressValue b, LIRFrameState state) {
-        long value = a.getJavaConstant().asLong();
-        if (NumUtil.is32bit(value)) {
-            append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, (int) value, state));
+        if (JavaConstant.isNull(a.getConstant())) {
+            append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, 0, state));
+            return true;
+        } else if (a.getConstant() instanceof VMConstant && size == DWORD) {
+            VMConstant vc = (VMConstant) a.getConstant();
+            append(new AMD64BinaryConsumer.MemoryVMConstOp(CMP.getMIOpcode(size, false), b, vc, state));
             return true;
         } else {
-            return emitCompareRegMemoryOp(size, asAllocatable(a), b, state);
+            long value = a.getJavaConstant().asLong();
+            if (NumUtil.is32bit(value)) {
+                append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, (int) value, state));
+                return true;
+            } else {
+                return emitCompareRegMemoryOp(size, asAllocatable(a), b, state);
+            }
         }
     }
 
