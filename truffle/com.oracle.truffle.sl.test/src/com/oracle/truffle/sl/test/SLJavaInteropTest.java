@@ -74,7 +74,7 @@ public class SLJavaInteropTest {
         String scriptText = "function main() {\n" + "    println(\"Called!\");\n" + "}\n";
         Source script = Source.fromText(scriptText, "Test").withMimeType("application/x-sl");
         ByteArrayOutputStream os = new ByteArrayOutputStream();
-        PolyglotEngine engine = PolyglotEngine.buildNew().setOut(os).build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(os).build();
         engine.eval(script);
         PolyglotEngine.Value main = engine.findGlobalSymbol("main");
         final Object value = main.get();

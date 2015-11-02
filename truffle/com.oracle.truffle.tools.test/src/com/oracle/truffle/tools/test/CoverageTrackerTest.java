@@ -44,7 +44,7 @@ public class CoverageTrackerTest {
 
     @Test
     public void testNoExecution() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
@@ -72,7 +72,7 @@ public class CoverageTrackerTest {
 
     @Test
     public void testCountingCoverage() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
-        final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);

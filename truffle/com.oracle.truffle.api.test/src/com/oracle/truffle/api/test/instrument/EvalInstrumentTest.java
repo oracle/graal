@@ -58,7 +58,7 @@ public class EvalInstrumentTest {
     public void before() {
         // TODO (mlvdv) eventually abstract this
         try {
-            vm = PolyglotEngine.buildNew().build();
+            vm = PolyglotEngine.newBuilder().build();
             final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
             field.setAccessible(true);
             instrumenter = (Instrumenter) field.get(vm);

@@ -286,7 +286,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
-            PolyglotEngine vm = PolyglotEngine.buildNew().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
+            PolyglotEngine vm = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
 
             String script = readAllLines(testCase.path);
 

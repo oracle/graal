@@ -226,7 +226,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
      */
     public static void main(String[] args) throws IOException {
-        PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         assert vm.getLanguages().containsKey("application/x-sl");
 
         setupToolDemos();

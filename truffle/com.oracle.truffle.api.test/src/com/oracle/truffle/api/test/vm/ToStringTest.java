@@ -30,7 +30,7 @@ import org.junit.Test;
 public class ToStringTest {
     @Test
     public void valueToStringValueWith1() throws Exception {
-        PolyglotEngine engine = PolyglotEngine.buildNew().build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Language language2 = engine.getLanguages().get("application/x-test-import-export-2");
         language2.eval(Source.fromText("explicit.value=42", "define 42"));
@@ -43,7 +43,7 @@ public class ToStringTest {
 
     @Test
     public void valueToStringValueWith2() throws Exception {
-        PolyglotEngine engine = PolyglotEngine.buildNew().build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Language language2 = engine.getLanguages().get("application/x-test-import-export-2");
         language1.eval(Source.fromText("explicit.value=42", "define 42"));

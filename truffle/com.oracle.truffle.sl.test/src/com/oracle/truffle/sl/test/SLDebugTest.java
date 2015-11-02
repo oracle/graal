@@ -90,7 +90,7 @@ public class SLDebugTest {
 
         ByteArrayOutputStream os = new ByteArrayOutputStream();
 
-        PolyglotEngine engine = PolyglotEngine.buildNew().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+        PolyglotEngine engine = PolyglotEngine.newBuilder().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
                 onExecution(event);

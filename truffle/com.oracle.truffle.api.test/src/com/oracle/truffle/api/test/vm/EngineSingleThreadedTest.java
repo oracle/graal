@@ -35,7 +35,7 @@ public class EngineSingleThreadedTest {
 
     @Before
     public void initInDifferentThread() throws InterruptedException {
-        final PolyglotEngine.Builder b = PolyglotEngine.buildNew();
+        final PolyglotEngine.Builder b = PolyglotEngine.newBuilder();
         Thread t = new Thread("Initializer") {
             @Override
             public void run() {

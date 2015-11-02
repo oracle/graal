@@ -38,6 +38,6 @@ public class EngineAsynchTest extends EngineTest {
 
     @Override
     protected PolyglotEngine.Builder createBuilder() {
-        return PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor());
+        return PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor());
     }
 }
