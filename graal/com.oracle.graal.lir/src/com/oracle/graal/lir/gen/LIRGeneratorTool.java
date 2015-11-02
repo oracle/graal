@@ -116,18 +116,14 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
     Value emitJavaConstant(JavaConstant constant);
 
     /**
-     * Some backends need to convert sub-word kinds to a larger kind in {@link #emitLoad} and
-     * {@link #emitLoadConstant} because sub-word registers can't be accessed. This method converts
-     * the {@link LIRKind} of a memory location or constant to the {@link LIRKind} that will be used
-     * when it is loaded into a register.
+     * Some backends need to convert sub-word kinds to a larger kind in
+     * {@link ArithmeticLIRGeneratorTool#emitLoad} and {@link #emitLoadConstant} because sub-word
+     * registers can't be accessed. This method converts the {@link LIRKind} of a memory location or
+     * constant to the {@link LIRKind} that will be used when it is loaded into a register.
      */
     LIRKind toRegisterKind(LIRKind kind);
 
     AllocatableValue emitLoadConstant(LIRKind kind, Constant constant);
-
-    Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
-
-    void emitStore(LIRKind kind, Value address, Value input, LIRFrameState state);
 
     void emitNullCheck(Value address, LIRFrameState state);
 

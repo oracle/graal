@@ -70,7 +70,7 @@ public final class DirectReadNode extends FixedWithNextNode implements LIRLowera
     public void generate(NodeLIRBuilderTool builder) {
         LIRGeneratorTool gen = builder.getLIRGeneratorTool();
         LIRKind kind = gen.target().getLIRKind(readKind);
-        Value loaded = gen.emitLoad(kind, builder.operand(address), null);
+        Value loaded = gen.getArithmetic().emitLoad(kind, builder.operand(address), null);
         switch (readKind) {
             case Byte:
                 loaded = gen.getArithmetic().emitSignExtend(loaded, 8, 32);

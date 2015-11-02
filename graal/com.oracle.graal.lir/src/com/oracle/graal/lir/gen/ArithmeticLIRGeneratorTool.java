@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,10 @@ import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.Variable;
 
 /**
- * This interface can be used to generate LIR for arithmetic operations.
+ * This interface can be used to generate LIR for arithmetic and simple memory access operations.
  *
  * The setFlags flag in emitAdd, emitSub and emitMul indicates, that the instruction must set the
  * flags register to be used for a later branch. (On AMD64, the condition codes are set in every
@@ -92,4 +93,9 @@ public interface ArithmeticLIRGeneratorTool {
     Value emitBitScanForward(Value operand);
 
     Value emitBitScanReverse(Value operand);
+
+    Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
+
+    void emitStore(LIRKind kind, Value address, Value input, LIRFrameState state);
+
 }

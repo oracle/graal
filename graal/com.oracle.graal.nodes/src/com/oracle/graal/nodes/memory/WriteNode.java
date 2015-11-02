@@ -72,7 +72,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind writeKind = gen.getLIRGeneratorTool().getLIRKind(value().stamp());
-        gen.getLIRGeneratorTool().emitStore(writeKind, gen.operand(address), gen.operand(value()), gen.state(this));
+        gen.getLIRGeneratorTool().getArithmetic().emitStore(writeKind, gen.operand(address), gen.operand(value()), gen.state(this));
     }
 
     @Override

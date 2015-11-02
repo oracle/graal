@@ -252,7 +252,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     private Value emitReinterpretMemory(LIRKind to, Access access) {
         AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
         LIRFrameState state = getState(access);
-        return getLIRGeneratorTool().emitLoad(to, address, state);
+        return getArithmeticLIRGenerator().emitLoad(to, address, state);
     }
 
     @MatchRule("(If (IntegerTest Read=access value))")
@@ -374,7 +374,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult writeNarrow(WriteNode root, NarrowNode narrow) {
         return builder -> {
             LIRKind writeKind = getLIRGeneratorTool().getLIRKind(root.value().stamp());
-            getLIRGeneratorTool().emitStore(writeKind, operand(root.getAddress()), operand(narrow.getValue()), state(root));
+            getArithmeticLIRGenerator().emitStore(writeKind, operand(root.getAddress()), operand(narrow.getValue()), state(root));
             return null;
         };
     }

@@ -59,7 +59,7 @@ public final class DirectStoreNode extends FixedWithNextNode implements LIRLower
     public void generate(NodeLIRBuilderTool gen) {
         Value v = gen.operand(value);
         LIRKind lirKind = gen.getLIRGeneratorTool().target().getLIRKind(kind);
-        gen.getLIRGeneratorTool().emitStore(lirKind, gen.operand(address), v, null);
+        gen.getLIRGeneratorTool().getArithmetic().emitStore(lirKind, gen.operand(address), v, null);
     }
 
     public ValueNode getAddress() {

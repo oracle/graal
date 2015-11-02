@@ -59,9 +59,9 @@ import static jdk.vm.ci.code.CodeUtil.mask;
 import static jdk.vm.ci.meta.JavaConstant.forLong;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
-import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -79,6 +79,7 @@ import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import com.oracle.graal.lir.sparc.SPARCAddressValue;
 import com.oracle.graal.lir.sparc.SPARCArithmetic;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.FloatConvertOp;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.MulHighOp;
@@ -88,7 +89,10 @@ import com.oracle.graal.lir.sparc.SPARCArithmetic.RemOp.Rem;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.SPARCIMulccOp;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.SPARCLMulccOp;
 import com.oracle.graal.lir.sparc.SPARCBitManipulationOp;
+import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGp;
+import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
+import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.lir.sparc.SPARCOP3Op;
 import com.oracle.graal.lir.sparc.SPARCOPFOp;
 
@@ -666,5 +670,27 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             // Consequently, there is no need for a special zero-extension move.
             return emitConvertMove(to, input);
         }
+    }
+
+    @Override
+    public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
+        SPARCAddressValue loadAddress = getLIRGen().asAddressValue(address);
+        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(kind));
+        getLIRGen().append(new LoadOp(kind.getPlatformKind(), result, loadAddress, state));
+        return result;
+    }
+
+    @Override
+    public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
+        SPARCAddressValue storeAddress = getLIRGen().asAddressValue(address);
+        if (isJavaConstant(inputVal)) {
+            JavaConstant c = asJavaConstant(inputVal);
+            if (c.isDefaultForKind()) {
+                getLIRGen().append(new StoreConstantOp(kind.getPlatformKind(), storeAddress, c, state));
+                return;
+            }
+        }
+        Variable input = getLIRGen().load(inputVal);
+        getLIRGen().append(new StoreOp(kind.getPlatformKind(), storeAddress, input, state));
     }
 }

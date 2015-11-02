@@ -90,7 +90,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(stamp());
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, gen.operand(address), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this)));
     }
 
     @Override

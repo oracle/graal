@@ -24,11 +24,6 @@
 package com.oracle.graal.compiler.amd64;
 
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.MOV;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSS;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSX;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXB;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TESTB;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.BYTE;
@@ -36,8 +31,6 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.PD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.PS;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SS;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
 import static com.oracle.graal.lir.LIRValueUtil.asConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
@@ -60,7 +53,6 @@ import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MROp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
@@ -94,7 +86,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
-import com.oracle.graal.lir.amd64.AMD64Unary;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.phases.util.Providers;
@@ -188,136 +179,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 return kind.changeType(AMD64Kind.DWORD);
             default:
                 return kind;
-        }
-    }
-
-    @Override
-    public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
-        AMD64AddressValue loadAddress = asAddressValue(address);
-        Variable result = newVariable(toRegisterKind(kind));
-        switch ((AMD64Kind) kind.getPlatformKind()) {
-            case BYTE:
-                append(new AMD64Unary.MemoryOp(MOVSXB, DWORD, result, loadAddress, state));
-                break;
-            case WORD:
-                append(new AMD64Unary.MemoryOp(MOVSX, DWORD, result, loadAddress, state));
-                break;
-            case DWORD:
-                append(new AMD64Unary.MemoryOp(MOV, DWORD, result, loadAddress, state));
-                break;
-            case QWORD:
-                append(new AMD64Unary.MemoryOp(MOV, QWORD, result, loadAddress, state));
-                break;
-            case SINGLE:
-                append(new AMD64Unary.MemoryOp(MOVSS, SS, result, loadAddress, state));
-                break;
-            case DOUBLE:
-                append(new AMD64Unary.MemoryOp(MOVSD, SD, result, loadAddress, state));
-                break;
-            default:
-                throw JVMCIError.shouldNotReachHere();
-        }
-        return result;
-    }
-
-    protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {
-        Constant c = value.getConstant();
-        if (JavaConstant.isNull(c)) {
-            assert kind == AMD64Kind.DWORD || kind == AMD64Kind.QWORD;
-            OperandSize size = kind == AMD64Kind.DWORD ? DWORD : QWORD;
-            append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.MOV, size, address, 0, state));
-            return;
-        } else if (c instanceof VMConstant) {
-            // only 32-bit constants can be patched
-            if (kind == AMD64Kind.DWORD) {
-                if (target().inlineObjects || !(c instanceof JavaConstant)) {
-                    // if c is a JavaConstant, it's an oop, otherwise it's a metaspace constant
-                    assert !(c instanceof JavaConstant) || ((JavaConstant) c).getJavaKind() == JavaKind.Object;
-                    append(new AMD64BinaryConsumer.MemoryVMConstOp(AMD64MIOp.MOV, address, (VMConstant) c, state));
-                    return;
-                }
-            }
-        } else {
-            JavaConstant jc = (JavaConstant) c;
-            assert jc.getJavaKind().isPrimitive();
-
-            AMD64MIOp op = AMD64MIOp.MOV;
-            OperandSize size;
-            long imm;
-
-            switch (kind) {
-                case BYTE:
-                    op = AMD64MIOp.MOVB;
-                    size = BYTE;
-                    imm = jc.asInt();
-                    break;
-                case WORD:
-                    size = WORD;
-                    imm = jc.asInt();
-                    break;
-                case DWORD:
-                    size = DWORD;
-                    imm = jc.asInt();
-                    break;
-                case QWORD:
-                    size = QWORD;
-                    imm = jc.asLong();
-                    break;
-                case SINGLE:
-                    size = DWORD;
-                    imm = Float.floatToRawIntBits(jc.asFloat());
-                    break;
-                case DOUBLE:
-                    size = QWORD;
-                    imm = Double.doubleToRawLongBits(jc.asDouble());
-                    break;
-                default:
-                    throw JVMCIError.shouldNotReachHere("unexpected kind " + kind);
-            }
-
-            if (NumUtil.isInt(imm)) {
-                append(new AMD64BinaryConsumer.MemoryConstOp(op, size, address, (int) imm, state));
-                return;
-            }
-        }
-
-        // fallback: load, then store
-        emitStore(kind, address, asAllocatable(value), state);
-    }
-
-    protected void emitStore(AMD64Kind kind, AMD64AddressValue address, AllocatableValue value, LIRFrameState state) {
-        switch (kind) {
-            case BYTE:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOVB, BYTE, address, value, state));
-                break;
-            case WORD:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOV, WORD, address, value, state));
-                break;
-            case DWORD:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOV, DWORD, address, value, state));
-                break;
-            case QWORD:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOV, QWORD, address, value, state));
-                break;
-            case SINGLE:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOVSS, SS, address, value, state));
-                break;
-            case DOUBLE:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOVSD, SD, address, value, state));
-                break;
-            default:
-                throw JVMCIError.shouldNotReachHere();
-        }
-    }
-
-    @Override
-    public void emitStore(LIRKind lirKind, Value address, Value input, LIRFrameState state) {
-        AMD64AddressValue storeAddress = asAddressValue(address);
-        AMD64Kind kind = (AMD64Kind) lirKind.getPlatformKind();
-        if (isConstantValue(input)) {
-            emitStoreConst(kind, storeAddress, asConstantValue(input), state);
-        } else {
-            emitStore(kind, storeAddress, asAllocatable(input), state);
         }
     }
 

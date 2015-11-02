@@ -501,7 +501,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AMD64AddressValue address = new AMD64AddressValue(wordKind, thread, offset);
-        emitStore(v.getLIRKind(), address, v, null);
+        arithmeticLIRGen.emitStore(v.getLIRKind(), address, v, null);
     }
 
     @Override

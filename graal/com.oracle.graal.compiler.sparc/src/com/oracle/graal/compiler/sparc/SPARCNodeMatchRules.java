@@ -122,7 +122,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         SPARCKind localToKind = toKind;
         return builder -> {
             // Loads are always zero extending load
-            Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
+            Value v = getArithmeticLIRGenerator().emitLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
             return getArithmeticLIRGenerator().emitReinterpret(LIRKind.value(localToKind), v);
         };
     }
