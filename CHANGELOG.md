@@ -3,7 +3,11 @@
 This changelog summarizes major changes between Graal versions relevant to developers building technology on top of Graal. The main focus is on APIs exported by Graal.
 
 ## `tip`
-...
+* All JVMCI (and HotSpot) code has been split out into a [separate repository](http://hg.openjdk.java.net/graal/graal-jvmci-8/).
+* JVMCI code is now in idk.vm.ci.* name space.
+* Graal now works on top of a JVMCI enabled JDK9 binary.
+* Separate Graal compiler can be specified for Truffle compilation with new `-G:TruffleCompiler` option.
+* Initialization of the Truffle compiler is delayed until first Truffle compilation request.
 
 ## Version 0.8
 15-Jul-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.8)
