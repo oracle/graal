@@ -95,7 +95,6 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64FrameMapBuilder;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.amd64.AMD64Move;
-import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64RestoreRegistersOp;
 import com.oracle.graal.lir.amd64.AMD64SaveRegistersOp;
@@ -274,11 +273,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public boolean needOnlyOopMaps() {
         // Stubs only need oop maps
         return ((AMD64HotSpotLIRGenerationResult) getResult()).getStub() != null;
-    }
-
-    @Override
-    public void emitData(AllocatableValue dst, byte[] data) {
-        append(new LeaDataOp(dst, data));
     }
 
     private LIRFrameState currentRuntimeCallInfo;
