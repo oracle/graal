@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.match.processor;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -595,20 +594,6 @@ public class MatchProcessor extends AbstractProcessor {
 
             out.println("}");
         }
-
-        try {
-            createProviderFile(pkg, matchStatementClassName, originatingElements);
-        } catch (IOException e) {
-            reportExceptionThrow(info.topDeclaringType, e);
-        }
-    }
-
-    private void createProviderFile(String pkg, String providerClassName, Element... originatingElements) throws IOException {
-        String filename = "META-INF/jvmci.providers/" + pkg + "." + providerClassName;
-        FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
-        PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
-        writer.println(MatchStatementSet.class.getName());
-        writer.close();
     }
 
     protected PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {

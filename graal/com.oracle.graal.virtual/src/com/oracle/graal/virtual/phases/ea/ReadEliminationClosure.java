@@ -55,11 +55,9 @@ import com.oracle.graal.nodes.java.StoreFieldNode;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.memory.ReadNode;
 import com.oracle.graal.nodes.memory.WriteNode;
-import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
-import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.ReadCacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
 
 public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockState> {
@@ -106,46 +104,46 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
             }
         } else if (node instanceof ReadNode) {
             ReadNode read = (ReadNode) node;
-            if (read.getAddress() instanceof OffsetAddressNode) {
-                OffsetAddressNode address = (OffsetAddressNode) read.getAddress();
-                if (address.getOffset().isConstant()) {
-                    ValueNode object = GraphUtil.unproxify(address.getBase());
-                    ReadCacheEntry identifier = new ReadCacheEntry(object, address.getOffset(), read.getLocationIdentity());
-                    ValueNode cachedValue = state.getCacheEntry(identifier);
-                    if (cachedValue != null && read.stamp().isCompatible(cachedValue.stamp())) {
-                        // Anchor guard if it is not fixed and different from cachedValue's guard
-                        if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
-                            if (!(cachedValue instanceof GuardedNode) || ((GuardedNode) cachedValue).getGuard() != read.getGuard()) {
-                                effects.addFixedNodeBefore(new ValueAnchorNode((ValueNode) read.getGuard()), read);
-                            }
+            if (read.getLocationIdentity().isSingle()) {
+                ValueNode object = GraphUtil.unproxify(read.getAddress());
+                LoadCacheEntry identifier = new LoadCacheEntry(object, read.getLocationIdentity());
+                ValueNode cachedValue = state.getCacheEntry(identifier);
+                if (cachedValue != null && read.stamp().isCompatible(cachedValue.stamp())) {
+                    // Anchor guard if it is not fixed and different from cachedValue's guard such
+                    // that it gets preserved.
+                    if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
+                        if (!(cachedValue instanceof GuardedNode) || ((GuardedNode) cachedValue).getGuard() != read.getGuard()) {
+                            effects.addFixedNodeBefore(new ValueAnchorNode((ValueNode) read.getGuard()), read);
                         }
                     }
+                    effects.replaceAtUsages(read, cachedValue);
+                    addScalarAlias(read, cachedValue);
+                    deleted = true;
+                } else {
+                    state.addCacheEntry(identifier, read);
                 }
             }
         } else if (node instanceof WriteNode) {
             WriteNode write = (WriteNode) node;
-            if (write.getAddress() instanceof OffsetAddressNode) {
-                OffsetAddressNode address = (OffsetAddressNode) write.getAddress();
-                if (address.getOffset().isConstant()) {
-                    ValueNode object = GraphUtil.unproxify(address.getBase());
-                    ReadCacheEntry identifier = new ReadCacheEntry(object, address.getOffset(), write.getLocationIdentity());
-                    ValueNode cachedValue = state.getCacheEntry(identifier);
+            if (write.getLocationIdentity().isSingle()) {
+                ValueNode object = GraphUtil.unproxify(write.getAddress());
+                LoadCacheEntry identifier = new LoadCacheEntry(object, write.getLocationIdentity());
+                ValueNode cachedValue = state.getCacheEntry(identifier);
 
-                    ValueNode value = getScalarAlias(write.value());
-                    if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                        effects.deleteNode(write);
-                        deleted = true;
-                    }
-                    processIdentity(state, write.getLocationIdentity());
-                    state.addCacheEntry(identifier, value);
-                } else {
-                    processIdentity(state, write.getLocationIdentity());
+                ValueNode value = getScalarAlias(write.value());
+                if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
+                    effects.deleteNode(write);
+                    deleted = true;
                 }
+                processIdentity(state, write.getLocationIdentity());
+                state.addCacheEntry(identifier, value);
+            } else {
+                processIdentity(state, write.getLocationIdentity());
             }
         } else if (node instanceof UnsafeAccessNode) {
             if (node instanceof UnsafeLoadNode) {
                 UnsafeLoadNode load = (UnsafeLoadNode) node;
-                if (load.offset().isConstant() && !load.getLocationIdentity().equals(LocationIdentity.any())) {
+                if (load.getLocationIdentity().isSingle()) {
                     ValueNode object = GraphUtil.unproxify(load.object());
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
@@ -160,7 +158,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
             } else {
                 assert node instanceof UnsafeStoreNode;
                 UnsafeStoreNode write = (UnsafeStoreNode) node;
-                if (write.offset().isConstant() && !write.getLocationIdentity().equals(LocationIdentity.any())) {
+                if (write.getLocationIdentity().isSingle()) {
                     ValueNode object = GraphUtil.unproxify(write.object());
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(), write.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);

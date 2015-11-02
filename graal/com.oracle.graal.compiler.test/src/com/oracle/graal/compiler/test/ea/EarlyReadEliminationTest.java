@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,14 +35,15 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.StoreFieldNode;
+import com.oracle.graal.nodes.memory.ReadNode;
+import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.common.inlining.InliningPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.virtual.phases.ea.EarlyReadEliminationPhase;
 
 public class EarlyReadEliminationTest extends GraalCompilerTest {
-
-    protected StructuredGraph graph;
 
     public static Object staticField;
 
@@ -87,8 +88,15 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testSimple() {
-        ValueNode result = getReturn("testSimpleSnippet").result();
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
+        // Test without lowering.
+        ValueNode result = getReturn("testSimpleSnippet", false).result();
+        assertTrue(result.graph().getNodes().filter(LoadFieldNode.class).isEmpty());
+        assertTrue(result.isConstant());
+        assertDeepEquals(2, result.asJavaConstant().asInt());
+
+        // Test with lowering.
+        result = getReturn("testSimpleSnippet", true).result();
+        assertTrue(result.graph().getNodes().filter(ReadNode.class).isEmpty());
         assertTrue(result.isConstant());
         assertDeepEquals(2, result.asJavaConstant().asInt());
     }
@@ -103,7 +111,7 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testSimpleConflict() {
-        ValueNode result = getReturn("testSimpleConflictSnippet").result();
+        ValueNode result = getReturn("testSimpleConflictSnippet", false).result();
         assertFalse(result.isConstant());
         assertTrue(result instanceof LoadFieldNode);
     }
@@ -116,9 +124,9 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testParam() {
-        ValueNode result = getReturn("testParamSnippet").result();
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertDeepEquals(graph.getParameter(1), result);
+        ValueNode result = getReturn("testParamSnippet", false).result();
+        assertTrue(result.graph().getNodes().filter(LoadFieldNode.class).isEmpty());
+        assertDeepEquals(result.graph().getParameter(1), result);
     }
 
     @SuppressWarnings("all")
@@ -130,9 +138,9 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testMaterialized() {
-        ValueNode result = getReturn("testMaterializedSnippet").result();
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertDeepEquals(graph.getParameter(0), result);
+        ValueNode result = getReturn("testMaterializedSnippet", false).result();
+        assertTrue(result.graph().getNodes().filter(LoadFieldNode.class).isEmpty());
+        assertDeepEquals(result.graph().getParameter(0), result);
     }
 
     @SuppressWarnings("all")
@@ -146,9 +154,15 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testSimpleLoop() {
-        ValueNode result = getReturn("testSimpleLoopSnippet").result();
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertDeepEquals(graph.getParameter(1), result);
+        // Test without lowering.
+        ValueNode result = getReturn("testSimpleLoopSnippet", false).result();
+        assertTrue(result.graph().getNodes().filter(LoadFieldNode.class).isEmpty());
+        assertDeepEquals(result.graph().getParameter(1), result);
+
+        // Now test with lowering.
+        result = getReturn("testSimpleLoopSnippet", true).result();
+        assertTrue(result.graph().getNodes().filter(ReadNode.class).isEmpty());
+        assertDeepEquals(result.graph().getParameter(1), result);
     }
 
     @SuppressWarnings("all")
@@ -164,8 +178,8 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testBadLoop() {
-        ValueNode result = getReturn("testBadLoopSnippet").result();
-        assertDeepEquals(0, graph.getNodes().filter(LoadFieldNode.class).count());
+        ValueNode result = getReturn("testBadLoopSnippet", false).result();
+        assertDeepEquals(0, result.graph().getNodes().filter(LoadFieldNode.class).count());
         assertTrue(result instanceof ProxyNode);
         assertTrue(((ProxyNode) result).value() instanceof ValuePhiNode);
     }
@@ -182,8 +196,8 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testBadLoop2() {
-        ValueNode result = getReturn("testBadLoop2Snippet").result();
-        assertDeepEquals(1, graph.getNodes().filter(LoadFieldNode.class).count());
+        ValueNode result = getReturn("testBadLoop2Snippet", false).result();
+        assertDeepEquals(1, result.graph().getNodes().filter(LoadFieldNode.class).count());
         assertTrue(result instanceof LoadFieldNode);
     }
 
@@ -199,7 +213,7 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testPhi() {
-        processMethod("testPhiSnippet");
+        StructuredGraph graph = processMethod("testPhiSnippet", false);
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.TYPE).snapshot();
         assertDeepEquals(2, returnNodes.size());
@@ -217,7 +231,7 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testSimpleStore() {
-        processMethod("testSimpleStoreSnippet");
+        StructuredGraph graph = processMethod("testSimpleStoreSnippet", false);
         assertDeepEquals(1, graph.getNodes().filter(StoreFieldNode.class).count());
     }
 
@@ -235,20 +249,24 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testValueProxy() {
-        processMethod("testValueProxySnippet");
+        StructuredGraph graph = processMethod("testValueProxySnippet", false);
         assertDeepEquals(2, graph.getNodes().filter(LoadFieldNode.class).count());
     }
 
-    ReturnNode getReturn(String snippet) {
-        processMethod(snippet);
+    ReturnNode getReturn(String snippet, boolean doLowering) {
+        StructuredGraph graph = processMethod(snippet, doLowering);
         assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
         return graph.getNodes(ReturnNode.TYPE).first();
     }
 
-    protected void processMethod(String snippet) {
-        graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.NO);
+    protected StructuredGraph processMethod(String snippet, boolean doLowering) {
+        StructuredGraph graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
+        if (doLowering) {
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        }
         new EarlyReadEliminationPhase(new CanonicalizerPhase()).apply(graph, context);
+        return graph;
     }
 }

@@ -112,41 +112,6 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         }
     }
 
-    static class ReadCacheEntry extends CacheEntry<ValueNode> {
-
-        private final LocationIdentity location;
-
-        public ReadCacheEntry(ValueNode object, ValueNode offset, LocationIdentity location) {
-            super(object, offset);
-            this.location = location;
-        }
-
-        @Override
-        public CacheEntry<ValueNode> duplicateWithObject(ValueNode newObject) {
-            return new ReadCacheEntry(newObject, identity, location);
-        }
-
-        @Override
-        public boolean conflicts(LocationIdentity other) {
-            return location.equals(other);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof ReadCacheEntry)) {
-                return false;
-            }
-
-            ReadCacheEntry other = (ReadCacheEntry) obj;
-            return this.location.equals(other.location) && super.equals(other);
-        }
-
-        @Override
-        public int hashCode() {
-            return location.hashCode() * 23 + super.hashCode();
-        }
-    }
-
     public ReadEliminationBlockState() {
         readCache = CollectionsFactory.newMap();
     }
