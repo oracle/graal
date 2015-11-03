@@ -68,4 +68,19 @@ public abstract class BinaryNode extends FloatingNode implements Canonicalizable
         this.x = x;
         this.y = y;
     }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(foldStamp(getX().stamp(), getY().stamp()));
+    }
+
+    /**
+     * Compute an improved for this node using the passed in stamps. The stamps must be compatible
+     * with the current values of {@link #x} and {@link #y}. This code is used to provide the
+     * default implementation of {@link #inferStamp()} and may be used by external optimizations.
+     *
+     * @param stampX
+     * @param stampY
+     */
+    public abstract Stamp foldStamp(Stamp stampX, Stamp stampY);
 }

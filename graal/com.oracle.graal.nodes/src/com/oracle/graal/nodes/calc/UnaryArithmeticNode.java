@@ -27,6 +27,7 @@ import java.util.function.Function;
 
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -54,8 +55,9 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(getOp(getValue()).foldStamp(getValue().stamp()));
+    public Stamp foldStamp(Stamp newStamp) {
+        assert newStamp.isCompatible(getValue().stamp());
+        return getOp(getValue()).foldStamp(newStamp);
     }
 
     @Override

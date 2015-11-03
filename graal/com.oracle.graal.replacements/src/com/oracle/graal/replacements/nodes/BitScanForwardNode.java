@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -54,8 +55,9 @@ public final class BitScanForwardNode extends UnaryNode implements ArithmeticLIR
     }
 
     @Override
-    public boolean inferStamp() {
-        IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
+    public Stamp foldStamp(Stamp newStamp) {
+        assert newStamp.isCompatible(getValue().stamp());
+        IntegerStamp valueStamp = (IntegerStamp) newStamp;
         int min;
         int max;
         long mask = CodeUtil.mask(valueStamp.getBits());
@@ -69,7 +71,7 @@ public final class BitScanForwardNode extends UnaryNode implements ArithmeticLIR
             min = firstMaybeSetBit;
             max = firstAlwaysSetBit;
         }
-        return updateStamp(StampFactory.forInteger(JavaKind.Int, min, max));
+        return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 
     @Override

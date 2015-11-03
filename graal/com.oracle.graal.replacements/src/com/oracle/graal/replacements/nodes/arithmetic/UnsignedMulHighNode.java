@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -58,9 +59,9 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
      * maxima are calculated using signed min/max functions, while the values themselves are
      * unsigned.
      */
-    private <T> T processExtremes(ValueNode forX, ValueNode forY, BiFunction<Long, Long, T> op) {
-        IntegerStamp xStamp = (IntegerStamp) forX.stamp();
-        IntegerStamp yStamp = (IntegerStamp) forY.stamp();
+    private <T> T processExtremes(Stamp forX, Stamp forY, BiFunction<Long, Long, T> op) {
+        IntegerStamp xStamp = (IntegerStamp) forX;
+        IntegerStamp yStamp = (IntegerStamp) forY;
 
         JavaKind kind = getStackKind();
         assert kind == JavaKind.Int || kind == JavaKind.Long;
@@ -80,15 +81,15 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
 
     @SuppressWarnings("cast")
     @Override
-    public boolean inferStamp() {
+    public Stamp foldStamp(Stamp stampX, Stamp stampY) {
         // if min is negative, then the value can reach into the unsigned range
-        return updateStamp(processExtremes(getX(), getY(), (min, max) -> (min == (long) max || min >= 0) ? StampFactory.forInteger(getStackKind(), min, max) : StampFactory.forKind(getStackKind())));
+        return processExtremes(stampX, stampY, (min, max) -> (min == (long) max || min >= 0) ? StampFactory.forInteger(getStackKind(), min, max) : StampFactory.forKind(getStackKind()));
     }
 
     @SuppressWarnings("cast")
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        return processExtremes(forX, forY, (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getStackKind(), min) : this);
+        return processExtremes(forX.stamp(), forY.stamp(), (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getStackKind(), min) : this);
     }
 
     @Override

@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -53,16 +54,17 @@ public final class AMD64CountLeadingZerosNode extends UnaryNode implements Arith
     }
 
     @Override
-    public boolean inferStamp() {
+    public Stamp foldStamp(Stamp newStamp) {
+        assert newStamp.isCompatible(getValue().stamp());
         assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
-        IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
+        IntegerStamp valueStamp = (IntegerStamp) newStamp;
         long mask = CodeUtil.mask(valueStamp.getBits());
         // Don't count zeros from the mask in the result.
         int adjust = Long.numberOfLeadingZeros(mask);
         assert adjust == 0 || adjust == 32;
         int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask) - adjust;
         int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask) - adjust;
-        return updateStamp(StampFactory.forInteger(JavaKind.Int, min, max));
+        return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 
     public static ValueNode tryFold(ValueNode value) {

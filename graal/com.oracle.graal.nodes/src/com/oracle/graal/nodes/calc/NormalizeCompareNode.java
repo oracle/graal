@@ -27,6 +27,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.FloatStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -81,6 +82,11 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     }
 
     @Override
+    public boolean inferStamp() {
+        return false;
+    }
+
+    @Override
     public void lower(LoweringTool tool) {
         LogicNode equalComp;
         LogicNode lessComp;
@@ -96,5 +102,10 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
         ConditionalNode value = graph().unique(new ConditionalNode(lessComp, ConstantNode.forInt(-1, graph()), equalValue));
 
         graph().replaceFloating(this, value);
+    }
+
+    @Override
+    public Stamp foldStamp(Stamp stampX, Stamp stampY) {
+        return stamp();
     }
 }

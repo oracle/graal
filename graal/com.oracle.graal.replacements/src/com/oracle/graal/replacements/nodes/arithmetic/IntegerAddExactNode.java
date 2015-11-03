@@ -56,13 +56,9 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(foldStamp(x.stamp(), y.stamp()));
-    }
-
-    private static Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
-        IntegerStamp a = (IntegerStamp) stamp1;
-        IntegerStamp b = (IntegerStamp) stamp2;
+    public Stamp foldStamp(Stamp stampX, Stamp stampY) {
+        IntegerStamp a = (IntegerStamp) stampX;
+        IntegerStamp b = (IntegerStamp) stampY;
 
         int bits = a.getBits();
         assert bits == b.getBits();

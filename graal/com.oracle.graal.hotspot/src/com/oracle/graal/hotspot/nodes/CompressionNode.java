@@ -71,8 +71,9 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(mkStamp(op, getValue().stamp(), encoding));
+    public Stamp foldStamp(Stamp newStamp) {
+        assert newStamp.isCompatible(getValue().stamp());
+        return mkStamp(op, newStamp, encoding);
     }
 
     public static CompressionNode compress(ValueNode input, CompressEncoding encoding) {

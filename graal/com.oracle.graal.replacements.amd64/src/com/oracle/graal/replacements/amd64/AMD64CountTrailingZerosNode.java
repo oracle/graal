@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -53,12 +54,13 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements Arit
     }
 
     @Override
-    public boolean inferStamp() {
-        IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
+    public Stamp foldStamp(Stamp newStamp) {
+        assert newStamp.isCompatible(getValue().stamp());
+        IntegerStamp valueStamp = (IntegerStamp) newStamp;
         long mask = CodeUtil.mask(valueStamp.getBits());
         int min = Long.numberOfTrailingZeros(valueStamp.upMask() & mask);
         int max = Long.numberOfTrailingZeros(valueStamp.downMask() & mask);
-        return updateStamp(StampFactory.forInteger(JavaKind.Int, min, max));
+        return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 
     public static ValueNode tryFold(ValueNode value) {

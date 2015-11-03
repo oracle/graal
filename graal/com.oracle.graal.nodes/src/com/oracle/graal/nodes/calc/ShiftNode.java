@@ -32,6 +32,7 @@ import jdk.vm.ci.meta.JavaKind;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -69,8 +70,8 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticLIRL
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(getOp(getX()).foldStamp(getX().stamp(), (IntegerStamp) getY().stamp()));
+    public Stamp foldStamp(Stamp stampX, Stamp stampY) {
+        return getOp(getX()).foldStamp(stampX, (IntegerStamp) stampY);
     }
 
     @Override

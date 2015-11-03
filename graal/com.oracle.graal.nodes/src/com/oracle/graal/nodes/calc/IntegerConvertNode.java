@@ -89,8 +89,9 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements C
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(getOp(getValue()).foldStamp(inputBits, resultBits, getValue().stamp()));
+    public Stamp foldStamp(Stamp newStamp) {
+        assert newStamp.isCompatible(getValue().stamp());
+        return getOp(getValue()).foldStamp(inputBits, resultBits, newStamp);
     }
 
     @Override

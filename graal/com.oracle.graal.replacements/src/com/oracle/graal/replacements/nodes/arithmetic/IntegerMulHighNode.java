@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -55,9 +56,9 @@ public final class IntegerMulHighNode extends BinaryNode implements ArithmeticLI
      * Determines the minimum and maximum result of this node for the given inputs and returns the
      * result of the given BiFunction on the minimum and maximum values.
      */
-    private <T> T processExtremes(ValueNode forX, ValueNode forY, BiFunction<Long, Long, T> op) {
-        IntegerStamp xStamp = (IntegerStamp) forX.stamp();
-        IntegerStamp yStamp = (IntegerStamp) forY.stamp();
+    private <T> T processExtremes(Stamp forX, Stamp forY, BiFunction<Long, Long, T> op) {
+        IntegerStamp xStamp = (IntegerStamp) forX;
+        IntegerStamp yStamp = (IntegerStamp) forY;
 
         JavaKind kind = getStackKind();
         assert kind == JavaKind.Int || kind == JavaKind.Long;
@@ -76,14 +77,14 @@ public final class IntegerMulHighNode extends BinaryNode implements ArithmeticLI
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(processExtremes(getX(), getY(), (min, max) -> StampFactory.forInteger(getStackKind(), min, max)));
+    public Stamp foldStamp(Stamp stampX, Stamp stampY) {
+        return processExtremes(stampX, stampY, (min, max) -> StampFactory.forInteger(getStackKind(), min, max));
     }
 
     @SuppressWarnings("cast")
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        return processExtremes(forX, forY, (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getStackKind(), min) : this);
+        return processExtremes(forX.stamp(), forY.stamp(), (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getStackKind(), min) : this);
     }
 
     @Override
