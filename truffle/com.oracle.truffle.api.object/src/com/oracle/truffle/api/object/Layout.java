@@ -121,6 +121,7 @@ public abstract class Layout {
      */
     public static final class Builder {
         private EnumSet<ImplicitCast> allowedImplicitCasts;
+        private boolean polymorphicUnboxing;
 
         /**
          * Create a new layout builder.
@@ -155,9 +156,21 @@ public abstract class Layout {
             this.allowedImplicitCasts.add(allowedImplicitCast);
             return this;
         }
+
+        /**
+         * If {@code true}, try to keep properties with polymorphic primitive types unboxed.
+         */
+        public Builder setPolymorphicUnboxing(boolean polymorphicUnboxing) {
+            this.polymorphicUnboxing = polymorphicUnboxing;
+            return this;
+        }
     }
 
     protected static EnumSet<ImplicitCast> getAllowedImplicitCasts(Builder builder) {
         return builder.allowedImplicitCasts;
+    }
+
+    protected static boolean getPolymorphicUnboxing(Builder builder) {
+        return builder.polymorphicUnboxing;
     }
 }
