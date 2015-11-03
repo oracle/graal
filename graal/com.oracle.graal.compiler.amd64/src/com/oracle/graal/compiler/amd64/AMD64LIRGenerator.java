@@ -24,17 +24,12 @@
 package com.oracle.graal.compiler.amd64;
 
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TESTB;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.BYTE;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.PD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.PS;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
 import static com.oracle.graal.lir.LIRValueUtil.asConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import jdk.vm.ci.amd64.AMD64;
@@ -43,7 +38,6 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
@@ -57,7 +51,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
@@ -70,6 +63,7 @@ import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
+import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import com.oracle.graal.lir.amd64.AMD64ArrayEqualsOp;
 import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
 import com.oracle.graal.lir.amd64.AMD64ByteSwapOp;
@@ -297,63 +291,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
-        OperandSize size;
-        switch ((AMD64Kind) cmpKind) {
-            case BYTE:
-                size = BYTE;
-                break;
-            case WORD:
-                size = WORD;
-                break;
-            case DWORD:
-                size = DWORD;
-                break;
-            case QWORD:
-                size = QWORD;
-                break;
-            case SINGLE:
-                append(new AMD64BinaryConsumer.Op(SSEOp.UCOMIS, PS, left, asAllocatable(right)));
-                return;
-            case DOUBLE:
-                append(new AMD64BinaryConsumer.Op(SSEOp.UCOMIS, PD, left, asAllocatable(right)));
-                return;
-            default:
-                throw JVMCIError.shouldNotReachHere("unexpected kind: " + cmpKind);
-        }
-
-        if (isConstantValue(right)) {
-            Constant c = LIRValueUtil.asConstant(right);
-            if (JavaConstant.isNull(c)) {
-                append(new AMD64BinaryConsumer.Op(TEST, DWORD, left, left));
-                return;
-            } else if (c instanceof VMConstant) {
-                VMConstant vc = (VMConstant) c;
-                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
-                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
-                if (size == DWORD && !(isImmutable && generatePIC)) {
-                    append(new AMD64BinaryConsumer.VMConstOp(CMP.getMIOpcode(DWORD, false), left, vc));
-                } else {
-                    append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, vc));
-                }
-                return;
-            } else if (c instanceof JavaConstant) {
-                JavaConstant jc = (JavaConstant) c;
-                if (jc.isDefaultForKind()) {
-                    AMD64RMOp op = size == BYTE ? TESTB : TEST;
-                    append(new AMD64BinaryConsumer.Op(op, size, left, left));
-                    return;
-                } else if (NumUtil.is32bit(jc.asLong())) {
-                    append(new AMD64BinaryConsumer.ConstOp(CMP, size, left, (int) jc.asLong()));
-                    return;
-                }
-            }
-        }
-
-        // fallback: load, then compare
-        append(new AMD64BinaryConsumer.Op(CMP.getRMOpcode(size), size, left, asAllocatable(right)));
-    }
-
     /**
      * This method emits the compare against memory instruction, and may reorder the operands. It
      * returns true if it did so.
@@ -439,7 +376,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             right = loadNonConst(b);
             mirrored = false;
         }
-        emitCompareOp(cmpKind, left, right);
+        ((AMD64ArithmeticLIRGeneratorTool) arithmeticLIRGen).emitCompareOp((AMD64Kind) cmpKind, left, right);
         return mirrored;
     }
 

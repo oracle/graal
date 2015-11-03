@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
-
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.Value;
+
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 
 /**
  * This interface can be used to generate AMD64 LIR for arithmetic operations.
@@ -42,4 +44,6 @@ public interface AMD64ArithmeticLIRGeneratorTool extends ArithmeticLIRGeneratorT
     Value emitCountLeadingZeros(Value value);
 
     Value emitCountTrailingZeros(Value value);
+
+    void emitCompareOp(AMD64Kind cmpKind, Variable left, Value right);
 }

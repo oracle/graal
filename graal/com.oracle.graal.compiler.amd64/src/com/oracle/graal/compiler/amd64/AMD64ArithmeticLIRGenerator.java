@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.amd64;
 
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SUB;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
@@ -42,6 +43,8 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZX;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZXB;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.POPCNT;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TESTB;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift.ROL;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
@@ -92,9 +95,11 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
+import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.FPDivRemOp;
@@ -1037,4 +1042,63 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             emitStore(kind, storeAddress, getLIRGen().asAllocatable(input), state);
         }
     }
+
+    @Override
+    public void emitCompareOp(AMD64Kind cmpKind, Variable left, Value right) {
+        OperandSize size;
+        switch (cmpKind) {
+            case BYTE:
+                size = BYTE;
+                break;
+            case WORD:
+                size = WORD;
+                break;
+            case DWORD:
+                size = DWORD;
+                break;
+            case QWORD:
+                size = QWORD;
+                break;
+            case SINGLE:
+                getLIRGen().append(new AMD64BinaryConsumer.Op(SSEOp.UCOMIS, PS, left, getLIRGen().asAllocatable(right)));
+                return;
+            case DOUBLE:
+                getLIRGen().append(new AMD64BinaryConsumer.Op(SSEOp.UCOMIS, PD, left, getLIRGen().asAllocatable(right)));
+                return;
+            default:
+                throw JVMCIError.shouldNotReachHere("unexpected kind: " + cmpKind);
+        }
+
+        if (isConstantValue(right)) {
+            Constant c = LIRValueUtil.asConstant(right);
+            if (JavaConstant.isNull(c)) {
+                getLIRGen().append(new AMD64BinaryConsumer.Op(TEST, DWORD, left, left));
+                return;
+            } else if (c instanceof VMConstant) {
+                VMConstant vc = (VMConstant) c;
+                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
+                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
+                if (size == DWORD && !(isImmutable && generatePIC)) {
+                    getLIRGen().append(new AMD64BinaryConsumer.VMConstOp(CMP.getMIOpcode(DWORD, false), left, vc));
+                } else {
+                    getLIRGen().append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, vc));
+                }
+                return;
+            } else if (c instanceof JavaConstant) {
+                JavaConstant jc = (JavaConstant) c;
+                if (jc.isDefaultForKind()) {
+                    AMD64RMOp op = size == BYTE ? TESTB : TEST;
+                    getLIRGen().append(new AMD64BinaryConsumer.Op(op, size, left, left));
+                    return;
+                } else if (NumUtil.is32bit(jc.asLong())) {
+                    getLIRGen().append(new AMD64BinaryConsumer.ConstOp(CMP, size, left, (int) jc.asLong()));
+                    return;
+                }
+            }
+        }
+
+        // fallback: load, then compare
+        getLIRGen().append(new AMD64BinaryConsumer.Op(CMP.getRMOpcode(size), size, left, getLIRGen().asAllocatable(right)));
+    }
+
 }
