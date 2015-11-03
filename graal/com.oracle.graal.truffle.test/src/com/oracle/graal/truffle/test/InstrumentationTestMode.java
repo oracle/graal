@@ -34,7 +34,7 @@ public class InstrumentationTestMode {
     public static void set(boolean enable) {
 
         try {
-            final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+            final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
             final Field instrumenterField = vm.getClass().getDeclaredField("instrumenter");
             instrumenterField.setAccessible(true);
             final Object instrumenter = instrumenterField.get(vm);
