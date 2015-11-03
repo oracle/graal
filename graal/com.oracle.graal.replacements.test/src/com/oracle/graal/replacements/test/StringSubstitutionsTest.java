@@ -64,6 +64,11 @@ public class StringSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testEquals() {
+        if (System.getProperty("java.specification.version").compareTo("1.9") >= 0) {
+            // StringSubstitutions are disabled in 1.9
+            return;
+        }
+
         final int n = 1000;
         Object[] args1 = new Object[n];
         Object[] args2 = new Object[n];
