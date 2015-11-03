@@ -97,6 +97,7 @@ suite = {
         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-b0e383e27552.jar"],
         "sourceSha1" : "9781af80d9f43b4f1a5b17802ea8d0c8c50d563c",
         "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-b0e383e27552.src.zip"],
+        "license": "GPLv2-CPE",
      },
   }),
 
@@ -709,7 +710,6 @@ suite = {
       "annotationProcessors" : deps([
         "GRAAL_NODEINFO_PROCESSOR",
         "GRAAL_COMPILER_MATCH_PROCESSOR",
-        "jvmci:JVMCI_SERVICE_PROCESSOR",
       ]),
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,AMD64",
@@ -739,7 +739,6 @@ suite = {
       "annotationProcessors" : deps([
         "GRAAL_NODEINFO_PROCESSOR",
         "GRAAL_COMPILER_MATCH_PROCESSOR",
-        "jvmci:JVMCI_SERVICE_PROCESSOR",
       ]),
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,SPARC",
@@ -1118,9 +1117,10 @@ suite = {
     "GRAAL_COMPILER_MATCH_PROCESSOR" : {
       "subDir" : "graal",
       "dependencies" : ["com.oracle.graal.compiler.match.processor"],
-      "distDependencies" : [
+      "distDependencies" : deps([
         "GRAAL_COMPILER",
-      ]
+        "jvmci:JVMCI_SERVICE_PROCESSOR",
+      ])
     },
   },
 }
