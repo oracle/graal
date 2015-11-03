@@ -33,6 +33,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmps;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
+import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.common.JVMCIError;
@@ -55,7 +56,6 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Opfs;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRValueUtil;
@@ -212,39 +212,14 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
         SPARCKind actualCmpKind = (SPARCKind) cmpKind;
         if (actualCmpKind.isInteger()) {
-            actualCmpKind = toSPARCCmpKind(actualCmpKind);
-            append(new SPARCControlFlow.CompareBranchOp(canonicalizeForCompare(left, cmpKind, actualCmpKind), canonicalizeForCompare(right, cmpKind, actualCmpKind), actualCondition, trueDestination,
-                            falseDestination, actualCmpKind, unorderedIsTrue, trueDestinationProbability));
+            assert actualCmpKind.equals(XWORD) || actualCmpKind.equals(WORD) : "SPARC does not support compare of: " + actualCmpKind;
+            append(new SPARCControlFlow.CompareBranchOp(left, right, actualCondition, trueDestination, falseDestination, actualCmpKind, unorderedIsTrue, trueDestinationProbability));
         } else if (actualCmpKind.isFloat()) {
             emitFloatCompare(actualCmpKind, x, y, Fcc0);
             ConditionFlag cf = SPARCControlFlow.fromCondition(false, cond, unorderedIsTrue);
             append(new SPARCControlFlow.BranchOp(cf, trueDestination, falseDestination, actualCmpKind, trueDestinationProbability));
         } else {
             throw JVMCIError.shouldNotReachHere();
-        }
-    }
-
-    private static SPARCKind toSPARCCmpKind(SPARCKind actualCmpKind) {
-        if (actualCmpKind.isInteger() && actualCmpKind.getSizeInBytes() <= 4) {
-            return SPARCKind.WORD;
-        } else {
-            return actualCmpKind;
-        }
-    }
-
-    private Value canonicalizeForCompare(Value v, PlatformKind from, PlatformKind to) {
-        if (LIRValueUtil.isJavaConstant(v)) {
-            JavaConstant c = asJavaConstant(v);
-            return new ConstantValue(v.getLIRKind().changeType(to), c);
-        } else {
-            int fromBytes = from.getSizeInBytes() * 8;
-            int toBytes = to.getSizeInBytes() * 8;
-            assert from.getSizeInBytes() <= v.getPlatformKind().getSizeInBytes();
-            if (from == to) {
-                return v;
-            } else {
-                return arithmeticLIRGen.emitSignExtend(v, fromBytes, toBytes);
-            }
         }
     }
 
@@ -303,7 +278,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
         Variable result = newVariable(trueValue.getLIRKind());
         ConditionFlag finalCondition = SPARCControlFlow.fromCondition(cmpSPARCKind.isInteger(), mirrored ? cond.mirror() : cond, unorderedIsTrue);
-        CC cc = CC.forKind(toSPARCCmpKind(cmpSPARCKind));
+        CC cc = CC.forKind(cmpSPARCKind);
         append(new CondMoveOp(cmove, cc, finalCondition, actualTrueValue, actualFalseValue, result));
         return result;
     }

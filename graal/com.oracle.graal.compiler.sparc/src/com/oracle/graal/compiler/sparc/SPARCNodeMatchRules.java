@@ -24,9 +24,9 @@
 package com.oracle.graal.compiler.sparc;
 
 import static jdk.vm.ci.sparc.SPARCKind.BYTE;
-import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import static jdk.vm.ci.sparc.SPARCKind.HWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
+import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;

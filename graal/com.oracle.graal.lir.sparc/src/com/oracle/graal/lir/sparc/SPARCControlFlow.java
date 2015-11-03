@@ -179,7 +179,6 @@ public class SPARCControlFlow {
                 }
                 if (!emitted) { // No short compare/branch was used, so we go into fallback
                     emitted = emitLongCompareBranch(crb, masm, true);
-                    masm.nop();
                     emitted = true;
                 }
             }

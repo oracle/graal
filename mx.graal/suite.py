@@ -733,7 +733,8 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.compiler",
-        "com.oracle.graal.lir.sparc"
+        "com.oracle.graal.lir.sparc",
+        "com.oracle.graal.java"
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "annotationProcessors" : deps([
@@ -748,7 +749,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : deps([
-        "com.oracle.graal.compiler.test",
+        "com.oracle.graal.lir.jtt",
         "jvmci:JVMCI_HOTSPOT"
       ]),
       "checkstyle" : "com.oracle.graal.graph",
