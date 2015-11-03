@@ -63,7 +63,6 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.lir.sparc.SPARCAddressValue;
@@ -417,10 +416,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         Variable tmp = newVariable(key.getLIRKind());
         emitMove(tmp, key);
         append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(LIRKind.value(target().arch.getWordKind()))));
-    }
-
-    protected VirtualStackSlot getTempSlot(LIRKind kind) {
-        return getResult().getFrameMapBuilder().allocateSpillSlot(kind);
     }
 
     protected SPARC getArchitecture() {
