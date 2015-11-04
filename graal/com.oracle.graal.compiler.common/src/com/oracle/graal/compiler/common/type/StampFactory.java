@@ -140,6 +140,22 @@ public class StampFactory {
         return forInteger(kind.getBitCount(), lowerBound, upperBound);
     }
 
+    /**
+     * Create a new stamp use {@code newLowerBound} and {@code newUpperBound} computing the
+     * appropriate {@link IntegerStamp#upMask} and {@link IntegerStamp#downMask} and incorporating
+     * any mask information from {@code maskStamp}.
+     *
+     * @param bits
+     * @param newLowerBound
+     * @param newUpperBound
+     * @param maskStamp
+     * @return a new stamp with the appropriate bounds and masks
+     */
+    public static IntegerStamp forIntegerWithMask(int bits, long newLowerBound, long newUpperBound, IntegerStamp maskStamp) {
+        IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
+        return new IntegerStamp(bits, newLowerBound, newUpperBound, limit.downMask() | maskStamp.downMask(), limit.upMask() & maskStamp.upMask());
+    }
+
     public static IntegerStamp forInteger(int bits) {
         return new IntegerStamp(bits, CodeUtil.minValue(bits), CodeUtil.maxValue(bits), 0, CodeUtil.mask(bits));
     }

@@ -29,6 +29,7 @@ import jdk.vm.ci.meta.TriState;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -116,7 +117,7 @@ public final class IntegerBelowNode extends CompareNode {
                         long xLowerBound = xStamp.lowerBound();
                         long yLowerBound = yStamp.lowerBound();
                         if (yLowerBound > xLowerBound) {
-                            return new IntegerStamp(bits, yLowerBound, xStamp.upperBound(), xStamp.downMask(), xStamp.upMask());
+                            return StampFactory.forIntegerWithMask(bits, yLowerBound, xStamp.upperBound(), xStamp);
                         }
                     }
                 } else {
@@ -126,7 +127,7 @@ public final class IntegerBelowNode extends CompareNode {
                         long xUpperBound = xStamp.upperBound();
                         long yUpperBound = yStamp.upperBound();
                         if (yUpperBound <= xUpperBound || !xStamp.isPositive()) {
-                            return new IntegerStamp(bits, Math.max(0, xStamp.lowerBound()), Math.min(xUpperBound, yUpperBound - 1), xStamp.downMask(), xStamp.upMask());
+                            return StampFactory.forIntegerWithMask(bits, Math.max(0, xStamp.lowerBound()), Math.min(xUpperBound, yUpperBound - 1), xStamp);
                         }
                     }
                 }
@@ -151,7 +152,7 @@ public final class IntegerBelowNode extends CompareNode {
                         long xUpperBound = xStamp.upperBound();
                         long yUpperBound = yStamp.upperBound();
                         if (xUpperBound < yUpperBound || !yStamp.isPositive()) {
-                            return new IntegerStamp(bits, Math.max(0, yStamp.lowerBound()), Math.min(xUpperBound, yUpperBound), yStamp.downMask(), yStamp.upMask());
+                            return StampFactory.forIntegerWithMask(bits, Math.max(0, yStamp.lowerBound()), Math.min(xUpperBound, yUpperBound), yStamp);
                         }
                     }
                 } else {
@@ -163,7 +164,7 @@ public final class IntegerBelowNode extends CompareNode {
                             return null;
                         } else if (xLowerBound >= yLowerBound) {
                             assert xLowerBound != CodeUtil.maxValue(bits);
-                            return new IntegerStamp(bits, xLowerBound + 1, yStamp.upperBound(), yStamp.downMask(), yStamp.upMask());
+                            return StampFactory.forIntegerWithMask(bits, xLowerBound + 1, yStamp.upperBound(), yStamp);
                         }
                     }
                 }

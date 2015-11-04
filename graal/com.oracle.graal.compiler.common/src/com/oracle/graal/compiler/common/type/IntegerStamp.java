@@ -276,7 +276,10 @@ public class IntegerStamp extends PrimitiveStamp {
         IntegerStamp other = (IntegerStamp) otherStamp;
         long newDownMask = downMask | other.downMask;
         long newLowerBound = Math.max(lowerBound, other.lowerBound) | newDownMask;
-        return createStamp(other, Math.min(upperBound, other.upperBound), newLowerBound, newDownMask, upMask & other.upMask);
+        long newUpperBound = Math.min(upperBound, other.upperBound);
+        long newUpMask = upMask & other.upMask;
+        IntegerStamp limit = StampFactory.forInteger(getBits(), newLowerBound, newUpperBound);
+        return createStamp(other, newUpperBound, newLowerBound, limit.downMask() | newDownMask, limit.upMask() & newUpMask);
     }
 
     @Override
