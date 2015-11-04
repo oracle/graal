@@ -180,6 +180,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 if (node instanceof LoopExitNode) {
                     LoopExitNode loopExit = (LoopExitNode) node;
                     for (ProxyNode proxy : loopExit.proxies()) {
+                        aliases.set(proxy, null);
                         changed |= processNode(proxy, state, effects, lastFixedNode) && isSignificantNode(node);
                     }
                     processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
