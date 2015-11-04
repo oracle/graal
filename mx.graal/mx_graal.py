@@ -27,10 +27,17 @@
 import mx
 JDK9 = mx.get_jdk(tag='default').javaCompliance >= "1.9"
 
+def get_vm():
+    return _get_vm()
+
 if JDK9:
     import mx_graal_9 # pylint: disable=unused-import
     from mx_graal_9 import mx_post_parse_cmd_line, run_vm, isJVMCIEnabled # pylint: disable=unused-import
+    from mx_graal_9 import get_vm as _get_vm # pylint: disable=unused-import
 
 else:
     import mx_graal_8 # pylint: disable=unused-import
     from mx_graal_8 import mx_post_parse_cmd_line, run_vm, isJVMCIEnabled # pylint: disable=unused-import
+    from mx_graal_8 import get_vm as _get_vm # pylint: disable=unused-import
+
+import mx_graal_bench # pylint: disable=unused-import

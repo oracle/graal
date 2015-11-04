@@ -175,6 +175,21 @@ def getSPECjbb2013(benchArgs=None):
                 _noneAsEmptyList(benchArgs), [success], [], [matcherCritical, matcherMax],
                 vmOpts=['-Xmx6g', '-Xms6g', '-Xmn3g', '-XX:+UseParallelOldGC', '-XX:-UseAdaptiveSizePolicy', '-XX:-UseBiasedLocking', '-XX:-UseCompressedOops'], defaultCwd=specjbb2013)
 
+def getSPECjbb2015(benchArgs=None):
+
+    specjbb2015 = mx.get_env('SPECJBB2015')
+    if specjbb2015 is None or not exists(join(specjbb2015, 'specjbb2015.jar')):
+        mx.abort('Please set the SPECJBB2015 environment variable to a SPECjbb2015 directory')
+
+    jops = re.compile(r"^RUN RESULT: hbIR \(max attempted\) = [0-9]+, hbIR \(settled\) = [0-9]+, max-jOPS = (?P<max>[0-9]+), critical-jOPS = (?P<critical>[0-9]+)$", re.MULTILINE)
+    # error?
+    success = re.compile(r"org.spec.jbb.controller: Run finished", re.MULTILINE)
+    matcherMax = ValuesMatcher(jops, {'group' : 'SPECjbb2015', 'name' : 'max', 'score' : '<max>'})
+    matcherCritical = ValuesMatcher(jops, {'group' : 'SPECjbb2015', 'name' : 'critical', 'score' : '<critical>'})
+    return Test("SPECjbb2015", ['-jar', 'specjbb2015.jar', '-m', 'composite'] +
+                _noneAsEmptyList(benchArgs), [success], [], [matcherCritical, matcherMax],
+                vmOpts=['-Xmx6g', '-Xms6g', '-Xmn3g', '-XX:+UseParallelOldGC', '-XX:-UseAdaptiveSizePolicy', '-XX:-UseBiasedLocking', '-XX:-UseCompressedOops'], defaultCwd=specjbb2015)
+
 def getSPECjvm2008(benchArgs=None):
 
     specjvm2008 = mx.get_env('SPECJVM2008')
