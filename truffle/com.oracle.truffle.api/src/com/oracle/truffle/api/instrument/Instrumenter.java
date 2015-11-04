@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.Map;
 
 /**
  * Client access to instrumentation services in a Truffle execution environment.
@@ -478,11 +479,71 @@ public final class Instrumenter {
      * @param listener optional client callback for results/failure notification
      * @param instrumentInfo instrumentInfo optional documentation about the Instrument
      * @return a handle for access to the binding
+     * @deprecated
      */
+    @Deprecated
     @SuppressWarnings("rawtypes")
     public ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo) {
+        return attach(probe, languageClass, source, listener, instrumentInfo, new String[0], new Object[0]);
+    }
+
+    /**
+     * <em>Attaches</em> a fragment of source text that is to be evaluated just before execution
+     * enters the location of a {@link Probe}, creating a <em>binding</em> called an
+     * {@link ProbeInstrument}. The outcome of the evaluation is reported to an optional
+     * {@link EvalInstrumentListener listener}, but the outcome does not affect the flow of guest
+     * language execution, even if the evaluation produces an exception.
+     * <p>
+     * The source text is assumed to be expressed in the language identified by its associated
+     * {@linkplain Source#getMimeType() MIME type}, if specified, otherwise by the language
+     * associated with the AST location associated with the {@link Probe}.
+     * <p>
+     * The source text is parsed in the lexical context of the AST location associated with the
+     * {@link Probe}.
+     * <p>
+     * The source text executes subject to full Truffle optimization.
+     *
+     * @param probe source of AST execution events, non-null
+     * @param source the source code to be evaluated, non-null and non-empty, preferably with
+     *            {@link Source#withMimeType(java.lang.String) specified mime type} that determines
+     *            the {@link TruffleLanguage} to use when processing the source
+     * @param listener optional client callback for results/failure notification
+     * @param instrumentInfo instrumentInfo optional documentation about the Instrument
+     * @param parameters keys are the parameter names to pass to
+     *            {@link TruffleLanguage#parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)
+     *            parse} method; values will be passed to
+     *            {@link CallTarget#call(java.lang.Object...)} returned from the <code>parse</code>
+     *            method; the value can be <code>null</code>
+     * @return a handle for access to the binding
+     */
+    public ProbeInstrument attach(Probe probe, Source source, EvalInstrumentListener listener, String instrumentInfo, Map<String, Object> parameters) {
+        final int size = parameters == null ? 0 : parameters.size();
+        String[] names = new String[size];
+        Object[] params = new Object[size];
+        if (parameters != null) {
+            int index = 0;
+            for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+                names[index] = entry.getKey();
+                params[index] = entry.getValue();
+                index++;
+            }
+        }
+        return attach(probe, null, source, listener, instrumentInfo, names, params);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo, String[] argumentNames,
+                    Object[] parameters) {
         assert probe.getInstrumenter() == this;
-        final EvalInstrument instrument = new EvalInstrument(languageClass, source, listener, instrumentInfo);
+        Class<? extends TruffleLanguage> foundLanguageClass = null;
+        if (languageClass == null) {
+            if (source.getMimeType() == null) {
+                foundLanguageClass = ACCESSOR.findLanguage(probe);
+            }
+        } else {
+            foundLanguageClass = languageClass;
+        }
+        final EvalInstrument instrument = new EvalInstrument(foundLanguageClass, source, listener, instrumentInfo, argumentNames, parameters);
         probe.attach(instrument);
         return instrument;
     }

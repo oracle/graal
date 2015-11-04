@@ -99,7 +99,7 @@ public class EvalInstrumentTest {
         final Source source42 = InstrumentationTestingLanguage.createConstantSource42("testEvalInstrumentListener");
         final int[] evalResult = {0};
         final int[] evalCount = {0};
-        final Instrument instrument = instrumenter.attach(addNodeProbe[0], InstrumentationTestingLanguage.class, source42, new EvalInstrumentListener() {
+        final Instrument instrument = instrumenter.attach(addNodeProbe[0], source42, new EvalInstrumentListener() {
 
             public void onExecution(Node node, VirtualFrame vFrame, Object result) {
                 evalCount[0] = evalCount[0] + 1;
@@ -112,7 +112,7 @@ public class EvalInstrumentTest {
                 fail("Eval test evaluates without exception");
 
             }
-        }, "test EvalInstrument");
+        }, "test EvalInstrument", null);
 
         assertEquals(vm.eval(source13).get(), 13);
         assertEquals(evalCount[0], 1);
@@ -124,7 +124,7 @@ public class EvalInstrumentTest {
         assertEquals(evalResult[0], 42);
 
         // Add new eval instrument with no listener, no effect on third execution
-        instrumenter.attach(addNodeProbe[0], InstrumentationTestingLanguage.class, source42, null, "");
+        instrumenter.attach(addNodeProbe[0], source42, null, "", null);
         assertEquals(vm.eval(source13).get(), 13);
         assertEquals(evalCount[0], 3);
         assertEquals(evalResult[0], 42);
