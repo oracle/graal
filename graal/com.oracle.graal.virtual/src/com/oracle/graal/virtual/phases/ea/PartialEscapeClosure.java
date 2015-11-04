@@ -414,6 +414,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 if (alias instanceof VirtualObjectNode) {
                     VirtualObjectNode virtual = (VirtualObjectNode) alias;
                     addAndMarkAlias(virtual, phi);
+                } else {
+                    aliases.set(phi, null);
                 }
             }
         }
@@ -633,6 +635,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 }
 
                 for (PhiNode phi : getPhis()) {
+                    aliases.set(phi, null);
                     if (hasVirtualInputs.isMarked(phi) && phi instanceof ValuePhiNode) {
                         materialized |= processPhi((ValuePhiNode) phi, states, virtualObjTemp);
                     }
@@ -850,7 +853,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          * @return true if materialization happened during the merge, false otherwise
          */
         private boolean processPhi(ValuePhiNode phi, PartialEscapeBlockState<?>[] states, int[] mergedVirtualObjects) {
-            aliases.set(phi, null);
 
             // determine how many inputs are virtual and if they're all the same virtual object
             int virtualInputs = 0;
