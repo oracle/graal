@@ -227,4 +227,76 @@ public class ConditionalEliminationTest11 extends ConditionalEliminationTestBase
         testConditionalElimination("test9Snippet", "reference9Snippet");
     }
 
+    static class ByteHolder {
+        public byte b;
+
+        byte byteValue() {
+            return b;
+        }
+    }
+
+    public static int test10Snippet(ByteHolder b) {
+        int v = b.byteValue();
+        long a = v & 0xffffffff;
+        if (v != 44) {
+            GraalDirectives.deoptimize();
+        }
+        if ((a & 16) == 16) {
+            GraalDirectives.deoptimize();
+        }
+        if ((a & 8) != 8) {
+            GraalDirectives.deoptimize();
+        }
+        if ((a & 44) != 44) {
+            GraalDirectives.deoptimize();
+        }
+
+        return v;
+    }
+
+    public static int reference10Snippet(ByteHolder b) {
+        byte v = b.byteValue();
+        if (v != 44) {
+            GraalDirectives.deoptimize();
+        }
+        return v;
+    }
+
+    @Test
+    public void test10() {
+        testConditionalElimination("test10Snippet", "reference10Snippet");
+    }
+
+    public static int test11Snippet(ByteHolder b) {
+        int v = b.byteValue();
+        long a = v & 0xffffffff;
+
+        if ((a & 16) == 16) {
+            GraalDirectives.deoptimize();
+        }
+        if ((a & 8) != 8) {
+            GraalDirectives.deoptimize();
+        }
+        if ((a & 44) != 44) {
+            GraalDirectives.deoptimize();
+        }
+        if (v != 44) {
+            GraalDirectives.deoptimize();
+        }
+        return v;
+    }
+
+    public static int reference11Snippet(ByteHolder b) {
+        byte v = b.byteValue();
+        if (v != 44) {
+            GraalDirectives.deoptimize();
+        }
+        return v;
+    }
+
+    @Test
+    public void test11() {
+        testConditionalElimination("test11Snippet", "reference11Snippet");
+    }
+
 }

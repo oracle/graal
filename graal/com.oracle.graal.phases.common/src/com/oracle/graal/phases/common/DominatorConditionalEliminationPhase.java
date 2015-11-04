@@ -64,6 +64,7 @@ import com.oracle.graal.nodes.GuardProxyNode;
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.LoopExitNode;
+import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ShortCircuitOrNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -375,6 +376,94 @@ public class DominatorConditionalEliminationPhase extends Phase {
             registerCondition(condition, negated, guard, undoOperations);
         }
 
+        static class Pair<F, S> {
+            public final F first;
+            public final S second;
+
+            public Pair(F first, S second) {
+                this.first = first;
+                this.second = second;
+            }
+        }
+
+        @FunctionalInterface
+        interface InfoElementProvider {
+            Iterable<InfoElement> getInfoElements(ValueNode value);
+        }
+
+        static Pair<InfoElement, Stamp> recursiveFoldStamp(Node node, InfoElementProvider info) {
+            if (node instanceof UnaryNode) {
+                UnaryNode unary = (UnaryNode) node;
+                ValueNode value = unary.getValue();
+                for (InfoElement infoElement : info.getInfoElements(value)) {
+                    Stamp result = unary.foldStamp(infoElement.getStamp());
+                    if (result != null) {
+                        return new Pair<>(infoElement, result);
+                    }
+                }
+                Pair<InfoElement, Stamp> foldResult = recursiveFoldStamp(value, info);
+                if (foldResult != null) {
+                    Stamp result = unary.foldStamp(foldResult.second);
+                    if (result != null) {
+                        return new Pair<>(foldResult.first, result);
+                    }
+                }
+            } else if (node instanceof BinaryNode) {
+                BinaryNode binary = (BinaryNode) node;
+                ValueNode y = binary.getY();
+                ValueNode x = binary.getX();
+                if (y.isConstant()) {
+                    for (InfoElement infoElement : info.getInfoElements(x)) {
+                        Stamp result = binary.foldStamp(infoElement.stamp, y.stamp());
+                        if (result != null) {
+                            return new Pair<>(infoElement, result);
+                        }
+                    }
+                    Pair<InfoElement, Stamp> foldResult = recursiveFoldStamp(x, info);
+                    if (foldResult != null) {
+                        Stamp result = binary.foldStamp(foldResult.second, y.stamp());
+                        if (result != null) {
+                            return new Pair<>(foldResult.first, result);
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Recursively try to fold stamps within this expression using information from
+         * {@link #getInfoElements(ValueNode)}. It's only safe to use constants and one
+         * {@link InfoElement} otherwise more than one guard would be required.
+         *
+         * @param node
+         * @return the pair of the @{link InfoElement} used and the stamp produced for the whole
+         *         expression
+         */
+        Pair<InfoElement, Stamp> recursiveFoldStampFromInfo(Node node) {
+            return recursiveFoldStamp(node, (value) -> getInfoElements(value));
+        }
+
+        /**
+         * Recursively try to fold stamps within this expression using {@code newStamp} if the node
+         * {@code original} is encountered in the expression. It's only safe to use constants and
+         * the passed in stamp otherwise more than one guard would be required.
+         *
+         * @param node
+         * @param original
+         * @param newStamp
+         * @return the improved stamp or null is nothing could be done
+         */
+        @SuppressWarnings("unchecked")
+        static Stamp recursiveFoldStamp(Node node, ValueNode original, Stamp newStamp) {
+            InfoElement element = new InfoElement(newStamp, original);
+            Pair<InfoElement, Stamp> result = recursiveFoldStamp(node, (value) -> value == original ? Collections.singleton(element) : Collections.EMPTY_LIST);
+            if (result != null) {
+                return result.second;
+            }
+            return null;
+        }
+
         /**
          * Checks for safe nodes when moving pending tests up.
          */
@@ -393,7 +482,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     return;
                 }
                 ValueNode curValue = (ValueNode) curNode;
-                if (curValue.isConstant() || curValue == value) {
+                if (curValue.isConstant() || curValue == value || curValue instanceof ParameterNode) {
                     return;
                 }
                 if (curValue instanceof BinaryNode || curValue instanceof UnaryNode) {
@@ -412,6 +501,12 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     if (unaryLogicNode.getValue() == original) {
                         result = unaryLogicNode.tryFold(newStamp);
                     }
+                    if (!result.isKnown()) {
+                        Stamp foldResult = recursiveFoldStamp(unaryLogicNode.getValue(), original, newStamp);
+                        if (foldResult != null) {
+                            result = unaryLogicNode.tryFold(foldResult);
+                        }
+                    }
                 } else if (pending.condition instanceof BinaryOpLogicNode) {
                     BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) pending.condition;
                     ValueNode x = binaryOpLogicNode.getX();
@@ -423,6 +518,12 @@ public class DominatorConditionalEliminationPhase extends Phase {
                         if (and.getY() == y && and.getX() == original) {
                             BinaryOp<And> andOp = ArithmeticOpTable.forStamp(newStamp).getAnd();
                             result = binaryOpLogicNode.tryFold(andOp.foldStamp(newStamp, y.stamp()), y.stamp());
+                        }
+                    }
+                    if (!result.isKnown() && y.isConstant()) {
+                        Stamp foldResult = recursiveFoldStamp(x, original, newStamp);
+                        if (foldResult != null) {
+                            result = binaryOpLogicNode.tryFold(foldResult, y.stamp());
                         }
                     }
                 }
@@ -537,9 +638,16 @@ public class DominatorConditionalEliminationPhase extends Phase {
                         return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
                 }
+                Pair<InfoElement, Stamp> foldResult = recursiveFoldStampFromInfo(value);
+                if (foldResult != null) {
+                    TriState result = unaryLogicNode.tryFold(foldResult.second);
+                    if (result.isKnown()) {
+                        return rewireGuards(foldResult.first.getGuard(), result.toBoolean(), rewireGuardFunction);
+                    }
+                }
                 if (thisGuard != null && unaryLogicNode.stamp() instanceof IntegerStamp) {
                     Stamp newStamp = unaryLogicNode.getSucceedingStampForValue(thisGuard.isNegated());
-                    if (newStamp != null && foldPendingTest(thisGuard, unaryLogicNode.getValue(), newStamp, rewireGuardFunction)) {
+                    if (newStamp != null && foldPendingTest(thisGuard, value, newStamp, rewireGuardFunction)) {
                         return true;
                     }
 
@@ -563,12 +671,23 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     }
                 }
 
-                for (InfoElement infoElement : getInfoElements(y)) {
-                    TriState result = binaryOpLogicNode.tryFold(x.stamp(), infoElement.getStamp());
-                    if (result.isKnown()) {
-                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
+                if (y.isConstant()) {
+                    Pair<InfoElement, Stamp> foldResult = recursiveFoldStampFromInfo(x);
+                    if (foldResult != null) {
+                        TriState result = binaryOpLogicNode.tryFold(foldResult.second, y.stamp());
+                        if (result.isKnown()) {
+                            return rewireGuards(foldResult.first.getGuard(), result.toBoolean(), rewireGuardFunction);
+                        }
+                    }
+                } else {
+                    for (InfoElement infoElement : getInfoElements(y)) {
+                        TriState result = binaryOpLogicNode.tryFold(x.stamp(), infoElement.getStamp());
+                        if (result.isKnown()) {
+                            return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
+                        }
                     }
                 }
+
                 /*
                  * For complex expressions involving constants, see if it's possible to fold the
                  * tests by using stamps one level up in the expression. For instance, (x + n < y)
@@ -580,7 +699,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     BinaryArithmeticNode<?> binary = (BinaryArithmeticNode<?>) x;
                     if (binary.getY().isConstant()) {
                         for (InfoElement infoElement : getInfoElements(binary.getX())) {
-                            Stamp newStampX = binary.tryFoldStamp(infoElement.getStamp(), binary.getY().stamp());
+                            Stamp newStampX = binary.foldStamp(infoElement.getStamp(), binary.getY().stamp());
                             TriState result = binaryOpLogicNode.tryFold(newStampX, y.stamp());
                             if (result.isKnown()) {
                                 return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
