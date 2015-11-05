@@ -292,7 +292,7 @@ public class PolyglotEngine {
          */
         public Builder globalSymbol(String name, Object obj) {
             final Object truffleReady;
-            if (obj instanceof Number || obj instanceof String || obj instanceof Character || obj instanceof Boolean) {
+            if (obj instanceof TruffleObject || obj instanceof Number || obj instanceof String || obj instanceof Character || obj instanceof Boolean) {
                 truffleReady = obj;
             } else {
                 if (JAVA_INTEROP_ENABLED) {
