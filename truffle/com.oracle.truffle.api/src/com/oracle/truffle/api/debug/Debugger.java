@@ -152,7 +152,7 @@ public final class Debugger {
      * @throws IOException if the breakpoint can not be set.
      */
     @TruffleBoundary
-    public Breakpoint setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
+    public LineBreakpoint setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
         return lineBreaks.create(ignoreCount, lineLocation, oneShot);
     }
 
@@ -165,7 +165,7 @@ public final class Debugger {
      * @throws IOException if the breakpoint already set
      */
     @TruffleBoundary
-    public Breakpoint setTagBreakpoint(int ignoreCount, SyntaxTag tag, boolean oneShot) throws IOException {
+    public TagBreakpoint setTagBreakpoint(int ignoreCount, SyntaxTag tag, boolean oneShot) throws IOException {
         return tagBreaks.create(ignoreCount, tag, oneShot);
     }
 
