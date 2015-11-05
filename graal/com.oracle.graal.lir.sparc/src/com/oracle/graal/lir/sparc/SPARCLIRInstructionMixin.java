@@ -86,5 +86,10 @@ public interface SPARCLIRInstructionMixin {
         public SPARCLIRInstructionMixinStore(SizeEstimate estimate) {
             this.estimate = estimate;
         }
+
+        @Override
+        public String toString() {
+            return estimate != null ? estimate.toString() : "";
+        }
     }
 }
