@@ -42,6 +42,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowC
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheNodeFieldFactory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCachesOrderFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithCachedAndDynamicParameterFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithJustCachedParameterFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFactory;
@@ -303,6 +304,35 @@ public class CachedTest {
     @Test
     public void testMultipleCaches() {
         CallTarget root = createCallTarget(TestMultipleCachesFactory.getInstance());
+        assertEquals(42, root.call(21));
+        assertEquals(42, root.call(22));
+        assertEquals(42, root.call(23));
+    }
+
+    @NodeChild
+    static class TestCachesOrder extends ValueNode {
+
+        @Specialization(guards = "boundByGuard != 0")
+        static int do1(int value, //
+                        @Cached("get(value)") int intermediateValue, //
+                        @Cached("transform(intermediateValue)") int boundByGuard, //
+                        @Cached("new()") Object notBoundByGuards) {
+            return intermediateValue;
+        }
+
+        protected int get(int i) {
+            return i * 2;
+        }
+
+        protected int transform(int i) {
+            return i * 3;
+        }
+
+    }
+
+    @Test
+    public void testCachesOrder() {
+        CallTarget root = createCallTarget(TestCachesOrderFactory.getInstance());
         assertEquals(42, root.call(21));
         assertEquals(42, root.call(22));
         assertEquals(42, root.call(23));
