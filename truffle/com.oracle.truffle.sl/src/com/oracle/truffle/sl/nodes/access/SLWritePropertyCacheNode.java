@@ -84,7 +84,7 @@ public abstract class SLWritePropertyCacheNode extends Node {
         }
     }
 
-    @Specialization(guards = {"existing == null", "shapeBefore.check(receiver)", "nonNull(shapeAfter)", "canSet(newLocation, receiver, value)"}, assumptions = {"shapeBefore.getValidAssumption()",
+    @Specialization(guards = {"existing == null", "shapeBefore.check(receiver)", "canSet(newLocation, receiver, value)"}, assumptions = {"shapeBefore.getValidAssumption()",
                     "shapeAfter.getValidAssumption()"}, limit = "CACHE_LIMIT")
     public void writeNewPropertyCached(DynamicObject receiver, Object value, //
                     @Cached("lookupLocation(receiver, value)") @SuppressWarnings("unused") Location existing, //
@@ -140,7 +140,4 @@ public abstract class SLWritePropertyCacheNode extends Node {
         return location.canSet(receiver, value);
     }
 
-    protected static boolean nonNull(Object value) {
-        return value != null;
-    }
 }
