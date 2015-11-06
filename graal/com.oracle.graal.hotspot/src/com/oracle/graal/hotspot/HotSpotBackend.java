@@ -154,7 +154,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * New array stub.
      */
-    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class);
+    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class, boolean.class);
 
     /**
      * New insstance stub.
