@@ -129,6 +129,10 @@ public class DeoptimizationStub extends SnippetStub {
 
         final Word unrollBlock = fetchUnrollInfo(registerSaver);
 
+        deoptimizationCommon(stackPointerRegister, thread, registerSaver, unrollBlock, deoptimizationUnpackDeopt());
+    }
+
+    static void deoptimizationCommon(Register stackPointerRegister, final Word thread, final long registerSaver, final Word unrollBlock, final int mode) {
         // Pop all the frames we must move/replace.
         //
         // Frame picture (youngest to oldest)
@@ -201,8 +205,6 @@ public class DeoptimizationStub extends SnippetStub {
         final Word senderFp = initialInfo;
         EnterUnpackFramesStackFrameNode.enterUnpackFramesStackFrame(framePc, senderSp, senderFp, registerSaver);
 
-        // Pass unpack deopt mode to unpack frames.
-        final int mode = deoptimizationUnpackDeopt();
         unpackFrames(UNPACK_FRAMES, thread, mode);
 
         LeaveUnpackFramesStackFrameNode.leaveUnpackFramesStackFrame(registerSaver);
