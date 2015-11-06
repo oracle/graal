@@ -42,7 +42,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
 import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -333,7 +332,6 @@ final class TagBreakpointFactory {
             }
         }
 
-        @SuppressWarnings("rawtypes")
         private void attach(Probe newProbe) {
             if (getState() == DISPOSED) {
                 throw new IllegalStateException("Attempt to attach a disposed " + BREAKPOINT_NAME);
@@ -343,8 +341,7 @@ final class TagBreakpointFactory {
             if (conditionSource == null) {
                 newInstrument = instrumenter.attach(newProbe, new UnconditionalTagBreakInstrumentListener(), BREAKPOINT_NAME);
             } else {
-                final Class<? extends TruffleLanguage> languageClass = Debugger.ACCESSOR.findLanguage(newProbe);
-                instrumenter.attach(newProbe, languageClass, conditionSource, this, BREAKPOINT_NAME);
+                instrumenter.attach(newProbe, conditionSource, this, BREAKPOINT_NAME, null);
             }
             instruments.add(newInstrument);
             changeState(isEnabled ? ENABLED : DISABLED);
