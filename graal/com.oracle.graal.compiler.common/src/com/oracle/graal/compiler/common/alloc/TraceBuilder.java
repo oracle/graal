@@ -56,6 +56,11 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
             return getTraces().get(traceNr).stream().flatMap(b -> b.getPredecessors().stream()).anyMatch(s -> getTraceForBlock(s) != traceNr);
         }
 
+        public boolean incomingSideEdges(int traceNr) {
+            /* TODO (je): not efficient. find better solution. */
+            return getTraces().get(traceNr).stream().skip(1).flatMap(b -> b.getPredecessors().stream()).anyMatch(s -> getTraceForBlock(s) != traceNr);
+        }
+
     }
 
     /**
