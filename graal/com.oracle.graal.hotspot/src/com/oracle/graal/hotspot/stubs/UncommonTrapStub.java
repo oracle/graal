@@ -134,9 +134,9 @@ public class UncommonTrapStub extends SnippetStub {
         final int actionAndReason = readPendingDeoptimization(thread);
         writePendingDeoptimization(thread, -1);
 
-        final Word unrollBlock = UncommonTrapCallNode.uncommonTrap(registerSaver, actionAndReason);
+        final Word unrollBlock = UncommonTrapCallNode.uncommonTrap(registerSaver, actionAndReason, deoptimizationUnpackUncommonTrap());
 
-        DeoptimizationStub.deoptimizationCommon(stackPointerRegister, thread, registerSaver, unrollBlock, deoptimizationUnpackUncommonTrap());
+        DeoptimizationStub.deoptimizationCommon(stackPointerRegister, thread, registerSaver, unrollBlock);
     }
 
     /**
