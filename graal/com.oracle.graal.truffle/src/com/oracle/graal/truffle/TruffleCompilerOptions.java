@@ -179,5 +179,9 @@ public class TruffleCompilerOptions {
 
     @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
     public static final OptionValue<Boolean> TruffleEnableInfopoints = new OptionValue<>(false);
+
+    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> TruffleIterativePartialEscape = new OptionValue<>(false);
+
     // @formatter:on
 }
