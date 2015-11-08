@@ -23,9 +23,6 @@
 package com.oracle.graal.hotspot.nodes;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.UNCOMMON_TRAP;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -41,6 +38,10 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.word.Word;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.Value;
+
 /**
  * A call to the runtime code implementing the uncommon trap logic.
  */
@@ -49,12 +50,14 @@ public final class UncommonTrapCallNode extends FixedWithNextNode implements LIR
 
     public static final NodeClass<UncommonTrapCallNode> TYPE = NodeClass.create(UncommonTrapCallNode.class);
     @Input ValueNode trapRequest;
+    @Input ValueNode mode;
     @Input SaveAllRegistersNode registerSaver;
     protected final ForeignCallsProvider foreignCalls;
 
-    public UncommonTrapCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver, ValueNode trapRequest) {
+    public UncommonTrapCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver, ValueNode trapRequest, ValueNode mode) {
         super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(UNCOMMON_TRAP.getResultType())));
         this.trapRequest = trapRequest;
+        this.mode = mode;
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
         this.foreignCalls = foreignCalls;
     }
@@ -68,13 +71,22 @@ public final class UncommonTrapCallNode extends FixedWithNextNode implements LIR
         return registerSaver.getSaveRegistersOp();
     }
 
+    /**
+     * Returns the node representing the exec_mode/unpack_kind used during this fetch_unroll_info
+     * call.
+     */
+    public ValueNode getMode() {
+        return mode;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         Value trapRequestValue = gen.operand(trapRequest);
-        Value result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitUncommonTrapCall(trapRequestValue, getSaveRegistersOp());
+        Value modeValue = gen.operand(getMode());
+        Value result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitUncommonTrapCall(trapRequestValue, modeValue, getSaveRegistersOp());
         gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native Word uncommonTrap(long registerSaver, int trapRequest);
+    public static native Word uncommonTrap(long registerSaver, int trapRequest, int mode);
 }

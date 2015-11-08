@@ -121,20 +121,22 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * Emits code for a {@link UncommonTrapCallNode}.
      *
      * @param trapRequest
+     * @param mode
      * @param saveRegisterOp
      * @return a {@code Deoptimization::UnrollBlock} pointer
      */
-    default Value emitUncommonTrapCall(Value trapRequest, SaveRegistersOp saveRegisterOp) {
+    default Value emitUncommonTrapCall(Value trapRequest, Value mode, SaveRegistersOp saveRegisterOp) {
         throw JVMCIError.unimplemented();
     }
 
     /**
      * Emits code for a {@link DeoptimizationFetchUnrollInfoCallNode}.
      *
+     * @param mode
      * @param saveRegisterOp
      * @return a {@code Deoptimization::UnrollBlock} pointer
      */
-    default Value emitDeoptimizationFetchUnrollInfoCall(SaveRegistersOp saveRegisterOp) {
+    default Value emitDeoptimizationFetchUnrollInfoCall(Value mode, SaveRegistersOp saveRegisterOp) {
         throw JVMCIError.unimplemented();
     }
 

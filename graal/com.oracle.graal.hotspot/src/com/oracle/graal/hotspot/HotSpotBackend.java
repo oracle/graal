@@ -114,7 +114,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * @see DeoptimizationFetchUnrollInfoCallNode
      */
-    public static final ForeignCallDescriptor FETCH_UNROLL_INFO = new ForeignCallDescriptor("fetchUnrollInfo", Word.class, long.class);
+    public static final ForeignCallDescriptor FETCH_UNROLL_INFO = new ForeignCallDescriptor("fetchUnrollInfo", Word.class, long.class, int.class);
 
     /**
      * @see DeoptimizationStub#unpackFrames(ForeignCallDescriptor, Word, int)
@@ -154,7 +154,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * New array stub.
      */
-    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class);
+    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class, boolean.class);
 
     /**
      * New insstance stub.
@@ -164,7 +164,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * @see UncommonTrapCallNode
      */
-    public static final ForeignCallDescriptor UNCOMMON_TRAP = new ForeignCallDescriptor("uncommonTrap", Word.class, Word.class, int.class);
+    public static final ForeignCallDescriptor UNCOMMON_TRAP = new ForeignCallDescriptor("uncommonTrap", Word.class, Word.class, int.class, int.class);
 
     public HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(providers);

@@ -49,11 +49,13 @@ public final class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNo
 
     public static final NodeClass<DeoptimizationFetchUnrollInfoCallNode> TYPE = NodeClass.create(DeoptimizationFetchUnrollInfoCallNode.class);
     @Input SaveAllRegistersNode registerSaver;
+    @Input ValueNode mode;
     protected final ForeignCallsProvider foreignCalls;
 
-    public DeoptimizationFetchUnrollInfoCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
+    public DeoptimizationFetchUnrollInfoCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver, ValueNode mode) {
         super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(FETCH_UNROLL_INFO.getResultType())));
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
+        this.mode = mode;
         this.foreignCalls = foreignCalls;
     }
 
@@ -66,12 +68,20 @@ public final class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNo
         return registerSaver.getSaveRegistersOp();
     }
 
+    /**
+     * Returns the node representing the exec_mode/unpack_kind used during this fetch_unroll_info
+     * call.
+     */
+    public ValueNode getMode() {
+        return mode;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitDeoptimizationFetchUnrollInfoCall(getSaveRegistersOp());
+        Value result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitDeoptimizationFetchUnrollInfoCall(gen.operand(getMode()), getSaveRegistersOp());
         gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native Word fetchUnrollInfo(long registerSaver);
+    public static native Word fetchUnrollInfo(long registerSaver, int mode);
 }

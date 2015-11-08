@@ -22,32 +22,19 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.UNPACK_FRAMES;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.PreferGraalStubs;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readPendingDeoptimization;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writePendingDeoptimization;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeRegisterAsWord;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.EnterUnpackFramesStackFrameNode;
-import com.oracle.graal.hotspot.nodes.LeaveCurrentStackFrameNode;
-import com.oracle.graal.hotspot.nodes.LeaveDeoptimizedStackFrameNode;
-import com.oracle.graal.hotspot.nodes.LeaveUnpackFramesStackFrameNode;
-import com.oracle.graal.hotspot.nodes.PushInterpreterFrameNode;
 import com.oracle.graal.hotspot.nodes.SaveAllRegistersNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.hotspot.nodes.UncommonTrapCallNode;
@@ -55,6 +42,11 @@ import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.LocationIdentity;
 
 /**
  * Uncommon trap stub.
@@ -142,85 +134,9 @@ public class UncommonTrapStub extends SnippetStub {
         final int actionAndReason = readPendingDeoptimization(thread);
         writePendingDeoptimization(thread, -1);
 
-        final Word unrollBlock = UncommonTrapCallNode.uncommonTrap(registerSaver, actionAndReason);
+        final Word unrollBlock = UncommonTrapCallNode.uncommonTrap(registerSaver, actionAndReason, deoptimizationUnpackUncommonTrap());
 
-        // Pop all the frames we must move/replace.
-        //
-        // Frame picture (youngest to oldest)
-        // 1: self-frame
-        // 2: deoptimizing frame
-        // 3: caller of deoptimizing frame (could be compiled/interpreted).
-
-        // Pop self-frame.
-        LeaveCurrentStackFrameNode.leaveCurrentStackFrame(registerSaver);
-
-        // Load the initial info we should save (e.g. frame pointer).
-        final Word initialInfo = unrollBlock.readWord(deoptimizationUnrollBlockInitialInfoOffset());
-
-        // Pop deoptimized frame.
-        final int sizeOfDeoptimizedFrame = unrollBlock.readInt(deoptimizationUnrollBlockSizeOfDeoptimizedFrameOffset());
-        LeaveDeoptimizedStackFrameNode.leaveDeoptimizedStackFrame(sizeOfDeoptimizedFrame, initialInfo);
-
-        /*
-         * Stack bang to make sure there's enough room for the interpreter frames. Bang stack for
-         * total size of the interpreter frames plus shadow page size. Bang one page at a time
-         * because large sizes can bang beyond yellow and red zones.
-         * 
-         * @deprecated This code should go away as soon as JDK-8032410 hits the Graal repository.
-         */
-        final int totalFrameSizes = unrollBlock.readInt(deoptimizationUnrollBlockTotalFrameSizesOffset());
-        final int bangPages = NumUtil.roundUp(totalFrameSizes, pageSize()) / pageSize() + stackShadowPages();
-        Word stackPointer = readRegister(stackPointerRegister);
-
-        for (int i = 1; i < bangPages; i++) {
-            stackPointer.writeInt((-i * pageSize()) + stackBias(), 0, STACK_BANG_LOCATION);
-        }
-
-        // Load number of interpreter frames.
-        final int numberOfFrames = unrollBlock.readInt(deoptimizationUnrollBlockNumberOfFramesOffset());
-
-        // Load address of array of frame sizes.
-        final Word frameSizes = unrollBlock.readWord(deoptimizationUnrollBlockFrameSizesOffset());
-
-        // Load address of array of frame PCs.
-        final Word framePcs = unrollBlock.readWord(deoptimizationUnrollBlockFramePcsOffset());
-
-        /*
-         * Get the current stack pointer (sender's original SP) before adjustment so that we can
-         * save it in the skeletal interpreter frame.
-         */
-        Word senderSp = readRegister(stackPointerRegister);
-
-        // Adjust old interpreter frame to make space for new frame's extra Java locals.
-        final int callerAdjustment = unrollBlock.readInt(deoptimizationUnrollBlockCallerAdjustmentOffset());
-        writeRegister(stackPointerRegister, readRegister(stackPointerRegister).subtract(callerAdjustment));
-
-        for (int i = 0; i < numberOfFrames; i++) {
-            final Word frameSize = frameSizes.readWord(i * wordSize());
-            final Word framePc = framePcs.readWord(i * wordSize());
-
-            // Push an interpreter frame onto the stack.
-            PushInterpreterFrameNode.pushInterpreterFrame(frameSize, framePc, senderSp, initialInfo);
-
-            // Get the current stack pointer (sender SP) and pass it to next frame.
-            senderSp = readRegister(stackPointerRegister);
-        }
-
-        // Get final return address.
-        final Word framePc = framePcs.readWord(numberOfFrames * wordSize());
-
-        /*
-         * Enter a frame to call out to unpack frames. Since we changed the stack pointer to an
-         * unknown alignment we need to align it here before calling C++ code.
-         */
-        final Word senderFp = initialInfo;
-        EnterUnpackFramesStackFrameNode.enterUnpackFramesStackFrame(framePc, senderSp, senderFp, registerSaver);
-
-        // Pass uncommon trap mode to unpack frames.
-        final int mode = deoptimizationUnpackUncommonTrap();
-        unpackFrames(UNPACK_FRAMES, thread, mode);
-
-        LeaveUnpackFramesStackFrameNode.leaveUnpackFramesStackFrame(registerSaver);
+        DeoptimizationStub.deoptimizationCommon(stackPointerRegister, thread, registerSaver, unrollBlock);
     }
 
     /**

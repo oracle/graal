@@ -77,7 +77,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         nodeClassCategoryMap.put(VirtualState.class, "State");
         nodeClassCategoryMap.put(PhiNode.class, "Phi");
         nodeClassCategoryMap.put(ProxyNode.class, "Proxy");
-        // nodeClassCategoryMap.put(Object.class, "Floating");
+        // nodeClassCategoryMap.put(Node.class, "Floating");
     }
 
     @Override
@@ -116,20 +116,6 @@ public class GraphDumper extends AbstractMethodScopeDumper {
             }
         }
 
-        ControlFlowGraph cfg = null;
-        List<Block> blocks = null;
-        NodeMap<Block> nodeToBlock = null;
-        BlockMap<List<Node>> blockToNodes = null;
-
-        if (schedule != null) {
-            cfg = schedule.getCFG();
-            if (cfg != null) {
-                blocks = cfg.getBlocks();
-                nodeToBlock = schedule.getNodeToBlockMap();
-                blockToNodes = schedule.getBlockToNodesMap();
-            }
-        }
-
         DataDict dataDict = new DataDict();
         dataDict.put("id", nextItemId());
         dataDict.put("name", name);
@@ -137,15 +123,19 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         DataDict graphDict = new DataDict();
         dataDict.put("graph", graphDict);
 
-        processNodes(graphDict, graph.getNodes(), nodeToBlock, cfg);
+        processNodes(graphDict, graph.getNodes(), schedule);
 
-        if (blocks != null && blockToNodes != null) {
-            processBlocks(graphDict, blocks, blockToNodes);
+        if (schedule != null) {
+            ControlFlowGraph cfg = schedule.getCFG();
+            if (cfg != null) {
+                List<Block> blocks = cfg.getBlocks();
+                processBlocks(graphDict, blocks, schedule);
+            }
         }
         serializeAndFlush(createEventDictWithId("graph", dataDict));
     }
 
-    private static void processNodes(DataDict graphDict, NodeIterable<Node> nodes, NodeMap<Block> nodeToBlock, ControlFlowGraph cfg) {
+    private static void processNodes(DataDict graphDict, NodeIterable<Node> nodes, SchedulePhase schedule) {
         Map<NodeClass<?>, Integer> classMap = new HashMap<>();
 
         DataList classList = new DataList();
@@ -161,44 +151,52 @@ public class GraphDumper extends AbstractMethodScopeDumper {
             NodeClass<?> nodeClass = node.getNodeClass();
 
             DataDict nodeDict = new DataDict();
+            nodeList.add(nodeDict);
+
             nodeDict.put("id", getNodeId(node));
             nodeDict.put("class", getNodeClassId(classMap, classList, nodeClass));
 
-            if (nodeToBlock != null) {
-                if (nodeToBlock.isNew(node)) {
-                    nodeDict.put("block", -1);
-                } else {
-                    Block block = nodeToBlock.get(node);
-                    if (block != null) {
-                        nodeDict.put("block", block.getId());
-                    }
-                }
+            if (schedule != null) {
+                processNodeSchedule(nodeDict, node, schedule);
             }
 
-            if (cfg != null && PrintGraphProbabilities.getValue() && node instanceof FixedNode) {
-                try {
-                    nodeDict.put("probability", cfg.blockFor(node).probability());
-                } catch (Throwable t) {
-                    nodeDict.put("probability", t);
-                }
-            }
+            DataDict propertyDict = new DataDict();
+            node.getDebugProperties(propertyDict);
 
-            Map<Object, Object> debugProperties = node.getDebugProperties();
-            if (!debugProperties.isEmpty()) {
-                DataDict propertyDict = new DataDict();
+            if (!propertyDict.isEmpty()) {
                 nodeDict.put("properties", propertyDict);
-                for (Map.Entry<Object, Object> entry : debugProperties.entrySet()) {
-                    propertyDict.put(entry.getKey().toString(), entry.getValue());
-                }
             }
 
-            nodeList.add(nodeDict);
             appendEdges(edgeList, node, Type.Inputs);
             appendEdges(edgeList, node, Type.Successors);
         }
     }
 
-    private static void processBlocks(DataDict graphDict, List<Block> blocks, BlockMap<List<Node>> blockToNodes) {
+    private static void processNodeSchedule(DataDict nodeDict, Node node, SchedulePhase schedule) {
+        NodeMap<Block> nodeToBlock = schedule.getNodeToBlockMap();
+        if (nodeToBlock != null) {
+            if (nodeToBlock.isNew(node)) {
+                nodeDict.put("block", -1);
+            } else {
+                Block block = nodeToBlock.get(node);
+                if (block != null) {
+                    nodeDict.put("block", block.getId());
+                }
+            }
+        }
+
+        ControlFlowGraph cfg = schedule.getCFG();
+        if (cfg != null && PrintGraphProbabilities.getValue() && node instanceof FixedNode) {
+            try {
+                nodeDict.put("probability", cfg.blockFor(node).probability());
+            } catch (Throwable t) {
+                nodeDict.put("probability", t);
+            }
+        }
+    }
+
+    private static void processBlocks(DataDict graphDict, List<Block> blocks, SchedulePhase schedule) {
+        BlockMap<List<Node>> blockToNodes = schedule.getBlockToNodesMap();
         DataList blockList = new DataList();
         graphDict.put("blocks", blockList);
 
@@ -206,6 +204,8 @@ public class GraphDumper extends AbstractMethodScopeDumper {
             List<Node> nodes = blockToNodes.get(block);
             if (nodes != null) {
                 DataDict blockDict = new DataDict();
+                blockList.add(blockDict);
+
                 blockDict.put("id", block.getId());
 
                 DataList nodeList = new DataList();
@@ -215,13 +215,14 @@ public class GraphDumper extends AbstractMethodScopeDumper {
                     nodeList.add(getNodeId(node));
                 }
 
-                DataList successorList = new DataList();
-                blockDict.put("successors", successorList);
-                for (Block successor : block.getSuccessors()) {
-                    successorList.add(successor.getId());
+                List<Block> successors = block.getSuccessors();
+                if (successors != null && !successors.isEmpty()) {
+                    DataList successorList = new DataList();
+                    blockDict.put("successors", successorList);
+                    for (Block successor : successors) {
+                        successorList.add(successor.getId());
+                    }
                 }
-
-                blockList.add(blockDict);
             }
         }
     }
@@ -332,10 +333,18 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         for (int i = 0; i < edges.getCount(); i++) {
             DataDict edgeDict = new DataDict();
             String name = edges.getName(i);
+            Class<?> fieldClass = edges.getType(i);
             edgeDict.put("name", name);
-            edgeDict.put("jtype", edges.getType(i).getName());
+            edgeDict.put("jtype", fieldClass.getName());
+            if (NodeList.class.isAssignableFrom(fieldClass)) {
+                edgeDict.put("isList", true);
+            }
             if (type == Type.Inputs) {
-                edgeDict.put("type", ((InputEdges) edges).getInputType(i));
+                InputEdges inputEdges = ((InputEdges) edges);
+                edgeDict.put("type", inputEdges.getInputType(i));
+                if (inputEdges.isOptional(i)) {
+                    edgeDict.put("isOptional", true);
+                }
             }
             edgeInfoDict.put(name, edgeDict);
         }

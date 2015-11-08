@@ -76,10 +76,10 @@ public class NewArrayStub extends SnippetStub {
         HotSpotResolvedObjectType intArrayType = (HotSpotResolvedObjectType) providers.getMetaAccess().lookupJavaType(int[].class);
         int count = method.getSignature().getParameterCount(false);
         Object[] args = new Object[count];
-        assert checkConstArg(2, "intArrayHub");
-        assert checkConstArg(3, "threadRegister");
-        args[2] = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), intArrayType.klass(), null);
-        args[3] = providers.getRegisters().getThreadRegister();
+        assert checkConstArg(3, "intArrayHub");
+        assert checkConstArg(4, "threadRegister");
+        args[3] = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), intArrayType.klass(), null);
+        args[4] = providers.getRegisters().getThreadRegister();
         return args;
     }
 
@@ -94,10 +94,11 @@ public class NewArrayStub extends SnippetStub {
      *
      * @param hub the hub of the object to be allocated
      * @param length the length of the array
+     * @param fillContents Should the array be filled with zeroes?
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newArray(KlassPointer hub, int length, @ConstantParameter KlassPointer intArrayHub, @ConstantParameter Register threadRegister) {
+    private static Object newArray(KlassPointer hub, int length, boolean fillContents, @ConstantParameter KlassPointer intArrayHub, @ConstantParameter Register threadRegister) {
         int layoutHelper = loadKlassLayoutHelperIntrinsic(hub);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
@@ -118,7 +119,7 @@ public class NewArrayStub extends SnippetStub {
                 if (logging()) {
                     printf("newArray: allocated new array at %p\n", memory.rawValue());
                 }
-                return verifyObject(formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true, false, false));
+                return verifyObject(formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), fillContents, false, false));
             }
         }
         if (logging()) {
