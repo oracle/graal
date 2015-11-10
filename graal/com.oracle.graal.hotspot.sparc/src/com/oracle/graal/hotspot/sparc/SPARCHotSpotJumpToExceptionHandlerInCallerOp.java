@@ -25,9 +25,6 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
-import static jdk.vm.ci.sparc.SPARC.i0;
-import static jdk.vm.ci.sparc.SPARC.i1;
-import static jdk.vm.ci.sparc.SPARC.i2;
 import static jdk.vm.ci.sparc.SPARC.l7;
 import static jdk.vm.ci.sparc.SPARC.sp;
 import jdk.vm.ci.code.Register;
@@ -69,12 +66,6 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        // Move the values up one level to be the input for the next call.
-        masm.mov(asRegister(handlerInCallerPc), i2);
-        masm.mov(asRegister(exception), i0);
-        masm.mov(asRegister(exceptionPc), i1);
-        leaveFrame(crb);
-
         // Restore SP from L7 if the exception PC is a method handle call site.
         SPARCAddress dst = new SPARCAddress(thread, isMethodHandleReturnOffset);
         try (ScratchRegister scratch = masm.getScratchRegister()) {
@@ -83,8 +74,7 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
             masm.cmp(scratchReg, scratchReg);
             masm.movcc(ConditionFlag.NotZero, CC.Icc, l7, sp);
         }
-
         masm.jmpl(asRegister(handlerInCallerPc), 0, g0);
-        masm.nop();
+        leaveFrame(crb); // Delay slot
     }
 }

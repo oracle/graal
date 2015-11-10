@@ -98,10 +98,10 @@ public class SPARCHotSpotRegisterAllocationConfig extends RegisterAllocationConf
 
     // @formatter:off
     static final Register[] registerAllocationOrder = {
-      g1, g4, g5,
-      o0, o1, o2, o3, o4, o5, /*o6, o7,*/
       l0, l1, l2, l3, l4, l5, l6, l7,
       i0, i1, i2, i3, i4, i5, /*i6,*/ /*i7,*/
+      o0, o1, o2, o3, o4, o5, /*o6, o7,*/
+      g1, g4, g5,
       // f0, f1, f2, f3, f4, f5, f6, f7
       f8,  f9,  f10, f11, f12, f13, f14, f15,
       f16, f17, f18, f19, f20, f21, f22, f23,
