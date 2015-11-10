@@ -30,7 +30,9 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.oracle.truffle.api.nodes.GraphPrintVisitor;
 import com.oracle.truffle.object.debug.GraphvizShapeVisitor;
+import com.oracle.truffle.object.debug.IGVShapeVisitor;
 import com.oracle.truffle.object.debug.JSONShapeVisitor;
 
 class Debug {
@@ -54,6 +56,9 @@ class Debug {
                         }
                         if (ObjectStorageOptions.DumpShapesJSON) {
                             dumpJSON();
+                        }
+                        if (ObjectStorageOptions.DumpShapesIGV) {
+                            dumpIGV();
                         }
                     } catch (FileNotFoundException | UnsupportedEncodingException e) {
                         throw new RuntimeException(e);
@@ -86,6 +91,32 @@ class Debug {
                         }
                         out.println("]}");
                     }
+                }
+
+                private void dumpIGV() {
+                    GraphPrintVisitor printer = new GraphPrintVisitor();
+                    printer.beginGroup("shapes");
+                    IGVShapeVisitor visitor = new IGVShapeVisitor(printer);
+                    for (ShapeImpl shape : allShapes) {
+                        if (isRootShape(shape)) {
+                            printer.beginGraph(DebugShapeVisitor.getId(shape));
+                            shape.accept(visitor);
+                            printer.endGraph();
+                        }
+                    }
+                    printer.beginGraph("all shapes");
+                    for (ShapeImpl shape : allShapes) {
+                        if (isRootShape(shape)) {
+                            shape.accept(visitor);
+                        }
+                    }
+                    printer.endGraph();
+                    printer.endGroup();
+                    printer.printToNetwork(false);
+                }
+
+                private boolean isRootShape(ShapeImpl shape) {
+                    return shape.getParent() == null;
                 }
 
                 private File getOutputFile(String extension) {
