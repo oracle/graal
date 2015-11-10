@@ -60,7 +60,7 @@ final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, 
     }
 
     @Override
-    public ForeignAccess getForeignAccessFactory() {
+    public ForeignAccess getForeignAccessFactory(DynamicObject obj) {
         return access;
     }
 

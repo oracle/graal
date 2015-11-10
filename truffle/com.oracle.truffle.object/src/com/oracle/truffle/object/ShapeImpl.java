@@ -1152,7 +1152,7 @@ public abstract class ShapeImpl extends Shape {
     private static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
 
-    public ForeignAccess getForeignAccessFactory() {
-        return getObjectType().getForeignAccessFactory();
+    public ForeignAccess getForeignAccessFactory(DynamicObject object) {
+        return getObjectType().getForeignAccessFactory(object);
     }
 }

@@ -344,6 +344,6 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return getShape().getForeignAccessFactory();
+        return getShape().getForeignAccessFactory(this);
     }
 }
