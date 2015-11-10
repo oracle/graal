@@ -592,7 +592,9 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
 
     private void moveBetweenFpGp(AllocatableValue dst, AllocatableValue src) {
         AllocatableValue tempSlot;
-        if (getLIRGen().getArchitecture().getFeatures().contains(CPUFeature.VIS3)) {
+        PlatformKind dstKind = dst.getPlatformKind();
+        PlatformKind srcKind = src.getPlatformKind();
+        if (getLIRGen().getArchitecture().getFeatures().contains(CPUFeature.VIS3) && !(srcKind == WORD && dstKind == SINGLE) && !(srcKind == SINGLE && dstKind == WORD)) {
             tempSlot = AllocatableValue.ILLEGAL;
         } else {
             tempSlot = getTempSlot(LIRKind.value(XWORD));
