@@ -42,7 +42,7 @@ public class GraphvizShapeVisitor extends DebugShapeVisitor<GraphvizShapeVisitor
     @Override
     public GraphvizShapeVisitor visitShape(Shape shape, Map<? extends Transition, ? extends Shape> transitions) {
         if (!drawn.add(shape)) {
-            return null;
+            return this;
         }
 
         String prefix = "s";

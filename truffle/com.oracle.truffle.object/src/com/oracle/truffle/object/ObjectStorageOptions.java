@@ -40,7 +40,10 @@ public class ObjectStorageOptions {
     // Debug options (should be final)
     public static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", true);
     public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
-    public static final boolean DumpShapes = booleanOption(OPTION_PREFIX + "DumpShapes", false);
+    public static final boolean DumpShapesDOT = booleanOption(OPTION_PREFIX + "DumpShapesDOT", false);
+    public static final boolean DumpShapesJSON = booleanOption(OPTION_PREFIX + "DumpShapesJSON", false);
+    public static final boolean DumpShapes = DumpShapesDOT || DumpShapesJSON;
+    public static final String DumpShapesPath = System.getProperty(OPTION_PREFIX + "DumpShapesPath", "");
 
     public static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
     public static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);

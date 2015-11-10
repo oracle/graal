@@ -22,12 +22,16 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.object.debug.JSONShapeVisitor;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import com.oracle.truffle.object.debug.GraphvizShapeVisitor;
+import com.oracle.truffle.object.debug.JSONShapeVisitor;
 
 class Debug {
     private static Collection<ShapeImpl> allShapes;
@@ -44,7 +48,30 @@ class Debug {
         if (ObjectStorageOptions.DumpShapes) {
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
                 public void run() {
-                    try (PrintWriter out = new PrintWriter("shapes.json", "UTF-8")) {
+                    try {
+                        if (ObjectStorageOptions.DumpShapesDOT) {
+                            dumpDOT();
+                        }
+                        if (ObjectStorageOptions.DumpShapesJSON) {
+                            dumpJSON();
+                        }
+                    } catch (FileNotFoundException | UnsupportedEncodingException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                private void dumpDOT() throws FileNotFoundException, UnsupportedEncodingException {
+                    try (PrintWriter out = new PrintWriter(getOutputFile("dot"), "UTF-8")) {
+                        GraphvizShapeVisitor visitor = new GraphvizShapeVisitor();
+                        for (ShapeImpl shape : allShapes) {
+                            shape.accept(visitor);
+                        }
+                        out.println(visitor);
+                    }
+                }
+
+                private void dumpJSON() throws FileNotFoundException, UnsupportedEncodingException {
+                    try (PrintWriter out = new PrintWriter(getOutputFile("json"), "UTF-8")) {
                         out.println("{\"shapes\": [");
                         boolean first = true;
                         for (ShapeImpl shape : allShapes) {
@@ -58,9 +85,11 @@ class Debug {
                             out.println();
                         }
                         out.println("]}");
-                    } catch (FileNotFoundException | UnsupportedEncodingException e) {
-                        throw new RuntimeException(e);
                     }
+                }
+
+                private File getOutputFile(String extension) {
+                    return Paths.get(ObjectStorageOptions.DumpShapesPath, "shapes." + extension).toFile();
                 }
             }));
         }
