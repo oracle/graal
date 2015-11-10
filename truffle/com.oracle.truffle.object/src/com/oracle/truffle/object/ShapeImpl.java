@@ -154,7 +154,9 @@ public abstract class ShapeImpl extends Shape {
         this.extraData = objectType.createShapeData(this);
 
         shapeCount.inc();
-        debugRegisterShape(this);
+        if (ObjectStorageOptions.DumpShapes) {
+            Debug.trackShape(this);
+        }
     }
 
     protected ShapeImpl(Layout layout, ShapeImpl parent, ObjectType operations, Object sharedData, PropertyMap propertyMap, Transition transition, Allocator allocator, int id) {
@@ -1123,12 +1125,6 @@ public abstract class ShapeImpl extends Shape {
             } catch (CloneNotSupportedException e) {
                 throw new AssertionError(e);
             }
-        }
-    }
-
-    private static void debugRegisterShape(ShapeImpl newShape) {
-        if (ObjectStorageOptions.DumpShapes) {
-            Debug.registerShape(newShape);
         }
     }
 
