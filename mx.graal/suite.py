@@ -93,10 +93,10 @@ suite = {
     # This library is not added to the boot class path at run time and so code
     # compiled against this library must be run on (JVMCI enabled) JDK9.
     "JVMCI" : {
-        "sha1" : "f4f0d6cfa751fa644163008810d5123c4c298104",
-        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-b0e383e27552.jar"],
-        "sourceSha1" : "9781af80d9f43b4f1a5b17802ea8d0c8c50d563c",
-        "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-b0e383e27552.src.zip"],
+        "sha1" : "9482b9ba7760c09cd95d78f08ce28171b4081268",
+        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-1648ffb0158e.jar"],
+        "sourceSha1" : "b34c184cb1d383aec07bcadefadff01543f10222",
+        "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-1648ffb0158e.src.zip"],
         "license": "GPLv2-CPE",
      },
   }),
