@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.nodes.instrument;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.EventHandlerNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.ProbeInstrument;
 import com.oracle.truffle.api.instrument.WrapperNode;
@@ -100,8 +99,6 @@ public final class SLStatementWrapperNode extends SLStatementNode implements Wra
         try {
             child.executeVoid(vFrame);
             eventHandlerNode.returnVoid(child, vFrame);
-        } catch (KillException e) {
-            throw (e);
         } catch (Exception e) {
             eventHandlerNode.returnExceptional(child, vFrame, e);
             throw (e);

@@ -200,7 +200,7 @@ public final class SuspendedEvent {
      * Evaluates given code snippet in the context of currently suspended execution.
      *
      * @param code the snippet to evaluate
-     * @param frame <code>null</code> in case the evaluation should happen in top most frame,
+     * @param frameNumber <code>null</code> in case the evaluation should happen in top most frame,
      *            non-null value to specify a frame from those {@link #getStack() currently on
      *            stack} to perform the evaluation in context of
      * @return the computed value

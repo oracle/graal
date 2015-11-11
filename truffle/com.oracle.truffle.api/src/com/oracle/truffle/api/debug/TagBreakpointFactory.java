@@ -241,8 +241,6 @@ final class TagBreakpointFactory {
 
         private static final String SHOULD_NOT_HAPPEN = "TagBreakpointImpl:  should not happen";
 
-        private final SyntaxTag tag;
-
         // Cached assumption that the global status of tag breakpoint activity has not changed.
         private Assumption breakpointsActiveAssumption;
 
@@ -259,8 +257,7 @@ final class TagBreakpointFactory {
         private List<ProbeInstrument> instruments = new ArrayList<>();
 
         private TagBreakpointImpl(int ignoreCount, SyntaxTag tag, boolean oneShot) {
-            super(ENABLED, ignoreCount, oneShot);
-            this.tag = tag;
+            super(ENABLED, tag, ignoreCount, oneShot);
             this.breakpointsActiveAssumption = TagBreakpointFactory.this.breakpointsActiveUnchanged.getAssumption();
             this.isEnabled = true;
             this.enabledUnchangedAssumption = Truffle.getRuntime().createAssumption(BREAKPOINT_NAME + " enabled state unchanged");
@@ -359,7 +356,7 @@ final class TagBreakpointFactory {
 
         @TruffleBoundary
         private String getShortDescription() {
-            return BREAKPOINT_NAME + "@" + tag.name();
+            return BREAKPOINT_NAME + "@" + getTag().name();
         }
 
         private void changeState(State after) {
@@ -433,16 +430,6 @@ final class TagBreakpointFactory {
             warningLog.addWarning(String.format("Exception in %s:  %s", getShortDescription(), ex.getMessage()));
         }
 
-        @Override
-        public String getLocationDescription() {
-            return "Tag " + tag.name();
-        }
-
-        @Override
-        public SyntaxTag getTag() {
-            return tag;
-        }
-
         private final class UnconditionalTagBreakInstrumentListener extends DefaultStandardInstrumentListener {
 
             @Override
@@ -450,7 +437,5 @@ final class TagBreakpointFactory {
                 TagBreakpointImpl.this.nodeEnter(node, vFrame);
             }
         }
-
     }
-
 }
