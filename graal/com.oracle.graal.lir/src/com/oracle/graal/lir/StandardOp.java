@@ -84,6 +84,7 @@ public class StandardOp {
      */
     public static final class LabelOp extends LIRInstruction {
         public static final LIRInstructionClass<LabelOp> TYPE = LIRInstructionClass.create(LabelOp.class);
+        private static final EnumSet<OperandFlag> flags = EnumSet.of(REG, STACK);
 
         /**
          * In the LIR, every register and variable must be defined before it is used. For method
@@ -160,6 +161,12 @@ public class StandardOp {
          */
         public boolean isPhiIn() {
             return getIncomingSize() > 0 && isVariable(getIncomingValue(0));
+        }
+
+        public void forEachIncomingValue(InstructionValueProcedure proc) {
+            for (int i = 0; i < incomingValues.length; i++) {
+                incomingValues[i] = proc.doValue(this, incomingValues[i], OperandMode.DEF, flags);
+            }
         }
     }
 
