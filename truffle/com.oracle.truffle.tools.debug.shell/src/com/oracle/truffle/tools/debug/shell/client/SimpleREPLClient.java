@@ -152,6 +152,7 @@ public class SimpleREPLClient implements REPLClient {
 
     public SimpleREPLClient(REPLServer replServer) {
         this.replServer = replServer;
+        // TODO (mlvdv) language-dependent
         this.languageName = replServer.getLanguageName();
         this.writer = System.out;
         try {
@@ -258,18 +259,26 @@ public class SimpleREPLClient implements REPLClient {
             this.level = predecessor == null ? 0 : predecessor.level + 1;
 
             if (message != null) {
+                final String sourceName = message.get(REPLMessage.SOURCE_NAME);
                 try {
-                    this.haltedSource = Source.fromFileName(message.get(REPLMessage.SOURCE_NAME));
-                    selectedSource = this.haltedSource;
+                    this.haltedSource = Source.fromFileName(sourceName);
+                } catch (IOException ex) {
+                    final String code = message.get(REPLMessage.SOURCE_TEXT);
+                    if (code != null) {
+                        this.haltedSource = Source.fromText(code, sourceName);
+                    }
+                }
+                if (this.haltedSource != null) {
+                    selectedSource = haltedSource;
                     try {
                         haltedLineNumber = Integer.parseInt(message.get(REPLMessage.LINE_NUMBER));
                     } catch (NumberFormatException e) {
                         haltedLineNumber = 0;
                     }
-                } catch (IOException e1) {
+                } else {
                     this.haltedSource = null;
                     this.haltedLineNumber = 0;
-                    this.unknownSourceName = message.get(REPLMessage.SOURCE_NAME);
+                    this.unknownSourceName = sourceName;
                 }
             }
             updatePrompt();

@@ -68,6 +68,7 @@ public final class REPLServer {
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
 
     // TODO (mlvdv) Language-specific
+    private final String mimeType;
     private final PolyglotEngine.Language language;
     private final Visualizer visualizer;
 
@@ -79,6 +80,7 @@ public final class REPLServer {
      * Create a single-language server.
      */
     public REPLServer(String mimeType, Visualizer visualizer) {
+        this.mimeType = mimeType;
         this.visualizer = visualizer == null ? new DefaultVisualizer() : visualizer;
         EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
             @Override
@@ -90,7 +92,9 @@ public final class REPLServer {
             @Override
             protected void on(ExecutionEvent event) {
                 db = event.getDebugger();
-                event.prepareStepInto();
+                if (!currentServerContext.isEval) {
+                    event.prepareStepInto();
+                }
             }
         };
         engine = PolyglotEngine.buildNew().onEvent(onHalted).onEvent(onExec).build();
@@ -110,13 +114,6 @@ public final class REPLServer {
      */
     public void start() {
 
-        addHandlers();
-        this.replClient = new SimpleREPLClient(this);
-        this.currentServerContext = new Context(null, null);
-        replClient.start();
-    }
-
-    protected void addHandlers() {
         add(REPLHandler.BACKTRACE_HANDLER);
         add(REPLHandler.BREAK_AT_LINE_HANDLER);
         add(REPLHandler.BREAK_AT_LINE_ONCE_HANDLER);
@@ -143,6 +140,9 @@ public final class REPLServer {
         add(REPLHandler.TRUFFLE_HANDLER);
         add(REPLHandler.TRUFFLE_NODE_HANDLER);
         add(REPLHandler.UNSET_BREAK_CONDITION_HANDLER);
+        this.replClient = new SimpleREPLClient(this);
+        this.currentServerContext = new Context(null, null);
+        replClient.start();
     }
 
     void haltedAt(SuspendedEvent event) {
@@ -155,7 +155,12 @@ public final class REPLServer {
         final SourceSection src = event.getNode().getSourceSection();
         final Source source = src.getSource();
         message.put(REPLMessage.SOURCE_NAME, source.getName());
-        message.put(REPLMessage.FILE_PATH, source.getPath());
+        final String path = source.getPath();
+        if (path == null) {
+            message.put(REPLMessage.SOURCE_TEXT, source.getCode());
+        } else {
+            message.put(REPLMessage.FILE_PATH, path);
+        }
         message.put(REPLMessage.LINE_NUMBER, Integer.toString(src.getStartLine()));
         message.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
         message.put(REPLMessage.DEBUG_LEVEL, Integer.toString(currentServerContext.getLevel()));
@@ -187,6 +192,7 @@ public final class REPLServer {
         private final Context predecessor;
         private final int level;
         private final SuspendedEvent event;
+        private boolean isEval = false;  // When true, run without StepInto
 
         Context(Context predecessor, SuspendedEvent event) {
             this.level = predecessor == null ? 0 : predecessor.getLevel() + 1;
@@ -209,19 +215,26 @@ public final class REPLServer {
         }
 
         /**
-         * Evaluates given code snippet in the context of currently suspended execution.
+         * Evaluates a code snippet in the context of a selected frame in the currently suspended
+         * execution.
          *
          * @param code the snippet to evaluate
-         * @param frame <code>null</code> in case the evaluation should happen in top most frame,
-         *            non-null value
+         * @param frameNumber index of the stack frame in which to evaluate, {@code null} if the
+         *            topmost frame should be used.
          * @return result of the evaluation
          * @throws IOException if something goes wrong
          */
-        Object eval(String code, FrameInstance frame) throws IOException {
+        Object eval(String code, Integer frameNumber) throws IOException {
             if (event == null) {
-                throw new IOException("top level \"eval\" not yet supported");
+                try {
+                    isEval = true;
+                    final Value value = engine.eval(Source.fromText(code, "eval(\"" + code + "\")").withMimeType(mimeType));
+                    return value.get();
+                } finally {
+                    isEval = false;
+                }
             }
-            return event.eval(code, frame);
+            return event.eval(code, frameNumber);
         }
 
         /**
@@ -364,7 +377,7 @@ public final class REPLServer {
     void call(String name) throws IOException {
         Value symbol = engine.findGlobalSymbol(name);
         if (symbol == null) {
-            throw new IOException("symboleval f \"" + name + "\" not found");
+            throw new IOException("symbol \"" + name + "\" not found");
         }
         symbol.invoke(null);
     }
