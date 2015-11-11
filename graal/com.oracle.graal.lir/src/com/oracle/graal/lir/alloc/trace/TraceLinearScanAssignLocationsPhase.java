@@ -54,6 +54,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.Variable;
@@ -70,16 +71,14 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
-        new Assigner(allocator, traceBuilderResult).assignLocations();
+        new Assigner(allocator).assignLocations();
     }
 
     private static final class Assigner {
         private final TraceLinearScan allocator;
-        private final TraceBuilderResult<?> traceBuilderResult;
 
-        private Assigner(TraceLinearScan allocator, TraceBuilderResult<?> traceBuilderResult) {
+        private Assigner(TraceLinearScan allocator) {
             this.allocator = allocator;
-            this.traceBuilderResult = traceBuilderResult;
         }
 
         /**
@@ -206,8 +205,12 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
          */
         private boolean assignLocations(LIRInstruction op) {
             assert op != null;
-            if (TraceRAshareSpillInformation.getValue() && isBlockEndWithEdgeToUnallocatedTrace(op)) {
-                ((BlockEndOp) op).forEachOutgoingValue(colorOutgoingValues);
+            if (TraceRAshareSpillInformation.getValue()) {
+                if (op instanceof BlockEndOp) {
+                    ((BlockEndOp) op).forEachOutgoingValue(colorOutgoingIncomingValues);
+                } else if (op instanceof LabelOp) {
+                    ((LabelOp) op).forEachIncomingValue(colorOutgoingIncomingValues);
+                }
             }
 
             InstructionValueProcedure assignProc = (inst, operand, mode, flags) -> isVariable(operand) ? colorLirOperand(inst, (Variable) operand, mode) : operand;
@@ -253,10 +256,10 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             }
         }
 
-        private InstructionValueProcedure colorOutgoingValues = new InstructionValueProcedure() {
+        private InstructionValueProcedure colorOutgoingIncomingValues = new InstructionValueProcedure() {
 
             public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (isRegister(value) || isVariable(value)) {
+                if (isVariable(value)) {
                     TraceInterval interval = allocator.intervalFor(value);
                     assert interval != null : "interval must exist";
                     interval = allocator.splitChildAtOpId(interval, instruction.id(), mode);
@@ -268,22 +271,6 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                 return value;
             }
         };
-
-        private boolean isBlockEndWithEdgeToUnallocatedTrace(LIRInstruction op) {
-            if (!(op instanceof BlockEndOp)) {
-                return false;
-            }
-            AbstractBlockBase<?> block = allocator.blockForId(op.id());
-            int currentTrace = traceBuilderResult.getTraceForBlock(block);
-
-            for (AbstractBlockBase<?> succ : block.getSuccessors()) {
-                if (currentTrace < traceBuilderResult.getTraceForBlock(succ)) {
-                    // succ is not yet allocated
-                    return true;
-                }
-            }
-            return false;
-        }
     }
 
 }
