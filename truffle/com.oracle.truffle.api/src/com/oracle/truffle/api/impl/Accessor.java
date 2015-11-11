@@ -316,10 +316,6 @@ public abstract class Accessor {
         return API.findContext(env);
     }
 
-    protected TruffleLanguage<?> findLanguage(Env env) {
-        return API.findLanguage(env);
-    }
-
     /** Applies all registered {@linkplain ASTProber probers} to the AST. */
     protected void probeAST(RootNode rootNode) {
         INSTRUMENT.probeAST(rootNode);
@@ -333,6 +329,10 @@ public abstract class Accessor {
     protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) throws IOException {
         final TruffleLanguage<?> truffleLanguage = findLanguageImpl(null, languageClass);
         return parse(truffleLanguage, code, context, argumentNames);
+    }
+
+    protected TruffleLanguage<?> findLanguage(Env env) {
+        return API.findLanguage(env);
     }
 
     protected CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) throws IOException {

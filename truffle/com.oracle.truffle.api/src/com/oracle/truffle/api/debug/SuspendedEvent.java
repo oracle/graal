@@ -24,6 +24,11 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -31,10 +36,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * This event is delivered to all
@@ -52,6 +53,7 @@ public final class SuspendedEvent {
     private final MaterializedFrame mFrame;
     private final Node astNode;
     private final List<FrameInstance> frames;
+    private final int stackSize;
     private final Debugger debugger;
 
     SuspendedEvent(Debugger prepares, Node astNode, MaterializedFrame mFrame, List<String> recentWarnings, final int stackDepth) {
@@ -77,7 +79,7 @@ public final class SuspendedEvent {
                 return frameInstance;
             }
         });
-
+        stackSize = frames.size();
     }
 
     /**
@@ -204,7 +206,14 @@ public final class SuspendedEvent {
      * @return the computed value
      * @throws IOException in case an evaluation goes wrong
      */
-    public Object eval(String code, FrameInstance frame) throws IOException {
-        return debugger.evalInContext(this, code, frame);
+    public Object eval(String code, Integer frameNumber) throws IOException {
+        int n = 0;
+        if (frameNumber != null) {
+            if (frameNumber < 0 || frameNumber >= stackSize) {
+                throw new IOException("invalid frame number");
+            }
+            n = frameNumber;
+        }
+        return debugger.evalInContext(this, code, frames.get(n));
     }
 }
