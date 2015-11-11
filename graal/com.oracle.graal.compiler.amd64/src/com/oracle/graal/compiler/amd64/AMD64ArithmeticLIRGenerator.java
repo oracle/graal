@@ -1072,7 +1072,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (isConstantValue(right)) {
             Constant c = LIRValueUtil.asConstant(right);
             if (JavaConstant.isNull(c)) {
-                getLIRGen().append(new AMD64BinaryConsumer.Op(TEST, DWORD, left, left));
+                getLIRGen().append(new AMD64BinaryConsumer.Op(TEST, size, left, left));
                 return;
             } else if (c instanceof VMConstant) {
                 VMConstant vc = (VMConstant) c;
