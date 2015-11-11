@@ -74,7 +74,7 @@ public class GlobalSymbolTest {
     }
 
     protected PolyglotEngine.Builder createEngineBuilder() {
-        return PolyglotEngine.buildNew();
+        return PolyglotEngine.newBuilder();
     }
 
     @Test

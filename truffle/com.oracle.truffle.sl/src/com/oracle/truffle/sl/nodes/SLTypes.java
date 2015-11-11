@@ -58,7 +58,7 @@ import java.math.BigInteger;
  * generated ones would not be sufficient.
  */
 @TypeSystem({long.class, BigInteger.class, boolean.class, String.class, SLFunction.class, SLNull.class})
-@DSLOptions(useNewLayout = true)
+@DSLOptions
 public abstract class SLTypes {
 
     /**

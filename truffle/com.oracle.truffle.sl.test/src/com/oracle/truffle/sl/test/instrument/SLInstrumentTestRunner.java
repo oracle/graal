@@ -240,7 +240,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
-                PolyglotEngine vm = PolyglotEngine.buildNew().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
+                PolyglotEngine vm = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
 
                 final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
                 field.setAccessible(true);

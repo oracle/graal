@@ -123,7 +123,7 @@ public class TruffleToolTest {
     }
 
     private static Instrumenter getInstrumenter() throws NoSuchFieldException, IllegalAccessException {
-        final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);

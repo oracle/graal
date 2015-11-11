@@ -71,7 +71,7 @@ public class InitializationTest {
     @Test
     public void accessProbeForAbstractLanguage() throws IOException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         final Debugger[] arr = {null};
-        PolyglotEngine vm = PolyglotEngine.buildNew().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+        PolyglotEngine vm = PolyglotEngine.newBuilder().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
                 arr[0] = event.getDebugger();

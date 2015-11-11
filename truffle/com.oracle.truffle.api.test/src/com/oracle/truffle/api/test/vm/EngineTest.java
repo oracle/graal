@@ -31,7 +31,7 @@ import org.junit.Test;
 
 public class EngineTest {
     protected PolyglotEngine.Builder createBuilder() {
-        return PolyglotEngine.buildNew();
+        return PolyglotEngine.newBuilder();
     }
 
     @Test

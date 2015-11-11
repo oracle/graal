@@ -35,7 +35,7 @@ public class JavaFunctionTest {
     public void invokeRunnable() throws IOException {
         final boolean[] called = {false};
 
-        PolyglotEngine engine = PolyglotEngine.buildNew().globalSymbol("test", JavaInterop.asTruffleFunction(Runnable.class, new Runnable() {
+        PolyglotEngine engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Runnable.class, new Runnable() {
             @Override
             public void run() {
                 called[0] = true;

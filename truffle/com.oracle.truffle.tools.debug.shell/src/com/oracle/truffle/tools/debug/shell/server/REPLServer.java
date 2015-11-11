@@ -134,7 +134,7 @@ public final class REPLServer {
                 }
             }
         };
-        engine = PolyglotEngine.buildNew().onEvent(onHalted).onEvent(onExec).build();
+        engine = PolyglotEngine.newBuilder().onEvent(onHalted).onEvent(onExec).build();
         this.language = engine.getLanguages().get(mimeType);
         if (language == null) {
             throw new RuntimeException("Implementation not found for \"" + mimeType + "\"");

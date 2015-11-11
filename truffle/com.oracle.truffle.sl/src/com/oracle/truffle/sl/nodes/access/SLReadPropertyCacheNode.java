@@ -73,11 +73,10 @@ public abstract class SLReadPropertyCacheNode extends Node {
      * We use a separate long specialization to avoid boxing for long.
      */
     @Specialization(limit = "CACHE_LIMIT", guards = {"longLocation != null", "shape.check(receiver)"}, assumptions = "shape.getValidAssumption()")
-    @SuppressWarnings("unused")
     protected long doCachedLong(DynamicObject receiver,   //
                     @Cached("receiver.getShape()") Shape shape,   //
                     @Cached("getLongLocation(shape)") LongLocation longLocation) {
-        return longLocation.getLong(receiver, true);
+        return longLocation.getLong(receiver, shape);
     }
 
     protected LongLocation getLongLocation(Shape shape) {
@@ -108,27 +107,14 @@ public abstract class SLReadPropertyCacheNode extends Node {
      */
     @Specialization(contains = "doCachedObject")
     @TruffleBoundary
-    protected Object doGeneric(DynamicObject receiver, @Cached("new()") LRUPropertyLookup lruCache) {
-        if (!lruCache.shape.check(receiver)) {
-            Shape receiverShape = receiver.getShape();
-            lruCache.shape = receiverShape;
-            lruCache.property = receiverShape.getProperty(propertyName);
-        }
-        if (lruCache.property != null) {
-            return lruCache.property.get(receiver, true);
+    protected Object doGeneric(DynamicObject receiver) {
+        Shape shape = receiver.getShape();
+        Property property = shape.getProperty(propertyName);
+        if (property != null) {
+            return property.get(receiver, shape);
         } else {
             return SLNull.SINGLETON;
         }
-    }
-
-    protected static class LRUPropertyLookup {
-
-        private Shape shape;
-        private Property property;
-
-        public LRUPropertyLookup() {
-        }
-
     }
 
 }

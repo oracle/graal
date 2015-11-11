@@ -36,11 +36,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface DSLOptions {
-
-    /** Flag has no effect anymore. Is going to be removed soon. */
-    @Deprecated
-    boolean useNewLayout() default true;
-
     /**
      * Lazy class loading ensures that all generated specialization classes are loaded lazily.
      * Disabling this feature will eagerly load all classes but will also reduce the generated code

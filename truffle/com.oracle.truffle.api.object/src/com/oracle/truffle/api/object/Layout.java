@@ -35,10 +35,6 @@ import com.oracle.truffle.api.object.Shape.Allocator;
  * An object may change its shape but only to shapes of the same layout.
  */
 public abstract class Layout {
-    @Deprecated public static final EnumSet<ImplicitCast> NONE = EnumSet.noneOf(ImplicitCast.class);
-    @Deprecated public static final EnumSet<ImplicitCast> INT_TO_DOUBLE = EnumSet.of(ImplicitCast.IntToDouble);
-    @Deprecated public static final EnumSet<ImplicitCast> INT_TO_LONG = EnumSet.of(ImplicitCast.IntToLong);
-
     public static final String OPTION_PREFIX = "truffle.object.";
 
     private static final LayoutFactory LAYOUT_FACTORY = loadLayoutFactory();
@@ -63,15 +59,6 @@ public abstract class Layout {
      */
     public static Layout createLayout() {
         return newLayout().build();
-    }
-
-    /**
-     * Equivalent to
-     * {@code Layout.newLayout().setAllowedImplicitCasts(allowedImplicitCasts).build()}.
-     */
-    @Deprecated
-    public static Layout createLayout(EnumSet<ImplicitCast> allowedImplicitCasts) {
-        return newLayout().setAllowedImplicitCasts(allowedImplicitCasts).build();
     }
 
     public abstract DynamicObject newInstance(Shape shape);
@@ -134,6 +121,7 @@ public abstract class Layout {
      */
     public static final class Builder {
         private EnumSet<ImplicitCast> allowedImplicitCasts;
+        private boolean polymorphicUnboxing;
 
         /**
          * Create a new layout builder.
@@ -169,13 +157,20 @@ public abstract class Layout {
             return this;
         }
 
-        @Deprecated
-        public EnumSet<ImplicitCast> getAllowedImplicitCasts() {
-            return allowedImplicitCasts;
+        /**
+         * If {@code true}, try to keep properties with polymorphic primitive types unboxed.
+         */
+        public Builder setPolymorphicUnboxing(boolean polymorphicUnboxing) {
+            this.polymorphicUnboxing = polymorphicUnboxing;
+            return this;
         }
     }
 
     protected static EnumSet<ImplicitCast> getAllowedImplicitCasts(Builder builder) {
         return builder.allowedImplicitCasts;
+    }
+
+    protected static boolean getPolymorphicUnboxing(Builder builder) {
+        return builder.polymorphicUnboxing;
     }
 }

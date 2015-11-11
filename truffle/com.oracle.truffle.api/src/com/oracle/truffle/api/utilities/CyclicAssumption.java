@@ -24,10 +24,11 @@
  */
 package com.oracle.truffle.api.utilities;
 
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Holds an {@link Assumption}, and knows how to recreate it with the same properties on
@@ -39,22 +40,24 @@ import java.util.concurrent.atomic.AtomicReference;
 public class CyclicAssumption {
 
     private final String name;
-    private final AtomicReference<Assumption> assumption;
+    private volatile Assumption assumption;
+
+    private static final AtomicReferenceFieldUpdater<CyclicAssumption, Assumption> ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(CyclicAssumption.class, Assumption.class, "assumption");
 
     public CyclicAssumption(String name) {
         this.name = name;
-        this.assumption = new AtomicReference<>(Truffle.getRuntime().createAssumption(name));
+        this.assumption = Truffle.getRuntime().createAssumption(name);
     }
 
     @TruffleBoundary
     public void invalidate() {
         Assumption newAssumption = Truffle.getRuntime().createAssumption(name);
-        Assumption oldAssumption = assumption.getAndSet(newAssumption);
+        Assumption oldAssumption = ASSUMPTION_UPDATER.getAndSet(this, newAssumption);
         oldAssumption.invalidate();
     }
 
     public Assumption getAssumption() {
-        return assumption.get();
+        return assumption;
     }
 
 }

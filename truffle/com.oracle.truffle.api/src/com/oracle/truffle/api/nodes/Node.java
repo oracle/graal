@@ -392,16 +392,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * This method must never be called. It enforces that {@link Object#clone} is not directly
-     * called by subclasses. Use the {@link #copy()} method instead.
-     */
-    @Override
-    @Deprecated
-    protected final Object clone() throws CloneNotSupportedException {
-        throw new IllegalStateException("This method should never be called, use the copy method instead!");
-    }
-
-    /**
      * Get the root node of the tree a node belongs to.
      *
      * @return the {@link RootNode} or {@code null} if there is none.

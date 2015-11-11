@@ -64,7 +64,7 @@ public class InstrumentationTest {
 
     @Test
     public void testProbing() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
-        final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
@@ -106,7 +106,7 @@ public class InstrumentationTest {
     @Test
     public void testTagging() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
 
-        final PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
@@ -243,10 +243,9 @@ public class InstrumentationTest {
                     leaveCount++;
                 }
 
-                public void onReturnExceptional(Probe p, Exception exception) {
+                public void onReturnExceptional(Probe p, Throwable exception) {
                     leaveCount++;
                 }
-
             }, "Instrumentation Test Counter");
         }
 
@@ -296,10 +295,9 @@ public class InstrumentationTest {
                     leaveCount++;
                 }
 
-                public void onReturnExceptional(Probe p, Node node, VirtualFrame vFrame, Exception exception) {
+                public void onReturnExceptional(Probe p, Node node, VirtualFrame vFrame, Throwable exception) {
                     leaveCount++;
                 }
-
             }, "Instrumentation Test Counter");
         }
 

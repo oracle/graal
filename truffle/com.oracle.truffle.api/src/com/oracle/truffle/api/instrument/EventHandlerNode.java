@@ -54,7 +54,7 @@ public abstract class EventHandlerNode extends Node implements InstrumentationNo
     /**
      * An AST Node's execute method has just thrown an exception.
      */
-    public abstract void returnExceptional(Node node, VirtualFrame vFrame, Exception exception);
+    public abstract void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception);
 
     /**
      * Gets the {@link Probe} that manages this chain of event handling.

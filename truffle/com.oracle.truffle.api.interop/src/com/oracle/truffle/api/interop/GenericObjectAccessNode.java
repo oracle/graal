@@ -34,6 +34,8 @@ final class GenericObjectAccessNode extends ObjectAccessNode {
     private final Message access;
     @Child private IndirectCallNode indirectCallNode;
 
+    @Child private ForeignAccessArguments accessArguments = new ForeignAccessArguments();
+
     public GenericObjectAccessNode(Message access) {
         this.access = access;
         indirectCallNode = Truffle.getRuntime().createIndirectCallNode();
@@ -50,7 +52,7 @@ final class GenericObjectAccessNode extends ObjectAccessNode {
         if (ct == null) {
             throw messageNotRecognizedException(fa);
         }
-        return indirectCallNode.call(frame, ct, ForeignAccessArguments.create(truffleObject, arguments));
+        return indirectCallNode.call(frame, ct, accessArguments.executeCreate(truffleObject, arguments));
     }
 
     @CompilerDirectives.TruffleBoundary

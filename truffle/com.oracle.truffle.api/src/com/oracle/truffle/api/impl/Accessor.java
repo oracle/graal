@@ -33,6 +33,7 @@ import java.lang.ref.WeakReference;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -179,7 +180,7 @@ public abstract class Accessor {
     protected boolean isInstrumentable(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
         Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
-        TruffleLanguage language = findLanguageImpl(vm, languageClazz);
+        TruffleLanguage language = findLanguageImpl(vm, languageClazz, null);
         return isInstrumentable(node, language);
     }
 
@@ -194,7 +195,7 @@ public abstract class Accessor {
     protected WrapperNode createWrapperNode(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
         Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
-        TruffleLanguage language = findLanguageImpl(vm, languageClazz);
+        TruffleLanguage language = findLanguageImpl(vm, languageClazz, null);
         return createWrapperNode(node, language);
     }
 
@@ -230,7 +231,7 @@ public abstract class Accessor {
     }
 
     @SuppressWarnings("rawtypes")
-    protected TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass) {
+    protected TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass, String mimeType) {
         Object vm;
         if (known == null) {
             vm = CURRENT_VM.get();
@@ -240,7 +241,7 @@ public abstract class Accessor {
         } else {
             vm = known;
         }
-        return SPI.findLanguageImpl(vm, languageClass);
+        return SPI.findLanguageImpl(vm, languageClass, mimeType);
     }
 
     protected Instrumenter getInstrumenter(Object known) {
@@ -267,6 +268,7 @@ public abstract class Accessor {
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
+    @TruffleBoundary
     @SuppressWarnings("unused")
     protected Closeable executionStart(Object vm, int currentDepth, Debugger debugger, Source s) {
         vm.getClass();
@@ -280,6 +282,7 @@ public abstract class Accessor {
         }
         CURRENT_VM.set(vm);
         class ContextCloseable implements Closeable {
+            @TruffleBoundary
             @Override
             public void close() throws IOException {
                 CURRENT_VM.set(prev);
@@ -327,7 +330,7 @@ public abstract class Accessor {
 
     @SuppressWarnings("rawtypes")
     protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) throws IOException {
-        final TruffleLanguage<?> truffleLanguage = findLanguageImpl(null, languageClass);
+        final TruffleLanguage<?> truffleLanguage = findLanguageImpl(null, languageClass, code.getMimeType());
         return parse(truffleLanguage, code, context, argumentNames);
     }
 

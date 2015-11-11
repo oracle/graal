@@ -35,6 +35,6 @@ public class GlobalSymbolAsynchTest extends GlobalSymbolTest {
 
     @Override
     protected PolyglotEngine.Builder createEngineBuilder() {
-        return PolyglotEngine.buildNew().executor(Executors.newSingleThreadExecutor());
+        return PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor());
     }
 }

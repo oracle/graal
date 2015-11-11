@@ -68,5 +68,5 @@ public interface StandardAfterInstrumentListener {
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception);
+    void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception);
 }

@@ -43,7 +43,7 @@ public class TypeSystemTest {
 
     @TypeSystem({byte.class, short.class, int.class, long.class, double.class, boolean.class, BigInteger.class, String.class, CallTarget.class, BExtendsAbstract.class, CExtendsAbstract.class,
                     Abstract.class, Interface.class, Object[].class})
-    @DSLOptions(useNewLayout = true)
+    @DSLOptions
     static class SimpleTypes {
 
         static int intCheck;

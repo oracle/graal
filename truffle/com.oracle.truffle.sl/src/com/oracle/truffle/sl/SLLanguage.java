@@ -50,6 +50,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -185,7 +186,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 
 /*
- *
+ * 
  * <p> <b>Tools:</b><br> The use of some of Truffle's support for developer tools (based on the
  * Truffle {@linkplain Instrumenter Instrumentation Framework}) are demonstrated in this file, for
  * example: <ul> <li>a {@linkplain NodeExecCounter counter for node executions}, tabulated by node
@@ -226,7 +227,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
      */
     public static void main(String[] args) throws IOException {
-        PolyglotEngine vm = PolyglotEngine.buildNew().build();
+        PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         assert vm.getLanguages().containsKey("application/x-sl");
 
         setupToolDemos();
@@ -251,21 +252,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             main.invoke(null);
         }
         reportToolDemos();
-    }
-
-    /**
-     * Temporary method during API evolution, supports debugger integration.
-     */
-    @Deprecated
-    public static void run(Source source) throws IOException {
-        PolyglotEngine vm = PolyglotEngine.buildNew().build();
-        assert vm.getLanguages().containsKey("application/x-sl");
-        vm.eval(source);
-        Value main = vm.findGlobalSymbol("main");
-        if (main == null) {
-            throw new SLException("No function main() defined in SL source file.");
-        }
-        main.invoke(null);
     }
 
     /**
@@ -434,6 +420,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             failed[0] = e;
         }
         return new CallTarget() {
+            @TruffleBoundary
             @Override
             public Object call(Object... arguments) {
                 if (failed[0] instanceof RuntimeException) {

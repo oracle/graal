@@ -423,7 +423,7 @@ public final class Debugger {
                     doHalt(node, vFrame.materialize());
                 }
 
-                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception) {
                     doHalt(node, vFrame.materialize());
                 }
 
@@ -481,7 +481,7 @@ public final class Debugger {
                     doHalt(node, vFrame.materialize());
                 }
 
-                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception) {
                     doHalt(node, vFrame.materialize());
                 }
 
@@ -564,7 +564,7 @@ public final class Debugger {
                     doHalt(node, vFrame.materialize());
                 }
 
-                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception) {
                     doHalt(node, vFrame.materialize());
                 }
 

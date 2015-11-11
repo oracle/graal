@@ -41,7 +41,7 @@ public class ValueTest implements Executor {
 
     @Test
     public void valueToStringValue() throws Exception {
-        PolyglotEngine engine = PolyglotEngine.buildNew().build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Language language2 = engine.getLanguages().get("application/x-test-import-export-2");
         language2.eval(Source.fromText("explicit.value=42", "define 42"));
@@ -56,7 +56,7 @@ public class ValueTest implements Executor {
 
     @Test
     public void valueToStringException() throws Exception {
-        PolyglotEngine engine = PolyglotEngine.buildNew().build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Value value = null;
         try {
@@ -72,7 +72,7 @@ public class ValueTest implements Executor {
 
     @Test
     public void valueToStringValueAsync() throws Exception {
-        PolyglotEngine engine = PolyglotEngine.buildNew().executor(this).build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().executor(this).build();
         PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Language language2 = engine.getLanguages().get("application/x-test-import-export-2");
         language2.eval(Source.fromText("explicit.value=42", "define 42"));
@@ -96,7 +96,7 @@ public class ValueTest implements Executor {
 
     @Test
     public void valueToStringExceptionAsync() throws Exception {
-        PolyglotEngine engine = PolyglotEngine.buildNew().executor(this).build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().executor(this).build();
         PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Value value = language1.eval(Source.fromText("parse=does not work", "error.value"));
         assertNotNull("Value returned", value);

@@ -74,5 +74,5 @@ public interface SimpleInstrumentListener {
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void onReturnExceptional(Probe probe, Exception exception);
+    void onReturnExceptional(Probe probe, Throwable exception);
 }

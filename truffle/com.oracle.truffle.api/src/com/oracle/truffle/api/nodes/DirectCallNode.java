@@ -99,21 +99,6 @@ public abstract class DirectCallNode extends Node {
     public abstract void forceInlining();
 
     /**
-     * Returns true if the runtime system has decided to inline this call-site. If the
-     * {@link DirectCallNode} was forced to inline then this does not necessarily mean that the
-     * {@link DirectCallNode} is really going to be inlined. This depends on whether or not the
-     * runtime system supports inlining. The runtime system may also decide to not inline calls
-     * which were forced to inline.
-     *
-     * @deprecated we do not expose this information any longer. returns always false.
-     */
-    @SuppressWarnings("static-method")
-    @Deprecated
-    public final boolean isInlined() {
-        return false;
-    }
-
-    /**
      * Returns <code>true</code> if the runtime system supports cloning and the {@link RootNode}
      * returns <code>true</code> in {@link RootNode#isCloningAllowed()}.
      *

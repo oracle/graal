@@ -25,17 +25,9 @@
 package com.oracle.truffle.api.vm;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
 import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,25 +37,25 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.QuitException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -94,11 +86,12 @@ import com.oracle.truffle.api.source.Source;
  * Use {@link #buildNew()} multiple times to create different, isolated portal environment
  * completely separated from each other.
  * <p>
- * Once instantiated use {@link #eval(java.net.URI)} with a reference to a file or URL or directly
- * pass code snippet into the virtual machine via {@link #eval(java.lang.String, java.lang.String)}.
- * Support for individual languages is initialized on demand - e.g. once a file of certain MIME type
- * is about to be processed, its appropriate engine (if found), is initialized. Once an engine gets
- * initialized, it remains so, until the virtual machine isn't garbage collected.
+ * Once instantiated use {@link #eval(com.oracle.truffle.api.source.Source)} with a reference to a
+ * file or URL or directly pass code snippet into the virtual machine via
+ * {@link #eval(com.oracle.truffle.api.source.Source)}. Support for individual languages is
+ * initialized on demand - e.g. once a file of certain MIME type is about to be processed, its
+ * appropriate engine (if found), is initialized. Once an engine gets initialized, it remains so,
+ * until the virtual machine isn't garbage collected.
  * <p>
  * The engine is single-threaded and tries to enforce that. It records the thread it has been
  * {@link Builder#build() created} by and checks that all subsequent calls are coming from the same
@@ -107,8 +100,7 @@ import com.oracle.truffle.api.source.Source;
  */
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
-    static final boolean JAVA_INTEROP_ENABLED = !Boolean.getBoolean("com.oracle.truffle.aot");
-
+    static final boolean JAVA_INTEROP_ENABLED = !TruffleOptions.AOT;
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
     private final Thread initThread;
@@ -178,16 +170,25 @@ public class PolyglotEngine {
      *
      * It searches for {@link Registration languages registered} in the system class loader and
      * makes them available for later evaluation via
-     * {@link #eval(java.lang.String, java.lang.String)} methods.
+     * {@link #eval(com.oracle.truffle.api.source.Source)} method.
      *
-     * @return new, isolated virtual machine with pre-registered languages
+     * @return new builder to create isolated polyglot engine with pre-registered languages
      */
-    public static PolyglotEngine.Builder buildNew() {
+    public static PolyglotEngine.Builder newBuilder() {
         // making Builder non-static inner class is a
         // nasty trick to avoid the Builder class to appear
         // in Javadoc next to PolyglotEngine class
         PolyglotEngine vm = new PolyglotEngine();
         return vm.new Builder();
+    }
+
+    /**
+     * @return new builder
+     * @deprecated use {@link #newBuilder()}
+     */
+    @Deprecated
+    public static PolyglotEngine.Builder buildNew() {
+        return newBuilder();
     }
 
     /**
@@ -226,15 +227,6 @@ public class PolyglotEngine {
         }
 
         /**
-         * @deprecated does nothing
-         */
-        @Deprecated
-        @SuppressWarnings("unused")
-        public Builder stdOut(Writer w) {
-            return this;
-        }
-
-        /**
          * Changes the error output for languages running in <em>to be created</em>
          * {@link PolyglotEngine virtual machine}. The default is to use {@link System#err}.
          *
@@ -247,15 +239,6 @@ public class PolyglotEngine {
         }
 
         /**
-         * @deprecated does nothing
-         */
-        @Deprecated
-        @SuppressWarnings("unused")
-        public Builder stdErr(Writer w) {
-            return this;
-        }
-
-        /**
          * Changes the default input for languages running in <em>to be created</em>
          * {@link PolyglotEngine virtual machine}. The default is to use {@link System#in}.
          *
@@ -264,15 +247,6 @@ public class PolyglotEngine {
          */
         public Builder setIn(InputStream is) {
             in = is;
-            return this;
-        }
-
-        /**
-         * @deprecated does nothing
-         */
-        @Deprecated
-        @SuppressWarnings("unused")
-        public Builder stdIn(Reader r) {
             return this;
         }
 
@@ -299,16 +273,24 @@ public class PolyglotEngine {
          *
          * @param name name of the symbol to register
          * @param obj value of the object - expected to be primitive wrapper, {@link String} or
-         *            <code>TruffleObject</code> for mutual inter-operability
+         *            <code>TruffleObject</code> for mutual inter-operability. If the object isn't
+         *            of the previous types, the system tries to wrap it using
+         *            {@link JavaInterop#asTruffleObject(java.lang.Object)}, if available
          * @return instance of this builder
          * @see PolyglotEngine#findGlobalSymbol(java.lang.String)
+         * @throws IllegalArgumentException if the object isn't of primitive type and cannot be
+         *             converted to {@link TruffleObject}
          */
         public Builder globalSymbol(String name, Object obj) {
             final Object truffleReady;
-            if (obj instanceof Number || obj instanceof String || obj instanceof Character || obj instanceof Boolean) {
+            if (obj instanceof TruffleObject || obj instanceof Number || obj instanceof String || obj instanceof Character || obj instanceof Boolean) {
                 truffleReady = obj;
             } else {
-                truffleReady = JavaInterop.asTruffleObject(obj);
+                if (JAVA_INTEROP_ENABLED) {
+                    truffleReady = JavaInterop.asTruffleObject(obj);
+                } else {
+                    throw new IllegalArgumentException();
+                }
             }
             globals.put(name, truffleReady);
             return this;
@@ -351,13 +333,7 @@ public class PolyglotEngine {
             if (in == null) {
                 in = System.in;
             }
-            Executor nonNullExecutor = executor != null ? executor : new Executor() {
-                @Override
-                public void execute(Runnable command) {
-                    command.run();
-                }
-            };
-            return new PolyglotEngine(nonNullExecutor, globals, out, err, in, handlers.toArray(new EventConsumer[0]));
+            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]));
         }
     }
 
@@ -369,79 +345,6 @@ public class PolyglotEngine {
      */
     public Map<String, ? extends Language> getLanguages() {
         return Collections.unmodifiableMap(langs);
-    }
-
-    /**
-     * Evaluates file located on a given URL. Is equivalent to loading the content of a file and
-     * executing it via {@link #eval(java.lang.String, java.lang.String)} with a MIME type guess
-     * based on the file's extension and/or content.
-     *
-     * @param location the location of a file to execute
-     * @return result of a processing the file, possibly <code>null</code>
-     * @throws IOException exception to signal I/O problems or problems with processing the file's
-     *             content
-     * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
-     */
-    @Deprecated
-    public Object eval(URI location) throws IOException {
-        checkThread();
-        Source s;
-        String mimeType;
-        if (location.getScheme().equals("file")) {
-            File file = new File(location);
-            s = Source.fromFileName(file.getPath(), true);
-            mimeType = Files.probeContentType(file.toPath());
-        } else {
-            URL url = location.toURL();
-            s = Source.fromURL(url, location.toString());
-            URLConnection conn = url.openConnection();
-            mimeType = conn.getContentType();
-        }
-        Language l = langs.get(mimeType);
-        if (l == null) {
-            throw new IOException("No language for " + location + " with MIME type " + mimeType + " found. Supported types: " + langs.keySet());
-        }
-        return eval(l, s).get();
-    }
-
-    /**
-     * Evaluates code snippet. Chooses a language registered for a given MIME type (throws
-     * {@link IOException} if there is none). And passes the specified code to it for execution.
-     *
-     * @param mimeType MIME type of the code snippet - chooses the right language
-     * @param reader the source of code snippet to execute
-     * @return result of an execution, possibly <code>null</code>
-     * @throws IOException thrown to signal errors while processing the code
-     * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
-     */
-    @Deprecated
-    public Object eval(String mimeType, Reader reader) throws IOException {
-        checkThread();
-        Language l = langs.get(mimeType);
-        if (l == null) {
-            throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
-        }
-        return eval(l, Source.fromReader(reader, mimeType)).get();
-    }
-
-    /**
-     * Evaluates code snippet. Chooses a language registered for a given MIME type (throws
-     * {@link IOException} if there is none). And passes the specified code to it for execution.
-     *
-     * @param mimeType MIME type of the code snippet - chooses the right language
-     * @param code the code snippet to execute
-     * @return result of an execution, possibly <code>null</code>
-     * @throws IOException thrown to signal errors while processing the code
-     * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
-     */
-    @Deprecated
-    public Object eval(String mimeType, String code) throws IOException {
-        checkThread();
-        Language l = langs.get(mimeType);
-        if (l == null) {
-            throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
-        }
-        return eval(l, Source.fromText(code, mimeType)).get();
     }
 
     /**
@@ -475,9 +378,9 @@ public class PolyglotEngine {
     public void dispose() {
         checkThread();
         disposed = true;
-        executor.execute(new Runnable() {
+        ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
             @Override
-            public void run() {
+            protected Void compute() throws IOException {
                 for (Language language : getLanguages().values()) {
                     TruffleLanguage<?> impl = language.getImpl(false);
                     if (impl != null) {
@@ -488,26 +391,26 @@ public class PolyglotEngine {
                         }
                     }
                 }
+                return null;
             }
-        });
+        };
+        try {
+            compute.perform();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     private Value eval(final Language l, final Source s) throws IOException {
-        final Object[] result = {null, null};
-        final CountDownLatch ready = new CountDownLatch(1);
         final TruffleLanguage[] lang = {null};
-        executor.execute(new Runnable() {
+        ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
             @Override
-            public void run() {
-                evalImpl(lang, s, result, l, ready);
+            protected Object compute() throws IOException {
+                return evalImpl(lang, s, l);
             }
-        });
-        exceptionCheck(result);
-        return createValue(lang, result, ready);
-    }
-
-    Value createValue(TruffleLanguage[] lang, Object[] result, CountDownLatch ready) {
-        return new Value(lang, result, ready);
+        };
+        compute.perform();
+        return new Value(lang, compute);
     }
 
     Language createLanguage(Map.Entry<String, LanguageCache> en) {
@@ -515,58 +418,53 @@ public class PolyglotEngine {
     }
 
     @SuppressWarnings("try")
-    private void evalImpl(TruffleLanguage<?>[] fillLang, Source s, Object[] result, Language l, CountDownLatch ready) {
+    private Object evalImpl(TruffleLanguage<?>[] fillLang, Source s, Language l) throws IOException {
         try (Closeable d = SPI.executionStart(this, -1, debugger, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
-            result[0] = SPI.eval(langImpl, s);
-        } catch (IOException ex) {
-            result[1] = ex;
-        } finally {
-            ready.countDown();
+            return SPI.eval(langImpl, s);
         }
     }
 
     @SuppressWarnings("try")
-    final Object invokeForeign(final Node foreignNode, final VirtualFrame frame, final TruffleObject receiver) throws IOException {
-        final Object[] res = {null, null};
-        final CountDownLatch computed = new CountDownLatch(1);
-        final Thread caller = Thread.currentThread();
-        executor.execute(new Runnable() {
+    final Object invokeForeign(final Node foreignNode, VirtualFrame frame, final TruffleObject receiver) throws IOException {
+        Object res;
+        if (executor == null) {
+            try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+                final Object[] args = ForeignAccess.getArguments(frame).toArray();
+                res = ForeignAccess.execute(foreignNode, frame, receiver, args);
+            }
+        } else {
+            res = invokeForeignOnExecutor(foreignNode, frame, receiver);
+        }
+        if (res instanceof TruffleObject) {
+            return new EngineTruffleObject(this, (TruffleObject) res);
+        } else {
+            return res;
+        }
+    }
+
+    @TruffleBoundary
+    private Object invokeForeignOnExecutor(final Node foreignNode, VirtualFrame frame, final TruffleObject receiver) throws IOException {
+        final MaterializedFrame materialized = frame.materialize();
+        ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
+            @SuppressWarnings("try")
             @Override
-            public void run() {
+            protected Object compute() throws IOException {
                 try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
-                    final Object[] args = ForeignAccess.getArguments(frame).toArray();
-                    if (caller != Thread.currentThread()) {
-                        RootNode node = SymbolInvokerImpl.createTemporaryRoot(TruffleLanguage.class, foreignNode, receiver, args.length);
-                        final CallTarget target = Truffle.getRuntime().createCallTarget(node);
-                        res[0] = target.call(args);
-                    } else {
-                        res[0] = ForeignAccess.execute(foreignNode, frame, receiver, args);
-                    }
-                } catch (Exception ex) {
-                    res[1] = ex;
-                } finally {
-                    computed.countDown();
+                    final Object[] args = ForeignAccess.getArguments(materialized).toArray();
+                    RootNode node = SymbolInvokerImpl.createTemporaryRoot(TruffleLanguage.class, foreignNode, receiver, args.length);
+                    final CallTarget target = Truffle.getRuntime().createCallTarget(node);
+                    return target.call(args);
                 }
             }
-        });
-        try {
-            computed.await();
-        } catch (InterruptedException ex) {
-            throw new InterruptedIOException(ex.getMessage());
-        }
-        exceptionCheck(res);
-        if (res[0] instanceof TruffleObject) {
-            return new EngineTruffleObject(this, (TruffleObject) res[0]);
-        } else {
-            return res[0];
-        }
+        };
+        return compute.get();
     }
 
     /**
      * Looks global symbol provided by one of initialized languages up. First of all execute your
-     * program via one of your {@link #eval(java.lang.String, java.lang.String)} and then look
+     * program via one of your {@link #eval(com.oracle.truffle.api.source.Source)} and then look
      * expected symbol up using this method.
      * <p>
      * The names of the symbols are language dependent, but for example the Java language bindings
@@ -584,54 +482,48 @@ public class PolyglotEngine {
     public Value findGlobalSymbol(final String globalName) {
         checkThread();
         final TruffleLanguage<?>[] lang = {null};
-        final Object[] obj = {globals.get(globalName), null};
-        final CountDownLatch ready = new CountDownLatch(1);
-        if (obj[0] == null) {
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    findGlobalSymbolImpl(obj, globalName, lang, ready);
+        ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
+            @Override
+            protected Object compute() throws IOException {
+                Object obj = globals.get(globalName);
+                if (obj == null) {
+                    for (Language dl : langs.values()) {
+                        TruffleLanguage.Env env = dl.getEnv(false);
+                        if (env == null) {
+                            continue;
+                        }
+                        obj = SPI.findExportedSymbol(env, globalName, true);
+                        if (obj != null) {
+                            lang[0] = dl.getImpl(true);
+                            break;
+                        }
+                    }
                 }
-            });
-            try {
-                ready.await();
-            } catch (InterruptedException ex) {
-                LOG.log(Level.SEVERE, null, ex);
+                if (obj == null) {
+                    for (Language dl : langs.values()) {
+                        TruffleLanguage.Env env = dl.getEnv(false);
+                        if (env == null) {
+                            continue;
+                        }
+                        obj = SPI.findExportedSymbol(env, globalName, true);
+                        if (obj != null) {
+                            lang[0] = dl.getImpl(true);
+                            break;
+                        }
+                    }
+                }
+                return obj;
             }
-        } else {
-            ready.countDown();
-        }
-        return obj[0] == null ? null : createValue(lang, obj, ready);
-    }
-
-    private void findGlobalSymbolImpl(Object[] obj, String globalName, TruffleLanguage<?>[] lang, CountDownLatch ready) {
-        if (obj[0] == null) {
-            for (Language dl : langs.values()) {
-                TruffleLanguage.Env env = dl.getEnv(false);
-                if (env == null) {
-                    continue;
-                }
-                obj[0] = SPI.findExportedSymbol(env, globalName, true);
-                if (obj[0] != null) {
-                    lang[0] = dl.getImpl(true);
-                    break;
-                }
+        };
+        try {
+            compute.perform();
+            if (compute.get() == null) {
+                return null;
             }
+        } catch (IOException ex) {
+            // OK, go on
         }
-        if (obj[0] == null) {
-            for (Language dl : langs.values()) {
-                TruffleLanguage.Env env = dl.getEnv(false);
-                if (env == null) {
-                    continue;
-                }
-                obj[0] = SPI.findExportedSymbol(env, globalName, true);
-                if (obj[0] != null) {
-                    lang[0] = dl.getImpl(true);
-                    break;
-                }
-            }
-        }
-        ready.countDown();
+        return new Value(lang, compute);
     }
 
     private void checkThread() {
@@ -672,15 +564,6 @@ public class PolyglotEngine {
         }
     }
 
-    static void exceptionCheck(Object[] result) throws RuntimeException, IOException {
-        if (result[1] instanceof IOException) {
-            throw (IOException) result[1];
-        }
-        if (result[1] instanceof RuntimeException) {
-            throw (RuntimeException) result[1];
-        }
-    }
-
     /**
      * A future value wrapper. A user level wrapper around values returned by evaluation of various
      * {@link PolyglotEngine} functions like
@@ -694,14 +577,22 @@ public class PolyglotEngine {
      */
     public class Value {
         private final TruffleLanguage<?>[] language;
-        private final Object[] result;
-        private final CountDownLatch ready;
+        private final ComputeInExecutor<Object> compute;
         private CallTarget target;
 
-        Value(TruffleLanguage<?>[] language, Object[] result, CountDownLatch ready) {
+        Value(TruffleLanguage<?>[] language, ComputeInExecutor<Object> compute) {
             this.language = language;
-            this.result = result;
-            this.ready = ready;
+            this.compute = compute;
+        }
+
+        Value(TruffleLanguage<?>[] language, final Object value) {
+            this.language = language;
+            this.compute = new ComputeInExecutor<Object>(null) {
+                @Override
+                protected Object compute() throws IOException {
+                    return value;
+                }
+            };
         }
 
         /**
@@ -714,12 +605,11 @@ public class PolyglotEngine {
          * @throws IOException in case it is not possible to obtain the value of the object
          */
         public Object get() throws IOException {
-            waitForSymbol();
-            exceptionCheck(result);
-            if (result[0] instanceof TruffleObject) {
-                return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result[0]);
+            Object result = waitForSymbol();
+            if (result instanceof TruffleObject) {
+                return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
             } else {
-                return result[0];
+                return result;
             }
         }
 
@@ -778,69 +668,48 @@ public class PolyglotEngine {
          */
         public Value invoke(final Object thiz, final Object... args) throws IOException {
             get();
-            final CountDownLatch done = new CountDownLatch(1);
-            final Object[] res = {null, null};
-            executor.execute(new Runnable() {
+            ComputeInExecutor<Object> invokeCompute = new ComputeInExecutor<Object>(executor) {
+                @SuppressWarnings("try")
                 @Override
-                public void run() {
-                    invokeImpl(thiz, args, res, done);
-                }
-            });
-            exceptionCheck(res);
-            return createValue(language, res, done);
-        }
-
-        @SuppressWarnings("try")
-        private void invokeImpl(Object thiz, Object[] args, Object[] res, CountDownLatch done) {
-            try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
-                List<Object> arr = new ArrayList<>();
-                if (thiz == null) {
-                    if (language[0] != null) {
-                        Object global = SPI.languageGlobal(SPI.findLanguage(PolyglotEngine.this, language[0].getClass()));
-                        if (global != null) {
-                            arr.add(global);
+                protected Object compute() throws IOException {
+                    try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+                        List<Object> arr = new ArrayList<>();
+                        if (thiz == null) {
+                            if (language[0] != null) {
+                                Object global = SPI.languageGlobal(SPI.findLanguage(PolyglotEngine.this, language[0].getClass()));
+                                if (global != null) {
+                                    arr.add(global);
+                                }
+                            }
+                        } else {
+                            arr.add(thiz);
+                        }
+                        arr.addAll(Arrays.asList(args));
+                        for (;;) {
+                            try {
+                                if (target == null) {
+                                    target = SymbolInvokerImpl.createCallTarget(language[0], compute.get(), arr.toArray());
+                                }
+                                return target.call(arr.toArray());
+                            } catch (ArgumentsMishmashException ex) {
+                                target = null;
+                            }
                         }
                     }
-                } else {
-                    arr.add(thiz);
                 }
-                arr.addAll(Arrays.asList(args));
-                for (;;) {
-                    try {
-                        if (target == null) {
-                            target = SymbolInvokerImpl.createCallTarget(language[0], result[0], arr.toArray());
-                        }
-                        res[0] = target.call(arr.toArray());
-                        break;
-                    } catch (ArgumentsMishmashException ex) {
-                        target = null;
-                    }
-                }
-            } catch (KillException | QuitException ex) {
-                throw ex;
-            } catch (IOException ex) {
-                res[1] = ex;
-            } catch (RuntimeException ex) {
-                res[1] = ex;
-            } finally {
-                done.countDown();
-            }
+            };
+            invokeCompute.perform();
+            return new Value(language, invokeCompute);
         }
 
-        private void waitForSymbol() throws InterruptedIOException {
+        private Object waitForSymbol() throws IOException {
             checkThread();
-            try {
-                if (ready != null) {
-                    ready.await();
-                }
-            } catch (InterruptedException ex) {
-                throw (InterruptedIOException) new InterruptedIOException(ex.getMessage()).initCause(ex);
-            }
+            return compute.get();
         }
 
         @Override
         public String toString() {
-            return "PolyglotEngine.Value[value=" + result[0] + ",exception=" + result[1] + ",computed=" + (ready.getCount() == 0) + "]";
+            return "PolyglotEngine.Value[" + compute + "]";
         }
     }
 
@@ -852,7 +721,7 @@ public class PolyglotEngine {
      * {@link Language} objects to represent them. One can obtain a {@link #getName() name} or list
      * of supported {@link #getMimeTypes() MIME types} for each language. The actual language
      * implementation is not initialized until
-     * {@link PolyglotEngine#eval(java.lang.String, java.lang.String) a code is evaluated} in it.
+     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) a code is evaluated} in it.
      */
     public class Language {
         private final LanguageCache info;
@@ -914,16 +783,8 @@ public class PolyglotEngine {
         public Value getGlobalObject() {
             checkThread();
 
-            Object[] res = {SPI.languageGlobal(getEnv(true)), null};
-            return res[0] == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res, null);
-        }
-
-        /**
-         * @deprecated concatenate {@link #getName()} and {@link #getVersion()} the way you want.
-         */
-        @Deprecated
-        public String getShortName() {
-            return getName() + "(" + getVersion() + ")";
+            Object res = SPI.languageGlobal(getEnv(true));
+            return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
         }
 
         TruffleLanguage<?> getImpl(boolean create) {
@@ -941,7 +802,7 @@ public class PolyglotEngine {
 
         @Override
         public String toString() {
-            return "[" + getShortName() + " for " + getMimeTypes() + "]";
+            return "[" + getName() + "@ " + getVersion() + " for " + getMimeTypes() + "]";
         }
     } // end of Language
 
@@ -957,7 +818,15 @@ public class PolyglotEngine {
                 return impl;
             }
         }
-        throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
+        return null;
+    }
+
+    TruffleLanguage<?> findLanguage(String mimeType) {
+        Language languageDescription = this.langs.get(mimeType);
+        if (languageDescription != null) {
+            return languageDescription.getImpl(true);
+        }
+        return null;
     }
 
     TruffleLanguage<?> findLanguage(Probe probe) {
@@ -1058,9 +927,19 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected TruffleLanguage<?> findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz) {
+        protected TruffleLanguage<?> findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz, String mimeType) {
             final PolyglotEngine vm = (PolyglotEngine) obj;
-            return vm.findLanguage(languageClazz);
+            TruffleLanguage<?> language = null;
+            if (languageClazz != null) {
+                language = vm.findLanguage(languageClazz);
+            }
+            if (language == null && mimeType != null) {
+                language = vm.findLanguage(mimeType);
+            }
+            if (language == null) {
+                throw new IllegalStateException("Cannot find language " + languageClazz + " with mimeType" + mimeType + " among " + vm.langs);
+            }
+            return language;
         }
 
         @Override

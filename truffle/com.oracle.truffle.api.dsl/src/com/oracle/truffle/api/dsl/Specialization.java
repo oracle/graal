@@ -119,18 +119,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface Specialization {
-
-    /**
-     * @deprecated do not use anymore. Will get removed in the next release.
-     */
-    @Deprecated int DEFAULT_ORDER = -1;
-
-    /**
-     * @deprecated use declaration order instead. Will get removed in the next release.
-     */
-    @Deprecated
-    int order() default DEFAULT_ORDER;
-
     /**
      * References a specialization of a super class by its method name where this specialization is
      * inserted before. The declaration order of a specialization is not usable for nodes where

@@ -39,7 +39,7 @@ public class ExecuteMethodTest {
                     + "execute(VirtualFrame)' and must not throw any checked exceptions.";
 
     @TypeSystem({int.class})
-    @DSLOptions(useNewLayout = true)
+    @DSLOptions
     static class ExecuteMethodTypes {
     }
 

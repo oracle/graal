@@ -52,7 +52,7 @@ public class ToStringOfEvalTest {
 
     @Test
     public void checkToStringOnAFunction() throws IOException {
-        PolyglotEngine engine = PolyglotEngine.buildNew().build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language sl = engine.getLanguages().get("application/x-sl");
         sl.eval(Source.fromText("function checkName() {}", "defineFn"));
         PolyglotEngine.Value value1 = engine.findGlobalSymbol("checkName");

@@ -53,6 +53,8 @@ public final class NodeClass {
         }
     };
 
+    private static final NodeFieldAccessor[] EMPTY_NODE_FIELD_ARRAY = new NodeFieldAccessor[0];
+
     // The comprehensive list of all fields.
     private final NodeFieldAccessor[] fields;
     // Separate arrays for the frequently accessed fields.
@@ -68,11 +70,11 @@ public final class NodeClass {
         return nodeClasses.get(clazz);
     }
 
-    public static NodeClass get(Node clazz) {
-        return clazz.getNodeClass();
+    public static NodeClass get(Node node) {
+        return node.getNodeClass();
     }
 
-    public NodeClass(Class<? extends Node> clazz) {
+    NodeClass(Class<? extends Node> clazz) {
         List<NodeFieldAccessor> fieldsList = new ArrayList<>();
         NodeFieldAccessor parentFieldTmp = null;
         NodeFieldAccessor nodeClassFieldTmp = null;
@@ -115,12 +117,12 @@ public final class NodeClass {
             throw new AssertionError("parent field not found");
         }
 
-        this.fields = fieldsList.toArray(new NodeFieldAccessor[fieldsList.size()]);
+        this.fields = fieldsList.toArray(EMPTY_NODE_FIELD_ARRAY);
         this.nodeClassField = nodeClassFieldTmp;
         this.parentField = parentFieldTmp;
-        this.childFields = childFieldList.toArray(new NodeFieldAccessor[childFieldList.size()]);
-        this.childrenFields = childrenFieldList.toArray(new NodeFieldAccessor[childrenFieldList.size()]);
-        this.cloneableFields = cloneableFieldList.toArray(new NodeFieldAccessor[cloneableFieldList.size()]);
+        this.childFields = childFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
+        this.childrenFields = childrenFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
+        this.cloneableFields = cloneableFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
         this.clazz = clazz;
     }
 
