@@ -63,6 +63,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -476,6 +477,9 @@ public final class CompileTheWorld {
         });
 
         try {
+            // Temporary workaround until JDK-8142511 is integrated
+            BytecodeFrame.isPlaceholderBci(0);
+
             // compile dummy method to get compiler initialized outside of the
             // config debug override.
             HotSpotResolvedJavaMethod dummyMethod = (HotSpotResolvedJavaMethod) JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(
