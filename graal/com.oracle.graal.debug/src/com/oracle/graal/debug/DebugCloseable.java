@@ -23,8 +23,7 @@
 package com.oracle.graal.debug;
 
 /**
- * An object returned by {@link DebugTimer#start()} that when closed, stops the associated timer and
- * adds the elapsed time since {@code start()} to the total for the timer.
+ * An {@link AutoCloseable} whose {@link #close()} does not throw a checked exception.
  */
 public interface DebugCloseable extends AutoCloseable {
 

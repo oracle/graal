@@ -34,8 +34,10 @@ import static jdk.vm.ci.code.ValueUtil.isLegal;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.InfopointReason;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.TargetDescription;
@@ -66,6 +68,7 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRVerifier;
 import com.oracle.graal.lir.LabelRef;
+import com.oracle.graal.lir.SimpleInfopointOp;
 import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
@@ -257,13 +260,26 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return reg.asValue(lirKind);
     }
 
+    BytecodePosition currentInfo;
+
+    public void setInfo(BytecodePosition position) {
+        currentInfo = position;
+    }
+
     public <I extends LIRInstruction> I append(I op) {
         if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        res.getLIR().getLIRforBlock(getCurrentBlock()).add(op);
+        List<LIRInstruction> lirForBlock = res.getLIR().getLIRforBlock(getCurrentBlock());
+        if (op instanceof SimpleInfopointOp) {
+            currentInfo = null;
+        } else if (currentInfo != null) {
+            lirForBlock.add(new SimpleInfopointOp(InfopointReason.LINE_NUMBER, currentInfo));
+            currentInfo = null;
+        }
+        lirForBlock.add(op);
         return op;
     }
 

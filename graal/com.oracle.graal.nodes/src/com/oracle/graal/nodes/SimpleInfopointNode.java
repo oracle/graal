@@ -45,7 +45,7 @@ public final class SimpleInfopointNode extends InfopointNode implements LIRLower
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        generator.visitSimpleInfopointNode(this);
+        generator.recordSimpleInfopoint(getReason(), getPosition());
     }
 
     public BytecodePosition getPosition() {

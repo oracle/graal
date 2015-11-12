@@ -230,6 +230,13 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> CanOmitFrame = new OptionValue<>(true);
 
+    // This and OldInfopoints only exist while developing per-node context info (GRAAL-1305)
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Boolean> NewInfopoints = new OptionValue<>(false);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Boolean> OldInfopoints = new OptionValue<>(true);
+
     // Ahead of time compilation
     @Option(help = "Try to avoid emitting code where patching is required", type = OptionType.Expert)
     public static final OptionValue<Boolean> ImmutableCode = new OptionValue<>(false);

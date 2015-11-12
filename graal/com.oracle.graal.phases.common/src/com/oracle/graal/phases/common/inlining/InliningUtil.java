@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common.inlining;
 
 import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
+import static com.oracle.graal.compiler.common.GraalOptions.NewInfopoints;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
@@ -31,6 +32,7 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -464,7 +466,20 @@ public class InliningUtil {
         return graph.method().format("%H.%n(%p)");
     }
 
+    @SuppressWarnings("try")
     private static void processSimpleInfopoints(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates) {
+        if (NewInfopoints.getValue()) {
+            if (inlineGraph.mayHaveNodeContext() && invoke.stateAfter() != null) {
+                BytecodePosition outerPos = new BytecodePosition(FrameState.toBytecodePosition(invoke.stateAfter().outerFrameState()), invoke.asNode().graph().method(), invoke.bci());
+                for (Entry<Node, Node> entry : duplicates.entrySet()) {
+                    BytecodePosition pos = entry.getKey().getNodeContext(BytecodePosition.class);
+                    if (pos != null) {
+                        BytecodePosition newPos = pos.addCaller(outerPos);
+                        entry.getValue().setNodeContext(newPos);
+                    }
+                }
+            }
+        }
         if (inlineGraph.getNodes(SimpleInfopointNode.TYPE).isEmpty()) {
             return;
         }

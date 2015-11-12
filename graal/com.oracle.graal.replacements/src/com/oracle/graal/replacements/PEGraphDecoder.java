@@ -47,6 +47,7 @@ import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -623,13 +624,28 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, boolean isIntrinsic);
 
+    @SuppressWarnings("try")
     @Override
     protected void handleFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         PEMethodScope methodScope = (PEMethodScope) s;
         if (node instanceof SimpleInfopointNode && methodScope.isInlinedMethod()) {
             InliningUtil.addSimpleInfopointCaller((SimpleInfopointNode) node, methodScope.getBytecodePosition());
         }
-        super.handleFixedNode(s, loopScope, nodeOrderId, node);
+
+        BytecodePosition pos = node.getNodeContext(BytecodePosition.class);
+        if (pos != null && methodScope.isInlinedMethod()) {
+            BytecodePosition newPosition = pos.addCaller(methodScope.getBytecodePosition());
+            try (DebugCloseable scope = node.graph().withoutNodeContext()) {
+                super.handleFixedNode(s, loopScope, nodeOrderId, node);
+            }
+            if (node.isAlive()) {
+                node.setNodeContext(newPosition);
+                node.verify();
+            }
+        } else {
+            super.handleFixedNode(s, loopScope, nodeOrderId, node);
+        }
+
     }
 
     @Override
@@ -705,6 +721,12 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         if (methodScope.isInlinedMethod()) {
+            BytecodePosition pos = node.getNodeContext(BytecodePosition.class);
+            if (pos != null) {
+                BytecodePosition bytecodePosition = methodScope.getBytecodePosition();
+                node.setNodeContext(pos.addCaller(bytecodePosition));
+                node.verify();
+            }
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
 

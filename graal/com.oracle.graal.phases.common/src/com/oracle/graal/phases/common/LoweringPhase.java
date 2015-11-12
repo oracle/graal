@@ -42,6 +42,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
@@ -351,6 +352,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             }
         }
 
+        @SuppressWarnings("try")
         private AnchoringNode process(final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor) {
 
             final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode());
@@ -377,7 +379,9 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     Collection<Node> unscheduledUsages = null;
                     assert (unscheduledUsages = getUnscheduledUsages(node)) != null;
                     Mark preLoweringMark = node.graph().getMark();
-                    ((Lowerable) node).lower(loweringTool);
+                    try (DebugCloseable s = node.graph().withNodeContext(node)) {
+                        ((Lowerable) node).lower(loweringTool);
+                    }
                     if (loweringTool.guardAnchor.asNode().isDeleted()) {
                         // TODO nextNode could be deleted but this is not currently supported
                         assert nextNode.isAlive();

@@ -36,7 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.InfopointReason;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.common.JVMCIError;
@@ -48,6 +50,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
+import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -94,7 +97,6 @@ import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.LoweredCallTargetNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.SimpleInfopointNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
@@ -123,6 +125,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
+
+    private BytecodePosition lastPosition;
 
     private final NodeMatchRules nodeMatchRules;
     private Map<Class<? extends Node>, List<MatchStatement>> matchRules;
@@ -313,6 +317,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     @SuppressWarnings("try")
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         try (BlockScope blockScope = gen.getBlockScope(block)) {
+            lastPosition = null;
 
             if (block == gen.getResult().getLIR().getControlFlowGraph().getStartBlock()) {
                 assert block.getPredecessorCount() == 0;
@@ -440,6 +445,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     protected void emitNode(ValueNode node) {
         if (Debug.isLogEnabled() && node.stamp().isEmpty()) {
             Debug.log("This node has an empty stamp, we are emitting dead code(?): %s", node);
+        }
+        if (GraalOptions.NewInfopoints.getValue()) {
+            BytecodePosition position = node.getNodeContext(BytecodePosition.class);
+            if (position != null && (lastPosition == null || !lastPosition.equals(position))) {
+                lastPosition = position;
+                recordSimpleInfopoint(InfopointReason.LINE_NUMBER, position);
+            }
         }
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
@@ -758,8 +770,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     @Override
-    public void visitSimpleInfopointNode(SimpleInfopointNode i) {
-        append(new SimpleInfopointOp(i.getReason(), i.getPosition()));
+    public void recordSimpleInfopoint(InfopointReason reason, BytecodePosition position) {
+        append(new SimpleInfopointOp(reason, position));
     }
 
     @Override

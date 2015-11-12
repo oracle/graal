@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.gen;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
@@ -221,6 +222,8 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
     AllocatableValue resultOperandFor(JavaKind javaKind, LIRKind lirKind);
 
     <I extends LIRInstruction> I append(I op);
+
+    void setInfo(BytecodePosition position);
 
     void emitJump(LabelRef label);
 

@@ -65,6 +65,16 @@ public class Graph {
     Node[] nodes;
 
     /**
+     * Extra context information to be added to newly created nodes.
+     */
+    Object currentNodeContext;
+
+    /**
+     * Records if context information exists (or existed) for any nodes in this graph.
+     */
+    boolean seenNodeContext;
+
+    /**
      * The number of valid entries in {@link #nodes}.
      */
     int nodesSize;
@@ -142,6 +152,59 @@ public class Graph {
         public String toString() {
             return node.toString();
         }
+    }
+
+    private class NodeContextScope implements DebugCloseable {
+        private final Object previous;
+
+        NodeContextScope(Object context) {
+            previous = currentNodeContext;
+            currentNodeContext = context;
+            seenNodeContext = true;
+        }
+
+        public void close() {
+            currentNodeContext = previous;
+        }
+    }
+
+    /**
+     * Opens a scope in which the context information from {@code node} is copied into nodes created
+     * within the scope. If {@code node} has no context information, no scope is opened and
+     * {@code null} is returned.
+     *
+     * @return a {@link DebugCloseable} for managing the opened scope or {@code null} if no scope
+     *         was opened
+     */
+    public DebugCloseable withNodeContext(Node node) {
+        return node.nodeContext != null ? new NodeContextScope(node.nodeContext) : null;
+    }
+
+    /**
+     * Opens a scope in which {@code context} is copied into nodes created within the scope. If
+     * {@code context == null}, no scope is opened and {@code null} is returned.
+     *
+     * @return a {@link DebugCloseable} for managing the opened scope or {@code null} if no scope
+     *         was opened
+     */
+    public DebugCloseable withNodeContext(Object context) {
+        return context != null ? new NodeContextScope(context) : null;
+    }
+
+    /**
+     * Opens a scope in which newly created nodes do not get any context information added.
+     *
+     * @return a {@link DebugCloseable} for managing the opened scope
+     */
+    public DebugCloseable withoutNodeContext() {
+        return new NodeContextScope(null);
+    }
+
+    /**
+     * Determines if this graph might contain nodes with extra context.
+     */
+    public boolean mayHaveNodeContext() {
+        return seenNodeContext;
     }
 
     /**
@@ -855,6 +918,9 @@ public class Graph {
         }
         int id = nodesSize;
         nodes[id] = node;
+        if (currentNodeContext != null) {
+            node.setNodeContext(currentNodeContext);
+        }
         nodesSize++;
 
         updateNodeCaches(node);
