@@ -38,6 +38,7 @@ import java.util.WeakHashMap;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
@@ -475,7 +476,7 @@ public abstract class TruffleLanguage<C> {
             final Env env = findLanguage(vm, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
             final Source source = Source.fromText(code, "eval in context");
-            return lang.evalInContext(source, n, frame.getFrame(null, true).materialize());
+            return lang.evalInContext(source, n, frame.getFrame(FrameAccess.READ_ONLY, true).materialize());
         }
 
         @Override
