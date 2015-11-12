@@ -60,7 +60,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 /**
  */
-final class TraceGlobalMoveResolver {
+final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveResolver {
 
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
@@ -416,6 +416,7 @@ final class TraceGlobalMoveResolver {
         this.insertIdx = insertIdx;
     }
 
+    @Override
     public void addMapping(Value from, AllocatableValue to) {
         if (Debug.isLogEnabled()) {
             Debug.log("add move mapping from %s to %s", from, to);

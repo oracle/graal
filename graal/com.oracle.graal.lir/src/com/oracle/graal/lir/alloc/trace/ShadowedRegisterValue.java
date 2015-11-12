@@ -40,7 +40,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 /**
  * Represents a {@link #register} which has a shadow copy on the {@link #stackslot stack}.
  */
-final class ShadowedRegisterValue extends CompositeValue {
+public final class ShadowedRegisterValue extends CompositeValue {
     private static final EnumSet<OperandFlag> registerFlags = EnumSet.of(REG);
     private static final EnumSet<OperandFlag> stackslotFlags = EnumSet.of(STACK);
 

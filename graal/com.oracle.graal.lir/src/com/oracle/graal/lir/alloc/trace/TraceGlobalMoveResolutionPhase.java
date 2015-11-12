@@ -47,7 +47,14 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.SSIUtil;
 
-final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
+public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
+
+    /**
+     * Abstract move resolver interface for testing.
+     */
+    public abstract static class MoveResolver {
+        public abstract void addMapping(Value src, AllocatableValue dst);
+    }
 
     private final TraceBuilderResult<?> resultTraces;
 
@@ -68,41 +75,7 @@ final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
         TraceGlobalMoveResolver moveResolver = new TraceGlobalMoveResolver(lirGenRes, spillMoveFactory, arch);
         PhiValueVisitor visitor = (Value phiIn, Value phiOut) -> {
             if (!isIllegal(phiIn) && !TraceGlobalMoveResolver.isMoveToSelf(phiOut, phiIn)) {
-                // prepare input/output values.
-                final Value src;
-                final Value srcShadow;
-                if (isShadowedRegisterValue(phiOut)) {
-                    ShadowedRegisterValue phiOutSh = asShadowedRegisterValue(phiOut);
-                    src = phiOutSh.getRegister();
-                    srcShadow = phiOutSh.getStackSlot();
-                } else {
-                    src = phiOut;
-                    srcShadow = null;
-                }
-                assert src != null;
-                assert srcShadow == null || isRegister(src) && isStackSlotValue(srcShadow) : "Unexpected shadowed value: " + phiOut;
-
-                final Value dst;
-                final Value dstShadow;
-                if (isShadowedRegisterValue(phiIn)) {
-                    ShadowedRegisterValue phiInSh = asShadowedRegisterValue(phiIn);
-                    dst = phiInSh.getRegister();
-                    dstShadow = phiInSh.getStackSlot();
-                } else {
-                    dst = phiIn;
-                    dstShadow = null;
-                }
-                assert dst != null;
-                assert dstShadow == null || isRegister(dst) && isStackSlotValue(dstShadow) : "Unexpected shadowed value: " + phiIn;
-
-                // set dst
-                if (!dst.equals(src)) {
-                    moveResolver.addMapping(src, (AllocatableValue) dst);
-                }
-                // set dst_shadow
-                if (dstShadow != null && !dstShadow.equals(src)) {
-                    moveResolver.addMapping(src, (AllocatableValue) dstShadow);
-                }
+                addMapping(moveResolver, phiOut, phiIn);
             }
         };
 
@@ -133,6 +106,45 @@ final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
                     }
                 }
             }
+        }
+    }
+
+    public static void addMapping(MoveResolver moveResolver, Value from, Value to) {
+        assert !isIllegal(to);
+        // prepare input/output values.
+        final Value src;
+        final Value srcShadow;
+        if (isShadowedRegisterValue(from)) {
+            ShadowedRegisterValue phiOutSh = asShadowedRegisterValue(from);
+            src = phiOutSh.getRegister();
+            srcShadow = phiOutSh.getStackSlot();
+        } else {
+            src = from;
+            srcShadow = null;
+        }
+        assert src != null;
+        assert srcShadow == null || isRegister(src) && isStackSlotValue(srcShadow) : "Unexpected shadowed value: " + from;
+
+        final Value dst;
+        final Value dstShadow;
+        if (isShadowedRegisterValue(to)) {
+            ShadowedRegisterValue phiInSh = asShadowedRegisterValue(to);
+            dst = phiInSh.getRegister();
+            dstShadow = phiInSh.getStackSlot();
+        } else {
+            dst = to;
+            dstShadow = null;
+        }
+        assert dst != null;
+        assert dstShadow == null || isRegister(dst) && isStackSlotValue(dstShadow) : "Unexpected shadowed value: " + to;
+
+        // set dst
+        if (!dst.equals(src)) {
+            moveResolver.addMapping(src, (AllocatableValue) dst);
+        }
+        // set dst_shadow
+        if (dstShadow != null && !dstShadow.equals(src)) {
+            moveResolver.addMapping(src, (AllocatableValue) dstShadow);
         }
     }
 }
