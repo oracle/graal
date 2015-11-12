@@ -424,6 +424,11 @@ public final class REPLServer {
         return id == null ? -1 : id;
     }
 
+    void clearBreakpoint(Breakpoint breakpoint) {
+        breakpoint.dispose();
+        breakpoints.remove(breakpoint);
+    }
+
     void call(String name) throws IOException {
         Value symbol = engine.findGlobalSymbol(name);
         if (symbol == null) {

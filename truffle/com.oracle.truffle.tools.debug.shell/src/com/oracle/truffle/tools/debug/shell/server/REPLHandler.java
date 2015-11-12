@@ -334,7 +334,7 @@ public abstract class REPLHandler {
             if (breakpoint == null) {
                 return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
             }
-            breakpoint.dispose();
+            replServer.clearBreakpoint(breakpoint);
             reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
             return finishReplySucceeded(reply, "Breakpoint " + breakpointNumber + " cleared");
         }
