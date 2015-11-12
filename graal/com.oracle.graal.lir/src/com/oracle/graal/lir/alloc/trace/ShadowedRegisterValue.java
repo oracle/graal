@@ -78,4 +78,29 @@ final class ShadowedRegisterValue extends CompositeValue {
         proc.visitValue(inst, stackslot, mode, stackslotFlags);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (this == obj) {
+            return true;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        ShadowedRegisterValue other = (ShadowedRegisterValue) obj;
+        assert register != null;
+        assert stackslot != null;
+        assert other.register != null;
+        assert other.stackslot != null;
+        if (!register.equals(other.register)) {
+            return false;
+        }
+        if (!stackslot.equals(other.stackslot)) {
+            return false;
+        }
+        return true;
+    }
+
 }
