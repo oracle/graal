@@ -274,10 +274,11 @@ public final class FrameStateBuilder implements SideEffectsState {
      */
     public FrameState create(int bci, BytecodeParser parent, boolean duringCall, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues) {
         if (outerFrameState == null && parent != null) {
-            outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), null);
+            assert !parent.parsingIntrinsic() : "must already have the next non-intrinsic ancestor";
+            outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), parent.getNonIntrinsicAncestor(), true, null, null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
-            FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]});
+            FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, false, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]});
             return newFrameState;
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
