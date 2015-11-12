@@ -251,14 +251,36 @@ final class TraceGlobalMoveResolver {
             return false;
         }
         if (isShadowedRegisterValue(from)) {
-            ShadowedRegisterValue shadowed = asShadowedRegisterValue(from);
-            // TODO(jeisl)if (isStackSlotValue(to)) {
-            // return to.equals(shadowed.getStackSlot());
-            // }
-            if (isRegister(to)) {
-                return asRegister(to).equals(asRegister(shadowed.getRegister()));
+            /* From is a shadowed register. */
+            if (isShadowedRegisterValue(to)) {
+                // both shadowed but not equal
+                return false;
             }
-        } else if (isRegister(from) && isRegister(to) && asRegister(from).equals(asRegister(to))) {
+            ShadowedRegisterValue shadowed = asShadowedRegisterValue(from);
+            if (isRegisterToRegisterMoveToSelf(shadowed.getRegister(), to)) {
+                return true;
+            }
+            if (isStackSlotValue(to)) {
+                return to.equals(shadowed.getStackSlot());
+            }
+        } else {
+            /*
+             * A shadowed destination value is never a self move it both values are not equal. Fall
+             * through.
+             */
+            // if (isShadowedRegisterValue(to)) return false;
+
+            return isRegisterToRegisterMoveToSelf(from, to);
+        }
+        return false;
+    }
+
+    private static boolean isRegisterToRegisterMoveToSelf(Value from, Value to) {
+        if (to.equals(from)) {
+            return true;
+        }
+        if (isRegister(from) && isRegister(to) && asRegister(from).equals(asRegister(to))) {
+            // Values differ but Registers are the same
             assert LIRKind.verifyMoveKinds(to.getLIRKind(), from.getLIRKind()) : String.format("Same register but Kind mismatch %s <- %s", to, from);
             return true;
         }

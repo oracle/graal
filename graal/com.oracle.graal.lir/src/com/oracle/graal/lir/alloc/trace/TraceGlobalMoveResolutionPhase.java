@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.List;
 
@@ -66,7 +68,41 @@ final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
         TraceGlobalMoveResolver moveResolver = new TraceGlobalMoveResolver(lirGenRes, spillMoveFactory, arch);
         PhiValueVisitor visitor = (Value phiIn, Value phiOut) -> {
             if (!isIllegal(phiIn) && !TraceGlobalMoveResolver.isMoveToSelf(phiOut, phiIn)) {
-                moveResolver.addMapping(getFromValue(phiOut), (AllocatableValue) phiIn);
+                // prepare input/output values.
+                final Value src;
+                final Value srcShadow;
+                if (isShadowedRegisterValue(phiOut)) {
+                    ShadowedRegisterValue phiOutSh = asShadowedRegisterValue(phiOut);
+                    src = phiOutSh.getRegister();
+                    srcShadow = phiOutSh.getStackSlot();
+                } else {
+                    src = phiOut;
+                    srcShadow = null;
+                }
+                assert src != null;
+                assert srcShadow == null || isRegister(src) && isStackSlotValue(srcShadow) : "Unexpected shadowed value: " + phiOut;
+
+                final Value dst;
+                final Value dstShadow;
+                if (isShadowedRegisterValue(phiIn)) {
+                    ShadowedRegisterValue phiInSh = asShadowedRegisterValue(phiIn);
+                    dst = phiInSh.getRegister();
+                    dstShadow = phiInSh.getStackSlot();
+                } else {
+                    dst = phiIn;
+                    dstShadow = null;
+                }
+                assert dst != null;
+                assert dstShadow == null || isRegister(dst) && isStackSlotValue(dstShadow) : "Unexpected shadowed value: " + phiIn;
+
+                // set dst
+                if (!dst.equals(src)) {
+                    moveResolver.addMapping(src, (AllocatableValue) dst);
+                }
+                // set dst_shadow
+                if (dstShadow != null && !dstShadow.equals(src)) {
+                    moveResolver.addMapping(src, (AllocatableValue) dstShadow);
+                }
             }
         };
 
@@ -98,9 +134,5 @@ final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
                 }
             }
         }
-    }
-
-    private static Value getFromValue(Value from) {
-        return isShadowedRegisterValue(from) ? asShadowedRegisterValue(from).getRegister() : from;
     }
 }
