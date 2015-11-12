@@ -312,7 +312,10 @@ public class GraalCompiler {
             }
 
             try (Scope s = Debug.scope("LIRStages", nodeLirGen, lir)) {
-                return emitLowLevel(backend.getTarget(), codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig));
+                Debug.dump(1, lir, "After LIR generation");
+                LIRGenerationResult result = emitLowLevel(backend.getTarget(), codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig));
+                Debug.dump(1, lir, "Before code generation");
+                return result;
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -375,7 +378,7 @@ public class GraalCompiler {
                 Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
             }
 
-            Debug.dump(compilationResult, "After code generation");
+            Debug.dump(1, compilationResult, "After code generation");
         }
     }
 }
