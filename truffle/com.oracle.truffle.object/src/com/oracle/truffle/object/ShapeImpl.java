@@ -154,7 +154,9 @@ public abstract class ShapeImpl extends Shape {
         this.extraData = objectType.createShapeData(this);
 
         shapeCount.inc();
-        debugRegisterShape(this);
+        if (ObjectStorageOptions.DumpShapes) {
+            Debug.trackShape(this);
+        }
     }
 
     protected ShapeImpl(Layout layout, ShapeImpl parent, ObjectType operations, Object sharedData, PropertyMap propertyMap, Transition transition, Allocator allocator, int id) {
@@ -1126,12 +1128,6 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
-    private static void debugRegisterShape(ShapeImpl newShape) {
-        if (ObjectStorageOptions.DumpShapes) {
-            Debug.registerShape(newShape);
-        }
-    }
-
     /**
      * Match all filter.
      */
@@ -1152,7 +1148,7 @@ public abstract class ShapeImpl extends Shape {
     private static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
 
-    public ForeignAccess getForeignAccessFactory() {
-        return getObjectType().getForeignAccessFactory();
+    public ForeignAccess getForeignAccessFactory(DynamicObject object) {
+        return getObjectType().getForeignAccessFactory(object);
     }
 }

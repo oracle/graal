@@ -65,6 +65,7 @@ public class ObjectType {
         return null;
     }
 
+    @Deprecated
     public ForeignAccess getForeignAccessFactory() {
         return ForeignAccess.create(new com.oracle.truffle.api.interop.ForeignAccess.Factory() {
 
@@ -76,5 +77,14 @@ public class ObjectType {
                 throw new IllegalArgumentException(this.toString() + " cannot be shared; Message not possible: " + tree.toString());
             }
         });
+    }
+
+    /**
+     * Create a {@link ForeignAccess} to access a specific {@link DynamicObject}.
+     *
+     * @param object the object to be accessed
+     */
+    public ForeignAccess getForeignAccessFactory(DynamicObject object) {
+        return getForeignAccessFactory();
     }
 }

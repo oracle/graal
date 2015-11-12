@@ -818,7 +818,15 @@ public class PolyglotEngine {
                 return impl;
             }
         }
-        throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
+        return null;
+    }
+
+    TruffleLanguage<?> findLanguage(String mimeType) {
+        Language languageDescription = this.langs.get(mimeType);
+        if (languageDescription != null) {
+            return languageDescription.getImpl(true);
+        }
+        return null;
     }
 
     TruffleLanguage<?> findLanguage(Probe probe) {
@@ -919,9 +927,19 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected TruffleLanguage<?> findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz) {
+        protected TruffleLanguage<?> findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz, String mimeType) {
             final PolyglotEngine vm = (PolyglotEngine) obj;
-            return vm.findLanguage(languageClazz);
+            TruffleLanguage<?> language = null;
+            if (languageClazz != null) {
+                language = vm.findLanguage(languageClazz);
+            }
+            if (language == null && mimeType != null) {
+                language = vm.findLanguage(mimeType);
+            }
+            if (language == null) {
+                throw new IllegalStateException("Cannot find language " + languageClazz + " with mimeType" + mimeType + " among " + vm.langs);
+            }
+            return language;
         }
 
         @Override
