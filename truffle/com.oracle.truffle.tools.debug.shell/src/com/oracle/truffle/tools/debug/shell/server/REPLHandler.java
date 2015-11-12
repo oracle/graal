@@ -581,7 +581,7 @@ public abstract class REPLHandler {
             } catch (IOException ex) {
                 return finishReplyFailed(message, "invalid condition for " + breakpointNumber);
             } catch (UnsupportedOperationException ex) {
-                return finishReplyFailed(message, "conditions not unsupported by breakpoint " + breakpointNumber);
+                return finishReplyFailed(message, "conditions not supported by breakpoint " + breakpointNumber);
             } catch (Exception ex) {
                 return finishReplyFailed(message, ex);
             }
