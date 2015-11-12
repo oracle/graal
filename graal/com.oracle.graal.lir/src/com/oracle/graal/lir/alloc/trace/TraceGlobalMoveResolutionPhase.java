@@ -143,7 +143,7 @@ public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
             moveResolver.addMapping(src, (AllocatableValue) dst);
         }
         // set dst_shadow
-        if (dstShadow != null && !dstShadow.equals(src)) {
+        if (dstShadow != null && !dstShadow.equals(src) && !dstShadow.equals(srcShadow)) {
             moveResolver.addMapping(src, (AllocatableValue) dstShadow);
         }
     }
