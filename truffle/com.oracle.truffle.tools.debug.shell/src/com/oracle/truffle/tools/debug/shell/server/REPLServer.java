@@ -470,7 +470,8 @@ public final class REPLServer {
 
         @Override
         public void setCondition(String expr) throws IOException {
-            this.conditionSource = Source.fromText(expr, "breakpoint condition from text: " + expr);
+
+            this.conditionSource = expr == null ? null : Source.fromText(expr, "breakpoint condition from text: " + expr);
         }
 
         @Override
