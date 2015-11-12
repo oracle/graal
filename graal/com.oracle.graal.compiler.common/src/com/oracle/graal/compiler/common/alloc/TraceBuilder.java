@@ -99,12 +99,20 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
         return processed.get(b.getId());
     }
 
+    private static final int RESULT_LOG_LEVEL = 1;
+
     @SuppressWarnings("try")
     private TraceBuilderResult<T> build(T startBlock) {
-        try (Scope s = Debug.scope("TraceBuilder"); Indent i = Debug.logAndIndent("start trace building: " + startBlock)) {
+        try (Scope s = Debug.scope("TraceBuilder"); Indent indent = Debug.logAndIndent("start trace building: " + startBlock)) {
             ArrayList<List<T>> traces = buildTraces(startBlock);
 
             assert verify(traces);
+            if (Debug.isLogEnabled(RESULT_LOG_LEVEL)) {
+                for (int i = 0; i < traces.size(); i++) {
+                    List<T> trace = traces.get(i);
+                    Debug.log(RESULT_LOG_LEVEL, "Trace %5d: %s", i, trace);
+                }
+            }
             return new TraceBuilderResult<>(traces, blockToTrace);
         }
     }
