@@ -59,6 +59,7 @@ public class GraphPrintVisitor implements Closeable {
 
     public static final String GraphVisualizerAddress = "127.0.0.1";
     public static final int GraphVisualizerPort = 4444;
+    private static final boolean ENABLED = !System.getProperty("truffle.graphprint", "").equalsIgnoreCase("false");
     private static final String DEFAULT_GRAPH_NAME = "truffle tree";
 
     private Map<Object, NodeElement> nodeMap;
@@ -120,11 +121,29 @@ public class GraphPrintVisitor implements Closeable {
         }
     }
 
-    private static class Impl {
+    private interface Impl {
+        void writeStartDocument();
+
+        void writeEndDocument();
+
+        void writeStartElement(String name);
+
+        void writeEndElement();
+
+        void writeAttribute(String name, String value);
+
+        void writeCharacters(String text);
+
+        void flush();
+
+        void close();
+    }
+
+    private static class XMLImpl implements Impl {
         private static final XMLOutputFactory XML_OUTPUT_FACTORY = XMLOutputFactory.newInstance();
         private final XMLStreamWriter xmlstream;
 
-        protected Impl(OutputStream outputStream) {
+        protected XMLImpl(OutputStream outputStream) {
             try {
                 this.xmlstream = XML_OUTPUT_FACTORY.createXMLStreamWriter(outputStream);
             } catch (XMLStreamException | FactoryConfigurationError e) {
@@ -203,9 +222,13 @@ public class GraphPrintVisitor implements Closeable {
 
     public GraphPrintVisitor(OutputStream outputStream) {
         this.outputStream = outputStream;
-        this.xmlstream = new Impl(outputStream);
+        this.xmlstream = createImpl(outputStream);
         this.xmlstream.writeStartDocument();
         this.xmlstream.writeStartElement("graphDocument");
+    }
+
+    private static Impl createImpl(OutputStream outputStream) {
+        return ENABLED ? new XMLImpl(outputStream) : new DummyImpl();
     }
 
     private void ensureOpen() {
@@ -346,7 +369,7 @@ public class GraphPrintVisitor implements Closeable {
 
     @Override
     public String toString() {
-        if (outputStream instanceof ByteArrayOutputStream) {
+        if (outputStream instanceof ByteArrayOutputStream && ENABLED) {
             return new String(((ByteArrayOutputStream) outputStream).toByteArray(), Charset.forName("UTF-8"));
         }
         return super.toString();
@@ -354,7 +377,7 @@ public class GraphPrintVisitor implements Closeable {
 
     public void printToFile(File f) {
         close();
-        if (outputStream instanceof ByteArrayOutputStream) {
+        if (outputStream instanceof ByteArrayOutputStream && ENABLED) {
             try (OutputStream os = new FileOutputStream(f)) {
                 os.write(((ByteArrayOutputStream) outputStream).toByteArray());
             } catch (IOException e) {
@@ -365,7 +388,7 @@ public class GraphPrintVisitor implements Closeable {
 
     public void printToSysout() {
         close();
-        if (outputStream instanceof ByteArrayOutputStream) {
+        if (outputStream instanceof ByteArrayOutputStream && ENABLED) {
             PrintStream out = System.out;
             out.println(toString());
         }
@@ -373,11 +396,13 @@ public class GraphPrintVisitor implements Closeable {
 
     public void printToNetwork(boolean ignoreErrors) {
         close();
-        try (Socket socket = new Socket(GraphVisualizerAddress, GraphVisualizerPort); BufferedOutputStream os = new BufferedOutputStream(socket.getOutputStream(), 0x4000)) {
-            os.write(((ByteArrayOutputStream) outputStream).toByteArray());
-        } catch (IOException e) {
-            if (!ignoreErrors) {
-                e.printStackTrace();
+        if (outputStream instanceof ByteArrayOutputStream && ENABLED) {
+            try (Socket socket = new Socket(GraphVisualizerAddress, GraphVisualizerPort); BufferedOutputStream os = new BufferedOutputStream(socket.getOutputStream(), 0x4000)) {
+                os.write(((ByteArrayOutputStream) outputStream).toByteArray());
+            } catch (IOException e) {
+                if (!ignoreErrors) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -600,6 +625,32 @@ public class GraphPrintVisitor implements Closeable {
                     printer.connectNodes(node, child.getValue(), child.getKey());
                 }
             }
+        }
+    }
+
+    private static class DummyImpl implements Impl {
+        public void writeStartDocument() {
+        }
+
+        public void writeEndDocument() {
+        }
+
+        public void writeStartElement(String name) {
+        }
+
+        public void writeEndElement() {
+        }
+
+        public void writeAttribute(String name, String value) {
+        }
+
+        public void writeCharacters(String text) {
+        }
+
+        public void flush() {
+        }
+
+        public void close() {
         }
     }
 
