@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package com.oracle.graal.loop.phases;
 
 import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.code.BailoutException;
-
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.Position;
+import com.oracle.graal.loop.LoopEx;
+import com.oracle.graal.loop.LoopFragmentWhole;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.BeginNode;
@@ -43,6 +43,8 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.SwitchNode;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
+
+import jdk.vm.ci.code.BailoutException;
 
 public abstract class LoopTransformations {
 
@@ -57,7 +59,6 @@ public abstract class LoopTransformations {
 
     public static void fullUnroll(LoopEx loop, PhaseContext context, CanonicalizerPhase canonicalizer) {
         // assert loop.isCounted(); //TODO (gd) strenghten : counted with known trip count
-        int iterations = 0;
         LoopBeginNode loopBegin = loop.loopBegin();
         StructuredGraph graph = loopBegin.graph();
         while (!loopBegin.isDeleted()) {
@@ -66,7 +67,7 @@ public abstract class LoopTransformations {
             canonicalizer.applyIncremental(graph, context, mark);
             loopBegin.removeDeadPhis();
             loop.invalidateFragments();
-            if (iterations++ > LoopPolicies.FullUnrollMaxIterations.getValue() || graph.getNodeCount() > MaximumDesiredSize.getValue() * 3) {
+            if (graph.getNodeCount() > MaximumDesiredSize.getValue() * 3) {
                 throw new BailoutException("FullUnroll : Graph seems to grow out of proportion");
             }
         }

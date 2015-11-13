@@ -493,7 +493,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.api.directives",
         "com.oracle.graal.java",
-        "com.oracle.graal.loop",
+        "com.oracle.graal.loop.phases",
         "com.oracle.graal.word",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -664,7 +664,20 @@ suite = {
     "com.oracle.graal.loop" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.graal.phases.common"],
+      "dependencies" : ["com.oracle.graal.nodes"],
+      "annotationProcessors" : deps(["jvmci:JVMCI_OPTIONS_PROCESSOR"]),
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal",
+    },
+
+    "com.oracle.graal.loop.phases" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+	 "com.oracle.graal.loop",
+	 "com.oracle.graal.phases.common",
+       ],
       "annotationProcessors" : deps(["jvmci:JVMCI_OPTIONS_PROCESSOR"]),
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
@@ -676,7 +689,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.virtual",
-        "com.oracle.graal.loop",
+        "com.oracle.graal.loop.phases",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",

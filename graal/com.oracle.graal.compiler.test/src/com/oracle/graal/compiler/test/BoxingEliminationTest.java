@@ -26,6 +26,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.graal.loop.DefaultLoopPolicies;
 import com.oracle.graal.loop.phases.LoopPeelingPhase;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -326,7 +327,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
         if (loopPeeling) {
-            new LoopPeelingPhase().apply(graph);
+            new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, context);
         }
         new DeadCodeEliminationPhase().apply(graph);
         canonicalizer.apply(graph, context);

@@ -26,19 +26,18 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopPolicies;
-import com.oracle.graal.loop.LoopTransformations;
 import com.oracle.graal.loop.LoopsData;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 
-public class LoopFullUnrollPhase extends BasePhase<PhaseContext> {
+public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
 
     private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
     private final CanonicalizerPhase canonicalizer;
 
-    public LoopFullUnrollPhase(CanonicalizerPhase canonicalizer) {
+    public LoopFullUnrollPhase(CanonicalizerPhase canonicalizer, LoopPolicies policies) {
+        super(policies);
         this.canonicalizer = canonicalizer;
     }
 
@@ -51,7 +50,7 @@ public class LoopFullUnrollPhase extends BasePhase<PhaseContext> {
                 final LoopsData dataCounted = new LoopsData(graph);
                 dataCounted.detectedCountedLoops();
                 for (LoopEx loop : dataCounted.countedLoops()) {
-                    if (LoopPolicies.shouldFullUnroll(loop)) {
+                    if (getPolicies().shouldFullUnroll(loop)) {
                         Debug.log("FullUnroll %s", loop);
                         LoopTransformations.fullUnroll(loop, context, canonicalizer);
                         FULLY_UNROLLED_LOOPS.increment();

@@ -28,6 +28,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugDumpScope;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.loop.DefaultLoopPolicies;
 import com.oracle.graal.loop.phases.LoopUnswitchingPhase;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -128,7 +129,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         final StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
 
-        new LoopUnswitchingPhase().apply(graph);
+        new LoopUnswitchingPhase(new DefaultLoopPolicies()).apply(graph);
 
         // Framestates create comparison problems
         for (Node stateSplit : graph.getNodes().filterInterface(StateSplit.class)) {

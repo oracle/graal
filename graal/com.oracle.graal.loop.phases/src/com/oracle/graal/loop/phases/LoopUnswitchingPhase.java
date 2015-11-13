@@ -29,18 +29,19 @@ import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopPolicies;
-import com.oracle.graal.loop.LoopTransformations;
 import com.oracle.graal.loop.LoopsData;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.Phase;
 
-public class LoopUnswitchingPhase extends Phase {
-
+public class LoopUnswitchingPhase extends ContextlessLoopPhase<LoopPolicies> {
     private static final DebugMetric UNSWITCHED = Debug.metric("Unswitched");
     private static final DebugMetric UNSWITCH_CANDIDATES = Debug.metric("UnswitchCandidates");
     private static final DebugMetric UNSWITCH_EARLY_REJECTS = Debug.metric("UnswitchEarlyRejects");
+
+    public LoopUnswitchingPhase(LoopPolicies policies) {
+        super(policies);
+    }
 
     @Override
     protected void run(StructuredGraph graph) {
@@ -50,11 +51,11 @@ public class LoopUnswitchingPhase extends Phase {
                 unswitched = false;
                 final LoopsData dataUnswitch = new LoopsData(graph);
                 for (LoopEx loop : dataUnswitch.outerFirst()) {
-                    if (LoopPolicies.shouldTryUnswitch(loop)) {
+                    if (getPolicies().shouldTryUnswitch(loop)) {
                         List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);
                         if (controlSplits != null) {
                             UNSWITCH_CANDIDATES.increment();
-                            if (LoopPolicies.shouldUnswitch(loop, controlSplits)) {
+                            if (getPolicies().shouldUnswitch(loop, controlSplits)) {
                                 if (Debug.isLogEnabled()) {
                                     logUnswitch(loop, controlSplits);
                                 }
