@@ -148,7 +148,7 @@ public final class PostOrderDeserializer {
 
         Node node = (Node) object;
 
-        NodeFieldAccessor[] nodeFields = NodeClass.get(nodeClass).getFields();
+        NodeFieldAccessor[] nodeFields = NodeClass.Lookup.get(nodeClass).getFields();
         deserializeChildrenFields(node, nodeFields);
         deserializeChildFields(node, nodeFields);
         deserializeDataFields(buffer, node, nodeFields);
@@ -160,12 +160,12 @@ public final class PostOrderDeserializer {
         for (int i = 0; i < nodeFields.length; i++) {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.DATA) {
-                Class<?> fieldClass = field.getType();
+                Class<?> fieldClass = field.getFieldType();
                 long offset = getFieldOffset(field);
 
                 // source sections are not serialized
                 // TODO add support for source sections
-                if (field.getType().isAssignableFrom(SourceSection.class)) {
+                if (field.getFieldType().isAssignableFrom(SourceSection.class)) {
                     continue;
                 }
 
@@ -243,7 +243,7 @@ public final class PostOrderDeserializer {
         for (int i = nodeFields.length - 1; i >= 0; i--) {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILD) {
-                unsafe.putObject(parent, getFieldOffset(field), popNode(parent, field.getType()));
+                unsafe.putObject(parent, getFieldOffset(field), popNode(parent, field.getFieldType()));
             }
         }
     }
@@ -252,14 +252,14 @@ public final class PostOrderDeserializer {
         for (int i = nodeFields.length - 1; i >= 0; i--) {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILDREN) {
-                unsafe.putObject(parent, getFieldOffset(field), popArray(parent, field.getType()));
+                unsafe.putObject(parent, getFieldOffset(field), popArray(parent, field.getFieldType()));
             }
         }
     }
 
     private static Node updateParent(Node parent, Node child) {
         if (child != null) {
-            NodeClass nodeClass = NodeClass.get(child.getClass());
+            NodeClass nodeClass = NodeClass.Lookup.get(child.getClass());
             nodeClass.getNodeClassField().putObject(child, nodeClass);
             nodeClass.getParentField().putObject(child, parent);
         }
@@ -271,7 +271,7 @@ public final class PostOrderDeserializer {
             return ((NodeFieldAccessor.AbstractUnsafeNodeFieldAccessor) field).getOffset();
         } else {
             try {
-                Field reflectionField = field.getDeclaringClass().getDeclaredField(field.getName());
+                Field reflectionField = field.getFieldDeclaringClass().getDeclaredField(field.getName());
                 return unsafe.objectFieldOffset(reflectionField);
             } catch (NoSuchFieldException | SecurityException e) {
                 throw new RuntimeException(e);

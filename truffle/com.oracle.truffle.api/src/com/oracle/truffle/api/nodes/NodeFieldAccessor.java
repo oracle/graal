@@ -31,10 +31,7 @@ import sun.misc.Unsafe;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 
-/**
- * Information about a field in a {@link Node} class.
- */
-public abstract class NodeFieldAccessor {
+public interface NodeFieldAccessor {
 
     public static enum NodeFieldKind {
         /** The reference to the {@link NodeClass}. */
@@ -49,51 +46,64 @@ public abstract class NodeFieldAccessor {
         DATA
     }
 
-    private static final boolean USE_UNSAFE = Boolean.getBoolean("truffle.unsafe");
+    NodeFieldKind getKind();
 
-    private final NodeFieldKind kind;
-    private final Class<?> declaringClass;
-    private final String name;
-    protected final Class<?> type;
+    Class<?> getFieldType();
 
-    protected NodeFieldAccessor(NodeFieldKind kind, Class<?> declaringClass, String name, Class<?> type) {
-        this.kind = kind;
-        this.declaringClass = declaringClass;
-        this.name = name;
-        this.type = type;
-    }
+    Class<?> getFieldDeclaringClass();
 
-    protected static NodeFieldAccessor create(NodeFieldKind kind, Field field) {
-        if (USE_UNSAFE) {
-            return new UnsafeNodeField(kind, field);
-        } else {
-            return new ReflectionNodeField(kind, field);
+    String getName();
+
+    void putObject(Node receiver, Object value);
+
+    Object getObject(Node receiver);
+
+    Object loadValue(Node node);
+
+    /**
+     * Information about a field in a {@link Node} class.
+     */
+    public abstract static class NodeFieldAccessorImpl implements NodeFieldAccessor {
+        private static final boolean USE_UNSAFE = Boolean.getBoolean("truffle.unsafe");
+
+        private final NodeFieldKind kind;
+        private final Class<?> declaringClass;
+        private final String name;
+        protected final Class<?> type;
+
+        protected NodeFieldAccessorImpl(NodeFieldKind kind, Class<?> declaringClass, String name, Class<?> type) {
+            this.kind = kind;
+            this.declaringClass = declaringClass;
+            this.name = name;
+            this.type = type;
+        }
+
+        protected static NodeFieldAccessor create(NodeFieldKind kind, Field field) {
+            if (USE_UNSAFE) {
+                return new UnsafeNodeField(kind, field);
+            } else {
+                return new ReflectionNodeField(kind, field);
+            }
+        }
+
+        public NodeFieldKind getKind() {
+            return kind;
+        }
+
+        public Class<?> getFieldType() {
+            return type;
+        }
+
+        public Class<?> getFieldDeclaringClass() {
+            return declaringClass;
+        }
+
+        public String getName() {
+            return name;
         }
     }
 
-    public NodeFieldKind getKind() {
-        return kind;
-    }
-
-    public Class<?> getType() {
-        return type;
-    }
-
-    public Class<?> getDeclaringClass() {
-        return declaringClass;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public abstract void putObject(Node receiver, Object value);
-
-    public abstract Object getObject(Node receiver);
-
-    public abstract Object loadValue(Node node);
-
-    public abstract static class AbstractUnsafeNodeFieldAccessor extends NodeFieldAccessor {
+    public abstract static class AbstractUnsafeNodeFieldAccessor extends NodeFieldAccessorImpl {
 
         protected AbstractUnsafeNodeFieldAccessor(NodeFieldKind kind, Class<?> declaringClass, String name, Class<?> type) {
             super(kind, declaringClass, name, type);
@@ -159,7 +169,7 @@ public abstract class NodeFieldAccessor {
         }
     }
 
-    private static final class UnsafeNodeField extends AbstractUnsafeNodeFieldAccessor {
+    public static final class UnsafeNodeField extends AbstractUnsafeNodeFieldAccessor {
         private final long offset;
 
         protected UnsafeNodeField(NodeFieldKind kind, Field field) {
@@ -173,7 +183,7 @@ public abstract class NodeFieldAccessor {
         }
     }
 
-    private static final class ReflectionNodeField extends NodeFieldAccessor {
+    public static final class ReflectionNodeField extends NodeFieldAccessorImpl {
         private final Field field;
 
         protected ReflectionNodeField(NodeFieldKind kind, Field field) {
@@ -229,5 +239,4 @@ public abstract class NodeFieldAccessor {
             }
         }
     }
-
 }

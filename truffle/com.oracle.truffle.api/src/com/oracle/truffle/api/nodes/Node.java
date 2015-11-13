@@ -75,7 +75,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     protected Node(SourceSection sourceSection) {
         CompilerAsserts.neverPartOfCompilation();
         this.sourceSection = sourceSection;
-        this.nodeClass = NodeClass.get(getClass());
+        this.nodeClass = NodeClass.Lookup.get(getClass());
         if (TruffleOptions.TraceASTJSON) {
             JSONHelper.dumpNewNode(this);
         }

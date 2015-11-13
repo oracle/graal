@@ -78,7 +78,7 @@ public final class PostOrderSerializer {
         }
         Class<? extends Node> nodeClass = node.getClass();
 
-        NodeFieldAccessor[] nodeFields = NodeClass.get(nodeClass).getFields();
+        NodeFieldAccessor[] nodeFields = NodeClass.Lookup.get(nodeClass).getFields();
         serializeChildFields(buffer, node, nodeFields);
         serializeChildrenFields(buffer, node, nodeFields);
         buffer.put(cp.putClass(node.getClass()));
@@ -89,11 +89,11 @@ public final class PostOrderSerializer {
         for (int i = 0; i < nodeFields.length; i++) {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.DATA) {
-                Class<?> fieldClass = field.getType();
+                Class<?> fieldClass = field.getFieldType();
                 long offset = getFieldOffset(field);
                 int cpi;
 
-                if (field.getType().isAssignableFrom(SourceSection.class)) {
+                if (field.getFieldType().isAssignableFrom(SourceSection.class)) {
                     continue;
                 }
 
@@ -156,7 +156,7 @@ public final class PostOrderSerializer {
                     throw new AssertionError("Node children must be instanceof Node[]");
                 }
 
-                buffer.put(cp.putClass(field.getType()));
+                buffer.put(cp.putClass(field.getFieldType()));
 
                 Node[] childArray = (Node[]) childArrayObject;
                 if (childArray == null) {

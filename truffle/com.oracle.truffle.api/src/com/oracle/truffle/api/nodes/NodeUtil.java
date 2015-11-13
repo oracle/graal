@@ -241,17 +241,17 @@ public final class NodeUtil {
             return true;
         }
         if (field.getKind() == NodeFieldKind.CHILD) {
-            if (field.getType().isAssignableFrom(newValue.getClass())) {
+            if (field.getFieldType().isAssignableFrom(newValue.getClass())) {
                 return true;
             } else {
-                assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getType().getName();
+                assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getFieldType().getName();
                 return false;
             }
         } else if (field.getKind() == NodeFieldKind.CHILDREN) {
-            if (field.getType().getComponentType().isAssignableFrom(newValue.getClass())) {
+            if (field.getFieldType().getComponentType().isAssignableFrom(newValue.getClass())) {
                 return true;
             } else {
-                assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getType().getName();
+                assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getFieldType().getName();
                 return false;
             }
         }
@@ -297,9 +297,9 @@ public final class NodeUtil {
             if (field != null) {
                 switch (field.getKind()) {
                     case CHILD:
-                        return field.getType().isAssignableFrom(newChild.getClass());
+                        return field.getFieldType().isAssignableFrom(newChild.getClass());
                     case CHILDREN:
-                        return field.getType().getComponentType().isAssignableFrom(newChild.getClass());
+                        return field.getFieldType().getComponentType().isAssignableFrom(newChild.getClass());
                     default:
                         throw new IllegalStateException();
                 }
@@ -679,7 +679,7 @@ public final class NodeUtil {
         ArrayList<NodeFieldAccessor> childFields = new ArrayList<>();
         String sep = "";
         p.print("(");
-        for (NodeFieldAccessor field : NodeClass.get(node).getFields()) {
+        for (NodeFieldAccessor field : NodeClass.Lookup.get(node).getFields()) {
             if (field.getKind() == NodeFieldKind.CHILD || field.getKind() == NodeFieldKind.CHILDREN) {
                 childFields.add(field);
             } else if (field.getKind() == NodeFieldKind.DATA) {
