@@ -57,7 +57,7 @@ public class IGVShapeVisitor extends DebugShapeVisitor<IGVShapeVisitor> {
                         Shape dst = entry.getValue();
                         ((ShapeImpl) dst).accept(IGVShapeVisitor.this);
                         assert printer.visited(dst);
-                        printer.connectNodes(s, dst, entry.getKey().getShortName());
+                        printer.connectNodes(s, dst, entry.getKey().toString());
                     }
                 }
             }
