@@ -477,9 +477,6 @@ public final class CompileTheWorld {
         });
 
         try {
-            // Temporary workaround until JDK-8142511 is integrated
-            BytecodeFrame.isPlaceholderBci(0);
-
             // compile dummy method to get compiler initialized outside of the
             // config debug override.
             HotSpotResolvedJavaMethod dummyMethod = (HotSpotResolvedJavaMethod) JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(
