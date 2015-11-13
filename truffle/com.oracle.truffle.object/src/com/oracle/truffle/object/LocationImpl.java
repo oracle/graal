@@ -22,12 +22,9 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.object.BooleanLocation;
-import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
-import com.oracle.truffle.api.object.IntLocation;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.ObjectLocation;
@@ -130,8 +127,7 @@ public abstract class LocationImpl extends Location {
     @Override
     public String toString() {
         String finalString = isFinal() ? "f" : "";
-        String typeString = this instanceof IntLocation ? "i" : (this instanceof DoubleLocation ? "d" : (this instanceof BooleanLocation ? "b"
-                        : (this instanceof TypedLocation ? ((TypedLocation) this).getType().getSimpleName() : "o")));
+        String typeString = (this instanceof TypedLocation ? ((TypedLocation) this).getType().getSimpleName() : "Object");
         return finalString + typeString + getWhereString();
     }
 
