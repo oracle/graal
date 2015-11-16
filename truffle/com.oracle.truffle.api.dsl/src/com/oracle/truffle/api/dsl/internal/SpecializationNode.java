@@ -58,7 +58,7 @@ public abstract class SpecializationNode extends Node {
 
     @Child protected SpecializationNode next;
 
-    final int index;
+    private final int index;
 
     public SpecializationNode() {
         this(-1);
