@@ -44,7 +44,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 
-public class AMD64MoveFactory extends AMD64MoveFactoryBase {
+public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
 
     private final FrameMapBuilder frameMapBuilder;
 

@@ -54,6 +54,10 @@ public final class VerifyingMoveFactory implements MoveFactory {
         return inner.canInlineConstant(c);
     }
 
+    public boolean allowConstantToStackMove(Constant constant) {
+        return inner.allowConstantToStackMove(constant);
+    }
+
     public LIRInstruction createMove(AllocatableValue result, Value input) {
         LIRInstruction inst = inner.createMove(result, input);
         assert checkResult(inst, result, input);
