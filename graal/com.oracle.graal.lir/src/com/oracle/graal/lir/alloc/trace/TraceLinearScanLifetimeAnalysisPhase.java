@@ -622,6 +622,9 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                 LoadConstantOp move = (LoadConstantOp) op;
                 if (move.getConstant() instanceof JavaConstant) {
                     if (!allocator.neverSpillConstants()) {
+                        if (!allocator.getSpillMoveFactory().allowConstantToStackMove(move.getConstant())) {
+                            return null;
+                        }
                         /*
                          * Check if the interval has any uses which would accept an stack location
                          * (priority == ShouldHaveRegister). Rematerialization of such intervals can
