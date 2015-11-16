@@ -437,6 +437,9 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
          * register.
          */
         private static RegisterPriority registerPriorityOfInputOperand(EnumSet<OperandFlag> flags) {
+            if (flags.contains(OperandFlag.OUTGOING)) {
+                return RegisterPriority.None;
+            }
             if (flags.contains(OperandFlag.STACK)) {
                 return RegisterPriority.ShouldHaveRegister;
             }
