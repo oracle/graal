@@ -140,7 +140,9 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Set<F
     @Override
     protected Set<FloatingReadNode> cloneState(Set<FloatingReadNode> oldState) {
         Set<FloatingReadNode> result = CollectionsFactory.newSet();
-        result.addAll(oldState);
+        if (oldState != null) {
+            result.addAll(oldState);
+        }
         return result;
     }
 
