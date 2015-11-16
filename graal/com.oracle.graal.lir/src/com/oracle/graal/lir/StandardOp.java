@@ -24,6 +24,7 @@ package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.OUTGOING;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
@@ -172,9 +173,9 @@ public class StandardOp {
 
     public abstract static class AbstractBlockEndOp extends LIRInstruction implements BlockEndOp {
         public static final LIRInstructionClass<AbstractBlockEndOp> TYPE = LIRInstructionClass.create(AbstractBlockEndOp.class);
-        private static final EnumSet<OperandFlag> flags = EnumSet.of(REG, STACK, CONST);
+        private static final EnumSet<OperandFlag> flags = EnumSet.of(REG, STACK, CONST, OUTGOING);
 
-        @Alive({REG, STACK, CONST}) private Value[] outgoingValues;
+        @Alive({REG, STACK, CONST, OUTGOING}) private Value[] outgoingValues;
         private int size;
 
         protected AbstractBlockEndOp(LIRInstructionClass<? extends AbstractBlockEndOp> c) {
