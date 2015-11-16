@@ -391,13 +391,12 @@ public abstract class TruffleLanguage<C> {
          * .
          * 
          * @param source the source to evaluate
-         * @return the result of the evaluation
+         * @return the call target representing the parsed result
          * @throws IOException if the parsing or evaluation fails for some reason
          */
-        public Object eval(Source source) throws IOException {
+        public CallTarget parse(Source source) throws IOException {
             TruffleLanguage<?> language = API.findLanguageImpl(vm, null, source.getMimeType());
-            CallTarget call = language.parse(source, null);
-            return call.call();
+            return language.parse(source, null);
         }
 
         /**

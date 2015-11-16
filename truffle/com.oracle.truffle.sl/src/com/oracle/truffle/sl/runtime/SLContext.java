@@ -235,6 +235,6 @@ public final class SLContext extends ExecutionContext {
     }
 
     public Object evalAny(Source source) throws IOException {
-        return env.eval(source);
+        return env.parse(source).call();
     }
 }
