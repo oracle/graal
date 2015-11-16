@@ -38,6 +38,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
@@ -154,6 +155,18 @@ public abstract class TruffleTCK {
      */
     protected String globalObject() {
         throw new UnsupportedOperationException("globalObject() method not implemented");
+    }
+
+    /**
+     * Name of a function to parse source written in some other language. When the function is
+     * executed, it expects two arguments. First one is MIME type identifying
+     * {@link TruffleLanguage} and the second one is the source code to parse in that language and
+     * execute it. The result of the execution is then returned back to the caller.
+     *
+     * @return name of globally exported symbol to invoke when one wants to execute some code
+     */
+    protected String evaluateSource() {
+        throw new UnsupportedOperationException("evaluateSource() method not implemented");
     }
 
     /**
@@ -592,6 +605,22 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value function = vm().findGlobalSymbol(globalObjectFunction);
         Object global = function.invoke(null).get();
         assertEquals("Global from the language same with Java obtained one", language.getGlobalObject().get(), global);
+    }
+
+    @Test
+    public void testEvaluateSource() throws Exception {
+        Language language = vm().getLanguages().get(mimeType());
+        assertNotNull("Langugage for " + mimeType() + " found", language);
+
+        PolyglotEngine.Value function = vm().findGlobalSymbol(evaluateSource());
+        assertNotNull(evaluateSource() + " found", function);
+
+        Random r = new Random();
+        double expect = Math.floor(r.nextDouble() * 100000.0) / 10.0;
+        Object parsed = function.invoke(null, "x-application/tck", "" + expect).get();
+        assertTrue("Expecting numeric result, was:" + expect, parsed instanceof Number);
+        double value = ((Number)parsed).doubleValue();
+        assertEquals("Gets the double", expect, value, 0.01);
     }
 
     private PolyglotEngine.Value findGlobalSymbol(String name) throws Exception {

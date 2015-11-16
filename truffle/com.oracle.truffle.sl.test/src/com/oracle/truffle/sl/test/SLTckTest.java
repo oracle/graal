@@ -170,6 +170,11 @@ public class SLTckTest extends TruffleTCK {
         return null;
     }
 
+    @Override
+    protected String evaluateSource() {
+        return "interopEval";
+    }
+
     //
     // Ignore tests working on floats and double
     //

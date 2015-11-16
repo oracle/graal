@@ -385,6 +385,22 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Evaluates source of (potentially different) language. The {@link Source#getMimeType()
+         * MIME type) is used to identify the {@link TruffleLanguage} to use to perform the
+         * {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
+         * .
+         * 
+         * @param source the source to evaluate
+         * @return the result of the evaluation
+         * @throws IOException if the parsing or evaluation fails for some reason
+         */
+        public Object eval(Source source) throws IOException {
+            TruffleLanguage<?> language = API.findLanguageImpl(vm, null, source.getMimeType());
+            CallTarget call = language.parse(source, null);
+            return call.call();
+        }
+
+        /**
          * Input associated with {@link com.oracle.truffle.api.vm.PolyglotEngine} this language is
          * being executed in.
          *
@@ -481,6 +497,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         protected TruffleLanguage<?> findLanguage(Env env) {
             return env.lang;
+        }
+
+        @Override
+        protected TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass, String mimeType) {
+            return super.findLanguageImpl(known, languageClass, mimeType);
         }
 
         @Override
