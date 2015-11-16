@@ -48,6 +48,7 @@ import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 
 public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     /**
@@ -287,23 +288,27 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     computeLoopBlocks(endBlock, loop);
                 }
 
-                for (LoopExitNode exit : loopBegin.loopExits()) {
-                    Block exitBlock = nodeToBlock.get(exit);
-                    assert exitBlock.getPredecessorCount() == 1;
-                    computeLoopBlocks(exitBlock.getFirstPredecessor(), loop);
-                    loop.getExits().add(exitBlock);
+                if (graph.getGuardsStage() != GuardsStage.AFTER_FSA) {
+                    for (LoopExitNode exit : loopBegin.loopExits()) {
+                        Block exitBlock = nodeToBlock.get(exit);
+                        assert exitBlock.getPredecessorCount() == 1;
+                        computeLoopBlocks(exitBlock.getFirstPredecessor(), loop);
+                        loop.getExits().add(exitBlock);
+                    }
                 }
 
-                // The following loop can add new blocks to the end of the loop's block list.
-                int size = loop.getBlocks().size();
-                for (int i = 0; i < size; ++i) {
-                    Block b = loop.getBlocks().get(i);
-                    for (Block sux : b.getSuccessors()) {
-                        if (sux.loop != loop) {
-                            AbstractBeginNode begin = sux.getBeginNode();
-                            if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
-                                Debug.log(3, "Unexpected loop exit with %s, including whole branch in the loop", sux);
-                                addBranchToLoop(loop, sux);
+                if (graph.hasValueProxies()) {
+                    // The following loop can add new blocks to the end of the loop's block list.
+                    int size = loop.getBlocks().size();
+                    for (int i = 0; i < size; ++i) {
+                        Block b = loop.getBlocks().get(i);
+                        for (Block sux : b.getSuccessors()) {
+                            if (sux.loop != loop) {
+                                AbstractBeginNode begin = sux.getBeginNode();
+                                if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
+                                    Debug.log(3, "Unexpected loop exit with %s, including whole branch in the loop", sux);
+                                    addBranchToLoop(loop, sux);
+                                }
                             }
                         }
                     }
