@@ -23,13 +23,15 @@
 package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
+import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.alloc.trace.TraceLinearScan.isVariableOrRegister;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAshareSpillInformation;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAuseInterTraceHints;
+import static com.oracle.graal.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
+import static com.oracle.graal.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
@@ -41,6 +43,7 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LIRKind;
@@ -57,6 +60,7 @@ import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
@@ -584,26 +588,40 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                         BlockEndOp outgoing = SSIUtil.outgoing(lir, pred);
                         for (int i = 0; i < outgoing.getOutgoingSize(); i++) {
                             Value toValue = label.getIncomingValue(i);
-                            if (!isIllegal(toValue) && !isRegister(toValue)) {
+                            assert !isShadowedRegisterValue(toValue) : "Shadowed Registers are not allowed here: " + toValue;
+                            if (isVariable(toValue)) {
                                 Value fromValue = outgoing.getOutgoingValue(i);
                                 assert sameTrace(block, pred) || !isVariable(fromValue) : "Unallocated variable: " + fromValue;
-
-                                if (isVariableOrRegister(fromValue)) {
-                                    IntervalHint from = getIntervalHint((AllocatableValue) fromValue);
-                                    TraceInterval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
-                                    setHint(label, to, from);
-                                } else if (TraceRAshareSpillInformation.getValue() && TraceUtil.isShadowedRegisterValue(fromValue)) {
-                                    ShadowedRegisterValue shadowedRegisterValue = TraceUtil.asShadowedRegisterValue(fromValue);
-                                    IntervalHint from = getIntervalHint(shadowedRegisterValue.getRegister());
-                                    TraceInterval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
-                                    setHint(label, to, from);
-                                    to.setSpillSlot(shadowedRegisterValue.getStackSlot());
-                                    to.setSpillState(SpillState.StartInMemory);
+                                if (!LIRValueUtil.isConstantValue(fromValue)) {
+                                    addInterTraceHint(label, (AllocatableValue) toValue, fromValue);
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
+
+        private void addInterTraceHint(LabelOp label, AllocatableValue toValue, Value fromValue) {
+            assert isVariable(toValue) : "Wrong toValue: " + toValue;
+            assert isRegister(fromValue) || isVariable(fromValue) || isStackSlotValue(fromValue) || isShadowedRegisterValue(fromValue) : "Wrong fromValue: " + fromValue;
+            if (isVariableOrRegister(fromValue)) {
+                TraceInterval to = allocator.getOrCreateInterval(toValue);
+                IntervalHint from = getIntervalHint((AllocatableValue) fromValue);
+                setHint(label, to, from);
+            } else if (isStackSlotValue(fromValue)) {
+                TraceInterval to = allocator.getOrCreateInterval(toValue);
+                to.setSpillSlot((AllocatableValue) fromValue);
+                to.setSpillState(SpillState.StartInMemory);
+            } else if (TraceRAshareSpillInformation.getValue() && isShadowedRegisterValue(fromValue)) {
+                ShadowedRegisterValue shadowedRegisterValue = asShadowedRegisterValue(fromValue);
+                IntervalHint from = getIntervalHint(shadowedRegisterValue.getRegister());
+                TraceInterval to = allocator.getOrCreateInterval(toValue);
+                setHint(label, to, from);
+                to.setSpillSlot(shadowedRegisterValue.getStackSlot());
+                to.setSpillState(SpillState.StartInMemory);
+            } else {
+                throw JVMCIError.shouldNotReachHere();
             }
         }
 
