@@ -31,9 +31,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.Objects;
 
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedEvent;
@@ -49,7 +47,6 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import java.util.Objects;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing an
@@ -72,7 +69,6 @@ import java.util.Objects;
  */
 @SuppressWarnings("javadoc")
 public abstract class TruffleLanguage<C> {
-    private final Map<Source, CallTarget> compiled = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
 
     /**
      * Constructor to be called by subclasses.
@@ -440,20 +436,12 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        protected Object eval(TruffleLanguage<?> language, Source source) throws IOException {
-            CallTarget target = language.compiled.get(source);
+        protected CallTarget parseForEval(TruffleLanguage<?> language, Source source) throws IOException {
+            CallTarget target = language.parse(source, null);
             if (target == null) {
-                target = language.parse(source, null);
-                if (target == null) {
-                    throw new IOException("Parsing has not produced a CallTarget for " + source);
-                }
-                language.compiled.put(source, target);
+                throw new IOException("Parsing has not produced a CallTarget for " + source);
             }
-            try {
-                return target.call();
-            } catch (Throwable ex) {
-                throw new IOException(ex);
-            }
+            return target;
         }
 
         @Override

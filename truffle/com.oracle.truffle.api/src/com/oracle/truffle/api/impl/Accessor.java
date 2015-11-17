@@ -153,8 +153,8 @@ public abstract class Accessor {
         return API.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter);
     }
 
-    protected Object eval(TruffleLanguage<?> l, Source s) throws IOException {
-        return API.eval(l, s);
+    protected CallTarget parseForEval(TruffleLanguage<?> l, Source s) throws IOException {
+        return API.parseForEval(l, s);
     }
 
     protected Object evalInContext(Object vm, SuspendedEvent ev, String code, FrameInstance frame) throws IOException {

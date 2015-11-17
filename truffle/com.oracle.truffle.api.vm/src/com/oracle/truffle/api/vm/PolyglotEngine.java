@@ -37,6 +37,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
 import java.util.logging.Logger;
 
@@ -61,6 +62,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+
 import java.util.logging.Level;
 
 /**
@@ -113,6 +115,7 @@ public class PolyglotEngine {
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter;
     private final Debugger debugger;
+    private final Map<Source, CallTarget> cache = new WeakHashMap<>();
     private boolean disposed;
 
     /**
@@ -422,7 +425,16 @@ public class PolyglotEngine {
         try (Closeable d = SPI.executionStart(this, -1, debugger, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
-            return SPI.eval(langImpl, s);
+            CallTarget cachedTarget = cache.get(s);
+            if (cachedTarget == null) {
+                cachedTarget = SPI.parseForEval(langImpl, s);
+                cache.put(s, cachedTarget);
+            }
+            try {
+                return cachedTarget.call();
+            } catch (Throwable ex) {
+                throw new IOException(ex);
+            }
         }
     }
 
@@ -885,8 +897,8 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Object eval(TruffleLanguage<?> l, Source s) throws IOException {
-            return super.eval(l, s);
+        public CallTarget parseForEval(TruffleLanguage<?> l, Source s) throws IOException {
+            return super.parseForEval(l, s);
         }
 
         @Override
