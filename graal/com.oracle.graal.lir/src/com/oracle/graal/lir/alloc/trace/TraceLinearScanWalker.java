@@ -640,9 +640,13 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             // The new created part is added to the unhandled list and will get a register
             // when it is activated
             int minSplitPos = currentPos + 1;
-            int maxSplitPos = Math.min(interval.nextUsage(RegisterPriority.MustHaveRegister, minSplitPos), interval.to());
+            int maxSplitPos = interval.nextUsage(RegisterPriority.MustHaveRegister, minSplitPos);
 
-            splitBeforeUsage(interval, minSplitPos, maxSplitPos);
+            if (maxSplitPos <= interval.to()) {
+                splitBeforeUsage(interval, minSplitPos, maxSplitPos);
+            } else {
+                Debug.log("No more usage, no need to split: %s", interval);
+            }
 
             assert interval.nextUsage(RegisterPriority.MustHaveRegister, currentPos) == Integer.MAX_VALUE : "the remaining part is spilled to stack and therefore has no register";
             splitForSpilling(interval);
