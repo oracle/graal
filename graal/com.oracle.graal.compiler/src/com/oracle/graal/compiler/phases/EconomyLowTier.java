@@ -29,7 +29,6 @@ import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.ExpandLogicPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.tiers.LowTierContext;
 
 public class EconomyLowTier extends PhaseSuite<LowTierContext> {
@@ -43,6 +42,5 @@ public class EconomyLowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER));
 
         appendPhase(new ExpandLogicPhase());
-        appendPhase(new RemoveValueProxyPhase());
     }
 }
