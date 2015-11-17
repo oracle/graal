@@ -784,18 +784,18 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         for (EndNode end : merge.forwardEnds().snapshot()) {
             Node value = phi.valueAt(end);
-            Node result = null;
+            LogicNode result = null;
             if (condition() instanceof Canonicalizable.Binary<?>) {
                 Canonicalizable.Binary<Node> compare = (Canonicalizable.Binary<Node>) condition;
                 if (compare.getX() == phi) {
-                    result = compare.canonical(tool, value, compare.getY());
+                    result = (LogicNode) compare.canonical(tool, value, compare.getY());
                 } else {
-                    result = compare.canonical(tool, compare.getX(), value);
+                    result = (LogicNode) compare.canonical(tool, compare.getX(), value);
                 }
             } else {
                 assert condition() instanceof Canonicalizable.Unary<?>;
                 Canonicalizable.Unary<Node> compare = (Canonicalizable.Unary<Node>) condition;
-                result = compare.canonical(tool, value);
+                result = (LogicNode) compare.canonical(tool, value);
             }
             if (result instanceof LogicConstantNode) {
                 merge.removeEnd(end);
@@ -810,6 +810,31 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     }
                     falseMerge.addForwardEnd(end);
                 }
+            } else if (result != condition) {
+                // Build a new IfNode using the new condition
+                BeginNode trueBegin = graph().add(new BeginNode());
+                BeginNode falseBegin = graph().add(new BeginNode());
+
+                if (result.graph() == null) {
+                    result = graph().addOrUniqueWithInputs(result);
+                }
+                IfNode newIfNode = graph().add(new IfNode(result, trueBegin, falseBegin, trueSuccessorProbability));
+                merge.removeEnd(end);
+                ((FixedWithNextNode) end.predecessor()).setNext(newIfNode);
+
+                if (trueMerge == null) {
+                    trueMerge = insertMerge(trueSuccessor());
+                }
+                trueBegin.setNext(graph().add(new EndNode()));
+                trueMerge.addForwardEnd((EndNode) trueBegin.next());
+
+                if (falseMerge == null) {
+                    falseMerge = insertMerge(falseSuccessor());
+                }
+                falseBegin.setNext(graph().add(new EndNode()));
+                falseMerge.addForwardEnd((EndNode) falseBegin.next());
+
+                end.safeDelete();
             }
         }
         transferProxies(trueSuccessor(), trueMerge);
