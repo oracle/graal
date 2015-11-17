@@ -87,7 +87,7 @@ public abstract class SpecializationNode extends Node {
     }
 
     private static void updateRootImpl(SpecializationNode start, Node node) {
-        NodeFieldAccessor[] fields = NodeClass.Lookup.get(start).getFields();
+        NodeFieldAccessor[] fields = NodeClass.get(start).getFields();
         for (int i = fields.length - 1; i >= 0; i--) {
             NodeFieldAccessor f = fields[i];
             if (f.getName().equals("root")) {
@@ -508,8 +508,6 @@ public abstract class SpecializationNode extends Node {
         throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), args);
     }
 
-    /* Suppress FindBugs false positive. */
-    @SuppressFBWarnings(value = "NP")
     static SpecializationNode insertSorted(SpecializationNode start, final SpecializationNode generated, final CharSequence message, final SpecializationNode merged) {
         if (merged == generated) {
             // new node

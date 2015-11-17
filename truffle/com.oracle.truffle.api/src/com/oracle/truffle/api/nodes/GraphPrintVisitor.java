@@ -474,7 +474,7 @@ public class GraphPrintVisitor implements Closeable {
     }
 
     private void readNodeProperties(Node node) {
-        NodeFieldAccessor[] fields = NodeClass.Lookup.get(node).getFields();
+        NodeFieldAccessor[] fields = NodeClass.get(node).getFields();
         for (NodeFieldAccessor field : fields) {
             if (field.getKind() == NodeFieldKind.DATA) {
                 String key = field.getName();
@@ -546,7 +546,7 @@ public class GraphPrintVisitor implements Closeable {
 
     private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
-        NodeClass nodeClass = NodeClass.Lookup.get(node);
+        NodeClass nodeClass = NodeClass.get(node);
 
         for (NodeFieldAccessor field : nodeClass.getFields()) {
             NodeFieldKind kind = field.getKind();
