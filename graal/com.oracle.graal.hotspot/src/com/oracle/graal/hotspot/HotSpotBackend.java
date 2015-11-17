@@ -132,6 +132,12 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final ForeignCallDescriptor DECRYPT_BLOCK = new ForeignCallDescriptor("decrypt_block", void.class, Word.class, Word.class, Pointer.class);
 
     /**
+     * @see AESCryptSubstitutions#decryptBlockStub(ForeignCallDescriptor, Word, Word, Pointer)
+     */
+    public static final ForeignCallDescriptor DECRYPT_BLOCK_WITH_ORIGINAL_KEY = new ForeignCallDescriptor("decrypt_block_with_original_key", void.class, Word.class, Word.class, Pointer.class,
+                    Pointer.class);
+
+    /**
      * @see CipherBlockChainingSubstitutions#crypt
      */
     public static final ForeignCallDescriptor ENCRYPT = new ForeignCallDescriptor("encrypt", void.class, Word.class, Word.class, Pointer.class, Pointer.class, int.class);
@@ -140,6 +146,12 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @see CipherBlockChainingSubstitutions#crypt
      */
     public static final ForeignCallDescriptor DECRYPT = new ForeignCallDescriptor("decrypt", void.class, Word.class, Word.class, Pointer.class, Pointer.class, int.class);
+
+    /**
+     * @see CipherBlockChainingSubstitutions#crypt
+     */
+    public static final ForeignCallDescriptor DECRYPT_WITH_ORIGINAL_KEY = new ForeignCallDescriptor("decrypt_with_original_key", void.class, Word.class, Word.class, Pointer.class, Pointer.class,
+                    int.class, Pointer.class);
 
     /**
      * @see VMErrorNode

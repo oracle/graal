@@ -254,7 +254,22 @@ public class InvocationPlugins {
          *            {@code declaringClass}
          */
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, Class<?>... argumentTypes) {
-            MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(substituteDeclaringClass, name, argumentTypes);
+            registerMethodSubstitution(substituteDeclaringClass, name, name, argumentTypes);
+        }
+
+        /**
+         * Registers a plugin that implements a method based on the bytecode of a substitute method.
+         *
+         * @param substituteDeclaringClass the class declaring the substitute method
+         * @param name the name of both the original method
+         * @param substituteName the name of the substitute method
+         * @param argumentTypes the argument types of the method. Element 0 of this array must be
+         *            the {@link Class} value for {@link InvocationPlugin.Receiver} iff the method
+         *            is non-static. Upon returning, element 0 will have been rewritten to
+         *            {@code declaringClass}
+         */
+        public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Class<?>... argumentTypes) {
+            MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(substituteDeclaringClass, substituteName, argumentTypes);
             plugins.register(plugin, false, allowOverwrite, declaringClass, name, argumentTypes);
         }
     }

@@ -293,17 +293,20 @@ public class HotSpotGraphBuilderPlugins {
             assert config.aescryptDecryptBlockStub != 0L;
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
+            String arch = HotSpotVMConfig.config().getHostArchitectureName();
+            String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
             Class<?> c = MethodSubstitutionPlugin.resolveClass("com.sun.crypto.provider.CipherBlockChaining", true);
             if (c != null) {
                 Registration r = new Registration(plugins, c);
                 r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
-                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
+                                int.class);
             }
             c = MethodSubstitutionPlugin.resolveClass("com.sun.crypto.provider.AESCrypt", true);
             if (c != null) {
                 Registration r = new Registration(plugins, c);
                 r.registerMethodSubstitution(AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
-                r.registerMethodSubstitution(AESCryptSubstitutions.class, aesDecryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                r.registerMethodSubstitution(AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, byte[].class, int.class);
             }
         }
     }
