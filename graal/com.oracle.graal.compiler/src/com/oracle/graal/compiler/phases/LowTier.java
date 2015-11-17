@@ -39,6 +39,7 @@ import com.oracle.graal.phases.common.ExpandLogicPhase;
 import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.common.ProfileCompiledMethodsPhase;
+import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.common.UseTrappingNullChecksPhase;
 import com.oracle.graal.phases.common.instrumentation.InlineInstrumentationPhase;
 import com.oracle.graal.phases.tiers.LowTierContext;
@@ -68,6 +69,8 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         if (UseGraalInstrumentation.getValue()) {
             appendPhase(new InlineInstrumentationPhase());
         }
+
+        appendPhase(new RemoveValueProxyPhase());
 
         appendPhase(new ExpandLogicPhase());
 
