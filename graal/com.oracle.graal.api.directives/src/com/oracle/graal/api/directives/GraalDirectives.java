@@ -179,6 +179,12 @@ public final class GraalDirectives {
     }
 
     /**
+     * Spills all caller saved registers.
+     */
+    public static void spillRegisters() {
+    }
+
+    /**
      * Do nothing, but also make sure the compiler doesn't do any optimizations across this call.
      *
      * For example, the compiler will constant fold the expression 5 * 3, but the expression 5 *

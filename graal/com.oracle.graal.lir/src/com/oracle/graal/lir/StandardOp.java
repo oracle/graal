@@ -380,6 +380,25 @@ public class StandardOp {
         }
     }
 
+    @Opcode("SPILLREGISTERS")
+    public static final class SpillRegistersOp extends LIRInstruction {
+        public static final LIRInstructionClass<SpillRegistersOp> TYPE = LIRInstructionClass.create(SpillRegistersOp.class);
+
+        public SpillRegistersOp() {
+            super(TYPE);
+        }
+
+        @Override
+        public boolean destroysCallerSavedRegisters() {
+            return true;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+            // do nothing, just keep value alive until at least here
+        }
+    }
+
     public static final class StackMove extends LIRInstruction implements ValueMoveOp {
         public static final LIRInstructionClass<StackMove> TYPE = LIRInstructionClass.create(StackMove.class);
 

@@ -69,6 +69,7 @@ import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.debug.BlackholeNode;
 import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 import com.oracle.graal.nodes.debug.OpaqueNode;
+import com.oracle.graal.nodes.debug.SpillRegistersNode;
 import com.oracle.graal.nodes.extended.BoxNode;
 import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.GetClassNode;
@@ -680,6 +681,14 @@ public class StandardGraphBuilderPlugins {
                 });
             }
         }
+
+        InvocationPlugin spillPlugin = new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new SpillRegistersNode());
+                return true;
+            }
+        };
+        r.register0("spillRegisters", spillPlugin);
 
         r.register1("guardingNonNull", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
