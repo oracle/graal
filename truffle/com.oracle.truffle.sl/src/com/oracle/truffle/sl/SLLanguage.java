@@ -57,12 +57,16 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.nodes.GraphPrintVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -410,7 +414,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node node, String... argumentNames) throws IOException {
+    protected CallTarget parse(Source code, final Node node, String... argumentNames) throws IOException {
         final SLContext c = new SLContext(this);
         final Exception[] failed = {null};
         try {
@@ -419,10 +423,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         } catch (Exception e) {
             failed[0] = e;
         }
-        return new CallTarget() {
+        RootNode rootNode = new RootNode(SLLanguage.class, null, null) {
             @TruffleBoundary
             @Override
-            public Object call(Object... arguments) {
+            public Object execute(VirtualFrame frame) {
                 if (failed[0] instanceof RuntimeException) {
                     throw (RuntimeException) failed[0];
                 }
@@ -432,17 +436,26 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 Node n = createFindContextNode();
                 SLContext fillIn = findContext(n);
                 final SLFunctionRegistry functionRegistry = fillIn.getFunctionRegistry();
+                int oneAndCnt = 0;
+                SLFunction oneAndOnly = null;
                 for (SLFunction f : c.getFunctionRegistry().getFunctions()) {
                     RootCallTarget callTarget = f.getCallTarget();
                     if (callTarget == null) {
                         continue;
                     }
-                    functionRegistry.lookup(f.getName());
+                    oneAndOnly = functionRegistry.lookup(f.getName());
+                    oneAndCnt++;
                     functionRegistry.register(f.getName(), (SLRootNode) f.getCallTarget().getRootNode());
+                }
+                Object[] arguments = frame.getArguments();
+                if (oneAndCnt == 1 && (arguments.length > 0 || node != null)) {
+                    Node callNode = Message.createExecute(arguments.length).createNode();
+                    return ForeignAccess.execute(callNode, frame, oneAndOnly, arguments);
                 }
                 return null;
             }
         };
+        return Truffle.getRuntime().createCallTarget(rootNode);
     }
 
     @Override

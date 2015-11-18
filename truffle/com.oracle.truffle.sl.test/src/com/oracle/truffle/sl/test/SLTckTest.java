@@ -44,10 +44,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.test.instrument.InstrumentationTestMode;
 import com.oracle.truffle.tck.TruffleTCK;
-
-import static org.junit.Assert.assertTrue;
-
 import org.junit.After;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -158,6 +156,13 @@ public class SLTckTest extends TruffleTCK {
             "  retu rn 42;\n" +
             "}\n";
         // @formatter:on
+    }
+
+    @Override
+    protected String multiplyCode(String firstName, String secondName) {
+        return "function multiply(" + firstName + ", " + secondName + ") {\n" +
+            "  return " + firstName + " * " + secondName + ";\n" +
+            "}\n";
     }
 
     @Override
