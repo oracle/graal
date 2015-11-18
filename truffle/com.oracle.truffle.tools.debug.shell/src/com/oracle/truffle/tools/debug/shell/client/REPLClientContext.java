@@ -24,10 +24,10 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
+import java.util.List;
+
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer;
-
-import java.util.List;
 
 /**
  * Client context for interaction with a program halted by the {@link REPLServer}.
@@ -96,5 +96,10 @@ interface REPLClientContext {
      * Send a message related to failure while handling a command in this context.
      */
     void displayFailReply(String message);
+
+    /**
+     * Recompute the client's command line prompt.
+     */
+    void updatePrompt();
 
 }

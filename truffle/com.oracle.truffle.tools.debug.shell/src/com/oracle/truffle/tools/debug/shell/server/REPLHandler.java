@@ -109,23 +109,6 @@ public abstract class REPLHandler {
         return replies;
     }
 
-    protected static final REPLMessage[] createLanguageInfoReply(REPLServer replServer) {
-        final Language language = replServer.getLanguage();
-        final ArrayList<REPLMessage> langMessages = new ArrayList<>();
-        langMessages.add(createLanguageInfoMessage("Language Name", language.getName()));
-        langMessages.add(createLanguageInfoMessage("Language version", language.getVersion()));
-        return langMessages.toArray(new REPLMessage[0]);
-    }
-
-    protected static final REPLMessage createLanguageInfoMessage(String key, String value) {
-        final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.INFO);
-        infoMessage.put(REPLMessage.TOPIC, REPLMessage.LANGUAGE);
-        infoMessage.put(REPLMessage.INFO_KEY, key);
-        infoMessage.put(REPLMessage.INFO_VALUE, value);
-        infoMessage.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
-        return infoMessage;
-    }
-
     protected static final REPLMessage createBreakpointInfoMessage(Breakpoint breakpoint, REPLServer replServer) {
         final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.BREAKPOINT_INFO);
         infoMessage.put(REPLMessage.BREAKPOINT_ID, Integer.toString(replServer.getBreakpointID(breakpoint)));
@@ -508,8 +491,32 @@ public abstract class REPLHandler {
 
             switch (topic) {
 
-                case REPLMessage.LANGUAGE:
-                    return createLanguageInfoReply(replServer);
+                case REPLMessage.INFO_SUPPORTED_LANGUAGES:
+                    final ArrayList<REPLMessage> langMessages = new ArrayList<>();
+
+                    for (Language language : replServer.getLanguages()) {
+                        final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.INFO);
+                        infoMessage.put(REPLMessage.TOPIC, REPLMessage.INFO_SUPPORTED_LANGUAGES);
+                        infoMessage.put(REPLMessage.LANG_NAME, language.getName());
+                        infoMessage.put(REPLMessage.LANG_VER, language.getVersion());
+                        infoMessage.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
+                        langMessages.add(infoMessage);
+                    }
+                    return langMessages.toArray(new REPLMessage[0]);
+
+                case REPLMessage.INFO_CURRENT_LANGUAGE:
+                    final REPLMessage reply = new REPLMessage(REPLMessage.OP, REPLMessage.INFO);
+                    reply.put(REPLMessage.TOPIC, REPLMessage.INFO_CURRENT_LANGUAGE);
+                    final String languageName = replServer.getCurrentContext().getLanguageName();
+                    reply.put(REPLMessage.LANG_NAME, languageName);
+                    return finishReplySucceeded(reply, languageName);
+
+                case REPLMessage.WELCOME_MESSAGE:
+                    final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.INFO);
+                    infoMessage.put(REPLMessage.TOPIC, REPLMessage.WELCOME_MESSAGE);
+                    infoMessage.put(REPLMessage.INFO_VALUE, replServer.getWelcome());
+                    infoMessage.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
+                    return finishReplySucceeded(infoMessage, "welcome");
 
                 default:
                     final REPLMessage message = new REPLMessage(REPLMessage.OP, REPLMessage.INFO);
@@ -555,6 +562,28 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             throw new QuitException();
+        }
+    };
+
+    public static final REPLHandler SET_LANGUAGE_HANDLER = new REPLHandler(REPLMessage.SET_LANGUAGE) {
+
+        @Override
+        public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
+            final REPLMessage reply = new REPLMessage(REPLMessage.OP, REPLMessage.SET_LANGUAGE);
+            String languageName = request.get(REPLMessage.LANG_NAME);
+            if (languageName == null) {
+                return finishReplyFailed(reply, "missing language name");
+            }
+            reply.put(REPLMessage.LANG_NAME, languageName);
+            try {
+                final String newLanguageName = replServer.getCurrentContext().setLanguage(languageName);
+                if (newLanguageName != null) {
+                    return finishReplySucceeded(reply, "Language set to " + newLanguageName);
+                }
+            } catch (Exception ex) {
+                return finishReplyFailed(reply, ex);
+            }
+            return finishReplyFailed(reply, "Language \"" + languageName + "\" not supported");
         }
     };
 

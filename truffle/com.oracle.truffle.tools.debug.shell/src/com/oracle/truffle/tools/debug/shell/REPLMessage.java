@@ -74,10 +74,14 @@ public final class REPLMessage {
     public static final String FRAME_INFO = "frame-info";
     public static final String FRAME_NUMBER = "frame-number";
     public static final String INFO = "info";
+    public static final String INFO_CURRENT_LANGUAGE = "info-current-language";
     public static final String INFO_KEY = "info-key";
+    public static final String INFO_SUPPORTED_LANGUAGES = "info-supported-languages";
     public static final String INFO_VALUE = "info-value";
     public static final String KILL = "kill";
-    public static final String LANGUAGE = "language";
+    public static final String LANG_NAME = "language-name";
+    public static final String LANG_VER = "language-version";
+    public static final String LANG_MIME = "language-MIME type";
     public static final String LINE_NUMBER = "line-number";
     public static final String LIST = "list";
     public static final String LOAD_SOURCE = "load-source";
@@ -88,6 +92,7 @@ public final class REPLMessage {
     public static final String REPEAT = "repeat";
     public static final String SET = "set";
     public static final String SET_BREAK_CONDITION = "set-breakpoint-condition";
+    public static final String SET_LANGUAGE = "set-language";
     public static final String SOURCE_LINE_TEXT = "source-line-text";
     public static final String SOURCE_LOCATION = "source-location";
     public static final String SOURCE_NAME = "source-name";
@@ -110,6 +115,7 @@ public final class REPLMessage {
     public static final String UP = "up";
     public static final String VALUE = "value";
     public static final String WARNINGS = "warnings";
+    public static final String WELCOME_MESSAGE = "welcome-message";
     private final Map<String, String> map;
 
     /**

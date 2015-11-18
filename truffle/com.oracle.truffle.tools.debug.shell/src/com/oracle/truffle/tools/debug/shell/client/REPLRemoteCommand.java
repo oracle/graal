@@ -561,6 +561,28 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
     };
 
+    public static final REPLRemoteCommand SET_LANG_CMD = new REPLRemoteCommand("language", "lang", "Set current language") {
+
+        @Override
+        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+            if (args.length == 1) {
+                context.displayFailReply("no language specified");
+                return null;
+            }
+            final REPLMessage request = new REPLMessage();
+            request.put(REPLMessage.OP, REPLMessage.SET_LANGUAGE);
+            request.put(REPLMessage.LANG_NAME, args[1]);
+            return request;
+        }
+
+        @Override
+        void processReply(REPLClientContext context, REPLMessage[] replies) {
+            context.updatePrompt();
+            super.processReply(context, replies);
+        }
+
+    };
+
     public static final REPLRemoteCommand STEP_INTO_CMD = new REPLRemoteCommand("step", "s", "(StepInto) next statement, going into functions.") {
 
         @Override
