@@ -126,7 +126,7 @@ public class SimpleREPLClient implements REPLClient {
 
     private final LocalOption listSizeOption = new IntegerOption(25, "listsize", "default number of lines to list");
 
-    private final LocalOption traceMessagesOption = new BooleanOption(false, "tracemessages", "trace REPL messages between client and server");
+    private final LocalOption traceMessagesOption = new BooleanOption(true, "tracemessages", "trace REPL messages between client and server");
 
     private final LocalOption verboseBreakpointInfoOption = new BooleanOption(true, "verbosebreakpointinfo", "\"info breakpoint\" displays more info");
 

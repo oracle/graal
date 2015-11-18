@@ -504,9 +504,11 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                 context.selectFrameNumber(frameNumber);
                 context.displayReply("Frame " + frameNumber + ":");
                 for (REPLMessage message : replies) {
-                    for (String line : message.get(REPLMessage.DISPLAY_MSG).split("\n")) {
-                        context.displayInfo(line);
-                    }
+                    final StringBuilder sb = new StringBuilder();
+                    sb.append("#" + message.get(REPLMessage.SLOT_INDEX) + ": ");
+                    sb.append(message.get(REPLMessage.SLOT_ID) + " = ");
+                    sb.append(message.get(REPLMessage.SLOT_VALUE));
+                    context.displayInfo(sb.toString());
                 }
             }
         }

@@ -93,6 +93,9 @@ public final class REPLMessage {
     public static final String SET = "set";
     public static final String SET_BREAK_CONDITION = "set-breakpoint-condition";
     public static final String SET_LANGUAGE = "set-language";
+    public static final String SLOT_ID = "slot-identifier";
+    public static final String SLOT_INDEX = "slot-index";
+    public static final String SLOT_VALUE = "slot-value";
     public static final String SOURCE_LINE_TEXT = "source-line-text";
     public static final String SOURCE_LOCATION = "source-location";
     public static final String SOURCE_NAME = "source-name";

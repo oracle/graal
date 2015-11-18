@@ -445,36 +445,35 @@ public abstract class REPLHandler {
 
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
-            final REPLMessage reply = createReply();
             final Integer frameNumber = request.getIntValue(REPLMessage.FRAME_NUMBER);
             if (frameNumber == null) {
-                return finishReplyFailed(reply, "no frame number specified");
+                return finishReplyFailed(createReply(), "no frame number specified");
             }
             final List<FrameDebugDescription> stack = replServer.getCurrentContext().getStack();
             if (frameNumber < 0 || frameNumber >= stack.size()) {
-                return finishReplyFailed(reply, "frame number " + frameNumber + " out of range");
+                return finishReplyFailed(createReply(), "frame number " + frameNumber + " out of range");
             }
+
             final FrameDebugDescription frameDescription = stack.get(frameNumber);
-            final REPLMessage frameMessage = createFrameInfoMessage(replServer, frameDescription);
             final Frame frame = frameDescription.frameInstance().getFrame(FrameInstance.FrameAccess.READ_ONLY, true);
             final Visualizer visualizer = replServer.getVisualizer();
             final FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
-            try {
-                final StringBuilder sb = new StringBuilder();
-                for (FrameSlot slot : frameDescriptor.getSlots()) {
-                    sb.append(Integer.toString(slot.getIndex()) + ": " + visualizer.displayIdentifier(slot) + " = ");
-                    try {
-                        final Object value = frame.getValue(slot);
-                        sb.append(visualizer.displayValue(value, 0));
-                    } catch (Exception ex) {
-                        sb.append("???");
-                    }
-                    sb.append("\n");
-                }
-                return finishReplySucceeded(frameMessage, sb.toString());
-            } catch (Exception ex) {
-                return finishReplyFailed(frameMessage, ex);
+            final List<? extends FrameSlot> slots = frameDescriptor.getSlots();
+            if (slots.size() == 0) {
+                final REPLMessage emptyFrameMessage = createFrameInfoMessage(replServer, frameDescription);
+                return finishReplySucceeded(emptyFrameMessage, "empty frame");
             }
+            final ArrayList<REPLMessage> replies = new ArrayList<>();
+
+            for (FrameSlot slot : slots) {
+                final REPLMessage slotMessage = createFrameInfoMessage(replServer, frameDescription);
+                slotMessage.put(REPLMessage.SLOT_INDEX, Integer.toString(slot.getIndex()));
+                slotMessage.put(REPLMessage.SLOT_ID, visualizer.displayIdentifier(slot));
+                slotMessage.put(REPLMessage.SLOT_VALUE, visualizer.displayValue(frame.getValue(slot), 0));
+                slotMessage.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
+                replies.add(slotMessage);
+            }
+            return replies.toArray(new REPLMessage[0]);
         }
     };
 
