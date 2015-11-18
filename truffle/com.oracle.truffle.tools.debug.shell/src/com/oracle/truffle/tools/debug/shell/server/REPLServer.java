@@ -369,7 +369,7 @@ public final class REPLServer {
          */
         List<FrameDebugDescription> getStack() {
             List<FrameDebugDescription> frames = new ArrayList<>();
-            int frameCount = 1;
+            int frameCount = 0;
             for (FrameInstance frameInstance : event.getStack()) {
                 if (frameCount == 1) {
                     frames.add(new FrameDebugDescription(frameCount, event.getNode(), frameInstance));
