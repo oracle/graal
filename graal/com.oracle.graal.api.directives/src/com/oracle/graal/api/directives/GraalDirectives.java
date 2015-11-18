@@ -179,6 +179,69 @@ public final class GraalDirectives {
     }
 
     /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(boolean value) {
+    }
+
+    /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(byte value) {
+    }
+
+    /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(short value) {
+    }
+
+    /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(char value) {
+    }
+
+    /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(int value) {
+    }
+
+    /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(long value) {
+    }
+
+    /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(float value) {
+    }
+
+    /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(double value) {
+    }
+
+    /**
+     * Forces a value to be kept in a register.
+     */
+    @SuppressWarnings("unused")
+    public static void bindToRegister(Object value) {
+    }
+
+    /**
      * Spills all caller saved registers.
      */
     public static void spillRegisters() {

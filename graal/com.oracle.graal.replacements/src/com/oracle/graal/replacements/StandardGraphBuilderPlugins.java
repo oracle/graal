@@ -66,6 +66,7 @@ import com.oracle.graal.nodes.calc.SqrtNode;
 import com.oracle.graal.nodes.calc.UnsignedDivNode;
 import com.oracle.graal.nodes.calc.UnsignedRemNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
+import com.oracle.graal.nodes.debug.BindToRegisterNode;
 import com.oracle.graal.nodes.debug.BlackholeNode;
 import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 import com.oracle.graal.nodes.debug.OpaqueNode;
@@ -668,10 +669,17 @@ public class StandardGraphBuilderPlugins {
             }
         };
 
+        InvocationPlugin bindToRegisterPlugin = new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.add(new BindToRegisterNode(value));
+                return true;
+            }
+        };
         for (JavaKind kind : JavaKind.values()) {
             if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
                 Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
                 r.register1("blackhole", javaClass, blackholePlugin);
+                r.register1("bindToRegister", javaClass, bindToRegisterPlugin);
 
                 r.register1("opaque", javaClass, new InvocationPlugin() {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {

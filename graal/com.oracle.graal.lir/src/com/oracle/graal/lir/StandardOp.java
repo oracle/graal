@@ -380,6 +380,22 @@ public class StandardOp {
         }
     }
 
+    public static final class BindToRegisterOp extends LIRInstruction {
+        public static final LIRInstructionClass<BindToRegisterOp> TYPE = LIRInstructionClass.create(BindToRegisterOp.class);
+
+        @Use({REG}) private Value value;
+
+        public BindToRegisterOp(Value value) {
+            super(TYPE);
+            this.value = value;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+            // do nothing, just keep value alive until at least here
+        }
+    }
+
     @Opcode("SPILLREGISTERS")
     public static final class SpillRegistersOp extends LIRInstruction {
         public static final LIRInstructionClass<SpillRegistersOp> TYPE = LIRInstructionClass.create(SpillRegistersOp.class);
