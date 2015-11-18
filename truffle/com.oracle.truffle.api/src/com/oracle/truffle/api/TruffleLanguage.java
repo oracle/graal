@@ -386,7 +386,7 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Evaluates source of (potentially different) language. The {@link Source#getMimeType()
-         * MIME type) is used to identify the {@link TruffleLanguage} to use to perform the
+         * MIME type} is used to identify the {@link TruffleLanguage} to use to perform the
          * {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
          * . The names of arguments are parameters for the resulting {#link CallTarget} that allow
          * the <code>source</code> to reference the actual parameters passed to
