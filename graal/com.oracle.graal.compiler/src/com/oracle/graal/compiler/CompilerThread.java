@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler;
 
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
+import com.oracle.graal.debug.DebugConfig;
 import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.GraalDebugConfig;
 
@@ -44,7 +45,7 @@ public class CompilerThread extends Thread {
 
     @Override
     public void run() {
-        GraalDebugConfig debugConfig = debugConfigAccess.getDebugConfig();
+        DebugConfig debugConfig = debugConfigAccess.getDebugConfig();
         setContextClassLoader(getClass().getClassLoader());
         try {
             super.run();

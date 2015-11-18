@@ -607,4 +607,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             return true;
         }
     }
+
+    @Override
+    public final boolean equals(Object obj) {
+        return obj == this;
+    }
+
+    @Override
+    public final int hashCode() {
+        return System.identityHashCode(this);
+    }
 }
