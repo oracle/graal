@@ -170,8 +170,9 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Code snippet to multiplyCode two two variables. The test uses the snippet
-     * as a parameter to your language's {@link TruffleLanguage#parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
+     * Code snippet to multiplyCode two two variables. The test uses the snippet as a parameter to
+     * your language's
+     * {@link TruffleLanguage#parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
      * method.
      *
      * @param firstName name of the first variable to multiplyCode
@@ -631,22 +632,21 @@ public abstract class TruffleTCK {
         double expect = Math.floor(RANDOM.nextDouble() * 100000.0) / 10.0;
         Object parsed = function.invoke(null, "application/x-tck", "" + expect).get();
         assertTrue("Expecting numeric result, was:" + expect, parsed instanceof Number);
-        double value = ((Number)parsed).doubleValue();
+        double value = ((Number) parsed).doubleValue();
         assertEquals("Gets the double", expect, value, 0.01);
     }
 
     @Test
     public void multiplyTwoVariables() throws Exception {
-        final String firstVar = "var" + (char)('A' + RANDOM.nextInt(24));
-        final String secondVar = "var" + (char)('0' + RANDOM.nextInt(10));
+        final String firstVar = "var" + (char) ('A' + RANDOM.nextInt(24));
+        final String secondVar = "var" + (char) ('0' + RANDOM.nextInt(10));
         String mulCode = multiplyCode(firstVar, secondVar);
-        Source source = Source.fromText("TCK42:" + mimeType() + ":" + mulCode, "evaluate " + firstVar + " * " + secondVar)
-            .withMimeType("application/x-tck");
+        Source source = Source.fromText("TCK42:" + mimeType() + ":" + mulCode, "evaluate " + firstVar + " * " + secondVar).withMimeType("application/x-tck");
         final PolyglotEngine.Value evalSource = vm().eval(source);
         final PolyglotEngine.Value invokeMul = evalSource.invoke(null, firstVar, secondVar);
         Object result = invokeMul.get();
         assertTrue("Expecting numeric result, was:" + result, result instanceof Number);
-        assertEquals("Right value", 42, ((Number)result).intValue());
+        assertEquals("Right value", 42, ((Number) result).intValue());
     }
 
     private PolyglotEngine.Value findGlobalSymbol(String name) throws Exception {
