@@ -85,6 +85,12 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
         } else if (forValue instanceof IntegerConvertNode) {
             // SignExtendNode or ZeroExtendNode
             IntegerConvertNode<?, ?> other = (IntegerConvertNode<?, ?>) forValue;
+            if (other.getValue().getUsageCount() == 1 && other.getUsageCount() > 1) {
+                // Do not perform if this will introduce a new live value.
+                // If the original value's usage count is > 1, there is already another user.
+                // If the convert's usage count is <=1, it will be dead code eliminated.
+                return this;
+            }
             if (getResultBits() == other.getInputBits()) {
                 // xxxx -(extend)-> yyyy xxxx -(narrow)-> xxxx
                 // ==> no-op
