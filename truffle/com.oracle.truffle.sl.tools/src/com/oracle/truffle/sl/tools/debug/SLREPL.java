@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl.tools.debug;
 
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.instrument.SLDefaultVisualizer;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer;
 
@@ -49,8 +48,6 @@ import com.oracle.truffle.tools.debug.shell.server.REPLServer;
  * Start a single-language REPL for the Simple Language implementation.
  */
 public final class SLREPL {
-
-    @SuppressWarnings("unused") private static final Class<SLLanguage> DYNAMIC_DEPENDENCY = com.oracle.truffle.sl.SLLanguage.class;
 
     public static void main(String[] args) {
 
