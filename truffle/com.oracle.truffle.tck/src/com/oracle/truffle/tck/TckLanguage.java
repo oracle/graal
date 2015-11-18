@@ -29,14 +29,18 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 
-@TruffleLanguage.Registration(mimeType = "x-application/tck", name = "TCK", version = "1.0")
+@TruffleLanguage.Registration(mimeType = "application/x-tck", name = "TCK", version = "1.0")
 public final class TckLanguage extends TruffleLanguage<Env> {
     public static final TckLanguage INSTANCE = new TckLanguage();
 
@@ -47,8 +51,18 @@ public final class TckLanguage extends TruffleLanguage<Env> {
 
     @Override
     protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-        final double value = Double.parseDouble(code.getCode());
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(value));
+        final RootNode root;
+        final String txt = code.getCode();
+        if (txt.startsWith("TCK42:")) {
+            int nextColon = txt.indexOf(":", 6);
+            String mimeType = txt.substring(6, nextColon);
+            Source toParse = Source.fromText(txt.substring(nextColon + 1), "").withMimeType(mimeType);
+            root = new MultiplyNode(toParse);
+        } else {
+            final double value = Double.parseDouble(txt);
+            root = RootNode.createConstantNode(value);
+        }
+        return Truffle.getRuntime().createCallTarget(root);
     }
 
     @Override
@@ -84,5 +98,50 @@ public final class TckLanguage extends TruffleLanguage<Env> {
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
         throw new IOException();
+    }
+
+    private static final class MultiplyNode extends RootNode implements TruffleObject, ForeignAccess.Factory {
+        private final Source code;
+
+        public MultiplyNode(Source toParse) {
+            super(TckLanguage.class, null, null);
+            this.code = toParse;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Env env = TckLanguage.INSTANCE.findContext(TckLanguage.INSTANCE.createFindContextNode());
+            if (frame.getArguments().length == 0) {
+                return this;
+            }
+            try {
+                CallTarget call = env.parse(code, (String)frame.getArguments()[1], (String)frame.getArguments()[2]);
+                return call.call(6, 7);
+            } catch (IOException ex) {
+                throw new AssertionError("Cannot parse " + code, ex);
+            }
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return ForeignAccess.create(this);
+        }
+
+        @Override
+        public boolean canHandle(TruffleObject obj) {
+            return obj instanceof MultiplyNode;
+        }
+
+        @Override
+        public CallTarget accessMessage(Message tree) {
+            if (tree == Message.IS_EXECUTABLE) {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.TRUE));
+            } else if (Message.createExecute(2).equals(tree)) {
+                return Truffle.getRuntime().createCallTarget(this);
+            } else {
+                throw new IllegalArgumentException("" + tree);
+            }
+        }
+
     }
 }
