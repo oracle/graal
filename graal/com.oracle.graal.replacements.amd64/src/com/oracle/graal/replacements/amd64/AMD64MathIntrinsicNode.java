@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -78,6 +79,20 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
         super(TYPE, StampFactory.forKind(JavaKind.Double), value);
         assert value.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp()) == 64;
         this.operation = op;
+    }
+
+    @Override
+    public Stamp foldStamp(Stamp newStamp) {
+        if (newStamp instanceof FloatStamp) {
+            FloatStamp floatStamp = (FloatStamp) newStamp;
+            switch (operation()) {
+                case COS:
+                case SIN:
+                    boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY;
+                    return StampFactory.forFloat(JavaKind.Double, -1.0, 1.0, nonNaN);
+            }
+        }
+        return super.foldStamp(newStamp);
     }
 
     @Override

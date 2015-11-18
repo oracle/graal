@@ -106,4 +106,10 @@ public class SPARCMoveFactory implements MoveFactory {
                 return false;
         }
     }
+
+    @Override
+    public boolean allowConstantToStackMove(Constant value) {
+        return false;
+    }
+
 }

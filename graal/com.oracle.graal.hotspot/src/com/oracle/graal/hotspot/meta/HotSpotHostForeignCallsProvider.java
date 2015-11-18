@@ -30,7 +30,9 @@ import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT;
+import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_WITH_ORIGINAL_KEY;
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK;
+import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK_WITH_ORIGINAL_KEY;
 import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT;
 import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
@@ -306,6 +308,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                 // These stubs do callee saving
                 registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
                 registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
+                registerForeignCall(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE,
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
             } catch (JVMCIError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;
@@ -316,6 +320,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                 registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE,
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
                 registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE,
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
+                registerForeignCall(DECRYPT_WITH_ORIGINAL_KEY, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE,
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
             } catch (JVMCIError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {

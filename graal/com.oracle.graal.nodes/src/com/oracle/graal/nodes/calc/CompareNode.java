@@ -132,6 +132,12 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             ConvertNode convertX = (ConvertNode) forX;
             ConvertNode convertY = (ConvertNode) forY;
             if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getValue().stamp().isCompatible(convertY.getValue().stamp())) {
+                boolean multiUsage = (convertX.asNode().getUsageCount() > 1 || convertY.asNode().getUsageCount() > 1);
+                if ((forX instanceof ZeroExtendNode || forX instanceof SignExtendNode) && multiUsage) {
+                    // Do not perform for zero or sign extend if there are multiple usages of the
+                    // value.
+                    return this;
+                }
                 return duplicateModified(convertX.getValue(), convertY.getValue());
             }
         }
@@ -154,6 +160,12 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             return optimizeNormalizeCmp(constant, (NormalizeCompareNode) nonConstant, mirrored);
         } else if (nonConstant instanceof ConvertNode) {
             ConvertNode convert = (ConvertNode) nonConstant;
+            boolean multiUsage = (convert.asNode().getUsageCount() > 1 && convert.getValue().getUsageCount() == 1);
+            if ((convert instanceof ZeroExtendNode || convert instanceof SignExtendNode) && multiUsage) {
+                // Do not perform for zero or sign extend if it could introduce
+                // new live values.
+                return this;
+            }
             ConstantNode newConstant = canonicalConvertConstant(tool, convert, constant);
             if (newConstant != null) {
                 if (mirrored) {

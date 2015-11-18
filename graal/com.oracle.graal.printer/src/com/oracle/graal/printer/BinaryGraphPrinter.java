@@ -37,11 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Signature;
-
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.CachedGraph;
@@ -65,6 +60,11 @@ import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.phases.schedule.SchedulePhase;
+
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Signature;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 
@@ -428,6 +428,20 @@ public class BinaryGraphPrinter implements GraphPrinter {
         return node.getId();
     }
 
+    private Object getBlockForNode(Node node, NodeMap<Block> nodeToBlocks) {
+        if (nodeToBlocks.isNew(node)) {
+            return "NEW (not in schedule)";
+        } else {
+            Block block = nodeToBlocks.get(node);
+            if (block != null) {
+                return block.getId();
+            } else if (node instanceof PhiNode) {
+                return getBlockForNode(((PhiNode) node).merge(), nodeToBlocks);
+            }
+        }
+        return null;
+    }
+
     private void writeNodes(Graph graph, NodeMap<Block> nodeToBlocks, ControlFlowGraph cfg) throws IOException {
         Map<Object, Object> props = new HashMap<>();
 
@@ -444,13 +458,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 }
             }
             if (nodeToBlocks != null) {
-                if (nodeToBlocks.isNew(node)) {
-                    props.put("node-to-block", "NEW (not in schedule)");
-                } else {
-                    Block block = nodeToBlocks.get(node);
-                    if (block != null) {
-                        props.put("node-to-block", block.getId());
-                    }
+                Object block = getBlockForNode(node, nodeToBlocks);
+                if (block != null) {
+                    props.put("node-to-block", block);
                 }
             }
 
@@ -535,9 +545,23 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(blocks.size());
             for (Block block : blocks) {
                 List<Node> nodes = blockToNodes.get(block);
+                List<Node> extraNodes = new LinkedList<>();
                 writeInt(block.getId());
-                writeInt(nodes.size());
                 for (Node node : nodes) {
+                    if (node instanceof AbstractMergeNode) {
+                        AbstractMergeNode merge = (AbstractMergeNode) node;
+                        for (PhiNode phi : merge.phis()) {
+                            if (!nodes.contains(phi)) {
+                                extraNodes.add(phi);
+                            }
+                        }
+                    }
+                }
+                writeInt(nodes.size() + extraNodes.size());
+                for (Node node : nodes) {
+                    writeInt(getNodeId(node));
+                }
+                for (Node node : extraNodes) {
                     writeInt(getNodeId(node));
                 }
                 writeInt(block.getSuccessors().size());

@@ -31,6 +31,7 @@ import com.oracle.graal.phases.common.FrameStateAssignmentPhase;
 import com.oracle.graal.phases.common.GuardLoweringPhase;
 import com.oracle.graal.phases.common.LoopSafepointInsertionPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
+import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.tiers.MidTierContext;
 
 public class EconomyMidTier extends PhaseSuite<MidTierContext> {
@@ -40,6 +41,7 @@ public class EconomyMidTier extends PhaseSuite<MidTierContext> {
         if (ImmutableCode.getValue()) {
             canonicalizer.disableReadCanonicalization();
         }
+        appendPhase(new RemoveValueProxyPhase());
 
         appendPhase(new LoopSafepointInsertionPhase());
 

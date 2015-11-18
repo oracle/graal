@@ -37,6 +37,8 @@ import jdk.vm.ci.options.Option;
 import jdk.vm.ci.options.OptionType;
 import jdk.vm.ci.options.OptionValue;
 
+import com.oracle.graal.loop.DefaultLoopPolicies;
+import com.oracle.graal.loop.LoopPolicies;
 import com.oracle.graal.loop.phases.LoopFullUnrollPhase;
 import com.oracle.graal.loop.phases.LoopPeelingPhase;
 import com.oracle.graal.loop.phases.LoopUnswitchingPhase;
@@ -87,16 +89,17 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             appendPhase(new ConvertDeoptimizeToGuardPhase());
         }
 
+        LoopPolicies loopPolicies = createLoopPolicies();
         if (FullUnroll.getValue()) {
-            appendPhase(new LoopFullUnrollPhase(canonicalizer));
+            appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
         }
 
         if (OptLoopTransform.getValue()) {
             if (LoopPeeling.getValue()) {
-                appendPhase(new LoopPeelingPhase());
+                appendPhase(new LoopPeelingPhase(loopPolicies));
             }
             if (LoopUnswitch.getValue()) {
-                appendPhase(new LoopUnswitchingPhase());
+                appendPhase(new LoopUnswitchingPhase(loopPolicies));
             }
         }
 
@@ -113,5 +116,9 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         if (UseGraalInstrumentation.getValue()) {
             appendPhase(new HighTierReconcileInstrumentationPhase());
         }
+    }
+
+    public LoopPolicies createLoopPolicies() {
+        return new DefaultLoopPolicies();
     }
 }

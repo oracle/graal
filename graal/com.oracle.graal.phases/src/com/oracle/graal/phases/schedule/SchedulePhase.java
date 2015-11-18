@@ -49,6 +49,7 @@ import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.ControlSinkNode;
 import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.GuardNode;
@@ -275,6 +276,10 @@ public final class SchedulePhase extends Phase {
             for (Node n : nodes) {
                 assert n.isAlive();
                 assert nodeMap.get(n) == b;
+                StructuredGraph g = (StructuredGraph) n.graph();
+                if (g.hasLoops() && g.getGuardsStage().areDeoptsFixed() && n instanceof DeoptimizeNode) {
+                    assert b.getLoopDepth() == 0 : n;
+                }
             }
         }
         return true;
