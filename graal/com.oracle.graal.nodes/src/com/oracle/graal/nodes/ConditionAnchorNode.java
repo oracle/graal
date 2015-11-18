@@ -70,12 +70,12 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
     }
 
     public Node canonical(CanonicalizerTool tool, Node forValue) {
-        if (condition instanceof LogicNegationNode) {
-            LogicNegationNode negation = (LogicNegationNode) condition;
+        if (forValue instanceof LogicNegationNode) {
+            LogicNegationNode negation = (LogicNegationNode) forValue;
             return new ConditionAnchorNode(negation.getValue(), !negated);
         }
-        if (condition instanceof LogicConstantNode) {
-            LogicConstantNode c = (LogicConstantNode) condition;
+        if (forValue instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) forValue;
             if (c.getValue() != negated) {
                 return null;
             } else {
