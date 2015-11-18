@@ -516,13 +516,14 @@ public class InliningUtil {
                 if (outerFrameState == null) {
                     outerFrameState = stateAtReturn.duplicateModifiedDuringCall(invoke.bci(), invokeReturnKind);
                 }
-                processFrameState(frameState, invoke, inlineGraph.method(), stateAtExceptionEdge, outerFrameState, alwaysDuplicateStateAfter);
+                processFrameState(frameState, invoke, inlineGraph.method(), stateAtExceptionEdge, outerFrameState, alwaysDuplicateStateAfter, invoke.callTarget().targetMethod(),
+                                invoke.callTarget().arguments());
             }
         }
     }
 
     public static FrameState processFrameState(FrameState frameState, Invoke invoke, ResolvedJavaMethod inlinedMethod, FrameState stateAtExceptionEdge, FrameState outerFrameState,
-                    boolean alwaysDuplicateStateAfter) {
+                    boolean alwaysDuplicateStateAfter, ResolvedJavaMethod invokeTargetMethod, List<ValueNode> invokeArgsList) {
 
         FrameState stateAtReturn = invoke.stateAfter();
         JavaKind invokeReturnKind = invoke.asNode().getStackKind();
@@ -569,10 +570,9 @@ public class InliningUtil {
             // This is an intrinsic. Deoptimizing within an intrinsic
             // must re-execute the intrinsified invocation
             assert frameState.outerFrameState() == null;
-            NodeInputList<ValueNode> invokeArgsList = invoke.callTarget().arguments();
             ValueNode[] invokeArgs = invokeArgsList.isEmpty() ? NO_ARGS : invokeArgsList.toArray(new ValueNode[invokeArgsList.size()]);
-            ResolvedJavaMethod targetMethod = invoke.callTarget().targetMethod();
-            FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), invokeArgs);
+            FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, invokeTargetMethod.getSignature().toParameterKinds(!invokeTargetMethod.isStatic()),
+                            invokeArgs);
             frameState.replaceAndDelete(stateBeforeCall);
             return stateBeforeCall;
         } else {

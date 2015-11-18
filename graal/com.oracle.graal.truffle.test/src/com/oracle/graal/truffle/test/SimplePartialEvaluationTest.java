@@ -42,6 +42,7 @@ import com.oracle.graal.truffle.test.nodes.LoopTestNode;
 import com.oracle.graal.truffle.test.nodes.NestedExplodedLoopTestNode;
 import com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode;
 import com.oracle.graal.truffle.test.nodes.ObjectEqualsNode;
+import com.oracle.graal.truffle.test.nodes.ObjectHashCodeNode;
 import com.oracle.graal.truffle.test.nodes.RecursionTestNode;
 import com.oracle.graal.truffle.test.nodes.RootTestNode;
 import com.oracle.graal.truffle.test.nodes.StoreLocalTestNode;
@@ -227,5 +228,23 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         OptimizedCallTarget compilable = compileHelper("intrinsicVirtual", rootNode, new Object[0]);
 
         Assert.assertEquals(42, compilable.call(new Object[0]));
+    }
+
+    @Test
+    public void intrinsicHashCode() {
+        /*
+         * The intrinsic for Object.hashCode() is inlined late during Truffle partial evaluation,
+         * because we call hashCode() on a value whose exact type Object is only known during
+         * partial evaluation.
+         */
+        FrameDescriptor fd = new FrameDescriptor();
+        Object testObject = new Object();
+        AbstractTestNode result = new ObjectHashCodeNode(testObject);
+        RootNode rootNode = new RootTestNode(fd, "intrinsicHashCode", result);
+        OptimizedCallTarget compilable = compileHelper("intrinsicHashCode", rootNode, new Object[0]);
+
+        int actual = (Integer) compilable.call(new Object[0]);
+        int expected = testObject.hashCode();
+        Assert.assertEquals(expected, actual);
     }
 }
