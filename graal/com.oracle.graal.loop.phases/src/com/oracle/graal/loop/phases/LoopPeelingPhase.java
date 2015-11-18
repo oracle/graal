@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.loop.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.loop.LoopEx;
+import com.oracle.graal.loop.LoopPolicies;
+import com.oracle.graal.loop.LoopsData;
+import com.oracle.graal.nodes.StructuredGraph;
 
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.ExpandLogicPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.tiers.LowTierContext;
+public class LoopPeelingPhase extends ContextlessLoopPhase<LoopPolicies> {
 
-public class EconomyLowTier extends PhaseSuite<LowTierContext> {
+    public LoopPeelingPhase(LoopPolicies policies) {
+        super(policies);
+    }
 
-    public EconomyLowTier() {
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        if (ImmutableCode.getValue()) {
-            canonicalizer.disableReadCanonicalization();
+    @Override
+    protected void run(StructuredGraph graph) {
+        if (graph.hasLoops()) {
+            LoopsData data = new LoopsData(graph);
+            for (LoopEx loop : data.outerFirst()) {
+                if (getPolicies().shouldPeel(loop, data.getCFG())) {
+                    Debug.log("Peeling %s", loop);
+                    LoopTransformations.peel(loop);
+                    Debug.dump(graph, "Peeling %s", loop);
+                }
+            }
+            data.deleteUnusedNodes();
         }
-
-        appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER));
-
-        appendPhase(new ExpandLogicPhase());
     }
 }

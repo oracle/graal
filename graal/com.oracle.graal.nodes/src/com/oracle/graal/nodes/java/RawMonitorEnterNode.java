@@ -38,8 +38,8 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 /**
- * The {@code MonitorEnterNode} represents the acquisition of a monitor. The object needs already be
- * non-null and the hub is an additional parameter to the node.
+ * The {@code RawMonitorEnterNode} represents the acquisition of a monitor. The object needs to
+ * already be non-null and the hub is an additional parameter to the node.
  */
 @NodeInfo
 public final class RawMonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, MemoryCheckpoint.Single {

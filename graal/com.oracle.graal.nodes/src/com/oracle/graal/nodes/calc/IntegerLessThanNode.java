@@ -83,6 +83,20 @@ public final class IntegerLessThanNode extends CompareNode {
         return this;
     }
 
+    public static boolean subtractMayUnderflow(long x, long y, long minValue) {
+        long r = x - y;
+        // HD 2-12 Overflow iff the arguments have different signs and
+        // the sign of the result is different than the sign of x
+        return (((x ^ y) & (x ^ r)) < 0) || r <= minValue;
+    }
+
+    public static boolean subtractMayOverflow(long x, long y, long maxValue) {
+        long r = x - y;
+        // HD 2-12 Overflow iff the arguments have different signs and
+        // the sign of the result is different than the sign of x
+        return (((x ^ y) & (x ^ r)) < 0) || r > maxValue;
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         ValueNode result = super.canonical(tool, forX, forY);
@@ -96,6 +110,18 @@ public final class IntegerLessThanNode extends CompareNode {
         if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
             if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(), (IntegerStamp) forY.stamp())) {
                 return new IntegerBelowNode(forX, forY);
+            }
+        }
+        if (forY.isConstant() && forY.asConstant().isDefaultForKind() && forX instanceof SubNode) {
+            // (x - y) < 0 when x - y is known not to underflow == x < y
+            SubNode sub = (SubNode) forX;
+            IntegerStamp xStamp = (IntegerStamp) sub.getX().stamp();
+            IntegerStamp yStamp = (IntegerStamp) sub.getY().stamp();
+            long minValue = CodeUtil.minValue(xStamp.getBits());
+            long maxValue = CodeUtil.maxValue(xStamp.getBits());
+
+            if (!subtractMayUnderflow(xStamp.lowerBound(), yStamp.upperBound(), minValue) && !subtractMayOverflow(xStamp.upperBound(), yStamp.lowerBound(), maxValue)) {
+                return new IntegerLessThanNode(sub.getX(), sub.getY());
             }
         }
         return this;

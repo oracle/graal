@@ -28,6 +28,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.loop.DefaultLoopPolicies;
 import com.oracle.graal.loop.phases.LoopFullUnrollPhase;
 import com.oracle.graal.loop.phases.LoopPeelingPhase;
 import com.oracle.graal.nodes.extended.ValueAnchorNode;
@@ -312,7 +313,7 @@ public class EscapeAnalysisTest extends EATestBase {
     @Test
     public void testFullyUnrolledLoop() {
         prepareGraph("testFullyUnrolledLoopSnippet", false);
-        new LoopFullUnrollPhase(new CanonicalizerPhase()).apply(graph, context);
+        new LoopFullUnrollPhase(new CanonicalizerPhase(), new DefaultLoopPolicies()).apply(graph, context);
         new PartialEscapePhase(false, new CanonicalizerPhase()).apply(graph, context);
         Assert.assertEquals(1, returnNodes.size());
         Assert.assertTrue(returnNodes.get(0).result() instanceof AllocatedObjectNode);
@@ -343,7 +344,7 @@ public class EscapeAnalysisTest extends EATestBase {
     @Test
     public void testPeeledLoop() {
         prepareGraph("testPeeledLoopSnippet", false);
-        new LoopPeelingPhase().apply(graph);
+        new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph);
         new SchedulePhase().apply(graph);
     }
 

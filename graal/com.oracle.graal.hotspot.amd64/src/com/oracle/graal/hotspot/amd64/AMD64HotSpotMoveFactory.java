@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
+import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -48,6 +49,14 @@ public class AMD64HotSpotMoveFactory extends AMD64MoveFactory {
         } else {
             return super.canInlineConstant(c);
         }
+    }
+
+    @Override
+    public boolean allowConstantToStackMove(Constant value) {
+        if (value instanceof HotSpotConstant) {
+            return ((HotSpotConstant) value).isCompressed();
+        }
+        return true;
     }
 
     @Override

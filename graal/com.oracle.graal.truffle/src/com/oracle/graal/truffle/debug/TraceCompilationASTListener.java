@@ -69,7 +69,7 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
                     target.log(String.format("%s%s", indent, node.getClass().getSimpleName()));
                 } else {
                     String fieldName = "unknownField";
-                    NodeFieldAccessor[] fields = NodeClass.Lookup.get(parent).getFields();
+                    NodeFieldAccessor[] fields = NodeClass.get(parent).getFields();
                     for (NodeFieldAccessor field : fields) {
                         Object value = field.loadValue(parent);
                         if (value == node) {

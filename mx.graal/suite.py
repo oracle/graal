@@ -39,7 +39,7 @@ suite = {
             {
                "name" : "jvmci",
                "optional" : "true",
-               "version" : "c2b84783a4a4950a5fc5b4c75536291ae6952c40",
+               "version" : "2dea101cdfe9aacf55083cf5bd6f84cb23106f4e",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -47,7 +47,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "0d4b0e4263ee95e3b0576409d7311489d4f5d463",
+               "version" : "dea950d41ef34ae68759ff0300a1fd80cf145c0f",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -493,7 +493,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.api.directives",
         "com.oracle.graal.java",
-        "com.oracle.graal.loop",
+        "com.oracle.graal.loop.phases",
         "com.oracle.graal.word",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -664,7 +664,20 @@ suite = {
     "com.oracle.graal.loop" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.graal.phases.common"],
+      "dependencies" : ["com.oracle.graal.nodes"],
+      "annotationProcessors" : deps(["jvmci:JVMCI_OPTIONS_PROCESSOR"]),
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal",
+    },
+
+    "com.oracle.graal.loop.phases" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+	 "com.oracle.graal.loop",
+	 "com.oracle.graal.phases.common",
+       ],
       "annotationProcessors" : deps(["jvmci:JVMCI_OPTIONS_PROCESSOR"]),
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
@@ -676,7 +689,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.virtual",
-        "com.oracle.graal.loop",
+        "com.oracle.graal.loop.phases",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package com.oracle.graal.loop.phases;
 
-import java.util.List;
+import com.oracle.graal.loop.LoopPolicies;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
-import com.oracle.graal.nodes.ControlSplitNode;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+public abstract class LoopPhase<P extends LoopPolicies> extends BasePhase<PhaseContext> {
+    private P policies;
 
-public interface LoopPolicies {
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg);
+    public LoopPhase(P policies) {
+        this.policies = policies;
+    }
 
-    boolean shouldFullUnroll(LoopEx loop);
-
-    boolean shouldTryUnswitch(LoopEx loop);
-
-    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
+    protected P getPolicies() {
+        return policies;
+    }
 }

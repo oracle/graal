@@ -67,6 +67,12 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
          */
         boolean canInlineConstant(JavaConstant c);
 
+        /**
+         * @param constant The constant that might be moved to a stack slot.
+         * @return {@code true} if constant to stack moves are supported for this constant.
+         */
+        boolean allowConstantToStackMove(Constant constant);
+
         LIRInstruction createMove(AllocatableValue result, Value input);
 
         LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input);

@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK;
+import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK_WITH_ORIGINAL_KEY;
 import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
@@ -56,6 +57,7 @@ import com.oracle.graal.word.Word;
 public class AESCryptSubstitutions {
 
     static final long kOffset;
+    static final long lastKeyOffset;
     static final Class<?> AESCryptClass;
     static final int AES_BLOCK_SIZE;
 
@@ -66,6 +68,7 @@ public class AESCryptSubstitutions {
             ClassLoader cl = Launcher.getLauncher().getClassLoader();
             AESCryptClass = Class.forName("com.sun.crypto.provider.AESCrypt", true, cl);
             kOffset = UnsafeAccess.UNSAFE.objectFieldOffset(AESCryptClass.getDeclaredField("K"));
+            lastKeyOffset = UnsafeAccess.UNSAFE.objectFieldOffset(AESCryptClass.getDeclaredField("lastKey"));
             Field aesBlockSizeField = Class.forName("com.sun.crypto.provider.AESConstants", true, cl).getDeclaredField("AES_BLOCK_SIZE");
             aesBlockSizeField.setAccessible(true);
             AES_BLOCK_SIZE = aesBlockSizeField.getInt(null);
@@ -75,32 +78,53 @@ public class AESCryptSubstitutions {
     }
 
     static void encryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        crypt(rcvr, in, inOffset, out, outOffset, true);
+        crypt(rcvr, in, inOffset, out, outOffset, true, false);
     }
 
     static void implEncryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        crypt(rcvr, in, inOffset, out, outOffset, true);
+        crypt(rcvr, in, inOffset, out, outOffset, true, false);
     }
 
     static void decryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        crypt(rcvr, in, inOffset, out, outOffset, false);
+        crypt(rcvr, in, inOffset, out, outOffset, false, false);
     }
 
     static void implDecryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        crypt(rcvr, in, inOffset, out, outOffset, false);
+        crypt(rcvr, in, inOffset, out, outOffset, false, false);
     }
 
-    private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt) {
+    /**
+     * Variation for platforms (e.g. SPARC) that need do key expansion in stubs due to compatibility
+     * issues between Java key expansion and hardware crypto instructions.
+     */
+    static void decryptBlockWithOriginalKey(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
+        crypt(rcvr, in, inOffset, out, outOffset, false, true);
+    }
+
+    /**
+     * @see #decryptBlockWithOriginalKey(Object, byte[], int, byte[], int)
+     */
+    static void implDecryptBlockWithOriginalKey(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
+        crypt(rcvr, in, inOffset, out, outOffset, false, true);
+    }
+
+    private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt, boolean withOriginalKey) {
         checkArgs(in, inOffset, out, outOffset);
         Object realReceiver = PiNode.piCastNonNull(rcvr, AESCryptClass);
         Object kObject = UnsafeLoadNode.load(realReceiver, kOffset, JavaKind.Object, LocationIdentity.any());
-        Pointer kAddr = Word.objectToTrackedPointer(kObject).add(getArrayBaseOffset(JavaKind.Byte));
+        Pointer kAddr = Word.objectToTrackedPointer(kObject).add(getArrayBaseOffset(JavaKind.Int));
         Word inAddr = Word.unsigned(ComputeObjectAddressNode.get(in, getArrayBaseOffset(JavaKind.Byte) + inOffset));
         Word outAddr = Word.unsigned(ComputeObjectAddressNode.get(out, getArrayBaseOffset(JavaKind.Byte) + outOffset));
         if (encrypt) {
             encryptBlockStub(ENCRYPT_BLOCK, inAddr, outAddr, kAddr);
         } else {
-            decryptBlockStub(DECRYPT_BLOCK, inAddr, outAddr, kAddr);
+            if (withOriginalKey) {
+                Object lastKeyObject = UnsafeLoadNode.load(realReceiver, lastKeyOffset, JavaKind.Object, LocationIdentity.any());
+                Pointer lastKeyAddr = Word.objectToTrackedPointer(lastKeyObject).add(getArrayBaseOffset(JavaKind.Byte));
+                decryptBlockWithOriginalKeyStub(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, inAddr, outAddr, kAddr, lastKeyAddr);
+            } else {
+                decryptBlockStub(DECRYPT_BLOCK, inAddr, outAddr, kAddr);
+            }
         }
     }
 
@@ -118,4 +142,7 @@ public class AESCryptSubstitutions {
 
     @NodeIntrinsic(ForeignCallNode.class)
     public static native void decryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native void decryptBlockWithOriginalKeyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key, Pointer originalKey);
 }

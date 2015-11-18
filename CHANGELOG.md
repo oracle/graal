@@ -1,12 +1,16 @@
-# GraalVM Changelog
+# Graal Changelog
 
 This changelog summarizes major changes between Graal versions relevant to developers building technology on top of Graal. The main focus is on APIs exported by Graal but other significant performance/stability changes are mentioned as well.
 
 ## `tip`
+...
+
+## Version 0.10
+17-Nov-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal-compiler/shortlog/graal-0.10)
 * Added experimental Trace Register Allocator.
 * All JVMCI (and HotSpot) code has been moved into a [separate repository](http://hg.openjdk.java.net/graal/graal-jvmci-8/).
 * JVMCI code is now in jdk.vm.ci.* name space.
-* Graal now works on top of a JVMCI enabled JDK9 binary.
+* Graal now passes the gate on top of a JVMCI enabled JDK9 binary.
 * Separate Graal compiler can be specified for Truffle compilation with new `-G:TruffleCompiler` option.
 * Initialization of the Truffle compiler is delayed until first Truffle compilation request.
 
