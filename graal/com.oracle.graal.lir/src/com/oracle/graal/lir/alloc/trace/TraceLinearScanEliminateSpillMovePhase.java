@@ -88,6 +88,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
                     List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                     int numInst = instructions.size();
 
+                    int lastOpId = -1;
                     // iterate all instructions of the block.
                     for (int j = 0; j < numInst; j++) {
                         LIRInstruction op = instructions.get(j);
@@ -100,7 +101,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
                              * be correct. Only moves that have been inserted by LinearScan can be
                              * removed.
                              */
-                            if (shouldEliminateSpillMoves && canEliminateSpillMove(allocator, block, move)) {
+                            if (shouldEliminateSpillMoves && canEliminateSpillMove(allocator, block, move, lastOpId)) {
                                 /*
                                  * Move target is a stack slot that is always correct, so eliminate
                                  * instruction.
@@ -121,6 +122,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
                             }
 
                         } else {
+                            lastOpId = opId;
                             /*
                              * Insert move from register to stack just after the beginning of the
                              * interval.
@@ -173,13 +175,16 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
      * @param allocator
      * @param block The block {@code move} is located in.
      * @param move Spill move.
+     * @param lastOpId The id of last "normal" instruction before the spill move. (Spill moves have
+     *            no valid opId but -1.)
      */
-    private static boolean canEliminateSpillMove(TraceLinearScan allocator, AbstractBlockBase<?> block, MoveOp move) {
+    private static boolean canEliminateSpillMove(TraceLinearScan allocator, AbstractBlockBase<?> block, MoveOp move, int lastOpId) {
         assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " + move;
+        assert lastOpId >= 0 : "Invalid lastOpId: " + lastOpId;
 
         TraceInterval curInterval = allocator.intervalFor(move.getResult());
 
-        if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory() && isPhiResolutionMove(allocator, move)) {
+        if (!isRegister(curInterval.location()) && curInterval.inMemoryAt(lastOpId) && isPhiResolutionMove(allocator, move)) {
             assert isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
             return true;
         }

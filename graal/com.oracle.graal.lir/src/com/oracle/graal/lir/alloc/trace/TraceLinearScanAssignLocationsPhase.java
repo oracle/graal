@@ -148,7 +148,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                  * instruction is a branch, spill moves are inserted before this branch and so the
                  * wrong operand would be returned (spill moves at block boundaries are not
                  * considered in the live ranges of intervals).
-                 *
+                 * 
                  * Solution: use the first opId of the branch target block instead.
                  */
                 final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
@@ -264,7 +264,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                     assert interval != null : "interval must exist";
                     interval = allocator.splitChildAtOpId(interval, instruction.id(), mode);
 
-                    if (interval.alwaysInMemory() && isRegister(interval.location())) {
+                    if (interval.inMemoryAt(instruction.id()) && isRegister(interval.location())) {
                         return new ShadowedRegisterValue((RegisterValue) interval.location(), interval.spillSlot());
                     }
                 }
