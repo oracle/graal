@@ -41,6 +41,7 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin;
@@ -227,7 +228,7 @@ public class TruffleGraphBuilderPlugins {
                      * and constant folding could still eliminate the call to bailout(). However, we
                      * also want to stop parsing, since we are sure that we will never need the
                      * graph beyond the bailout point.
-                     * 
+                     *
                      * Therefore, we manually emit the call to bailout, which will be intrinsified
                      * later when intrinsifications can no longer be delayed. The call is followed
                      * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
@@ -313,7 +314,9 @@ public class TruffleGraphBuilderPlugins {
                         }
                         sb.append(")");
                     }
-                    throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb.toString());
+                    String nodeDescription = sb.toString();
+                    Debug.dump(value.graph(), "Graph before bailout at node " + nodeDescription);
+                    throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + nodeDescription);
                 }
             }
         });
