@@ -291,8 +291,17 @@ public abstract class REPLHandler {
             if (callName == null) {
                 return finishReplyFailed(reply, "no name specified");
             }
+            final ArrayList<Object> argList = new ArrayList<>();
+            for (int argCount = 0; argCount < REPLMessage.ARG_NAMES.length; argCount++) {
+                final String arg = request.get(REPLMessage.ARG_NAMES[argCount]);
+                if (arg == null) {
+                    break;
+                }
+                argList.add(arg);
+            }
+            final Object[] args = argList.toArray(new Object[0]);
             try {
-                replServer.call(callName);
+                replServer.call(callName, args);
             } catch (QuitException ex) {
                 throw ex;
             } catch (KillException ex) {

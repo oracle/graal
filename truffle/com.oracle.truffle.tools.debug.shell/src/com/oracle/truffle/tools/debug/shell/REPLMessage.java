@@ -56,6 +56,16 @@ public final class REPLMessage {
     public static final String BREAKPOINT_INFO = "breakpoint-info";
     public static final String BREAKPOINT_STATE = "breakpoint-state";
     public static final String CALL = "call";
+    public static final String ARG0 = "call-argument-0";
+    public static final String ARG1 = "call-argument-1";
+    public static final String ARG2 = "call-argument-2";
+    public static final String ARG3 = "call-argument-3";
+    public static final String ARG4 = "call-argument-4";
+    public static final String ARG5 = "call-argument-5";
+    public static final String ARG6 = "call-argument-6";
+    public static final String ARG7 = "call-argument-7";
+    public static final String ARG8 = "call-argument-8";
+    public static final String ARG9 = "call-argument-9";
     public static final String CALL_NAME = "call-name";
     public static final String CLEAR_BREAK = "clear-breakpoint";
     public static final String CODE = "code";
@@ -119,6 +129,7 @@ public final class REPLMessage {
     public static final String VALUE = "value";
     public static final String WARNINGS = "warnings";
     public static final String WELCOME_MESSAGE = "welcome-message";
+    public static final String[] ARG_NAMES = new String[]{ARG0, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9};
     private final Map<String, String> map;
 
     /**

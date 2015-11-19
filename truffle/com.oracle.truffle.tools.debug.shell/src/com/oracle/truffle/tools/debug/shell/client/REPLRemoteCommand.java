@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.debug.shell.client;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -213,15 +214,20 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         public REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (args.length == 1) {
                 context.displayFailReply("name to call not speciified");
-            } else if (args.length > 2) {
-                context.displayFailReply("call arguments not yet supported");
-            } else {
-                final REPLMessage request = new REPLMessage();
-                request.put(REPLMessage.OP, REPLMessage.CALL);
-                request.put(REPLMessage.CALL_NAME, args[1]);
-                return request;
+                return null;
             }
-            return null;
+            final int maxArgs = REPLMessage.ARG_NAMES.length;
+            if (args.length > maxArgs + 2) {
+                context.displayFailReply("too many call arguments; no more than " + maxArgs + " supported");
+                return null;
+            }
+            final REPLMessage request = new REPLMessage();
+            request.put(REPLMessage.OP, REPLMessage.CALL);
+            request.put(REPLMessage.CALL_NAME, args[1]);
+            for (int argIn = 2, argOut = 0; argIn < args.length; argIn++, argOut++) {
+                request.put(REPLMessage.ARG_NAMES[argOut], args[argIn]);
+            }
+            return request;
         }
     };
 
