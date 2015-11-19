@@ -80,6 +80,9 @@ public class EngineTest {
         assertNotEquals("Two executions in different languages don't share the nodes", hashIn1Round1, altIn2Round1);
         assertNotEquals("Two executions in different languages don't share the nodes", hashIn2Round2, altIn1Round2);
         assertNotEquals("Two executions in different languages don't share the nodes", hashIn2Round2, altIn2Round2);
+
+        assertNotEquals("Two executions in different engines don't share the nodes", hashIn1Round1, hashIn2Round1);
+        assertNotEquals("Two executions in different engines don't share the nodes", hashIn2Round2, hashIn1Round2);
     }
 
     protected Thread forbiddenThread() {

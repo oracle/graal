@@ -72,8 +72,6 @@ import java.util.Objects;
  */
 @SuppressWarnings("javadoc")
 public abstract class TruffleLanguage<C> {
-    private final Map<Source, CallTarget> compiled = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
-
     /**
      * Constructor to be called by subclasses.
      */
@@ -461,14 +459,14 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        protected Object eval(TruffleLanguage<?> language, Source source) throws IOException {
-            CallTarget target = language.compiled.get(source);
+        protected Object eval(TruffleLanguage<?> language, Source source, Map<Source, CallTarget> cache) throws IOException {
+            CallTarget target = cache.get(source);
             if (target == null) {
                 target = language.parse(source, null);
                 if (target == null) {
                     throw new IOException("Parsing has not produced a CallTarget for " + source);
                 }
-                language.compiled.put(source, target);
+                cache.put(source, target);
             }
             try {
                 return target.call();

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.Map;
 
 /**
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
@@ -153,8 +154,8 @@ public abstract class Accessor {
         return API.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter);
     }
 
-    protected Object eval(TruffleLanguage<?> l, Source s) throws IOException {
-        return API.eval(l, s);
+    protected Object eval(TruffleLanguage<?> l, Source s, Map<Source, CallTarget> cache) throws IOException {
+        return API.eval(l, s, cache);
     }
 
     protected Object evalInContext(Object vm, SuspendedEvent ev, String code, FrameInstance frame) throws IOException {
