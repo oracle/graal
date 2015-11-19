@@ -170,9 +170,10 @@ public final class SourceSection {
     }
 
     /**
-     * Returns text described by this section.
+     * Returns the source code fragment described by this section.
      *
-     * @return the code as a String object
+     * @return the code as a string, or {@code "<unavailable>"} if the SourceSection was created
+     *         using {@link #createUnavailable}.
      */
     public String getCode() {
         return source == null ? "<unavailable>" : source.getCode(charIndex, charLength);
@@ -182,7 +183,7 @@ public final class SourceSection {
      * Returns a short description of the source section, using just the file name, rather than its
      * full path.
      *
-     * @return a short description of the source section
+     * @return a short description of the source section formatted as {@code <filename>:<line>}.
      */
     public String getShortDescription() {
         if (source == null) {
@@ -191,6 +192,13 @@ public final class SourceSection {
         return String.format("%s:%d", source.getShortName(), startLine);
     }
 
+    /**
+     * Returns an implementation-defined string representation of this source section to be used for
+     * debugging purposes only.
+     *
+     * @see #getCode()
+     * @see #getShortDescription()
+     */
     @Override
     public String toString() {
         return getShortDescription();

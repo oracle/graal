@@ -38,7 +38,7 @@ public class SourceSectionTest {
 
     private final Source shortSource = Source.fromText("01", null);
 
-    private final Source longSource = Source.fromText("01234\n67\n9\n", null);
+    private final Source longSource = Source.fromText("01234\n67\n9\n", "long");
 
     public void emptySourceTest0() {
         SourceSection section = emptySource.createSection("test", 0, 0);
@@ -84,4 +84,17 @@ public class SourceSectionTest {
         assertEquals(section.getCode(), "");
     }
 
+    @Test
+    public void testGetCode() {
+        assertEquals("01234", longSource.createSection("test", 0, 5).getCode());
+        assertEquals("67", longSource.createSection("test", 6, 2).getCode());
+        assertEquals("9", longSource.createSection("test", 9, 1).getCode());
+    }
+
+    @Test
+    public void testGetShortDescription() {
+        assertEquals("long:1", longSource.createSection("test", 0, 5).getShortDescription());
+        assertEquals("long:2", longSource.createSection("test", 6, 2).getShortDescription());
+        assertEquals("long:3", longSource.createSection("test", 9, 1).getShortDescription());
+    }
 }
