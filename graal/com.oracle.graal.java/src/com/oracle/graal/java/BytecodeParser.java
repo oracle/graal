@@ -2909,7 +2909,15 @@ public class BytecodeParser implements GraphBuilderContext {
         if (value) {
             nextBlock = trueBlock;
         }
-        appendGoto(nextBlock);
+        int startBci = nextBlock.startBci;
+        int targetAtStart = stream.readUByte(startBci);
+        if (targetAtStart == Bytecodes.GOTO) {
+            // This is an empty block. Skip it.
+            appendGoto(nextBlock.successors.get(0));
+            assert nextBlock.numNormalSuccessors() == 1;
+        } else {
+            appendGoto(nextBlock);
+        }
     }
 
     private int checkPositiveIntConstantPushed(BciBlock block) {
