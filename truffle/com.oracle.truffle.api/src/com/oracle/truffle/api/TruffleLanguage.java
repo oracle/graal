@@ -198,6 +198,7 @@ public abstract class TruffleLanguage<C> {
      * asks all known languages for <code>onlyExplicit</code> symbols and only when none is found,
      * it does one more round with <code>onlyExplicit</code> set to <code>false</code>.
      *
+     * @param context context to locate the global symbol in
      * @param globalName the name of the global symbol to find
      * @param onlyExplicit should the language seek for implicitly exported object or only consider
      *            the explicitly exported ones?
@@ -213,6 +214,7 @@ public abstract class TruffleLanguage<C> {
      * language) but technically it can be one of Java primitive wrappers ({@link Integer},
      * {@link Double}, {@link Short}, etc.).
      *
+     * @param context context to find the language global in
      * @return the global object or <code>null</code> if the language does not support such concept
      */
     protected abstract Object getLanguageGlobal(C context);
