@@ -52,14 +52,18 @@ public final class CountingConditionProfile extends ConditionProfile {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
             if (CompilerDirectives.inInterpreter()) {
-                trueCount++;
+                if (trueCount < Integer.MAX_VALUE) {
+                    trueCount++;
+                }
             }
         } else {
             if (falseCount == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
             if (CompilerDirectives.inInterpreter()) {
-                falseCount++;
+                if (falseCount < Integer.MAX_VALUE) {
+                    falseCount++;
+                }
             }
         }
         return CompilerDirectives.injectBranchProbability((double) trueCount / (double) (trueCount + falseCount), value);
