@@ -157,8 +157,10 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Parses the provided source and generates appropriate AST. The parsing should execute no user
-     * code, it should only create the {@link Node} tree to represent the source. The parsing may be
-     * performed in a context (specified as another {@link Node}) or without context. The
+     * code, it should only create the {@link Node} tree to represent the source. If the provided
+     * source does not correspond naturally to a call target, the returned call target should create
+     * and if necessary initialize the corresponding language entity and return it. The parsing may
+     * be performed in a context (specified as another {@link Node}) or without context. The
      * {@code argumentNames} may contain symbolic names for actual parameters of the call to the
      * returned value. The result should be a call target with method
      * {@link CallTarget#call(java.lang.Object...)} that accepts as many arguments as were provided
