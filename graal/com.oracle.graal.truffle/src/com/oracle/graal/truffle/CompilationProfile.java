@@ -26,11 +26,13 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilation
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleMinInvokeThreshold;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleReplaceReprofileCount;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleOSRCompilationThreshold;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class CompilationProfile {
+    private static final int RESET_OSR_VALUE = Integer.MAX_VALUE - TruffleOSRCompilationThreshold.getValue();
 
     /**
      * Number of times an installed code for this tree was invalidated.
@@ -43,11 +45,14 @@ public class CompilationProfile {
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
 
+    private int osrThreshold;
+
     private long timestamp;
 
     public CompilationProfile() {
         compilationCallThreshold = TruffleMinInvokeThreshold.getValue();
         compilationCallAndLoopThreshold = TruffleCompilationThreshold.getValue();
+        osrThreshold = RESET_OSR_VALUE;
     }
 
     @Override
@@ -109,7 +114,16 @@ public class CompilationProfile {
         ensureProfiling(reprofile, reprofile);
     }
 
+    final void reportOSRCompiledLoop() {
+        osrThreshold = RESET_OSR_VALUE;
+    }
+
+    final void reportOSR() throws ArithmeticException {
+        osrThreshold = Math.incrementExact(osrThreshold);
+    }
+
     public void reportInterpreterCall() {
+        osrThreshold = RESET_OSR_VALUE;
         interpreterCallCount++;
         interpreterCallAndLoopCount++;
 

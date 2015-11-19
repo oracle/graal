@@ -96,7 +96,7 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleOSR = new OptionValue<>(true);
 
     @Option(help = "Number of loop iterations until on-stack-replacement compilation is triggered.", type = OptionType.Debug)
-    public static final OptionValue<Integer> TruffleOSRCompilationThreshold = new OptionValue<>(10000);
+    public static final OptionValue<Integer> TruffleOSRCompilationThreshold = new OptionValue<>(100000);
 
     @Option(help = "Disable call target splitting if tree size exceeds this limit", type = OptionType.Debug)
     public static final OptionValue<Integer> TruffleSplittingMaxCalleeSize = new OptionValue<>(100);
