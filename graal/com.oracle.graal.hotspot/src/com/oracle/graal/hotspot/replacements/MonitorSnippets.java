@@ -602,7 +602,7 @@ public class MonitorSnippets implements Snippets {
      * Counters for the various paths for acquiring a lock. The counters whose names start with
      * {@code "lock"} are mutually exclusive. The other counters are for paths that may be shared.
      */
-    private static final SnippetCounter.Group lockCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("MonitorEnters") : null;
+    public static final SnippetCounter.Group lockCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("MonitorEnters") : null;
     public static final SnippetCounter lockBiasExisting = new SnippetCounter(lockCounters, "lock{bias:existing}", "bias-locked previously biased object");
     public static final SnippetCounter lockBiasAcquired = new SnippetCounter(lockCounters, "lock{bias:acquired}", "bias-locked newly biased object");
     public static final SnippetCounter lockBiasTransfer = new SnippetCounter(lockCounters, "lock{bias:transfer}", "bias-locked, biased transferred");
@@ -619,7 +619,7 @@ public class MonitorSnippets implements Snippets {
      * Counters for the various paths for releasing a lock. The counters whose names start with
      * {@code "unlock"} are mutually exclusive. The other counters are for paths that may be shared.
      */
-    private static final SnippetCounter.Group unlockCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("MonitorExits") : null;
+    public static final SnippetCounter.Group unlockCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("MonitorExits") : null;
     public static final SnippetCounter unlockBias = new SnippetCounter(unlockCounters, "unlock{bias}", "bias-unlocked an object");
     public static final SnippetCounter unlockCas = new SnippetCounter(unlockCounters, "unlock{cas}", "cas-unlocked an object");
     public static final SnippetCounter unlockCasRecursive = new SnippetCounter(unlockCounters, "unlock{cas:recursive}", "cas-unlocked an object, recursive");
