@@ -114,6 +114,8 @@ import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -204,8 +206,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String builtinKind = "SL builtin";
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
     private static Visualizer visualizer = new SLDefaultVisualizer();
+    private static int parsingCount;
+
+    private final Map<Source, CallTarget> compiled;
 
     private SLLanguage() {
+        compiled = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
     }
 
     public static final SLLanguage INSTANCE = new SLLanguage();
@@ -256,6 +262,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             main.invoke(null);
         }
         reportToolDemos();
+    }
+
+    public static int parsingCount() {
+        return parsingCount;
     }
 
     /**
@@ -415,6 +425,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected CallTarget parse(Source code, final Node node, String... argumentNames) throws IOException {
+        CallTarget cached = compiled.get(code);
+        if (cached != null) {
+            return cached;
+        }
+        parsingCount++;
         final SLContext c = new SLContext(this);
         final Exception[] failed = {null};
         try {
@@ -455,7 +470,9 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 return null;
             }
         };
-        return Truffle.getRuntime().createCallTarget(rootNode);
+        cached = Truffle.getRuntime().createCallTarget(rootNode);
+        compiled.put(code, cached);
+        return cached;
     }
 
     @Override
