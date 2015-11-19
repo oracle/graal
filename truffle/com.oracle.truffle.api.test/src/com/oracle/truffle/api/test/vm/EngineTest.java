@@ -24,8 +24,10 @@ package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.io.IOException;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
 
@@ -45,6 +47,39 @@ public class EngineTest {
         PolyglotEngine.Value value = language1.eval(Source.fromText("return=value", "42.value"));
         String res = value.as(String.class);
         assertNotNull(res);
+    }
+
+    @Test
+    public void checkCachingOfNodes() throws IOException {
+        PolyglotEngine vm1 = createBuilder().build();
+        PolyglotEngine vm2 = createBuilder().build();
+
+        PolyglotEngine.Language language1 = vm1.getLanguages().get("application/x-test-hash");
+        PolyglotEngine.Language language2 = vm2.getLanguages().get("application/x-test-hash");
+        PolyglotEngine.Language alt1 = vm1.getLanguages().get("application/x-test-hash-alt");
+        PolyglotEngine.Language alt2 = vm2.getLanguages().get("application/x-test-hash-alt");
+        final Source sharedSource = Source.fromText("anything", "something");
+
+        Object hashIn1Round1 = language1.eval(sharedSource).get();
+        Object hashIn2Round1 = language2.eval(sharedSource).get();
+        Object hashIn1Round2 = language1.eval(sharedSource).get();
+        Object hashIn2Round2 = language2.eval(sharedSource).get();
+
+        Object altIn1Round1 = alt1.eval(sharedSource).get();
+        Object altIn2Round1 = alt2.eval(sharedSource).get();
+        Object altIn1Round2 = alt1.eval(sharedSource).get();
+        Object altIn2Round2 = alt2.eval(sharedSource).get();
+
+        assertEquals("Two executions in 1st engine share the nodes", hashIn1Round1, hashIn1Round2);
+        assertEquals("Two executions in 2nd engine share the nodes", hashIn2Round1, hashIn2Round2);
+
+        assertEquals("Two alternative executions in 1st engine share the nodes", altIn1Round1, altIn1Round2);
+        assertEquals("Two alternative executions in 2nd engine share the nodes", altIn2Round1, altIn2Round2);
+
+        assertNotEquals("Two executions in different languages don't share the nodes", hashIn1Round1, altIn1Round1);
+        assertNotEquals("Two executions in different languages don't share the nodes", hashIn1Round1, altIn2Round1);
+        assertNotEquals("Two executions in different languages don't share the nodes", hashIn2Round2, altIn1Round2);
+        assertNotEquals("Two executions in different languages don't share the nodes", hashIn2Round2, altIn2Round2);
     }
 
     protected Thread forbiddenThread() {
