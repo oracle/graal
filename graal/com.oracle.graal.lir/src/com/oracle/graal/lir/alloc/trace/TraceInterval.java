@@ -33,6 +33,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 
 import jdk.vm.ci.code.BailoutException;
@@ -290,7 +291,9 @@ final class TraceInterval extends IntervalHint {
          * The interval has more than one definition (e.g. resulting from phi moves), so stores to
          * memory are not optimized.
          */
-        NoOptimization
+        NoOptimization;
+
+        public static final EnumSet<SpillState> ALWAYS_IN_MEMORY = EnumSet.of(SpillInDominator, StoreAtDefinition, StartInMemory);
     }
 
     /**
@@ -529,8 +532,7 @@ final class TraceInterval extends IntervalHint {
 
     // returns true if this interval has a shadow copy on the stack that is always correct
     public boolean alwaysInMemory() {
-        return (splitParent().spillState == SpillState.SpillInDominator || splitParent().spillState == SpillState.StoreAtDefinition || splitParent().spillState == SpillState.StartInMemory) &&
-                        !canMaterialize();
+        return SpillState.ALWAYS_IN_MEMORY.contains(spillState()) && !canMaterialize();
     }
 
     void removeFirstUsePos() {
