@@ -497,9 +497,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected Visualizer getVisualizer() {
-        if (visualizer == null) {
-            visualizer = new SLDefaultVisualizer();
-        }
         return visualizer;
     }
 
