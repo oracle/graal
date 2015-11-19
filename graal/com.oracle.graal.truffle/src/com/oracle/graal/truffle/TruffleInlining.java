@@ -296,7 +296,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
                 return;
             }
             TruffleInliningDecision decision = currentDecision.findByCall((OptimizedDirectCallNode) node);
-            if (decision.isInline()) {
+            if (decision != null && decision.isInline()) {
                 inliningDecisionStack.add(decision);
                 iteratorStack.add(NodeUtil.makeRecursiveIterator(decision.getTarget().getRootNode()));
             }
