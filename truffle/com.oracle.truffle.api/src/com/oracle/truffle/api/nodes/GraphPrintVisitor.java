@@ -120,11 +120,29 @@ public class GraphPrintVisitor implements Closeable {
         }
     }
 
-    private static class Impl {
+    private interface Impl {
+        void writeStartDocument();
+
+        void writeEndDocument();
+
+        void writeStartElement(String name);
+
+        void writeEndElement();
+
+        void writeAttribute(String name, String value);
+
+        void writeCharacters(String text);
+
+        void flush();
+
+        void close();
+    }
+
+    private static class XMLImpl implements Impl {
         private static final XMLOutputFactory XML_OUTPUT_FACTORY = XMLOutputFactory.newInstance();
         private final XMLStreamWriter xmlstream;
 
-        protected Impl(OutputStream outputStream) {
+        protected XMLImpl(OutputStream outputStream) {
             try {
                 this.xmlstream = XML_OUTPUT_FACTORY.createXMLStreamWriter(outputStream);
             } catch (XMLStreamException | FactoryConfigurationError e) {
@@ -203,9 +221,13 @@ public class GraphPrintVisitor implements Closeable {
 
     public GraphPrintVisitor(OutputStream outputStream) {
         this.outputStream = outputStream;
-        this.xmlstream = new Impl(outputStream);
+        this.xmlstream = createImpl(outputStream);
         this.xmlstream.writeStartDocument();
         this.xmlstream.writeStartElement("graphDocument");
+    }
+
+    private static Impl createImpl(OutputStream outputStream) {
+        return new XMLImpl(outputStream);
     }
 
     private void ensureOpen() {
@@ -373,11 +395,13 @@ public class GraphPrintVisitor implements Closeable {
 
     public void printToNetwork(boolean ignoreErrors) {
         close();
-        try (Socket socket = new Socket(GraphVisualizerAddress, GraphVisualizerPort); BufferedOutputStream os = new BufferedOutputStream(socket.getOutputStream(), 0x4000)) {
-            os.write(((ByteArrayOutputStream) outputStream).toByteArray());
-        } catch (IOException e) {
-            if (!ignoreErrors) {
-                e.printStackTrace();
+        if (outputStream instanceof ByteArrayOutputStream) {
+            try (Socket socket = new Socket(GraphVisualizerAddress, GraphVisualizerPort); BufferedOutputStream os = new BufferedOutputStream(socket.getOutputStream(), 0x4000)) {
+                os.write(((ByteArrayOutputStream) outputStream).toByteArray());
+            } catch (IOException e) {
+                if (!ignoreErrors) {
+                    e.printStackTrace();
+                }
             }
         }
     }

@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExecutionContext;
@@ -106,6 +107,7 @@ public abstract class RootNode extends Node {
      * heuristics can use the loop count to guide compilation and inlining.
      */
     public final void reportLoopCount(int count) {
+        CompilerAsserts.neverPartOfCompilation();
         if (getCallTarget() instanceof LoopCountReceiver) {
             ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
         }

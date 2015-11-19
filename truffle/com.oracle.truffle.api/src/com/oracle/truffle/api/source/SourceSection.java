@@ -193,7 +193,7 @@ public final class SourceSection {
 
     @Override
     public String toString() {
-        return getCode();
+        return getShortDescription();
     }
 
     @Override

@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.object;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
-import java.util.Objects;
 
 public abstract class Transition {
     @Override
@@ -90,6 +91,11 @@ public abstract class Transition {
         public boolean isDirect() {
             return true;
         }
+
+        @Override
+        public String toString() {
+            return String.format("add(%s)", getProperty());
+        }
     }
 
     public static final class RemovePropertyTransition extends PropertyTransition {
@@ -100,6 +106,11 @@ public abstract class Transition {
         @Override
         public boolean isDirect() {
             return false;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("remove(%s)", getProperty());
         }
     }
 
@@ -131,6 +142,11 @@ public abstract class Transition {
         public boolean isDirect() {
             return true;
         }
+
+        @Override
+        public String toString() {
+            return String.format("objectType(%s)", getObjectType());
+        }
     }
 
     public abstract static class AbstractReplacePropertyTransition extends PropertyTransition {
@@ -160,6 +176,11 @@ public abstract class Transition {
             int result = super.hashCode();
             result = prime * result + after.hashCode();
             return result;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("replace(%s,%s)", getPropertyBefore(), getPropertyAfter());
         }
     }
 
