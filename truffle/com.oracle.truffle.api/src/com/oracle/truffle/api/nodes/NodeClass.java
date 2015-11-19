@@ -24,9 +24,6 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.nodes.Node.Children;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.security.AccessController;
@@ -34,6 +31,10 @@ import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.Node.Children;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 
 /**
  * Information about a {@link Node} class. A single instance of this class is allocated for every
@@ -75,6 +76,10 @@ public final class NodeClass {
     }
 
     NodeClass(Class<? extends Node> clazz) {
+        if (!Node.class.isAssignableFrom(clazz)) {
+            throw new IllegalArgumentException();
+        }
+
         List<NodeFieldAccessor> fieldsList = new ArrayList<>();
         NodeFieldAccessor parentFieldTmp = null;
         NodeFieldAccessor nodeClassFieldTmp = null;
@@ -82,20 +87,42 @@ public final class NodeClass {
         List<NodeFieldAccessor> childrenFieldList = new ArrayList<>();
         List<NodeFieldAccessor> cloneableFieldList = new ArrayList<>();
 
-        for (Field field : NodeUtil.getAllFields(clazz)) {
+        try {
+            Field field = Node.class.getDeclaredField("parent");
+            assert Node.class.isAssignableFrom(field.getType());
+            parentFieldTmp = NodeFieldAccessor.create(NodeFieldKind.PARENT, field);
+            field = Node.class.getDeclaredField("nodeClass");
+            assert NodeClass.class.isAssignableFrom(field.getType());
+            nodeClassFieldTmp = NodeFieldAccessor.create(NodeFieldKind.NODE_CLASS, field);
+        } catch (NoSuchFieldException e) {
+            throw new AssertionError("Node field not found", e);
+        }
+
+        collectInstanceFields(clazz, fieldsList, childFieldList, childrenFieldList, cloneableFieldList);
+
+        this.fields = fieldsList.toArray(EMPTY_NODE_FIELD_ARRAY);
+        this.nodeClassField = nodeClassFieldTmp;
+        this.parentField = parentFieldTmp;
+        this.childFields = childFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
+        this.childrenFields = childrenFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
+        this.cloneableFields = cloneableFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
+        this.clazz = clazz;
+    }
+
+    private static void collectInstanceFields(Class<? extends Object> clazz, List<NodeFieldAccessor> fieldsList, List<NodeFieldAccessor> childFieldList, List<NodeFieldAccessor> childrenFieldList,
+                    List<NodeFieldAccessor> cloneableFieldList) {
+        if (clazz.getSuperclass() != null) {
+            collectInstanceFields(clazz.getSuperclass(), fieldsList, childFieldList, childrenFieldList, cloneableFieldList);
+        }
+        Field[] declaredFields = clazz.getDeclaredFields();
+        for (Field field : declaredFields) {
             if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
                 continue;
             }
 
             NodeFieldAccessor nodeField;
-            if (field.getDeclaringClass() == Node.class && field.getName().equals("parent")) {
-                assert Node.class.isAssignableFrom(field.getType());
-                nodeField = NodeFieldAccessor.create(NodeFieldKind.PARENT, field);
-                parentFieldTmp = nodeField;
-            } else if (field.getDeclaringClass() == Node.class && field.getName().equals("nodeClass")) {
-                assert NodeClass.class.isAssignableFrom(field.getType());
-                nodeField = NodeFieldAccessor.create(NodeFieldKind.NODE_CLASS, field);
-                nodeClassFieldTmp = nodeField;
+            if (field.getDeclaringClass() == Node.class && (field.getName().equals("parent") || field.getName().equals("nodeClass"))) {
+                continue;
             } else if (field.getAnnotation(Child.class) != null) {
                 checkChildField(field);
                 nodeField = NodeFieldAccessor.create(NodeFieldKind.CHILD, field);
@@ -112,18 +139,6 @@ public final class NodeClass {
             }
             fieldsList.add(nodeField);
         }
-
-        if (parentFieldTmp == null) {
-            throw new AssertionError("parent field not found");
-        }
-
-        this.fields = fieldsList.toArray(EMPTY_NODE_FIELD_ARRAY);
-        this.nodeClassField = nodeClassFieldTmp;
-        this.parentField = parentFieldTmp;
-        this.childFields = childFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
-        this.childrenFields = childrenFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
-        this.cloneableFields = cloneableFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
-        this.clazz = clazz;
     }
 
     public NodeFieldAccessor getNodeClassField() {

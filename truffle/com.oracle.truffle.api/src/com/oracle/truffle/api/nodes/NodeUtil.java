@@ -30,7 +30,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -381,15 +380,6 @@ public final class NodeUtil {
             return false;
         }
         return true;
-    }
-
-    /** Returns all declared fields in the class hierarchy. */
-    static Field[] getAllFields(Class<? extends Object> clazz) {
-        Field[] declaredFields = clazz.getDeclaredFields();
-        if (clazz.getSuperclass() != null) {
-            return concat(getAllFields(clazz.getSuperclass()), declaredFields);
-        }
-        return declaredFields;
     }
 
     public static <T> T[] concat(T[] first, T[] second) {
