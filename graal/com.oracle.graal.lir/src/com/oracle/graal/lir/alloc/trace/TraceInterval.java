@@ -266,21 +266,9 @@ final class TraceInterval extends IntervalHint {
         NoSpillStore,
 
         /**
-         * One spill move has already been inserted.
+         * A spill move has already been inserted.
          */
-        OneSpillStore,
-
-        /**
-         * The interval is spilled multiple times or is spilled in a loop. Place the store somewhere
-         * on the dominator path between the definition and the usages.
-         */
-        SpillInDominator,
-
-        /**
-         * The interval should be stored immediately after its definition to prevent multiple
-         * redundant stores.
-         */
-        StoreAtDefinition,
+        SpillStore,
 
         /**
          * The interval starts in memory (e.g. method parameter), so a store is never necessary.
@@ -293,7 +281,7 @@ final class TraceInterval extends IntervalHint {
          */
         NoOptimization;
 
-        public static final EnumSet<SpillState> ALWAYS_IN_MEMORY = EnumSet.of(SpillInDominator, StoreAtDefinition, StartInMemory);
+        public static final EnumSet<SpillState> IN_MEMORY = EnumSet.of(SpillStore, StartInMemory);
     }
 
     /**
@@ -526,7 +514,7 @@ final class TraceInterval extends IntervalHint {
     }
 
     public void setSpillDefinitionPos(int pos) {
-        assert spillState() == SpillState.SpillInDominator || spillState() == SpillState.NoDefinitionFound || spillDefinitionPos() == -1 : "cannot set the position twice";
+        assert spillState() == SpillState.NoDefinitionFound || spillDefinitionPos() == -1 : "cannot set the position twice";
         splitParent().spillDefinitionPos = pos;
     }
 
@@ -535,7 +523,7 @@ final class TraceInterval extends IntervalHint {
      * {@code opId}.
      */
     public boolean inMemoryAt(int opId) {
-        return SpillState.ALWAYS_IN_MEMORY.contains(spillState()) && !canMaterialize() && opId > spillDefinitionPos();
+        return SpillState.IN_MEMORY.contains(spillState()) && !canMaterialize() && opId > spillDefinitionPos();
     }
 
     void removeFirstUsePos() {

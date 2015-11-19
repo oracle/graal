@@ -557,39 +557,20 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         }
     }
 
-    // called during register allocation
+    /**
+     * Note: called during register allocation
+     *
+     * @param spillPos position of the spill
+     */
+    @SuppressWarnings("static-method")
     private void changeSpillState(TraceInterval interval, int spillPos) {
         if (TraceLinearScan.Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
             switch (interval.spillState()) {
-                case NoSpillStore: {
-                    int defLoopDepth = allocator.blockForId(interval.spillDefinitionPos()).getLoopDepth();
-                    int spillLoopDepth = allocator.blockForId(spillPos).getLoopDepth();
-
-                    if (defLoopDepth < spillLoopDepth) {
-                        /*
-                         * The loop depth of the spilling position is higher then the loop depth at
-                         * the definition of the interval. Move write to memory out of loop.
-                         */
-                        // store at definition of the interval
-                        interval.setSpillState(SpillState.StoreAtDefinition);
-                    } else {
-                        /*
-                         * The interval is currently spilled only once, so for now there is no
-                         * reason to store the interval at the definition.
-                         */
-                        interval.setSpillState(SpillState.OneSpillStore);
-                    }
-                    break;
-                }
-
-                case OneSpillStore: {
+                case NoSpillStore:
                     // It is better to store it to memory at the definition.
-                    interval.setSpillState(SpillState.StoreAtDefinition);
+                    interval.setSpillState(SpillState.SpillStore);
                     break;
-                }
-
-                case SpillInDominator:
-                case StoreAtDefinition:
+                case SpillStore:
                 case StartInMemory:
                 case NoOptimization:
                 case NoDefinitionFound:
