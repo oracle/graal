@@ -525,6 +525,7 @@ public class InliningUtil {
     public static FrameState processFrameState(FrameState frameState, Invoke invoke, ResolvedJavaMethod inlinedMethod, FrameState stateAtExceptionEdge, FrameState outerFrameState,
                     boolean alwaysDuplicateStateAfter, ResolvedJavaMethod invokeTargetMethod, List<ValueNode> invokeArgsList) {
 
+        assert outerFrameState == null || !outerFrameState.isDeleted() : outerFrameState;
         FrameState stateAtReturn = invoke.stateAfter();
         JavaKind invokeReturnKind = invoke.asNode().getStackKind();
 

@@ -204,6 +204,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     }
 
     public void setOuterFrameState(FrameState x) {
+        assert x == null || !x.isDeleted();
         updateUsages(this.outerFrameState, x);
         this.outerFrameState = x;
     }

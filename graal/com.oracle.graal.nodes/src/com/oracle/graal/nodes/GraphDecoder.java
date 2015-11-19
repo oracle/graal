@@ -278,7 +278,6 @@ public class GraphDecoder {
         try (Debug.Scope scope = Debug.scope("GraphDecoder", graph)) {
             MethodScope methodScope = new MethodScope(graph, encodedGraph, LoopExplosionKind.NONE);
             decode(methodScope, null);
-            cleanupGraph(methodScope, null);
             methodScope.graph.verify();
         } catch (Throwable ex) {
             Debug.handle(ex);
