@@ -97,4 +97,34 @@ public class SourceSectionTest {
         assertEquals("long:2", longSource.createSection("test", 6, 2).getShortDescription());
         assertEquals("long:3", longSource.createSection("test", 9, 1).getShortDescription());
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange1() {
+        longSource.createSection("test", 9, 5);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange2() {
+        longSource.createSection("test", -1, 1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange3() {
+        longSource.createSection("test", 1, -1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange4() {
+        longSource.createSection("test", 3, 1, 9, 5);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange5() {
+        longSource.createSection("test", 1, 1, -1, 1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange6() {
+        longSource.createSection("test", 1, 1, 1, -1);
+    }
 }
