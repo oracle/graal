@@ -406,7 +406,7 @@ public class MonitorSnippets implements Snippets {
         decCounter();
     }
 
-    private static void traceObject(boolean enabled, String action, Object object, boolean enter) {
+    public static void traceObject(boolean enabled, String action, Object object, boolean enter) {
         if (doProfile()) {
             DynamicCounterNode.counter(action, enter ? "number of monitor enters" : "number of monitor exits", 1, PROFILE_CONTEXT);
         }
@@ -417,7 +417,7 @@ public class MonitorSnippets implements Snippets {
         }
     }
 
-    private static void trace(boolean enabled, String format, WordBase value) {
+    public static void trace(boolean enabled, String format, WordBase value) {
         if (enabled) {
             Log.printf(format, value.rawValue());
         }
@@ -434,7 +434,7 @@ public class MonitorSnippets implements Snippets {
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word mark, Word tmp, Word value);
 
-    private static void incCounter() {
+    public static void incCounter() {
         if (CHECK_BALANCED_MONITORS) {
             final Word counter = MonitorCounterNode.counter();
             final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
@@ -442,7 +442,7 @@ public class MonitorSnippets implements Snippets {
         }
     }
 
-    private static void decCounter() {
+    public static void decCounter() {
         if (CHECK_BALANCED_MONITORS) {
             final Word counter = MonitorCounterNode.counter();
             final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
@@ -519,7 +519,7 @@ public class MonitorSnippets implements Snippets {
             template(args).instantiate(providers.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
         }
 
-        static boolean isTracingEnabledForType(ValueNode object) {
+        public static boolean isTracingEnabledForType(ValueNode object) {
             ResolvedJavaType type = StampTool.typeOrNull(object.stamp());
             if (TRACE_TYPE_FILTER == null) {
                 return false;
@@ -534,7 +534,7 @@ public class MonitorSnippets implements Snippets {
             }
         }
 
-        static boolean isTracingEnabledForMethod(ResolvedJavaMethod method) {
+        public static boolean isTracingEnabledForMethod(ResolvedJavaMethod method) {
             if (TRACE_METHOD_FILTER == null) {
                 return false;
             } else {
@@ -603,26 +603,26 @@ public class MonitorSnippets implements Snippets {
      * {@code "lock"} are mutually exclusive. The other counters are for paths that may be shared.
      */
     private static final SnippetCounter.Group lockCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("MonitorEnters") : null;
-    static final SnippetCounter lockBiasExisting = new SnippetCounter(lockCounters, "lock{bias:existing}", "bias-locked previously biased object");
-    static final SnippetCounter lockBiasAcquired = new SnippetCounter(lockCounters, "lock{bias:acquired}", "bias-locked newly biased object");
-    static final SnippetCounter lockBiasTransfer = new SnippetCounter(lockCounters, "lock{bias:transfer}", "bias-locked, biased transferred");
-    static final SnippetCounter lockCas = new SnippetCounter(lockCounters, "lock{cas}", "cas-locked an object");
-    static final SnippetCounter lockCasRecursive = new SnippetCounter(lockCounters, "lock{cas:recursive}", "cas-locked, recursive");
-    static final SnippetCounter lockStubEpochExpired = new SnippetCounter(lockCounters, "lock{stub:epoch-expired}", "stub-locked, epoch expired");
-    static final SnippetCounter lockStubRevoke = new SnippetCounter(lockCounters, "lock{stub:revoke}", "stub-locked, biased revoked");
-    static final SnippetCounter lockStubFailedCas = new SnippetCounter(lockCounters, "lock{stub:failed-cas}", "stub-locked, failed cas");
+    public static final SnippetCounter lockBiasExisting = new SnippetCounter(lockCounters, "lock{bias:existing}", "bias-locked previously biased object");
+    public static final SnippetCounter lockBiasAcquired = new SnippetCounter(lockCounters, "lock{bias:acquired}", "bias-locked newly biased object");
+    public static final SnippetCounter lockBiasTransfer = new SnippetCounter(lockCounters, "lock{bias:transfer}", "bias-locked, biased transferred");
+    public static final SnippetCounter lockCas = new SnippetCounter(lockCounters, "lock{cas}", "cas-locked an object");
+    public static final SnippetCounter lockCasRecursive = new SnippetCounter(lockCounters, "lock{cas:recursive}", "cas-locked, recursive");
+    public static final SnippetCounter lockStubEpochExpired = new SnippetCounter(lockCounters, "lock{stub:epoch-expired}", "stub-locked, epoch expired");
+    public static final SnippetCounter lockStubRevoke = new SnippetCounter(lockCounters, "lock{stub:revoke}", "stub-locked, biased revoked");
+    public static final SnippetCounter lockStubFailedCas = new SnippetCounter(lockCounters, "lock{stub:failed-cas}", "stub-locked, failed cas");
 
-    static final SnippetCounter unbiasable = new SnippetCounter(lockCounters, "unbiasable", "object with unbiasable type");
-    static final SnippetCounter revokeBias = new SnippetCounter(lockCounters, "revokeBias", "object had bias revoked");
+    public static final SnippetCounter unbiasable = new SnippetCounter(lockCounters, "unbiasable", "object with unbiasable type");
+    public static final SnippetCounter revokeBias = new SnippetCounter(lockCounters, "revokeBias", "object had bias revoked");
 
     /**
      * Counters for the various paths for releasing a lock. The counters whose names start with
      * {@code "unlock"} are mutually exclusive. The other counters are for paths that may be shared.
      */
     private static final SnippetCounter.Group unlockCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("MonitorExits") : null;
-    static final SnippetCounter unlockBias = new SnippetCounter(unlockCounters, "unlock{bias}", "bias-unlocked an object");
-    static final SnippetCounter unlockCas = new SnippetCounter(unlockCounters, "unlock{cas}", "cas-unlocked an object");
-    static final SnippetCounter unlockCasRecursive = new SnippetCounter(unlockCounters, "unlock{cas:recursive}", "cas-unlocked an object, recursive");
-    static final SnippetCounter unlockStub = new SnippetCounter(unlockCounters, "unlock{stub}", "stub-unlocked an object");
+    public static final SnippetCounter unlockBias = new SnippetCounter(unlockCounters, "unlock{bias}", "bias-unlocked an object");
+    public static final SnippetCounter unlockCas = new SnippetCounter(unlockCounters, "unlock{cas}", "cas-unlocked an object");
+    public static final SnippetCounter unlockCasRecursive = new SnippetCounter(unlockCounters, "unlock{cas:recursive}", "cas-unlocked an object, recursive");
+    public static final SnippetCounter unlockStub = new SnippetCounter(unlockCounters, "unlock{stub}", "stub-unlocked an object");
 
 }
