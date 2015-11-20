@@ -96,6 +96,7 @@ import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.java.LoweredAtomicReadAndWriteNode;
 import com.oracle.graal.nodes.java.LoweredCompareAndSwapNode;
 import com.oracle.graal.nodes.java.MonitorEnterNode;
+import com.oracle.graal.nodes.java.MonitorExitNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
 import com.oracle.graal.nodes.java.NewInstanceNode;
@@ -390,14 +391,25 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerMonitorEnterNode(MonitorEnterNode monitorEnter, LoweringTool tool, StructuredGraph graph) {
         ValueNode object = monitorEnter.object();
         GuardingNode nullCheck = createNullCheck(object, monitorEnter, tool);
+        ValueNode nonNullObject;
         if (nullCheck != null) {
-            object = graph.unique(new PiNode(object, ((ObjectStamp) object.stamp()).improveWith(StampFactory.objectNonNull()), (ValueNode) nullCheck));
+            nonNullObject = graph.unique(new PiNode(object, ((ObjectStamp) object.stamp()).improveWith(StampFactory.objectNonNull()), (ValueNode) nullCheck));
+        } else {
+            nonNullObject = object;
         }
-        ValueNode hub = graph.addOrUnique(LoadHubNode.create(object, tool.getStampProvider(), tool.getMetaAccess()));
-        RawMonitorEnterNode rawMonitorEnter = graph.add(new RawMonitorEnterNode(object, hub, monitorEnter.getMonitorId()));
+        ValueNode hub = graph.addOrUnique(LoadHubNode.create(nonNullObject, tool.getStampProvider(), tool.getMetaAccess()));
+        MonitorIdNode monitor = monitorEnter.getMonitorId();
+        RawMonitorEnterNode rawMonitorEnter = graph.add(new RawMonitorEnterNode(nonNullObject, hub, monitor));
         rawMonitorEnter.setStateBefore(monitorEnter.stateBefore());
         rawMonitorEnter.setStateAfter(monitorEnter.stateAfter());
         graph.replaceFixedWithFixed(monitorEnter, rawMonitorEnter);
+
+        // Monitor exit must operate on the same input to the monitor enter
+        if (object != nonNullObject) {
+            for (MonitorExitNode exit : monitor.usages().filter(MonitorExitNode.class)) {
+                exit.replaceFirstInput(object, nonNullObject);
+            }
+        }
     }
 
     protected void lowerCompareAndSwapNode(CompareAndSwapNode cas) {
