@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.options.Option;
 import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.StableOptionValue;
+import jdk.vm.ci.options.OptionValue;
 import jdk.vm.ci.service.Services;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
@@ -102,7 +102,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 public class PartialEvaluator {
 
     @Option(help = "New partial evaluation on Graal graphs", type = OptionType.Expert)//
-    public static final StableOptionValue<Boolean> GraphPE = new StableOptionValue<>(true);
+    public static final OptionValue<Boolean> GraphPE = new OptionValue<>(true);
 
     protected final Providers providers;
     protected final Architecture architecture;

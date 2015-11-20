@@ -24,12 +24,16 @@ package com.oracle.graal.truffle.test;
 
 import java.util.Random;
 
+import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.options.OptionValue.OverrideScope;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.graal.truffle.PartialEvaluator;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -159,37 +163,24 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
                     case Bytecode.SWITCH:
                         trace("%d (%d): SWITCH", bci, topOfStack);
-                        {
-                            int switchValue = getInt(frame, topOfStack--);
-                            byte switchTargetCount = bytecodes[bci + 1];
-                            int i = 0;
-                            while (true) {
-                                CompilerAsserts.partialEvaluationConstant(i);
-                                if (switchValue == i) {
-                                    CompilerAsserts.partialEvaluationConstant(i);
-                                    CompilerAsserts.partialEvaluationConstant(bci);
-                                    bci = bytecodes[bci + i + 2];
-                                    // Need this seemingly useless condition here for two reasons:
-                                    // 1. Bytecode analysis will consider the current block as
-                                    // being within the inner loop.
-                                    // 2. The if body will be an empty block that directly
-                                    // jumps to the begin of the outer loop.
-                                    if (i != -1) {
-                                        continue outer;
-                                    }
-                                }
-
-                                CompilerAsserts.partialEvaluationConstant(switchTargetCount);
-                                CompilerAsserts.partialEvaluationConstant(i);
-                                i = i + 1;
-                                if (i == switchTargetCount) {
-                                    break;
+                        int switchValue = getInt(frame, topOfStack--);
+                        value = bytecodes[bci + 1];
+                        for (int i = 0; i < value; ++i) {
+                            if (switchValue == i) {
+                                bci = bytecodes[bci + i + 2];
+                                // Need this seemingly useless condition here for two reasons:
+                                // 1. Bytecode analysis will consider the current block as
+                                // being within the inner loop.
+                                // 2. The if body will be an empty block that directly
+                                // jumps to the begin of the outer loop.
+                                if (i != -1) {
+                                    continue outer;
                                 }
                             }
-                            // Continue with the code after the switch.
-                            bci += switchTargetCount + 1;
-                            continue;
                         }
+                        // Continue with the code after the switch.
+                        bci += value + 1;
+                        continue;
 
                     case Bytecode.POP:
                         trace("%d (%d): POP", bci, topOfStack);
@@ -609,6 +600,8 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         /* 13: */42,
         /* 14: */Bytecode.RETURN};
         Program program = new Program("simpleSwitchProgram", bytecodes, 0, 3);
-        assertPartialEvalEqualsAndRunsCorrect(program);
+        try (OverrideScope s = OptionValue.override(PartialEvaluator.GraphPE, false)) {
+            assertPartialEvalEqualsAndRunsCorrect(program);
+        }
     }
 }
