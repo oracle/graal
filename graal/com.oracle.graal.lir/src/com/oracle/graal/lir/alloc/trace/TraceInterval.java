@@ -514,7 +514,9 @@ final class TraceInterval extends IntervalHint {
     }
 
     public void setSpillDefinitionPos(int pos) {
-        assert spillState() == SpillState.NoDefinitionFound || spillDefinitionPos() == -1 : "cannot set the position twice";
+        assert spillState() == SpillState.NoDefinitionFound || spillState() == SpillState.NoSpillStore || spillDefinitionPos() == -1 : "cannot set the position twice";
+        int to = to();
+        assert pos < to : String.format("Cannot spill %s at %d", this, pos);
         splitParent().spillDefinitionPos = pos;
     }
 
