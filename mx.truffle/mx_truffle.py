@@ -29,6 +29,7 @@
 import mx
 
 from mx_unittest import unittest
+from mx_sigtest import sigtest
 from mx_gate import Task
 import mx_gate
 
@@ -57,6 +58,8 @@ def sldebug(args):
 def _truffle_gate_runner(args, tasks):
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
+    with Task('Truffle Signature Tests', tasks) as t:
+        if t: sigtest(['--check', 'binary'])
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 

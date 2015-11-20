@@ -1,0 +1,73 @@
+#Signature file v4.1
+#Version 
+
+CLSS public final com.oracle.truffle.api.interop.ForeignAccess
+innr public abstract interface static Factory
+innr public abstract interface static Factory10
+meth public !varargs static java.lang.Object execute(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[])
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.interop.ForeignAccess create(com.oracle.truffle.api.interop.ForeignAccess$Factory)
+meth public static com.oracle.truffle.api.interop.ForeignAccess create(java.lang.Class<? extends com.oracle.truffle.api.interop.TruffleObject>,com.oracle.truffle.api.interop.ForeignAccess$Factory10)
+meth public static com.oracle.truffle.api.interop.TruffleObject getReceiver(com.oracle.truffle.api.frame.Frame)
+meth public static java.util.List<java.lang.Object> getArguments(com.oracle.truffle.api.frame.Frame)
+supr java.lang.Object
+hfds factory,initThread
+hcls DelegatingFactory
+
+CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$Factory
+ outer com.oracle.truffle.api.interop.ForeignAccess
+meth public abstract boolean canHandle(com.oracle.truffle.api.interop.TruffleObject)
+meth public abstract com.oracle.truffle.api.CallTarget accessMessage(com.oracle.truffle.api.interop.Message)
+
+CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$Factory10
+ outer com.oracle.truffle.api.interop.ForeignAccess
+meth public abstract com.oracle.truffle.api.CallTarget accessExecute(int)
+meth public abstract com.oracle.truffle.api.CallTarget accessGetSize()
+meth public abstract com.oracle.truffle.api.CallTarget accessHasSize()
+meth public abstract com.oracle.truffle.api.CallTarget accessInvoke(int)
+meth public abstract com.oracle.truffle.api.CallTarget accessIsBoxed()
+meth public abstract com.oracle.truffle.api.CallTarget accessIsExecutable()
+meth public abstract com.oracle.truffle.api.CallTarget accessIsNull()
+meth public abstract com.oracle.truffle.api.CallTarget accessMessage(com.oracle.truffle.api.interop.Message)
+meth public abstract com.oracle.truffle.api.CallTarget accessNew(int)
+meth public abstract com.oracle.truffle.api.CallTarget accessRead()
+meth public abstract com.oracle.truffle.api.CallTarget accessUnbox()
+meth public abstract com.oracle.truffle.api.CallTarget accessWrite()
+
+CLSS public abstract com.oracle.truffle.api.interop.Message
+cons protected init()
+fld public final static com.oracle.truffle.api.interop.Message GET_SIZE
+fld public final static com.oracle.truffle.api.interop.Message HAS_SIZE
+fld public final static com.oracle.truffle.api.interop.Message IS_BOXED
+fld public final static com.oracle.truffle.api.interop.Message IS_EXECUTABLE
+fld public final static com.oracle.truffle.api.interop.Message IS_NULL
+fld public final static com.oracle.truffle.api.interop.Message READ
+fld public final static com.oracle.truffle.api.interop.Message UNBOX
+fld public static com.oracle.truffle.api.interop.Message WRITE
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public final com.oracle.truffle.api.nodes.Node createNode()
+meth public static com.oracle.truffle.api.interop.Message createExecute(int)
+meth public static com.oracle.truffle.api.interop.Message createInvoke(int)
+meth public static com.oracle.truffle.api.interop.Message createNew(int)
+meth public static com.oracle.truffle.api.interop.Message valueOf(java.lang.String)
+meth public static java.lang.String toString(com.oracle.truffle.api.interop.Message)
+supr java.lang.Object
+
+CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
+meth public abstract com.oracle.truffle.api.interop.ForeignAccess getForeignAccess()
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
