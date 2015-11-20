@@ -596,7 +596,7 @@ innr public GraphPrintAdapter
 innr public abstract interface static !annotation CustomGraphPrintHandler
 innr public abstract interface static !annotation NullGraphPrintHandler
 innr public abstract interface static GraphPrintHandler
-meth protected org.w3c.dom.Element getElementByObject(java.lang.Object)
+meth protected java.lang.Object getElementByObject(java.lang.Object)
 meth protected void connectNodes(java.lang.Object,java.lang.Object,java.lang.String)
 meth protected void createElementForNode(java.lang.Object)
 meth protected void setNodeProperty(java.lang.Object,java.lang.String,java.lang.Object)
