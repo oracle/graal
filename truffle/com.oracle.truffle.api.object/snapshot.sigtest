@@ -88,12 +88,6 @@ meth public abstract void setInt(com.oracle.truffle.api.object.DynamicObject,int
 CLSS public abstract com.oracle.truffle.api.object.Layout
 cons public init()
 fld public final static java.lang.String OPTION_PREFIX = "truffle.object."
-fld public final static java.util.EnumSet<com.oracle.truffle.api.object.Layout$ImplicitCast> INT_TO_DOUBLE
- anno 0 java.lang.Deprecated()
-fld public final static java.util.EnumSet<com.oracle.truffle.api.object.Layout$ImplicitCast> INT_TO_LONG
- anno 0 java.lang.Deprecated()
-fld public final static java.util.EnumSet<com.oracle.truffle.api.object.Layout$ImplicitCast> NONE
- anno 0 java.lang.Deprecated()
 innr public final static !enum ImplicitCast
 innr public final static Builder
 meth protected static com.oracle.truffle.api.object.LayoutFactory getFactory()
@@ -105,8 +99,6 @@ meth public abstract com.oracle.truffle.api.object.Shape createShape(com.oracle.
 meth public abstract com.oracle.truffle.api.object.Shape$Allocator createAllocator()
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.object.DynamicObject> getType()
 meth public static com.oracle.truffle.api.object.Layout createLayout()
-meth public static com.oracle.truffle.api.object.Layout createLayout(java.util.EnumSet<com.oracle.truffle.api.object.Layout$ImplicitCast>)
- anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.object.Layout$Builder newLayout()
 supr java.lang.Object
 hfds LAYOUT_FACTORY
@@ -116,8 +108,6 @@ CLSS public final static com.oracle.truffle.api.object.Layout$Builder
 meth public com.oracle.truffle.api.object.Layout build()
 meth public com.oracle.truffle.api.object.Layout$Builder addAllowedImplicitCast(com.oracle.truffle.api.object.Layout$ImplicitCast)
 meth public com.oracle.truffle.api.object.Layout$Builder setAllowedImplicitCasts(java.util.EnumSet<com.oracle.truffle.api.object.Layout$ImplicitCast>)
-meth public java.util.EnumSet<com.oracle.truffle.api.object.Layout$ImplicitCast> getAllowedImplicitCasts()
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds allowedImplicitCasts
 

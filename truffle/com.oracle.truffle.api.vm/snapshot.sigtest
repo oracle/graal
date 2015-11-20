@@ -18,12 +18,6 @@ innr public Language
 innr public Value
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value eval(com.oracle.truffle.api.source.Source) throws java.io.IOException
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value findGlobalSymbol(java.lang.String)
-meth public java.lang.Object eval(java.lang.String,java.io.Reader) throws java.io.IOException
- anno 0 java.lang.Deprecated()
-meth public java.lang.Object eval(java.lang.String,java.lang.String) throws java.io.IOException
- anno 0 java.lang.Deprecated()
-meth public java.lang.Object eval(java.net.URI) throws java.io.IOException
- anno 0 java.lang.Deprecated()
 meth public java.util.Map<java.lang.String,? extends com.oracle.truffle.api.vm.PolyglotEngine$Language> getLanguages()
 meth public static com.oracle.truffle.api.vm.PolyglotEngine$Builder buildNew()
 meth public void dispose()
@@ -40,12 +34,6 @@ meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder onEvent(com.oracle.
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setErr(java.io.OutputStream)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setIn(java.io.InputStream)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setOut(java.io.OutputStream)
-meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder stdErr(java.io.Writer)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder stdIn(java.io.Reader)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder stdOut(java.io.Writer)
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds err,executor,globals,handlers,in,out
 
@@ -54,8 +42,6 @@ CLSS public com.oracle.truffle.api.vm.PolyglotEngine$Language
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value eval(com.oracle.truffle.api.source.Source) throws java.io.IOException
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value getGlobalObject()
 meth public java.lang.String getName()
-meth public java.lang.String getShortName()
- anno 0 java.lang.Deprecated()
 meth public java.lang.String getVersion()
 meth public java.lang.String toString()
 meth public java.util.Set<java.lang.String> getMimeTypes()
@@ -71,54 +57,6 @@ meth public java.lang.String toString()
 supr java.lang.Object
 hfds language,ready,result,target
 
-CLSS public final com.oracle.truffle.api.vm.TruffleVM
- anno 0 java.lang.Deprecated()
-innr public Symbol
-innr public final Builder
-innr public final Language
-meth public com.oracle.truffle.api.vm.TruffleVM$Symbol eval(com.oracle.truffle.api.source.Source) throws java.io.IOException
-meth public com.oracle.truffle.api.vm.TruffleVM$Symbol findGlobalSymbol(java.lang.String)
-meth public java.util.Map<java.lang.String,com.oracle.truffle.api.vm.TruffleVM$Language> getLanguages()
-meth public static com.oracle.truffle.api.vm.TruffleVM$Builder newVM()
- anno 0 java.lang.Deprecated()
-supr com.oracle.truffle.api.vm.PolyglotEngine
-
-CLSS public final com.oracle.truffle.api.vm.TruffleVM$Builder
- outer com.oracle.truffle.api.vm.TruffleVM
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM build()
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder executor(java.util.concurrent.Executor)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder globalSymbol(java.lang.String,java.lang.Object)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder onEvent(com.oracle.truffle.api.vm.EventConsumer<?>)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder setErr(java.io.OutputStream)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder setIn(java.io.InputStream)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder setOut(java.io.OutputStream)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder stdErr(java.io.Writer)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder stdIn(java.io.Reader)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.vm.TruffleVM$Builder stdOut(java.io.Writer)
- anno 0 java.lang.Deprecated()
-supr com.oracle.truffle.api.vm.PolyglotEngine$Builder
-
-CLSS public final com.oracle.truffle.api.vm.TruffleVM$Language
- outer com.oracle.truffle.api.vm.TruffleVM
- anno 0 java.lang.Deprecated()
-supr com.oracle.truffle.api.vm.PolyglotEngine$Language
-
-CLSS public com.oracle.truffle.api.vm.TruffleVM$Symbol
- outer com.oracle.truffle.api.vm.TruffleVM
- anno 0 java.lang.Deprecated()
-meth public !varargs com.oracle.truffle.api.vm.TruffleVM$Symbol invoke(java.lang.Object,java.lang.Object[]) throws java.io.IOException
-supr com.oracle.truffle.api.vm.PolyglotEngine$Value
-
 CLSS public java.io.IOException
 cons public init()
 cons public init(java.lang.String)
@@ -128,12 +66,6 @@ supr java.lang.Exception
 hfds serialVersionUID
 
 CLSS public abstract interface java.io.Serializable
-
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
 
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)

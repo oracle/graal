@@ -35,25 +35,11 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ImplicitCa
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
-CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Implies
- anno 0 java.lang.Deprecated()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.String[] value()
-
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ImportStatic
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.Class<?>[] value()
-
-CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeAssumptions
- anno 0 java.lang.Deprecated()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.String[] value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeChild
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
@@ -97,11 +83,7 @@ meth public abstract java.lang.String value()
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Specialization
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
-fld public final static int DEFAULT_ORDER = -1
- anno 0 java.lang.Deprecated()
 intf java.lang.annotation.Annotation
-meth public abstract !hasdefault int order()
- anno 0 java.lang.Deprecated()
 meth public abstract !hasdefault java.lang.Class<? extends java.lang.Throwable>[] rewriteOn()
 meth public abstract !hasdefault java.lang.String insertBefore()
 meth public abstract !hasdefault java.lang.String limit()
@@ -143,12 +125,6 @@ supr java.lang.RuntimeException
 hfds node,serialVersionUID,suppliedNodes,suppliedValues
 
 CLSS public abstract interface java.io.Serializable
-
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
 
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
