@@ -379,7 +379,7 @@ cons protected init()
 intf com.oracle.truffle.api.instrument.InstrumentationNode
 meth public abstract com.oracle.truffle.api.instrument.Probe getProbe()
 meth public abstract void enter(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame)
-meth public abstract void returnExceptional(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Exception)
+meth public abstract void returnExceptional(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable)
 meth public abstract void returnValue(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 meth public abstract void returnVoid(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame)
 supr com.oracle.truffle.api.nodes.Node
@@ -498,12 +498,12 @@ hfds serialVersionUID
 
 CLSS public abstract interface com.oracle.truffle.api.instrument.SimpleInstrumentListener
 meth public abstract void onEnter(com.oracle.truffle.api.instrument.Probe)
-meth public abstract void onReturnExceptional(com.oracle.truffle.api.instrument.Probe,java.lang.Exception)
+meth public abstract void onReturnExceptional(com.oracle.truffle.api.instrument.Probe,java.lang.Throwable)
 meth public abstract void onReturnValue(com.oracle.truffle.api.instrument.Probe,java.lang.Object)
 meth public abstract void onReturnVoid(com.oracle.truffle.api.instrument.Probe)
 
 CLSS public abstract interface com.oracle.truffle.api.instrument.StandardAfterInstrumentListener
-meth public abstract void onReturnExceptional(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Exception)
+meth public abstract void onReturnExceptional(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable)
 meth public abstract void onReturnValue(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 meth public abstract void onReturnVoid(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame)
 
@@ -512,7 +512,7 @@ meth public abstract void onEnter(com.oracle.truffle.api.instrument.Probe,com.or
 
 CLSS public abstract interface com.oracle.truffle.api.instrument.StandardInstrumentListener
 meth public abstract void onEnter(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame)
-meth public abstract void onReturnExceptional(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Exception)
+meth public abstract void onReturnExceptional(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable)
 meth public abstract void onReturnValue(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 meth public abstract void onReturnVoid(com.oracle.truffle.api.instrument.Probe,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame)
 
