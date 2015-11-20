@@ -77,6 +77,7 @@ import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.nodes.CurrentLockNode;
 import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
+import com.oracle.graal.hotspot.nodes.FastAcquireBiasedLockNode;
 import com.oracle.graal.hotspot.nodes.MonitorCounterNode;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.BreakpointNode;
@@ -241,26 +242,27 @@ public class MonitorSnippets implements Snippets {
             // pointers to allow age to be placed into low bits.
             final Word biasableLockBits = mark.and(biasedLockMaskInPlace());
 
-            // First check to see whether biasing is enabled for this object
+            // Check whether the bias pattern is present in the object's mark word
+            // and the bias owner and the epoch are both still current.
+            final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
+            final Word thread = registerAsWord(threadRegister);
+            final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
+            trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord);
+            trace(trace, "           thread: 0x%016lx\n", thread);
+            trace(trace, "              tmp: 0x%016lx\n", tmp);
+            if (probability(FREQUENT_PROBABILITY, tmp.equal(0))) {
+                // Object is already biased to current thread -> done
+                traceObject(trace, "+lock{bias:existing}", object, true);
+                lockBiasExisting.inc();
+                FastAcquireBiasedLockNode.mark(object);
+                return;
+            }
+
+            // Now check to see whether biasing is enabled for this object
             if (probability(NOT_FREQUENT_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern())))) {
                 // Biasing not enabled -> fall through to lightweight locking
                 unbiasable.inc();
             } else {
-                // The bias pattern is present in the object's mark word. Need to check
-                // whether the bias owner and the epoch are both still current.
-                final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-                final Word thread = registerAsWord(threadRegister);
-                final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
-                trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord);
-                trace(trace, "           thread: 0x%016lx\n", thread);
-                trace(trace, "              tmp: 0x%016lx\n", tmp);
-                if (probability(FREQUENT_PROBABILITY, tmp.equal(0))) {
-                    // Object is already biased to current thread -> done
-                    traceObject(trace, "+lock{bias:existing}", object, true);
-                    lockBiasExisting.inc();
-                    return;
-                }
-
                 // At this point we know that the mark word has the bias pattern and
                 // that we are not the bias owner in the current epoch. We need to
                 // figure out more details about the state of the mark word in order to
@@ -695,5 +697,4 @@ public class MonitorSnippets implements Snippets {
     public static final SnippetCounter unlockCas = new SnippetCounter(unlockCounters, "unlock{cas}", "cas-unlocked an object");
     public static final SnippetCounter unlockCasRecursive = new SnippetCounter(unlockCounters, "unlock{cas:recursive}", "cas-unlocked an object, recursive");
     public static final SnippetCounter unlockStub = new SnippetCounter(unlockCounters, "unlock{stub}", "stub-unlocked an object");
-
 }
