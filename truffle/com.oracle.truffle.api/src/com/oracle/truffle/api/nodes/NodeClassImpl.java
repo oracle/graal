@@ -191,6 +191,11 @@ final class NodeClassImpl extends NodeClass {
         return new NodeIterator(this, node);
     }
 
+    @Override
+    public Class<? extends Node> getType() {
+        return clazz;
+    }
+
     private static final class NodeIterator implements Iterator<Node> {
         private final NodeFieldAccessor[] childFields;
         private final NodeFieldAccessor[] childrenFields;

@@ -71,4 +71,12 @@ public abstract class NodeClass {
     public abstract NodeFieldAccessor[] getChildrenFields();
 
     public abstract Iterator<Node> makeIterator(Node node);
+
+    /**
+     * The {@link Class} this <code>NodeClass</code> has been {@link #NodeClass(java.lang.Class)
+     * created for}.
+     * 
+     * @return the clazz of node this <code>NodeClass</code> describes
+     */
+    public abstract Class<? extends Node> getType();
 }
