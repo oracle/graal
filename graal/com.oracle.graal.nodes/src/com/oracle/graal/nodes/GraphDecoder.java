@@ -285,7 +285,6 @@ public class GraphDecoder {
     }
 
     protected final void decode(MethodScope methodScope, FixedWithNextNode startNode) {
-        Graph.Mark start = methodScope.graph.getMark();
         LoopScope loopScope = new LoopScope(methodScope);
         FixedNode firstNode;
         if (startNode != null) {
@@ -321,13 +320,7 @@ public class GraphDecoder {
         }
 
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            /*
-             * The startNode can get deleted during graph cleanup, so we use its predecessor (if
-             * available) as the starting point for loop detection.
-             */
-            FixedNode detectLoopsStart = startNode.predecessor() != null ? (FixedNode) startNode.predecessor() : startNode;
-            cleanupGraph(methodScope, start);
-            detectLoops(methodScope.graph, detectLoopsStart);
+            detectLoops(methodScope.graph, startNode);
         }
     }
 
