@@ -53,6 +53,7 @@ final class NodeClassImpl extends NodeClass {
     private final Class<? extends Node> clazz;
 
     NodeClassImpl(Class<? extends Node> clazz) {
+        super(clazz);
         if (!Node.class.isAssignableFrom(clazz)) {
             throw new IllegalArgumentException();
         }
