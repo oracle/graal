@@ -72,7 +72,6 @@ import com.oracle.graal.nodes.memory.WriteNode;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
@@ -133,10 +132,6 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             }
             if (kind.isXMM()) {
                 Debug.log("Skipping constant compares for float kinds");
-                return null;
-            }
-            if (constant != null && constant.getJavaKind() == JavaKind.Object && !constant.isNull()) {
-                Debug.log("Skipping constant compares for Object kinds");
                 return null;
             }
         }
@@ -271,6 +266,8 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (FloatEquals=compare value FloatingRead=access))")
     @MatchRule("(If (FloatLessThan=compare value Read=access))")
     @MatchRule("(If (FloatLessThan=compare value FloatingRead=access))")
+    @MatchRule("(If (PointerEquals=compare value Read=access))")
+    @MatchRule("(If (PointerEquals=compare value FloatingRead=access))")
     public ComplexMatchResult ifCompareMemory(IfNode root, CompareNode compare, ValueNode value, Access access) {
         return emitCompareBranchMemory(root, compare, value, access);
     }
