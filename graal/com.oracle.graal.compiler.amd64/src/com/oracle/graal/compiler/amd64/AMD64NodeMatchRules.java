@@ -268,6 +268,8 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (FloatLessThan=compare value FloatingRead=access))")
     @MatchRule("(If (PointerEquals=compare value Read=access))")
     @MatchRule("(If (PointerEquals=compare value FloatingRead=access))")
+    @MatchRule("(If (ObjectEquals=compare value Read=access))")
+    @MatchRule("(If (ObjectEquals=compare value FloatingRead=access))")
     public ComplexMatchResult ifCompareMemory(IfNode root, CompareNode compare, ValueNode value, Access access) {
         return emitCompareBranchMemory(root, compare, value, access);
     }
