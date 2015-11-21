@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
@@ -57,6 +58,7 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
         super(SourceSection.createUnavailable(SLLanguage.builtinKind, "interopEval"));
     }
 
+    @TruffleBoundary
     @Specialization
     public Object interopEval(String mimeType, String code) {
         Source source = Source.fromText(code, "<unknown>").withMimeType(mimeType);
