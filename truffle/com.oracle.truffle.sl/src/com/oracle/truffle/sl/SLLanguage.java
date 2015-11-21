@@ -50,7 +50,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -439,9 +439,16 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             failed[0] = e;
         }
         RootNode rootNode = new RootNode(SLLanguage.class, null, null) {
-            @TruffleBoundary
             @Override
             public Object execute(VirtualFrame frame) {
+                /*
+                 * We do not expect this node to be part of anything that gets compiled for
+                 * performance reason. It can be compiled though when doing compilation stress
+                 * testing. But in this case it is fine to just deoptimize. Note that we cannot
+                 * declare the method as @TruffleBoundary because it has a VirtualFrame parameter.
+                 */
+                CompilerDirectives.transferToInterpreter();
+
                 if (failed[0] instanceof RuntimeException) {
                     throw (RuntimeException) failed[0];
                 }
