@@ -62,6 +62,7 @@ import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.VirtualState;
+import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.cfg.HIRLoop;
@@ -277,7 +278,7 @@ public final class SchedulePhase extends Phase {
                 assert n.isAlive();
                 assert nodeMap.get(n) == b;
                 StructuredGraph g = (StructuredGraph) n.graph();
-                if (g.hasLoops() && g.getGuardsStage().areDeoptsFixed() && n instanceof DeoptimizeNode) {
+                if (g.hasLoops() && g.getGuardsStage() == GuardsStage.AFTER_FSA && n instanceof DeoptimizeNode) {
                     assert b.getLoopDepth() == 0 : n;
                 }
             }
