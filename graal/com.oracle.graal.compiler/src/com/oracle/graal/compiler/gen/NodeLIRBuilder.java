@@ -67,7 +67,6 @@ import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.lir.FullInfopointOp;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.SimpleInfopointOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
@@ -82,6 +81,7 @@ import com.oracle.graal.lir.gen.PhiResolver;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.FixedNode;
@@ -281,6 +281,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return values.toArray(new Value[values.size()]);
     }
 
+    /**
+     * @return {@code true} if object constant to stack moves are supported.
+     */
+    protected boolean allowObjectConstantToStackMove() {
+        return true;
+    }
+
     private Value[] createPhiOut(AbstractMergeNode merge, AbstractEndNode pred) {
         List<Value> values = new ArrayList<>();
         for (PhiNode phi : merge.valuePhis()) {
@@ -293,7 +300,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                  * new Variable.
                  */
                 value = gen.emitMove(value);
-            } else if (LIRValueUtil.isConstantValue(value) && !gen.getMoveFactory().allowConstantToStackMove(LIRValueUtil.asConstant(value))) {
+            } else if (!allowObjectConstantToStackMove() && node instanceof ConstantNode && !value.getLIRKind().isValue()) {
                 /*
                  * Some constants are not allowed as inputs for PHIs in certain backends. Explicitly
                  * create a copy of this value to force it into a register. The new variable is only
