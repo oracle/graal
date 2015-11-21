@@ -126,7 +126,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
         if (value.isConstant()) {
             JavaConstant constant = value.asJavaConstant();
-            if (constant != null && kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {
+            if (constant != null && kind == AMD64Kind.QWORD && (constant.getJavaKind().isObject() || !NumUtil.isInt(constant.asLong()))) {
                 // Only imm32 as long
                 return null;
             }
