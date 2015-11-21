@@ -27,7 +27,6 @@ import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueProxyNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.Phase;
 
