@@ -126,7 +126,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
         if (value.isConstant()) {
             JavaConstant constant = value.asJavaConstant();
-            if (constant != null && kind == AMD64Kind.QWORD && (constant.getJavaKind().isObject() || !NumUtil.isInt(constant.asLong()))) {
+            if (constant != null && kind == AMD64Kind.QWORD && !constant.getJavaKind().isObject() && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
                 return null;
             }
@@ -146,14 +146,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());
                 boolean unorderedIsTrue = compare.unorderedIsTrue();
                 double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
-                Value other;
-                JavaConstant constant = value.asJavaConstant();
-                if (constant != null) {
-                    other = gen.emitJavaConstant(constant);
-                } else {
-                    other = operand(value);
-                }
-
+                Value other = operand(value);
                 AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
                 getLIRGeneratorTool().emitCompareBranchMemory(kind, other, address, getState(access), finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability);
                 return null;
