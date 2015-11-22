@@ -91,6 +91,7 @@ import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
+import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.java.MonitorExitNode;
@@ -250,7 +251,7 @@ public class MonitorSnippets implements Snippets {
             trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord);
             trace(trace, "           thread: 0x%016lx\n", thread);
             trace(trace, "              tmp: 0x%016lx\n", tmp);
-            if (probability(FREQUENT_PROBABILITY, tmp.equal(0))) {
+            if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, tmp.equal(0))) {
                 // Object is already biased to current thread -> done
                 traceObject(trace, "+lock{bias:existing}", object, true);
                 lockBiasExisting.inc();
@@ -259,7 +260,7 @@ public class MonitorSnippets implements Snippets {
             }
 
             // Now check to see whether biasing is enabled for this object
-            if (probability(NOT_FREQUENT_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern())))) {
+            if (probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern())))) {
                 // Biasing not enabled -> fall through to lightweight locking
                 unbiasable.inc();
             } else {
@@ -360,7 +361,7 @@ public class MonitorSnippets implements Snippets {
         // Test if the object's mark word is unlocked, and if so, store the
         // (address of) the lock slot into the object's mark word.
         Word currentMark = compareAndSwap(OffsetAddressNode.address(object, markOffset()), unlockedMark, lock, MARK_WORD_LOCATION);
-        if (currentMark.notEqual(unlockedMark)) {
+        if (probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, currentMark.notEqual(unlockedMark))) {
             trace(trace, "      currentMark: 0x%016lx\n", currentMark);
             // The mark word in the object header was not the same.
             // Either the object is locked by another thread or is already locked
@@ -426,7 +427,7 @@ public class MonitorSnippets implements Snippets {
             // the bias bit would be clear.
             final Word mark = loadWordFromObject(object, markOffset());
             trace(trace, "             mark: 0x%016lx\n", mark);
-            if (probability(FREQUENT_PROBABILITY, mark.and(biasedLockMaskInPlace()).equal(Word.unsigned(biasedLockPattern())))) {
+            if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, mark.and(biasedLockMaskInPlace()).equal(Word.unsigned(biasedLockPattern())))) {
                 endLockScope();
                 decCounter();
                 traceObject(trace, "-lock{bias}", object, false);
@@ -441,7 +442,7 @@ public class MonitorSnippets implements Snippets {
         final Word displacedMark = lock.readWord(lockDisplacedMarkOffset(), DISPLACED_MARK_WORD_LOCATION);
         trace(trace, "    displacedMark: 0x%016lx\n", displacedMark);
 
-        if (displacedMark.equal(0)) {
+        if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, displacedMark.equal(0))) {
             // Recursive locking => done
             traceObject(trace, "-lock{recursive}", object, false);
             unlockCasRecursive.inc();
