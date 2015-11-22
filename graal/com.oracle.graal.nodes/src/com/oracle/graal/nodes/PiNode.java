@@ -36,6 +36,9 @@ import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.java.LoadFieldNode;
+import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.ValueProxy;
@@ -116,19 +119,42 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             return this;
         }
         inferStamp();
-        if (stamp().equals(object().stamp())) {
-            return object();
+        ValueNode o = object();
+
+        // The pi node does not give any additional information => skip it.
+        if (stamp().equals(o.stamp())) {
+            return o;
         }
-        if (getGuard() != null) {
-            for (PiNode otherPi : getGuard().asNode().usages().filter(PiNode.class)) {
-                if (object() == otherPi.object() && stamp().equals(otherPi.stamp())) {
-                    /*
-                     * Two PiNodes with the same guard and same result, so return the one with the
-                     * more precise piStamp.
-                     */
-                    Stamp newStamp = piStamp.join(otherPi.piStamp);
-                    if (newStamp.equals(otherPi.piStamp)) {
-                        return otherPi;
+
+        GuardingNode g = getGuard();
+        if (g == null) {
+            // Try to merge the pi node with a load node.
+            if (o instanceof LoadFieldNode) {
+                LoadFieldNode loadFieldNode = (LoadFieldNode) o;
+                loadFieldNode.setStamp(loadFieldNode.stamp().improveWith(this.stamp()));
+                return loadFieldNode;
+            } else if (o instanceof UnsafeLoadNode) {
+                UnsafeLoadNode unsafeLoadNode = (UnsafeLoadNode) o;
+                unsafeLoadNode.setStamp(unsafeLoadNode.stamp().improveWith(this.stamp()));
+                return unsafeLoadNode;
+            } else if (o instanceof LoadIndexedNode) {
+                LoadIndexedNode loadIndexedNode = (LoadIndexedNode) o;
+                loadIndexedNode.setStamp(loadIndexedNode.stamp().improveWith(this.stamp()));
+                return loadIndexedNode;
+            }
+        } else {
+            for (Node n : g.asNode().usages()) {
+                if (n instanceof PiNode) {
+                    PiNode otherPi = (PiNode) n;
+                    if (o == otherPi.object() && stamp().equals(otherPi.stamp())) {
+                        /*
+                         * Two PiNodes with the same guard and same result, so return the one with
+                         * the more precise piStamp.
+                         */
+                        Stamp newStamp = piStamp.join(otherPi.piStamp);
+                        if (newStamp.equals(otherPi.piStamp)) {
+                            return otherPi;
+                        }
                     }
                 }
             }
