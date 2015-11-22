@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -234,7 +235,7 @@ public final class SLContext extends ExecutionContext {
         return a;
     }
 
-    public Object evalAny(Source source) throws IOException {
-        return env.parse(source).call();
+    public CallTarget parse(Source source) throws IOException {
+        return env.parse(source);
     }
 }
