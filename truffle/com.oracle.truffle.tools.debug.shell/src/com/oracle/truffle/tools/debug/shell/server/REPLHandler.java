@@ -137,7 +137,7 @@ public abstract class REPLHandler {
             if (section == null) {
                 section = node.getEncapsulatingSourceSection();
             }
-            if (section != null) {
+            if (section != null && section.getSource() != null) {
                 infoMessage.put(REPLMessage.FILE_PATH, section.getSource().getPath());
                 infoMessage.put(REPLMessage.LINE_NUMBER, Integer.toString(section.getStartLine()));
                 infoMessage.put(REPLMessage.SOURCE_LINE_TEXT, section.getSource().getCode(section.getStartLine()));
@@ -291,7 +291,7 @@ public abstract class REPLHandler {
             if (callName == null) {
                 return finishReplyFailed(reply, "no name specified");
             }
-            final ArrayList<Object> argList = new ArrayList<>();
+            final ArrayList<String> argList = new ArrayList<>();
             for (int argCount = 0; argCount < REPLMessage.ARG_NAMES.length; argCount++) {
                 final String arg = request.get(REPLMessage.ARG_NAMES[argCount]);
                 if (arg == null) {
@@ -299,9 +299,9 @@ public abstract class REPLHandler {
                 }
                 argList.add(arg);
             }
-            final Object[] args = argList.toArray(new Object[0]);
             try {
-                replServer.call(callName, args);
+                final Object result = replServer.call(callName, argList);
+                reply.put(REPLMessage.VALUE, result == null ? "<void>" : result.toString());
             } catch (QuitException ex) {
                 throw ex;
             } catch (KillException ex) {
@@ -407,8 +407,9 @@ public abstract class REPLHandler {
             final String source = request.get(REPLMessage.CODE);
             final Visualizer visualizer = replServer.getVisualizer();
             final Integer frameNumber = request.getIntValue(REPLMessage.FRAME_NUMBER);
+            final boolean stepInto = REPLMessage.TRUE.equals(request.get(REPLMessage.STEP_INTO));
             try {
-                Object returnValue = serverContext.eval(source, frameNumber);
+                Object returnValue = serverContext.eval(source, frameNumber, stepInto);
                 return finishReplySucceeded(reply, visualizer.displayValue(returnValue, 0));
             } catch (QuitException ex) {
                 throw ex;
@@ -549,11 +550,10 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final REPLMessage reply = new REPLMessage(REPLMessage.OP, REPLMessage.LOAD_SOURCE);
             final String fileName = request.get(REPLMessage.SOURCE_NAME);
+            final boolean stepInto = REPLMessage.TRUE.equals(request.get(REPLMessage.STEP_INTO));
             try {
                 final Source fileSource = Source.fromFileName(fileName);
-                // TODO (mlvdv) language-specific
-                assert replServer.getLanguage().getMimeTypes().contains(fileSource.getMimeType());
-                replServer.eval(fileSource);
+                replServer.getCurrentContext().eval(fileSource, stepInto);
                 reply.put(REPLMessage.FILE_PATH, fileName);
                 return finishReplySucceeded(reply, fileName + "  loaded");
             } catch (QuitException ex) {

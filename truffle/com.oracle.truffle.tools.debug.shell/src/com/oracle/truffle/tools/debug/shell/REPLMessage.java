@@ -120,6 +120,7 @@ public final class REPLMessage {
     public static final String SUBTREE = "subtree";
     public static final String SUCCEEDED = "succeeded";
     public static final String TOPIC = "topic";
+    public static final String TRUE = "true";
     public static final String TRUFFLE = "truffle";
     public static final String TRUFFLE_AST = "truffle-ast";
     public static final String TRUFFLE_NODE = "truffle-node";
