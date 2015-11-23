@@ -42,15 +42,14 @@ package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.interop.SLForeignReadNode;
+import com.oracle.truffle.sl.nodes.interop.SLForeignWriteNode;
 
 final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, ForeignAccess.Factory {
     private final ForeignAccess access;
@@ -101,7 +100,7 @@ final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, 
 
     @Override
     public CallTarget accessWrite() {
-        throw new UnsupportedOperationException();
+        return Truffle.getRuntime().createCallTarget(new SLForeignWriteNode());
     }
 
     @Override
@@ -129,19 +128,4 @@ final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, 
         return SLContext.isSLObject(obj);
     }
 
-    private static class SLForeignReadNode extends RootNode {
-
-        public SLForeignReadNode() {
-            super(SLLanguage.class, null, null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            String fieldName = (String) ForeignAccess.getArguments(frame).get(0);
-            DynamicObject obj = (DynamicObject) ForeignAccess.getReceiver(frame);
-            Property property = obj.getShape().getProperty(fieldName);
-            return obj.get(property.getKey());
-        }
-
-    }
 }

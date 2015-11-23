@@ -56,7 +56,9 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.access.SLReadPropertyNode;
+import com.oracle.truffle.sl.nodes.access.SLReadPropertyNodeGen;
 import com.oracle.truffle.sl.nodes.access.SLWritePropertyNode;
+import com.oracle.truffle.sl.nodes.access.SLWritePropertyNodeGen;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNodeGen;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
@@ -406,7 +408,7 @@ public class SLNodeFactory {
         final int startPos = receiverNode.getSourceSection().getCharIndex();
         final int endPos = nameToken.charPos + nameToken.val.length();
         final SourceSection src = source.createSection(".", startPos, endPos - startPos);
-        return SLReadPropertyNode.create(src, receiverNode, nameToken.val);
+        return SLReadPropertyNodeGen.create(src, nameToken.val, receiverNode);
     }
 
     /**
@@ -421,7 +423,7 @@ public class SLNodeFactory {
         final int start = receiverNode.getSourceSection().getCharIndex();
         final int length = valueNode.getSourceSection().getCharEndIndex() - start;
         SourceSection src = source.createSection("=", start, length);
-        return SLWritePropertyNode.create(src, receiverNode, nameToken.val, valueNode);
+        return SLWritePropertyNodeGen.create(src, nameToken.val, receiverNode, valueNode);
     }
 
     /**

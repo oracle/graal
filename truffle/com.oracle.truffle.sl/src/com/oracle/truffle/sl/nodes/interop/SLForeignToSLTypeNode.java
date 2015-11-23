@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,64 +38,67 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.nodes;
+package com.oracle.truffle.sl.nodes.interop;
 
-import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.SLTargetableNode;
 import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLFunction;
 
-/**
- * Base class for all SL nodes that produce a value and therefore benefit from type specialization.
- * The annotation {@link TypeSystemReference} specifies the SL types. Specifying it here defines the
- * type system for all subclasses.
- */
-@TypeSystemReference(SLTypes.class)
-@NodeInfo(description = "The abstract base node for all expressions")
-public abstract class SLExpressionNode extends SLStatementNode {
+@NodeChild(type = SLExpressionNode.class)
+public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
 
-    public SLExpressionNode(SourceSection src) {
+    public SLForeignToSLTypeNode(SourceSection src) {
         super(src);
     }
 
-    /**
-     * The execute method when no specialization is possible. This is the most general case,
-     * therefore it must be provided by all subclasses.
-     */
-    public abstract Object executeGeneric(VirtualFrame frame);
-
-    /**
-     * When we use an expression at places where a {@link SLStatementNode statement} is already
-     * sufficient, the return value is just discarded.
-     */
-    @Override
-    public void executeVoid(VirtualFrame frame) {
-        executeGeneric(frame);
+    @Specialization(guards = "isBoxedPrimitive(frame, value)")
+    public Object unbox(VirtualFrame frame, TruffleObject value) {
+        Object unboxed = doUnbox(frame, value);
+        return SLContext.fromForeignValue(unboxed);
     }
 
-    /*
-     * Execute methods for specialized types. They all follow the same pattern: they call the
-     * generic execution method and then expect a result of their return type. Type-specialized
-     * subclasses overwrite the appropriate methods.
-     */
-
-    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectLong(executeGeneric(frame));
+    @Specialization
+    public Object fromTruffleObject(TruffleObject value) {
+        return value;
     }
 
-    public SLFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectSLFunction(executeGeneric(frame));
+    @Specialization
+    public Object fromObject(Object value) {
+        return SLContext.fromForeignValue(value);
     }
 
-    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectBoolean(executeGeneric(frame));
+    @Child private Node isBoxed;
+
+    protected final boolean isBoxedPrimitive(VirtualFrame frame, TruffleObject object) {
+        if (isBoxed == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            isBoxed = insert(Message.IS_BOXED.createNode());
+        }
+        return (boolean) ForeignAccess.execute(isBoxed, frame, object);
     }
 
-    protected static boolean isSLObject(DynamicObject object) {
-        return SLContext.isSLObject(object);
+    protected final Object doUnbox(VirtualFrame frame, TruffleObject value) {
+        initializeUnbox();
+        Object object = ForeignAccess.execute(unbox, frame, value);
+        return object;
     }
+
+    @Child private Node unbox;
+
+    private void initializeUnbox() {
+        if (unbox == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unbox = insert(Message.UNBOX.createNode());
+        }
+    }
+
 }

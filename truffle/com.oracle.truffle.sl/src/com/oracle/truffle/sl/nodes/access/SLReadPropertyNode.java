@@ -41,12 +41,21 @@
 package com.oracle.truffle.sl.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.ConditionProfile;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
+import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
@@ -54,30 +63,41 @@ import com.oracle.truffle.sl.runtime.SLContext;
  * object expression on the left side of the dot operator and then reads the named property.
  */
 @NodeInfo(shortName = ".")
-public final class SLReadPropertyNode extends SLExpressionNode {
+@NodeChild(value = "receiver", type = SLExpressionNode.class)
+public abstract class SLReadPropertyNode extends SLExpressionNode {
 
-    public static SLReadPropertyNode create(SourceSection src, SLExpressionNode receiverNode, String propertyName) {
-        return new SLReadPropertyNode(src, receiverNode, propertyName);
-    }
-
-    @Child private SLExpressionNode receiverNode;
     @Child private SLReadPropertyCacheNode cacheNode;
+    private final String propertyName;
     private final ConditionProfile receiverTypeCondition = ConditionProfile.createBinaryProfile();
 
-    private SLReadPropertyNode(SourceSection src, SLExpressionNode receiverNode, String propertyName) {
+    public SLReadPropertyNode(SourceSection src, String propertyName) {
         super(src);
-        this.receiverNode = receiverNode;
-        this.cacheNode = SLReadPropertyCacheNodeGen.create(propertyName);
+        this.propertyName = propertyName;
+        this.cacheNode = SLReadPropertyCacheNode.create(propertyName);
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        Object object = receiverNode.executeGeneric(frame);
+    @Specialization(guards = "isSLObject(object)")
+    public Object doSLObject(DynamicObject object) {
         if (receiverTypeCondition.profile(SLContext.isSLObject(object))) {
             return cacheNode.executeObject(SLContext.castSLObject(object));
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new SLException("unexpected receiver type");
         }
+    }
+
+    @Child private Node foreignRead;
+    @Child private SLForeignToSLTypeNode toSLType;
+
+    @Specialization
+    public Object doForeignObject(VirtualFrame frame, TruffleObject object) {
+        if (foreignRead == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.foreignRead = insert(Message.READ.createNode());
+            this.toSLType = insert(SLForeignToSLTypeNodeGen.create(getSourceSection(), null));
+        }
+        Object result = ForeignAccess.execute(foreignRead, frame, object, new Object[]{propertyName});
+        Object slValue = toSLType.executeWithTarget(frame, result);
+        return slValue;
     }
 }
