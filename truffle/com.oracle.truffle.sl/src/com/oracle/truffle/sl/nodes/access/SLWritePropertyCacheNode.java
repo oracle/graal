@@ -41,10 +41,11 @@
 package com.oracle.truffle.sl.nodes.access;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
@@ -52,8 +53,6 @@ import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 public abstract class SLWritePropertyCacheNode extends Node {
     protected static final int CACHE_LIMIT = 3;
@@ -69,14 +68,7 @@ public abstract class SLWritePropertyCacheNode extends Node {
     @Specialization(guards = {"location != null", "shape.check(receiver)", "canSet(location, receiver, value)"}, assumptions = {"shape.getValidAssumption()"}, limit = "CACHE_LIMIT")
     public void writeExistingPropertyCached(DynamicObject receiver, Object value, //
                     @Cached("lookupLocation(receiver, value)") Location location, //
-                    @Cached("receiver.getShape()") Shape shape, //
-                    @Cached("ensureValid(receiver)") Assumption validAssumption) {
-        try {
-            validAssumption.check();
-        } catch (InvalidAssumptionException e) {
-            executeObject(receiver, value);
-            return;
-        }
+                    @Cached("receiver.getShape()") Shape shape) {
         try {
             location.set(receiver, value, shape);
         } catch (IncompatibleLocationException | FinalLocationException e) {
@@ -90,19 +82,19 @@ public abstract class SLWritePropertyCacheNode extends Node {
                     @Cached("lookupLocation(receiver, value)") @SuppressWarnings("unused") Location existing, //
                     @Cached("receiver.getShape()") Shape shapeBefore, //
                     @Cached("defineProperty(receiver, value)") Shape shapeAfter, //
-                    @Cached("getLocation(shapeAfter)") Location newLocation, //
-                    @Cached("ensureValid(receiver)") Assumption validAssumption) {
-        try {
-            validAssumption.check();
-        } catch (InvalidAssumptionException e) {
-            executeObject(receiver, value);
-            return;
-        }
+                    @Cached("getLocation(shapeAfter)") Location newLocation) {
         try {
             newLocation.set(receiver, value, shapeBefore, shapeAfter);
         } catch (IncompatibleLocationException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @Specialization(guards = {"updateShape(object)"}, assumptions = {"assumption"})
+    public void updateShape(DynamicObject object, Object value, @Cached("createAssumption()") Assumption assumption) {
+        CompilerDirectives.transferToInterpreter();
+        assumption.invalidate();
+        executeObject(object, value);
     }
 
     @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached"})
@@ -132,12 +124,16 @@ public abstract class SLWritePropertyCacheNode extends Node {
         return newShape.getProperty(propertyName).getLocation();
     }
 
-    protected static Assumption ensureValid(DynamicObject receiver) {
-        return receiver.updateShape() ? NeverValidAssumption.INSTANCE : AlwaysValidAssumption.INSTANCE;
-    }
-
     protected static boolean canSet(Location location, DynamicObject receiver, Object value) {
         return location.canSet(receiver, value);
     }
 
+    protected static Assumption createAssumption() {
+        return Truffle.getRuntime().createAssumption("temporary cache node");
+    }
+
+    protected static boolean updateShape(DynamicObject object) {
+        CompilerDirectives.transferToInterpreter();
+        return object.updateShape();
+    }
 }
