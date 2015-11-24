@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,12 +36,12 @@ import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.DelegatingDebugConfig;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.VerifyPhase;

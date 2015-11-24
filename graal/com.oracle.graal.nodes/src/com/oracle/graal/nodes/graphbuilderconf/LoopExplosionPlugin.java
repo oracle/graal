@@ -20,11 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graphbuilderconf;
+package com.oracle.graal.nodes.graphbuilderconf;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.nodes.calc.FloatingNode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public interface ParameterPlugin extends GraphBuilderPlugin {
-    FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp);
+public interface LoopExplosionPlugin extends GraphBuilderPlugin {
+    boolean shouldExplodeLoops(ResolvedJavaMethod method);
+
+    boolean shouldMergeExplosions(ResolvedJavaMethod method);
 }

@@ -45,7 +45,6 @@ import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.amd64.AMD64SuitesProvider;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
@@ -63,6 +62,7 @@ import com.oracle.graal.hotspot.meta.HotSpotSnippetReflectionProvider;
 import com.oracle.graal.hotspot.meta.HotSpotStampProvider;
 import com.oracle.graal.hotspot.meta.HotSpotSuitesProvider;
 import com.oracle.graal.hotspot.word.HotSpotWordTypes;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.amd64.AMD64GraphBuilderPlugins;

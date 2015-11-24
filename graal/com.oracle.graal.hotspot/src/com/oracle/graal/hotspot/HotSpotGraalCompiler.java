@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
-import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
+import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import jdk.vm.ci.code.CallingConvention;
@@ -47,9 +47,6 @@ import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TopLevelDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotSuitesProvider;
 import com.oracle.graal.hotspot.phases.OnStackReplacementPhase;
@@ -58,6 +55,9 @@ import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.OptimisticOptimizations.Optimization;

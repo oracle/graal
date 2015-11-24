@@ -28,16 +28,16 @@ import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.loop.InductionVariable;
 import com.oracle.graal.loop.LoopsData;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 

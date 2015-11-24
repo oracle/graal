@@ -20,12 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graphbuilderconf;
+package com.oracle.graal.nodes.graphbuilderconf;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-public interface LoopExplosionPlugin extends GraphBuilderPlugin {
-    boolean shouldExplodeLoops(ResolvedJavaMethod method);
-
-    boolean shouldMergeExplosions(ResolvedJavaMethod method);
+/**
+ * Marker interface for graph builder plugins.
+ */
+public interface GraphBuilderPlugin {
 }

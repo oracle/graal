@@ -27,10 +27,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 
 /**
  * A {@link ParameterPlugin} that binds constant values to some parameters.

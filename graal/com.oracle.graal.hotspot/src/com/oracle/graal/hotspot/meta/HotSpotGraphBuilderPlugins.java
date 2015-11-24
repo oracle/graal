@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,14 +43,6 @@ import sun.reflect.Reflection;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.graphbuilderconf.ForeignCallPlugin;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.graphbuilderconf.MethodSubstitutionPlugin;
 import com.oracle.graal.hotspot.nodes.ClassCastNode;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
@@ -68,6 +60,14 @@ import com.oracle.graal.hotspot.word.HotSpotWordTypes;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.graphbuilderconf.ForeignCallPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.MethodSubstitutionPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;

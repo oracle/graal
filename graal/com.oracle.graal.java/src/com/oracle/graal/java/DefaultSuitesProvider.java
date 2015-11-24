@@ -25,9 +25,9 @@ package com.oracle.graal.java;
 import jdk.vm.ci.options.DerivedOptionValue;
 import jdk.vm.ci.options.DerivedOptionValue.OptionSupplier;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.tiers.HighTierContext;

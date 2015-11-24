@@ -37,11 +37,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
