@@ -31,6 +31,8 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.LEAF
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.LEAF_NOFP;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.DEOPTIMIZATION_HANDLER;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
+import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.UPDATE_BYTES_CRC32;
+import static jdk.vm.ci.code.CallingConvention.Type.NativeCall;
 import static jdk.vm.ci.meta.LocationIdentity.any;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
 import static jdk.vm.ci.sparc.SPARC.i0;
@@ -85,6 +87,11 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         if (PreferGraalStubs.getValue()) {
             link(new SPARCDeoptimizationStub(providers, target, registerStubCall(DEOPTIMIZATION_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS), config));
             link(new SPARCUncommonTrapStub(providers, target, registerStubCall(UNCOMMON_TRAP_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS), config));
+        }
+
+        if (config.useCRC32Intrinsics) {
+            // This stub does callee saving
+            registerForeignCall(UPDATE_BYTES_CRC32, config.updateBytesCRC32Stub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, any());
         }
 
         super.initialize(providers);
