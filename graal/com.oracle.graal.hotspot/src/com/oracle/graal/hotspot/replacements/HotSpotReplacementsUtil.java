@@ -195,14 +195,14 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity TLAB_END_LOCATION = NamedLocationIdentity.mutable("TlabEnd");
 
     @Fold
-    private static int threadTlabEndOffset() {
+    static int threadTlabEndOffset() {
         return config().threadTlabEndOffset();
     }
 
     public static final LocationIdentity TLAB_START_LOCATION = NamedLocationIdentity.mutable("TlabStart");
 
     @Fold
-    private static int threadTlabStartOffset() {
+    static int threadTlabStartOffset() {
         return config().threadTlabStartOffset();
     }
 
@@ -212,7 +212,7 @@ public class HotSpotReplacementsUtil {
      * @see HotSpotVMConfig#pendingExceptionOffset
      */
     @Fold
-    private static int threadPendingExceptionOffset() {
+    static int threadPendingExceptionOffset() {
         return config().pendingExceptionOffset;
     }
 
@@ -222,14 +222,14 @@ public class HotSpotReplacementsUtil {
      * @see HotSpotVMConfig#pendingDeoptimizationOffset
      */
     @Fold
-    private static int threadPendingDeoptimizationOffset() {
+    static int threadPendingDeoptimizationOffset() {
         return config().pendingDeoptimizationOffset;
     }
 
     public static final LocationIdentity OBJECT_RESULT_LOCATION = NamedLocationIdentity.mutable("ObjectResult");
 
     @Fold
-    private static int objectResultOffset() {
+    static int objectResultOffset() {
         return config().threadObjectResultOffset;
     }
 
@@ -503,7 +503,7 @@ public class HotSpotReplacementsUtil {
     };
 
     @Fold
-    private static int hubOffset() {
+    static int hubOffset() {
         return config().hubOffset;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,12 +46,13 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.memory.MemoryNode;
 
 public class SubstitutionsTest extends GraalCompilerTest {
 
     @NodeInfo(allowedUsageTypes = {Memory})
-    private static class TestMemory extends FixedWithNextNode implements MemoryNode {
+    static class TestMemory extends FixedWithNextNode implements MemoryNode {
         private static final NodeClass<TestMemory> TYPE = NodeClass.create(TestMemory.class);
 
         public TestMemory() {
@@ -63,7 +64,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
     }
 
     @NodeInfo(allowedUsageTypes = {Guard})
-    private static class TestGuard extends FloatingNode implements GuardingNode {
+    static class TestGuard extends FloatingNode implements GuardingNode {
         private static final NodeClass<TestGuard> TYPE = NodeClass.create(TestGuard.class);
 
         @Input(Memory) MemoryNode memory;
@@ -78,7 +79,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
     }
 
     @NodeInfo
-    private static class TestValue extends FloatingNode {
+    static class TestValue extends FloatingNode {
         private static final NodeClass<TestValue> TYPE = NodeClass.create(TestValue.class);
 
         @Input(Guard) GuardingNode guard;
@@ -121,6 +122,16 @@ public class SubstitutionsTest extends GraalCompilerTest {
 
     public static int callTest() {
         return TestMethod.test();
+    }
+
+    @Override
+    protected Plugins getDefaultGraphBuilderPlugins() {
+        Plugins ret = super.getDefaultGraphBuilderPlugins();
+        // manually register generated factories, jvmci service providers don't work from unit tests
+        new NodeIntrinsicFactory_SubstitutionsTest_TestGuard_guard_1c2b7e8f().registerPlugin(ret.getInvocationPlugins(), null);
+        new NodeIntrinsicFactory_SubstitutionsTest_TestMemory_memory().registerPlugin(ret.getInvocationPlugins(), null);
+        new NodeIntrinsicFactory_SubstitutionsTest_TestValue_value_a22f0f5f().registerPlugin(ret.getInvocationPlugins(), null);
+        return ret;
     }
 
     @Override

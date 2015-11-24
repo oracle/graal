@@ -133,7 +133,7 @@ public class ExceptionHandlerStub extends SnippetStub {
     }
 
     @Fold
-    private static boolean logging() {
+    static boolean logging() {
         return Boolean.getBoolean("graal.logExceptionHandlerStub");
     }
 
@@ -146,7 +146,7 @@ public class ExceptionHandlerStub extends SnippetStub {
      */
     @Fold
     @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
+    static boolean assertionsEnabled() {
         boolean enabled = false;
         assert enabled = true;
         return enabled || cAssertionsEnabled();

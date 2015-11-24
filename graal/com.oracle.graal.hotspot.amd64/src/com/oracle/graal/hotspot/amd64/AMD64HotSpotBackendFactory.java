@@ -66,6 +66,7 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.amd64.AMD64GraphBuilderPlugins;
+import com.oracle.graal.word.WordTypes;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
@@ -112,14 +113,14 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             HotSpotStampProvider stampProvider = new HotSpotStampProvider();
             Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, stampProvider);
 
+            try (InitTimer rt = timer("create WordTypes")) {
+                wordTypes = new HotSpotWordTypes(metaAccess, target.wordJavaKind);
+            }
             try (InitTimer rt = timer("create SnippetReflection provider")) {
-                snippetReflection = createSnippetReflection(graalRuntime, constantReflection);
+                snippetReflection = createSnippetReflection(graalRuntime, constantReflection, wordTypes);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(config, p, snippetReflection);
-            }
-            try (InitTimer rt = timer("create WordTypes")) {
-                wordTypes = new HotSpotWordTypes(metaAccess, target.wordJavaKind);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
                 plugins = createGraphBuilderPlugins(config, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, stampProvider);
@@ -166,8 +167,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
                         registers.getHeapBaseRegister()));
     }
 
-    protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection) {
-        return new HotSpotSnippetReflectionProvider(runtime, constantReflection);
+    protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection, WordTypes wordTypes) {
+        return new HotSpotSnippetReflectionProvider(runtime, constantReflection, wordTypes);
     }
 
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls,

@@ -566,7 +566,7 @@ public class InvocationPlugins {
                 assert !p.containsKey(method) : "a plugin is already registered for " + method;
                 p = p.parent;
             }
-            if (plugin instanceof ForeignCallPlugin) {
+            if (plugin instanceof ForeignCallPlugin || plugin instanceof GeneratedInvocationPlugin) {
                 return true;
             }
             if (plugin instanceof MethodSubstitutionPlugin) {

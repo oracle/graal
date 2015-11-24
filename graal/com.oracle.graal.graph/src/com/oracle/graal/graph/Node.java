@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -163,7 +163,11 @@ public abstract class Node implements Cloneable, Formattable {
      * annotated method can be replaced with an instance of the node class denoted by
      * {@link #value()}. For this reason, the signature of the annotated method must match the
      * signature (excluding a prefix of {@linkplain InjectedNodeParameter injected} parameters) of a
-     * factory method named {@code "create"} in the node class.
+     * constructor in the node class.
+     * <p>
+     * If the node class has a static method {@code intrinsify} with a matching signature plus a
+     * {@code GraphBuilderContext} as first argument, this method is called instead of creating the
+     * node.
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.METHOD)

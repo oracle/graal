@@ -518,6 +518,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_VERIFIER",
       ],
       "workingSets" : "Graal,Replacements,AMD64",
     },
@@ -541,7 +542,10 @@ suite = {
         "com.oracle.graal.compiler.test",
         "com.oracle.graal.replacements",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : [
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_VERIFIER"
+      ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Replacements,Test",
@@ -1113,6 +1117,7 @@ suite = {
       "dependencies" : ["com.oracle.graal.replacements.verifier"],
       "distDependencies" : [
         "GRAAL_API",
+        "jvmci:JVMCI_SERVICE_PROCESSOR",
       ],
     },
 

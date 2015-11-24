@@ -42,6 +42,7 @@ import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -61,11 +62,36 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
-    public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor,
+                    ValueNode... arguments) {
+        ForeignCallNode node = new ForeignCallNode(foreignCalls, descriptor, arguments);
+        node.setStamp(returnStamp);
+
+        /*
+         * Need to update the BCI of a ForeignCallNode so that it gets the stateDuring in the case
+         * that the foreign call can deoptimize. As with all deoptimization, we need a state in a
+         * non-intrinsic method.
+         */
+        GraphBuilderContext nonIntrinsicAncestor = b.getNonIntrinsicAncestor();
+        if (nonIntrinsicAncestor != null) {
+            node.setBci(nonIntrinsicAncestor.bci());
+        }
+
+        JavaKind returnKind = returnStamp.getStackKind();
+        if (returnKind == JavaKind.Void) {
+            b.add(node);
+        } else {
+            b.addPush(returnKind, node);
+        }
+
+        return true;
+    }
+
+    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         this(TYPE, foreignCalls, descriptor, arguments);
     }
 
-    public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
+    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
         super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
@@ -73,7 +99,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
-    public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
+    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
         super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;

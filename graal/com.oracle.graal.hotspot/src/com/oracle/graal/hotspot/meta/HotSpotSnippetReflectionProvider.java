@@ -28,20 +28,22 @@ import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.word.WordTypes;
 
 public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvider {
 
     private final HotSpotGraalRuntimeProvider runtime;
     private final HotSpotConstantReflectionProvider constantReflection;
+    private final WordTypes wordTypes;
 
-    public HotSpotSnippetReflectionProvider(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection) {
+    public HotSpotSnippetReflectionProvider(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection, WordTypes wordTypes) {
         this.runtime = runtime;
         this.constantReflection = constantReflection;
+        this.wordTypes = wordTypes;
     }
 
     @Override
@@ -88,29 +90,28 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     }
 
     // Lazily initialized
-    private ResolvedJavaType wordTypesType;
-    private ResolvedJavaType runtimeType;
-    private ResolvedJavaType configType;
+    private Class<?> wordTypesType;
+    private Class<?> runtimeType;
+    private Class<?> configType;
 
-    public Object getInjectedNodeIntrinsicParameter(ResolvedJavaType type) {
+    public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
         // Need to test all fields since there no guarantee under the JMM
         // about the order in which these fields are written.
         HotSpotVMConfig config = config();
         if (configType == null || wordTypesType == null || configType == null) {
-            MetaAccessProvider metaAccess = runtime.getHostProviders().getMetaAccess();
-            wordTypesType = metaAccess.lookupJavaType(runtime.getHostProviders().getWordTypes().getClass());
-            runtimeType = metaAccess.lookupJavaType(runtime.getClass());
-            configType = metaAccess.lookupJavaType(config.getClass());
+            wordTypesType = wordTypes.getClass();
+            runtimeType = runtime.getClass();
+            configType = config.getClass();
         }
 
         if (type.isAssignableFrom(wordTypesType)) {
-            return runtime.getHostProviders().getWordTypes();
+            return type.cast(wordTypes);
         }
         if (type.isAssignableFrom(runtimeType)) {
-            return runtime;
+            return type.cast(runtime);
         }
         if (type.isAssignableFrom(configType)) {
-            return config;
+            return type.cast(config);
         }
         return null;
     }

@@ -202,7 +202,7 @@ public class MonitorSnippets implements Snippets {
     private static final boolean PROFILE_CONTEXT = false;
 
     @Fold
-    private static boolean doProfile() {
+    static boolean doProfile() {
         return Options.ProfileMonitors.getValue();
     }
 

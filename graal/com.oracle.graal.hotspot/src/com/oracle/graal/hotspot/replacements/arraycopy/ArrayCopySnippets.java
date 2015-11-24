@@ -285,7 +285,7 @@ public class ArrayCopySnippets implements Snippets {
     }
 
     @Fold
-    private static LocationIdentity getArrayLocation(JavaKind kind) {
+    static LocationIdentity getArrayLocation(JavaKind kind) {
         return NamedLocationIdentity.getArrayLocation(kind);
     }
 

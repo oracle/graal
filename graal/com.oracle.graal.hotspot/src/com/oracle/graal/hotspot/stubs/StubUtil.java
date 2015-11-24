@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -252,22 +252,22 @@ public class StubUtil {
     }
 
     @Fold
-    private static long verifyOopCounterAddress() {
+    static long verifyOopCounterAddress() {
         return config().verifyOopCounterAddress;
     }
 
     @Fold
-    private static long verifyOopMask() {
+    static long verifyOopMask() {
         return config().verifyOopMask;
     }
 
     @Fold
-    private static long verifyOopBits() {
+    static long verifyOopBits() {
         return config().verifyOopBits;
     }
 
     @Fold
-    private static int hubOffset() {
+    static int hubOffset() {
         return config().hubOffset;
     }
 }
