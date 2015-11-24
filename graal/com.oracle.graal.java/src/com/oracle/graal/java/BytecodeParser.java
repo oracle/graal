@@ -3430,7 +3430,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (skippedExceptionTypes != null) {
             for (ResolvedJavaType exceptionType : skippedExceptionTypes) {
                 if (exceptionType.isAssignableFrom(resolvedType)) {
-                    append(new DeoptimizeNode(DeoptimizationAction.None, TransferToInterpreter));
+                    append(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, TransferToInterpreter));
                     return;
                 }
             }
