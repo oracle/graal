@@ -127,12 +127,10 @@ def microbench(args):
     vmArgs, jmhArgs = mx.extract_VM_args(args, useDoubleDash=True)
 
     # look for -f in JMH arguments
-    containsF = False
     forking = True
     for i in range(len(jmhArgs)):
         arg = jmhArgs[i]
         if arg.startswith('-f'):
-            containsF = True
             if arg == '-f' and (i+1) < len(jmhArgs):
                 arg += jmhArgs[i+1]
             try:
@@ -147,10 +145,6 @@ def microbench(args):
         if not forking:
             args += vmArgs
     else:
-        # default to -f1 if not specified otherwise
-        if not containsF:
-            jmhArgs += ['-f1']
-
         # find all projects with a direct JMH dependency
         jmhProjects = []
         for p in mx.projects_opt_limit_to_suites():

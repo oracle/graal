@@ -639,7 +639,7 @@ suite = {
     "com.oracle.graal.virtual.bench" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JMH"],
+      "dependencies" : ["JMH", "com.oracle.graal.microbenchmarks"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["JMH"],
