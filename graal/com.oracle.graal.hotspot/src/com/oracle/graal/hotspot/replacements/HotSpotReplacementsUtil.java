@@ -750,9 +750,6 @@ public class HotSpotReplacementsUtil {
     private static native KlassPointer loadKlassFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter JavaKind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
     @NodeIntrinsic(value = LoadHubNode.class)
-    public static native KlassPointer loadHubIntrinsic(Object object, GuardingNode anchor);
-
-    @NodeIntrinsic(value = LoadHubNode.class)
     public static native KlassPointer loadHubIntrinsic(Object object);
 
     @Fold

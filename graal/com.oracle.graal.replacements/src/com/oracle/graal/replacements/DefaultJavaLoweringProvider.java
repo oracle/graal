@@ -192,7 +192,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     private void lowerTypeCheckNode(TypeCheckNode n, LoweringTool tool, StructuredGraph graph) {
-        ValueNode hub = createReadHub(graph, n.getValue(), null, tool);
+        ValueNode hub = createReadHub(graph, n.getValue(), tool);
         ValueNode clazz = graph.unique(ConstantNode.forConstant(tool.getStampProvider().createHubStamp((ObjectStamp) n.getValue().stamp()), n.type().getObjectHub(), tool.getMetaAccess()));
         LogicNode objectEquals = graph.unique(PointerEqualsNode.create(hub, clazz));
         n.replaceAndDelete(objectEquals);
@@ -344,7 +344,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                  */
                 GuardingNode nullCheck = nullCheckReturn[0];
                 assert nullCheckReturn[0] != null || createNullCheck(array, storeIndexed, tool) == null;
-                ValueNode arrayClass = createReadHub(graph, array, nullCheck, tool);
+                ValueNode arrayClass = createReadHub(graph, graph.unique(new PiNode(array, (ValueNode) nullCheck)), tool);
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
                 checkCastNode = graph.add(new CheckCastDynamicNode(componentHub, value, true));
                 graph.addBeforeFixed(storeIndexed, checkCastNode);
@@ -383,7 +383,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
-        ValueNode hub = createReadHub(graph, loadHub.getValue(), loadHub.getGuard(), tool);
+        ValueNode hub = createReadHub(graph, loadHub.getValue(), tool);
         graph.replaceFloating(loadHub, hub);
     }
 
@@ -748,7 +748,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return value;
     }
 
-    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard, LoweringTool tool);
+    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);
 
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
 

@@ -82,6 +82,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         this.piStamp = stamp;
     }
 
+    public PiNode(ValueNode object, ValueNode anchor) {
+        this(object, object.stamp().join(StampFactory.objectNonNull()), anchor);
+    }
+
     public PiNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
         this(object, StampFactory.object(toType, exactType, nonNull || StampTool.isPointerNonNull(object.stamp()), true));
     }
@@ -175,6 +179,13 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return asNonNullClassIntrinsic(object, Class.class, true, true);
     }
 
+    /**
+     * Casts an object to have an exact, non-null stamp representing {@link Class}.
+     */
+    public static Class<?> asNonNullObject(Object object) {
+        return asNonNullClassIntrinsic(object, Object.class, false, true);
+    }
+
     @NodeIntrinsic(PiNode.class)
     private static native Class<?> asNonNullClassIntrinsic(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
 
@@ -185,11 +196,18 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     public static native Object piCast(Object object, @ConstantNodeParameter Stamp stamp);
 
     /**
-     * Changes the stamp of an object and ensures the newly stamped value does float above a given
-     * anchor.
+     * Changes the stamp of an object and ensures the newly stamped value does not float above a
+     * given anchor.
      */
     @NodeIntrinsic
     public static native Object piCast(Object object, @ConstantNodeParameter Stamp stamp, GuardingNode anchor);
+
+    /**
+     * Changes the stamp of an object and ensures the newly stamped value is non-null and does not
+     * float above a given anchor.
+     */
+    @NodeIntrinsic
+    public static native Object piCastNonNull(Object object, GuardingNode anchor);
 
     /**
      * Changes the stamp of an object to represent a given type and to indicate that the object is

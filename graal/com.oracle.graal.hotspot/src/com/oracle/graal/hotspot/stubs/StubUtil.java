@@ -47,6 +47,7 @@ import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.hotspot.nodes.VMErrorNode;
 import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.replacements.Log;
 import com.oracle.graal.word.Pointer;
@@ -241,7 +242,7 @@ public class StubUtil {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
-                KlassPointer klass = loadHubIntrinsic(object, anchorNode);
+                KlassPointer klass = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
                 if (klass.isNull()) {
                     fatal("klass for oop %p is null", oop.rawValue());
                 }

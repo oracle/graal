@@ -60,6 +60,7 @@ import com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.Hints;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.TypeCheckHints;
 import com.oracle.graal.nodes.ValueNode;
@@ -106,7 +107,7 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
+        KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
@@ -136,7 +137,7 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
+        KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
         if (probability(LIKELY_PROBABILITY, objectHub.notEqual(exactHub))) {
             exactMiss.inc();
             return falseValue;
@@ -155,7 +156,7 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
+        KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
         if (probability(NOT_LIKELY_PROBABILITY, objectHub.readKlassPointer(superCheckOffset, PRIMARY_SUPERS_LOCATION).notEqual(hub))) {
             displayMiss.inc();
             return falseValue;
@@ -174,7 +175,7 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
+        KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
@@ -203,7 +204,7 @@ public class InstanceOfSnippets implements Snippets {
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
         KlassPointer hub = ClassGetHubNode.readClass(mirror, anchorNode);
-        KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
+        KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
         if (hub.isNull() || !checkUnknownSubType(hub, objectHub)) {
             return falseValue;
         }
