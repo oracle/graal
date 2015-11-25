@@ -287,7 +287,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private void verifyGet(int slotIndex, byte tag) throws FrameSlotTypeException {
         checkSlotIndex(slotIndex);
         if (getTags()[slotIndex] != tag) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new FrameSlotTypeException();
         }
     }
@@ -308,7 +308,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public Object getValue(FrameSlot slot) {
         int slotIndex = slot.getIndex();
         if (CompilerDirectives.inInterpreter() && slotIndex >= getTags().length) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             resize();
         }
         byte tag = getTags()[slotIndex];
@@ -346,7 +346,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private byte getTag(FrameSlot slot) {
         int slotIndex = slot.getIndex();
         if (slotIndex >= getTags().length) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             resize();
         }
         return getTags()[slotIndex];
