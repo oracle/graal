@@ -122,7 +122,7 @@ public class HexCodeFile {
      * Map from a machine code position to a comment for the operands of the instruction at the
      * position.
      */
-    public final Map<Integer, String> operandComments = new TreeMap<>();
+    public final Map<Integer, List<String>> operandComments = new TreeMap<>();
 
     public final byte[] code;
 
@@ -180,8 +180,10 @@ public class HexCodeFile {
             }
         }
 
-        for (Map.Entry<Integer, String> e : operandComments.entrySet()) {
-            ps.printf("OperandComment %d %s %s%n", e.getKey(), e.getValue(), SECTION_DELIM);
+        for (Map.Entry<Integer, List<String>> e : operandComments.entrySet()) {
+            for (String c : e.getValue()) {
+                ps.printf("OperandComment %d %s %s%n", e.getKey(), c, SECTION_DELIM);
+            }
         }
         ps.flush();
     }
@@ -218,12 +220,15 @@ public class HexCodeFile {
     }
 
     /**
-     * Sets an operand comment for a given position.
-     *
-     * @return the previous operand comment for {@code pos}
+     * Adds an operand comment for a given position.
      */
-    public String addOperandComment(int pos, String comment) {
-        return operandComments.put(pos, encodeString(comment));
+    public void addOperandComment(int pos, String comment) {
+        List<String> list = comments.get(pos);
+        if (list == null) {
+            list = new ArrayList<>(1);
+            comments.put(pos, list);
+        }
+        list.add(encodeString(comment));
     }
 
     /**

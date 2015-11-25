@@ -117,8 +117,7 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
     }
 
     private static void addOperandComment(HexCodeFile hcf, int pos, String comment) {
-        String oldValue = hcf.addOperandComment(pos, comment);
-        assert oldValue == null : "multiple comments for operand of instruction at " + pos + ": " + comment + ", " + oldValue;
+        hcf.addOperandComment(pos, comment);
     }
 
     /**

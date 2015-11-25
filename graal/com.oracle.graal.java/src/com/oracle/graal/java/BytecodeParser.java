@@ -1387,7 +1387,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void genThrow() {
         if (GraalOptions.OldInfopoints.getValue() && graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
-            genInfoPointNode(InfopointReason.LINE_NUMBER, null);
+            genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
         }
 
         ValueNode exception = frameState.pop(JavaKind.Object);
@@ -2638,7 +2638,7 @@ public class BytecodeParser implements GraphBuilderContext {
             if (GraalOptions.OldInfopoints.getValue() && graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
                 currentLineNumber = lnt != null ? lnt.getLineNumber(bci) : (graphBuilderConfig.insertFullDebugInfo() ? -1 : bci);
                 if (currentLineNumber != previousLineNumber) {
-                    genInfoPointNode(InfopointReason.LINE_NUMBER, null);
+                    genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
                     previousLineNumber = currentLineNumber;
                 }
             }
