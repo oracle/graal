@@ -1115,10 +1115,10 @@ suite = {
     "GRAAL_REPLACEMENTS_VERIFIER" : {
       "subDir" : "graal",
       "dependencies" : ["com.oracle.graal.replacements.verifier"],
-      "distDependencies" : [
+      "distDependencies" : deps([
         "GRAAL_API",
         "jvmci:JVMCI_SERVICE_PROCESSOR",
-      ],
+      ])
     },
 
     "GRAAL_COMPILER_MATCH_PROCESSOR" : {
