@@ -74,6 +74,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.hotspot.nodes.AcquiredCASLockNode;
 import com.oracle.graal.hotspot.nodes.CurrentLockNode;
 import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
 import com.oracle.graal.hotspot.nodes.FastAcquireBiasedLockNode;
@@ -394,6 +395,7 @@ public class MonitorSnippets implements Snippets {
         } else {
             traceObject(trace, "+lock{cas}", object, true);
             lockCas.inc();
+            AcquiredCASLockNode.mark(object);
         }
     }
 
@@ -669,7 +671,7 @@ public class MonitorSnippets implements Snippets {
     private static native void monitorenterStubC(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
 
     @NodeIntrinsic(ForeignCallNode.class)
-    private static native void monitorexitStubC(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
+    public static native void monitorexitStubC(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
 
     /**
      * Counters for the various paths for acquiring a lock. The counters whose names start with
