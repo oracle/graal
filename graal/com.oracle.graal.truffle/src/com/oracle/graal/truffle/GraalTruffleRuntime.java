@@ -344,7 +344,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected void doCompile(OptimizedCallTarget optimizedCallTarget) {
         boolean success = true;
         try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
-            truffleCompiler.compileMethod(optimizedCallTarget);
+            getTruffleCompiler().compileMethod(optimizedCallTarget);
         } catch (Throwable e) {
             optimizedCallTarget.notifyCompilationFailed(e);
             success = false;

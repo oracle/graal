@@ -160,9 +160,18 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public TruffleCompiler getTruffleCompiler() {
         if (truffleCompiler == null) {
-            truffleCompiler = DefaultTruffleCompiler.create(this);
+            initializeTruffleCompiler();
         }
         return truffleCompiler;
+    }
+
+    private void initializeTruffleCompiler() {
+        synchronized (this) {
+            // might occur for multiple compiler threads at the same time.
+            if (truffleCompiler == null) {
+                truffleCompiler = DefaultTruffleCompiler.create(this);
+            }
+        }
     }
 
     @Override
@@ -281,7 +290,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
-        /* Ensure compiler is created. */
         getTruffleCompiler();
 
         super.compile(optimizedCallTarget, mayBeAsynchronous);
