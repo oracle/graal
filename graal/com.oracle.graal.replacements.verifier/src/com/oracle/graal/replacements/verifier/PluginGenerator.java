@@ -57,12 +57,14 @@ public abstract class PluginGenerator {
         return env.getElementUtils().getTypeElement("jdk.vm.ci.meta.ResolvedJavaType").asType();
     }
 
-    private static PackageElement getPackage(Element element) {
-        Element enclosing = element;
+    private static Element getTopLevelClass(Element element) {
+        Element prev = element;
+        Element enclosing = element.getEnclosingElement();
         while (enclosing != null && enclosing.getKind() != ElementKind.PACKAGE) {
+            prev = enclosing;
             enclosing = enclosing.getEnclosingElement();
         }
-        return (PackageElement) enclosing;
+        return prev;
     }
 
     private static void mkClassName(StringBuilder ret, Element cls) {
@@ -109,12 +111,13 @@ public abstract class PluginGenerator {
 
     void createPluginFactory(ExecutableElement intrinsicMethod, ExecutableElement targetMethod, TypeMirror[] constructorSignature) {
         Element declaringClass = intrinsicMethod.getEnclosingElement();
-        PackageElement pkg = getPackage(declaringClass);
+        Element topLevelClass = getTopLevelClass(declaringClass);
+        PackageElement pkg = (PackageElement) topLevelClass.getEnclosingElement();
 
         String genClassName = mkFactoryClassName(intrinsicMethod);
 
         try {
-            JavaFileObject factory = env.getFiler().createSourceFile(pkg.getQualifiedName() + "." + genClassName, intrinsicMethod);
+            JavaFileObject factory = env.getFiler().createSourceFile(pkg.getQualifiedName() + "." + genClassName, topLevelClass, declaringClass, intrinsicMethod);
             try (PrintWriter out = new PrintWriter(factory.openWriter())) {
                 out.printf("// CheckStyle: stop header check\n");
                 out.printf("// CheckStyle: stop line length check\n");
