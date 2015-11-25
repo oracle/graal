@@ -54,6 +54,7 @@ import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleOptions;
 
 /**
  * Representation of a guest language source code unit and its contents. Sources originate in
@@ -832,7 +833,12 @@ public abstract class Source {
         private final String path;  // Normalized path description of an actual file
 
         private String code = null;  // A cache of the file's contents
-        private long timeStamp;      // timestamp of the cache in the file system
+
+        /**
+         * Timestamp of the cache in the file system. Enabled by setting
+         * {@link TruffleOptions.AutoReloadFileSource} to true.
+         */
+        private long timeStamp;
 
         public FileSource(File file, String name, String path) {
             this.file = file.getAbsoluteFile();
@@ -858,10 +864,12 @@ public abstract class Source {
         @Override
         public String getCode() {
             if (fileCacheEnabled) {
-                if (code == null || timeStamp != file.lastModified()) {
+                if (code == null || (TruffleOptions.AutoReloadFileSource && timeStamp != file.lastModified())) {
                     try {
                         code = read(getReader());
-                        timeStamp = file.lastModified();
+                        if (TruffleOptions.AutoReloadFileSource) {
+                            timeStamp = file.lastModified();
+                        }
                     } catch (IOException e) {
                     }
                 }
@@ -886,7 +894,7 @@ public abstract class Source {
 
         @Override
         public Reader getReader() {
-            if (code != null && timeStamp == file.lastModified()) {
+            if (code != null && (TruffleOptions.AutoReloadFileSource && timeStamp == file.lastModified())) {
                 return new StringReader(code);
             }
             try {
