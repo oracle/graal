@@ -85,8 +85,8 @@ suite = {
     },
 
     "JMH" : {
-      "sha1" : "be2e08e6776191e9c559a65b7d34e92e86b4fa5c",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.10.4.jar"],
+      "sha1" : "0fe92ac8718909c632345d4ecb4e596d1fa40071",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.11.2.jar"],
     },
 
     # Library that allows Graal to compile against JVMCI without the jvmci suite.
