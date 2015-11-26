@@ -525,7 +525,8 @@ final class TraceInterval extends IntervalHint {
      * {@code opId}.
      */
     public boolean inMemoryAt(int opId) {
-        return SpillState.IN_MEMORY.contains(spillState()) && !canMaterialize() && opId > spillDefinitionPos();
+        SpillState spillSt = spillState();
+        return spillSt == SpillState.StartInMemory || (spillSt == SpillState.SpillStore && opId > spillDefinitionPos() && !canMaterialize());
     }
 
     void removeFirstUsePos() {
