@@ -100,10 +100,10 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10
 
     @Override
     public CallTarget accessInvoke(int argumentsLength) {
-        if (argumentsLength == 1) {
+        if (argumentsLength == 0) {
             return target(new DuplNode());
         }
-        if (argumentsLength == 2) {
+        if (argumentsLength == 1) {
             return target(new InvokeNode());
         }
         return null;
