@@ -69,7 +69,7 @@ public class SLForeignReadNode extends RootNode {
         return read.execute(frame);
     }
 
-    private static abstract class SLReadNode extends Node {
+    private abstract static class SLReadNode extends Node {
         abstract Object execute(VirtualFrame frame);
     }
 

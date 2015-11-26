@@ -69,7 +69,7 @@ public class SLForeignWriteNode extends RootNode {
         return write.execute(frame);
     }
 
-    private static abstract class SLWriteNode extends Node {
+    private abstract static class SLWriteNode extends Node {
         @Child protected SLForeignToSLTypeNode toSLType = SLForeignToSLTypeNodeGen.create(getSourceSection(), null);
 
         abstract Object execute(VirtualFrame frame);
