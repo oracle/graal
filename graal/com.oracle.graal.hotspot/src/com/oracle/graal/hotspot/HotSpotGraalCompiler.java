@@ -137,10 +137,10 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             // all code after the OSR loop is never executed.
             optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
         }
-        CompilationResult result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo, suites, lirSuites,
-                        new CompilationResult(), CompilationResultBuilderFactory.Default);
-
+        CompilationResult result = new CompilationResult();
         result.setEntryBCI(entryBCI);
+        GraalCompiler.compileGraph(graph, cc, method, providers, backend, getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo, suites, lirSuites, result,
+                        CompilationResultBuilderFactory.Default);
 
         if (!isOSR) {
             ProfilingInfo profile = method.getProfilingInfo();
