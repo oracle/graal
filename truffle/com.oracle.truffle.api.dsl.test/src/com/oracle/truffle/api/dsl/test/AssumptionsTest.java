@@ -30,6 +30,7 @@ import static org.junit.Assert.fail;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
@@ -40,6 +41,8 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.internal.SpecializationNode;
+import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArrayTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.CacheAssumptionTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.FieldTestFactory;
@@ -47,6 +50,7 @@ import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MethodTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MultipleAssumptionArraysTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MultipleAssumptionsTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.NodeFieldTest2Factory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.RemoveSpecializationTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.StaticFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
@@ -315,6 +319,42 @@ public class AssumptionsTest {
         @Specialization
         static String do2(int value) {
             return "do2";
+        }
+
+    }
+
+    @Ignore
+    @Test
+    public void testAssumptionRemovesSpecializationBefore() {
+        // This only test if a specialization on the chain before the matching one is removed.
+        CallTarget root = createCallTarget(RemoveSpecializationTestFactory.getInstance());
+        RemoveSpecializationTest node = getNode(root);
+
+        assertEquals(true, root.call(true));
+        SpecializationNode start0 = ((SpecializedNode) node).getSpecializationNode();
+        assertEquals("ValidAssumptionNode_", start0.getClass().getSimpleName());
+
+        node.assumption.invalidate();
+        // The specialization should be removed on the next call, even if the guard does not pass
+        assertEquals(false, root.call(false));
+        SpecializationNode start1 = ((SpecializedNode) node).getSpecializationNode();
+        assertEquals("InvalidatedNode_", start1.getClass().getSimpleName());
+    }
+
+    @NodeChild
+    @SuppressWarnings("unused")
+    static class RemoveSpecializationTest extends ValueNode {
+
+        protected final Assumption assumption = Truffle.getRuntime().createAssumption();
+
+        @Specialization(guards = "value", assumptions = "assumption")
+        boolean validAssumption(boolean value) {
+            return true;
+        }
+
+        @Specialization
+        boolean invalidated(boolean value) {
+            return false;
         }
 
     }

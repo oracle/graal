@@ -180,7 +180,7 @@ public class SLTckTest extends TruffleTCK {
 
     @Override
     protected String evaluateSource() {
-        return "interopEval";
+        return "eval";
     }
 
     //

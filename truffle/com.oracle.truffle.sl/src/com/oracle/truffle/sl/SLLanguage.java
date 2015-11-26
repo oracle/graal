@@ -50,7 +50,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -114,6 +114,8 @@ import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -204,8 +206,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String builtinKind = "SL builtin";
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
     private static Visualizer visualizer = new SLDefaultVisualizer();
+    private static int parsingCount;
+
+    private final Map<Source, CallTarget> compiled;
 
     private SLLanguage() {
+        compiled = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
     }
 
     public static final SLLanguage INSTANCE = new SLLanguage();
@@ -256,6 +262,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             main.invoke(null);
         }
         reportToolDemos();
+    }
+
+    public static int parsingCount() {
+        return parsingCount;
     }
 
     /**
@@ -415,6 +425,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected CallTarget parse(Source code, final Node node, String... argumentNames) throws IOException {
+        CallTarget cached = compiled.get(code);
+        if (cached != null) {
+            return cached;
+        }
+        parsingCount++;
         final SLContext c = new SLContext(this);
         final Exception[] failed = {null};
         try {
@@ -424,9 +439,16 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             failed[0] = e;
         }
         RootNode rootNode = new RootNode(SLLanguage.class, null, null) {
-            @TruffleBoundary
             @Override
             public Object execute(VirtualFrame frame) {
+                /*
+                 * We do not expect this node to be part of anything that gets compiled for
+                 * performance reason. It can be compiled though when doing compilation stress
+                 * testing. But in this case it is fine to just deoptimize. Note that we cannot
+                 * declare the method as @TruffleBoundary because it has a VirtualFrame parameter.
+                 */
+                CompilerDirectives.transferToInterpreter();
+
                 if (failed[0] instanceof RuntimeException) {
                     throw (RuntimeException) failed[0];
                 }
@@ -455,7 +477,9 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 return null;
             }
         };
-        return Truffle.getRuntime().createCallTarget(rootNode);
+        cached = Truffle.getRuntime().createCallTarget(rootNode);
+        compiled.put(code, cached);
+        return cached;
     }
 
     @Override
@@ -480,9 +504,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected Visualizer getVisualizer() {
-        if (visualizer == null) {
-            visualizer = new SLDefaultVisualizer();
-        }
         return visualizer;
     }
 

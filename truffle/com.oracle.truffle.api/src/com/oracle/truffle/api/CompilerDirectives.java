@@ -180,7 +180,8 @@ public final class CompilerDirectives {
 
     /**
      * Marks fields that should be considered final for a Truffle compilation although they are not
-     * final while executing in the interpreter.
+     * final while executing in the interpreter. If the field type is an array type, the compiler
+     * considers reads with a constant index as constants.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})

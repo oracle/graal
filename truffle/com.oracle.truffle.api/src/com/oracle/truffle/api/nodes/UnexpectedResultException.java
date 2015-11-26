@@ -43,7 +43,7 @@ public final class UnexpectedResultException extends SlowPathException {
      * @param result the alternative result
      */
     public UnexpectedResultException(Object result) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         this.result = result;
     }
 
