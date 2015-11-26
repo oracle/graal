@@ -63,6 +63,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
+import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePostWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePreWriteBarrier;
@@ -412,11 +413,11 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+    protected ValueNode implicitLoadConvert(JavaKind kind, ValueNode value, boolean compressible) {
         if (kind == JavaKind.Object && compressible && config().useCompressedOops) {
-            return CompressionNode.uncompress(value, config().getOopEncoding());
+            return new CompressionNode(CompressionOp.Uncompress, value, config().getOopEncoding());
         }
-        return super.implicitLoadConvert(graph, kind, value, compressible);
+        return super.implicitLoadConvert(kind, value, compressible);
     }
 
     @Override
@@ -427,11 +428,11 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+    protected ValueNode implicitStoreConvert(JavaKind kind, ValueNode value, boolean compressible) {
         if (kind == JavaKind.Object && compressible && config().useCompressedOops) {
-            return CompressionNode.compress(value, config().getOopEncoding());
+            return new CompressionNode(CompressionOp.Compress, value, config().getOopEncoding());
         }
-        return super.implicitStoreConvert(graph, kind, value, compressible);
+        return super.implicitStoreConvert(kind, value, compressible);
     }
 
     @Override

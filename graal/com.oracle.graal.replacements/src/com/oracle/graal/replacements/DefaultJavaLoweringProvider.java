@@ -715,35 +715,58 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return stamp;
     }
 
-    public ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
+    public final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
         return implicitLoadConvert(graph, kind, value, true);
-
     }
 
-    protected ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, @SuppressWarnings("unused") boolean compressible) {
+    public ValueNode implicitLoadConvert(JavaKind kind, ValueNode value) {
+        return implicitLoadConvert(kind, value, true);
+    }
+
+    protected final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+        ValueNode ret = implicitLoadConvert(kind, value, compressible);
+        if (!ret.isAlive()) {
+            ret = graph.addOrUnique(ret);
+        }
+        return ret;
+    }
+
+    protected ValueNode implicitLoadConvert(JavaKind kind, ValueNode value, @SuppressWarnings("unused") boolean compressible) {
         switch (kind) {
             case Byte:
             case Short:
-                return graph.unique(new SignExtendNode(value, 32));
+                return new SignExtendNode(value, 32);
             case Boolean:
             case Char:
-                return graph.unique(new ZeroExtendNode(value, 32));
+                return new ZeroExtendNode(value, 32);
         }
         return value;
     }
 
-    public ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
+    public final ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
         return implicitStoreConvert(graph, kind, value, true);
     }
 
-    protected ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value, @SuppressWarnings("unused") boolean compressible) {
+    public ValueNode implicitStoreConvert(JavaKind kind, ValueNode value) {
+        return implicitStoreConvert(kind, value, true);
+    }
+
+    protected final ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+        ValueNode ret = implicitStoreConvert(kind, value, compressible);
+        if (!ret.isAlive()) {
+            ret = graph.addOrUnique(ret);
+        }
+        return ret;
+    }
+
+    protected ValueNode implicitStoreConvert(JavaKind kind, ValueNode value, @SuppressWarnings("unused") boolean compressible) {
         switch (kind) {
             case Boolean:
             case Byte:
-                return graph.unique(new NarrowNode(value, 8));
+                return new NarrowNode(value, 8);
             case Char:
             case Short:
-                return graph.unique(new NarrowNode(value, 16));
+                return new NarrowNode(value, 16);
         }
         return value;
     }
