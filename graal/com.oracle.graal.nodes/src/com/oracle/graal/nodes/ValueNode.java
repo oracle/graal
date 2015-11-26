@@ -22,16 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.List;
-
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodePredicate;
@@ -165,10 +160,5 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node {
         } else {
             return super.isAllowedUsageType(type);
         }
-    }
-
-    public interface NodeIntrinsicConstructor {
-
-        ValueNode newInstance(ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection, Graph graph, Object[] injectedArguments, List<? extends ValueNode> arguments);
     }
 }
