@@ -231,6 +231,15 @@ class BootstrapTest:
                         out = None
                     run_vm(self.args + _noneAsEmptyList(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
 
+class MicrobenchRun:
+    def __init__(self, name, args):
+        self.name = name
+        self.args = args
+
+    def run(self, tasks, extraVMarguments=None):
+        with Task(self.name + ': hosted-product ', tasks) as t:
+            if t: microbench(_noneAsEmptyList(extraVMarguments) + ['--'] + self.args)
+
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
     # Build server-hosted-jvmci now so we can run the unit tests
@@ -241,6 +250,11 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with VM('server', 'product'):
         for r in unit_test_runs:
             r.run(suites, tasks, extraVMarguments)
+
+    # Run microbench on server-hosted-jvmci (only for testing the JMH setup)
+    with VM('server', 'product'):
+        for r in [MicrobenchRun('Microbench', ['TestJMH'])]:
+            r.run(tasks, extraVMarguments)
 
     # Run ctw against rt.jar on server-hosted-jvmci
     with VM('server', 'product'):
