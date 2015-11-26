@@ -766,12 +766,6 @@ public class SnippetTemplate {
                 }
             } while (exploded);
 
-            for (NodeIntrinsicFactory factory : snippetCopy.getNodes().filter(NodeIntrinsicFactory.class)) {
-                ValueNode intrinsic = factory.intrinsify(snippetCopy, providers.getConstantReflection(), snippetReflection);
-                assert intrinsic != null;
-                snippetCopy.replaceFixed(factory, intrinsic);
-            }
-
             GuardsStage guardsStage = args.cacheKey.guardsStage;
             // Perform lowering on the snippet
             if (!guardsStage.allowsFloatingGuards()) {

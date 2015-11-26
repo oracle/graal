@@ -77,7 +77,7 @@ import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
 import com.oracle.graal.replacements.MethodHandlePlugin;
-import com.oracle.graal.replacements.NodeIntrinsificationPhase;
+import com.oracle.graal.replacements.NodeIntrinsificationProvider;
 import com.oracle.graal.replacements.NodeIntrinsificationPlugin;
 import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins;
@@ -102,7 +102,7 @@ public class HotSpotGraphBuilderPlugins {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess);
 
         Plugins plugins = new Plugins(invocationPlugins);
-        NodeIntrinsificationPhase nodeIntrinsificationPhase = new NodeIntrinsificationPhase(metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, wordTypes);
+        NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes);
         NodeIntrinsificationPlugin nodeIntrinsificationPlugin = new NodeIntrinsificationPlugin();
         HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
         HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin, nodeIntrinsificationPlugin);
@@ -128,7 +128,7 @@ public class HotSpotGraphBuilderPlugins {
         StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, true);
 
         for (NodeIntrinsicPluginFactory factory : Services.load(NodeIntrinsicPluginFactory.class)) {
-            factory.registerPlugin(invocationPlugins, nodeIntrinsificationPhase);
+            factory.registerPlugin(invocationPlugins, nodeIntrinsificationProvider);
         }
 
         return plugins;
