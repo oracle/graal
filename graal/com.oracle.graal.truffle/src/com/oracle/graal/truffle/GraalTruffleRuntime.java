@@ -371,14 +371,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected abstract BackgroundCompileQueue getCompileQueue();
 
     public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
-        Runnable r = new Runnable() {
+        BackgroundCompileQueue l = getCompileQueue();
+        Future<?> future = l.compileQueue.submit(new Runnable() {
             @Override
             public void run() {
                 doCompile(optimizedCallTarget);
             }
-        };
-        BackgroundCompileQueue l = getCompileQueue();
-        Future<?> future = l.compileQueue.submit(r);
+        });
         l.compilations.put(optimizedCallTarget, future);
         getCompilationNotify().notifyCompilationQueued(optimizedCallTarget);
 

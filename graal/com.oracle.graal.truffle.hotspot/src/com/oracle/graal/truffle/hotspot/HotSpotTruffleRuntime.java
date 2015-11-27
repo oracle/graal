@@ -289,13 +289,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
-        getTruffleCompiler();
-
-        super.compile(optimizedCallTarget, mayBeAsynchronous);
-    }
-
-    @Override
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
         if (lazy == null) {
             // if truffle wasn't initialized yet, this is a noop
