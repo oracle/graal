@@ -319,16 +319,16 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         return optimalSplitPos;
     }
 
+    @SuppressWarnings({"unused"})
     private int findOptimalSplitPos(TraceInterval interval, int minSplitPos, int maxSplitPos, boolean doLoopOptimization) {
-        int optimalSplitPos = findOptimalSplitPos0(interval, minSplitPos, maxSplitPos, doLoopOptimization);
+        int optimalSplitPos = findOptimalSplitPos0(minSplitPos, maxSplitPos);
         if (Debug.isLogEnabled()) {
             Debug.log("optimal split position: %d", optimalSplitPos);
         }
         return optimalSplitPos;
     }
 
-    @SuppressWarnings({"unused"})
-    private int findOptimalSplitPos0(TraceInterval interval, int minSplitPos, int maxSplitPos, boolean doLoopOptimization) {
+    private int findOptimalSplitPos0(int minSplitPos, int maxSplitPos) {
         // TODO (je) implement
         if (minSplitPos == maxSplitPos) {
             // trivial case, no optimization of split position possible
@@ -557,39 +557,30 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         }
     }
 
-    // called during register allocation
+    /**
+     * Change spill state of an interval.
+     *
+     * Note: called during register allocation.
+     *
+     * @param spillPos position of the spill
+     */
     private void changeSpillState(TraceInterval interval, int spillPos) {
         if (TraceLinearScan.Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
             switch (interval.spillState()) {
-                case NoSpillStore: {
-                    int defLoopDepth = allocator.blockForId(interval.spillDefinitionPos()).getLoopDepth();
-                    int spillLoopDepth = allocator.blockForId(spillPos).getLoopDepth();
+                case NoSpillStore:
+                    final int minSpillPos = interval.spillDefinitionPos();
+                    final int maxSpillPost = spillPos;
 
-                    if (defLoopDepth < spillLoopDepth) {
-                        /*
-                         * The loop depth of the spilling position is higher then the loop depth at
-                         * the definition of the interval. Move write to memory out of loop.
-                         */
-                        // store at definition of the interval
-                        interval.setSpillState(SpillState.StoreAtDefinition);
-                    } else {
-                        /*
-                         * The interval is currently spilled only once, so for now there is no
-                         * reason to store the interval at the definition.
-                         */
-                        interval.setSpillState(SpillState.OneSpillStore);
-                    }
+                    final int optimalSpillPos = findOptimalSpillPos(minSpillPos, maxSpillPost);
+
+                    // assert !allocator.isBlockBegin(optimalSpillPos);
+                    assert !allocator.isBlockEnd(optimalSpillPos);
+                    assert (optimalSpillPos & 1) == 0 : "Spill pos must be even";
+
+                    interval.setSpillDefinitionPos(optimalSpillPos);
+                    interval.setSpillState(SpillState.SpillStore);
                     break;
-                }
-
-                case OneSpillStore: {
-                    // It is better to store it to memory at the definition.
-                    interval.setSpillState(SpillState.StoreAtDefinition);
-                    break;
-                }
-
-                case SpillInDominator:
-                case StoreAtDefinition:
+                case SpillStore:
                 case StartInMemory:
                 case NoOptimization:
                 case NoDefinitionFound:
@@ -602,6 +593,87 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         } else {
             interval.setSpillState(SpillState.NoOptimization);
         }
+    }
+
+    /**
+     * @param minSpillPos minimal spill position
+     * @param maxSpillPos maximal spill position
+     */
+    private int findOptimalSpillPos(int minSpillPos, int maxSpillPos) {
+        // TODO (JE): implement
+        int optimalSpillPos = findOptimalSpillPos0(minSpillPos, maxSpillPos) & (~1);
+        if (Debug.isLogEnabled()) {
+            Debug.log("optimal spill position: %d", optimalSpillPos);
+        }
+        return optimalSpillPos;
+    }
+
+    private int findOptimalSpillPos0(int minSpillPos, int maxSpillPos) {
+        // TODO (je) implement
+        if (minSpillPos == maxSpillPos) {
+            // trivial case, no optimization of split position possible
+            if (Debug.isLogEnabled()) {
+                Debug.log("min-pos and max-pos are equal, no optimization possible");
+            }
+            return minSpillPos;
+
+        }
+        assert minSpillPos < maxSpillPos : "must be true then";
+        assert minSpillPos >= 0 : "cannot access minSplitPos - 1 otherwise";
+
+        AbstractBlockBase<?> minBlock = allocator.blockForId(minSpillPos);
+        AbstractBlockBase<?> maxBlock = allocator.blockForId(maxSpillPos);
+
+        assert minBlock.getLinearScanNumber() <= maxBlock.getLinearScanNumber() : "invalid order";
+        if (minBlock == maxBlock) {
+            // split position cannot be moved to block boundary : so split as late as possible
+            if (Debug.isLogEnabled()) {
+                Debug.log("cannot move split pos to block boundary because minPos and maxPos are in same block");
+            }
+            return maxSpillPos;
+
+        }
+        // search optimal block boundary between minSplitPos and maxSplitPos
+        if (Debug.isLogEnabled()) {
+            Debug.log("moving split pos to optimal block boundary between block B%d and B%d", minBlock.getId(), maxBlock.getId());
+        }
+
+        // currently using the same heuristic as for splitting
+        return findOptimalSpillPos(minBlock, maxBlock, maxSpillPos);
+    }
+
+    private int findOptimalSpillPos(AbstractBlockBase<?> minBlock, AbstractBlockBase<?> maxBlock, int maxSplitPos) {
+        int fromBlockNr = minBlock.getLinearScanNumber();
+        int toBlockNr = maxBlock.getLinearScanNumber();
+
+        assert 0 <= fromBlockNr && fromBlockNr < blockCount() : "out of range";
+        assert 0 <= toBlockNr && toBlockNr < blockCount() : "out of range";
+        assert fromBlockNr < toBlockNr : "must cross block boundary";
+
+        /*
+         * Try to split at end of maxBlock. If this would be after maxSplitPos, then use the begin
+         * of maxBlock. We use last instruction -2 because we want to insert the move before the
+         * block end op.
+         */
+        int optimalSplitPos = allocator.getLastLirInstructionId(maxBlock) - 2;
+        if (optimalSplitPos > maxSplitPos) {
+            optimalSplitPos = allocator.getFirstLirInstructionId(maxBlock);
+        }
+
+        // minimal block probability
+        double minProbability = maxBlock.probability();
+        for (int i = toBlockNr - 1; i >= fromBlockNr; i--) {
+            AbstractBlockBase<?> cur = blockAt(i);
+
+            if (cur.probability() < minProbability) {
+                // Block with lower probability found. Split at the end of this block.
+                minProbability = cur.probability();
+                optimalSplitPos = allocator.getLastLirInstructionId(cur) - 2;
+            }
+        }
+        assert optimalSplitPos > allocator.maxOpId() || allocator.isBlockBegin(optimalSplitPos) || allocator.isBlockEnd(optimalSplitPos + 2) : "algorithm must move split pos to block boundary";
+
+        return optimalSplitPos;
     }
 
     /**

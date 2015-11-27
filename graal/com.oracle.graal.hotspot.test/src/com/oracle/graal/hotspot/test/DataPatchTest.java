@@ -30,17 +30,12 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 public class DataPatchTest extends GraalCompilerTest {
 
@@ -93,27 +88,8 @@ public class DataPatchTest extends GraalCompilerTest {
         @MethodSubstitution
         public static Object compressUncompress(Object obj) {
             Object compressed = CompressionNode.compression(CompressionOp.Compress, obj, config.getOopEncoding());
-            Object proxy = ConstantFoldBarrier.wrap(compressed);
+            Object proxy = GraalDirectives.opaque(compressed);
             return CompressionNode.compression(CompressionOp.Uncompress, proxy, config.getOopEncoding());
         }
-    }
-
-    @NodeInfo
-    private static final class ConstantFoldBarrier extends FloatingNode implements LIRLowerable {
-
-        public static final NodeClass<ConstantFoldBarrier> TYPE = NodeClass.create(ConstantFoldBarrier.class);
-        @Input protected ValueNode input;
-
-        public ConstantFoldBarrier(ValueNode input) {
-            super(TYPE, input.stamp());
-            this.input = input;
-        }
-
-        public void generate(NodeLIRBuilderTool generator) {
-            generator.setResult(this, generator.operand(input));
-        }
-
-        @NodeIntrinsic
-        public static native Object wrap(Object object);
     }
 }

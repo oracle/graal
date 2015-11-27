@@ -568,6 +568,9 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
         private Iterable<InfoElement> getInfoElements(ValueNode proxiedValue) {
             ValueNode value = GraphUtil.unproxify(proxiedValue);
+            if (value == null) {
+                return Collections.emptyList();
+            }
             Info info = map.get(value);
             if (info == null) {
                 return Collections.emptyList();

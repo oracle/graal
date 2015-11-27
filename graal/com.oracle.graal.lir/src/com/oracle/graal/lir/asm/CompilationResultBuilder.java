@@ -147,7 +147,7 @@ public class CompilationResultBuilder {
     /**
      * Sets the {@linkplain CompilationResult#setTargetCode(byte[], int) code} and
      * {@linkplain CompilationResult#recordExceptionHandler(int, int) exception handler} fields of
-     * the compilation result.
+     * the compilation result and then {@linkplain #closeCompilationResult() closes} it.
      */
     public void finish() {
         int position = asm.position();
@@ -160,6 +160,14 @@ public class CompilationResultBuilder {
                 compilationResult.recordExceptionHandler(codeOffset, ei.exceptionEdge.label().position());
             }
         }
+        closeCompilationResult();
+    }
+
+    /**
+     * Calls {@link CompilationResult#close()} on {@link #compilationResult}.
+     */
+    protected void closeCompilationResult() {
+        compilationResult.close();
     }
 
     public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {
@@ -417,9 +425,9 @@ public class CompilationResultBuilder {
         }
     }
 
-    public void reset() {
+    public void resetForEmittingCode() {
         asm.reset();
-        compilationResult.reset();
+        compilationResult.resetForEmittingCode();
         if (exceptionInfoList != null) {
             exceptionInfoList.clear();
         }

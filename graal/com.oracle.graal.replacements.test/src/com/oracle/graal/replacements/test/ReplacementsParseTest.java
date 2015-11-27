@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.runtime.RuntimeProvider;
 
@@ -42,6 +43,14 @@ import com.oracle.graal.runtime.RuntimeProvider;
  * Tests for expected behavior when parsing snippets and intrinsics.
  */
 public class ReplacementsParseTest extends GraalCompilerTest {
+
+    @Override
+    protected Plugins getDefaultGraphBuilderPlugins() {
+        Plugins ret = super.getDefaultGraphBuilderPlugins();
+        // manually register generated factory, jvmci service providers don't work from unit tests
+        new NodeIntrinsicFactory_ReplacementsParseTest_TestMethodsSubstitutions_asNonNullStringIntrinsic_2bfccb54().registerPlugin(ret.getInvocationPlugins(), null);
+        return ret;
+    }
 
     private static final Object THROW_EXCEPTION_MARKER = new Object() {
         @Override

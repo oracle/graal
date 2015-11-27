@@ -33,7 +33,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
 @State(Scope.Thread)
-public class ArrayDuplicationBenchmark {
+public class ArrayDuplicationBenchmark extends GraalBenchmark {
 
     /** How large should the test-arrays be. */
     private static final int TESTSIZE = 300;
