@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -156,7 +156,7 @@ public class UncommonTrapStub extends SnippetStub {
     }
 
     @Fold
-    private static int stackShadowPages() {
+    static int stackShadowPages() {
         return config().useStackBanging ? config().stackShadowPages : 0;
     }
 
@@ -169,52 +169,52 @@ public class UncommonTrapStub extends SnippetStub {
      */
     @Deprecated
     @Fold
-    private static int stackBias() {
+    static int stackBias() {
         return config().stackBias;
     }
 
     @Fold
-    private static int deoptimizationUnrollBlockSizeOfDeoptimizedFrameOffset() {
+    static int deoptimizationUnrollBlockSizeOfDeoptimizedFrameOffset() {
         return config().deoptimizationUnrollBlockSizeOfDeoptimizedFrameOffset;
     }
 
     @Fold
-    private static int deoptimizationUnrollBlockCallerAdjustmentOffset() {
+    static int deoptimizationUnrollBlockCallerAdjustmentOffset() {
         return config().deoptimizationUnrollBlockCallerAdjustmentOffset;
     }
 
     @Fold
-    private static int deoptimizationUnrollBlockNumberOfFramesOffset() {
+    static int deoptimizationUnrollBlockNumberOfFramesOffset() {
         return config().deoptimizationUnrollBlockNumberOfFramesOffset;
     }
 
     @Fold
-    private static int deoptimizationUnrollBlockTotalFrameSizesOffset() {
+    static int deoptimizationUnrollBlockTotalFrameSizesOffset() {
         return config().deoptimizationUnrollBlockTotalFrameSizesOffset;
     }
 
     @Fold
-    private static int deoptimizationUnrollBlockFrameSizesOffset() {
+    static int deoptimizationUnrollBlockFrameSizesOffset() {
         return config().deoptimizationUnrollBlockFrameSizesOffset;
     }
 
     @Fold
-    private static int deoptimizationUnrollBlockFramePcsOffset() {
+    static int deoptimizationUnrollBlockFramePcsOffset() {
         return config().deoptimizationUnrollBlockFramePcsOffset;
     }
 
     @Fold
-    private static int deoptimizationUnrollBlockInitialInfoOffset() {
+    static int deoptimizationUnrollBlockInitialInfoOffset() {
         return config().deoptimizationUnrollBlockInitialInfoOffset;
     }
 
     @Fold
-    private static int deoptimizationUnpackDeopt() {
+    static int deoptimizationUnpackDeopt() {
         return config().deoptimizationUnpackDeopt;
     }
 
     @Fold
-    private static int deoptimizationUnpackUncommonTrap() {
+    static int deoptimizationUnpackUncommonTrap() {
         return config().deoptimizationUnpackUncommonTrap;
     }
 

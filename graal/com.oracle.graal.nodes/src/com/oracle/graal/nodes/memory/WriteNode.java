@@ -49,7 +49,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
 
-    private WriteNode(ValueNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+    protected WriteNode(ValueNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
         this((AddressNode) address, location, value, barrierType);
     }
 

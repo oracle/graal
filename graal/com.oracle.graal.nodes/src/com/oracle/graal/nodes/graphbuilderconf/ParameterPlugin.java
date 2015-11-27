@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graphbuilderconf;
+package com.oracle.graal.nodes.graphbuilderconf;
 
-/**
- * Marker interface for graph builder plugins.
- */
-public interface GraphBuilderPlugin {
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.nodes.calc.FloatingNode;
+
+public interface ParameterPlugin extends GraphBuilderPlugin {
+    FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp);
 }

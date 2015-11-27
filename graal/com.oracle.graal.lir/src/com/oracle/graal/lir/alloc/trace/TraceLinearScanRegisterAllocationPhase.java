@@ -48,7 +48,7 @@ final class TraceLinearScanRegisterAllocationPhase extends TraceLinearScanAlloca
     private static void allocateRegisters(TraceLinearScan allocator) {
         try (Indent indent = Debug.logAndIndent("allocate registers")) {
             FixedInterval precoloredIntervals = allocator.createFixedUnhandledList();
-            TraceInterval notPrecoloredIntervals = allocator.createUnhandledList(TraceLinearScan.IS_VARIABLE_INTERVAL);
+            TraceInterval notPrecoloredIntervals = allocator.createUnhandledListByFrom(TraceLinearScan.IS_VARIABLE_INTERVAL);
 
             // allocate cpu registers
             TraceLinearScanWalker lsw = new TraceLinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);

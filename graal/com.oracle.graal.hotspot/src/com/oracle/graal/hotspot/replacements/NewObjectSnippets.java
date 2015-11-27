@@ -138,7 +138,7 @@ public class NewObjectSnippets implements Snippets {
     public static final ProfileMode PROFILE_MODE = ProfileMode.AllocatedTypes;
 
     @Fold
-    private static String createName(String path, String typeContext) {
+    static String createName(String path, String typeContext) {
         switch (PROFILE_MODE) {
             case AllocatingMethods:
                 return "";
@@ -155,7 +155,7 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Fold
-    private static boolean doProfile() {
+    static boolean doProfile() {
         return ProfileAllocations.getValue();
     }
 

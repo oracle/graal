@@ -37,11 +37,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
@@ -83,7 +83,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         final StructuredGraph graph = parseDebug(method, AllowAssumptions.from(OptAssumptions.getValue()));
         int graphLineSPs = 0;
         for (FullInfopointNode ipn : graph.getNodes().filter(FullInfopointNode.class)) {
-            if (ipn.getReason() == InfopointReason.LINE_NUMBER) {
+            if (ipn.getReason() == InfopointReason.BYTECODE_POSITION) {
                 ++graphLineSPs;
             }
         }
@@ -95,7 +95,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         int lineSPs = 0;
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);
-            if (sp.reason == InfopointReason.LINE_NUMBER) {
+            if (sp.reason == InfopointReason.BYTECODE_POSITION) {
                 ++lineSPs;
             }
         }

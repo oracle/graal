@@ -36,6 +36,9 @@ import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.java.LoadFieldNode;
+import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.ValueProxy;
@@ -79,6 +82,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         this.piStamp = stamp;
     }
 
+    public PiNode(ValueNode object, ValueNode anchor) {
+        this(object, object.stamp().join(StampFactory.objectNonNull()), anchor);
+    }
+
     public PiNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
         this(object, StampFactory.object(toType, exactType, nonNull || StampTool.isPointerNonNull(object.stamp()), true));
     }
@@ -116,19 +123,43 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             return this;
         }
         inferStamp();
-        if (stamp().equals(object().stamp())) {
-            return object();
+        ValueNode o = object();
+
+        // The pi node does not give any additional information => skip it.
+        if (stamp().equals(o.stamp())) {
+            return o;
         }
-        if (getGuard() != null) {
-            for (PiNode otherPi : getGuard().asNode().usages().filter(PiNode.class)) {
-                if (object() == otherPi.object() && stamp().equals(otherPi.stamp())) {
-                    /*
-                     * Two PiNodes with the same guard and same result, so return the one with the
-                     * more precise piStamp.
-                     */
-                    Stamp newStamp = piStamp.join(otherPi.piStamp);
-                    if (newStamp.equals(otherPi.piStamp)) {
-                        return otherPi;
+
+        GuardingNode g = getGuard();
+        if (g == null) {
+
+            // Try to merge the pi node with a load node.
+            if (o instanceof LoadFieldNode) {
+                LoadFieldNode loadFieldNode = (LoadFieldNode) o;
+                loadFieldNode.setStamp(loadFieldNode.stamp().improveWith(this.piStamp));
+                return loadFieldNode;
+            } else if (o instanceof UnsafeLoadNode) {
+                UnsafeLoadNode unsafeLoadNode = (UnsafeLoadNode) o;
+                unsafeLoadNode.setStamp(unsafeLoadNode.stamp().improveWith(this.piStamp));
+                return unsafeLoadNode;
+            } else if (o instanceof LoadIndexedNode) {
+                LoadIndexedNode loadIndexedNode = (LoadIndexedNode) o;
+                loadIndexedNode.setStamp(loadIndexedNode.stamp().improveWith(this.piStamp));
+                return loadIndexedNode;
+            }
+        } else {
+            for (Node n : g.asNode().usages()) {
+                if (n instanceof PiNode) {
+                    PiNode otherPi = (PiNode) n;
+                    if (o == otherPi.object() && stamp().equals(otherPi.stamp())) {
+                        /*
+                         * Two PiNodes with the same guard and same result, so return the one with
+                         * the more precise piStamp.
+                         */
+                        Stamp newStamp = piStamp.join(otherPi.piStamp);
+                        if (newStamp.equals(otherPi.piStamp)) {
+                            return otherPi;
+                        }
                     }
                 }
             }
@@ -148,6 +179,13 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return asNonNullClassIntrinsic(object, Class.class, true, true);
     }
 
+    /**
+     * Casts an object to have an exact, non-null stamp representing {@link Class}.
+     */
+    public static Class<?> asNonNullObject(Object object) {
+        return asNonNullClassIntrinsic(object, Object.class, false, true);
+    }
+
     @NodeIntrinsic(PiNode.class)
     private static native Class<?> asNonNullClassIntrinsic(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
 
@@ -158,11 +196,18 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     public static native Object piCast(Object object, @ConstantNodeParameter Stamp stamp);
 
     /**
-     * Changes the stamp of an object and ensures the newly stamped value does float above a given
-     * anchor.
+     * Changes the stamp of an object and ensures the newly stamped value does not float above a
+     * given anchor.
      */
     @NodeIntrinsic
     public static native Object piCast(Object object, @ConstantNodeParameter Stamp stamp, GuardingNode anchor);
+
+    /**
+     * Changes the stamp of an object and ensures the newly stamped value is non-null and does not
+     * float above a given anchor.
+     */
+    @NodeIntrinsic
+    public static native Object piCastNonNull(Object object, GuardingNode anchor);
 
     /**
      * Changes the stamp of an object to represent a given type and to indicate that the object is

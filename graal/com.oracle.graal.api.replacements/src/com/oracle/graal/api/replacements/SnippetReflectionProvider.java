@@ -182,5 +182,5 @@ public interface SnippetReflectionProvider {
      * @return the value that should be bound to the parameter when invoking the constructor or null
      *         if this provider cannot provide a value of the requested type
      */
-    Object getInjectedNodeIntrinsicParameter(ResolvedJavaType type);
+    <T> T getInjectedNodeIntrinsicParameter(Class<T> type);
 }
