@@ -28,10 +28,15 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -68,6 +73,20 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         @Override
         public boolean allUsagesAvailable() {
             return false;
+        }
+    }
+
+    @NodeInfo
+    static class CanonicalizeToNullNode extends FloatingNode implements Canonicalizable, GuardingNode {
+        public static final NodeClass<CanonicalizeToNullNode> TYPE = NodeClass.create(CanonicalizeToNullNode.class);
+
+        protected CanonicalizeToNullNode(Stamp stamp) {
+            super(TYPE, stamp);
+        }
+
+        @Override
+        public Node canonical(CanonicalizerTool tool) {
+            return null;
         }
     }
 
@@ -149,41 +168,71 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                 }
             }
 
+        } else if (node instanceof FixedGuardNode) {
+            FixedGuardNode guard = (FixedGuardNode) node;
+            if (guard.getCondition() instanceof LogicConstantNode) {
+                LogicConstantNode condition = (LogicConstantNode) guard.getCondition();
+                Node canonical;
+                if (condition.getValue() == guard.isNegated()) {
+                    DeoptimizeNode deopt = new DeoptimizeNode(guard.getAction(), guard.getReason(), guard.getSpeculation());
+                    deopt.setStateBefore(guard.stateBefore());
+                    canonical = deopt;
+                } else {
+                    /*
+                     * The guard is unnecessary, but we cannot remove the node completely yet
+                     * because there might be nodes that use it as a guard input. Therefore, we
+                     * replace it with a more lightweight node (which is floating and has no
+                     * inputs).
+                     */
+                    canonical = new CanonicalizeToNullNode(node.stamp);
+                }
+                handleCanonicaliation(methodScope, loopScope, nodeOrderId, node, canonical);
+            }
+
         } else if (node instanceof Canonicalizable) {
             Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool());
-            if (canonical == null) {
-                /*
-                 * This is a possible return value of canonicalization. However, we might need to
-                 * add additional usages later on for which we need a node. Therefore, we just do
-                 * nothing and leave the node in place.
-                 */
-            } else if (canonical != node) {
-                if (!canonical.isAlive()) {
-                    assert !canonical.isDeleted();
-                    canonical = methodScope.graph.addOrUniqueWithInputs(canonical);
-                    if (canonical instanceof FixedWithNextNode) {
-                        methodScope.graph.addBeforeFixed(node, (FixedWithNextNode) canonical);
-                    } else if (canonical instanceof ControlSinkNode) {
-                        FixedWithNextNode predecessor = (FixedWithNextNode) node.predecessor();
-                        predecessor.setNext((ControlSinkNode) canonical);
-                        node.safeDelete();
-                        for (Node successor : node.successors()) {
-                            successor.safeDelete();
-                        }
-
-                    } else {
-                        assert !(canonical instanceof FixedNode);
-                    }
-                }
-                if (!node.isDeleted()) {
-                    GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
-                    node.replaceAtUsages(canonical);
-                    node.safeDelete();
-                }
-                assert lookupNode(loopScope, nodeOrderId) == node;
-                registerNode(loopScope, nodeOrderId, canonical, true, false);
+            if (canonical != node) {
+                handleCanonicaliation(methodScope, loopScope, nodeOrderId, node, canonical);
             }
         }
+    }
+
+    private void handleCanonicaliation(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node, Node c) {
+        Node canonical = c;
+
+        if (canonical == null) {
+            /*
+             * This is a possible return value of canonicalization. However, we might need to add
+             * additional usages later on for which we need a node. Therefore, we just do nothing
+             * and leave the node in place.
+             */
+            return;
+        }
+
+        if (!canonical.isAlive()) {
+            assert !canonical.isDeleted();
+            canonical = methodScope.graph.addOrUniqueWithInputs(canonical);
+            if (canonical instanceof FixedWithNextNode) {
+                methodScope.graph.addBeforeFixed(node, (FixedWithNextNode) canonical);
+            } else if (canonical instanceof ControlSinkNode) {
+                FixedWithNextNode predecessor = (FixedWithNextNode) node.predecessor();
+                predecessor.setNext((ControlSinkNode) canonical);
+                node.safeDelete();
+                for (Node successor : node.successors()) {
+                    successor.safeDelete();
+                }
+
+            } else {
+                assert !(canonical instanceof FixedNode);
+            }
+        }
+        if (!node.isDeleted()) {
+            GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+            node.replaceAtUsages(canonical);
+            node.safeDelete();
+        }
+        assert lookupNode(loopScope, nodeOrderId) == node;
+        registerNode(loopScope, nodeOrderId, canonical, true, false);
     }
 
     @Override
