@@ -27,6 +27,8 @@ import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -83,7 +85,33 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(trueValue.stamp().meet(falseValue.stamp()));
+        Stamp valueStamp = trueValue.stamp().meet(falseValue.stamp());
+        if (condition instanceof IntegerLessThanNode) {
+            IntegerLessThanNode lessThan = (IntegerLessThanNode) condition;
+            if (lessThan.getX() == trueValue && lessThan.getY() == falseValue) {
+                // this encodes a min operation
+                JavaConstant constant = lessThan.getX().asJavaConstant();
+                if (constant == null) {
+                    constant = lessThan.getY().asJavaConstant();
+                }
+                if (constant != null) {
+                    IntegerStamp bounds = StampFactory.forInteger(constant.getJavaKind(), constant.getJavaKind().getMinValue(), constant.asLong());
+                    valueStamp = valueStamp.join(bounds);
+                }
+            } else if (lessThan.getX() == falseValue && lessThan.getY() == trueValue) {
+                // this encodes a max operation
+                JavaConstant constant = lessThan.getX().asJavaConstant();
+                if (constant == null) {
+                    constant = lessThan.getY().asJavaConstant();
+                }
+                if (constant != null) {
+                    IntegerStamp bounds = StampFactory.forInteger(constant.getJavaKind(), constant.asLong(), constant.getJavaKind().getMaxValue());
+                    valueStamp = valueStamp.join(bounds);
+                }
+            }
+
+        }
+        return updateStamp(valueStamp);
     }
 
     public ValueNode trueValue() {
