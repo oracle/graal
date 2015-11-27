@@ -57,7 +57,13 @@ public abstract class ValueProfile extends NodeCloneable {
     }
 
     /**
-     * Returns a {@link ValueProfile} that speculates on the exact class of a value.
+     * Returns a {@link ValueProfile} that speculates on the exact class of a value. It will check
+     * the class of the profiled value and provide additional information to the compiler if only
+     * non-null values of exactly one concrete Java class are passed as a parameter to the
+     * {@link ValueProfile#profile} method. This can be beneficial if subsequent code can take
+     * advantage of knowing the concrete class of the value. The profile will degrade to the generic
+     * case if a null value or if at least two instances of two different Java classes are
+     * registered.
      */
     public static ValueProfile createClassProfile() {
         return new ExactClassValueProfile();
