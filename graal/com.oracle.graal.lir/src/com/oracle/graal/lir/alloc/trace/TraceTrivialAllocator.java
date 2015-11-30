@@ -50,15 +50,10 @@ import com.oracle.graal.lir.util.VariableVirtualStackValueMap;
  */
 final class TraceTrivialAllocator extends TraceAllocationPhase {
 
-    private final TraceBuilderResult<?> resultTraces;
-
-    public TraceTrivialAllocator(TraceBuilderResult<?> resultTraces) {
-        this.resultTraces = resultTraces;
-    }
-
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> trace, TraceAllocationContext context) {
         LIR lir = lirGenRes.getLIR();
+        TraceBuilderResult<?> resultTraces = context.resultTraces;
         assert isTrivialTrace(lir, trace) : "Not a trivial trace! " + trace;
         B block = trace.iterator().next();
 

@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.alloc.trace;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
 
@@ -31,10 +32,12 @@ public abstract class TraceAllocationPhase extends LIRPhase<TraceAllocationPhase
     public static final class TraceAllocationContext {
         public final MoveFactory spillMoveFactory;
         public final RegisterAllocationConfig registerAllocationConfig;
+        public final TraceBuilderResult<?> resultTraces;
 
-        public TraceAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
+        public TraceAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> resultTraces) {
             this.spillMoveFactory = spillMoveFactory;
             this.registerAllocationConfig = registerAllocationConfig;
+            this.resultTraces = resultTraces;
         }
     }
 

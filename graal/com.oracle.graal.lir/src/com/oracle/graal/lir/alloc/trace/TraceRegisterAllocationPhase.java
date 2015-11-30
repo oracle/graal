@@ -80,8 +80,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceBuilderResult<B> resultTraces = TraceBuilder.computeTraces(startBlock, linearScanOrder);
         TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
 
-        // TODO (je) merge with AllocationContex
-        TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig);
+        TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
 
         Debug.dump(lir, "Before TraceRegisterAllocation");
         int traceNumber = 0;
@@ -93,7 +92,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                 }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + traceNumber + ": " + trace);
                 if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                    new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
+                    new TraceTrivialAllocator().apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
                 } else {
                     TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
                     allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
@@ -107,7 +106,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         }
         Debug.dump(lir, "After trace allocation");
 
-        new TraceGlobalMoveResolutionPhase(resultTraces).apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
+        new TraceGlobalMoveResolutionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
         new TraceRegisterAllocationFixupPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
     }
 

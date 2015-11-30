@@ -57,16 +57,10 @@ public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
         public abstract void addMapping(Value src, AllocatableValue dst);
     }
 
-    private final TraceBuilderResult<?> resultTraces;
-
-    public TraceGlobalMoveResolutionPhase(TraceBuilderResult<?> resultTraces) {
-        this.resultTraces = resultTraces;
-    }
-
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, TraceAllocationContext context) {
         MoveFactory spillMoveFactory = context.spillMoveFactory;
-        resolveGlobalDataFlow(resultTraces, lirGenRes, spillMoveFactory, target.arch);
+        resolveGlobalDataFlow(context.resultTraces, lirGenRes, spillMoveFactory, target.arch);
     }
 
     @SuppressWarnings("try")
