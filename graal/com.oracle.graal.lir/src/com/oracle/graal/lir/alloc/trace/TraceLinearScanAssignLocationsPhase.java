@@ -150,7 +150,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                  * instruction is a branch, spill moves are inserted before this branch and so the
                  * wrong operand would be returned (spill moves at block boundaries are not
                  * considered in the live ranges of intervals).
-                 * 
+                 *
                  * Solution: use the first opId of the branch target block instead.
                  */
                 final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
@@ -187,8 +187,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                      * this can happen when spill-moves are removed in eliminateSpillMoves
                      */
                     hasDead = true;
-                } else if (assignLocations(op)) {
-                    instructions.set(j, null);
+                } else if (assignLocations(op, instructions, j)) {
                     hasDead = true;
                 }
             }
@@ -203,10 +202,12 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
          * Assigns the operand of an {@link LIRInstruction}.
          *
          * @param op The {@link LIRInstruction} that should be colored.
-         * @return {@code true} if the instruction should be deleted.
+         * @param j The index of {@code op} in the {@code instructions} list.
+         * @param instructions The instructions of the current block.
+         * @return {@code true} if the instruction was deleted.
          */
-        private boolean assignLocations(LIRInstruction op) {
-            assert op != null;
+        private boolean assignLocations(LIRInstruction op, List<LIRInstruction> instructions, int j) {
+            assert op != null && instructions.get(j) == op;
             if (TraceRAshareSpillInformation.getValue()) {
                 if (op instanceof BlockEndOp) {
                     ((BlockEndOp) op).forEachOutgoingValue(colorOutgoingIncomingValues);
@@ -225,6 +226,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                      * kicked out in LinearScanWalker.splitForSpilling(). When kicking out such an
                      * interval this move operation was already generated.
                      */
+                    instructions.set(j, null);
                     return true;
                 }
             }
@@ -241,6 +243,12 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             if (op instanceof ValueMoveOp) {
                 ValueMoveOp move = (ValueMoveOp) op;
                 if (move.getInput().equals(move.getResult())) {
+                    instructions.set(j, null);
+                    return true;
+                }
+                if (isStackSlotValue(move.getInput()) && isStackSlotValue(move.getResult())) {
+                    // rewrite stack to stack moves
+                    instructions.set(j, spillMoveFactory.createStackMove(move.getResult(), move.getInput()));
                     return true;
                 }
             }
