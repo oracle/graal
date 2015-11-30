@@ -70,8 +70,9 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
     @Override
     @SuppressWarnings("try")
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+        MoveFactory spillMoveFactory = context.spillMoveFactory;
+        RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
         LIR lir = lirGenRes.getLIR();
         assert SSIVerifier.verify(lir) : "LIR not in SSI form.";
         B startBlock = linearScanOrder.get(0);
@@ -79,7 +80,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceBuilderResult<B> resultTraces = TraceBuilder.computeTraces(startBlock, linearScanOrder);
         TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
 
-        TraceAllocationContext context = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig);
+        // TODO (je) merge with AllocationContex
+        TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig);
 
         Debug.dump(lir, "Before TraceRegisterAllocation");
         int traceNumber = 0;
@@ -91,7 +93,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                 }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + traceNumber + ": " + trace);
                 if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                    new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
+                    new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
                 } else {
                     TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
                     allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
@@ -105,8 +107,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         }
         Debug.dump(lir, "After trace allocation");
 
-        new TraceGlobalMoveResolutionPhase(resultTraces).apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
-        new TraceRegisterAllocationFixupPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+        new TraceGlobalMoveResolutionPhase(resultTraces).apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
+        new TraceRegisterAllocationFixupPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
     }
 
     static boolean isTrivialTrace(LIR lir, List<? extends AbstractBlockBase<?>> trace) {
