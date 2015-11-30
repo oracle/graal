@@ -22,35 +22,20 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import java.util.List;
-
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
 
 public abstract class TraceAllocationPhase extends LIRPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     public static final class TraceAllocationContext {
-        private final MoveFactory spillMoveFactory;
-        private final RegisterAllocationConfig registerAllocationConfig;
+        public final MoveFactory spillMoveFactory;
+        public final RegisterAllocationConfig registerAllocationConfig;
 
         public TraceAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
             this.spillMoveFactory = spillMoveFactory;
             this.registerAllocationConfig = registerAllocationConfig;
         }
     }
-
-    @Override
-    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    TraceAllocationContext context) {
-        run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.spillMoveFactory, context.registerAllocationConfig);
-    }
-
-    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig);
 
 }
