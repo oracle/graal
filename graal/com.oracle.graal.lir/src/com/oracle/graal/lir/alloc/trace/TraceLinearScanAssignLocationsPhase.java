@@ -57,6 +57,7 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 /**
  * Specialization of {@link com.oracle.graal.lir.alloc.lsra.LinearScanAssignLocationsPhase} that
@@ -69,14 +70,17 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     TraceLinearScanAllocationContext context) {
         TraceLinearScan allocator = context.allocator;
-        new Assigner(allocator).assignLocations();
+        MoveFactory spillMoveFactory = context.spillMoveFactory;
+        new Assigner(allocator, spillMoveFactory).assignLocations();
     }
 
     private static final class Assigner {
         private final TraceLinearScan allocator;
+        private final MoveFactory spillMoveFactory;
 
-        private Assigner(TraceLinearScan allocator) {
+        private Assigner(TraceLinearScan allocator, MoveFactory spillMoveFactory) {
             this.allocator = allocator;
+            this.spillMoveFactory = spillMoveFactory;
         }
 
         /**
