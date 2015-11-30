@@ -36,7 +36,6 @@ import java.util.ListIterator;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -45,7 +44,6 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.SSIUtil;
 
@@ -57,8 +55,10 @@ import com.oracle.graal.lir.ssi.SSIUtil;
 final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    TraceLinearScanAllocationContext context) {
+        TraceBuilderResult<?> traceBuilderResult = context.traceBuilderResult;
+        TraceLinearScan allocator = context.allocator;
         new Resolver(allocator, traceBuilderResult).resolveDataFlow(allocator.sortedBlocks());
     }
 

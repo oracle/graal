@@ -22,24 +22,18 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import java.util.List;
-
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
 
 public abstract class TraceLinearScanAllocationPhase extends LIRPhase<TraceLinearScanAllocationPhase.TraceLinearScanAllocationContext> {
 
     public static final class TraceLinearScanAllocationContext {
-        private final MoveFactory spillMoveFactory;
-        private final RegisterAllocationConfig registerAllocationConfig;
-        private final TraceBuilderResult<?> traceBuilderResult;
-        private final TraceLinearScan allocator;
+        public final MoveFactory spillMoveFactory;
+        public final RegisterAllocationConfig registerAllocationConfig;
+        public final TraceBuilderResult<?> traceBuilderResult;
+        public final TraceLinearScan allocator;
 
         public TraceLinearScanAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
             this.spillMoveFactory = spillMoveFactory;
@@ -48,14 +42,4 @@ public abstract class TraceLinearScanAllocationPhase extends LIRPhase<TraceLinea
             this.allocator = allocator;
         }
     }
-
-    @Override
-    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    TraceLinearScanAllocationContext context) {
-        run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.spillMoveFactory, context.registerAllocationConfig, context.traceBuilderResult, context.allocator);
-    }
-
-    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator);
-
 }

@@ -26,19 +26,17 @@ import java.util.List;
 
 import jdk.vm.ci.code.TargetDescription;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 final class TraceLinearScanRegisterAllocationPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    TraceLinearScanAllocationContext context) {
+        TraceLinearScan allocator = context.allocator;
         allocator.printIntervals("Before register allocation");
         allocateRegisters(allocator);
         allocator.printIntervals("After register allocation");

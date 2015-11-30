@@ -41,8 +41,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
@@ -59,7 +57,6 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 /**
  * Specialization of {@link com.oracle.graal.lir.alloc.lsra.LinearScanAssignLocationsPhase} that
@@ -69,8 +66,9 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    TraceLinearScanAllocationContext context) {
+        TraceLinearScan allocator = context.allocator;
         new Assigner(allocator).assignLocations();
     }
 

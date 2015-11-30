@@ -32,7 +32,6 @@ import java.util.List;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -46,7 +45,6 @@ import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.trace.TraceInterval.SpillState;
 import com.oracle.graal.lir.alloc.trace.TraceLinearScan.IntervalPredicate;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAllocationPhase {
 
@@ -59,8 +57,10 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
     };
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    TraceLinearScanAllocationContext context) {
+        TraceBuilderResult<?> traceBuilderResult = context.traceBuilderResult;
+        TraceLinearScan allocator = context.allocator;
         boolean shouldEliminateSpillMoves = shouldEliminateSpillMoves(traceBuilderResult, allocator);
         eliminateSpillMoves(allocator, shouldEliminateSpillMoves, traceBuilderResult);
     }
