@@ -562,6 +562,20 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testPrimitiveidentityString() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        String value = "Value" + RANDOM.nextInt(1000) + RANDOM.nextDouble();
+
+        String ret = (String) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, ret);
+    }
+
+    @Test
     public void testPrimitiveIdentityForeignObject() throws Exception {
         String id = identity();
         if (id == null) {
