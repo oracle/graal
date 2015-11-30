@@ -257,7 +257,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
                 }
 
                 PolyglotEngine.Value main = vm.findGlobalSymbol("main");
-                main.invoke(null);
+                main.execute();
             } else {
                 notifier.fireTestFailure(new Failure(testCase.name, new UnsupportedOperationException("No instrumentation found.")));
             }

@@ -667,7 +667,23 @@ public class PolyglotEngine {
          *         <code>null</code>
          * @throws IOException signals problem during execution
          */
+        @Deprecated
         public Value invoke(final Object thiz, final Object... args) throws IOException {
+            return execute(args);
+        }
+
+        /**
+         * Executes the symbol. If the symbol represents a function, then it should be invoked with
+         * provided arguments. If the symbol represents a field, then first argument (if provided)
+         * should set the value to the field; the return value should be the actual value of the
+         * field when the <code>invoke</code> method returns.
+         *
+         * @param args arguments to pass when invoking the symbol
+         * @return symbol wrapper around the value returned by invoking the symbol, never
+         *         <code>null</code>
+         * @throws IOException signals problem during execution
+         */
+        public Value execute(final Object... args) throws IOException {
             get();
             ComputeInExecutor<Object> invokeCompute = new ComputeInExecutor<Object>(executor) {
                 @SuppressWarnings("try")
@@ -675,16 +691,6 @@ public class PolyglotEngine {
                 protected Object compute() throws IOException {
                     try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
                         List<Object> arr = new ArrayList<>();
-                        if (thiz == null) {
-                            if (language[0] != null) {
-                                Object global = SPI.languageGlobal(SPI.findLanguage(PolyglotEngine.this, language[0].getClass()));
-                                if (global != null) {
-                                    arr.add(global);
-                                }
-                            }
-                        } else {
-                            arr.add(thiz);
-                        }
                         arr.addAll(Arrays.asList(args));
                         for (;;) {
                             try {

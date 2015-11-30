@@ -41,7 +41,7 @@ public class JavaFunctionTest {
                 called[0] = true;
             }
         })).build();
-        engine.findGlobalSymbol("test").invoke(null);
+        engine.findGlobalSymbol("test").execute();
 
         assertTrue("Runnable has been called", called[0]);
     }

@@ -126,7 +126,7 @@ public class ImplicitExplicitExportTest {
         ).get();
         // @formatter:on
         assertEquals("Explicit import from L2 is used", "43", ret);
-        assertEquals("Global symbol is also 43", "43", vm.findGlobalSymbol("ahoj").invoke(null).get());
+        assertEquals("Global symbol is also 43", "43", vm.findGlobalSymbol("ahoj").execute().get());
     }
 
     static final class Ctx {

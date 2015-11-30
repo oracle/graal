@@ -168,7 +168,7 @@ public class SLDebugTest {
         });
 
         PolyglotEngine.Value main = engine.findGlobalSymbol("main");
-        value = main.invoke(null);
+        value = main.execute();
 
         assertExecutedOK();
 

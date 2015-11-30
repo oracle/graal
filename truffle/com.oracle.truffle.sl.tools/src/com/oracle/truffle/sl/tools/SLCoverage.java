@@ -81,7 +81,7 @@ public class SLCoverage {
             throw new IOException("No function main() defined in SL source file.");
         }
         while (repeats-- > 0) {
-            main.invoke(null);
+            main.execute();
         }
         coverageTracker.print(System.out);
     }

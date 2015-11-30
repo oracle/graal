@@ -40,14 +40,22 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import static com.oracle.truffle.sl.runtime.SLContext.fromForeignValue;
+
+import java.util.List;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
+import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
 import com.oracle.truffle.sl.nodes.interop.SLForeignReadNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignWriteNode;
 
@@ -110,7 +118,7 @@ final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, 
 
     @Override
     public CallTarget accessInvoke(int argumentsLength) {
-        return null;
+        return Truffle.getRuntime().createCallTarget(new SLForeignInvokeRootNode());
     }
 
     @Override
@@ -126,6 +134,28 @@ final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, 
     @Override
     public boolean canHandle(TruffleObject obj) {
         return SLContext.isSLObject(obj);
+    }
+
+    private static class SLForeignInvokeRootNode extends RootNode {
+        @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
+
+        public SLForeignInvokeRootNode() {
+            super(SLLanguage.class, null, null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            DynamicObject receiver = (DynamicObject) ForeignAccess.getReceiver(frame);
+            String name = (String) ForeignAccess.getArguments(frame).get(0);
+            SLFunction function = (SLFunction) receiver.get(name);
+            List<Object> args = ForeignAccess.getArguments(frame);
+            Object[] arr = new Object[args.size() - 1];
+            for (int i = 1; i < args.size(); i++) {
+                arr[i - 1] = fromForeignValue(args.get(i));
+            }
+            Object result = dispatch.executeDispatch(frame, function, arr);
+            return result;
+        }
     }
 
 }

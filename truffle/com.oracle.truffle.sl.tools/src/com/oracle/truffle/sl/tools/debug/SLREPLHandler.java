@@ -132,7 +132,7 @@ public abstract class SLREPLHandler extends REPLHandler {
             vm.eval(Source.fromFileName(file.getPath()));
             PolyglotEngine.Value main = vm.findGlobalSymbol("main");
             if (main != null) {
-                main.invoke(null);
+                main.execute();
             }
             final String path = file.getCanonicalPath();
             reply.put(REPLMessage.FILE_PATH, path);
