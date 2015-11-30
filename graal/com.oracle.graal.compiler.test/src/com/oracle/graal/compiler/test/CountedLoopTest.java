@@ -269,4 +269,37 @@ public class CountedLoopTest extends GraalCompilerTest {
         return true;
     }
 
+    public static Result incrementNeqSnippet(int limit) {
+        int i;
+        int posLimit = ((limit - 1) & 0xFFFF) + 1; // make sure limit is always strictly positive
+        Result ret = new Result();
+        for (i = 0; i != posLimit; i++) {
+            GraalDirectives.controlFlowAnchor();
+            ret.extremum = get(InductionVariable::extremumNode, i);
+        }
+        ret.exitValue = get(InductionVariable::exitValueNode, i);
+        return ret;
+    }
+
+    @Test
+    public void decrementNeq() {
+        test("decrementNeqSnippet", 256);
+    }
+
+    public static Result decrementNeqSnippet(int limit) {
+        int i;
+        int posLimit = ((limit - 1) & 0xFFFF) + 1; // make sure limit is always strictly positive
+        Result ret = new Result();
+        for (i = posLimit; i != 0; i--) {
+            GraalDirectives.controlFlowAnchor();
+            ret.extremum = get(InductionVariable::extremumNode, i);
+        }
+        ret.exitValue = get(InductionVariable::exitValueNode, i);
+        return ret;
+    }
+
+    @Test
+    public void incrementNeq() {
+        test("incrementNeqSnippet", 256);
+    }
 }

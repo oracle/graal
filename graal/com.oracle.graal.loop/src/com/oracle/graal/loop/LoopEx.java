@@ -258,7 +258,6 @@ public class LoopEx {
                     } else {
                         return false;
                     }
-                    oneOff = true;
                     break;
                 }
                 case LE:
