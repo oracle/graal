@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
-
 import java.util.List;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -44,12 +42,10 @@ import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
-import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 
 /**
@@ -83,6 +79,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceBuilderResult<B> resultTraces = TraceBuilder.computeTraces(startBlock, linearScanOrder);
         TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
 
+        TraceAllocationContext context = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig);
+
         Debug.dump(lir, "Before TraceRegisterAllocation");
         int traceNumber = 0;
         for (List<B> trace : resultTraces.getTraces()) {
@@ -93,7 +91,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                 }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + traceNumber + ": " + trace);
                 if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                    new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, new TraceAllocationContext(spillMoveFactory, registerAllocationConfig), false);
+                    new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
                 } else {
                     TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
                     allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
@@ -107,28 +105,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         }
         Debug.dump(lir, "After trace allocation");
 
-        new TraceGlobalMoveResolutionPhase(resultTraces).apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, new TraceAllocationContext(spillMoveFactory, registerAllocationConfig));
-
-        try (Scope s = Debug.scope("TraceRegisterAllocationFixup")) {
-            if (replaceStackToStackMoves(lir, spillMoveFactory)) {
-                Debug.dump(lir, "After fixing stack to stack moves");
-            }
-            /*
-             * Incoming Values are needed for the RegisterVerifier, otherwise SIGMAs/PHIs where the
-             * Out and In value matches (ie. there is no resolution move) are falsely detected as
-             * errors.
-             */
-            for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
-                try (Indent i = Debug.logAndIndent("Fixup Block %s", block)) {
-                    if (block.getPredecessorCount() != 0) {
-                        SSIUtil.removeIncoming(lir, block);
-                    } else {
-                        assert lir.getControlFlowGraph().getStartBlock().equals(block);
-                    }
-                    SSIUtil.removeOutgoing(lir, block);
-                }
-            }
-        }
+        new TraceGlobalMoveResolutionPhase(resultTraces).apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+        new TraceRegisterAllocationFixupPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
     }
 
     static boolean isTrivialTrace(LIR lir, List<? extends AbstractBlockBase<?>> trace) {
@@ -145,30 +123,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
          * stack-slot, register). For now we just check for JumpOp because we know that it doesn't.
          */
         return instructions.get(1) instanceof JumpOp;
-    }
-
-    /**
-     * Fixup stack to stack moves introduced by stack arguments.
-     *
-     * TODO (je) find a better solution.
-     */
-    private static boolean replaceStackToStackMoves(LIR lir, MoveFactory spillMoveFactory) {
-        boolean changed = false;
-        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
-            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
-            for (int i = 0; i < instructions.size(); i++) {
-                LIRInstruction inst = instructions.get(i);
-
-                if (inst instanceof ValueMoveOp) {
-                    ValueMoveOp move = (ValueMoveOp) inst;
-                    if (isStackSlotValue(move.getInput()) && isStackSlotValue(move.getResult())) {
-                        instructions.set(i, spillMoveFactory.createStackMove(move.getResult(), move.getInput()));
-                        changed = true;
-                    }
-                }
-            }
-        }
-        return changed;
     }
 
     private static void unnumberInstructions(List<? extends AbstractBlockBase<?>> trace, LIR lir) {
