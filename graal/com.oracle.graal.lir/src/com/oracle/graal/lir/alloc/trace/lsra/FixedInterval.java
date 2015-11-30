@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -32,7 +32,7 @@ import com.oracle.graal.lir.LIRInstruction;
 /**
  * Represents a fixed interval.
  */
-public final class FixedInterval extends IntervalHint {
+final class FixedInterval extends IntervalHint {
 
     static final class FixedList {
 

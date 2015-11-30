@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 import com.oracle.graal.compiler.common.util.IntList;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterPriority;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 
 /**
  * List of use positions. Each entry in the list records the use position and register priority

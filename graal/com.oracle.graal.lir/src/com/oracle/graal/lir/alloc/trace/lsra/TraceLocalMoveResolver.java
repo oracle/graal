@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
@@ -54,7 +54,7 @@ import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 
 /**
  */
-public class TraceLocalMoveResolver {
+final class TraceLocalMoveResolver {
 
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private final TraceLinearScan allocator;
@@ -146,7 +146,10 @@ public class TraceLocalMoveResolver {
         throw JVMCIError.shouldNotReachHere("unhandled value " + location);
     }
 
-    protected boolean areMultipleReadsAllowed() {
+    /*
+     * TODO (je) remove?
+     */
+    protected static boolean areMultipleReadsAllowed() {
         return true;
     }
 
@@ -280,7 +283,7 @@ public class TraceLocalMoveResolver {
         return true;
     }
 
-    protected boolean isMoveToSelf(Value from, Value to) {
+    protected static boolean isMoveToSelf(Value from, Value to) {
         assert to != null;
         if (to.equals(from)) {
             return true;
@@ -292,7 +295,7 @@ public class TraceLocalMoveResolver {
         return false;
     }
 
-    protected boolean mightBeBlocked(Value location) {
+    protected static boolean mightBeBlocked(Value location) {
         if (isRegister(location)) {
             return true;
         }

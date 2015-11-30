@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.alloc.trace.FixedInterval.FixedList;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.AnyList;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterBinding;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.State;
+import com.oracle.graal.lir.alloc.trace.lsra.FixedInterval.FixedList;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.AnyList;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterBinding;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.State;
 
 /**
  */

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
@@ -42,8 +42,8 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.SpillState;
-import com.oracle.graal.lir.alloc.trace.TraceLinearScan.IntervalPredicate;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan.IntervalPredicate;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAllocationPhase {

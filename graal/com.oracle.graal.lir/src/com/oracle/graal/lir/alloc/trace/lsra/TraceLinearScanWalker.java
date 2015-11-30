@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
@@ -48,9 +48,9 @@ import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.lsra.OutOfRegistersException;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterPriority;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.SpillState;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.State;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.State;
 
 /**
  */
@@ -338,7 +338,6 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
     }
 
     private int findOptimalSplitPos0(int minSplitPos, int maxSplitPos) {
-        // TODO (je) implement
         if (minSplitPos == maxSplitPos) {
             // trivial case, no optimization of split position possible
             if (Debug.isLogEnabled()) {
@@ -609,7 +608,6 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
      * @param maxSpillPos maximal spill position
      */
     private int findOptimalSpillPos(int minSpillPos, int maxSpillPos) {
-        // TODO (JE): implement
         int optimalSpillPos = findOptimalSpillPos0(minSpillPos, maxSpillPos) & (~1);
         if (Debug.isLogEnabled()) {
             Debug.log("optimal spill position: %d", optimalSpillPos);
@@ -618,7 +616,6 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
     }
 
     private int findOptimalSpillPos0(int minSpillPos, int maxSpillPos) {
-        // TODO (je) implement
         if (minSpillPos == maxSpillPos) {
             // trivial case, no optimization of split position possible
             if (Debug.isLogEnabled()) {

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 /**
  * Represents a range of integers from a start (inclusive) to an end (exclusive).
  */
-public final class FixedRange {
+final class FixedRange {
 
     public static final FixedRange EndMarker = new FixedRange(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
 

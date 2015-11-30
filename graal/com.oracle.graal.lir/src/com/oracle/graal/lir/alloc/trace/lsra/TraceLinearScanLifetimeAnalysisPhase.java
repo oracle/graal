@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static com.oracle.graal.lir.alloc.trace.TraceLinearScan.isVariableOrRegister;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAshareSpillInformation;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAuseInterTraceHints;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
+import static com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan.isVariableOrRegister;
 import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -66,8 +66,9 @@ import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterPriority;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.SpillState;
+import com.oracle.graal.lir.alloc.trace.ShadowedRegisterValue;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.ssi.SSIUtil;
 

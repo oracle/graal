@@ -43,6 +43,7 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
@@ -68,7 +69,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
     private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
 
-    static final int TRACE_DUMP_LEVEL = 3;
+    public static final int TRACE_DUMP_LEVEL = 3;
     private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
     private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
 
@@ -116,7 +117,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
     /**
      * Remove Phi/Sigma In/Out.
-     * 
+     *
      * Note: Incoming Values are needed for the RegisterVerifier, otherwise SIGMAs/PHIs where the
      * Out and In value matches (ie. there is no resolution move) are falsely detected as errors.
      */
