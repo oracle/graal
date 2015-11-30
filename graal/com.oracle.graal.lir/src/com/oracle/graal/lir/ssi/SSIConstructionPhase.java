@@ -46,7 +46,9 @@ import com.oracle.graal.lir.ssa.SSAUtil;
 public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    PreAllocationOptimizationContext context) {
+        LIRGeneratorTool lirGen = context.lirGen;
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
         LIR lir = lirGenRes.getLIR();
         new SSIBuilder(lir, lirGenRes.getFrameMapBuilder()).build(lirGen);
