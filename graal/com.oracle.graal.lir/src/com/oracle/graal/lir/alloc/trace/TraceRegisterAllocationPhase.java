@@ -121,6 +121,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
      * Note: Incoming Values are needed for the RegisterVerifier, otherwise SIGMAs/PHIs where the
      * Out and In value matches (ie. there is no resolution move) are falsely detected as errors.
      */
+    @SuppressWarnings("try")
     private static void deconstructSSIForm(LIR lir) {
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             try (Indent i = Debug.logAndIndent("Fixup Block %s", block)) {
