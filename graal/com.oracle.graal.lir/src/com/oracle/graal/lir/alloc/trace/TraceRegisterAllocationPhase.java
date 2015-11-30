@@ -64,6 +64,10 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         // @formatter:on
     }
 
+    private static final TraceRegisterAllocationFixupPhase TRACE_REGISTER_ALLOCATION_FIXUP_PHASE = new TraceRegisterAllocationFixupPhase();
+    private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
+    private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
+
     static final int TRACE_DUMP_LEVEL = 3;
     private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
     private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
@@ -92,7 +96,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                 }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + traceNumber + ": " + trace);
                 if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                    new TraceTrivialAllocator().apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
+                    TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
                 } else {
                     TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
                     allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
@@ -106,8 +110,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         }
         Debug.dump(lir, "After trace allocation");
 
-        new TraceGlobalMoveResolutionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
-        new TraceRegisterAllocationFixupPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
+        TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
+        TRACE_REGISTER_ALLOCATION_FIXUP_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
     }
 
     static boolean isTrivialTrace(LIR lir, List<? extends AbstractBlockBase<?>> trace) {
