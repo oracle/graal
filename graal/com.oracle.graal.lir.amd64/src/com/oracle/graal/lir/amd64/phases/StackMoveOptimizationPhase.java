@@ -44,7 +44,6 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.RedundantMoveElimination;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64MultiStackMove;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
-import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
@@ -67,7 +66,7 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    BenchmarkCounterFactory counterFactory) {
+                    PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             List<LIRInstruction> instructions = lir.getLIRforBlock(block);
