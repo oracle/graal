@@ -46,6 +46,7 @@ import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationCont
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
+import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 
 /**
@@ -64,7 +65,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         // @formatter:on
     }
 
-    private static final TraceRegisterAllocationFixupPhase TRACE_REGISTER_ALLOCATION_FIXUP_PHASE = new TraceRegisterAllocationFixupPhase();
     private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
     private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
 
@@ -111,7 +111,26 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         Debug.dump(lir, "After trace allocation");
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
-        TRACE_REGISTER_ALLOCATION_FIXUP_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
+        deconstructSSIForm(lir);
+    }
+
+    /**
+     * Remove Phi/Sigma In/Out.
+     * 
+     * Note: Incoming Values are needed for the RegisterVerifier, otherwise SIGMAs/PHIs where the
+     * Out and In value matches (ie. there is no resolution move) are falsely detected as errors.
+     */
+    private static void deconstructSSIForm(LIR lir) {
+        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+            try (Indent i = Debug.logAndIndent("Fixup Block %s", block)) {
+                if (block.getPredecessorCount() != 0) {
+                    SSIUtil.removeIncoming(lir, block);
+                } else {
+                    assert lir.getControlFlowGraph().getStartBlock().equals(block);
+                }
+                SSIUtil.removeOutgoing(lir, block);
+            }
+        }
     }
 
     static boolean isTrivialTrace(LIR lir, List<? extends AbstractBlockBase<?>> trace) {
