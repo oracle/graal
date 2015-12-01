@@ -144,18 +144,19 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
 
                                 while (interval != TraceInterval.EndMarker && interval.spillDefinitionPos() == opId) {
                                     Debug.log("handle %s", interval);
-                                    if (!interval.canMaterialize()) {
-                                        if (!insertionBuffer.initialized()) {
-                                            /*
-                                             * prepare insertion buffer (appended when all
-                                             * instructions in the block are processed)
-                                             */
-                                            insertionBuffer.init(instructions);
-                                        }
+                                    if (!interval.canMaterialize() && interval.spillState() != SpillState.StartInMemory) {
 
                                         AllocatableValue fromLocation = interval.getSplitChildAtOpId(opId, OperandMode.DEF, allocator).location();
                                         AllocatableValue toLocation = TraceLinearScan.canonicalSpillOpr(interval);
                                         if (!fromLocation.equals(toLocation)) {
+
+                                            if (!insertionBuffer.initialized()) {
+                                                /*
+                                                 * prepare insertion buffer (appended when all
+                                                 * instructions in the block are processed)
+                                                 */
+                                                insertionBuffer.init(instructions);
+                                            }
 
                                             assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" +
                                                             interval.spillState();
