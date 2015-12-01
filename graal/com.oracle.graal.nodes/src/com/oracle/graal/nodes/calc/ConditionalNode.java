@@ -164,7 +164,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                         AddNode add = (AddNode) trueValue();
                         if (add.getX() == falseValue()) {
                             int bits = ((IntegerStamp) trueValue().stamp()).getBits();
-                            ValueNode shift = new RightShiftNode(lt.getX(), ConstantNode.forIntegerBits(bits, bits - 1));
+                            ValueNode shift = new RightShiftNode(lt.getX(), ConstantNode.forIntegerBits(32, bits - 1));
                             ValueNode and = new AndNode(shift, add.getY());
                             return new AddNode(add.getX(), and);
                         }
