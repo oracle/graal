@@ -463,21 +463,25 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     public static ConstantNode defaultForKind(JavaKind kind, StructuredGraph graph) {
+        return unique(graph, defaultForKind(kind));
+    }
+
+    public static ConstantNode defaultForKind(JavaKind kind) {
         switch (kind) {
             case Boolean:
             case Byte:
             case Char:
             case Short:
             case Int:
-                return ConstantNode.forInt(0, graph);
+                return ConstantNode.forInt(0);
             case Double:
-                return ConstantNode.forDouble(0.0, graph);
+                return ConstantNode.forDouble(0.0);
             case Float:
-                return ConstantNode.forFloat(0.0f, graph);
+                return ConstantNode.forFloat(0.0f);
             case Long:
-                return ConstantNode.forLong(0L, graph);
+                return ConstantNode.forLong(0L);
             case Object:
-                return ConstantNode.forConstant(JavaConstant.NULL_POINTER, null, graph);
+                return ConstantNode.forConstant(JavaConstant.NULL_POINTER, null);
             default:
                 return null;
         }

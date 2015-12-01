@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,23 @@
  */
 package com.oracle.graal.compiler.test;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.loop.InductionVariable;
 import com.oracle.graal.loop.LoopsData;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
@@ -232,13 +233,6 @@ public class CountedLoopTest extends GraalCompilerTest {
         public void generate(NodeLIRBuilderTool gen) {
             gen.setResult(this, gen.operand(iv));
         }
-
-        @NodeIntrinsic
-        public static native int get(@ConstantNodeParameter IVProperty property, int iv);
-    }
-
-    protected static int getIntrinsic(IVProperty property, int iv) {
-        return IVPropertyNode.get(property, iv);
     }
 
     @Override
@@ -246,11 +240,18 @@ public class CountedLoopTest extends GraalCompilerTest {
         Plugins plugins = super.getDefaultGraphBuilderPlugins();
         Registration r = new Registration(plugins.getInvocationPlugins(), CountedLoopTest.class);
 
-        ResolvedJavaMethod intrinsic = getResolvedJavaMethod("getIntrinsic");
         r.register2("get", IVProperty.class, int.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
-                b.intrinsify(targetMethod, intrinsic, new ValueNode[]{arg1, arg2});
-                return true;
+                IVProperty property = null;
+                if (arg1.isConstant()) {
+                    property = getSnippetReflection().asObject(IVProperty.class, arg1.asJavaConstant());
+                }
+                if (property != null) {
+                    b.addPush(JavaKind.Int, new IVPropertyNode(property, arg2));
+                    return true;
+                } else {
+                    return false;
+                }
             }
         });
 
@@ -268,4 +269,37 @@ public class CountedLoopTest extends GraalCompilerTest {
         return true;
     }
 
+    public static Result incrementNeqSnippet(int limit) {
+        int i;
+        int posLimit = ((limit - 1) & 0xFFFF) + 1; // make sure limit is always strictly positive
+        Result ret = new Result();
+        for (i = 0; i != posLimit; i++) {
+            GraalDirectives.controlFlowAnchor();
+            ret.extremum = get(InductionVariable::extremumNode, i);
+        }
+        ret.exitValue = get(InductionVariable::exitValueNode, i);
+        return ret;
+    }
+
+    @Test
+    public void decrementNeq() {
+        test("decrementNeqSnippet", 256);
+    }
+
+    public static Result decrementNeqSnippet(int limit) {
+        int i;
+        int posLimit = ((limit - 1) & 0xFFFF) + 1; // make sure limit is always strictly positive
+        Result ret = new Result();
+        for (i = posLimit; i != 0; i--) {
+            GraalDirectives.controlFlowAnchor();
+            ret.extremum = get(InductionVariable::extremumNode, i);
+        }
+        ret.exitValue = get(InductionVariable::exitValueNode, i);
+        return ret;
+    }
+
+    @Test
+    public void incrementNeq() {
+        test("incrementNeqSnippet", 256);
+    }
 }

@@ -48,7 +48,7 @@ public class CRC32Substitutions {
      * Gets the address of {@code StubRoutines::x86::_crc_table} in {@code stubRoutines_x86.hpp}.
      */
     @Fold
-    private static long crcTableAddress() {
+    static long crcTableAddress() {
         return config().crcTableAddress;
     }
 

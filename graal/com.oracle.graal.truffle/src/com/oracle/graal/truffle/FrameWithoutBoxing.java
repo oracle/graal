@@ -281,7 +281,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         checkSlotIndex(slotIndex);
         boolean condition = getTags()[slotIndex] == tag;
         if (!condition) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new FrameSlotTypeException();
         }
         return condition;
@@ -303,7 +303,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public Object getValue(FrameSlot slot) {
         int slotIndex = slot.getIndex();
         if (CompilerDirectives.inInterpreter() && slotIndex >= getTags().length) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             resize();
         }
         byte tag = getTags()[slotIndex];
@@ -357,7 +357,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             return cachedTags[slotIndex];
         }
 
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         resize();
         return getTags()[slotIndex];
     }

@@ -126,7 +126,7 @@ public class NewInstanceStub extends SnippetStub {
     }
 
     @Fold
-    private static boolean logging() {
+    static boolean logging() {
         return Boolean.getBoolean("graal.logNewInstanceStub");
     }
 
@@ -294,7 +294,7 @@ public class NewInstanceStub extends SnippetStub {
     }
 
     @Fold
-    private static boolean forceSlowPath() {
+    static boolean forceSlowPath() {
         return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
     }
 

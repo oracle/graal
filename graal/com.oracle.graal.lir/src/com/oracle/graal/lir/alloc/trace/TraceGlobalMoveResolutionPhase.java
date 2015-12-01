@@ -37,7 +37,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -58,16 +57,10 @@ public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
         public abstract void addMapping(Value src, AllocatableValue dst);
     }
 
-    private final TraceBuilderResult<?> resultTraces;
-
-    public TraceGlobalMoveResolutionPhase(TraceBuilderResult<?> resultTraces) {
-        this.resultTraces = resultTraces;
-    }
-
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig) {
-        resolveGlobalDataFlow(resultTraces, lirGenRes, spillMoveFactory, target.arch);
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, TraceAllocationContext context) {
+        MoveFactory spillMoveFactory = context.spillMoveFactory;
+        resolveGlobalDataFlow(context.resultTraces, lirGenRes, spillMoveFactory, target.arch);
     }
 
     @SuppressWarnings("try")

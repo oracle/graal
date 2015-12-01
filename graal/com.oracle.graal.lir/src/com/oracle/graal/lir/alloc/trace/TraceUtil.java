@@ -27,9 +27,9 @@ import jdk.vm.ci.meta.Value;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 
-class TraceUtil {
+public class TraceUtil {
 
-    static AbstractBlockBase<?> getBestTraceInterPredecessor(TraceBuilderResult<?> traceResult, AbstractBlockBase<?> block) {
+    public static AbstractBlockBase<?> getBestTraceInterPredecessor(TraceBuilderResult<?> traceResult, AbstractBlockBase<?> block) {
         AbstractBlockBase<?> bestPred = null;
         int bestTraceId = traceResult.getTraceForBlock(block);
         for (AbstractBlockBase<?> pred : block.getPredecessors()) {
@@ -42,12 +42,12 @@ class TraceUtil {
         return bestPred;
     }
 
-    static boolean isShadowedRegisterValue(Value value) {
+    public static boolean isShadowedRegisterValue(Value value) {
         assert value != null;
         return value instanceof ShadowedRegisterValue;
     }
 
-    static ShadowedRegisterValue asShadowedRegisterValue(Value value) {
+    public static ShadowedRegisterValue asShadowedRegisterValue(Value value) {
         assert isShadowedRegisterValue(value);
         return (ShadowedRegisterValue) value;
     }

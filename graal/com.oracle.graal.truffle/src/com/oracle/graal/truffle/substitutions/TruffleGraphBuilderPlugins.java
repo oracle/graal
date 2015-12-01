@@ -43,11 +43,6 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.ConditionAnchorNode;
@@ -65,6 +60,11 @@ import com.oracle.graal.nodes.extended.BoxNode;
 import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.extended.UnsafeStoreNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.virtual.EnsureVirtualizedNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerAddExactNode;
@@ -228,7 +228,7 @@ public class TruffleGraphBuilderPlugins {
                      * and constant folding could still eliminate the call to bailout(). However, we
                      * also want to stop parsing, since we are sure that we will never need the
                      * graph beyond the bailout point.
-                     * 
+                     *
                      * Therefore, we manually emit the call to bailout, which will be intrinsified
                      * later when intrinsifications can no longer be delayed. The call is followed
                      * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
@@ -398,17 +398,24 @@ public class TruffleGraphBuilderPlugins {
                         } else {
                             piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
                         }
-                        LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection);
-                        boolean skipAnchor = false;
-                        if (compareNode instanceof LogicConstantNode) {
-                            LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
-                            if (logicConstantNode.getValue()) {
-                                skipAnchor = true;
-                            }
-                        }
+
                         ConditionAnchorNode valueAnchorNode = null;
-                        if (!skipAnchor) {
-                            valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
+                        if (condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
+                            // Nothing to do.
+                        } else {
+                            boolean skipAnchor = false;
+                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection);
+
+                            if (compareNode instanceof LogicConstantNode) {
+                                LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
+                                if (logicConstantNode.getValue()) {
+                                    skipAnchor = true;
+                                }
+                            }
+
+                            if (!skipAnchor) {
+                                valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
+                            }
                         }
                         b.addPush(JavaKind.Object, new PiNode(object, piStamp, valueAnchorNode));
                     }

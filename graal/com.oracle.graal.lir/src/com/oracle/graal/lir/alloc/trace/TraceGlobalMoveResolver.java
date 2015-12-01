@@ -229,8 +229,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
     }
 
     /**
-     * Checks if the {@linkplain TraceInterval#location() location} of {@code to} is not blocked or
-     * is only blocked by {@code from}.
+     * Checks if {@code to} is not blocked or is only blocked by {@code from}.
      */
     private boolean safeToProcessMove(Value fromLocation, Value toLocation) {
         if (mightBeBlocked(toLocation)) {
@@ -318,8 +317,8 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
     }
 
     /**
-     * @param fromOpr {@link TraceInterval#operand operand} of the {@code from} interval
-     * @param toOpr {@link TraceInterval#operand operand} of the {@code to} interval
+     * @param fromOpr Operand of the {@code from} interval
+     * @param toOpr Operand of the {@code to} interval
      */
     private LIRInstruction createMove(Value fromOpr, AllocatableValue toOpr) {
         if (isStackSlotValue(toOpr) && isStackSlotValue(fromOpr)) {

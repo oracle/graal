@@ -41,6 +41,7 @@ import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -64,7 +65,7 @@ public class CheckCastDynamicSnippets implements Snippets {
             isNull.inc();
         } else {
             GuardingNode anchorNode = SnippetAnchorNode.anchor();
-            KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
+            KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
             if (!checkUnknownSubType(hub, objectHub)) {
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }

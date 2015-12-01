@@ -29,7 +29,6 @@ import jdk.vm.ci.code.TargetDescription;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.NullCheck;
-import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
@@ -37,7 +36,7 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    BenchmarkCounterFactory counterFactory) {
+                    PostAllocationOptimizationContext context) {
         LIR ir = lirGenRes.getLIR();
         List<? extends AbstractBlockBase<?>> blocks = ir.codeEmittingOrder();
         NullCheckOptimizer.foldNullChecks(ir, blocks, target.implicitNullCheckLimit);

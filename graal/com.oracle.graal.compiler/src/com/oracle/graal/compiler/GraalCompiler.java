@@ -345,7 +345,6 @@ public class GraalCompiler {
             FrameMap frameMap = lirGenRes.getFrameMap();
             CompilationResultBuilder crb = backend.newCompilationResultBuilder(lirGenRes, frameMap, compilationResult, factory);
             backend.emitCode(crb, lirGenRes.getLIR(), installedCodeOwner);
-            crb.finish();
             if (assumptions != null && !assumptions.isEmpty()) {
                 compilationResult.setAssumptions(assumptions.toArray());
             }
@@ -353,7 +352,7 @@ public class GraalCompiler {
                 compilationResult.setMethods(rootMethod, inlinedMethods);
                 compilationResult.setBytecodeSize(bytecodeSize);
             }
-
+            crb.finish();
             if (Debug.isMeterEnabled()) {
                 List<DataPatch> ldp = compilationResult.getDataPatches();
                 JavaKind[] kindValues = JavaKind.values();

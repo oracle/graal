@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,10 @@ package com.oracle.graal.compiler.amd64;
 
 import static com.oracle.graal.compiler.common.BackendOptions.ShouldOptimizeStackToStackMoves;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.DefaultSuitesProvider;
 import com.oracle.graal.lir.amd64.phases.StackMoveOptimizationPhase;
 import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public class AMD64SuitesProvider extends DefaultSuitesProvider {

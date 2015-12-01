@@ -63,6 +63,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
+import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePostWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePreWriteBarrier;
@@ -101,6 +102,7 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.LoweredCallTargetNode;
 import com.oracle.graal.nodes.ParameterNode;
+import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.SafepointNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -362,10 +364,11 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
             NodeInputList<ValueNode> parameters = callTarget.arguments();
             ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
-            GuardingNode receiverNullCheck = null;
             if (!callTarget.isStatic() && receiver.stamp() instanceof ObjectStamp && !StampTool.isPointerNonNull(receiver)) {
-                receiverNullCheck = createNullCheck(receiver, invoke.asNode(), tool);
-                invoke.setGuard(receiverNullCheck);
+                GuardingNode receiverNullCheck = createNullCheck(receiver, invoke.asNode(), tool);
+                PiNode nonNullReceiver = graph.unique(new PiNode(receiver, ((ObjectStamp) receiver.stamp()).join(StampFactory.objectNonNull()), (ValueNode) receiverNullCheck));
+                parameters.set(0, nonNullReceiver);
+                receiver = nonNullReceiver;
             }
             JavaType[] signature = callTarget.targetMethod().getSignature().toParameterTypes(callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
@@ -375,7 +378,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 ResolvedJavaType receiverType = invoke.getReceiverType();
                 if (hsMethod.isInVirtualMethodTable(receiverType)) {
                     JavaKind wordKind = runtime.getTarget().wordJavaKind;
-                    ValueNode hub = createReadHub(graph, receiver, receiverNullCheck, tool);
+                    ValueNode hub = createReadHub(graph, receiver, tool);
 
                     ReadNode metaspaceMethod = createReadVirtualMethod(graph, hub, hsMethod, receiverType);
                     // We use LocationNode.ANY_LOCATION for the reads that access the
@@ -410,11 +413,11 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+    protected ValueNode implicitLoadConvert(JavaKind kind, ValueNode value, boolean compressible) {
         if (kind == JavaKind.Object && compressible && config().useCompressedOops) {
-            return CompressionNode.uncompress(value, config().getOopEncoding());
+            return new CompressionNode(CompressionOp.Uncompress, value, config().getOopEncoding());
         }
-        return super.implicitLoadConvert(graph, kind, value, compressible);
+        return super.implicitLoadConvert(kind, value, compressible);
     }
 
     @Override
@@ -425,11 +428,11 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+    protected ValueNode implicitStoreConvert(JavaKind kind, ValueNode value, boolean compressible) {
         if (kind == JavaKind.Object && compressible && config().useCompressedOops) {
-            return CompressionNode.compress(value, config().getOopEncoding());
+            return new CompressionNode(CompressionOp.Compress, value, config().getOopEncoding());
         }
-        return super.implicitStoreConvert(graph, kind, value, compressible);
+        return super.implicitStoreConvert(kind, value, compressible);
     }
 
     @Override
@@ -584,9 +587,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard, LoweringTool tool) {
+    protected ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool) {
         if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-            return graph.unique(new LoadHubNode(tool.getStampProvider(), object, guard != null ? guard.asNode() : null));
+            return graph.unique(new LoadHubNode(tool.getStampProvider(), object));
         }
         assert !object.isConstant() || object.isNullConstant();
 
@@ -596,7 +599,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         }
 
         AddressNode address = createOffsetAddress(graph, object, config().hubOffset);
-        FloatingReadNode memoryRead = graph.unique(new FloatingReadNode(address, HUB_LOCATION, null, hubStamp, guard, BarrierType.NONE));
+        FloatingReadNode memoryRead = graph.unique(new FloatingReadNode(address, HUB_LOCATION, null, hubStamp, null, BarrierType.NONE));
         if (config().useCompressedClassPointers) {
             return CompressionNode.uncompress(memoryRead, config().getKlassEncoding());
         } else {

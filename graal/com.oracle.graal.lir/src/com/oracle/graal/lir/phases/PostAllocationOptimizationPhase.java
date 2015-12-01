@@ -22,31 +22,15 @@
  */
 package com.oracle.graal.lir.phases;
 
-import java.util.List;
-
-import jdk.vm.ci.code.TargetDescription;
-
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 public abstract class PostAllocationOptimizationPhase extends LIRPhase<PostAllocationOptimizationPhase.PostAllocationOptimizationContext> {
 
     public static final class PostAllocationOptimizationContext {
-        private final BenchmarkCounterFactory counterFactory;
+        public final BenchmarkCounterFactory counterFactory;
 
         public PostAllocationOptimizationContext(BenchmarkCounterFactory counterFactory) {
             this.counterFactory = counterFactory;
         }
     }
-
-    @Override
-    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PostAllocationOptimizationContext context) {
-        run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.counterFactory);
-    }
-
-    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    BenchmarkCounterFactory counterFactory);
-
 }
