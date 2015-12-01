@@ -493,6 +493,21 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testPrimitiveidentityBoxedByte() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        byte value = (byte) RANDOM.nextInt(100);
+        BoxedValue boxed = new BoxedValue(value);
+
+        Number n = (Number) apply.invoke(null, boxed).get();
+        assertEquals("The same value returned", value, n.byteValue());
+    }
+
+    @Test
     public void testPrimitiveidentityShort() throws Exception {
         String id = identity();
         if (id == null) {
@@ -502,6 +517,21 @@ public abstract class TruffleTCK {
 
         short value = (short) RANDOM.nextInt(100);
         Number n = (Number) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, n.shortValue());
+    }
+
+    @Test
+    public void testPrimitiveidentityBoxedShort() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        short value = (short) RANDOM.nextInt(100);
+        BoxedValue boxed = new BoxedValue(value);
+
+        Number n = (Number) apply.invoke(null, boxed).get();
         assertEquals("The same value returned", value, n.shortValue());
     }
 
@@ -520,6 +550,21 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testPrimitiveidentityBoxedInt() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        int value = RANDOM.nextInt(100);
+        BoxedValue boxed = new BoxedValue(value);
+
+        Number n = (Number) apply.invoke(null, boxed).get();
+        assertEquals("The same value returned", value, n.intValue());
+    }
+
+    @Test
     public void testPrimitiveidentityLong() throws Exception {
         String id = identity();
         if (id == null) {
@@ -530,6 +575,21 @@ public abstract class TruffleTCK {
         long value = RANDOM.nextInt(1000);
 
         Number n = (Number) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, n.longValue());
+    }
+
+    @Test
+    public void testPrimitiveidentityBoxedLong() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        long value = RANDOM.nextInt(1000);
+        BoxedValue boxed = new BoxedValue(value);
+
+        Number n = (Number) apply.invoke(null, boxed).get();
         assertEquals("The same value returned", value, n.longValue());
     }
 
@@ -548,6 +608,21 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testPrimitiveidentityBoxedFloat() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        float value = RANDOM.nextInt(1000) + RANDOM.nextFloat();
+        BoxedValue boxed = new BoxedValue(value);
+
+        Number n = (Number) apply.invoke(null, boxed).get();
+        assertEquals("The same value returned", value, n.floatValue(), 0.01);
+    }
+
+    @Test
     public void testPrimitiveidentityDouble() throws Exception {
         String id = identity();
         if (id == null) {
@@ -562,6 +637,21 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testPrimitiveidentityBoxedDouble() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        double value = RANDOM.nextInt(1000) + RANDOM.nextDouble();
+        BoxedValue boxed = new BoxedValue(value);
+
+        Number n = (Number) apply.invoke(null, boxed).get();
+        assertEquals("The same value returned", value, n.doubleValue(), 0.01);
+    }
+
+    @Test
     public void testPrimitiveidentityString() throws Exception {
         String id = identity();
         if (id == null) {
@@ -572,6 +662,21 @@ public abstract class TruffleTCK {
         String value = "Value" + RANDOM.nextInt(1000) + RANDOM.nextDouble();
 
         String ret = (String) apply.invoke(null, value).get();
+        assertEquals("The same value returned", value, ret);
+    }
+
+    @Test
+    public void testPrimitiveidentityBoxedString() throws Exception {
+        String id = identity();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        String value = "Value" + RANDOM.nextInt(1000) + RANDOM.nextDouble();
+        BoxedValue boxed = new BoxedValue(value);
+
+        String ret = (String) apply.invoke(null, boxed).get();
         assertEquals("The same value returned", value, ret);
     }
 
