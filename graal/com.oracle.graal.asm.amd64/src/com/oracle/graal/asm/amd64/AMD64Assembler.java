@@ -2315,6 +2315,11 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xCC);
     }
 
+    public final void pause() {
+        emitByte(0xF3);
+        emitByte(0x90);
+    }
+
     private void emitx87(int b1, int b2, int i) {
         assert 0 <= i && i < 8 : "illegal stack offset";
         emitByte(b1);

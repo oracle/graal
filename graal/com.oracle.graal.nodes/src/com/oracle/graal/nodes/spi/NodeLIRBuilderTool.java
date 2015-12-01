@@ -44,6 +44,7 @@ import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.LoopEndNode;
+import com.oracle.graal.nodes.PauseNode;
 import com.oracle.graal.nodes.SafepointNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
@@ -76,6 +77,8 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
     void visitSafepointNode(SafepointNode i);
 
     void visitBreakpointNode(BreakpointNode i);
+
+    void visitPauseNode(PauseNode i);
 
     void visitFullInfopointNode(FullInfopointNode i);
 

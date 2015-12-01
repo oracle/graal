@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.amd64.AMD64BreakpointOp;
 import com.oracle.graal.lir.amd64.AMD64Call;
+import com.oracle.graal.lir.amd64.AMD64PauseOp;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
@@ -40,6 +41,7 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.IndirectCallTargetNode;
+import com.oracle.graal.nodes.PauseNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FixedBinaryNode;
@@ -111,6 +113,11 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false),
                         node.arguments());
         append(new AMD64BreakpointOp(parameters));
+    }
+
+    @Override
+    public void visitPauseNode(PauseNode node) {
+        append(new AMD64PauseOp());
     }
 
     @Override
