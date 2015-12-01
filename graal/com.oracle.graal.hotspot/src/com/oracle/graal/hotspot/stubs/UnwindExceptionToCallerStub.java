@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,7 +96,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
     }
 
     @Fold
-    private static boolean logging() {
+    static boolean logging() {
         return Boolean.getBoolean("graal.logUnwindExceptionToCallerStub");
     }
 
@@ -109,7 +109,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
      */
     @Fold
     @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
+    static boolean assertionsEnabled() {
         boolean enabled = false;
         assert enabled = true;
         return enabled || cAssertionsEnabled();

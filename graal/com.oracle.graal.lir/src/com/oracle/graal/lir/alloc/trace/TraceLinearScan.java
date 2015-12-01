@@ -61,6 +61,7 @@ import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.VirtualStackSlot;
@@ -488,6 +489,12 @@ final class TraceLinearScan {
         return opId == 0 || blockForId(opId) != blockForId(opId - 1);
     }
 
+    boolean isBlockEnd(int opId) {
+        boolean isBlockBegin = isBlockBegin(opId + 2);
+        assert isBlockBegin == (instructionForId(opId & (~1)) instanceof BlockEndOp);
+        return isBlockBegin;
+    }
+
     boolean coversBlockBegin(int opId1, int opId2) {
         return blockForId(opId1) != blockForId(opId2);
     }
@@ -515,12 +522,22 @@ final class TraceLinearScan {
 
     // * Phase 5: actual register allocation
 
-    private static <T extends IntervalHint> boolean isSorted(T[] intervals) {
+    private static <T extends IntervalHint> boolean isSortedByFrom(T[] intervals) {
         int from = -1;
         for (T interval : intervals) {
             assert interval != null;
             assert from <= interval.from();
             from = interval.from();
+        }
+        return true;
+    }
+
+    private static boolean isSortedBySpillPos(TraceInterval[] intervals) {
+        int from = -1;
+        for (TraceInterval interval : intervals) {
+            assert interval != null;
+            assert from <= interval.spillDefinitionPos();
+            from = interval.spillDefinitionPos();
         }
         return true;
     }
@@ -535,8 +552,17 @@ final class TraceLinearScan {
         return newFirst;
     }
 
-    TraceInterval createUnhandledList(IntervalPredicate isList1) {
-        assert isSorted(sortedIntervals) : "interval list is not sorted";
+    TraceInterval createUnhandledListByFrom(IntervalPredicate isList1) {
+        assert isSortedByFrom(sortedIntervals) : "interval list is not sorted";
+        return createUnhandledList(isList1);
+    }
+
+    TraceInterval createUnhandledListBySpillPos(IntervalPredicate isList1) {
+        assert isSortedBySpillPos(sortedIntervals) : "interval list is not sorted";
+        return createUnhandledList(isList1);
+    }
+
+    private TraceInterval createUnhandledList(IntervalPredicate isList1) {
 
         TraceInterval list1 = TraceInterval.EndMarker;
 
@@ -576,7 +602,7 @@ final class TraceLinearScan {
     }
 
     FixedInterval createFixedUnhandledList() {
-        assert isSorted(sortedFixedIntervals) : "interval list is not sorted";
+        assert isSortedByFrom(sortedFixedIntervals) : "interval list is not sorted";
 
         FixedInterval list1 = FixedInterval.EndMarker;
 
@@ -684,6 +710,12 @@ final class TraceLinearScan {
         }
 
         sortedIntervals = combinedList;
+    }
+
+    void sortIntervalsBySpillPos() {
+        // TODO (JE): better algorithm?
+        // conventional sort-algorithm for new intervals
+        Arrays.sort(sortedIntervals, (TraceInterval a, TraceInterval b) -> a.spillDefinitionPos() - b.spillDefinitionPos());
     }
 
     // wrapper for Interval.splitChildAtOpId that performs a bailout in product mode

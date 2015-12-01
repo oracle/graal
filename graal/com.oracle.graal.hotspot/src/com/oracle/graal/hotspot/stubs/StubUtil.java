@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.hotspot.nodes.VMErrorNode;
 import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.replacements.Log;
 import com.oracle.graal.word.Pointer;
@@ -241,7 +242,7 @@ public class StubUtil {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
-                KlassPointer klass = loadHubIntrinsic(object, anchorNode);
+                KlassPointer klass = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
                 if (klass.isNull()) {
                     fatal("klass for oop %p is null", oop.rawValue());
                 }
@@ -251,22 +252,22 @@ public class StubUtil {
     }
 
     @Fold
-    private static long verifyOopCounterAddress() {
+    static long verifyOopCounterAddress() {
         return config().verifyOopCounterAddress;
     }
 
     @Fold
-    private static long verifyOopMask() {
+    static long verifyOopMask() {
         return config().verifyOopMask;
     }
 
     @Fold
-    private static long verifyOopBits() {
+    static long verifyOopBits() {
         return config().verifyOopBits;
     }
 
     @Fold
-    private static int hubOffset() {
+    static int hubOffset() {
         return config().hubOffset;
     }
 }

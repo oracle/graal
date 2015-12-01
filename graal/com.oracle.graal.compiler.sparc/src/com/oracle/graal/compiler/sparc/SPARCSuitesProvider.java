@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler.sparc;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.DefaultSuitesProvider;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.tiers.Suites;
 

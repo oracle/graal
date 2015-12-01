@@ -29,10 +29,10 @@ import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.InvokeNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.replacements.nodes.MethodHandleNode;

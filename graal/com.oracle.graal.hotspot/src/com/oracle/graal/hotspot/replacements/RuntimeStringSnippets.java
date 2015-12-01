@@ -49,7 +49,7 @@ import jdk.vm.ci.common.JVMCIError;
 public class RuntimeStringSnippets implements Snippets {
 
     @Fold
-    private static long valueOffset() {
+    static long valueOffset() {
         try {
             return UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
         } catch (Exception e) {
@@ -58,7 +58,7 @@ public class RuntimeStringSnippets implements Snippets {
     }
 
     @Fold
-    private static long hashOffset() {
+    static long hashOffset() {
         try {
             return UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
         } catch (Exception e) {
@@ -67,7 +67,7 @@ public class RuntimeStringSnippets implements Snippets {
     }
 
     @Fold
-    private static long arrayBaseOffset() {
+    static long arrayBaseOffset() {
         return UNSAFE.arrayBaseOffset(char[].class);
     }
 

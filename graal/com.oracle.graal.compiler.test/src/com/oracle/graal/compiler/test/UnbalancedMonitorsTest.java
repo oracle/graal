@@ -31,12 +31,12 @@ import jdk.internal.org.objectweb.asm.Opcodes;
 
 import org.junit.Test;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.OptimisticOptimizations;
 
 /**

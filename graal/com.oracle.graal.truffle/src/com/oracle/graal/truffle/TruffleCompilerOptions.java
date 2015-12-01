@@ -126,6 +126,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Print information for compilation results", type = OptionType.Debug)
     public static final OptionValue<Boolean> TraceTruffleCompilation = new OptionValue<>(false);
 
+    @Option(help = "Compile time benchmarking: repeat Truffle compilation n times and then exit the VM", type = OptionType.Debug)
+    public static final OptionValue<Integer> TruffleCompilationRepeats = new OptionValue<>(0);
+
     @Option(help = "Print information for compilation queuing", type = OptionType.Debug)
     public static final OptionValue<Boolean> TraceTruffleCompilationDetails = new OptionValue<>(false);
 

@@ -64,9 +64,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.TTY;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -74,6 +71,9 @@ import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
@@ -160,9 +160,18 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public TruffleCompiler getTruffleCompiler() {
         if (truffleCompiler == null) {
-            truffleCompiler = DefaultTruffleCompiler.create(this);
+            initializeTruffleCompiler();
         }
         return truffleCompiler;
+    }
+
+    private void initializeTruffleCompiler() {
+        synchronized (this) {
+            // might occur for multiple compiler threads at the same time.
+            if (truffleCompiler == null) {
+                truffleCompiler = DefaultTruffleCompiler.create(this);
+            }
+        }
     }
 
     @Override
@@ -277,14 +286,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     protected BackgroundCompileQueue getCompileQueue() {
         return lazy();
-    }
-
-    @Override
-    public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
-        /* Ensure compiler is created. */
-        getTruffleCompiler();
-
-        super.compile(optimizedCallTarget, mayBeAsynchronous);
     }
 
     @Override

@@ -324,11 +324,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         RegisterConfig regConfig = frameMap.getRegisterConfig();
         HotSpotVMConfig config = config();
         Label unverifiedStub = installedCodeOwner == null || installedCodeOwner.isStatic() ? null : new Label();
-        boolean hasUnsafeAccess = crb.compilationResult.hasUnsafeAccess();
-        int i = 0;
-        do {
+        for (int i = 0; i < 2; i++) {
             if (i > 0) {
-                crb.reset();
+                crb.resetForEmittingCode();
                 lir.resetLabels();
                 resetDelayedControlTransfers(lir);
             }
@@ -358,9 +356,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
             // Emit code for the LIR
             crb.emit(lir);
-        } while (i++ < 1);
-        // Restore the unsafeAccess flag
-        crb.compilationResult.setHasUnsafeAccess(hasUnsafeAccess);
+        }
         profileInstructions(lir, crb);
 
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;

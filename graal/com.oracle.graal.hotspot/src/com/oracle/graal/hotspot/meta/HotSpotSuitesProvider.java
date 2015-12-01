@@ -28,8 +28,6 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.options.DerivedOptionValue;
 import jdk.vm.ci.options.DerivedOptionValue.OptionSupplier;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotInstructionProfiling;
@@ -44,6 +42,8 @@ import com.oracle.graal.nodes.GraphEncoder;
 import com.oracle.graal.nodes.SimplifyingGraphDecoder;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.AddressLoweringPhase;

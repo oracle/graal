@@ -297,7 +297,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     }
                 }
 
-                if (graph.hasValueProxies()) {
+                if (graph.getGuardsStage() != GuardsStage.AFTER_FSA) {
                     // The following loop can add new blocks to the end of the loop's block list.
                     int size = loop.getBlocks().size();
                     for (int i = 0; i < size; ++i) {
@@ -353,7 +353,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 if (block.getLoop() == loop) {
                     nextState = stepOut;
                 } else {
-                    assert block.loop == loop.getParent();
+                    assert block.loop == loop.getParent() : block;
                     block.loop = c.loop;
 
                     assert !c.loop.getBlocks().contains(block);

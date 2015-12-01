@@ -42,7 +42,6 @@ import jdk.vm.ci.sparc.SPARC;
 
 import com.oracle.graal.compiler.sparc.SPARCAddressLowering;
 import com.oracle.graal.compiler.sparc.SPARCSuitesProvider;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
@@ -59,6 +58,7 @@ import com.oracle.graal.hotspot.meta.HotSpotSnippetReflectionProvider;
 import com.oracle.graal.hotspot.meta.HotSpotStampProvider;
 import com.oracle.graal.hotspot.meta.HotSpotSuitesProvider;
 import com.oracle.graal.hotspot.word.HotSpotWordTypes;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
@@ -88,9 +88,9 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
         HotSpotStampProvider stampProvider = new HotSpotStampProvider();
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, stampProvider);
-        HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime, constantReflection);
-        HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, config, target);
         HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordJavaKind);
+        HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime, constantReflection, wordTypes);
+        HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, config, target);
         Plugins plugins = createGraphBuilderPlugins(config, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
         HotSpotSuitesProvider suites = createSuites(config, runtime, compilerConfiguration, plugins, codeCache);

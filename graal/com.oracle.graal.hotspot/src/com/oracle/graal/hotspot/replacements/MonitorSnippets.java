@@ -46,7 +46,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useB
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
@@ -75,6 +74,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.hotspot.nodes.AcquiredCASLockNode;
 import com.oracle.graal.hotspot.nodes.CurrentLockNode;
 import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
 import com.oracle.graal.hotspot.nodes.FastAcquireBiasedLockNode;
@@ -91,6 +91,7 @@ import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
+import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.java.MonitorExitNode;
@@ -128,25 +129,25 @@ import com.oracle.graal.word.WordBase;
  *             JavaThread*:23 epoch:2 age:4    biased_lock:1 lock:2 (biased object)
  *             size:32 ------------------------------------------>| (CMS free block)
  *             PromotedObject*:29 ---------->| promo_bits:3 ----->| (CMS promoted object)
- *
+ * 
  *  64 bits:
  *  --------
  *  unused:25 hash:31 -->| unused:1   age:4    biased_lock:1 lock:2 (normal object)
  *  JavaThread*:54 epoch:2 unused:1   age:4    biased_lock:1 lock:2 (biased object)
  *  PromotedObject*:61 --------------------->| promo_bits:3 ----->| (CMS promoted object)
  *  size:64 ----------------------------------------------------->| (CMS free block)
- *
+ * 
  *  unused:25 hash:31 -->| cms_free:1 age:4    biased_lock:1 lock:2 (COOPs && normal object)
  *  JavaThread*:54 epoch:2 cms_free:1 age:4    biased_lock:1 lock:2 (COOPs && biased object)
  *  narrowOop:32 unused:24 cms_free:1 unused:4 promo_bits:3 ----->| (COOPs && CMS promoted object)
  *  unused:21 size:35 -->| cms_free:1 unused:7 ------------------>| (COOPs && CMS free block)
- *
+ * 
  *  - hash contains the identity hash value: largest value is
  *    31 bits, see os::random().  Also, 64-bit vm's require
  *    a hash value no bigger than 32 bits because they will not
  *    properly generate a mask larger than that: see library_call.cpp
  *    and c1_CodePatterns_sparc.cpp.
- *
+ * 
  *  - the biased lock pattern is used to bias a lock toward a given
  *    thread. When this pattern is set in the low three bits, the lock
  *    is either biased toward a given thread or "anonymously" biased,
@@ -155,12 +156,12 @@ import com.oracle.graal.word.WordBase;
  *    be performed by that thread without using atomic operations.
  *    When a lock's bias is revoked, it reverts back to the normal
  *    locking scheme described below.
- *
+ * 
  *    Note that we are overloading the meaning of the "unlocked" state
  *    of the header. Because we steal a bit from the age we can
  *    guarantee that the bias pattern will never be seen for a truly
  *    unlocked object.
- *
+ * 
  *    Note also that the biased state contains the age bits normally
  *    contained in the object header. Large increases in scavenge
  *    times were seen when these bits were absent and an arbitrary age
@@ -171,18 +172,18 @@ import com.oracle.graal.word.WordBase;
  *    a very large value (currently 128 bytes (32bVM) or 256 bytes (64bVM))
  *    to make room for the age bits & the epoch bits (used in support of
  *    biased locking), and for the CMS "freeness" bit in the 64bVM (+COOPs).
- *
+ * 
  *    [JavaThread* | epoch | age | 1 | 01]       lock is biased toward given thread
  *    [0           | epoch | age | 1 | 01]       lock is anonymously biased
- *
+ * 
  *  - the two lock bits are used to describe three states: locked/unlocked and monitor.
- *
+ * 
  *    [ptr             | 00]  locked             ptr points to real header on stack
  *    [header      | 0 | 01]  unlocked           regular object header
  *    [ptr             | 10]  monitor            inflated lock (header is wapped out)
  *    [ptr             | 11]  marked             used by markSweep to mark an object
  *                                               not valid at any other time
- *
+ * 
  *    We assume that stack/thread pointers have the lowest two bits cleared.
  * </pre>
  *
@@ -202,7 +203,7 @@ public class MonitorSnippets implements Snippets {
     private static final boolean PROFILE_CONTEXT = false;
 
     @Fold
-    private static boolean doProfile() {
+    static boolean doProfile() {
         return Options.ProfileMonitors.getValue();
     }
 
@@ -250,7 +251,7 @@ public class MonitorSnippets implements Snippets {
             trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord);
             trace(trace, "           thread: 0x%016lx\n", thread);
             trace(trace, "              tmp: 0x%016lx\n", tmp);
-            if (probability(FREQUENT_PROBABILITY, tmp.equal(0))) {
+            if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, tmp.equal(0))) {
                 // Object is already biased to current thread -> done
                 traceObject(trace, "+lock{bias:existing}", object, true);
                 lockBiasExisting.inc();
@@ -259,7 +260,7 @@ public class MonitorSnippets implements Snippets {
             }
 
             // Now check to see whether biasing is enabled for this object
-            if (probability(NOT_FREQUENT_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern())))) {
+            if (probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern())))) {
                 // Biasing not enabled -> fall through to lightweight locking
                 unbiasable.inc();
             } else {
@@ -360,7 +361,7 @@ public class MonitorSnippets implements Snippets {
         // Test if the object's mark word is unlocked, and if so, store the
         // (address of) the lock slot into the object's mark word.
         Word currentMark = compareAndSwap(OffsetAddressNode.address(object, markOffset()), unlockedMark, lock, MARK_WORD_LOCATION);
-        if (currentMark.notEqual(unlockedMark)) {
+        if (probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, currentMark.notEqual(unlockedMark))) {
             trace(trace, "      currentMark: 0x%016lx\n", currentMark);
             // The mark word in the object header was not the same.
             // Either the object is locked by another thread or is already locked
@@ -394,6 +395,7 @@ public class MonitorSnippets implements Snippets {
         } else {
             traceObject(trace, "+lock{cas}", object, true);
             lockCas.inc();
+            AcquiredCASLockNode.mark(object);
         }
     }
 
@@ -426,7 +428,7 @@ public class MonitorSnippets implements Snippets {
             // the bias bit would be clear.
             final Word mark = loadWordFromObject(object, markOffset());
             trace(trace, "             mark: 0x%016lx\n", mark);
-            if (probability(FREQUENT_PROBABILITY, mark.and(biasedLockMaskInPlace()).equal(Word.unsigned(biasedLockPattern())))) {
+            if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, mark.and(biasedLockMaskInPlace()).equal(Word.unsigned(biasedLockPattern())))) {
                 endLockScope();
                 decCounter();
                 traceObject(trace, "-lock{bias}", object, false);
@@ -441,7 +443,7 @@ public class MonitorSnippets implements Snippets {
         final Word displacedMark = lock.readWord(lockDisplacedMarkOffset(), DISPLACED_MARK_WORD_LOCATION);
         trace(trace, "    displacedMark: 0x%016lx\n", displacedMark);
 
-        if (displacedMark.equal(0)) {
+        if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, displacedMark.equal(0))) {
             // Recursive locking => done
             traceObject(trace, "-lock{recursive}", object, false);
             unlockCasRecursive.inc();
@@ -669,7 +671,7 @@ public class MonitorSnippets implements Snippets {
     private static native void monitorenterStubC(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
 
     @NodeIntrinsic(ForeignCallNode.class)
-    private static native void monitorexitStubC(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
+    public static native void monitorexitStubC(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
 
     /**
      * Counters for the various paths for acquiring a lock. The counters whose names start with

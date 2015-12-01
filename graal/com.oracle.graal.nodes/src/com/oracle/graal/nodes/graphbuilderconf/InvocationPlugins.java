@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graphbuilderconf;
+package com.oracle.graal.nodes.graphbuilderconf;
 
 import static java.lang.String.format;
 
@@ -566,7 +566,7 @@ public class InvocationPlugins {
                 assert !p.containsKey(method) : "a plugin is already registered for " + method;
                 p = p.parent;
             }
-            if (plugin instanceof ForeignCallPlugin) {
+            if (plugin instanceof ForeignCallPlugin || plugin instanceof GeneratedInvocationPlugin) {
                 return true;
             }
             if (plugin instanceof MethodSubstitutionPlugin) {

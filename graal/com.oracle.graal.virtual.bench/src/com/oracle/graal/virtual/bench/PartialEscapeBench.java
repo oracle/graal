@@ -27,7 +27,9 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-public class PartialEscapeBench {
+import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
+
+public class PartialEscapeBench extends GraalBenchmark {
 
     private static class Thing {
         final int id;

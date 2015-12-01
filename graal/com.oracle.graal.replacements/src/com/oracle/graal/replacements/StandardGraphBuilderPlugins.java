@@ -41,12 +41,6 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeList;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.graphbuilderconf.MethodSubstitutionPlugin;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.FixedGuardNode;
@@ -78,6 +72,12 @@ import com.oracle.graal.nodes.extended.MembarNode;
 import com.oracle.graal.nodes.extended.UnboxNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.extended.UnsafeStoreNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.MethodSubstitutionPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.java.ClassIsAssignableFromNode;
 import com.oracle.graal.nodes.java.CompareAndSwapNode;
 import com.oracle.graal.nodes.java.DynamicNewArrayNode;
@@ -488,10 +488,9 @@ public class StandardGraphBuilderPlugins {
         for (Class<?> c : new Class<?>[]{Node.class, NodeList.class}) {
             r.register2("get" + c.getSimpleName() + "Unsafe", Node.class, long.class, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset) {
-                    ValueNode value = b.add(new UnsafeLoadNode(node, offset, JavaKind.Object, LocationIdentity.any()));
-                    boolean exactType = false;
-                    boolean nonNull = false;
-                    b.addPush(JavaKind.Object, new PiNode(value, metaAccess.lookupJavaType(c), exactType, nonNull));
+                    UnsafeLoadNode value = b.add(new UnsafeLoadNode(node, offset, JavaKind.Object, LocationIdentity.any()));
+                    value.setStamp(StampFactory.declared(metaAccess.lookupJavaType(c)));
+                    b.addPush(JavaKind.Object, value);
                     return true;
                 }
             });
