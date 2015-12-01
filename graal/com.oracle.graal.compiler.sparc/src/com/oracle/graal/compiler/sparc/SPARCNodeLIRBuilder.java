@@ -33,7 +33,9 @@ import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.sparc.SPARCBreakpointOp;
 import com.oracle.graal.lir.sparc.SPARCJumpOp;
+import com.oracle.graal.lir.sparc.SPARCPauseOp;
 import com.oracle.graal.nodes.BreakpointNode;
+import com.oracle.graal.nodes.PauseNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 
@@ -62,6 +64,11 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
         Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false),
                         node.arguments());
         append(new SPARCBreakpointOp(parameters));
+    }
+
+    @Override
+    public void visitPauseNode(PauseNode node) {
+        append(new SPARCPauseOp());
     }
 
     @Override

@@ -136,6 +136,7 @@ import java.util.Map;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.sparc.SPARC;
@@ -2447,6 +2448,13 @@ public abstract class SPARCAssembler extends Assembler {
 
     public void ta(int trap) {
         tcc(Icc, Always, trap);
+    }
+
+    public void pause() {
+        // Maybe fmt10(rd=0b1_1011, op3=0b11_0000, rs1=0, i=1, simm13=1), or
+        // maybe op3(Wr, g0, 1, %pause).
+        // What should the count be?
+        JVMCIError.unimplemented("The SPARC pause instruction is not yet implemented.");
     }
 
     public void tcc(CC cc, ConditionFlag flag, int trap) {
