@@ -47,8 +47,8 @@ import com.oracle.truffle.api.utilities.InstrumentationTestMode;
  * </p>
  *
  * <p>
- * The next part of the Truffle API introduction is at
- * {@link com.oracle.truffle.api.FinalFieldTest}.
+ * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.FinalFieldTest}
+ * .
  * </p>
  */
 public class ChildrenNodesTest {
