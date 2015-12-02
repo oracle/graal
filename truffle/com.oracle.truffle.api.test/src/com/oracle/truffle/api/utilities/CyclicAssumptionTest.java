@@ -22,12 +22,13 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.Assumption;
 
 public class CyclicAssumptionTest {
 

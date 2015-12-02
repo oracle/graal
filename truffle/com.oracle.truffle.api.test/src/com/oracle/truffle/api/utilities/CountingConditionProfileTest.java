@@ -22,10 +22,9 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.utilities.ConditionProfile;
-import com.oracle.truffle.api.utilities.CountingConditionProfile;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;

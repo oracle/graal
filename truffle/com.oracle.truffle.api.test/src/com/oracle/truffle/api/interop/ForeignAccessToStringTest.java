@@ -22,12 +22,11 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
 
 public class ForeignAccessToStringTest {
     @Test

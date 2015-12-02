@@ -32,14 +32,6 @@ import java.lang.reflect.Field;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeInstrument;
-import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
-import com.oracle.truffle.api.instrument.StandardInstrumentListener;
-import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.instrument.InstrumentationTestNodes.TestAdditionNode;
 import com.oracle.truffle.api.instrument.InstrumentationTestNodes.TestLanguageNode;
 import com.oracle.truffle.api.instrument.InstrumentationTestNodes.TestValueNode;

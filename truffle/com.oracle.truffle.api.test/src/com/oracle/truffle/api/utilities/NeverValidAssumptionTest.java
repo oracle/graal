@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 
 public class NeverValidAssumptionTest {
 

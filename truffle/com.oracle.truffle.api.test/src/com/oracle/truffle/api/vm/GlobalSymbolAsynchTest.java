@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.vm.PolyglotEngine;
-
 import java.util.concurrent.Executors;
 
 import org.junit.Test;

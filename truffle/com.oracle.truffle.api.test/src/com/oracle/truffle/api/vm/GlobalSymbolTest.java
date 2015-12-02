@@ -22,25 +22,22 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.InstrumentationTestMode;
-
 import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L3;
-
-import com.oracle.truffle.api.vm.PolyglotEngine;
-
-import java.io.IOException;
-import java.util.List;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.util.List;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.utilities.InstrumentationTestMode;
 
 public class GlobalSymbolTest {
 

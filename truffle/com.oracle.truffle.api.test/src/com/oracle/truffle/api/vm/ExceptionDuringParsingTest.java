@@ -22,25 +22,21 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.source.Source;
-
 import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1;
-
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
-
-import java.io.IOException;
-
-import org.junit.After;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
 
 public class ExceptionDuringParsingTest {
     public static Accessor API;

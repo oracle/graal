@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.utilities.ValueProfile;
-import java.lang.reflect.Method;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+
+import java.lang.reflect.Method;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;

@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.api.vm;
 
+import static org.junit.Assert.assertNotEquals;
+
+import java.util.List;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -30,8 +34,6 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.List;
-import static org.junit.Assert.assertNotEquals;
 
 final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10 {
     private final ForeignAccess access;

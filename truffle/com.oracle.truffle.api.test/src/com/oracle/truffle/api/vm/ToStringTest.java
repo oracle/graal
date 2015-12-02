@@ -22,10 +22,11 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.source.Source;
 
 public class ToStringTest {
     @Test

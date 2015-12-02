@@ -22,18 +22,15 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.TestingLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.nodes.RootNode;
-
-import java.util.Iterator;
-
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import java.util.Iterator;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.TestingLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class NodeUtilTest {
 

@@ -22,14 +22,16 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.io.IOException;
-import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+
+import java.io.IOException;
+import java.util.List;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.source.Source;
 
 public class EngineTest {
     protected PolyglotEngine.Builder createBuilder() {

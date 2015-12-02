@@ -27,9 +27,6 @@ import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-
 public class SourceSectionTest {
 
     private final Source emptySource = Source.fromText("", null);

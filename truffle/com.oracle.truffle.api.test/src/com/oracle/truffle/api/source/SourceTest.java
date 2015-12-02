@@ -22,15 +22,16 @@
  */
 package com.oracle.truffle.api.source;
 
-import com.oracle.truffle.api.source.Source;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
+
 import org.junit.Test;
 
 public class SourceTest {

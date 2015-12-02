@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.utilities.AssumedValue;
 import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 
 public class AssumedValueTest {

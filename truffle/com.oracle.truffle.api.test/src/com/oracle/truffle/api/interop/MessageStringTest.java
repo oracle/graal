@@ -33,8 +33,6 @@ import java.util.Locale;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.Message;
-
 public class MessageStringTest {
 
     @Test

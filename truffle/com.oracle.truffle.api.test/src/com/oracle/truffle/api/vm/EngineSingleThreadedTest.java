@@ -22,13 +22,14 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.source.Source;
 
 public class EngineSingleThreadedTest {
     PolyglotEngine tvm;

@@ -22,26 +22,23 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.source.Source;
-
 import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1;
-
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.Executors;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
 
 public class AccessorTest {
     public static Accessor API;

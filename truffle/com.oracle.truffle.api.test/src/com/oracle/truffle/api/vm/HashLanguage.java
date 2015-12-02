@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.vm;
 
+import java.io.IOException;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -33,7 +35,6 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import java.io.IOException;
 
 @TruffleLanguage.Registration(name = "Hash", mimeType = "application/x-test-hash", version = "1.0")
 public class HashLanguage extends TruffleLanguage<Env> {
