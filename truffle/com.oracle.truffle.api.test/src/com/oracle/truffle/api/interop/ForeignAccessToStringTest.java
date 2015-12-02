@@ -32,13 +32,13 @@ public class ForeignAccessToStringTest {
     @Test
     public void checkRegularFactory() {
         ForeignAccess fa = ForeignAccess.create(new SimpleTestingFactory());
-        assertEquals("ForeignAccess[com.oracle.truffle.api.test.interop.ForeignAccessToStringTest$SimpleTestingFactory]", fa.toString());
+        assertEquals("ForeignAccess[" + ForeignAccessToStringTest.class.getName() + "$SimpleTestingFactory]", fa.toString());
     }
 
     @Test
     public void check10Factory() {
         ForeignAccess fa = ForeignAccess.create(TruffleObject.class, new Simple10TestingFactory());
-        assertEquals("ForeignAccess[com.oracle.truffle.api.test.interop.ForeignAccessToStringTest$Simple10TestingFactory]", fa.toString());
+        assertEquals("ForeignAccess[" + ForeignAccessToStringTest.class.getName() + "$Simple10TestingFactory]", fa.toString());
     }
 
     private static class SimpleTestingFactory implements ForeignAccess.Factory {
