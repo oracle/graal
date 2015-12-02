@@ -122,6 +122,27 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
     }
 
     protected void postIteration(final StructuredGraph graph, final PhaseContextT context, Set<Node> changedNodes) {
+        /*
+         * The nodes were added without uniqueing them first so GVN the leaf nodes now. The normal
+         * CanonicalizerPhase will GVN non-leaf value numberable nodes.
+         */
+        for (Node node : changedNodes) {
+            if (node.isAlive() && node.getNodeClass().valueNumberable() && node.getNodeClass().isLeafNode()) {
+                Node duplicate = graph.findDuplicate(node);
+                if (duplicate != node) {
+                    if (duplicate == null) {
+                        /*
+                         * There's no version of this constant in the leaf node cache so create a
+                         * copy to add it to the table.
+                         */
+                        duplicate = node.copyWithInputs();
+                        assert duplicate == graph.findDuplicate(duplicate);
+                    }
+                    node.replaceAtUsages(duplicate);
+                    node.safeDelete();
+                }
+            }
+        }
         if (canonicalizer != null) {
             canonicalizer.applyIncremental(graph, context, changedNodes);
         }

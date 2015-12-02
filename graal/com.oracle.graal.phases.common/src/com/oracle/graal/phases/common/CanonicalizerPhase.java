@@ -242,7 +242,21 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     return true;
                 }
             }
+            assert assertLeafGVN(node, nodeClass);
             return false;
+        }
+
+        /**
+         * Ensure that leaf nodes have already been GVN'ed. This is normally handled automatically
+         * but it's possible to add nodes to the graph with looking for duplicates and it's the
+         * responsibility of code that does that to clean it up.
+         */
+        private boolean assertLeafGVN(Node node, NodeClass<?> nodeClass) {
+            if (node.isAlive() && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+                Node newNode = node.graph().findDuplicate(node);
+                return (newNode == null || newNode == node);
+            }
+            return true;
         }
 
         private AutoCloseable getCanonicalizeableContractAssertion(Node node) {
