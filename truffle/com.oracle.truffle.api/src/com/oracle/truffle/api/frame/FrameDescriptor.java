@@ -45,10 +45,18 @@ public final class FrameDescriptor implements Cloneable {
     private Assumption version;
     private HashMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
 
+    /**
+     * Constructs empty descriptor. The {@link #getDefaultValue()} is <code>null</code>.
+     */
     public FrameDescriptor() {
         this(null);
     }
 
+    /**
+     * Constructs new descriptor with specified {@link #getDefaultValue()}.
+     * 
+     * @param defaultValue to be returned from {@link #getDefaultValue()}
+     */
     public FrameDescriptor(Object defaultValue) {
         CompilerAsserts.neverPartOfCompilation();
         this.defaultValue = defaultValue;
@@ -57,10 +65,24 @@ public final class FrameDescriptor implements Cloneable {
         version = createVersion();
     }
 
+    /**
+     * Use {@link #FrameDescriptor()}.
+     * 
+     * @return new instance of the descriptor
+     * @deprecated
+     */
+    @Deprecated
     public static FrameDescriptor create() {
         return new FrameDescriptor();
     }
 
+    /**
+     * Use {@link #FrameDescriptor(java.lang.Object) }.
+     * 
+     * @return new instance of the descriptor
+     * @deprecated
+     */
+    @Deprecated
     public static FrameDescriptor create(Object defaultValue) {
         return new FrameDescriptor(defaultValue);
     }
@@ -122,10 +144,20 @@ public final class FrameDescriptor implements Cloneable {
         getNotInFrameAssumption(identifier);
     }
 
+    /**
+     * Returns number of slots in the descriptor.
+     * 
+     * @return the same value as {@link #getSlots()}.{@link List#size()} would return
+     */
     public int getSize() {
         return slots.size();
     }
 
+    /**
+     * Current set of slots in the descriptor.
+     * 
+     * @return unmodifiable list of {@link FrameSlot}
+     */
     public List<? extends FrameSlot> getSlots() {
         return Collections.unmodifiableList(slots);
     }
