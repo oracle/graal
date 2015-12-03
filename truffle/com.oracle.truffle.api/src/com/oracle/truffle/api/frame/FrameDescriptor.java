@@ -237,7 +237,7 @@ public final class FrameDescriptor implements Cloneable {
      * Deeper copy of the descriptor. Copies all slots in the descriptor, but only their identifiers
      * - not their {@link FrameSlot#getInfo()} neither their {@link FrameSlot#getKind()}!
      * 
-     * @return new instance of a descritor with copies of values from this one
+     * @return new instance of a descriptor with copies of values from this one
      */
     public FrameDescriptor copy() {
         FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
@@ -248,6 +248,13 @@ public final class FrameDescriptor implements Cloneable {
         return clonedFrameDescriptor;
     }
 
+    /**
+     * Shallow copy of the descriptor. Re-uses the existing slots in new descriptor. As a result, if
+     * you {@link FrameSlot#setKind(com.oracle.truffle.api.frame.FrameSlotKind) change kind} of one
+     * of the slots it is changed in the original as well as in the shallow copy.
+     * 
+     * @return new instance of a descriptor with copies of values from this one
+     */
     public FrameDescriptor shallowCopy() {
         FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
         clonedFrameDescriptor.slots.addAll(slots);

@@ -88,4 +88,30 @@ public class FrameDescriptorTest {
         assertNull("Info isn't copied!", copy.getSlots().get(1).getInfo());
         assertEquals("Kind isn't copied!", copy.getSlots().get(1).getKind(), FrameSlotKind.Illegal);
     }
+
+    @Test
+    public void shallowCopy() {
+        Object defaultValue = "default";
+        FrameDescriptor d = new FrameDescriptor(defaultValue);
+        s1 = d.addFrameSlot("v1", "i1", FrameSlotKind.Boolean);
+        s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
+
+        assertEquals(2, d.getSize());
+        final FrameSlot first = d.getSlots().get(1);
+        assertEquals(first.getInfo(), "i2");
+        assertEquals(first.getKind(), FrameSlotKind.Float);
+        assertEquals(first.getIndex(), 1);
+
+        FrameDescriptor copy = d.shallowCopy();
+
+        assertEquals(2, copy.getSize());
+        final FrameSlot firstCopy = copy.getSlots().get(1);
+        assertEquals("Info is copied", firstCopy.getInfo(), "i2");
+        assertEquals("Kind is copied", firstCopy.getKind(), FrameSlotKind.Float);
+        assertEquals(firstCopy.getIndex(), 1);
+
+        firstCopy.setKind(FrameSlotKind.Int);
+        assertEquals("Kind is changed", firstCopy.getKind(), FrameSlotKind.Int);
+        assertEquals("Kind is changed in original too!", first.getKind(), FrameSlotKind.Int);
+    }
 }
