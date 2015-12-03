@@ -233,6 +233,12 @@ public final class FrameDescriptor implements Cloneable {
         return Collections.unmodifiableSet(identifierToSlotMap.keySet());
     }
 
+    /**
+     * Deeper copy of the descriptor. Copies all slots in the descriptor, but only their identifiers
+     * - not their {@link FrameSlot#getInfo()} neither their {@link FrameSlot#getKind()}!
+     * 
+     * @return new instance of a descritor with copies of values from this one
+     */
     public FrameDescriptor copy() {
         FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
         for (int i = 0; i < this.getSlots().size(); i++) {
