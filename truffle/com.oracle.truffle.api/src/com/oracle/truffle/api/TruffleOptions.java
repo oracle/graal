@@ -29,7 +29,6 @@ import java.security.PrivilegedAction;
 
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.Source;
 
 /**
  * Class containing general Truffle options.
@@ -87,13 +86,6 @@ public final class TruffleOptions {
     public static final boolean TraceASTJSON;
 
     /**
-     * Enables auto-reload of file-based {@link Source} when the file is changed on disk.
-     * <p>
-     * Can be set with {@code -Dtruffle.AutoReloadFileSource=true}.
-     */
-    public static final boolean AutoReloadFileSource;
-
-    /**
      * Forces ahead-of-time initialization.
      */
     public static final boolean AOT;
@@ -107,7 +99,7 @@ public final class TruffleOptions {
     }
 
     static {
-        final boolean[] values = new boolean[5];
+        final boolean[] values = new boolean[4];
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
                 values[0] = Boolean.getBoolean("truffle.TraceRewrites");
@@ -117,7 +109,6 @@ public final class TruffleOptions {
                 values[1] = Boolean.getBoolean("truffle.DetailedRewriteReasons");
                 values[2] = Boolean.getBoolean("truffle.TraceASTJSON");
                 values[3] = Boolean.getBoolean("com.oracle.truffle.aot");
-                values[4] = Boolean.getBoolean("truffle.AutoReloadFileSource");
                 return null;
             }
         });
@@ -125,6 +116,5 @@ public final class TruffleOptions {
         DetailedRewriteReasons = values[1];
         TraceASTJSON = values[2];
         AOT = values[3];
-        AutoReloadFileSource = values[4];
     }
 }
