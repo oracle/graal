@@ -258,7 +258,7 @@ public class ImplicitExplicitExportTest {
         }
     }
 
-    static final String L1 = "application/x-test-import-export-1";
+    public static final String L1 = "application/x-test-import-export-1";
     static final String L2 = "application/x-test-import-export-2";
     static final String L3 = "application/x-test-import-export-3";
 

@@ -20,25 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.vm;
+package com.oracle.truffle.api.impl;
 
-import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.concurrent.Executors;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
+import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class AccessorTest {
     public static Accessor API;
@@ -60,20 +56,7 @@ public class AccessorTest {
         Object ret = language.eval(s).get();
         assertNull("nothing is returned", ret);
 
-        Object afterInitialization = findLanguageByClass(vm);
+        ExportImportLanguage1 afterInitialization = Accessor.findLanguageByClass(vm, ExportImportLanguage1.class);
         assertNotNull("Language found", afterInitialization);
-        assertTrue("Right instance: " + afterInitialization, afterInitialization instanceof ExportImportLanguage1);
-    }
-
-    Object findLanguageByClass(PolyglotEngine vm) throws IllegalAccessException, NoSuchMethodException, SecurityException, IllegalArgumentException, InvocationTargetException, NoSuchFieldException {
-        Method find = Accessor.class.getDeclaredMethod("findLanguage", Object.class, Class.class);
-        find.setAccessible(true);
-        TruffleLanguage.Env env = (TruffleLanguage.Env) find.invoke(API, vm, ExportImportLanguage1.class);
-        Field f = env.getClass().getDeclaredField("langCtx");
-        f.setAccessible(true);
-        Object langCtx = f.get(env);
-        f = langCtx.getClass().getDeclaredField("lang");
-        f.setAccessible(true);
-        return f.get(langCtx);
     }
 }
