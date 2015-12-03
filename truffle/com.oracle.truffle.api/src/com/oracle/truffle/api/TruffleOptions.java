@@ -58,7 +58,7 @@ public final class TruffleOptions {
      * <p>
      * Can be set with {@code -Dtruffle.TraceRewritesFilterClass=name}.
      */
-    public static String TraceRewritesFilterClass;
+    public static final String TraceRewritesFilterClass;
 
     /**
      * Filters rewrites which does not contain the {@link NodeCost} in its source {@link NodeInfo}.
@@ -67,7 +67,7 @@ public final class TruffleOptions {
      * Can be set with
      * {@code -Dtruffle.TraceRewritesFilterFromCost=NONE|MONOMORPHIC|POLYMORPHIC|MEGAMORPHIC}.
      */
-    public static NodeCost TraceRewritesFilterFromCost;
+    public static final NodeCost TraceRewritesFilterFromCost;
 
     /**
      * Filters rewrites which does not contain the {@link NodeCost} in its target {@link NodeInfo}.
@@ -76,7 +76,7 @@ public final class TruffleOptions {
      * Can be set with
      * {@code -Dtruffle.TraceRewritesFilterToKind=UNINITIALIZED|SPECIALIZED|POLYMORPHIC|GENERIC}.
      */
-    public static NodeCost TraceRewritesFilterToCost;
+    public static final NodeCost TraceRewritesFilterToCost;
 
     /**
      * Enables the dumping of Node creations and AST rewrites in JSON format.
@@ -100,12 +100,13 @@ public final class TruffleOptions {
 
     static {
         final boolean[] values = new boolean[4];
+        final Object[] objs = new Object[3];
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
                 values[0] = Boolean.getBoolean("truffle.TraceRewrites");
-                TraceRewritesFilterClass = System.getProperty("truffle.TraceRewritesFilterClass");
-                TraceRewritesFilterFromCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterFromCost"));
-                TraceRewritesFilterToCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
+                objs[0] = System.getProperty("truffle.TraceRewritesFilterClass");
+                objs[1] = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterFromCost"));
+                objs[2] = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
                 values[1] = Boolean.getBoolean("truffle.DetailedRewriteReasons");
                 values[2] = Boolean.getBoolean("truffle.TraceASTJSON");
                 values[3] = Boolean.getBoolean("com.oracle.truffle.aot");
@@ -116,5 +117,8 @@ public final class TruffleOptions {
         DetailedRewriteReasons = values[1];
         TraceASTJSON = values[2];
         AOT = values[3];
+        TraceRewritesFilterClass = (String) objs[0];
+        TraceRewritesFilterFromCost = (NodeCost) objs[1];
+        TraceRewritesFilterToCost = (NodeCost) objs[2];
     }
 }
