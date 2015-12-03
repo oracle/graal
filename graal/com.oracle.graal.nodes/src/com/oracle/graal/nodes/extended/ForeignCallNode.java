@@ -202,4 +202,8 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     public boolean canDeoptimize() {
         return foreignCalls.canDeoptimize(descriptor);
     }
+
+    public boolean isGuaranteedSafepoint() {
+        return foreignCalls.isGuaranteedSafepoint(descriptor);
+    }
 }

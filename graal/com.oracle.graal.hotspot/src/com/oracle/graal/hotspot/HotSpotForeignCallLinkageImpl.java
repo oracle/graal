@@ -172,6 +172,10 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return reexecutable;
     }
 
+    public boolean isGuaranteedSafepoint() {
+        return transition == Transition.SAFEPOINT;
+    }
+
     public LocationIdentity[] getKilledLocations() {
         return killedLocations;
     }
@@ -241,7 +245,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
 
     @Override
     public boolean needsDebugInfo() {
-        return transition == Transition.NOT_LEAF;
+        return transition == Transition.SAFEPOINT;
     }
 
     public boolean mayContainFP() {
@@ -249,7 +253,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     public boolean needsJavaFrameAnchor() {
-        if (transition == Transition.NOT_LEAF || transition == Transition.STACK_INSPECTABLE_LEAF) {
+        if (transition == Transition.SAFEPOINT || transition == Transition.STACK_INSPECTABLE_LEAF) {
             if (stub != null) {
                 // The stub will do the JavaFrameAnchor management
                 // around the runtime call(s) it makes

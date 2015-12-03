@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.NOT_LEAF;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
 import static jdk.vm.ci.code.CallingConvention.Type.JavaCall;
 import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
 
@@ -113,7 +113,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                     boolean reexecutable, LocationIdentity... killedLocations) {
         Class<?> resultType = descriptor.getResultType();
         assert address != 0;
-        assert transition != NOT_LEAF || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
+        assert transition != SAFEPOINT || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
         return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
     }
 
@@ -164,6 +164,11 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
         assert foreignCalls.containsKey(descriptor) : "unknown foreign call: " + descriptor;
         return foreignCalls.get(descriptor).needsDebugInfo();
+    }
+
+    public boolean isGuaranteedSafepoint(ForeignCallDescriptor descriptor) {
+        assert foreignCalls.containsKey(descriptor) : "unknown foreign call: " + descriptor;
+        return foreignCalls.get(descriptor).isGuaranteedSafepoint();
     }
 
     public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
