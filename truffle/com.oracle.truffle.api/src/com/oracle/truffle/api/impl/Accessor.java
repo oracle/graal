@@ -346,4 +346,10 @@ public abstract class Accessor {
     protected String toString(TruffleLanguage<?> language, Env env, Object obj) {
         return API.toString(language, env, obj);
     }
+
+    static <T extends TruffleLanguage<?>> T findLanguageByClass(Object vm, Class<T> languageClass) {
+        Env env = API.findLanguage(vm, languageClass);
+        TruffleLanguage<?> language = API.findLanguage(env);
+        return languageClass.cast(language);
+    }
 }

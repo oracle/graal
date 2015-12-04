@@ -109,7 +109,7 @@ public abstract class TruffleTCK {
 
     /**
      * Name of function to add two numbers together. The symbol will be invoked with two parameters
-     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number} 
+     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number}
      * which's {@link Number#intValue()} is equivalent of <code>param1 + param2</code>. As some
      * languages may have different operations for different types of numbers, the actual types are
      * passed to the method and the implementation can decide to return different symbol based on

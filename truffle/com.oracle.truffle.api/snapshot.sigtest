@@ -149,9 +149,9 @@ CLSS public final com.oracle.truffle.api.TruffleOptions
 fld public final static boolean DetailedRewriteReasons
 fld public final static boolean TraceASTJSON
 fld public final static boolean TraceRewrites
-fld public static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterFromCost
-fld public static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterToCost
-fld public static java.lang.String TraceRewritesFilterClass
+fld public final static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterFromCost
+fld public final static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterToCost
+fld public final static java.lang.String TraceRewritesFilterClass
 supr java.lang.Object
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntime
