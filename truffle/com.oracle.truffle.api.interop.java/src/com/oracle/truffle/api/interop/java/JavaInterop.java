@@ -407,8 +407,7 @@ public final class JavaInterop {
                         }
                         throw new IllegalArgumentException(attr + " cannot be invoked with " + args.length + " parameters");
                     }
-                    List<Object> callArgs = new ArrayList<>(args.length + 1);
-                    callArgs.add(attr);
+                    List<Object> callArgs = new ArrayList<>(args.length);
                     callArgs.addAll(Arrays.asList(args));
                     ret = message(Message.createExecute(callArgs.size()), attr, callArgs.toArray());
                 }
