@@ -110,8 +110,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
      */
     protected InstanceOfUsageReplacer createReplacer(FloatingNode instanceOf, Instantiation instantiation, Node usage, final StructuredGraph graph) {
         InstanceOfUsageReplacer replacer;
-        if ((usage instanceof ConditionalNode && !(((ConditionalNode) usage).trueValue().isConstant() && ((ConditionalNode) usage).falseValue().isConstant())) || usage instanceof IfNode ||
-                        usage instanceof FixedGuardNode || usage instanceof ShortCircuitOrNode || usage instanceof ConditionAnchorNode) {
+        if (!canMaterialize(usage)) {
             ValueNode trueValue = ConstantNode.forInt(1, graph);
             ValueNode falseValue = ConstantNode.forInt(0, graph);
             if (instantiation.isInitialized() && (trueValue != instantiation.trueValue || falseValue != instantiation.falseValue)) {
@@ -129,6 +128,20 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
             replacer = new MaterializationUsageReplacer(instantiation, c.trueValue(), c.falseValue(), instanceOf, c);
         }
         return replacer;
+    }
+
+    /**
+     * Determines if an {@code instanceof} usage can be materialized.
+     */
+    protected boolean canMaterialize(Node usage) {
+        if (usage instanceof ConditionalNode) {
+            ConditionalNode cn = (ConditionalNode) usage;
+            return cn.trueValue().isConstant() && cn.falseValue().isConstant();
+        }
+        if (usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof ShortCircuitOrNode || usage instanceof ConditionAnchorNode) {
+            return false;
+        }
+        return true;
     }
 
     /**
