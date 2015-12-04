@@ -147,14 +147,19 @@ final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, 
         public Object execute(VirtualFrame frame) {
             DynamicObject receiver = (DynamicObject) ForeignAccess.getReceiver(frame);
             String name = (String) ForeignAccess.getArguments(frame).get(0);
-            SLFunction function = (SLFunction) receiver.get(name);
-            List<Object> args = ForeignAccess.getArguments(frame);
-            Object[] arr = new Object[args.size() - 1];
-            for (int i = 1; i < args.size(); i++) {
-                arr[i - 1] = fromForeignValue(args.get(i));
+            Object property = receiver.get(name);
+            if (property instanceof SLFunction) {
+                SLFunction function = (SLFunction) property;
+                List<Object> args = ForeignAccess.getArguments(frame);
+                Object[] arr = new Object[args.size() - 1];
+                for (int i = 1; i < args.size(); i++) {
+                    arr[i - 1] = fromForeignValue(args.get(i));
+                }
+                Object result = dispatch.executeDispatch(frame, function, arr);
+                return result;
+            } else {
+                throw new IllegalArgumentException();
             }
-            Object result = dispatch.executeDispatch(frame, function, arr);
-            return result;
         }
     }
 
