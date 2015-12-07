@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
+import com.oracle.truffle.api.instrument.QuitException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.REPLClient;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
-import com.oracle.truffle.tools.debug.shell.REPLServer;
+import com.oracle.truffle.tools.debug.shell.server.REPLServer;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -39,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+
 import jline.console.ConsoleReader;
 
 /**
@@ -79,6 +82,8 @@ import jline.console.ConsoleReader;
  */
 public class SimpleREPLClient implements REPLClient {
 
+    // TODO (mlvdv) Temporarily in hybrid mode; will work either single language or multi (sort of)
+
     private static final String REPLY_PREFIX = "==> ";
     private static final String FAIL_PREFIX = "**> ";
     private static final String WARNING_PREFIX = "!!> ";
@@ -89,10 +94,8 @@ public class SimpleREPLClient implements REPLClient {
     static final String CODE_LINE_FORMAT = "    %3d  %s\n";
     static final String CODE_LINE_BREAK_FORMAT = "--> %3d  %s\n";
 
-    private static final String STACK_FRAME_FORMAT = "    %3d: at %s in %s    line =\"%s\"\n";
-    private static final String STACK_FRAME_SELECTED_FORMAT = "==> %3d: at %s in %s    line =\"%s\"\n";
-
-    private final String languageName;
+    private static final String STACK_FRAME_FORMAT = "    %3d: at %s in %s    %s\n";
+    private static final String STACK_FRAME_SELECTED_FORMAT = "==> %3d: at %s in %s    %s\n";
 
     // Top level commands
     private final Map<String, REPLCommand> commandMap = new HashMap<>();
@@ -104,13 +107,6 @@ public class SimpleREPLClient implements REPLClient {
 
     // Current local context
     ClientContextImpl clientContext;
-
-    // Cheating for the prototype; prototype startup now happens from the language server.
-    // So this isn't used.
-    public static void main(String[] args) {
-        final SimpleREPLClient repl = new SimpleREPLClient(null, null);
-        repl.start();
-    }
 
     private final ConsoleReader reader;
 
@@ -147,8 +143,7 @@ public class SimpleREPLClient implements REPLClient {
      */
     private Source selectedSource = null;
 
-    public SimpleREPLClient(String languageName, REPLServer replServer) {
-        this.languageName = languageName;
+    public SimpleREPLClient(REPLServer replServer) {
         this.replServer = replServer;
         this.writer = System.out;
         try {
@@ -162,6 +157,8 @@ public class SimpleREPLClient implements REPLClient {
         addCommand(REPLRemoteCommand.BREAK_AT_LINE_ONCE_CMD);
         addCommand(REPLRemoteCommand.BREAK_AT_THROW_CMD);
         addCommand(REPLRemoteCommand.BREAK_AT_THROW_ONCE_CMD);
+        addCommand(REPLRemoteCommand.CALL_CMD);
+        addCommand(REPLRemoteCommand.CALL_STEP_INTO_CMD);
         addCommand(REPLRemoteCommand.CLEAR_BREAK_CMD);
         addCommand(REPLRemoteCommand.CONDITION_BREAK_CMD);
         addCommand(REPLRemoteCommand.CONTINUE_CMD);
@@ -169,17 +166,19 @@ public class SimpleREPLClient implements REPLClient {
         addCommand(REPLRemoteCommand.DISABLE_CMD);
         addCommand(REPLRemoteCommand.DOWN_CMD);
         addCommand(REPLRemoteCommand.ENABLE_CMD);
-        addCommand(evalCommand);
+        addCommand(REPLRemoteCommand.EVAL_CMD);
+        addCommand(REPLRemoteCommand.EVAL_STEP_INTO_CMD);
         addCommand(fileCommand);
         addCommand(REPLRemoteCommand.FRAME_CMD);
         addCommand(helpCommand);
         addCommand(infoCommand);
         addCommand(REPLRemoteCommand.KILL_CMD);
         addCommand(listCommand);
-        addCommand(REPLRemoteCommand.LOAD_RUN_CMD);
-        addCommand(REPLRemoteCommand.LOAD_STEP_CMD);
+        addCommand(REPLRemoteCommand.LOAD_CMD);
+        addCommand(REPLRemoteCommand.LOAD_STEP_INTO_CMD);
         addCommand(quitCommand);
         addCommand(setCommand);
+        addCommand(REPLRemoteCommand.SET_LANG_CMD);
         addCommand(REPLRemoteCommand.STEP_INTO_CMD);
         addCommand(REPLRemoteCommand.STEP_OUT_CMD);
         addCommand(REPLRemoteCommand.STEP_OVER_CMD);
@@ -207,21 +206,24 @@ public class SimpleREPLClient implements REPLClient {
 
     public void start() {
 
-        REPLMessage startReply = replServer.start();
-
-        if (startReply.get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
-            clientContext.displayFailReply(startReply.get(REPLMessage.DISPLAY_MSG));
-            throw new RuntimeException("Can't start REPL server");
-        }
-
         this.clientContext = new ClientContextImpl(null, null);
-
         try {
-            clientContext.startSession();
-        } finally {
-            clientContext.displayReply("Goodbye from " + languageName + "/REPL");
+            showWelcome();
+            clientContext.startContextSession();
+        } catch (QuitException ex) {
+            clientContext.displayReply("Goodbye");
         }
+    }
 
+    private void showWelcome() {
+        final REPLMessage request = new REPLMessage(REPLMessage.OP, REPLMessage.INFO);
+        request.put(REPLMessage.TOPIC, REPLMessage.WELCOME_MESSAGE);
+        final REPLMessage[] replies = clientContext.sendToServer(request);
+        if (replies[0].get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
+            clientContext.displayReply("Welcome");
+        } else {
+            clientContext.displayReply(replies[0].get(REPLMessage.INFO_VALUE));
+        }
     }
 
     public void addCommand(REPLCommand replCommand) {
@@ -263,18 +265,26 @@ public class SimpleREPLClient implements REPLClient {
             this.level = predecessor == null ? 0 : predecessor.level + 1;
 
             if (message != null) {
+                final String sourceName = message.get(REPLMessage.SOURCE_NAME);
                 try {
-                    this.haltedSource = Source.fromFileName(message.get(REPLMessage.SOURCE_NAME));
-                    selectedSource = this.haltedSource;
+                    this.haltedSource = Source.fromFileName(sourceName);
+                } catch (IOException ex) {
+                    final String code = message.get(REPLMessage.SOURCE_TEXT);
+                    if (code != null) {
+                        this.haltedSource = Source.fromText(code, sourceName);
+                    }
+                }
+                if (this.haltedSource != null) {
+                    selectedSource = haltedSource;
                     try {
                         haltedLineNumber = Integer.parseInt(message.get(REPLMessage.LINE_NUMBER));
                     } catch (NumberFormatException e) {
                         haltedLineNumber = 0;
                     }
-                } catch (IOException e1) {
+                } else {
                     this.haltedSource = null;
                     this.haltedLineNumber = 0;
-                    this.unknownSourceName = message.get(REPLMessage.SOURCE_NAME);
+                    this.unknownSourceName = sourceName;
                 }
             }
             updatePrompt();
@@ -289,20 +299,33 @@ public class SimpleREPLClient implements REPLClient {
             updatePrompt();
         }
 
-        private void updatePrompt() {
+        @Override
+        public void updatePrompt() {
+
+            String languageName = "???";
+            final REPLMessage request = new REPLMessage();
+            request.put(REPLMessage.OP, REPLMessage.INFO);
+            request.put(REPLMessage.TOPIC, REPLMessage.INFO_CURRENT_LANGUAGE);
+            final REPLMessage[] replies = replServer.receive(request);
+            if (replies[0].get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
+                languageName = replies[0].get(REPLMessage.LANG_NAME);
+            }
+            final String showLang = languageName == null ? "() " : "( " + languageName + " )";
             if (level == 0) {
                 // 0-level context; no executions halted.
                 if (selectedSource == null) {
-                    currentPrompt = languageName == null ? "() " : "( " + languageName + " ) ";
+                    currentPrompt = showLang + " ";
                 } else {
-                    currentPrompt = "(" + selectedSource.getShortName() + ") ";
+                    currentPrompt = "(" + selectedSource.getShortName() + ") " + showLang + " ";
                 }
             } else if (selectedSource != null && selectedSource != haltedSource) {
                 // User is focusing somewhere else than the current locn; show no line number.
                 final StringBuilder sb = new StringBuilder();
                 sb.append("(<" + Integer.toString(level) + "> ");
                 sb.append(selectedSource.getShortName());
-                sb.append(") ");
+                sb.append(")");
+                sb.append(showLang);
+                sb.append(" ");
                 currentPrompt = sb.toString();
             } else {
                 // Prompt reveals where currently halted.
@@ -312,7 +335,9 @@ public class SimpleREPLClient implements REPLClient {
                 if (haltedLineNumber > 0) {
                     sb.append(":" + Integer.toString(haltedLineNumber));
                 }
-                sb.append(") ");
+                sb.append(")");
+                sb.append(showLang);
+                sb.append(" ");
                 currentPrompt = sb.toString();
             }
 
@@ -443,7 +468,9 @@ public class SimpleREPLClient implements REPLClient {
                 for (REPLFrame frame : frameList) {
                     String sourceLineText = frame.sourceLineText();
                     if (sourceLineText == null) {
-                        sourceLineText = "<??>";
+                        sourceLineText = "";
+                    } else {
+                        sourceLineText = "line=\"" + sourceLineText + "\"";
                     }
                     if (frame.index() == selectedFrameNumber) {
                         writer.format(STACK_FRAME_SELECTED_FORMAT, frame.index(), frame.locationDescription(), frame.name(), sourceLineText);
@@ -476,7 +503,7 @@ public class SimpleREPLClient implements REPLClient {
             writer.println(TRACE_PREFIX + message);
         }
 
-        public void startSession() {
+        private void startContextSession() {
 
             while (true) {
                 try {
@@ -515,15 +542,19 @@ public class SimpleREPLClient implements REPLClient {
 
                     } else if (command instanceof REPLRemoteCommand) {
                         final REPLRemoteCommand remoteCommand = (REPLRemoteCommand) command;
-
                         final REPLMessage request = remoteCommand.createRequest(clientContext, args);
                         if (request == null) {
                             continue;
                         }
 
                         REPLMessage[] replies = sendToServer(request);
-
                         remoteCommand.processReply(clientContext, replies);
+
+                        final String path = replies[0].get(REPLMessage.FILE_PATH);
+                        if (path != null && !path.isEmpty()) {
+                            selectSource(path);
+                        }
+
                     } else {
                         assert false; // Should not happen.
                     }
@@ -651,7 +682,7 @@ public class SimpleREPLClient implements REPLClient {
         }
 
         try {
-            clientContext.startSession();
+            clientContext.startContextSession();
         } finally {
 
             // To continue execution, pop the context and return
@@ -695,33 +726,6 @@ public class SimpleREPLClient implements REPLClient {
             } else {
                 clientContext.displayStack();
             }
-        }
-    };
-
-    private final REPLCommand evalCommand = new REPLRemoteCommand("eval", null, "Evaluate a string, in context of the current frame if any") {
-
-        private int evalCounter = 0;
-
-        @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            if (args.length > 1) {
-                final String code = args[1];
-                if (!code.isEmpty()) {
-                    // Create a fake entry in the file maps and cache, based on this unique name
-                    final String fakeFileName = "<eval" + ++evalCounter + ">";
-                    Source.fromNamedText(fakeFileName, code);
-                    final REPLMessage request = new REPLMessage();
-                    request.put(REPLMessage.OP, REPLMessage.EVAL);
-                    request.put(REPLMessage.CODE, code);
-                    request.put(REPLMessage.SOURCE_NAME, fakeFileName);
-                    if (clientContext.level > 0) {
-                        // Specify a requested execution context, if one exists; otherwise top level
-                        request.put(REPLMessage.FRAME_NUMBER, Integer.toString(context.getSelectedFrameNumber()));
-                    }
-                    return request;
-                }
-            }
-            return null;
         }
     };
 
@@ -922,9 +926,9 @@ public class SimpleREPLClient implements REPLClient {
         }
     };
 
-    private final REPLCommand infoLanguageCommand = new REPLRemoteCommand("language", "lang", "language and implementation details") {
+    private final REPLCommand infoLanguageCommand = new REPLRemoteCommand("languages", "lang", "languages supported") {
 
-        final String[] help = {"info language:  list details about the language implementation"};
+        final String[] help = {"info language:  list details about supported languages"};
 
         @Override
         public String[] getHelp() {
@@ -935,7 +939,7 @@ public class SimpleREPLClient implements REPLClient {
         public REPLMessage createRequest(REPLClientContext context, String[] args) {
             final REPLMessage request = new REPLMessage();
             request.put(REPLMessage.OP, REPLMessage.INFO);
-            request.put(REPLMessage.TOPIC, REPLMessage.LANGUAGE);
+            request.put(REPLMessage.TOPIC, REPLMessage.INFO_SUPPORTED_LANGUAGES);
             return request;
         }
 
@@ -944,12 +948,12 @@ public class SimpleREPLClient implements REPLClient {
             if (replies[0].get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
                 clientContext.displayFailReply(replies[0].get(REPLMessage.DISPLAY_MSG));
             } else {
-                clientContext.displayReply("Language info:");
+                clientContext.displayReply("Languages supported:");
                 for (REPLMessage message : replies) {
                     final StringBuilder sb = new StringBuilder();
-                    sb.append(message.get(REPLMessage.INFO_KEY));
-                    sb.append(": ");
-                    sb.append(message.get(REPLMessage.INFO_VALUE));
+                    sb.append(message.get(REPLMessage.LANG_NAME));
+                    sb.append(" ver. ");
+                    sb.append(message.get(REPLMessage.LANG_VER));
                     clientContext.displayInfo(sb.toString());
                 }
             }

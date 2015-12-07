@@ -271,8 +271,6 @@ final class LineBreakpointFactory {
 
         private static final String SHOULD_NOT_HAPPEN = "LineBreakpointImpl:  should not happen";
 
-        private final LineLocation lineLocation;
-
         // Cached assumption that the global status of line breakpoint activity has not changed.
         private Assumption breakpointsActiveAssumption;
 
@@ -289,9 +287,7 @@ final class LineBreakpointFactory {
         private List<ProbeInstrument> instruments = new ArrayList<>();
 
         public LineBreakpointImpl(int ignoreCount, LineLocation lineLocation, boolean oneShot) {
-            super(ENABLED_UNRESOLVED, ignoreCount, oneShot);
-            this.lineLocation = lineLocation;
-
+            super(ENABLED_UNRESOLVED, lineLocation, ignoreCount, oneShot);
             this.breakpointsActiveAssumption = LineBreakpointFactory.this.breakpointsActiveUnchanged.getAssumption();
             this.isEnabled = true;
             this.enabledUnchangedAssumption = Truffle.getRuntime().createAssumption(BREAKPOINT_NAME + " enabled state unchanged");
@@ -466,16 +462,6 @@ final class LineBreakpointFactory {
         @TruffleBoundary
         private void addExceptionWarning(Exception ex) {
             warningLog.addWarning(String.format("Exception in %s:  %s", getShortDescription(), ex.getMessage()));
-        }
-
-        @Override
-        public String getLocationDescription() {
-            return "Line: " + lineLocation.getShortDescription();
-        }
-
-        @Override
-        public LineLocation getLineLocation() {
-            return lineLocation;
         }
 
         private final class UnconditionalLineBreakInstrumentListener extends DefaultStandardInstrumentListener {

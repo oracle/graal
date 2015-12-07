@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.debug.shell.client;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -197,6 +198,71 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                 firstReply.put(REPLMessage.DISPLAY_MSG, "one-shot breakpoint at any throw set");
             }
             super.processReply(context, replies);
+        }
+    };
+
+    public static final REPLRemoteCommand CALL_CMD = new REPLRemoteCommand("call", null, "call a method/function") {
+
+        private final String[] help = {"call <name> <args>: calls a function by name"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
+
+        @Override
+        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+            if (args.length == 1) {
+                context.displayFailReply("name to call not speciified");
+                return null;
+            }
+            final int maxArgs = REPLMessage.ARG_NAMES.length;
+            if (args.length > maxArgs + 2) {
+                context.displayFailReply("too many call arguments; no more than " + maxArgs + " supported");
+                return null;
+            }
+            final REPLMessage request = new REPLMessage();
+            request.put(REPLMessage.OP, REPLMessage.CALL);
+            request.put(REPLMessage.CALL_NAME, args[1]);
+            for (int argIn = 2, argOut = 0; argIn < args.length; argIn++, argOut++) {
+                request.put(REPLMessage.ARG_NAMES[argOut], args[argIn]);
+            }
+            return request;
+        }
+
+        @Override
+        void processReply(REPLClientContext context, REPLMessage[] replies) {
+            REPLMessage firstReply = replies[0];
+            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
+                final String result = firstReply.get(REPLMessage.DISPLAY_MSG);
+                context.displayFailReply(result != null ? result : firstReply.toString());
+            } else {
+                context.displayReply(firstReply.get(REPLMessage.VALUE));
+            }
+        }
+    };
+
+    public static final REPLRemoteCommand CALL_STEP_INTO_CMD = new REPLRemoteCommand("call-step-into", "calls", "Call a method/function and step into") {
+
+        private final String[] help = {"call <name> <args>: calls function by name and step into"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
+
+        @Override
+        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+            final REPLMessage request = CALL_CMD.createRequest(context, args);
+            if (request != null) {
+                request.put(REPLMessage.STEP_INTO, REPLMessage.TRUE);
+            }
+            return request;
+        }
+
+        @Override
+        void processReply(REPLClientContext context, REPLMessage[] replies) {
+            CALL_CMD.processReply(context, replies);
         }
     };
 
@@ -436,6 +502,59 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
     };
 
+    public static final REPLRemoteCommand EVAL_CMD = new REPLRemoteCommand("eval", null, "Evaluate a string, in context of the current frame if any") {
+
+        private int evalCounter = 0;
+
+        private final String[] help = {"eval <string>: evaluate <string> in context of the current frame if any"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
+
+        @Override
+        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+            if (args.length > 1) {
+                final String code = args[1];
+                if (!code.isEmpty()) {
+                    // Create a fake entry in the file maps and cache, based on this unique name
+                    final String fakeFileName = "<eval" + ++evalCounter + ">";
+                    Source.fromNamedText(fakeFileName, code);
+                    final REPLMessage request = new REPLMessage();
+                    request.put(REPLMessage.OP, REPLMessage.EVAL);
+                    request.put(REPLMessage.CODE, code);
+                    request.put(REPLMessage.SOURCE_NAME, fakeFileName);
+                    if (context.level() > 0) {
+                        // Specify a requested execution context, if one exists; otherwise top level
+                        request.put(REPLMessage.FRAME_NUMBER, Integer.toString(context.getSelectedFrameNumber()));
+                    }
+                    return request;
+                }
+            }
+            return null;
+        }
+    };
+
+    public static final REPLRemoteCommand EVAL_STEP_INTO_CMD = new REPLRemoteCommand("eval-step-into", "evals", "Evaluate and step into a string, in context of the current frame if any") {
+
+        private final String[] help = {"eval-step-into <string>: evaluate <string> in context of the current frame if any, and step into"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
+
+        @Override
+        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+            final REPLMessage request = EVAL_CMD.createRequest(context, args);
+            if (request != null) {
+                request.put(REPLMessage.STEP_INTO, REPLMessage.TRUE);
+            }
+            return request;
+        }
+    };
+
     public static final REPLRemoteCommand FRAME_CMD = new REPLRemoteCommand("frame", null, "Display a stack frame") {
 
         private final String[] help = {"frame : display currently selected frame", "frame <n> : display frame <n>"};
@@ -479,9 +598,11 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                 context.selectFrameNumber(frameNumber);
                 context.displayReply("Frame " + frameNumber + ":");
                 for (REPLMessage message : replies) {
-                    for (String line : message.get(REPLMessage.DISPLAY_MSG).split("\n")) {
-                        context.displayInfo(line);
-                    }
+                    final StringBuilder sb = new StringBuilder();
+                    sb.append("#" + message.get(REPLMessage.SLOT_INDEX) + ": ");
+                    sb.append(message.get(REPLMessage.SLOT_ID) + " = ");
+                    sb.append(message.get(REPLMessage.SLOT_VALUE));
+                    context.displayInfo(sb.toString());
                 }
             }
         }
@@ -510,7 +631,14 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
     };
 
-    public static final REPLRemoteCommand LOAD_RUN_CMD = new REPLRemoteCommand("load-run", "loadr", "Load and run a source") {
+    public static final REPLRemoteCommand LOAD_CMD = new REPLRemoteCommand("load", null, "Load source") {
+
+        private final String[] help = new String[]{"load : load currently selected file source", "load <file name> : load file <file name>"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
 
         @Override
         public REPLMessage createRequest(REPLClientContext context, String[] args) {
@@ -530,43 +658,66 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                 }
             }
             final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.LOAD_RUN);
+            request.put(REPLMessage.OP, REPLMessage.LOAD_SOURCE);
             request.put(REPLMessage.SOURCE_NAME, runSource.getPath());
             return request;
         }
     };
 
-    public static final REPLRemoteCommand LOAD_STEP_CMD = new REPLRemoteCommand("load-step", "loads", "Load and step into a source") {
+    public static final REPLRemoteCommand LOAD_STEP_INTO_CMD = new REPLRemoteCommand("load-step-into", "loads", "Load source and step in") {
+
+        private final String[] help = new String[]{"load : load currently selected file source and step in", "load <file name> : load file <file name> and step in"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
 
         @Override
         public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            Source runSource = null;
-            if (args.length == 1) {
-                runSource = context.getSelectedSource();
-                if (runSource == null) {
-                    context.displayFailReply("No file selected");
-                    return null;
-                }
-            } else {
-                try {
-                    runSource = Source.fromFileName(args[1]);
-                } catch (IOException e) {
-                    context.displayFailReply("Can't find file: " + args[1]);
-                    return null;
-                }
+            final REPLMessage request = LOAD_CMD.createRequest(context, args);
+            if (request != null) {
+                request.put(REPLMessage.STEP_INTO, REPLMessage.TRUE);
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.LOAD_STEP);
-            request.put(REPLMessage.SOURCE_NAME, runSource.getPath());
             return request;
         }
+    };
+
+    public static final REPLRemoteCommand SET_LANG_CMD = new REPLRemoteCommand("language", "lang", "Set current language") {
+
+        private final String[] help = new String[]{"lang <language short name>:  set default language, \"info lang\" displays choices"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
+
+        @Override
+        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+
+            final REPLMessage request = new REPLMessage();
+            request.put(REPLMessage.OP, REPLMessage.SET_LANGUAGE);
+            if (args.length > 1) {
+                request.put(REPLMessage.LANG_NAME, args[1]);
+            }
+            return request;
+        }
+
+        @Override
+        void processReply(REPLClientContext context, REPLMessage[] replies) {
+            context.updatePrompt();
+            super.processReply(context, replies);
+        }
+
     };
 
     public static final REPLRemoteCommand STEP_INTO_CMD = new REPLRemoteCommand("step", "s", "(StepInto) next statement, going into functions.") {
 
+        private final String[] help = new String[]{"step into:  step to next statement (into calls)", "step <n>: step to nth next statement (into calls)"};
+
         @Override
         public String[] getHelp() {
-            return new String[]{"step into:  step to next statement (into calls)", "step <n>: step to nth next statement (into calls)"};
+            return help;
         }
 
         @Override
@@ -625,9 +776,12 @@ public abstract class REPLRemoteCommand extends REPLCommand {
 
     public static final REPLRemoteCommand STEP_OVER_CMD = new REPLRemoteCommand("next", "n", "(StepOver) execute next line of code, not into functions.") {
 
+        private final String[] help = new String[]{"next:  (StepOver) execute next line of code, not into functions.",
+                        "next <n>: (StepOver) execute to nth next statement (not counting into functions)"};
+
         @Override
         public String[] getHelp() {
-            return new String[]{"next:  (StepOver) execute next line of code, not into functions.", "next <n>: (StepOver) execute to nth next statement (not counting into functions)"};
+            return help;
         }
 
         @Override

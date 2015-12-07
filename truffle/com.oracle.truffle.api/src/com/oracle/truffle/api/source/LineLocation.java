@@ -45,7 +45,7 @@ public final class LineLocation implements Comparable<LineLocation> {
 
     /**
      * Gets the 1-based number of a line in the source.
-     * 
+     *
      * @return value from 1 to infinity
      */
     public int getLineNumber() {
@@ -90,7 +90,15 @@ public final class LineLocation implements Comparable<LineLocation> {
 
     @Override
     public int compareTo(LineLocation o) {
-        final int sourceResult = this.getSource().getPath().compareTo(o.getSource().getPath());
+        int sourceResult = 0;
+        final Source thisSource = this.getSource();
+        final String thisPath = thisSource.getPath();
+        if (thisPath == null) {
+            sourceResult = thisSource.getCode().compareTo(o.getSource().getCode());
+        } else {
+            final String thatPath = o.getSource().getPath();
+            sourceResult = thisPath.compareTo(thatPath);
+        }
         if (sourceResult != 0) {
             return sourceResult;
         }
