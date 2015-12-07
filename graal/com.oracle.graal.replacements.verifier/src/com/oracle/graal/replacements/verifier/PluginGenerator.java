@@ -29,6 +29,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -186,6 +187,9 @@ public abstract class PluginGenerator {
         out.printf("    public void registerPlugin(InvocationPlugins plugins, InjectionProvider injection) {\n");
         out.printf("        Plugin plugin = new Plugin(%s);\n", deps.isEmpty() ? "" : "injection");
         out.printf("        plugins.register(plugin, %s.class, \"%s\"", intrinsicMethod.getEnclosingElement(), intrinsicMethod.getSimpleName());
+        if (!intrinsicMethod.getModifiers().contains(Modifier.STATIC)) {
+            out.printf(", InvocationPlugin.Receiver.class");
+        }
         for (VariableElement arg : intrinsicMethod.getParameters()) {
             out.printf(", %s.class", getErasedType(arg.asType()));
         }

@@ -32,6 +32,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
@@ -101,19 +102,30 @@ public class FoldPluginGenerator extends PluginGenerator {
         InjectedDependencies deps = new InjectedDependencies();
         List<? extends VariableElement> params = intrinsicMethod.getParameters();
 
-        int idx = 0;
+        int argCount = 0;
+        Object receiver;
+        if (intrinsicMethod.getModifiers().contains(Modifier.STATIC)) {
+            receiver = intrinsicMethod.getEnclosingElement();
+        } else {
+            receiver = "arg0";
+            TypeElement type = (TypeElement) intrinsicMethod.getEnclosingElement();
+            constantArgument(out, deps, argCount, type.asType(), argCount);
+            argCount++;
+        }
+
+        int firstArg = argCount;
         for (VariableElement param : params) {
-            constantArgument(out, deps, idx, param.asType(), idx);
-            idx++;
+            constantArgument(out, deps, argCount, param.asType(), argCount);
+            argCount++;
         }
 
         if (intrinsicMethod.getAnnotation(Deprecated.class) != null) {
             out.printf("            @SuppressWarnings(\"deprecation\")\n");
         }
-        out.printf("            %s result = %s.%s(", intrinsicMethod.getReturnType(), intrinsicMethod.getEnclosingElement(), intrinsicMethod.getSimpleName());
-        if (idx > 0) {
-            out.printf("arg0");
-            for (int i = 1; i < idx; i++) {
+        out.printf("            %s result = %s.%s(", intrinsicMethod.getReturnType(), receiver, intrinsicMethod.getSimpleName());
+        if (argCount > firstArg) {
+            out.printf("arg%d", firstArg);
+            for (int i = firstArg + 1; i < argCount; i++) {
                 out.printf(", arg%d", i);
             }
         }
