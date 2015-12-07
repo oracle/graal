@@ -97,7 +97,7 @@ public final class SLRootNode extends RootNode {
 
     @Override
     public String toString() {
-        return "root " + name;
+        return name;
     }
 
     public Node getBodyNode() {
