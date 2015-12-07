@@ -37,6 +37,12 @@ package com.oracle.truffle.api.source;
  * @see #createUnavailable
  */
 public final class SourceSection {
+
+    /**
+     * The identifier stored when source information is unavailable.
+     */
+    public static String UNKNOWN = "<unknown>";
+
     private final Source source;
     private final String identifier;
     private final int startLine;
@@ -262,6 +268,6 @@ public final class SourceSection {
      * @return source section which is mostly <em>empty</em>
      */
     public static SourceSection createUnavailable(String kind, String name) {
-        return new SourceSection(kind, null, name == null ? "<unknown>" : name, -1, -1, -1, -1);
+        return new SourceSection(kind, null, name == null ? UNKNOWN : name, -1, -1, -1, -1);
     }
 }
