@@ -774,7 +774,7 @@ public final class Debugger {
                         final Node callNode = frameInstance.getCallNode();
                         if (callNode != null) {
                             final SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
-                            if (sourceSection != null && sourceSection.getIdentifier() != SourceSection.UNKNOWN) {
+                            if (sourceSection != null && !sourceSection.getIdentifier().equals("<unknown>")) {
                                 frames.add(new FrameDebugDescription(frameIndex, frameInstance));
                                 frameIndex++;
                             } else if (TRACE) {
