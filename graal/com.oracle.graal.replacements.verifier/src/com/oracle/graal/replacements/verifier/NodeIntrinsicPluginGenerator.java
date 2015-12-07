@@ -80,7 +80,7 @@ public class NodeIntrinsicPluginGenerator extends PluginGenerator {
                 break;
             }
 
-            out.printf("            %s _arg%d = %s;\n", param.asType(), idx, deps.use(env, (DeclaredType) param.asType()));
+            out.printf("            %s arg%d = %s;\n", param.asType(), idx, deps.use(env, (DeclaredType) param.asType()));
         }
 
         for (int i = 0; i < signature.length; i++, idx++) {
@@ -88,9 +88,9 @@ public class NodeIntrinsicPluginGenerator extends PluginGenerator {
                 constantArgument(out, deps, idx, signature[i], i);
             } else {
                 if (signature[i].equals(valueNodeType())) {
-                    out.printf("            ValueNode _arg%d = args[%d];\n", idx, i);
+                    out.printf("            ValueNode arg%d = args[%d];\n", idx, i);
                 } else {
-                    out.printf("            %s _arg%d = (%s) args[%d];\n", signature[i], idx, signature[i], i);
+                    out.printf("            %s arg%d = (%s) args[%d];\n", signature[i], idx, signature[i], i);
                 }
             }
         }
@@ -98,7 +98,7 @@ public class NodeIntrinsicPluginGenerator extends PluginGenerator {
         if (customFactory) {
             out.printf("            return %s.%s(b", constructor.getEnclosingElement(), constructor.getSimpleName());
             for (int i = 1; i < idx; i++) {
-                out.printf(", _arg%d", i);
+                out.printf(", arg%d", i);
             }
             out.printf(");\n");
 
@@ -108,9 +108,9 @@ public class NodeIntrinsicPluginGenerator extends PluginGenerator {
         } else {
             out.printf("            %s node = new %s(", constructor.getEnclosingElement(), constructor.getEnclosingElement());
             if (idx > 0) {
-                out.printf("_arg0");
+                out.printf("arg0");
                 for (int i = 1; i < idx; i++) {
-                    out.printf(", _arg%d", i);
+                    out.printf(", arg%d", i);
                 }
             }
             out.printf(");\n");

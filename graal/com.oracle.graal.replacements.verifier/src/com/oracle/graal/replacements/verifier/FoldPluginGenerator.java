@@ -112,9 +112,9 @@ public class FoldPluginGenerator extends PluginGenerator {
         }
         out.printf("            %s result = %s.%s(", intrinsicMethod.getReturnType(), intrinsicMethod.getEnclosingElement(), intrinsicMethod.getSimpleName());
         if (idx > 0) {
-            out.printf("_arg0");
+            out.printf("arg0");
             for (int i = 1; i < idx; i++) {
-                out.printf(", _arg%d", i);
+                out.printf(", arg%d", i);
             }
         }
         out.printf(");\n");

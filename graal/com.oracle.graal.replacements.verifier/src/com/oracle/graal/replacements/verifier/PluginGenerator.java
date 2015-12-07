@@ -219,38 +219,38 @@ public abstract class PluginGenerator {
     }
 
     protected void constantArgument(PrintWriter out, InjectedDependencies deps, int argIdx, TypeMirror type, int nodeIdx) {
-        out.printf("            %s _arg%d;\n", type, argIdx);
+        out.printf("            %s arg%d;\n", type, argIdx);
         out.printf("            if (args[%d].isConstant()) {\n", nodeIdx);
         if (type.equals(resolvedJavaTypeType())) {
-            out.printf("                _arg%d = %s.asJavaType(args[%d].asConstant());\n", argIdx, deps.use(WellKnownDependency.CONSTANT_REFLECTION), nodeIdx);
+            out.printf("                arg%d = %s.asJavaType(args[%d].asConstant());\n", argIdx, deps.use(WellKnownDependency.CONSTANT_REFLECTION), nodeIdx);
         } else {
             switch (type.getKind()) {
                 case BOOLEAN:
-                    out.printf("                _arg%d = args[%d].asJavaConstant().asInt() != 0;\n", argIdx, nodeIdx);
+                    out.printf("                arg%d = args[%d].asJavaConstant().asInt() != 0;\n", argIdx, nodeIdx);
                     break;
                 case BYTE:
-                    out.printf("                _arg%d = (byte) args[%d].asJavaConstant().asInt();\n", argIdx, nodeIdx);
+                    out.printf("                arg%d = (byte) args[%d].asJavaConstant().asInt();\n", argIdx, nodeIdx);
                     break;
                 case CHAR:
-                    out.printf("                _arg%d = (char) args[%d].asJavaConstant().asInt();\n", argIdx, nodeIdx);
+                    out.printf("                arg%d = (char) args[%d].asJavaConstant().asInt();\n", argIdx, nodeIdx);
                     break;
                 case SHORT:
-                    out.printf("                _arg%d = (short) args[%d].asJavaConstant().asInt();\n", argIdx, nodeIdx);
+                    out.printf("                arg%d = (short) args[%d].asJavaConstant().asInt();\n", argIdx, nodeIdx);
                     break;
                 case INT:
-                    out.printf("                _arg%d = args[%d].asJavaConstant().asInt();\n", argIdx, nodeIdx);
+                    out.printf("                arg%d = args[%d].asJavaConstant().asInt();\n", argIdx, nodeIdx);
                     break;
                 case LONG:
-                    out.printf("                _arg%d = args[%d].asJavaConstant().asLong();\n", argIdx, nodeIdx);
+                    out.printf("                arg%d = args[%d].asJavaConstant().asLong();\n", argIdx, nodeIdx);
                     break;
                 case FLOAT:
-                    out.printf("                _arg%d = args[%d].asJavaConstant().asFloat();\n", argIdx, nodeIdx);
+                    out.printf("                arg%d = args[%d].asJavaConstant().asFloat();\n", argIdx, nodeIdx);
                     break;
                 case DOUBLE:
-                    out.printf("                _arg%d = args[%d].asJavaConstant().asDouble();\n", argIdx, nodeIdx);
+                    out.printf("                arg%d = args[%d].asJavaConstant().asDouble();\n", argIdx, nodeIdx);
                     break;
                 case DECLARED:
-                    out.printf("                _arg%d = %s.asObject(%s.class, args[%d].asJavaConstant());\n", argIdx, deps.use(WellKnownDependency.SNIPPET_REFLECTION), type, nodeIdx);
+                    out.printf("                arg%d = %s.asObject(%s.class, args[%d].asJavaConstant());\n", argIdx, deps.use(WellKnownDependency.SNIPPET_REFLECTION), type, nodeIdx);
                     break;
                 default:
                     throw new IllegalArgumentException();
