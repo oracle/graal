@@ -203,7 +203,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
 
     public static final REPLRemoteCommand CALL_CMD = new REPLRemoteCommand("call", null, "call a method/function") {
 
-        private final String[] help = {"call <name>: calls a function by name, arguments not yet supported"};
+        private final String[] help = {"call <name> <args>: calls a function by name"};
 
         @Override
         public String[] getHelp() {
@@ -239,6 +239,30 @@ public abstract class REPLRemoteCommand extends REPLCommand {
             } else {
                 context.displayReply(firstReply.get(REPLMessage.VALUE));
             }
+        }
+    };
+
+    public static final REPLRemoteCommand CALL_STEP_INTO_CMD = new REPLRemoteCommand("call-step-into", "calls", "Call a method/function and step into") {
+
+        private final String[] help = {"call <name> <args>: calls function by name and step into"};
+
+        @Override
+        public String[] getHelp() {
+            return help;
+        }
+
+        @Override
+        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+            final REPLMessage request = CALL_CMD.createRequest(context, args);
+            if (request != null) {
+                request.put(REPLMessage.STEP_INTO, REPLMessage.TRUE);
+            }
+            return request;
+        }
+
+        @Override
+        void processReply(REPLClientContext context, REPLMessage[] replies) {
+            CALL_CMD.processReply(context, replies);
         }
     };
 
@@ -670,13 +694,12 @@ public abstract class REPLRemoteCommand extends REPLCommand {
 
         @Override
         public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            if (args.length == 1) {
-                context.displayFailReply("no language specified");
-                return null;
-            }
+
             final REPLMessage request = new REPLMessage();
             request.put(REPLMessage.OP, REPLMessage.SET_LANGUAGE);
-            request.put(REPLMessage.LANG_NAME, args[1]);
+            if (args.length > 1) {
+                request.put(REPLMessage.LANG_NAME, args[1]);
+            }
             return request;
         }
 

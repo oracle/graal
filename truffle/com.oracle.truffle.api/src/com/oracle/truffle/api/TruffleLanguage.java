@@ -33,12 +33,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
@@ -52,8 +51,6 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-
-import java.util.Objects;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing an
@@ -395,7 +392,7 @@ public abstract class TruffleLanguage<C> {
          * . The names of arguments are parameters for the resulting {#link CallTarget} that allow
          * the <code>source</code> to reference the actual parameters passed to
          * {@link CallTarget#call(java.lang.Object...)}.
-         * 
+         *
          * @param source the source to evaluate
          * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
          *            that can be referenced from the source
@@ -482,20 +479,13 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        protected Object evalInContext(Object vm, SuspendedEvent ev, String code, FrameInstance frame) throws IOException {
-            Node n = ev.getNode();
-            if (n == null && frame != null) {
-                n = frame.getCallNode();
-            }
-            if (n == null) {
-                throw new IOException("Can't determine language for text \"" + code + "\"");
-            }
-            RootNode rootNode = n.getRootNode();
+        protected Object evalInContext(Object vm, SuspendedEvent ev, String code, Node node, MaterializedFrame frame) throws IOException {
+            RootNode rootNode = node.getRootNode();
             Class<? extends TruffleLanguage> languageType = findLanguage(rootNode);
             final Env env = findLanguage(vm, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
             final Source source = Source.fromText(code, "eval in context");
-            return lang.evalInContext(source, n, frame.getFrame(FrameAccess.READ_ONLY, true).materialize());
+            return lang.evalInContext(source, node, frame);
         }
 
         @Override

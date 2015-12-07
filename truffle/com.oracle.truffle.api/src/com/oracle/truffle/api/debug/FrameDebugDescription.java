@@ -22,21 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.debug.shell.server;
+package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * Summary of information about a frame for use by debugging clients.
+ */
 public final class FrameDebugDescription {
     private final int index;
     private final Node node;
-    private final FrameInstance frameInstance;
+    private final MaterializedFrame frame;
 
-    FrameDebugDescription(int index, Node node, FrameInstance frameInstance) {
+    FrameDebugDescription(int index, Node node, MaterializedFrame frame) {
         this.index = index;
         this.node = node;
-        this.frameInstance = frameInstance;
+        this.frame = frame;
+    }
+
+    FrameDebugDescription(int index, FrameInstance frameInstance) {
+        this.index = index;
+        this.node = frameInstance.getCallNode();
+        this.frame = frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize();
     }
 
     /**
@@ -47,16 +57,13 @@ public final class FrameDebugDescription {
     }
 
     /**
-     * AST location.
+     * AST location of the call that created the frame.
      */
     public Node node() {
         return node;
     }
 
-    /**
-     * Access to the Truffle {@link Frame}.
-     */
-    public FrameInstance frameInstance() {
-        return frameInstance;
+    public MaterializedFrame frame() {
+        return frame;
     }
 }

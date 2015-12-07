@@ -30,9 +30,8 @@ import java.util.Collection;
 import java.util.List;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.FrameDebugDescription;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.instrument.ASTPrinter;
 import com.oracle.truffle.api.instrument.KillException;
@@ -123,12 +122,10 @@ public abstract class REPLHandler {
         return infoMessage;
     }
 
-    protected static final REPLMessage createFrameInfoMessage(final REPLServer replServer, FrameDebugDescription frame) {
+    protected static final REPLMessage createFrameInfoMessage(final REPLServer replServer, int number, Node node) {
         final Visualizer visualizer = replServer.getVisualizer();
         final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.FRAME_INFO);
-        infoMessage.put(REPLMessage.FRAME_NUMBER, Integer.toString(frame.index()));
-        final Node node = frame.node();
-
+        infoMessage.put(REPLMessage.FRAME_NUMBER, Integer.toString(number));
         infoMessage.put(REPLMessage.SOURCE_LOCATION, visualizer.displaySourceLocation(node));
         infoMessage.put(REPLMessage.METHOD_NAME, visualizer.displayMethodName(node));
 
@@ -151,17 +148,39 @@ public abstract class REPLHandler {
 
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
-            final REPLMessage reply = createReply();
-            final ArrayList<REPLMessage> frameMessages = new ArrayList<>();
-            for (FrameDebugDescription frame : replServer.getCurrentContext().getStack()) {
-                frameMessages.add(createFrameInfoMessage(replServer, frame));
+            final Visualizer visualizer = replServer.getVisualizer();
+            final ArrayList<REPLMessage> replies = new ArrayList<>();
+            final List<FrameDebugDescription> stack = replServer.getCurrentContext().getStack();
+
+            for (int i = 0; i < stack.size(); i++) {
+                replies.add(btMessage(i, stack.get(i).node(), visualizer));
             }
-            if (frameMessages.size() > 0) {
-                return frameMessages.toArray(new REPLMessage[0]);
+            if (replies.size() > 0) {
+                return replies.toArray(new REPLMessage[0]);
             }
-            return finishReplyFailed(reply, "No stack");
+            return finishReplyFailed(new REPLMessage(REPLMessage.OP, REPLMessage.BACKTRACE), "No stack");
         }
     };
+
+    private static REPLMessage btMessage(int index, Node node, Visualizer visualizer) {
+        final REPLMessage btMessage = new REPLMessage(REPLMessage.OP, REPLMessage.BACKTRACE);
+        btMessage.put(REPLMessage.FRAME_NUMBER, Integer.toString(index));
+        if (node != null) {
+            btMessage.put(REPLMessage.SOURCE_LOCATION, visualizer.displaySourceLocation(node));
+            btMessage.put(REPLMessage.METHOD_NAME, visualizer.displayMethodName(node));
+            SourceSection section = node.getSourceSection();
+            if (section == null) {
+                section = node.getEncapsulatingSourceSection();
+            }
+            if (section != null && section.getSource() != null) {
+                btMessage.put(REPLMessage.FILE_PATH, section.getSource().getPath());
+                btMessage.put(REPLMessage.LINE_NUMBER, Integer.toString(section.getStartLine()));
+                btMessage.put(REPLMessage.SOURCE_LINE_TEXT, section.getSource().getCode(section.getStartLine()));
+            }
+            btMessage.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
+        }
+        return btMessage;
+    }
 
     public static final REPLHandler BREAK_AT_LINE_HANDLER = new REPLHandler(REPLMessage.BREAK_AT_LINE) {
 
@@ -299,8 +318,9 @@ public abstract class REPLHandler {
                 }
                 argList.add(arg);
             }
+            final boolean stepInto = REPLMessage.TRUE.equals(request.get(REPLMessage.STEP_INTO));
             try {
-                final Object result = replServer.call(callName, argList);
+                final Object result = replServer.getCurrentContext().call(callName, stepInto, argList);
                 reply.put(REPLMessage.VALUE, result == null ? "<void>" : result.toString());
             } catch (QuitException ex) {
                 throw ex;
@@ -463,20 +483,21 @@ public abstract class REPLHandler {
             if (frameNumber < 0 || frameNumber >= stack.size()) {
                 return finishReplyFailed(createReply(), "frame number " + frameNumber + " out of range");
             }
+            final Visualizer visualizer = replServer.getVisualizer();
 
             final FrameDebugDescription frameDescription = stack.get(frameNumber);
-            final Frame frame = frameDescription.frameInstance().getFrame(FrameInstance.FrameAccess.READ_ONLY, true);
-            final Visualizer visualizer = replServer.getVisualizer();
-            final FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
-            final List<? extends FrameSlot> slots = frameDescriptor.getSlots();
+            final Frame frame = frameDescription.frame();
+            final Node node = frameDescription.node();
+            List<? extends FrameSlot> slots = frame.getFrameDescriptor().getSlots();
+
             if (slots.size() == 0) {
-                final REPLMessage emptyFrameMessage = createFrameInfoMessage(replServer, frameDescription);
+                final REPLMessage emptyFrameMessage = createFrameInfoMessage(replServer, frameNumber, node);
                 return finishReplySucceeded(emptyFrameMessage, "empty frame");
             }
             final ArrayList<REPLMessage> replies = new ArrayList<>();
 
             for (FrameSlot slot : slots) {
-                final REPLMessage slotMessage = createFrameInfoMessage(replServer, frameDescription);
+                final REPLMessage slotMessage = createFrameInfoMessage(replServer, frameNumber, node);
                 slotMessage.put(REPLMessage.SLOT_INDEX, Integer.toString(slot.getIndex()));
                 slotMessage.put(REPLMessage.SLOT_ID, visualizer.displayIdentifier(slot));
                 slotMessage.put(REPLMessage.SLOT_VALUE, visualizer.displayValue(frame.getValue(slot), 0));
@@ -580,7 +601,9 @@ public abstract class REPLHandler {
             final REPLMessage reply = new REPLMessage(REPLMessage.OP, REPLMessage.SET_LANGUAGE);
             String languageName = request.get(REPLMessage.LANG_NAME);
             if (languageName == null) {
-                return finishReplyFailed(reply, "missing language name");
+                final String oldLanguageName = replServer.getCurrentContext().getLanguageName();
+                reply.put(REPLMessage.LANG_NAME, reply.put(REPLMessage.LANG_NAME, oldLanguageName));
+                return finishReplySucceeded(reply, "Language set to " + oldLanguageName);
             }
             reply.put(REPLMessage.LANG_NAME, languageName);
             try {

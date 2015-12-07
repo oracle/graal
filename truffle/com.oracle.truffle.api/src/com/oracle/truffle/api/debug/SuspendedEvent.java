@@ -25,14 +25,11 @@
 package com.oracle.truffle.api.debug;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.PrintStream;
 import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
@@ -49,37 +46,28 @@ import com.oracle.truffle.api.nodes.Node;
  */
 @SuppressWarnings("javadoc")
 public final class SuspendedEvent {
-    private final List<String> recentWarnings;
-    private final MaterializedFrame mFrame;
-    private final Node astNode;
-    private final List<FrameInstance> frames;
-    private final int stackSize;
+
+    private static boolean TRACE = false;
+    private static final String TRACE_PREFIX = "EVENT: ";
+    private static final PrintStream OUT = System.out;
+
+    private static void trace(String format, Object... args) {
+        if (TRACE) {
+            OUT.println(TRACE_PREFIX + String.format(format, args));
+        }
+    }
+
     private final Debugger debugger;
+    private final List<FrameDebugDescription> stack;
+    private final List<String> warnings;
 
-    SuspendedEvent(Debugger prepares, Node astNode, MaterializedFrame mFrame, List<String> recentWarnings, final int stackDepth) {
-        this.debugger = prepares;
-        this.astNode = astNode;
-        this.mFrame = mFrame;
-        this.recentWarnings = recentWarnings;
-
-        this.frames = new ArrayList<>();
-        // Map the Truffle stack for this execution, ignore nested executions
-        // The top (current) frame is not produced by the iterator.
-        frames.add(Truffle.getRuntime().getCurrentFrame());
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-            int frameCount = 1;
-
-            @Override
-            public FrameInstance visitFrame(FrameInstance frameInstance) {
-                if (frameCount < stackDepth) {
-                    frames.add(frameInstance);
-                    frameCount++;
-                    return null;
-                }
-                return frameInstance;
-            }
-        });
-        stackSize = frames.size();
+    SuspendedEvent(Debugger debugger, List<FrameDebugDescription> stack, List<String> warnings) {
+        this.debugger = debugger;
+        this.stack = stack;
+        this.warnings = warnings;
+        if (TRACE) {
+            trace("Execution suspended at Node=" + stack.get(0).node());
+        }
     }
 
     /**
@@ -95,15 +83,15 @@ public final class SuspendedEvent {
     }
 
     public Node getNode() {
-        return astNode;
+        return stack.get(0).node();
     }
 
     public MaterializedFrame getFrame() {
-        return mFrame;
+        return stack.get(0).frame();
     }
 
     public List<String> getRecentWarnings() {
-        return Collections.unmodifiableList(recentWarnings);
+        return Collections.unmodifiableList(warnings);
     }
 
     /**
@@ -113,8 +101,8 @@ public final class SuspendedEvent {
      * @return list of stack frames
      */
     @CompilerDirectives.TruffleBoundary
-    public List<FrameInstance> getStack() {
-        return Collections.unmodifiableList(frames);
+    public List<FrameDebugDescription> getStack() {
+        return stack;
     }
 
     /**
@@ -209,11 +197,11 @@ public final class SuspendedEvent {
     public Object eval(String code, Integer frameNumber) throws IOException {
         int n = 0;
         if (frameNumber != null) {
-            if (frameNumber < 0 || frameNumber >= stackSize) {
+            if (frameNumber < 0 || frameNumber >= stack.size()) {
                 throw new IOException("invalid frame number");
             }
             n = frameNumber;
         }
-        return debugger.evalInContext(this, code, frames.get(n));
+        return debugger.evalInContext(this, code, stack.get(n).node(), stack.get(n).frame());
     }
 }

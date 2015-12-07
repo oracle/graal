@@ -27,7 +27,6 @@ package com.oracle.truffle.tools.debug.shell.server;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -39,10 +38,10 @@ import java.util.WeakHashMap;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.FrameDebugDescription;
 import com.oracle.truffle.api.debug.LineBreakpoint;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.TagBreakpoint;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.SyntaxTag;
@@ -313,6 +312,29 @@ public final class REPLServer {
             return event.getNode();
         }
 
+        Object call(String name, boolean stepInto, List<String> argList) throws IOException {
+            Value symbol = engine.findGlobalSymbol(name);
+            if (symbol == null) {
+                throw new IOException("symbol \"" + name + "\" not found");
+            }
+            final List<Object> args = new ArrayList<>();
+            for (String stringArg : argList) {
+                Integer intArg = null;
+                try {
+                    intArg = Integer.valueOf(stringArg);
+                    args.add(intArg);
+                } catch (NumberFormatException e) {
+                    args.add(stringArg);
+                }
+            }
+            this.steppingInto = stepInto;
+            try {
+                return symbol.invoke(null, args.toArray(new Object[0])).get();
+            } finally {
+                this.steppingInto = false;
+            }
+        }
+
         void eval(Source source, boolean stepInto) throws IOException {
             this.steppingInto = stepInto;
             try {
@@ -385,17 +407,7 @@ public final class REPLServer {
          * @return immutable list of stack elements
          */
         List<FrameDebugDescription> getStack() {
-            List<FrameDebugDescription> frames = new ArrayList<>();
-            int frameCount = 0;
-            for (FrameInstance frameInstance : event.getStack()) {
-                if (frameCount == 1) {
-                    frames.add(new FrameDebugDescription(frameCount, event.getNode(), frameInstance));
-                } else {
-                    frames.add(new FrameDebugDescription(frameCount, frameInstance.getCallNode(), frameInstance));
-                }
-                frameCount++;
-            }
-            return Collections.unmodifiableList(frames);
+            return event.getStack();
         }
 
         public String getLanguageName() {
@@ -404,11 +416,20 @@ public final class REPLServer {
 
         /**
          * Case-insensitive; returns actual language name set.
+         *
+         * @throws IOException if fails
          */
-        String setLanguage(String name) {
+        String setLanguage(String name) throws IOException {
+            assert name != null;
             final Language language = nameToLanguage.get(name);
             if (language == null) {
-                return null;
+                throw new IOException("Language \" + name + \" not supported");
+            }
+            if (language == currentLanguage) {
+                return currentLanguage.getName();
+            }
+            if (event != null) {
+                throw new IOException("Only supported at top level");
             }
             this.currentLanguage = language;
             return language.getName();
@@ -529,24 +550,6 @@ public final class REPLServer {
     void clearBreakpoint(Breakpoint breakpoint) {
         breakpoint.dispose();
         breakpoints.remove(breakpoint);
-    }
-
-    Object call(String name, List<String> argList) throws IOException {
-        Value symbol = engine.findGlobalSymbol(name);
-        if (symbol == null) {
-            throw new IOException("symbol \"" + name + "\" not found");
-        }
-        final List<Object> args = new ArrayList<>();
-        for (String stringArg : argList) {
-            Integer intArg = null;
-            try {
-                intArg = Integer.valueOf(stringArg);
-                args.add(intArg);
-            } catch (NumberFormatException e) {
-                args.add(stringArg);
-            }
-        }
-        return symbol.invoke(null, args.toArray(new Object[0])).get();
     }
 
     /**

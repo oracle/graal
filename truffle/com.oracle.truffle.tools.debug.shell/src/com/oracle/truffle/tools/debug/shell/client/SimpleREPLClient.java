@@ -94,8 +94,8 @@ public class SimpleREPLClient implements REPLClient {
     static final String CODE_LINE_FORMAT = "    %3d  %s\n";
     static final String CODE_LINE_BREAK_FORMAT = "--> %3d  %s\n";
 
-    private static final String STACK_FRAME_FORMAT = "    %3d: at %s in %s    line =\"%s\"\n";
-    private static final String STACK_FRAME_SELECTED_FORMAT = "==> %3d: at %s in %s    line =\"%s\"\n";
+    private static final String STACK_FRAME_FORMAT = "    %3d: at %s in %s    %s\n";
+    private static final String STACK_FRAME_SELECTED_FORMAT = "==> %3d: at %s in %s    %s\n";
 
     // Top level commands
     private final Map<String, REPLCommand> commandMap = new HashMap<>();
@@ -158,6 +158,7 @@ public class SimpleREPLClient implements REPLClient {
         addCommand(REPLRemoteCommand.BREAK_AT_THROW_CMD);
         addCommand(REPLRemoteCommand.BREAK_AT_THROW_ONCE_CMD);
         addCommand(REPLRemoteCommand.CALL_CMD);
+        addCommand(REPLRemoteCommand.CALL_STEP_INTO_CMD);
         addCommand(REPLRemoteCommand.CLEAR_BREAK_CMD);
         addCommand(REPLRemoteCommand.CONDITION_BREAK_CMD);
         addCommand(REPLRemoteCommand.CONTINUE_CMD);
@@ -309,12 +310,13 @@ public class SimpleREPLClient implements REPLClient {
             if (replies[0].get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
                 languageName = replies[0].get(REPLMessage.LANG_NAME);
             }
+            final String showLang = languageName == null ? "() " : "( " + languageName + " )";
             if (level == 0) {
                 // 0-level context; no executions halted.
                 if (selectedSource == null) {
-                    currentPrompt = languageName == null ? "() " : "( " + languageName + " ) ";
+                    currentPrompt = showLang + " ";
                 } else {
-                    currentPrompt = "(" + selectedSource.getShortName() + ") ";
+                    currentPrompt = "(" + selectedSource.getShortName() + ") " + showLang + " ";
                 }
             } else if (selectedSource != null && selectedSource != haltedSource) {
                 // User is focusing somewhere else than the current locn; show no line number.
@@ -322,7 +324,7 @@ public class SimpleREPLClient implements REPLClient {
                 sb.append("(<" + Integer.toString(level) + "> ");
                 sb.append(selectedSource.getShortName());
                 sb.append(")");
-                sb.append("(" + languageName + ")");
+                sb.append(showLang);
                 sb.append(" ");
                 currentPrompt = sb.toString();
             } else {
@@ -334,7 +336,7 @@ public class SimpleREPLClient implements REPLClient {
                     sb.append(":" + Integer.toString(haltedLineNumber));
                 }
                 sb.append(")");
-                sb.append("(" + languageName + ")");
+                sb.append(showLang);
                 sb.append(" ");
                 currentPrompt = sb.toString();
             }
@@ -466,7 +468,9 @@ public class SimpleREPLClient implements REPLClient {
                 for (REPLFrame frame : frameList) {
                     String sourceLineText = frame.sourceLineText();
                     if (sourceLineText == null) {
-                        sourceLineText = "<??>";
+                        sourceLineText = "";
+                    } else {
+                        sourceLineText = "line=\"" + sourceLineText + "\"";
                     }
                     if (frame.index() == selectedFrameNumber) {
                         writer.format(STACK_FRAME_SELECTED_FORMAT, frame.index(), frame.locationDescription(), frame.name(), sourceLineText);
