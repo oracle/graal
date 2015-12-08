@@ -31,24 +31,15 @@ import com.oracle.truffle.api.instrument.SyntaxTag;
  *
  * @see Debugger
  */
-public abstract class TagBreakpoint extends Breakpoint {
+abstract class TagBreakpoint extends Breakpoint {
 
-    private final SyntaxTag tag;
-
-    protected TagBreakpoint(State state, SyntaxTag tag, int ignoreCount, boolean isOneShot) {
+    TagBreakpoint(State state, int ignoreCount, boolean isOneShot) {
         super(state, ignoreCount, isOneShot);
-        this.tag = tag;
     }
 
     /**
      * Gets the tag that specifies where this breakpoint will trigger.
      */
-    public final SyntaxTag getTag() {
-        return tag;
-    }
+    public abstract SyntaxTag getTag();
 
-    @Override
-    public String getLocationDescription() {
-        return "Tag " + tag.name();
-    }
 }

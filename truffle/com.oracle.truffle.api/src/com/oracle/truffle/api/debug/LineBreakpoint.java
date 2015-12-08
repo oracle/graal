@@ -31,25 +31,16 @@ import com.oracle.truffle.api.source.LineLocation;
  *
  * @see Debugger
  */
-public abstract class LineBreakpoint extends Breakpoint {
+abstract class LineBreakpoint extends Breakpoint {
 
-    private final LineLocation lineLocation;
-
-    protected LineBreakpoint(State state, LineLocation lineLocation, int ignoreCount, boolean isOneShot) {
+    LineBreakpoint(State state, int ignoreCount, boolean isOneShot) {
         super(state, ignoreCount, isOneShot);
-        this.lineLocation = lineLocation;
     }
 
     /**
      * Gets the {@linkplain LineLocation source line location} that specifies where this breakpoint
      * will trigger.
      */
-    public final LineLocation getLineLocation() {
-        return lineLocation;
-    }
+    public abstract LineLocation getLineLocation();
 
-    @Override
-    public String getLocationDescription() {
-        return "Line: " + lineLocation.getShortDescription();
-    }
 }
