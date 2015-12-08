@@ -321,16 +321,19 @@ public final class REPLServer {
 
         /**
          * Evaluates a code snippet in the context of a selected frame in the currently suspended
-         * execution.
+         * execution, if any; otherwise a top level (new) evaluation.
          *
          * @param code the snippet to evaluate
-         * @param frameNumber index of the stack frame in which to evaluate, {@code null} if the
-         *            topmost frame should be used.
+         * @param frameNumber index of the stack frame in which to evaluate, 0 = current frame where
+         *            halted, null = top level eval
          * @return result of the evaluation
          * @throws IOException if something goes wrong
          */
         Object eval(String code, Integer frameNumber, boolean stepInto) throws IOException {
             if (event == null) {
+                if (frameNumber != null) {
+                    throw new IllegalStateException("Frame number requires a halted execution");
+                }
                 this.steppingInto = stepInto;
                 final String mimeType = defaultMIME(currentLanguage);
                 try {
@@ -339,11 +342,15 @@ public final class REPLServer {
                     this.steppingInto = false;
                 }
             } else {
+                if (frameNumber == null) {
+                    throw new IllegalStateException("Eval in halted context requires a frame number");
+                }
                 if (stepInto) {
                     event.prepareStepInto(1);
                 }
                 try {
-                    final Object result = event.eval(code, frameNumber);
+                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber - 1);
+                    final Object result = event.eval(code, frame);
                     return (result instanceof Value) ? ((Value) result).get() : result;
                 } finally {
                     event.prepareContinue();

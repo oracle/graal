@@ -39,6 +39,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.KillException;
@@ -889,8 +890,21 @@ public final class Debugger {
         debugContext = debugContext.predecessor;
     }
 
-    Object evalInContext(SuspendedEvent ev, String code, Node node, MaterializedFrame frame) throws IOException {
-        return ACCESSOR.evalInContext(vm, ev, code, node, frame);
+    /**
+     * Evaluates a snippet of code in a halted execution context.
+     *
+     * @param ev
+     * @param code
+     * @param frameInstance
+     * @return
+     * @throws IOException
+     */
+    Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
+        if (frameInstance == null) {
+            return ACCESSOR.evalInContext(vm, ev, code, debugContext.haltedNode, debugContext.haltedFrame);
+        } else {
+            return ACCESSOR.evalInContext(vm, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
+        }
     }
 
     @SuppressWarnings("rawtypes")

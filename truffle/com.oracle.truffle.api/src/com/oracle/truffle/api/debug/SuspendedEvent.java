@@ -31,7 +31,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
@@ -195,20 +194,12 @@ public final class SuspendedEvent {
      * Evaluates given code snippet in the context of currently suspended execution.
      *
      * @param code the snippet to evaluate
-     * @param frameNumber specify a frame from those {@link #getStack() currently on stack} to
-     *            perform the evaluation in context of
+     * @param frame the frame in which to evaluate the code; { means the current frame at the halted
+     *            location.
      * @return the computed value
      * @throws IOException in case an evaluation goes wrong
      */
-    public Object eval(String code, Integer frameNumber) throws IOException {
-        if (frameNumber < 0 || frameNumber >= stack.size()) {
-            throw new IOException("invalid frame number");
-        }
-        if (frameNumber == 0) {
-            return debugger.evalInContext(this, code, haltedNode, haltedFrame);
-        }
-        final FrameInstance instance = stack.get(frameNumber - 1);
-        final MaterializedFrame frame = instance.getFrame(FrameAccess.MATERIALIZE, true).materialize();
-        return debugger.evalInContext(this, code, instance.getCallNode(), frame);
+    public Object eval(String code, FrameInstance frame) throws IOException {
+        return debugger.evalInContext(this, code, frame);
     }
 }
