@@ -54,10 +54,14 @@ public class AMD64GraphBuilderPlugins {
 
     public static void register(Plugins plugins, ForeignCallsProvider foreignCalls, AMD64 arch) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
-        registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
-        registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
-        registerUnsafePlugins(invocationPlugins);
-        registerMathPlugins(invocationPlugins, foreignCalls);
+        invocationPlugins.defer(new Runnable() {
+            public void run() {
+                registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
+                registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
+                registerUnsafePlugins(invocationPlugins);
+                registerMathPlugins(invocationPlugins, foreignCalls);
+            }
+        });
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, AMD64 arch) {

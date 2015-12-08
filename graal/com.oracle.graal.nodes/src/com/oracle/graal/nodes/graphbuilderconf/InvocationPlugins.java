@@ -371,11 +371,24 @@ public class InvocationPlugins {
     private final List<MethodKey> registrations = new ArrayList<>(INITIAL_CAPACITY);
 
     /**
-     * Entry map that is initialized upon first call to {@link #get(ResolvedJavaMethod)}.
-     *
-     * Note: this must be volatile since double-checked locking is used to initialize it
+     * Deferred registrations as well as guard for initialization of {@link #entries}. The guard
+     * uses double-checked locking which is why this field is {@code volatile}.
      */
-    private volatile Map<ResolvedJavaMethod, InvocationPlugin> entries;
+    private volatile List<Runnable> deferredRegistrations = new ArrayList<>();
+
+    /**
+     * Adds a {@link Runnable} for doing registration deferred until the first time
+     * {@link #get(ResolvedJavaMethod)} or {@link #closeRegistration()} is called on this object.
+     */
+    public void defer(Runnable deferrable) {
+        assert entries == null && deferredRegistrations != null : "registration is closed";
+        deferredRegistrations.add(deferrable);
+    }
+
+    /**
+     * Entry map that is initialized by {@link #initializeMap()}.
+     */
+    private Map<ResolvedJavaMethod, InvocationPlugin> entries;
 
     private static final int INITIAL_CAPACITY = 64;
 
@@ -408,10 +421,9 @@ public class InvocationPlugins {
     }
 
     InvocationPlugin get(ResolvedJavaMethod method) {
-        if (entries == null) {
+        if (deferredRegistrations != null) {
             initializeMap();
         }
-
         return entries.get(method);
     }
 
@@ -420,21 +432,32 @@ public class InvocationPlugins {
      * lookup.
      */
     public void closeRegistration() {
-        if (entries == null) {
+        if (deferredRegistrations != null) {
             initializeMap();
         }
     }
 
     void initializeMap() {
-        if (registrations.isEmpty()) {
-            entries = Collections.emptyMap();
-        } else {
-            Map<ResolvedJavaMethod, InvocationPlugin> newEntries = new HashMap<>();
-            for (MethodKey methodKey : registrations) {
-                ResolvedJavaMethod m = methodKey.resolve(metaAccess);
-                newEntries.put(m, methodKey.value);
+        if (deferredRegistrations != null) {
+            synchronized (this) {
+                if (deferredRegistrations != null) {
+                    List<Runnable> localDeferredRegistrations = deferredRegistrations;
+                    for (Runnable deferrable : localDeferredRegistrations) {
+                        deferrable.run();
+                    }
+                    if (registrations.isEmpty()) {
+                        entries = Collections.emptyMap();
+                    } else {
+                        Map<ResolvedJavaMethod, InvocationPlugin> newEntries = new HashMap<>();
+                        for (MethodKey methodKey : registrations) {
+                            ResolvedJavaMethod m = methodKey.resolve(metaAccess);
+                            newEntries.put(m, methodKey.value);
+                        }
+                        entries = newEntries;
+                    }
+                    deferredRegistrations = null;
+                }
             }
-            entries = newEntries;
         }
     }
 
