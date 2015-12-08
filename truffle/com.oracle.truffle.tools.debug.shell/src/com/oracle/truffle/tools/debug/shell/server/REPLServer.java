@@ -36,12 +36,11 @@ import java.util.TreeSet;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Breakpoint.State;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.FrameDebugDescription;
-import com.oracle.truffle.api.debug.LineBreakpoint;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.debug.TagBreakpoint;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.SyntaxTag;
@@ -63,6 +62,13 @@ import com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient;
  * Read-Eval-Print-Loop.
  */
 public final class REPLServer {
+
+    enum BreakpointKind {
+        LINE,
+        TAG
+    }
+
+    private static int nextBreakpointUID = 0;
 
     // Language-agnostic
     private final PolyglotEngine engine;
@@ -87,19 +93,7 @@ public final class REPLServer {
     private PolyglotEngine.Language defaultLanguage;
     private final Visualizer visualizer;
 
-    private int nextBreakpointUID = 0;
-
-    /**
-     * Map: breakpoints => breakpoint UID.
-     * <ul>
-     * <li>Contains only pending breakpoints when the Debugger not yet available.</li>
-     * <li>When the Debugger becomes available, each pending breakpoint is replaced with a Debugger
-     * breakpoint, keeping same UID.</li>
-     * <li>Contains no disposed breakpoints.</li>
-     * <li>UIDs for disposed breakpoints are never reused.</li>
-     * </ul>
-     */
-    private Map<Breakpoint, Integer> breakpoints = new WeakHashMap<>();
+    private Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
 
     public REPLServer(String defaultMIMEType, Visualizer visualizer) {
         this.visualizer = visualizer == null ? new DefaultVisualizer() : visualizer;
@@ -135,27 +129,8 @@ public final class REPLServer {
         protected void on(ExecutionEvent event) {
             if (db == null) {
                 db = event.getDebugger();
-                if (!breakpoints.isEmpty()) {
-                    ArrayList<? extends Breakpoint> pendingBreakpoints = new ArrayList<>(breakpoints.keySet());
-                    try {
-                        for (Breakpoint pending : pendingBreakpoints) {
-
-                            Integer uid = breakpoints.get(pending);
-                            pending.dispose();
-                            Breakpoint replacement = null;
-                            if (pending instanceof PendingLineBreakpoint) {
-                                final PendingLineBreakpoint lineBreak = (PendingLineBreakpoint) pending;
-                                replacement = db.setLineBreakpoint(lineBreak.getIgnoreCount(), lineBreak.getLineLocation(), lineBreak.isOneShot());
-
-                            } else if (pending instanceof PendingTagBreakpoint) {
-                                final PendingTagBreakpoint tagBreak = (PendingTagBreakpoint) pending;
-                                replacement = db.setTagBreakpoint(tagBreak.getIgnoreCount(), tagBreak.getTag(), tagBreak.isOneShot());
-                            }
-                            breakpoints.put(replacement, uid);
-                        }
-                    } catch (IOException e) {
-                        throw new IllegalStateException("pending breakpoints should all be valid");
-                    }
+                for (BreakpointInfo breakpointInfo : breakpoints.values()) {
+                    breakpointInfo.activate(db);
                 }
             }
             if (currentServerContext.steppingInto) {
@@ -500,168 +475,190 @@ public final class REPLServer {
         return language.getMimeTypes().iterator().next();
     }
 
-    Breakpoint setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
-        Breakpoint breakpoint;
-        if (db == null) {
-            breakpoint = new PendingLineBreakpoint(ignoreCount, lineLocation, oneShot);
-        } else {
-            breakpoint = db.setLineBreakpoint(ignoreCount, lineLocation, oneShot);
-        }
-        registerNewBreakpoint(breakpoint);
-        return breakpoint;
+    BreakpointInfo setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) {
+        return new BreakpointInfo(db, lineLocation, ignoreCount, oneShot);
     }
 
-    Breakpoint setTagBreakpoint(int ignoreCount, StandardSyntaxTag tag, boolean oneShot) throws IOException {
-        Breakpoint breakpoint;
-        if (db == null) {
-            breakpoint = new PendingTagBreakpoint(ignoreCount, tag, oneShot);
-        } else {
-            breakpoint = db.setTagBreakpoint(ignoreCount, tag, oneShot);
-        }
-        registerNewBreakpoint(breakpoint);
-        return breakpoint;
+    BreakpointInfo setTagBreakpoint(int ignoreCount, StandardSyntaxTag tag, boolean oneShot) {
+        return new BreakpointInfo(db, tag, ignoreCount, oneShot);
     }
 
-    private synchronized void registerNewBreakpoint(Breakpoint breakpoint) {
-        breakpoints.put(breakpoint, nextBreakpointUID++);
-    }
-
-    synchronized Breakpoint findBreakpoint(int id) {
-        for (Map.Entry<Breakpoint, Integer> entrySet : breakpoints.entrySet()) {
-            if (id == entrySet.getValue()) {
-                return entrySet.getKey();
-            }
-        }
-        return null;
+    synchronized BreakpointInfo findBreakpoint(int id) {
+        return breakpoints.get(id);
     }
 
     /**
      * Gets a list of the currently existing breakpoints.
      */
-    Collection<Breakpoint> getBreakpoints() {
-        return new ArrayList<>(breakpoints.keySet());
+    Collection<BreakpointInfo> getBreakpoints() {
+        return new ArrayList<>(breakpoints.values());
     }
 
-    synchronized int getBreakpointID(Breakpoint breakpoint) {
-        final Integer id = breakpoints.get(breakpoint);
-        return id == null ? -1 : id;
-    }
+    final class BreakpointInfo {
 
-    void clearBreakpoint(Breakpoint breakpoint) {
-        breakpoint.dispose();
-        breakpoints.remove(breakpoint);
-    }
+        private final BreakpointKind kind;
 
-    /**
-     * The intention to create a line breakpoint.
-     */
-    private final class PendingLineBreakpoint extends LineBreakpoint {
+        /** Null before created in debugger or after disposal. */
+        private Breakpoint breakpoint;
+
+        /** Non-null only when breakpoint == null. */
+        private State state; // non-null iff haven't "activated" yet
+
+        private final int uid;
+
+        private boolean oneShot;
+
+        private int ignoreCount;
 
         private Source conditionSource;
 
-        PendingLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) {
-            super(Breakpoint.State.ENABLED_UNRESOLVED, lineLocation, ignoreCount, oneShot);
-        }
+        private final LineLocation lineLocation;
 
-        @Override
-        public void setEnabled(boolean enabled) {
-            switch (getState()) {
-                case ENABLED_UNRESOLVED:
-                    if (!enabled) {
-                        setState(State.DISABLED_UNRESOLVED);
-                    }
-                    break;
-                case DISABLED_UNRESOLVED:
-                    if (enabled) {
-                        setState(State.ENABLED_UNRESOLVED);
-                    }
-                    break;
-                case DISPOSED:
-                    throw new IllegalStateException("Disposed breakpoints must stay disposed");
-                default:
-                    throw new IllegalStateException("Unexpected breakpoint state");
+        private final SyntaxTag tag;
+
+        private BreakpointInfo(Debugger debugger, LineLocation lineLocation, int ignoreCount, boolean oneShot) {
+            this.kind = BreakpointKind.LINE;
+            this.lineLocation = lineLocation;
+            this.tag = null;
+            this.ignoreCount = ignoreCount;
+            this.oneShot = oneShot;
+            this.uid = nextBreakpointUID++;
+            if (debugger == null) {
+                this.state = State.ENABLED_UNRESOLVED;
+            } else {
+                activate(debugger);
             }
+            breakpoints.put(uid, this);
         }
 
-        @Override
-        public boolean isEnabled() {
-            return getState() == State.ENABLED_UNRESOLVED;
+        private BreakpointInfo(Debugger debugger, SyntaxTag tag, int ignoreCount, boolean oneShot) {
+            this.kind = BreakpointKind.TAG;
+            this.lineLocation = null;
+            this.tag = tag;
+            this.ignoreCount = ignoreCount;
+            this.oneShot = oneShot;
+            this.uid = nextBreakpointUID++;
+            if (debugger == null) {
+                this.state = State.ENABLED_UNRESOLVED;
+            } else {
+                activate(debugger);
+            }
+            breakpoints.put(uid, this);
         }
 
-        @Override
-        public void setCondition(String expr) throws IOException {
-
-            this.conditionSource = expr == null ? null : Source.fromText(expr, "breakpoint condition from text: " + expr);
-        }
-
-        @Override
-        public Source getCondition() {
-            return conditionSource;
-        }
-
-        @Override
-        public void dispose() {
-            if (getState() == State.DISPOSED) {
+        private void activate(Debugger debugger) {
+            if (breakpoint != null) {
+                throw new IllegalStateException("Breakpoint already activated");
+            }
+            if (state == State.DISPOSED) {
                 throw new IllegalStateException("Breakpoint already disposed");
             }
-            setState(State.DISPOSED);
-            breakpoints.remove(this);
-        }
-    }
-
-    /**
-     * The intention to create a line breakpoint.
-     */
-    private final class PendingTagBreakpoint extends TagBreakpoint {
-
-        private Source conditionSource;
-
-        PendingTagBreakpoint(int ignoreCount, SyntaxTag tag, boolean oneShot) {
-            super(Breakpoint.State.ENABLED_UNRESOLVED, tag, ignoreCount, oneShot);
-        }
-
-        @Override
-        public void setEnabled(boolean enabled) {
-            switch (getState()) {
-                case ENABLED_UNRESOLVED:
-                    if (!enabled) {
-                        setState(State.DISABLED_UNRESOLVED);
-                    }
-                    break;
-                case DISABLED_UNRESOLVED:
-                    if (enabled) {
-                        setState(State.ENABLED_UNRESOLVED);
-                    }
-                    break;
-                case DISPOSED:
-                    throw new IllegalStateException("Disposed breakpoints must stay disposed");
-                default:
-                    throw new IllegalStateException("Unexpected breakpoint state");
+            try {
+                switch (kind) {
+                    case LINE:
+                        breakpoint = debugger.setLineBreakpoint(ignoreCount, lineLocation, oneShot);
+                        break;
+                    case TAG:
+                        breakpoint = debugger.setTagBreakpoint(ignoreCount, tag, oneShot);
+                        break;
+                    default:
+                        throw new IllegalStateException("Unexpected breakpoint kind");
+                }
+                if (conditionSource != null) {
+                    breakpoint.setCondition(conditionSource.getCode());
+                    conditionSource = null;
+                }
+                if (state == State.DISABLED_UNRESOLVED) {
+                    breakpoint.setEnabled(false);
+                }
+                state = null;
+            } catch (IOException ex) {
+                throw new IllegalStateException("Failure to activate breakpoint " + uid + ":  " + ex.getMessage());
             }
         }
 
-        @Override
-        public boolean isEnabled() {
-            return getState() == State.ENABLED_UNRESOLVED;
+        int getID() {
+            return uid;
         }
 
-        @Override
-        public void setCondition(String expr) throws IOException {
-            this.conditionSource = Source.fromText(expr, "breakpoint condition from text: " + expr);
+        String describeState() {
+            return (breakpoint == null ? state : breakpoint.getState()).getName();
         }
 
-        @Override
-        public Source getCondition() {
-            return conditionSource;
-        }
-
-        @Override
-        public void dispose() {
-            if (getState() == State.DISPOSED) {
-                throw new IllegalStateException("Breakpoint already disposed");
+        String describeLocation() {
+            if (breakpoint == null) {
+                switch (kind) {
+                    case LINE:
+                        return "Line: " + lineLocation.getShortDescription();
+                    case TAG:
+                        return "Tag " + tag.name();
+                    default:
+                        throw new IllegalStateException("Unexpected breakpoint state");
+                }
             }
-            setState(State.DISPOSED);
-            breakpoints.remove(this);
+            return breakpoint.getLocationDescription();
+        }
+
+        void setEnabled(boolean enabled) {
+            if (breakpoint == null) {
+                switch (state) {
+                    case ENABLED_UNRESOLVED:
+                        if (!enabled) {
+                            state = State.DISABLED_UNRESOLVED;
+                        }
+                        break;
+                    case DISABLED_UNRESOLVED:
+                        if (enabled) {
+                            state = State.ENABLED_UNRESOLVED;
+                        }
+                        break;
+                    case DISPOSED:
+                        throw new IllegalStateException("Disposed breakpoints must stay disposed");
+                    default:
+                        throw new IllegalStateException("Unexpected breakpoint state");
+                }
+            } else {
+                breakpoint.setEnabled(enabled);
+            }
+        }
+
+        boolean isEnabled() {
+            return breakpoint == null ? (state == State.ENABLED_UNRESOLVED) : breakpoint.isEnabled();
+        }
+
+        void setCondition(String expr) throws IOException {
+            if (breakpoint == null) {
+                conditionSource = expr == null ? null : Source.fromText(expr, "breakpoint condition from text: " + expr);
+            } else {
+                breakpoint.setCondition(expr);
+            }
+        }
+
+        String getCondition() {
+            final Source source = breakpoint == null ? conditionSource : breakpoint.getCondition();
+            return source == null ? null : source.getCode();
+        }
+
+        int getIgnoreCount() {
+            return breakpoint == null ? ignoreCount : breakpoint.getIgnoreCount();
+        }
+
+        int getHitCount() {
+            return breakpoint == null ? 0 : breakpoint.getHitCount();
+        }
+
+        void dispose() {
+            if (breakpoint == null) {
+                if (state == State.DISPOSED) {
+                    throw new IllegalStateException("Breakpoint already disposed");
+                }
+            } else {
+                breakpoint.dispose();
+                breakpoint = null;
+            }
+            state = State.DISPOSED;
+            breakpoints.remove(uid);
+            conditionSource = null;
         }
     }
 }

@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.FrameDebugDescription;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -43,6 +42,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import com.oracle.truffle.tools.debug.shell.server.REPLServer.BreakpointInfo;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.Context;
 
 /**
@@ -108,15 +108,15 @@ public abstract class REPLHandler {
         return replies;
     }
 
-    protected static final REPLMessage createBreakpointInfoMessage(Breakpoint breakpoint, REPLServer replServer) {
+    protected static final REPLMessage createBreakpointInfoMessage(BreakpointInfo info) {
         final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.BREAKPOINT_INFO);
-        infoMessage.put(REPLMessage.BREAKPOINT_ID, Integer.toString(replServer.getBreakpointID(breakpoint)));
-        infoMessage.put(REPLMessage.BREAKPOINT_STATE, breakpoint.getState().getName());
-        infoMessage.put(REPLMessage.BREAKPOINT_HIT_COUNT, Integer.toString(breakpoint.getHitCount()));
-        infoMessage.put(REPLMessage.BREAKPOINT_IGNORE_COUNT, Integer.toString(breakpoint.getIgnoreCount()));
-        infoMessage.put(REPLMessage.INFO_VALUE, breakpoint.getLocationDescription().toString());
-        if (breakpoint.getCondition() != null) {
-            infoMessage.put(REPLMessage.BREAKPOINT_CONDITION, breakpoint.getCondition().getCode());
+        infoMessage.put(REPLMessage.BREAKPOINT_ID, Integer.toString(info.getID()));
+        infoMessage.put(REPLMessage.BREAKPOINT_STATE, info.describeState());
+        infoMessage.put(REPLMessage.BREAKPOINT_HIT_COUNT, Integer.toString(info.getHitCount()));
+        infoMessage.put(REPLMessage.BREAKPOINT_IGNORE_COUNT, Integer.toString(info.getIgnoreCount()));
+        infoMessage.put(REPLMessage.INFO_VALUE, info.describeLocation());
+        if (info.getCondition() != null) {
+            infoMessage.put(REPLMessage.BREAKPOINT_CONDITION, info.getCondition());
         }
         infoMessage.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
         return infoMessage;
@@ -199,7 +199,7 @@ public abstract class REPLHandler {
             if (source == null) {
                 return finishReplyFailed(reply, fileName + " not found");
             }
-            Integer lineNumber = request.getIntValue(REPLMessage.LINE_NUMBER);
+            final Integer lineNumber = request.getIntValue(REPLMessage.LINE_NUMBER);
             if (lineNumber == null) {
                 return finishReplyFailed(reply, "missing line number");
             }
@@ -207,15 +207,10 @@ public abstract class REPLHandler {
             if (ignoreCount == null) {
                 ignoreCount = 0;
             }
-            Breakpoint breakpoint;
-            try {
-                breakpoint = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), false);
-            } catch (IOException ex) {
-                return finishReplyFailed(reply, ex);
-            }
+            final BreakpointInfo breakpointInfo = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), false);
             reply.put(REPLMessage.SOURCE_NAME, fileName);
             reply.put(REPLMessage.FILE_PATH, source.getPath());
-            reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(replServer.getBreakpointID(breakpoint)));
+            reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointInfo.getID()));
             reply.put(REPLMessage.LINE_NUMBER, Integer.toString(lineNumber));
             reply.put(REPLMessage.BREAKPOINT_IGNORE_COUNT, ignoreCount.toString());
             return finishReplySucceeded(reply, "Breakpoint set");
@@ -239,19 +234,14 @@ public abstract class REPLHandler {
             if (source == null) {
                 return finishReplyFailed(reply, fileName + " not found");
             }
-            Integer lineNumber = request.getIntValue(REPLMessage.LINE_NUMBER);
+            final Integer lineNumber = request.getIntValue(REPLMessage.LINE_NUMBER);
             if (lineNumber == null) {
                 return finishReplyFailed(reply, "missing line number");
             }
-            Breakpoint breakpoint;
-            try {
-                breakpoint = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), true);
-            } catch (IOException ex) {
-                return finishReplyFailed(reply, ex);
-            }
+            final BreakpointInfo breakpointInfo = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), true);
             reply.put(REPLMessage.SOURCE_NAME, fileName);
             reply.put(REPLMessage.FILE_PATH, source.getPath());
-            reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(replServer.getBreakpointID(breakpoint)));
+            reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointInfo.getID()));
             reply.put(REPLMessage.LINE_NUMBER, Integer.toString(lineNumber));
             return finishReplySucceeded(reply, "One-shot line breakpoint set");
         }
@@ -291,8 +281,8 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final REPLMessage reply = createReply();
             final ArrayList<REPLMessage> infoMessages = new ArrayList<>();
-            for (Breakpoint breakpoint : replServer.getBreakpoints()) {
-                infoMessages.add(createBreakpointInfoMessage(breakpoint, replServer));
+            for (BreakpointInfo breakpointInfo : replServer.getBreakpoints()) {
+                infoMessages.add(createBreakpointInfoMessage(breakpointInfo));
             }
             if (infoMessages.size() > 0) {
                 return infoMessages.toArray(new REPLMessage[0]);
@@ -338,15 +328,15 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final REPLMessage reply = createReply();
-            Integer breakpointNumber = request.getIntValue(REPLMessage.BREAKPOINT_ID);
+            final Integer breakpointNumber = request.getIntValue(REPLMessage.BREAKPOINT_ID);
             if (breakpointNumber == null) {
                 return finishReplyFailed(reply, "missing breakpoint number");
             }
-            final Breakpoint breakpoint = replServer.findBreakpoint(breakpointNumber);
-            if (breakpoint == null) {
+            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
+            if (breakpointInfo == null) {
                 return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
             }
-            replServer.clearBreakpoint(breakpoint);
+            breakpointInfo.dispose();
             reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
             return finishReplySucceeded(reply, "Breakpoint " + breakpointNumber + " cleared");
         }
@@ -367,12 +357,12 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final REPLMessage reply = createReply();
-            final Collection<Breakpoint> breakpoints = replServer.getBreakpoints();
+            final Collection<BreakpointInfo> breakpoints = replServer.getBreakpoints();
             if (breakpoints.isEmpty()) {
                 return finishReplyFailed(reply, "no breakpoints to delete");
             }
-            for (Breakpoint breakpoint : breakpoints) {
-                breakpoint.dispose();
+            for (BreakpointInfo breakpointInfo : breakpoints) {
+                breakpointInfo.dispose();
             }
             return finishReplySucceeded(reply, Integer.toString(breakpoints.size()) + " breakpoints deleted");
         }
@@ -387,11 +377,11 @@ public abstract class REPLHandler {
             if (breakpointNumber == null) {
                 return finishReplyFailed(reply, "missing breakpoint number");
             }
-            final Breakpoint breakpoint = replServer.findBreakpoint(breakpointNumber);
-            if (breakpoint == null) {
+            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
+            if (breakpointInfo == null) {
                 return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
             }
-            breakpoint.setEnabled(false);
+            breakpointInfo.setEnabled(false);
             reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
             return finishReplySucceeded(reply, "Breakpoint " + breakpointNumber + " disabled");
         }
@@ -406,11 +396,11 @@ public abstract class REPLHandler {
             if (breakpointNumber == null) {
                 return finishReplyFailed(reply, "missing breakpoint number");
             }
-            final Breakpoint breakpoint = replServer.findBreakpoint(breakpointNumber);
-            if (breakpoint == null) {
+            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
+            if (breakpointInfo == null) {
                 return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
             }
-            breakpoint.setEnabled(true);
+            breakpointInfo.setEnabled(true);
             reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
             return finishReplySucceeded(reply, "Breakpoint " + breakpointNumber + " enabled");
         }
@@ -628,8 +618,8 @@ public abstract class REPLHandler {
                 return finishReplyFailed(message, "missing breakpoint number");
             }
             message.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            final Breakpoint breakpoint = replServer.findBreakpoint(breakpointNumber);
-            if (breakpoint == null) {
+            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
+            if (breakpointInfo == null) {
                 return finishReplyFailed(message, "no breakpoint number " + breakpointNumber);
             }
             final String expr = request.get(REPLMessage.BREAKPOINT_CONDITION);
@@ -637,7 +627,7 @@ public abstract class REPLHandler {
                 return finishReplyFailed(message, "missing condition for " + breakpointNumber);
             }
             try {
-                breakpoint.setCondition(expr);
+                breakpointInfo.setCondition(expr);
             } catch (IOException ex) {
                 return finishReplyFailed(message, "invalid condition for " + breakpointNumber);
             } catch (UnsupportedOperationException ex) {
@@ -735,12 +725,12 @@ public abstract class REPLHandler {
                 return finishReplyFailed(message, "missing breakpoint number");
             }
             message.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            final Breakpoint breakpoint = replServer.findBreakpoint(breakpointNumber);
-            if (breakpoint == null) {
+            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
+            if (breakpointInfo == null) {
                 return finishReplyFailed(message, "no breakpoint number " + breakpointNumber);
             }
             try {
-                breakpoint.setCondition(null);
+                breakpointInfo.setCondition(null);
             } catch (Exception ex) {
                 return finishReplyFailed(message, ex);
             }
