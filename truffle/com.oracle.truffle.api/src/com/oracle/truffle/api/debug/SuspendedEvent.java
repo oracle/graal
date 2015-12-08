@@ -24,17 +24,17 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.Collections;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * This event is delivered to all
@@ -48,36 +48,32 @@ import java.util.List;
  */
 @SuppressWarnings("javadoc")
 public final class SuspendedEvent {
-    private final List<String> recentWarnings;
-    private final MaterializedFrame mFrame;
-    private final Node astNode;
-    private final List<FrameInstance> frames;
+
+    private static boolean TRACE = false;
+    private static final String TRACE_PREFIX = "EVENT: ";
+    private static final PrintStream OUT = System.out;
+
+    private static void trace(String format, Object... args) {
+        if (TRACE) {
+            OUT.println(TRACE_PREFIX + String.format(format, args));
+        }
+    }
+
     private final Debugger debugger;
+    private final Node haltedNode;
+    private final MaterializedFrame haltedFrame;
+    private final List<FrameInstance> stack;
+    private final List<String> warnings;
 
-    SuspendedEvent(Debugger prepares, Node astNode, MaterializedFrame mFrame, List<String> recentWarnings, final int stackDepth) {
-        this.debugger = prepares;
-        this.astNode = astNode;
-        this.mFrame = mFrame;
-        this.recentWarnings = recentWarnings;
-
-        this.frames = new ArrayList<>();
-        // Map the Truffle stack for this execution, ignore nested executions
-        // The top (current) frame is not produced by the iterator.
-        frames.add(Truffle.getRuntime().getCurrentFrame());
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-            int frameCount = 1;
-
-            @Override
-            public FrameInstance visitFrame(FrameInstance frameInstance) {
-                if (frameCount < stackDepth) {
-                    frames.add(frameInstance);
-                    frameCount++;
-                    return null;
-                }
-                return frameInstance;
-            }
-        });
-
+    SuspendedEvent(Debugger debugger, Node haltedNode, MaterializedFrame haltedFrame, List<FrameInstance> stack, List<String> warnings) {
+        this.debugger = debugger;
+        this.haltedNode = haltedNode;
+        this.haltedFrame = haltedFrame;
+        this.stack = stack;
+        this.warnings = warnings;
+        if (TRACE) {
+            trace("Execution suspended at Node=" + haltedNode);
+        }
     }
 
     /**
@@ -93,26 +89,27 @@ public final class SuspendedEvent {
     }
 
     public Node getNode() {
-        return astNode;
+        return haltedNode;
     }
 
     public MaterializedFrame getFrame() {
-        return mFrame;
+        return haltedFrame;
     }
 
     public List<String> getRecentWarnings() {
-        return Collections.unmodifiableList(recentWarnings);
+        return Collections.unmodifiableList(warnings);
     }
 
     /**
      * Gets the stack frames from the currently halted
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine} execution.
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine} execution, not counting the Node and Frame
+     * where halted.
      *
      * @return list of stack frames
      */
     @CompilerDirectives.TruffleBoundary
     public List<FrameInstance> getStack() {
-        return Collections.unmodifiableList(frames);
+        return stack;
     }
 
     /**
@@ -198,13 +195,20 @@ public final class SuspendedEvent {
      * Evaluates given code snippet in the context of currently suspended execution.
      *
      * @param code the snippet to evaluate
-     * @param frame <code>null</code> in case the evaluation should happen in top most frame,
-     *            non-null value to specify a frame from those {@link #getStack() currently on
-     *            stack} to perform the evaluation in context of
+     * @param frameNumber specify a frame from those {@link #getStack() currently on stack} to
+     *            perform the evaluation in context of
      * @return the computed value
      * @throws IOException in case an evaluation goes wrong
      */
-    public Object eval(String code, FrameInstance frame) throws IOException {
-        return debugger.evalInContext(this, code, frame);
+    public Object eval(String code, Integer frameNumber) throws IOException {
+        if (frameNumber < 0 || frameNumber >= stack.size()) {
+            throw new IOException("invalid frame number");
+        }
+        if (frameNumber == 0) {
+            return debugger.evalInContext(this, code, haltedNode, haltedFrame);
+        }
+        final FrameInstance instance = stack.get(frameNumber - 1);
+        final MaterializedFrame frame = instance.getFrame(FrameAccess.MATERIALIZE, true).materialize();
+        return debugger.evalInContext(this, code, instance.getCallNode(), frame);
     }
 }

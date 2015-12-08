@@ -76,6 +76,9 @@ public class DefaultVisualizer implements Visualizer {
     }
 
     public String displayValue(Object value, int trim) {
+        if (value == null) {
+            return "<empty>";
+        }
         return trim(value.toString(), trim);
     }
 

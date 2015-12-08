@@ -190,17 +190,6 @@ import java.util.WeakHashMap;
  * with the new version.
  * </ul>
  */
-
-/*
- *
- * <p> <b>Tools:</b><br> The use of some of Truffle's support for developer tools (based on the
- * Truffle {@linkplain Instrumenter Instrumentation Framework}) are demonstrated in this file, for
- * example: <ul> <li>a {@linkplain NodeExecCounter counter for node executions}, tabulated by node
- * type; and</li> <li>a simple {@linkplain CoverageTracker code coverage engine}.</li> </ul> In each
- * case, the tool is enabled if a corresponding local boolean variable in this file is set to {@code
- * true}. Results are printed at the end of the execution using each tool's <em>default
- * printer</em>.
- */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String builtinKind = "SL builtin";
@@ -228,19 +217,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return context;
     }
 
-    /* Small tools that can be installed for demonstration */
-    // private static NodeExecCounter nodeExecCounter = null;
-    // private static NodeExecCounter statementExecCounter = null;
-    // private static CoverageTracker coverageTracker = null;
-
     /**
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
      */
     public static void main(String[] args) throws IOException {
         PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         assert vm.getLanguages().containsKey("application/x-sl");
-
-        setupToolDemos();
 
         int repeats = 1;
         if (args.length >= 2) {
@@ -261,7 +243,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         while (repeats-- > 0) {
             main.execute();
         }
-        reportToolDemos();
     }
 
     public static int parsingCount() {
@@ -525,7 +506,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        throw new IllegalStateException("evalInContext not supported in this language");
+        throw new IllegalStateException("evalInContext not supported in SL");
     }
 
     public Node createFindContextNode0() {
@@ -535,38 +516,4 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public SLContext findContext0(Node contextNode) {
         return findContext(contextNode);
     }
-
-    // TODO (mlvdv) remove the static hack when we no longer have the static demo variables
-    private static void setupToolDemos() {
-        // if (nodeExecCounts) {
-        // nodeExecCounter = new NodeExecCounter();
-        // nodeExecCounter.install();
-        // }
-        //
-        // if (statementCounts) {
-        // statementExecCounter = new NodeExecCounter(StandardSyntaxTag.STATEMENT);
-        // statementExecCounter.install();
-        // }
-        //
-        // if (coverage) {
-        // coverageTracker = new CoverageTracker();
-        // coverageTracker.install();
-        // }
-    }
-
-    private static void reportToolDemos() {
-        // if (nodeExecCounter != null) {
-        // nodeExecCounter.print(System.out);
-        // nodeExecCounter.dispose();
-        // }
-        // if (statementExecCounter != null) {
-        // statementExecCounter.print(System.out);
-        // statementExecCounter.dispose();
-        // }
-        // if (coverageTracker != null) {
-        // coverageTracker.print(System.out);
-        // coverageTracker.dispose();
-        // }
-    }
-
 }

@@ -30,6 +30,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.oracle.truffle.tools.debug.shell.server.REPLServer;
+
 /**
  * A message for communication between a Read-Eval-Print-Loop server associated with a language
  * implementation and a possibly remote client.
@@ -53,6 +55,18 @@ public final class REPLMessage {
     public static final String BREAKPOINT_IGNORE_COUNT = "breakpoint-ignore-count";
     public static final String BREAKPOINT_INFO = "breakpoint-info";
     public static final String BREAKPOINT_STATE = "breakpoint-state";
+    public static final String CALL = "call";
+    public static final String ARG0 = "call-argument-0";
+    public static final String ARG1 = "call-argument-1";
+    public static final String ARG2 = "call-argument-2";
+    public static final String ARG3 = "call-argument-3";
+    public static final String ARG4 = "call-argument-4";
+    public static final String ARG5 = "call-argument-5";
+    public static final String ARG6 = "call-argument-6";
+    public static final String ARG7 = "call-argument-7";
+    public static final String ARG8 = "call-argument-8";
+    public static final String ARG9 = "call-argument-9";
+    public static final String CALL_NAME = "call-name";
     public static final String CLEAR_BREAK = "clear-breakpoint";
     public static final String CODE = "code";
     public static final String CONTINUE = "continue";
@@ -70,14 +84,17 @@ public final class REPLMessage {
     public static final String FRAME_INFO = "frame-info";
     public static final String FRAME_NUMBER = "frame-number";
     public static final String INFO = "info";
+    public static final String INFO_CURRENT_LANGUAGE = "info-current-language";
     public static final String INFO_KEY = "info-key";
+    public static final String INFO_SUPPORTED_LANGUAGES = "info-supported-languages";
     public static final String INFO_VALUE = "info-value";
     public static final String KILL = "kill";
-    public static final String LANGUAGE = "language";
+    public static final String LANG_NAME = "language-name";
+    public static final String LANG_VER = "language-version";
+    public static final String LANG_MIME = "language-MIME type";
     public static final String LINE_NUMBER = "line-number";
     public static final String LIST = "list";
-    public static final String LOAD_RUN = "load-run-source";
-    public static final String LOAD_STEP = "load-step-into-source";
+    public static final String LOAD_SOURCE = "load-source";
     public static final String METHOD_NAME = "method-name";
     public static final String OP = "op";
     public static final String OPTION = "option";
@@ -85,6 +102,10 @@ public final class REPLMessage {
     public static final String REPEAT = "repeat";
     public static final String SET = "set";
     public static final String SET_BREAK_CONDITION = "set-breakpoint-condition";
+    public static final String SET_LANGUAGE = "set-language";
+    public static final String SLOT_ID = "slot-identifier";
+    public static final String SLOT_INDEX = "slot-index";
+    public static final String SLOT_VALUE = "slot-value";
     public static final String SOURCE_LINE_TEXT = "source-line-text";
     public static final String SOURCE_LOCATION = "source-location";
     public static final String SOURCE_NAME = "source-name";
@@ -99,6 +120,7 @@ public final class REPLMessage {
     public static final String SUBTREE = "subtree";
     public static final String SUCCEEDED = "succeeded";
     public static final String TOPIC = "topic";
+    public static final String TRUE = "true";
     public static final String TRUFFLE = "truffle";
     public static final String TRUFFLE_AST = "truffle-ast";
     public static final String TRUFFLE_NODE = "truffle-node";
@@ -107,6 +129,8 @@ public final class REPLMessage {
     public static final String UP = "up";
     public static final String VALUE = "value";
     public static final String WARNINGS = "warnings";
+    public static final String WELCOME_MESSAGE = "welcome-message";
+    public static final String[] ARG_NAMES = new String[]{ARG0, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9};
     private final Map<String, String> map;
 
     /**

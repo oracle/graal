@@ -94,7 +94,10 @@ public class SLDefaultVisualizer extends DefaultVisualizer {
 
     @Override
     public String displayValue(Object value, int trim) {
-        if (value == null || value == SLNull.SINGLETON) {
+        if (value == null) {
+            return "<empty>";
+        }
+        if (value == SLNull.SINGLETON) {
             return "null";
         }
         return trim(value.toString(), trim);

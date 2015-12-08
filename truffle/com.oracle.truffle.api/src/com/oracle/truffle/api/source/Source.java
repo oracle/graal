@@ -728,7 +728,7 @@ public abstract class Source {
 
         @Override
         public String getPath() {
-            return description;
+            return null;
         }
 
         @Override

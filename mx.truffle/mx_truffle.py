@@ -53,7 +53,7 @@ def slcoverage(args):
 def sldebug(args):
     """run a simple command line debugger for the Simple Language"""
     vmArgs, slArgs = mx.extract_VM_args(args, useDoubleDash=True)
-    mx.run_java(vmArgs + ['-cp', mx.classpath("com.oracle.truffle.sl.tools"), "com.oracle.truffle.sl.tools.debug.SLREPLServer"] + slArgs)
+    mx.run_java(vmArgs + ['-cp', mx.classpath("com.oracle.truffle.sl.tools"), "com.oracle.truffle.sl.tools.debug.SLREPL"] + slArgs)
 
 def _truffle_gate_runner(args, tasks):
     with Task('Truffle UnitTests', tasks) as t:
