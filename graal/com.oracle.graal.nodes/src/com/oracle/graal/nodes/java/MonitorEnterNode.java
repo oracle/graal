@@ -40,12 +40,16 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
  * The {@code MonitorEnterNode} represents the acquisition of a monitor.
  */
 @NodeInfo
-public final class MonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, MemoryCheckpoint.Single {
+public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, MemoryCheckpoint.Single {
 
     public static final NodeClass<MonitorEnterNode> TYPE = NodeClass.create(MonitorEnterNode.class);
 
     public MonitorEnterNode(ValueNode object, MonitorIdNode monitorId) {
-        super(TYPE, object, monitorId);
+        this(TYPE, object, monitorId);
+    }
+
+    public MonitorEnterNode(NodeClass<? extends MonitorEnterNode> c, ValueNode object, MonitorIdNode monitorId) {
+        super(c, object, monitorId);
     }
 
     @Override

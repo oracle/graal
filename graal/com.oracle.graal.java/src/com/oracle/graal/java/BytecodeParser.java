@@ -1985,9 +1985,13 @@ public class BytecodeParser implements GraphBuilderContext {
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
     }
 
+    protected MonitorEnterNode createMonitorEnterNode(ValueNode x, MonitorIdNode monitorId) {
+        return new MonitorEnterNode(x, monitorId);
+    }
+
     protected void genMonitorEnter(ValueNode x, int bci) {
         MonitorIdNode monitorId = graph.add(new MonitorIdNode(frameState.lockDepth(true)));
-        MonitorEnterNode monitorEnter = append(new MonitorEnterNode(x, monitorId));
+        MonitorEnterNode monitorEnter = append(createMonitorEnterNode(x, monitorId));
         frameState.pushLock(x, monitorId);
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
     }
