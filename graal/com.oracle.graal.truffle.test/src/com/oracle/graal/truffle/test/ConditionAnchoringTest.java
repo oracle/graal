@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,10 +36,6 @@ import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.InlineInvokePlugin;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.BeginNode;
 import com.oracle.graal.nodes.ConditionAnchorNode;
 import com.oracle.graal.nodes.IfNode;
@@ -47,6 +43,10 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.memory.FloatingReadNode;
 import com.oracle.graal.nodes.memory.ReadNode;
 import com.oracle.graal.nodes.spi.LoweringTool.StandardLoweringStage;

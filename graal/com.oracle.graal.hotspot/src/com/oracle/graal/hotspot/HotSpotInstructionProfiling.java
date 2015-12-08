@@ -54,7 +54,8 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    BenchmarkCounterFactory counterFactory) {
+                    PostAllocationOptimizationContext context) {
+        BenchmarkCounterFactory counterFactory = context.counterFactory;
         new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), counterFactory).run();
     }
 

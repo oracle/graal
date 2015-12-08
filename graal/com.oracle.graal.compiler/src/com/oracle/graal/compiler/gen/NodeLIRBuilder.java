@@ -451,7 +451,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             BytecodePosition position = node.getNodeContext(BytecodePosition.class);
             if (position != null && (lastPosition == null || !lastPosition.equals(position))) {
                 lastPosition = position;
-                recordSimpleInfopoint(InfopointReason.LINE_NUMBER, position);
+                recordSimpleInfopoint(InfopointReason.BYTECODE_POSITION, position);
             }
         }
         if (node instanceof LIRLowerable) {

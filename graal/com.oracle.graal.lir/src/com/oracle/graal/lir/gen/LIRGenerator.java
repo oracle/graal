@@ -276,7 +276,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         if (op instanceof SimpleInfopointOp) {
             currentInfo = null;
         } else if (currentInfo != null) {
-            lirForBlock.add(new SimpleInfopointOp(InfopointReason.LINE_NUMBER, currentInfo));
+            lirForBlock.add(new SimpleInfopointOp(InfopointReason.BYTECODE_POSITION, currentInfo));
             currentInfo = null;
         }
         lirForBlock.add(op);

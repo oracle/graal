@@ -359,7 +359,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private void doCompile0(OptimizedCallTarget optimizedCallTarget) {
         boolean success = true;
         try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
-            truffleCompiler.compileMethod(optimizedCallTarget);
+            getTruffleCompiler().compileMethod(optimizedCallTarget);
         } catch (Throwable e) {
             optimizedCallTarget.notifyCompilationFailed(e);
             success = false;
@@ -371,14 +371,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected abstract BackgroundCompileQueue getCompileQueue();
 
     public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
-        Runnable r = new Runnable() {
+        BackgroundCompileQueue l = getCompileQueue();
+        Future<?> future = l.compileQueue.submit(new Runnable() {
             @Override
             public void run() {
                 doCompile(optimizedCallTarget);
             }
-        };
-        BackgroundCompileQueue l = getCompileQueue();
-        Future<?> future = l.compileQueue.submit(r);
+        });
         l.compilations.put(optimizedCallTarget, future);
         getCompilationNotify().notifyCompilationQueued(optimizedCallTarget);
 

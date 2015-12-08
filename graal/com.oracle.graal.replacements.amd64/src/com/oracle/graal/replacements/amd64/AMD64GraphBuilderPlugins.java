@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,14 +32,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.graphbuilderconf.ForeignCallPlugin;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.graphbuilderconf.ForeignCallPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.java.AtomicReadAndAddNode;
 import com.oracle.graal.nodes.java.AtomicReadAndWriteNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
@@ -54,10 +54,14 @@ public class AMD64GraphBuilderPlugins {
 
     public static void register(Plugins plugins, ForeignCallsProvider foreignCalls, AMD64 arch) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
-        registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
-        registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
-        registerUnsafePlugins(invocationPlugins);
-        registerMathPlugins(invocationPlugins, foreignCalls);
+        invocationPlugins.defer(new Runnable() {
+            public void run() {
+                registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
+                registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
+                registerUnsafePlugins(invocationPlugins);
+                registerMathPlugins(invocationPlugins, foreignCalls);
+            }
+        });
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, AMD64 arch) {

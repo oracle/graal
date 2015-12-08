@@ -57,4 +57,17 @@ public class NodeStack {
     public boolean isEmpty() {
         return tos == 0;
     }
+
+    @Override
+    public String toString() {
+        if (tos == 0) {
+            return "NodeStack: []";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < tos; i++) {
+            sb.append(", ");
+            sb.append(values[i]);
+        }
+        return "NodeStack: [" + sb.substring(2) + "]";
+    }
 }

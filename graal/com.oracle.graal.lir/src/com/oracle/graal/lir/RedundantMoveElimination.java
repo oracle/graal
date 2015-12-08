@@ -46,7 +46,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
@@ -57,7 +56,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    BenchmarkCounterFactory counterFactory) {
+                    PostAllocationOptimizationContext context) {
         Optimization redundantMoveElimination = new Optimization(lirGenRes.getFrameMap());
         redundantMoveElimination.doOptimize(lirGenRes.getLIR());
     }

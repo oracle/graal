@@ -39,7 +39,9 @@ import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase;
 public final class SSADestructionPhase extends PreAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    PreAllocationOptimizationContext context) {
+        LIRGeneratorTool lirGen = context.lirGen;
         LIR lir = lirGenRes.getLIR();
         AbstractControlFlowGraph<?> cfg = lir.getControlFlowGraph();
         for (AbstractBlockBase<?> block : cfg.getBlocks()) {

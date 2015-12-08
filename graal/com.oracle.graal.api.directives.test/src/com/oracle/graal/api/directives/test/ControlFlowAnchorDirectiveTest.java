@@ -167,6 +167,7 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
         while (ret > 1) {
             GraalDirectives.controlFlowAnchor();
             if (ret % 2 == 0) {
+                GraalDirectives.controlFlowAnchor();
                 ret /= 2;
             } else {
                 ret = 3 * ret + 1;

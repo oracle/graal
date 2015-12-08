@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.hotspot.nodes.LoadIndexedPointerNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.MetaspacePointerStamp;
@@ -48,6 +47,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.ConditionalNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.calc.PointerEqualsNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.ReadNode;

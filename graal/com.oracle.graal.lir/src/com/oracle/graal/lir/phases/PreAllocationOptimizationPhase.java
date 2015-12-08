@@ -22,31 +22,17 @@
  */
 package com.oracle.graal.lir.phases;
 
-import java.util.List;
-
-import jdk.vm.ci.code.TargetDescription;
-
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 public abstract class PreAllocationOptimizationPhase extends LIRPhase<PreAllocationOptimizationPhase.PreAllocationOptimizationContext> {
 
     public static final class PreAllocationOptimizationContext {
-        private final LIRGeneratorTool lirGen;
+        public final LIRGeneratorTool lirGen;
 
         public PreAllocationOptimizationContext(LIRGeneratorTool lirGen) {
             this.lirGen = lirGen;
         }
 
     }
-
-    @Override
-    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PreAllocationOptimizationContext context) {
-        run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.lirGen);
-    }
-
-    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen);
 
 }

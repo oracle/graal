@@ -77,7 +77,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
          * in the called function. That is, {@code JavaFrameAnchor} management code around the call
          * is required.
          */
-        NOT_LEAF;
+        SAFEPOINT,
     }
 
     /**
@@ -115,4 +115,9 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
      * Gets the VM symbol associated with the target {@linkplain #getAddress() address} of the call.
      */
     String getSymbol();
+
+    /**
+     * Identifies foreign calls which are guaranteed to include a safepoint check.
+     */
+    boolean isGuaranteedSafepoint();
 }

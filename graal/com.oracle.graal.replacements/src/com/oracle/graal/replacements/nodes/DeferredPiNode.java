@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,12 +36,11 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.replacements.NodeIntrinsificationPhase;
 
 /**
  * A node for use in method substitutions or snippets that changes the type of its input where the
- * type is not immediately available at {@link NodeIntrinsificationPhase intrinsification} time. It
- * is replaced by a {@link PiNode} once the type becomes constant (which <b>must</b> happen).
+ * type is not immediately available at intrinsification time. It is replaced by a {@link PiNode}
+ * once the type becomes constant (which <b>must</b> happen).
  */
 @NodeInfo
 public final class DeferredPiNode extends FloatingNode implements Canonicalizable {

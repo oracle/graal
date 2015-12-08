@@ -22,11 +22,6 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static sun.misc.Version.jdkMajorVersion;
-import static sun.misc.Version.jdkMicroVersion;
-import static sun.misc.Version.jdkMinorVersion;
-import static sun.misc.Version.jdkUpdateVersion;
-
 import java.lang.invoke.MethodHandle;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -65,10 +60,6 @@ public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNo
      */
     public static MethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod originalTargetMethod,
                     ValueNode[] originalArguments, JavaType originalReturnType) {
-        if (jdkMajorVersion() >= 1 && jdkMinorVersion() >= 8 && jdkMicroVersion() >= 0 && jdkUpdateVersion() >= 60) {
-            // https://bugs.openjdk.java.net/browse/JDK-8072008 is targeted for 8u60
-            return new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType, null);
-        }
         return new ResolvedMethodHandleCallTargetNode(invokeKind, targetMethod, arguments, returnType, originalTargetMethod, originalArguments, originalReturnType);
     }
 

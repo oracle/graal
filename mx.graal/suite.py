@@ -39,7 +39,7 @@ suite = {
             {
                "name" : "jvmci",
                "optional" : "true",
-               "version" : "2dea101cdfe9aacf55083cf5bd6f84cb23106f4e",
+               "version" : "9ed36a1fec521a62bd9fdccec022c78cf2599244",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -47,7 +47,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "fd53ccebb10b21af953de2da4340a7d17b85e5ed",
+               "version" : "bc1e026ef5b1ab8a1f68a3e78437e48f2d91fd91",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -85,18 +85,18 @@ suite = {
     },
 
     "JMH" : {
-      "sha1" : "be2e08e6776191e9c559a65b7d34e92e86b4fa5c",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.10.4.jar"],
+      "sha1" : "0fe92ac8718909c632345d4ecb4e596d1fa40071",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.11.2.jar"],
     },
 
     # Library that allows Graal to compile against JVMCI without the jvmci suite.
     # This library is not added to the boot class path at run time and so code
     # compiled against this library must be run on (JVMCI enabled) JDK9.
     "JVMCI" : {
-        "sha1" : "9482b9ba7760c09cd95d78f08ce28171b4081268",
-        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-1648ffb0158e.jar"],
-        "sourceSha1" : "b34c184cb1d383aec07bcadefadff01543f10222",
-        "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-1648ffb0158e.src.zip"],
+        "sha1" : "31c6bb33db89e7863d716641518bb6997fe2d340",
+        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-7a570929c5e5.jar"],
+        "sourceSha1" : "8020f243ce1d5453c7a3b9f2bba52ad69ce689b4",
+        "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-7a570929c5e5.src.zip"],
         "license": "GPLv2-CPE",
      },
   }),
@@ -518,6 +518,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_VERIFIER",
       ],
       "workingSets" : "Graal,Replacements,AMD64",
     },
@@ -541,7 +542,10 @@ suite = {
         "com.oracle.graal.compiler.test",
         "com.oracle.graal.replacements",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : [
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_VERIFIER"
+      ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Replacements,Test",
@@ -639,7 +643,7 @@ suite = {
     "com.oracle.graal.virtual.bench" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JMH"],
+      "dependencies" : ["JMH", "com.oracle.graal.microbenchmarks"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["JMH"],
@@ -784,20 +788,8 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.phases",
-        "com.oracle.graal.graphbuilderconf",
       ],
       "annotationProcessors" : deps(["jvmci:JVMCI_OPTIONS_PROCESSOR"]),
-      "checkstyle" : "com.oracle.graal.graph",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Graal,Java",
-    },
-
-    "com.oracle.graal.graphbuilderconf" : {
-      "subDir" : "graal",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.graal.nodes",
-      ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Java",
@@ -1123,9 +1115,10 @@ suite = {
     "GRAAL_REPLACEMENTS_VERIFIER" : {
       "subDir" : "graal",
       "dependencies" : ["com.oracle.graal.replacements.verifier"],
-      "distDependencies" : [
+      "distDependencies" : deps([
         "GRAAL_API",
-      ],
+        "jvmci:JVMCI_SERVICE_PROCESSOR",
+      ])
     },
 
     "GRAAL_COMPILER_MATCH_PROCESSOR" : {

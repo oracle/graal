@@ -46,8 +46,9 @@ public final class LinearScanPhase extends AllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+        MoveFactory spillMoveFactory = context.spillMoveFactory;
+        RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
         final LinearScan allocator;
         switch (LinearScanVariant.getValue()) {
             case SSI_LSRA:

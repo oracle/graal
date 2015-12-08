@@ -48,6 +48,11 @@ public interface ForeignCallsProvider {
     boolean canDeoptimize(ForeignCallDescriptor descriptor);
 
     /**
+     * Identifies foreign calls which are guaranteed to include a safepoint check.
+     */
+    boolean isGuaranteedSafepoint(ForeignCallDescriptor descriptor);
+
+    /**
      * Gets the linkage for a foreign call.
      */
     ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);

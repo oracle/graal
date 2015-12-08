@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,18 +39,11 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.options.StableOptionValue;
+import jdk.vm.ci.service.Services;
 import sun.reflect.Reflection;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.graphbuilderconf.ForeignCallPlugin;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.graphbuilderconf.MethodSubstitutionPlugin;
 import com.oracle.graal.hotspot.nodes.ClassCastNode;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
@@ -68,6 +61,15 @@ import com.oracle.graal.hotspot.word.HotSpotWordTypes;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.graphbuilderconf.ForeignCallPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import com.oracle.graal.nodes.graphbuilderconf.MethodSubstitutionPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
@@ -75,7 +77,7 @@ import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
 import com.oracle.graal.replacements.MethodHandlePlugin;
-import com.oracle.graal.replacements.NodeIntrinsificationPhase;
+import com.oracle.graal.replacements.NodeIntrinsificationProvider;
 import com.oracle.graal.replacements.NodeIntrinsificationPlugin;
 import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins;
@@ -100,8 +102,8 @@ public class HotSpotGraphBuilderPlugins {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess);
 
         Plugins plugins = new Plugins(invocationPlugins);
-        NodeIntrinsificationPhase nodeIntrinsificationPhase = new NodeIntrinsificationPhase(metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider);
-        NodeIntrinsificationPlugin nodeIntrinsificationPlugin = new NodeIntrinsificationPlugin(metaAccess, nodeIntrinsificationPhase, wordTypes, false);
+        NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes);
+        NodeIntrinsificationPlugin nodeIntrinsificationPlugin = new NodeIntrinsificationPlugin();
         HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
         HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin, nodeIntrinsificationPlugin);
 
@@ -114,17 +116,26 @@ public class HotSpotGraphBuilderPlugins {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        registerObjectPlugins(invocationPlugins);
-        registerClassPlugins(plugins);
-        registerSystemPlugins(invocationPlugins, foreignCalls);
-        registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
-        registerCallSitePlugins(invocationPlugins);
-        registerReflectionPlugins(invocationPlugins);
-        registerStableOptionPlugins(invocationPlugins, snippetReflection);
-        registerAESPlugins(invocationPlugins, config);
-        registerCRC32Plugins(invocationPlugins, config);
-        StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, true);
+        invocationPlugins.defer(new Runnable() {
 
+            public void run() {
+                registerObjectPlugins(invocationPlugins);
+                registerClassPlugins(plugins);
+                registerSystemPlugins(invocationPlugins, foreignCalls);
+                registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
+                registerCallSitePlugins(invocationPlugins);
+                registerReflectionPlugins(invocationPlugins);
+                registerStableOptionPlugins(invocationPlugins, snippetReflection);
+                registerAESPlugins(invocationPlugins, config);
+                registerCRC32Plugins(invocationPlugins, config);
+                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, true);
+
+                for (NodeIntrinsicPluginFactory factory : Services.load(NodeIntrinsicPluginFactory.class)) {
+                    factory.registerPlugin(invocationPlugins, nodeIntrinsificationProvider);
+                }
+
+            }
+        });
         return plugins;
     }
 

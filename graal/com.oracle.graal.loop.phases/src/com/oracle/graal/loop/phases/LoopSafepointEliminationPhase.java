@@ -53,13 +53,13 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 }
             }
         }
-        for (LoopEx loop : loops.countedLoops()) {
+        for (LoopEx loop : loops.loops()) {
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                 Block b = loops.getCFG().blockFor(loopEnd);
                 blocks: while (b != loop.loop().getHeader()) {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {
-                        if (node instanceof Invoke || node instanceof ForeignCallNode) {
+                        if (node instanceof Invoke || (node instanceof ForeignCallNode && ((ForeignCallNode) node).isGuaranteedSafepoint())) {
                             loopEnd.disableSafepoint();
                             break blocks;
                         }
