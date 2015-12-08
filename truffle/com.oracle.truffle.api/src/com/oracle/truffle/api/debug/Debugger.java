@@ -768,7 +768,6 @@ public final class Debugger {
             // The top/current/0 frame is not produced by the iterator; reported separately
             Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
                 int stackIndex = 1;
-                int frameIndex = 1;
 
                 @Override
                 public FrameInstance visitFrame(FrameInstance frameInstance) {
@@ -778,7 +777,6 @@ public final class Debugger {
                             final SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
                             if (sourceSection != null && !sourceSection.getIdentifier().equals("<unknown>")) {
                                 frames.add(frameInstance);
-                                frameIndex++;
                             } else if (TRACE) {
                                 if (callNode != null) {
                                     contextTrace("HIDDEN frame added: " + callNode);
@@ -786,7 +784,6 @@ public final class Debugger {
                                     contextTrace("HIDDEN frame added");
                                 }
                                 frames.add(frameInstance);
-                                frameIndex++;
                             }
                         } else if (TRACE) {
                             if (callNode != null) {
@@ -795,7 +792,6 @@ public final class Debugger {
                                 contextTrace("HIDDEN frame added");
                             }
                             frames.add(frameInstance);
-                            frameIndex++;
                         }
                         stackIndex++;
                         return null;
