@@ -93,10 +93,12 @@ public final class LineLocation implements Comparable<LineLocation> {
         int sourceResult = 0;
         final Source thisSource = this.getSource();
         final String thisPath = thisSource.getPath();
-        if (thisPath == null) {
+        final String otherPath = o.getSource().getPath();
+
+        if (thisPath == null || otherPath == null) {
             sourceResult = thisSource.getCode().compareTo(o.getSource().getCode());
         } else {
-            final String thatPath = o.getSource().getPath();
+            final String thatPath = otherPath;
             sourceResult = thisPath.compareTo(thatPath);
         }
         if (sourceResult != 0) {

@@ -138,4 +138,19 @@ public class SourceTest {
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
     }
+
+    @Test
+    public void literalSources() throws IOException {
+        final String code = "test code";
+        final String description = "test description";
+        final Source literal = Source.fromText(code, description);
+        assertEquals(literal.getName(), description);
+        assertEquals(literal.getShortName(), description);
+        assertEquals(literal.getCode(), code);
+        assertNull(literal.getPath());
+        assertNull(literal.getURL());
+        final char[] buffer = new char[code.length()];
+        assertEquals(literal.getReader().read(buffer), code.length());
+        assertEquals(new String(buffer), code);
+    }
 }
