@@ -39,8 +39,8 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Breakpoint.State;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.ExecutionEvent;
-import com.oracle.truffle.api.debug.FrameDebugDescription;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.SyntaxTag;
@@ -377,11 +377,25 @@ public final class REPLServer {
         }
 
         /**
-         * Provides access to the execution stack.
+         * @return Node where halted
+         */
+        Node getNode() {
+            return event.getNode();
+        }
+
+        /**
+         * @return Frame where halted
+         */
+        MaterializedFrame getFrame() {
+            return event.getFrame();
+        }
+
+        /**
+         * Provides access to the execution stack, not counting the node/frame where halted.
          *
          * @return immutable list of stack elements
          */
-        List<FrameDebugDescription> getStack() {
+        List<FrameInstance> getStack() {
             return event.getStack();
         }
 

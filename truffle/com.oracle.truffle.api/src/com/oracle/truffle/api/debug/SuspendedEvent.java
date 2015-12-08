@@ -30,6 +30,8 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
@@ -58,15 +60,19 @@ public final class SuspendedEvent {
     }
 
     private final Debugger debugger;
-    private final List<FrameDebugDescription> stack;
+    private final Node haltedNode;
+    private final MaterializedFrame haltedFrame;
+    private final List<FrameInstance> stack;
     private final List<String> warnings;
 
-    SuspendedEvent(Debugger debugger, List<FrameDebugDescription> stack, List<String> warnings) {
+    SuspendedEvent(Debugger debugger, Node haltedNode, MaterializedFrame haltedFrame, List<FrameInstance> stack, List<String> warnings) {
         this.debugger = debugger;
+        this.haltedNode = haltedNode;
+        this.haltedFrame = haltedFrame;
         this.stack = stack;
         this.warnings = warnings;
         if (TRACE) {
-            trace("Execution suspended at Node=" + stack.get(0).node());
+            trace("Execution suspended at Node=" + haltedNode);
         }
     }
 
@@ -83,11 +89,11 @@ public final class SuspendedEvent {
     }
 
     public Node getNode() {
-        return stack.get(0).node();
+        return haltedNode;
     }
 
     public MaterializedFrame getFrame() {
-        return stack.get(0).frame();
+        return haltedFrame;
     }
 
     public List<String> getRecentWarnings() {
@@ -96,12 +102,13 @@ public final class SuspendedEvent {
 
     /**
      * Gets the stack frames from the currently halted
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine} execution.
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine} execution, not counting the Node and Frame
+     * where halted.
      *
      * @return list of stack frames
      */
     @CompilerDirectives.TruffleBoundary
-    public List<FrameDebugDescription> getStack() {
+    public List<FrameInstance> getStack() {
         return stack;
     }
 
@@ -188,20 +195,20 @@ public final class SuspendedEvent {
      * Evaluates given code snippet in the context of currently suspended execution.
      *
      * @param code the snippet to evaluate
-     * @param frameNumber <code>null</code> in case the evaluation should happen in top most frame,
-     *            non-null value to specify a frame from those {@link #getStack() currently on
-     *            stack} to perform the evaluation in context of
+     * @param frameNumber specify a frame from those {@link #getStack() currently on stack} to
+     *            perform the evaluation in context of
      * @return the computed value
      * @throws IOException in case an evaluation goes wrong
      */
     public Object eval(String code, Integer frameNumber) throws IOException {
-        int n = 0;
-        if (frameNumber != null) {
-            if (frameNumber < 0 || frameNumber >= stack.size()) {
-                throw new IOException("invalid frame number");
-            }
-            n = frameNumber;
+        if (frameNumber < 0 || frameNumber >= stack.size()) {
+            throw new IOException("invalid frame number");
         }
-        return debugger.evalInContext(this, code, stack.get(n).node(), stack.get(n).frame());
+        if (frameNumber == 0) {
+            return debugger.evalInContext(this, code, haltedNode, haltedFrame);
+        }
+        final FrameInstance instance = stack.get(frameNumber - 1);
+        final MaterializedFrame frame = instance.getFrame(FrameAccess.MATERIALIZE, true).materialize();
+        return debugger.evalInContext(this, code, instance.getCallNode(), frame);
     }
 }

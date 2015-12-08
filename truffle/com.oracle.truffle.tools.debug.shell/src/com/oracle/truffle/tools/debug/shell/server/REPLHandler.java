@@ -29,9 +29,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import com.oracle.truffle.api.debug.FrameDebugDescription;
-import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.ASTPrinter;
 import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.QuitException;
@@ -150,10 +151,11 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final Visualizer visualizer = replServer.getVisualizer();
             final ArrayList<REPLMessage> replies = new ArrayList<>();
-            final List<FrameDebugDescription> stack = replServer.getCurrentContext().getStack();
-
-            for (int i = 0; i < stack.size(); i++) {
-                replies.add(btMessage(i, stack.get(i).node(), visualizer));
+            final Context currentContext = replServer.getCurrentContext();
+            final List<FrameInstance> stack = currentContext.getStack();
+            replies.add(btMessage(0, currentContext.getNode(), visualizer));
+            for (int i = 1; i <= stack.size(); i++) {
+                replies.add(btMessage(i, stack.get(i - 1).getCallNode(), visualizer));
             }
             if (replies.size() > 0) {
                 return replies.toArray(new REPLMessage[0]);
@@ -469,17 +471,24 @@ public abstract class REPLHandler {
             if (frameNumber == null) {
                 return finishReplyFailed(createReply(), "no frame number specified");
             }
-            final List<FrameDebugDescription> stack = replServer.getCurrentContext().getStack();
-            if (frameNumber < 0 || frameNumber >= stack.size()) {
+            final Context currentContext = replServer.getCurrentContext();
+            final List<FrameInstance> stack = currentContext.getStack();
+            if (frameNumber < 0 || frameNumber > stack.size()) {
                 return finishReplyFailed(createReply(), "frame number " + frameNumber + " out of range");
             }
             final Visualizer visualizer = replServer.getVisualizer();
 
-            final FrameDebugDescription frameDescription = stack.get(frameNumber);
-            final Frame frame = frameDescription.frame();
-            final Node node = frameDescription.node();
+            MaterializedFrame frame;
+            Node node;
+            if (frameNumber == 0) {
+                frame = currentContext.getFrame();
+                node = currentContext.getNode();
+            } else {
+                final FrameInstance instance = stack.get(frameNumber - 1);
+                frame = instance.getFrame(FrameAccess.MATERIALIZE, true).materialize();
+                node = instance.getCallNode();
+            }
             List<? extends FrameSlot> slots = frame.getFrameDescriptor().getSlots();
-
             if (slots.size() == 0) {
                 final REPLMessage emptyFrameMessage = createFrameInfoMessage(replServer, frameNumber, node);
                 return finishReplySucceeded(emptyFrameMessage, "empty frame");
