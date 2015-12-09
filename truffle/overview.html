@@ -41,11 +41,42 @@ To get the best speed out of your Truffle system, make sure you are running
 on top of 
 <a target="_blank" href="http://openjdk.java.net/projects/graal/">Graal</a>
 virtual machine.
+
+<h4>Learning Truffle</h4>
+
 <p>
-Our typicial sample language is called the <em>SimpleLanguage</em>.
+Our typical sample language is called the <em>SimpleLanguage</em>.
 A good entry point for exploring <em>SimpleLanguage</em> is the
 <a target="_blank" href="https://github.com/graalvm/Truffle/blob/master/truffle/com.oracle.truffle.sl/src/com/oracle/truffle/sl/SLLanguage.java">SLLanguage</a>
 class.
+</p>
+
+<p>
+    There is an excellent tutorial <em>Add Graal JIT Compilation to Your JVM Language</em>
+    written by Stefan Marr which gives real example of turning an existing language
+    into <em>Truffle</em> based one:
+</p>
+<ul>
+    <li>Step 1: 
+        <a target="golo" href="http://stefan-marr.de/2015/11/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-1/">Setting a Goal and Choosing a Benchmark</a>
+    </li>
+    <li>Step 2: 
+        <a target="golo" href="http://stefan-marr.de/2015/11/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-2/">Adding Bits Operations</a>
+    </li>
+    <li>Step 3: 
+        <a target="golo" href="http://stefan-marr.de/2015/11/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-3/">Interpreting a Simple Fibonacci Function</a>
+    </li>
+    <li>Step 4: 
+        <a target="golo" href="http://stefan-marr.de/2015/12/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-4/">Complete Support for Mandelbrot</a>
+    </li>
+    <li>Step 5: 
+        <a target="golo" href="http://stefan-marr.de/2015/12/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-5/">Optimizing the Interpreter for Compilation</a>
+    </li>
+</ul>
+<p>
+    The posts cover not only basics, and API usage, but also description
+    of available tools for analyzing the performance and optimizing it.
+</p>
 
 <h4>Other References</h4>
 
