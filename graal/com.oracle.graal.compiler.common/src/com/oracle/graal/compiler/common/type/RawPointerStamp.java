@@ -27,6 +27,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
@@ -99,6 +100,14 @@ public class RawPointerStamp extends AbstractPointerStamp {
     @Override
     public boolean isCompatible(Stamp other) {
         return other instanceof RawPointerStamp;
+    }
+
+    @Override
+    public boolean isCompatible(Constant constant) {
+        if (constant instanceof PrimitiveConstant) {
+            return ((PrimitiveConstant) constant).getJavaKind().isNumericInteger();
+        }
+        return false;
     }
 
     @Override

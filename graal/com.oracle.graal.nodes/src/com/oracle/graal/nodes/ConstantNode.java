@@ -32,14 +32,10 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
-import jdk.vm.ci.meta.VMConstant;
 
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
-import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.FloatStamp;
-import com.oracle.graal.compiler.common.type.IllegalStamp;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
-import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
@@ -74,21 +70,8 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      */
     public ConstantNode(Constant value, Stamp stamp) {
         super(TYPE, stamp);
-        assert stamp != null && isCompatible(value, stamp);
+        assert stamp != null && stamp.isCompatible(value) : stamp + " " + value;
         this.value = value;
-    }
-
-    private static boolean isCompatible(Constant value, Stamp stamp) {
-        if (value instanceof VMConstant) {
-            assert stamp instanceof AbstractPointerStamp;
-        } else if (value instanceof PrimitiveConstant) {
-            if (((PrimitiveConstant) value).getJavaKind() == JavaKind.Illegal) {
-                assert stamp instanceof IllegalStamp;
-            } else {
-                assert stamp instanceof PrimitiveStamp;
-            }
-        }
-        return true;
     }
 
     /**

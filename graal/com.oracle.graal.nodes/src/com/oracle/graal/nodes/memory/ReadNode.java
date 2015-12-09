@@ -144,7 +144,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
                     }
                 }
 
-                Constant constant = tool.getConstantReflection().readConstantArrayElementForOffset(object.asJavaConstant(), displacement);
+                Constant constant = read.stamp().readConstantArrayElementForOffset(tool.getConstantReflection(), object.asJavaConstant(), displacement);
                 if (constant != null) {
                     return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
                 }

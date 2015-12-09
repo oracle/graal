@@ -23,6 +23,8 @@
 package com.oracle.graal.hotspot.nodes.type;
 
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -46,6 +48,11 @@ public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
     public Stamp empty() {
         // there is no empty pointer stamp
         return this;
+    }
+
+    @Override
+    public boolean isCompatible(Constant constant) {
+        return (constant instanceof HotSpotMetaspaceConstant || constant.isDefaultForKind());
     }
 
     @Override

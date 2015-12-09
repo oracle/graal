@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.common.type;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -60,6 +61,14 @@ public class ObjectStamp extends AbstractObjectStamp {
         }
         if (other instanceof ObjectStamp) {
             return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isCompatible(Constant constant) {
+        if (constant instanceof JavaConstant) {
+            return ((JavaConstant) constant).getJavaKind().isObject();
         }
         return false;
     }

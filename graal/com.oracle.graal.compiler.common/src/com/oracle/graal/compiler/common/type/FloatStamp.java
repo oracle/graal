@@ -249,6 +249,15 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
+    public boolean isCompatible(Constant constant) {
+        if (constant instanceof PrimitiveConstant) {
+            PrimitiveConstant prim = (PrimitiveConstant) constant;
+            return prim.getJavaKind().isNumericFloat();
+        }
+        return false;
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
@@ -280,6 +289,10 @@ public class FloatStamp extends PrimitiveStamp {
             }
         }
         return null;
+    }
+
+    public boolean isConstant() {
+        return (nonNaN && Double.compare(lowerBound, upperBound) == 0);
     }
 
     private static final ArithmeticOpTable OPS = new ArithmeticOpTable(

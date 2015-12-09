@@ -92,6 +92,15 @@ public final class IllegalStamp extends Stamp {
     }
 
     @Override
+    public boolean isCompatible(Constant constant) {
+        if (constant instanceof PrimitiveConstant) {
+            PrimitiveConstant prim = (PrimitiveConstant) constant;
+            return prim.getJavaKind() == JavaKind.Illegal;
+        }
+        return false;
+    }
+
+    @Override
     public String toString() {
         return "ILLEGAL";
     }

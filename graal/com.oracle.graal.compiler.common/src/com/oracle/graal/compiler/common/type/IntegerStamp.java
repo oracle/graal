@@ -295,6 +295,15 @@ public class IntegerStamp extends PrimitiveStamp {
     }
 
     @Override
+    public boolean isCompatible(Constant constant) {
+        if (constant instanceof PrimitiveConstant) {
+            PrimitiveConstant prim = (PrimitiveConstant) constant;
+            return prim.getJavaKind().isNumericInteger();
+        }
+        return false;
+    }
+
+    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;

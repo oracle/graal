@@ -94,6 +94,11 @@ public final class VoidStamp extends Stamp {
     }
 
     @Override
+    public boolean isCompatible(Constant constant) {
+        return false;
+    }
+
+    @Override
     public Stamp empty() {
         // the void stamp is always empty
         return this;

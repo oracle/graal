@@ -23,6 +23,8 @@
 package com.oracle.graal.compiler.common.type;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -107,6 +109,13 @@ public abstract class Stamp {
     public abstract boolean isCompatible(Stamp other);
 
     /**
+     * Check that the constant {@code other} is compatible with this stamp.
+     *
+     * @param constant
+     */
+    public abstract boolean isCompatible(Constant constant);
+
+    /**
      * Test whether this stamp has legal values.
      */
     public abstract boolean hasValues();
@@ -133,6 +142,13 @@ public abstract class Stamp {
      * Read a value of this stamp from memory.
      */
     public abstract Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement);
+
+    /**
+     * Read a value of this stamp from memory.
+     */
+    public Constant readConstantArrayElementForOffset(ConstantReflectionProvider constantReflection, JavaConstant constant, long displacement) {
+        return constantReflection.readConstantArrayElementForOffset(constant, displacement);
+    }
 
     /**
      * Tries to improve this stamp with the stamp given as parameter. If successful, returns the new
