@@ -201,6 +201,13 @@ public abstract class Node implements Cloneable, Formattable {
     public interface ValueNumberable {
     }
 
+    /**
+     * Marker interface for nodes that contains other nodes. When the inputs to this node changes,
+     * users of this node should also be placed on the work list for canonicalization.
+     */
+    public interface IndirectCanonicalization {
+    }
+
     private Graph graph;
     int id;
 

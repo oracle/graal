@@ -33,6 +33,7 @@ import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.Node.IndirectCanonicalization;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeWorkList;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -186,6 +187,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
                 public void inputChanged(Node node) {
                     workList.add(node);
+                    if (node instanceof IndirectCanonicalization) {
+                        for (Node usage : node.usages()) {
+                            workList.add(usage);
+                        }
+                    }
                 }
 
                 public void usagesDroppedToZero(Node node) {

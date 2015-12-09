@@ -28,6 +28,7 @@ import java.util.Set;
 
 import com.oracle.graal.graph.Graph.NodeEvent;
 import com.oracle.graal.graph.Graph.NodeEventListener;
+import com.oracle.graal.graph.Node.IndirectCanonicalization;
 import com.oracle.graal.graph.Node;
 
 /**
@@ -67,6 +68,11 @@ public class HashSetNodeEventListener implements NodeEventListener {
     public void event(NodeEvent e, Node node) {
         if (filter.contains(e)) {
             nodes.add(node);
+            if (node instanceof IndirectCanonicalization) {
+                for (Node usage : node.usages()) {
+                    nodes.add(usage);
+                }
+            }
         }
     }
 
