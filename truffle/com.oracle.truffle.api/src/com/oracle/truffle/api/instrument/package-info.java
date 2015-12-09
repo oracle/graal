@@ -23,6 +23,12 @@
  * questions.
  */
 
+/*
+ @ApiInfo(
+ group="Obsolete soon"
+ )
+ */
+
 /**
  * <h4>Truffle {@linkplain com.oracle.truffle.api.instrument.Instrumenter Instrumentation}: access to execution events for Debuggers and other tools.</h4>
  * <p>
