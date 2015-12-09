@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ public abstract class AbstractVerifier {
         this.env = env;
     }
 
-    public abstract void verify(Element element, AnnotationMirror annotation);
+    public abstract void verify(Element element, AnnotationMirror annotation, PluginGenerator generator);
 
     public abstract Class<? extends Annotation> getAnnotationClass();
 

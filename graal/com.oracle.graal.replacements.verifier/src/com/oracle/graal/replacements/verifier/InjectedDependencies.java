@@ -67,7 +67,7 @@ public class InjectedDependencies implements Iterable<Dependency> {
 
         @Override
         public String inject(ExecutableElement inject) {
-            return String.format("injection.getReturnStamp(%s.class)", NodeIntrinsicPluginGenerator.getErasedType(inject.getReturnType()));
+            return String.format("injection.getReturnStamp(%s.class)", GeneratedPlugin.getErasedType(inject.getReturnType()));
         }
     }
 

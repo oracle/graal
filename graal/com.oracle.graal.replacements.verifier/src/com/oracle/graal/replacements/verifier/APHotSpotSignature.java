@@ -26,18 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.type.TypeVariable;
-import javax.lang.model.type.WildcardType;
 import javax.tools.Diagnostic.Kind;
 
 /**
@@ -103,81 +94,6 @@ final class APHotSpotSignature {
                 throw new RuntimeException("Invalid character at index " + cur + " in signature: " + signature);
         }
         return cur;
-    }
-
-    private static void getSignatureName(StringBuilder ret, Element element) {
-        Element enclosing = element.getEnclosingElement();
-        if (enclosing.getKind() == ElementKind.PACKAGE) {
-            ret.append(((PackageElement) enclosing).getQualifiedName().toString().replace('.', '/'));
-            ret.append('/');
-        } else {
-            getSignatureName(ret, enclosing);
-            ret.append('$');
-        }
-        ret.append(element.getSimpleName());
-    }
-
-    private static void getSignatureString(StringBuilder ret, TypeMirror type) {
-        switch (type.getKind()) {
-            case ARRAY:
-                ret.append('[');
-                getSignatureString(ret, ((ArrayType) type).getComponentType());
-                break;
-            case BOOLEAN:
-                ret.append('Z');
-                break;
-            case BYTE:
-                ret.append('B');
-                break;
-            case SHORT:
-                ret.append('S');
-                break;
-            case CHAR:
-                ret.append('C');
-                break;
-            case INT:
-                ret.append('I');
-                break;
-            case LONG:
-                ret.append('J');
-                break;
-            case FLOAT:
-                ret.append('F');
-                break;
-            case DOUBLE:
-                ret.append('D');
-                break;
-            case VOID:
-                ret.append('V');
-                break;
-            case DECLARED:
-                ret.append('L');
-                getSignatureName(ret, ((DeclaredType) type).asElement());
-                ret.append(';');
-                break;
-            case TYPEVAR:
-                getSignatureString(ret, ((TypeVariable) type).getUpperBound());
-                break;
-            case WILDCARD:
-                getSignatureString(ret, ((WildcardType) type).getExtendsBound());
-                break;
-            case INTERSECTION:
-                ret.append("Ljava/lang/Object;");
-                break;
-            default:
-                throw new IllegalArgumentException(type.toString());
-        }
-    }
-
-    public static String toSignature(ExecutableElement intrinsicMethod) {
-        StringBuilder ret = new StringBuilder();
-        ret.append('(');
-        for (VariableElement param : intrinsicMethod.getParameters()) {
-            getSignatureString(ret, param.asType());
-        }
-        ret.append(')');
-        getSignatureString(ret, intrinsicMethod.getReturnType());
-        return ret.toString();
     }
 
     public int getParameterCount(boolean withReceiver) {

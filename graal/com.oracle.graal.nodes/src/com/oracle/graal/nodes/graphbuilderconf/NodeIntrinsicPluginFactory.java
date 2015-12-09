@@ -33,5 +33,5 @@ public interface NodeIntrinsicPluginFactory {
         Stamp getReturnStamp(Class<?> type);
     }
 
-    void registerPlugin(InvocationPlugins plugins, InjectionProvider injection);
+    void registerPlugins(InvocationPlugins plugins, InjectionProvider injection);
 }

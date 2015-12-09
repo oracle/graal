@@ -128,9 +128,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
     protected Plugins getDefaultGraphBuilderPlugins() {
         Plugins ret = super.getDefaultGraphBuilderPlugins();
         // manually register generated factories, jvmci service providers don't work from unit tests
-        new NodeIntrinsicFactory_SubstitutionsTest_TestGuard_guard_1c2b7e8f().registerPlugin(ret.getInvocationPlugins(), null);
-        new NodeIntrinsicFactory_SubstitutionsTest_TestMemory_memory().registerPlugin(ret.getInvocationPlugins(), null);
-        new NodeIntrinsicFactory_SubstitutionsTest_TestValue_value_a22f0f5f().registerPlugin(ret.getInvocationPlugins(), null);
+        new PluginFactory_SubstitutionsTest().registerPlugins(ret.getInvocationPlugins(), null);
         return ret;
     }
 

@@ -95,8 +95,7 @@ public class FoldTest extends GraalCompilerTest {
         Plugins ret = super.getDefaultGraphBuilderPlugins();
         // manually register generated factories, jvmci service providers don't work from unit tests
         InjectionProvider injection = new NodeIntrinsificationProvider(getMetaAccess(), getSnippetReflection(), getProviders().getForeignCalls(), null);
-        new FoldFactory_FoldTest_FoldUtils_getNumber().registerPlugin(ret.getInvocationPlugins(), injection);
-        new FoldFactory_FoldTest_FoldUtils_multiply_255f288().registerPlugin(ret.getInvocationPlugins(), injection);
+        new PluginFactory_FoldTest().registerPlugins(ret.getInvocationPlugins(), injection);
         return ret;
     }
 

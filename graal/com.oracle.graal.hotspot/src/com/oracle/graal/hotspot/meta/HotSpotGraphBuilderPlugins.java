@@ -131,7 +131,7 @@ public class HotSpotGraphBuilderPlugins {
                 StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, true);
 
                 for (NodeIntrinsicPluginFactory factory : Services.load(NodeIntrinsicPluginFactory.class)) {
-                    factory.registerPlugin(invocationPlugins, nodeIntrinsificationProvider);
+                    factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
                 }
 
             }

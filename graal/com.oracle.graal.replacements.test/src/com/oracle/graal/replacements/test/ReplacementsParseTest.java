@@ -48,7 +48,7 @@ public class ReplacementsParseTest extends GraalCompilerTest {
     protected Plugins getDefaultGraphBuilderPlugins() {
         Plugins ret = super.getDefaultGraphBuilderPlugins();
         // manually register generated factory, jvmci service providers don't work from unit tests
-        new NodeIntrinsicFactory_ReplacementsParseTest_TestMethodsSubstitutions_asNonNullStringIntrinsic_2bfccb54().registerPlugin(ret.getInvocationPlugins(), null);
+        new PluginFactory_ReplacementsParseTest().registerPlugins(ret.getInvocationPlugins(), null);
         return ret;
     }
 
