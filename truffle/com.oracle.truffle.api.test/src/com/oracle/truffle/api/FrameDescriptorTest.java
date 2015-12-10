@@ -22,16 +22,17 @@
  */
 package com.oracle.truffle.api;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import org.junit.Test;
 
 public class FrameDescriptorTest {
 
@@ -82,11 +83,10 @@ public class FrameDescriptorTest {
         assertEquals(d.getSlots().get(1).getIndex(), 1);
 
         FrameDescriptor copy = d.copy();
-
-        assertEquals(copy.getSlots().get(1).getIndex(), 1);
-
-        assertNull("Info isn't copied!", copy.getSlots().get(1).getInfo());
-        assertEquals("Kind isn't copied!", copy.getSlots().get(1).getKind(), FrameSlotKind.Illegal);
+        assertEquals(2, copy.getSize());
+        assertEquals(1, copy.getSlots().get(1).getIndex());
+        assertEquals("Info is copied", "i2", copy.getSlots().get(1).getInfo());
+        assertEquals("Kind isn't copied", FrameSlotKind.Illegal, copy.getSlots().get(1).getKind());
     }
 
     @Test
