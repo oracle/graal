@@ -38,6 +38,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
@@ -45,6 +46,8 @@ import com.oracle.graal.lir.LIRInstruction;
 /**
  */
 public class MoveResolver {
+
+    private static final DebugMetric cycleBreakingSlotsAllocated = Debug.metric("LSRA[cycleBreakingSlotsAllocated]");
 
     private final LinearScan allocator;
 
@@ -369,6 +372,7 @@ public class MoveResolver {
         if (spillSlot == null) {
             spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
             fromInterval.setSpillSlot(spillSlot);
+            cycleBreakingSlotsAllocated.increment();
         }
         spillInterval(spillCandidate, fromInterval, spillSlot);
     }
