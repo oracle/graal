@@ -48,6 +48,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
@@ -61,6 +62,8 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 /**
  */
 final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveResolver {
+
+    private static final DebugMetric cycleBreakingSlotsAllocated = Debug.metric("TraceRA[cycleBreakingSlotsAllocated(global)]");
 
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
@@ -388,6 +391,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
         Value from = mappingFrom.get(spillCandidate);
         try (Indent indent = Debug.logAndIndent("BreakCycle: %s", from)) {
             VirtualStackSlot spillSlot = frameMapBuilder.allocateSpillSlot(from.getLIRKind());
+            cycleBreakingSlotsAllocated.increment();
             if (Debug.isLogEnabled()) {
                 Debug.log("created new slot for spilling: %s", spillSlot);
             }
