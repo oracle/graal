@@ -145,6 +145,17 @@ public abstract class TruffleTCK {
     }
 
     /**
+     * Name of a function that adds up two complex numbers. The function accepts two arguments and
+     * provides no return value. The arguments are complex numbers with members called real and
+     * imaginary. The first argument contains the result of the addition.
+     *
+     * @return name of globally exported symbol
+     */
+    protected String complexAdd() {
+        throw new UnsupportedOperationException("complexAdd() method not implemented");
+    }
+
+    /**
      * Name of a function to return global object. The function can be executed without providing
      * any arguments and should return global object of the language, if the language supports it.
      * Global object is the one accessible via
@@ -766,6 +777,23 @@ public abstract class TruffleTCK {
         Object result = invokeMul.get();
         assertTrue("Expecting numeric result, was:" + result, result instanceof Number);
         assertEquals("Right value", 42, ((Number) result).intValue());
+    }
+
+    @Test
+    public void testAddComplexNumbers() throws Exception {
+        String id = complexAdd();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ComplexNumber a = new ComplexNumber(32, 10);
+        ComplexNumber b = new ComplexNumber(10, 32);
+
+        apply.execute(a, b);
+
+        assertEquals(42.0, a.get(ComplexNumber.REAL_IDENTIFIER), 0.1);
+        assertEquals(42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER), 0.1);
     }
 
     private PolyglotEngine.Value findGlobalSymbol(String name) throws Exception {

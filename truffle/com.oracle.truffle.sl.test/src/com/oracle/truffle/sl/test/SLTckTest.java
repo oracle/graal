@@ -99,6 +99,10 @@ public class SLTckTest extends TruffleTCK {
                 "}\n" +
                 "function returnsNull() {\n" +
                 "}\n" +
+                "function complexAdd(a, b) {\n" +
+                "  a.real = a.real + b.real;\n" +
+                "  a.imaginary = a.imaginary + b.imaginary;\n" +
+                "}\n" +
                 "function compoundObject() {\n" +
                 "  obj = new();\n" +
                 "  obj.fourtyTwo = fourtyTwo;\n" +
@@ -156,6 +160,11 @@ public class SLTckTest extends TruffleTCK {
             "  retu rn 42;\n" +
             "}\n";
         // @formatter:on
+    }
+
+    @Override
+    protected String complexAdd() {
+        return "complexAdd";
     }
 
     @Override
