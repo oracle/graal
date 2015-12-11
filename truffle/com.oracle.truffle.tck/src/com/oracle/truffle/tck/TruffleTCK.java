@@ -24,16 +24,6 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Language;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.Random;
-import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
@@ -41,6 +31,23 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Random;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Language;
+import com.oracle.truffle.tck.Schema.Type;
 
 /**
  * A collection of tests that can certify language implementation to be compliant with most recent
@@ -153,6 +160,29 @@ public abstract class TruffleTCK {
      */
     protected String complexAdd() {
         throw new UnsupportedOperationException("complexAdd() method not implemented");
+    }
+
+    /**
+     * Name of a function that adds up the real part of complex numbers. The function accepts one
+     * argument and provides the sum of all real parts. The argument is an array/buffer of complex
+     * numbers.
+     *
+     * @return name of globally exported symbol
+     */
+    protected String complexSumReal() {
+        throw new UnsupportedOperationException("complexSumReal() method not implemented");
+    }
+
+    /**
+     * Name of a function that copies a list of complex numbers. The function accepts two arguments
+     * and provides no return value. The arguments are two lists of complex numbers with members
+     * called real and imaginary. The first argument is the destination, the second argument is the
+     * source.
+     *
+     * @return name of globally exported symbol
+     */
+    protected String complexCopy() {
+        throw new UnsupportedOperationException("complexCopy() method not implemented");
     }
 
     /**
@@ -794,6 +824,133 @@ public abstract class TruffleTCK {
 
         assertEquals(42.0, a.get(ComplexNumber.REAL_IDENTIFIER), 0.1);
         assertEquals(42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER), 0.1);
+    }
+
+    @Test
+    public void testSumRealOfComplexNumbersA() throws Exception {
+        String id = complexSumReal();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ComplexNumbersA numbers = new ComplexNumbersA(new double[]{2, -1, 30, -1, 10, -1});
+
+        Number n = (Number) apply.execute(numbers).get();
+        assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
+    }
+
+    @Test
+    public void testSumRealOfComplexNumbersB() throws Exception {
+        String id = complexSumReal();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ComplexNumbersB numbers = new ComplexNumbersB(new double[]{2, 30, 10}, new double[]{-1, -1, -1});
+
+        Number n = (Number) apply.execute(numbers).get();
+        assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
+    }
+
+    @Test
+    public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws Exception {
+        String id = complexSumReal();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        Schema schema = new Schema(3, true, Arrays.asList(ComplexNumber.REAL_IDENTIFIER, ComplexNumber.IMAGINARY_IDENTIFIER), Arrays.asList(Type.DOUBLE, Type.DOUBLE));
+        byte[] buffer = new byte[(6 * Double.SIZE / Byte.SIZE)];
+        putDoubles(buffer, new double[]{2, -1, 30, -1, 10, -1});
+        StructuredData numbers = new StructuredData(buffer, schema);
+
+        Number n = (Number) apply.execute(numbers).get();
+        assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
+    }
+
+    @Test
+    public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws Exception {
+        String id = complexSumReal();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        Schema schema = new Schema(3, false, Arrays.asList(ComplexNumber.REAL_IDENTIFIER, ComplexNumber.IMAGINARY_IDENTIFIER), Arrays.asList(Type.DOUBLE, Type.DOUBLE));
+        byte[] buffer = new byte[6 * Double.SIZE / Byte.SIZE];
+        putDoubles(buffer, new double[]{2, 30, 10, -1, -1, -1});
+
+        StructuredData numbers = new StructuredData(buffer, schema);
+
+        Number n = (Number) apply.execute(numbers).get();
+        assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
+    }
+
+    @Test
+    public void testCopyComplexNumbersA() throws Exception {
+        String id = complexCopy();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ComplexNumbersA a = new ComplexNumbersA(new double[]{-1, -1, -1, -1, -1, -1});
+        ComplexNumbersA b = new ComplexNumbersA(new double[]{41, 42, 43, 44, 45, 46});
+
+        apply.execute(a, b);
+
+        Assert.assertArrayEquals(new double[]{41, 42, 43, 44, 45, 46}, a.getData(), 0.1);
+    }
+
+    @Test
+    public void testCopyComplexNumbersB() throws Exception {
+        String id = complexCopy();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ComplexNumbersB a = new ComplexNumbersB(new double[]{-1, -1, -1}, new double[]{-1, -1, -1});
+        ComplexNumbersB b = new ComplexNumbersB(new double[]{41, 43, 45}, new double[]{42, 44, 46});
+
+        apply.execute(a, b);
+
+        Assert.assertArrayEquals(new double[]{41, 42, 43, 44, 45, 46}, a.getData(), 0.1);
+    }
+
+    @Test
+    public void testCopyStructuredComplexToComplexNumbersA() throws Exception {
+        String id = complexCopy();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ComplexNumbersA a = new ComplexNumbersA(new double[]{-1, -1, -1, -1, -1, -1});
+
+        Schema schema = new Schema(3, true, Arrays.asList(ComplexNumber.REAL_IDENTIFIER, ComplexNumber.IMAGINARY_IDENTIFIER), Arrays.asList(Type.DOUBLE, Type.DOUBLE));
+        byte[] buffer = new byte[6 * Double.SIZE / Byte.SIZE];
+        putDoubles(buffer, new double[]{41, 42, 43, 44, 45, 46});
+
+        StructuredData b = new StructuredData(buffer, schema);
+
+        apply.execute(a, b);
+
+        Assert.assertArrayEquals(new double[]{41, 42, 43, 44, 45, 46}, a.getData(), 0.1);
+    }
+
+    private static void putDoubles(byte[] buffer, double[] values) {
+        for (int index = 0; index < values.length; index++) {
+            int doubleSize = Double.SIZE / Byte.SIZE;
+            byte[] bytes = new byte[doubleSize];
+            ByteBuffer.wrap(bytes).putDouble(values[index]);
+            for (int i = 0; i < doubleSize; i++) {
+                buffer[index * doubleSize + i] = bytes[i];
+            }
+        }
     }
 
     private PolyglotEngine.Value findGlobalSymbol(String name) throws Exception {

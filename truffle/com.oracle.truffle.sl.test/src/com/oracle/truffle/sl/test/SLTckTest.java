@@ -44,8 +44,11 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.test.instrument.InstrumentationTestMode;
 import com.oracle.truffle.tck.TruffleTCK;
+
 import org.junit.After;
+
 import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -218,6 +221,34 @@ public class SLTckTest extends TruffleTCK {
 
     @Override
     public void testPrimitiveidentityFloat() throws Exception {
+    }
+
+    @Override
+    public void testSumRealOfComplexNumbersA() throws Exception {
+    }
+
+    @Override
+    public void testSumRealOfComplexNumbersB() throws Exception {
+    }
+
+    @Override
+    public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws Exception {
+    }
+
+    @Override
+    public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws Exception {
+    }
+
+    @Override
+    public void testCopyComplexNumbersA() throws Exception {
+    }
+
+    @Override
+    public void testCopyComplexNumbersB() throws Exception {
+    }
+
+    @Override
+    public void testCopyStructuredComplexToComplexNumbersA() throws Exception {
     }
 
 }

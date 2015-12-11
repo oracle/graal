@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tck;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -33,51 +35,23 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public final class ComplexNumber implements TruffleObject {
+@SuppressWarnings({"rawtypes", "unchecked"})
+public final class MapTruffleObject implements TruffleObject {
 
-    public static final String REAL_IDENTIFIER = "real";
-    public static final String IMAGINARY_IDENTIFIER = "imaginary";
+    private final Map map;
 
-    private double real;
-    private double imag;
-
-    public ComplexNumber(double real, double imaginary) {
-        this.real = real;
-        this.imag = imaginary;
+    public MapTruffleObject(Map map) {
+        this.map = map;
     }
 
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(new ComplexForeignAccessFactory());
+        return ForeignAccess.create(new MapForeignAccessFactory());
     }
 
-    public void set(String identifier, double value) {
-        switch (identifier) {
-            case REAL_IDENTIFIER:
-                this.real = value;
-                break;
-            case IMAGINARY_IDENTIFIER:
-                this.imag = value;
-                break;
-            default:
-                throw new IllegalArgumentException();
-        }
-    }
-
-    public double get(String identifier) {
-        switch (identifier) {
-            case REAL_IDENTIFIER:
-                return this.real;
-            case IMAGINARY_IDENTIFIER:
-                return this.imag;
-            default:
-                throw new IllegalArgumentException();
-        }
-    }
-
-    private static class ComplexForeignAccessFactory implements Factory {
+    private static class MapForeignAccessFactory implements Factory {
 
         public boolean canHandle(TruffleObject obj) {
-            return obj instanceof ComplexNumber;
+            return obj instanceof MapTruffleObject;
         }
 
         public CallTarget accessMessage(Message tree) {
@@ -88,43 +62,59 @@ public final class ComplexNumber implements TruffleObject {
             } else if (Message.IS_BOXED.equals(tree)) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
             } else if (Message.HAS_SIZE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
             } else if (Message.READ.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new ComplexReadNode());
+                return Truffle.getRuntime().createCallTarget(new MapReadNode());
             } else if (Message.WRITE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new ComplexWriteNode());
+                return Truffle.getRuntime().createCallTarget(new MapWriteNode());
+            } else if (Message.GET_SIZE.equals(tree)) {
+                return Truffle.getRuntime().createCallTarget(new MapSizeNode());
             } else {
                 throw new IllegalArgumentException(tree.toString() + " not supported");
             }
         }
     }
 
-    private static class ComplexWriteNode extends RootNode {
-        protected ComplexWriteNode() {
+    private static class MapWriteNode extends RootNode {
+        protected MapWriteNode() {
             super(TckLanguage.class, null, null);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumber complex = (ComplexNumber) ForeignAccess.getReceiver(frame);
-            String identifier = (String) ForeignAccess.getArguments(frame).get(0);
-            Number value = (Number) ForeignAccess.getArguments(frame).get(1);
-            complex.set(identifier, value.doubleValue());
+            MapTruffleObject map = (MapTruffleObject) ForeignAccess.getReceiver(frame);
+            Object key = ForeignAccess.getArguments(frame).get(0);
+            Object value = ForeignAccess.getArguments(frame).get(1);
+            map.map.put(key, value);
             return value;
         }
     }
 
-    private static class ComplexReadNode extends RootNode {
-        protected ComplexReadNode() {
+    private static class MapReadNode extends RootNode {
+        protected MapReadNode() {
             super(TckLanguage.class, null, null);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumber complex = (ComplexNumber) ForeignAccess.getReceiver(frame);
-            String identifier = (String) ForeignAccess.getArguments(frame).get(0);
-            return complex.get(identifier);
+            MapTruffleObject map = (MapTruffleObject) ForeignAccess.getReceiver(frame);
+            Object key = ForeignAccess.getArguments(frame).get(0);
+            return map.map.get(key);
         }
 
     }
+
+    private static class MapSizeNode extends RootNode {
+        protected MapSizeNode() {
+            super(TckLanguage.class, null, null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            MapTruffleObject map = (MapTruffleObject) ForeignAccess.getReceiver(frame);
+            return map.map.size();
+        }
+
+    }
+
 }

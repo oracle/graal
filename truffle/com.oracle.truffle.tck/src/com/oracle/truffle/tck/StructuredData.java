@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tck;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -33,54 +35,32 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public final class ComplexNumber implements TruffleObject {
+public final class StructuredData implements TruffleObject {
 
-    public static final String REAL_IDENTIFIER = "real";
-    public static final String IMAGINARY_IDENTIFIER = "imaginary";
+    private final byte[] buffer;
+    private final Schema schema;
 
-    private double real;
-    private double imag;
+    public StructuredData(byte[] buffer, Schema schema) {
+        this.buffer = buffer;
+        this.schema = schema;
+    }
 
-    public ComplexNumber(double real, double imaginary) {
-        this.real = real;
-        this.imag = imaginary;
+    public Map<String, Object> getEntry(int index) {
+        return schema.getEntry(buffer, index);
     }
 
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(new ComplexForeignAccessFactory());
+        return ForeignAccess.create(new StructuredDataForeignAccessFactory());
     }
 
-    public void set(String identifier, double value) {
-        switch (identifier) {
-            case REAL_IDENTIFIER:
-                this.real = value;
-                break;
-            case IMAGINARY_IDENTIFIER:
-                this.imag = value;
-                break;
-            default:
-                throw new IllegalArgumentException();
-        }
-    }
-
-    public double get(String identifier) {
-        switch (identifier) {
-            case REAL_IDENTIFIER:
-                return this.real;
-            case IMAGINARY_IDENTIFIER:
-                return this.imag;
-            default:
-                throw new IllegalArgumentException();
-        }
-    }
-
-    private static class ComplexForeignAccessFactory implements Factory {
+    private static class StructuredDataForeignAccessFactory implements Factory {
 
         public boolean canHandle(TruffleObject obj) {
-            return obj instanceof ComplexNumber;
+            return obj instanceof StructuredData;
         }
 
         public CallTarget accessMessage(Message tree) {
+            // for simplicity: this StructuredData is read-only
             if (Message.IS_NULL.equals(tree)) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
             } else if (Message.IS_EXECUTABLE.equals(tree)) {
@@ -88,42 +68,40 @@ public final class ComplexNumber implements TruffleObject {
             } else if (Message.IS_BOXED.equals(tree)) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
             } else if (Message.HAS_SIZE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
             } else if (Message.READ.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new ComplexReadNode());
-            } else if (Message.WRITE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new ComplexWriteNode());
+                return Truffle.getRuntime().createCallTarget(new StructuredDataReadNode());
+            } else if (Message.GET_SIZE.equals(tree)) {
+                return Truffle.getRuntime().createCallTarget(new StructuredDataSizeNode());
             } else {
                 throw new IllegalArgumentException(tree.toString() + " not supported");
             }
         }
     }
 
-    private static class ComplexWriteNode extends RootNode {
-        protected ComplexWriteNode() {
+    private static class StructuredDataReadNode extends RootNode {
+        protected StructuredDataReadNode() {
             super(TckLanguage.class, null, null);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumber complex = (ComplexNumber) ForeignAccess.getReceiver(frame);
-            String identifier = (String) ForeignAccess.getArguments(frame).get(0);
-            Number value = (Number) ForeignAccess.getArguments(frame).get(1);
-            complex.set(identifier, value.doubleValue());
-            return value;
+            StructuredData data = (StructuredData) ForeignAccess.getReceiver(frame);
+            Number index = (Number) ForeignAccess.getArguments(frame).get(0);
+            return new MapTruffleObject(data.getEntry(index.intValue()));
         }
+
     }
 
-    private static class ComplexReadNode extends RootNode {
-        protected ComplexReadNode() {
+    private static class StructuredDataSizeNode extends RootNode {
+        protected StructuredDataSizeNode() {
             super(TckLanguage.class, null, null);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumber complex = (ComplexNumber) ForeignAccess.getReceiver(frame);
-            String identifier = (String) ForeignAccess.getArguments(frame).get(0);
-            return complex.get(identifier);
+            StructuredData data = (StructuredData) ForeignAccess.getReceiver(frame);
+            return data.schema.length();
         }
 
     }
