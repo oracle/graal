@@ -27,17 +27,19 @@ import static java.lang.String.format;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Launcher;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
@@ -85,6 +87,40 @@ public class InvocationPlugins {
     }
 
     /**
+     * A symbol that is lazily {@linkplain OptionalLazySymbol#resolve() resolved} to a {@link Type}.
+     */
+    static class OptionalLazySymbol implements Type {
+        private static final Class<?> MASK_NULL = OptionalLazySymbol.class;
+        private final String name;
+        private Class<?> resolved;
+
+        public OptionalLazySymbol(String name) {
+            this.name = name;
+        }
+
+        public String getTypeName() {
+            return name;
+        }
+
+        /**
+         * Gets the resolved {@link Class} corresponding to this symbol or {@code null} if
+         * resolution fails.
+         */
+        public Class<?> resolve() {
+            if (resolved == null) {
+                Class<?> resolvedOrNull = resolveClass(name, true);
+                resolved = resolvedOrNull == null ? MASK_NULL : resolvedOrNull;
+            }
+            return resolved == MASK_NULL ? null : resolved;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    /**
      * Utility for
      * {@linkplain InvocationPlugins#register(InvocationPlugin, Class, String, Class...)
      * registration} of invocation plugins.
@@ -92,7 +128,7 @@ public class InvocationPlugins {
     public static class Registration {
 
         private final InvocationPlugins plugins;
-        private final Class<?> declaringClass;
+        private final Type declaringType;
         private boolean allowOverwrite;
 
         /**
@@ -100,12 +136,12 @@ public class InvocationPlugins {
          * given class.
          *
          * @param plugins where to register the plugins
-         * @param declaringClass the class declaring the methods for which plugins will be
-         *            registered via this object
+         * @param declaringType the class declaring the methods for which plugins will be registered
+         *            via this object
          */
-        public Registration(InvocationPlugins plugins, Class<?> declaringClass) {
+        public Registration(InvocationPlugins plugins, Type declaringType) {
             this.plugins = plugins;
-            this.declaringClass = declaringClass;
+            this.declaringType = declaringType;
         }
 
         /**
@@ -118,11 +154,7 @@ public class InvocationPlugins {
          */
         public Registration(InvocationPlugins plugins, String declaringClassName) {
             this.plugins = plugins;
-            try {
-                this.declaringClass = Class.forName(declaringClassName);
-            } catch (ClassNotFoundException ex) {
-                throw JVMCIError.shouldNotReachHere(ex);
-            }
+            this.declaringType = new OptionalLazySymbol(declaringClassName);
         }
 
         /**
@@ -140,7 +172,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register0(String name, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringClass, name);
+            plugins.register(plugin, false, allowOverwrite, declaringType, name);
         }
 
         /**
@@ -149,8 +181,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register1(String name, Class<?> arg, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg);
+        public void register1(String name, Type arg, InvocationPlugin plugin) {
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg);
         }
 
         /**
@@ -159,8 +191,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register2(String name, Class<?> arg1, Class<?> arg2, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg1, arg2);
+        public void register2(String name, Type arg1, Type arg2, InvocationPlugin plugin) {
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2);
         }
 
         /**
@@ -169,8 +201,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register3(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg1, arg2, arg3);
+        public void register3(String name, Type arg1, Type arg2, Type arg3, InvocationPlugin plugin) {
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3);
         }
 
         /**
@@ -179,8 +211,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register4(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg1, arg2, arg3, arg4);
+        public void register4(String name, Type arg1, Type arg2, Type arg3, Type arg4, InvocationPlugin plugin) {
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4);
         }
 
         /**
@@ -189,8 +221,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register5(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, Class<?> arg5, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringClass, name, arg1, arg2, arg3, arg4, arg5);
+        public void register5(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, InvocationPlugin plugin) {
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5);
         }
 
         /**
@@ -200,7 +232,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void registerOptional0(String name, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringClass, name);
+            plugins.register(plugin, true, allowOverwrite, declaringType, name);
         }
 
         /**
@@ -209,8 +241,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void registerOptional1(String name, Class<?> arg, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg);
+        public void registerOptional1(String name, Type arg, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg);
         }
 
         /**
@@ -219,8 +251,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void registerOptional2(String name, Class<?> arg1, Class<?> arg2, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg1, arg2);
+        public void registerOptional2(String name, Type arg1, Type arg2, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2);
         }
 
         /**
@@ -229,8 +261,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void registerOptional3(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg1, arg2, arg3);
+        public void registerOptional3(String name, Type arg1, Type arg2, Type arg3, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2, arg3);
         }
 
         /**
@@ -239,8 +271,8 @@ public class InvocationPlugins {
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void registerOptional4(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringClass, name, arg1, arg2, arg3, arg4);
+        public void registerOptional4(String name, Type arg1, Type arg2, Type arg3, Type arg4, InvocationPlugin plugin) {
+            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4);
         }
 
         /**
@@ -253,7 +285,7 @@ public class InvocationPlugins {
          *            is non-static. Upon returning, element 0 will have been rewritten to
          *            {@code declaringClass}
          */
-        public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, Class<?>... argumentTypes) {
+        public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, Type... argumentTypes) {
             registerMethodSubstitution(substituteDeclaringClass, name, name, argumentTypes);
         }
 
@@ -268,9 +300,9 @@ public class InvocationPlugins {
          *            is non-static. Upon returning, element 0 will have been rewritten to
          *            {@code declaringClass}
          */
-        public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Class<?>... argumentTypes) {
+        public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Type... argumentTypes) {
             MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(substituteDeclaringClass, substituteName, argumentTypes);
-            plugins.register(plugin, false, allowOverwrite, declaringClass, name, argumentTypes);
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, argumentTypes);
         }
     }
 
@@ -286,29 +318,45 @@ public class InvocationPlugins {
          */
         final boolean isOptional;
 
-        final Class<?> declaringClass;
         final String name;
-        final Class<?>[] argumentTypes;
+        final Type[] argumentTypes;
         final InvocationPlugin value;
 
-        MethodKey(InvocationPlugin data, boolean isStatic, boolean isOptional, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
-            assert isStatic || argumentTypes[0] == declaringClass;
+        /**
+         * Used to lazily initialize {@link #resolved}.
+         */
+        private final MetaAccessProvider metaAccess;
+
+        private volatile ResolvedJavaMethod resolved;
+
+        MethodKey(MetaAccessProvider metaAccess, InvocationPlugin data, boolean isStatic, boolean isOptional, String name, Type... argumentTypes) {
+            this.metaAccess = metaAccess;
             this.value = data;
             this.isStatic = isStatic;
             this.isOptional = isOptional;
-            this.declaringClass = declaringClass;
             this.name = name;
             this.argumentTypes = argumentTypes;
-            assert isOptional || resolveJava() != null;
         }
 
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof MethodKey) {
                 MethodKey that = (MethodKey) obj;
-                boolean res = this.name.equals(that.name) && this.declaringClass.equals(that.declaringClass) && Arrays.equals(this.argumentTypes, that.argumentTypes);
+                boolean res = this.name.equals(that.name) && areEqual(this.argumentTypes, that.argumentTypes);
                 assert !res || this.isStatic == that.isStatic;
                 return res;
+            }
+            return false;
+        }
+
+        private static boolean areEqual(Type[] args1, Type[] args2) {
+            if (args1.length == args2.length) {
+                for (int i = 0; i < args1.length; i++) {
+                    if (!args1[i].getTypeName().equals(args2[i].getTypeName())) {
+                        return false;
+                    }
+                }
+                return true;
             }
             return false;
         }
@@ -319,22 +367,24 @@ public class InvocationPlugins {
 
         @Override
         public int hashCode() {
-            // Replay compilation mandates use of stable hash codes
-            return declaringClass.getName().hashCode() ^ name.hashCode();
+            return name.hashCode();
         }
 
-        private ResolvedJavaMethod resolve(MetaAccessProvider metaAccess) {
-            Executable method = resolveJava();
-            if (method == null) {
-                return null;
+        private ResolvedJavaMethod resolve(Class<?> declaringClass) {
+            if (resolved == null) {
+                Executable method = resolveJava(declaringClass);
+                if (method == null) {
+                    return null;
+                }
+                resolved = metaAccess.lookupJavaMethod(method);
             }
-            return metaAccess.lookupJavaMethod(method);
+            return resolved;
         }
 
-        private Executable resolveJava() {
+        private Executable resolveJava(Class<?> declaringClass) {
             try {
                 Executable res;
-                Class<?>[] parameterTypes = isStatic ? argumentTypes : Arrays.copyOfRange(argumentTypes, 1, argumentTypes.length);
+                Class<?>[] parameterTypes = resolveTypes(argumentTypes, isStatic ? 0 : 1, argumentTypes.length);
                 if (name.equals("<init>")) {
                     res = declaringClass.getDeclaredConstructor(parameterTypes);
                 } else {
@@ -352,12 +402,12 @@ public class InvocationPlugins {
 
         @Override
         public String toString() {
-            StringBuilder sb = new StringBuilder(declaringClass.getName()).append('.').append(name).append('(');
-            for (Class<?> p : argumentTypes) {
+            StringBuilder sb = new StringBuilder(name).append('(');
+            for (Type p : argumentTypes) {
                 if (sb.charAt(sb.length() - 1) != '(') {
                     sb.append(", ");
                 }
-                sb.append(p.getSimpleName());
+                sb.append(p.getTypeName());
             }
             return sb.append(')').toString();
         }
@@ -365,14 +415,11 @@ public class InvocationPlugins {
 
     private final MetaAccessProvider metaAccess;
 
-    /**
-     * Initial list of entries.
-     */
-    private final List<MethodKey> registrations = new ArrayList<>(INITIAL_CAPACITY);
+    private final Map<String, ClassPlugins> registrations = new HashMap<>();
 
     /**
-     * Deferred registrations as well as guard for initialization of {@link #entries}. The guard
-     * uses double-checked locking which is why this field is {@code volatile}.
+     * Deferred registrations as well as guard for initialization. The guard uses double-checked
+     * locking which is why this field is {@code volatile}.
      */
     private volatile List<Runnable> deferredRegistrations = new ArrayList<>();
 
@@ -381,16 +428,75 @@ public class InvocationPlugins {
      * {@link #get(ResolvedJavaMethod)} or {@link #closeRegistration()} is called on this object.
      */
     public void defer(Runnable deferrable) {
-        assert entries == null && deferredRegistrations != null : "registration is closed";
+        assert deferredRegistrations != null : "registration is closed";
         deferredRegistrations.add(deferrable);
     }
 
     /**
-     * Entry map that is initialized by {@link #initializeMap()}.
+     * Per-class invocation plugins.
      */
-    private Map<ResolvedJavaMethod, InvocationPlugin> entries;
+    protected static class ClassPlugins {
+        private final Type declaringType;
 
-    private static final int INITIAL_CAPACITY = 64;
+        private final List<MethodKey> registrations = new ArrayList<>();
+
+        public ClassPlugins(Type declaringClass) {
+            this.declaringType = declaringClass;
+        }
+
+        /**
+         * Entry map that is initialized upon first call to {@link #get(ResolvedJavaMethod)}.
+         *
+         * Note: this must be volatile as threads may race to initialize it.
+         */
+        private volatile Map<ResolvedJavaMethod, InvocationPlugin> entries;
+
+        void initializeMap() {
+            if (entries == null) {
+                if (registrations.isEmpty()) {
+                    entries = Collections.emptyMap();
+                } else {
+                    Class<?> declaringClass = resolveType(declaringType, true);
+                    if (declaringClass == null) {
+                        // An optional type that could not be resolved
+                        entries = Collections.emptyMap();
+                    } else {
+                        Map<ResolvedJavaMethod, InvocationPlugin> newEntries = new HashMap<>();
+                        for (MethodKey methodKey : registrations) {
+                            ResolvedJavaMethod m = methodKey.resolve(declaringClass);
+                            newEntries.put(m, methodKey.value);
+                            if (entries != null) {
+                                // Another thread finished initializing entries first
+                                return;
+                            }
+                        }
+                        entries = newEntries;
+                    }
+                }
+            }
+        }
+
+        public InvocationPlugin get(ResolvedJavaMethod method) {
+            if (entries == null) {
+                initializeMap();
+            }
+            return entries.get(method);
+        }
+
+        public void register(MethodKey methodKey, boolean allowOverwrite) {
+            assert entries == null : "registration is closed";
+            if (allowOverwrite) {
+                int index = registrations.indexOf(methodKey);
+                if (index >= 0) {
+                    registrations.set(index, methodKey);
+                    return;
+                }
+            } else {
+                assert !registrations.contains(methodKey) : "a value is already registered for " + declaringType + "." + methodKey;
+            }
+            registrations.add(methodKey);
+        }
+    }
 
     /**
      * Adds an entry to this map for a specified method.
@@ -404,27 +510,54 @@ public class InvocationPlugins {
      *            {@code declaringClass} iff the method is non-static.
      * @return an object representing the method
      */
-    MethodKey put(InvocationPlugin value, boolean isStatic, boolean isOptional, boolean allowOverwrite, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+    MethodKey put(InvocationPlugin value, boolean isStatic, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
         assert isStatic || argumentTypes[0] == declaringClass;
-        MethodKey methodKey = new MethodKey(value, isStatic, isOptional, declaringClass, name, argumentTypes);
-        assert entries == null : "registration is closed";
-        assert allowOverwrite || !registrations.contains(methodKey) : "a value is already registered for " + methodKey;
-        registrations.add(methodKey);
+
+        String internalName = MetaUtil.toInternalName(declaringClass.getTypeName());
+        ClassPlugins classPlugins = registrations.get(internalName);
+        if (classPlugins == null) {
+            classPlugins = new ClassPlugins(declaringClass);
+            registrations.put(internalName, classPlugins);
+        }
+        assert isStatic || argumentTypes[0] == declaringClass;
+        MethodKey methodKey = new MethodKey(metaAccess, value, isStatic, isOptional, name, argumentTypes);
+        classPlugins.register(methodKey, allowOverwrite);
         return methodKey;
     }
 
     /**
      * Determines if a method denoted by a given {@link MethodKey} is in this map.
      */
-    boolean containsKey(MethodKey key) {
-        return registrations.contains(key);
+    boolean containsKey(Type declaringType, MethodKey key) {
+        String internalName = MetaUtil.toInternalName(declaringType.getTypeName());
+        ClassPlugins classPlugins = registrations.get(internalName);
+        return classPlugins != null && classPlugins.registrations.contains(key);
     }
 
     InvocationPlugin get(ResolvedJavaMethod method) {
-        if (deferredRegistrations != null) {
-            initializeMap();
+        flushDeferrables();
+        String internalName = method.getDeclaringClass().getName();
+        ClassPlugins classPlugins = registrations.get(internalName);
+        if (classPlugins != null) {
+            return classPlugins.get(method);
         }
-        return entries.get(method);
+        return null;
+    }
+
+    private void flushDeferrables() {
+        if (deferredRegistrations != null) {
+            synchronized (this) {
+                if (deferredRegistrations != null) {
+                    for (Runnable deferrable : deferredRegistrations) {
+                        deferrable.run();
+                    }
+                    deferredRegistrations = null;
+                }
+            }
+            for (Map.Entry<String, ClassPlugins> e : registrations.entrySet()) {
+                e.getValue().initializeMap();
+            }
+        }
     }
 
     /**
@@ -432,32 +565,9 @@ public class InvocationPlugins {
      * lookup.
      */
     public void closeRegistration() {
-        if (deferredRegistrations != null) {
-            initializeMap();
-        }
-    }
-
-    void initializeMap() {
-        if (deferredRegistrations != null) {
-            synchronized (this) {
-                if (deferredRegistrations != null) {
-                    List<Runnable> localDeferredRegistrations = deferredRegistrations;
-                    for (Runnable deferrable : localDeferredRegistrations) {
-                        deferrable.run();
-                    }
-                    if (registrations.isEmpty()) {
-                        entries = Collections.emptyMap();
-                    } else {
-                        Map<ResolvedJavaMethod, InvocationPlugin> newEntries = new HashMap<>();
-                        for (MethodKey methodKey : registrations) {
-                            ResolvedJavaMethod m = methodKey.resolve(metaAccess);
-                            newEntries.put(m, methodKey.value);
-                        }
-                        entries = newEntries;
-                    }
-                    deferredRegistrations = null;
-                }
-            }
+        flushDeferrables();
+        for (Map.Entry<String, ClassPlugins> e : registrations.entrySet()) {
+            e.getValue().initializeMap();
         }
     }
 
@@ -492,13 +602,13 @@ public class InvocationPlugins {
         this(null, metaAccess);
     }
 
-    private void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+    private void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
         boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
         if (!isStatic) {
             argumentTypes[0] = declaringClass;
         }
-        MethodKey methodInfo = put(plugin, isStatic, isOptional, allowOverwrite, declaringClass, name, argumentTypes);
-        assert Checker.check(this, methodInfo, plugin);
+        MethodKey methodKey = put(plugin, isStatic, isOptional, allowOverwrite, declaringClass, name, argumentTypes);
+        assert Checker.check(this, declaringClass, methodKey, plugin);
     }
 
     /**
@@ -510,8 +620,12 @@ public class InvocationPlugins {
      *            non-static. Upon returning, element 0 will have been rewritten to
      *            {@code declaringClass}
      */
-    public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+    public void register(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
         register(plugin, false, false, declaringClass, name, argumentTypes);
+    }
+
+    public void register(InvocationPlugin plugin, String declaringClass, String name, Type... argumentTypes) {
+        register(plugin, false, false, new OptionalLazySymbol(declaringClass), name, argumentTypes);
     }
 
     /**
@@ -523,7 +637,7 @@ public class InvocationPlugins {
      *            non-static. Upon returning, element 0 will have been rewritten to
      *            {@code declaringClass}
      */
-    public void registerOptional(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+    public void registerOptional(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
         register(plugin, true, false, declaringClass, name, argumentTypes);
     }
 
@@ -553,7 +667,13 @@ public class InvocationPlugins {
 
     @Override
     public String toString() {
-        return registrations.stream().map(MethodKey::toString).collect(Collectors.joining(", ")) + " / parent: " + this.parent;
+        StringBuilder buf = new StringBuilder();
+        registrations.forEach((name, cp) -> buf.append(name).append('.').append(cp).append(", "));
+        String s = buf.toString();
+        if (buf.length() != 0) {
+            s = s.substring(buf.length() - ", ".length());
+        }
+        return s + " / parent: " + this.parent;
     }
 
     private static class Checker {
@@ -583,10 +703,10 @@ public class InvocationPlugins {
             SIGS = sigs.toArray(new Class<?>[sigs.size()][]);
         }
 
-        public static boolean check(InvocationPlugins plugins, MethodKey method, InvocationPlugin plugin) {
+        public static boolean check(InvocationPlugins plugins, Type declaringType, MethodKey method, InvocationPlugin plugin) {
             InvocationPlugins p = plugins.parent;
             while (p != null) {
-                assert !p.containsKey(method) : "a plugin is already registered for " + method;
+                assert !p.containsKey(declaringType, method) : "a plugin is already registered for " + method;
                 p = p.parent;
             }
             if (plugin instanceof ForeignCallPlugin || plugin instanceof GeneratedInvocationPlugin) {
@@ -623,5 +743,65 @@ public class InvocationPlugins {
         if (parent != null) {
             parent.checkNewNodes(b, plugin, newNodes);
         }
+    }
+
+    /**
+     * Resolves a name to a class.
+     *
+     * @param className the name of the class to resolve
+     * @param optional if true, resolution failure returns null
+     * @return the resolved class or null if resolution fails and {@code optional} is true
+     */
+    public static Class<?> resolveClass(String className, boolean optional) {
+        try {
+            // Need to use launcher class path to handle classes
+            // that are not on the boot class path
+            ClassLoader cl = Launcher.getLauncher().getClassLoader();
+            return Class.forName(className, false, cl);
+        } catch (ClassNotFoundException e) {
+            if (optional) {
+                return null;
+            }
+            throw new JVMCIError("Could not resolve type " + className);
+        }
+    }
+
+    /**
+     * Resolves a {@link Type} to a {@link Class}.
+     *
+     * @param type the type to resolve
+     * @param optional if true, resolution failure returns null
+     * @return the resolved class or null if resolution fails and {@code optional} is true
+     */
+    public static Class<?> resolveType(Type type, boolean optional) {
+        if (type instanceof Class) {
+            return (Class<?>) type;
+        }
+        if (optional && type instanceof OptionalLazySymbol) {
+            return ((OptionalLazySymbol) type).resolve();
+        }
+        return resolveClass(type.getTypeName(), optional);
+    }
+
+    private static final Class<?>[] NO_CLASSES = {};
+
+    /**
+     * Resolves an array of {@link Type}s to an array of {@link Class}es.
+     *
+     * @param types the types to resolve
+     * @param from the initial index of the range to be resolved, inclusive
+     * @param to the final index of the range to be resolved, exclusive
+     * @return the resolved class or null if resolution fails and {@code optional} is true
+     */
+    public static Class<?>[] resolveTypes(Type[] types, int from, int to) {
+        int length = to - from;
+        if (length <= 0) {
+            return NO_CLASSES;
+        }
+        Class<?>[] classes = new Class<?>[length];
+        for (int i = 0; i < length; i++) {
+            classes[i] = resolveType(types[i + from], false);
+        }
+        return classes;
     }
 }

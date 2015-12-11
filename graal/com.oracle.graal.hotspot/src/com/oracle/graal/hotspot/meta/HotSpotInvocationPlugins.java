@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import java.lang.reflect.Type;
+
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -51,7 +53,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     @Override
-    public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+    public void register(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
         if (!config.usePopCountInstruction) {
             if (name.equals("bitCount")) {
                 assert declaringClass.equals(Integer.class) || declaringClass.equals(Long.class);
