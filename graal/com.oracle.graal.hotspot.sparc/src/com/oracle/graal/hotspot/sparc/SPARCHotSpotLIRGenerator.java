@@ -494,18 +494,16 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
         if (BenchmarkCounters.enabled) {
             return new SPARCHotSpotCounterOp(name, group, increment, getProviders().getRegisters(), config);
-        } else {
-            return null;
         }
+        throw JVMCIError.shouldNotReachHere("BenchmarkCounters are not enabled!");
     }
 
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
         if (BenchmarkCounters.enabled) {
             return new SPARCHotSpotCounterOp(names, groups, increments, getProviders().getRegisters(), config);
-        } else {
-            return null;
         }
+        throw JVMCIError.shouldNotReachHere("BenchmarkCounters are not enabled!");
     }
 
     public AllocatableValue getSafepointAddressValue() {

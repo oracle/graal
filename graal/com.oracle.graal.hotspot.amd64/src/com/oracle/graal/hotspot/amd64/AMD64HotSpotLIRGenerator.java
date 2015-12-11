@@ -615,7 +615,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (BenchmarkCounters.enabled) {
             return new AMD64HotSpotCounterOp(name, group, increment, getProviders().getRegisters(), config, getOrInitRescueSlot());
         }
-        return null;
+        throw JVMCIError.shouldNotReachHere("BenchmarkCounters are not enabled!");
     }
 
     @Override
@@ -623,7 +623,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (BenchmarkCounters.enabled) {
             return new AMD64HotSpotCounterOp(names, groups, increments, getProviders().getRegisters(), config, getOrInitRescueSlot());
         }
-        return null;
+        throw JVMCIError.shouldNotReachHere("BenchmarkCounters are not enabled!");
     }
 
     @Override
