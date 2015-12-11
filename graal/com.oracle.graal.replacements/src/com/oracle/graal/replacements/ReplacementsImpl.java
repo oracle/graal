@@ -149,8 +149,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             return null;
         }
         if (b.parsingIntrinsic()) {
-            assert !hasGeneratedInvocationPluginAnnotation(method) : format("%s should have been handled by a %s", method.format("%H.%n(%p)"), GeneratedInvocationPlugin.class.getSimpleName());
-            assert !hasGenericInvocationPluginAnnotation(method) : format("%s should have been handled by %s", method.format("%H.%n(%p)"), WordOperationPlugin.class.getSimpleName());
+            if (hasGeneratedInvocationPluginAnnotation(method)) {
+                throw new JVMCIError("%s should have been handled by a %s", method.format("%H.%n(%p)"), GeneratedInvocationPlugin.class.getSimpleName());
+            }
+            if (hasGenericInvocationPluginAnnotation(method)) {
+                throw new JVMCIError("%s should have been handled by %s", method.format("%H.%n(%p)"), WordOperationPlugin.class.getSimpleName());
+            }
 
             assert b.getDepth() < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
 
