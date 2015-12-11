@@ -282,6 +282,11 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         with Task('DaCapo_pmd:BatchMode:product', tasks) as t:
             if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-Xbatch', 'pmd'])
 
+    # ensure benchmark counters still work
+    with VM('jvmci', 'product'):
+        with Task('DaCapo_pmd:BenchmarkCounters:product', tasks) as t:
+            if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-G:+LIRProfileMoves', '-G:+GenericDynamicCounters', '-XX:JVMCICounterSize=10', 'pmd'])
+
     # ensure -Xcomp still works
     with VM('jvmci', 'product'):
         with Task('XCompMode:product', tasks) as t:
