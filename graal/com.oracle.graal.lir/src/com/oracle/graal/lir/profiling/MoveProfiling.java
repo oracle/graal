@@ -70,7 +70,7 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
         private final String name;
 
         MoveType(String dst, String src) {
-            this.name = String.format("%5s <- %s", dst, src);
+            this.name = src + '2' + dst;
         }
 
         @Override
@@ -156,7 +156,7 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
                 }
             }
             String[] groups = new String[names.size()];
-            Arrays.fill(groups, "Move Operations");
+            Arrays.fill(groups, "MoveOperations");
             if (names.size() > 0) { // Don't pollute LIR when nothing has to be done
                 LIRInstruction inst = counterFactory.createMultiBenchmarkCounter(names.toArray(new String[0]), groups, increments.toArray(new Value[0]));
                 assert inst != null;
