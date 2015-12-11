@@ -155,10 +155,11 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
                     increments.add(new ConstantValue(target.getLIRKind(JavaKind.Int), JavaConstant.forInt(i)));
                 }
             }
-            String[] groups = new String[names.size()];
-            Arrays.fill(groups, "MoveOperations");
-            if (names.size() > 0) { // Don't pollute LIR when nothing has to be done
-                LIRInstruction inst = counterFactory.createMultiBenchmarkCounter(names.toArray(new String[0]), groups, increments.toArray(new Value[0]));
+            int size = names.size();
+            if (size > 0) { // Don't pollute LIR when nothing has to be done
+                String[] groups = new String[size];
+                Arrays.fill(groups, "MoveOperations");
+                LIRInstruction inst = counterFactory.createMultiBenchmarkCounter(names.toArray(new String[size]), groups, increments.toArray(new Value[size]));
                 assert inst != null;
                 buffer.init(instructions);
                 buffer.append(1, inst);
