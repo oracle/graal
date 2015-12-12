@@ -24,6 +24,7 @@ package com.oracle.truffle.api.utilities;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
@@ -44,8 +45,16 @@ public class ExactClassValueProfileTest {
     @DataPoint public static final Object O3 = new Object();
     @DataPoint public static final Integer O4 = new Integer(1);
     @DataPoint public static final Integer O5 = null;
+    @DataPoint public static final TestBaseClass O6 = new TestBaseClass();
+    @DataPoint public static final TestSubClass O7 = new TestSubClass();
 
     private ValueProfile profile;
+
+    private static class TestBaseClass {
+    }
+
+    private static class TestSubClass extends TestBaseClass {
+    }
 
     @Before
     public void create() {
@@ -57,7 +66,7 @@ public class ExactClassValueProfileTest {
         assertThat(isGeneric(profile), is(false));
         assertThat(isUninitialized(profile), is(true));
         assertNull(getCachedClass(profile));
-        profile.toString(); // test that it is not crashing
+        assertNotNull(profile.toString());
     }
 
     @Theory
@@ -65,9 +74,9 @@ public class ExactClassValueProfileTest {
         Object result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(getCachedClass(profile), expectedClass(value));
+        assertEquals(expectedClass(value), getCachedClass(profile));
         assertThat(isUninitialized(profile), is(false));
-        profile.toString(); // test that it is not crashing
+        assertNotNull(profile.toString());
     }
 
     @Theory
@@ -80,10 +89,10 @@ public class ExactClassValueProfileTest {
 
         Object expectedClass = expectedClass(value0) == expectedClass(value1) ? expectedClass(value0) : Object.class;
 
-        assertEquals(getCachedClass(profile), expectedClass);
+        assertEquals(expectedClass, getCachedClass(profile));
         assertThat(isUninitialized(profile), is(false));
         assertThat(isGeneric(profile), is(expectedClass == Object.class));
-        profile.toString(); // test that it is not crashing
+        assertNotNull(profile.toString());
     }
 
     @Theory
@@ -98,10 +107,10 @@ public class ExactClassValueProfileTest {
 
         Object expectedClass = expectedClass(value0) == expectedClass(value1) && expectedClass(value1) == expectedClass(value2) ? expectedClass(value0) : Object.class;
 
-        assertEquals(getCachedClass(profile), expectedClass);
+        assertEquals(expectedClass, getCachedClass(profile));
         assertThat(isUninitialized(profile), is(false));
         assertThat(isGeneric(profile), is(expectedClass == Object.class));
-        profile.toString(); // test that it is not crashing
+        assertNotNull(profile.toString());
     }
 
     private static Class<?> expectedClass(Object value) {
