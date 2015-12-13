@@ -648,7 +648,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                         return rewireGuards(foldResult.first.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
                 }
-                if (thisGuard != null && unaryLogicNode.stamp() instanceof IntegerStamp) {
+                if (thisGuard != null) {
                     Stamp newStamp = unaryLogicNode.getSucceedingStampForValue(thisGuard.isNegated());
                     if (newStamp != null && foldPendingTest(thisGuard, value, newStamp, rewireGuardFunction)) {
                         return true;
