@@ -27,11 +27,10 @@ import java.util.Iterator;
 import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.graph.spi.Simplifiable;
-import com.oracle.graal.graph.spi.SimplifierTool;
+import com.oracle.graal.graph.spi.Canonicalizable;
+import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -45,7 +44,7 @@ import com.oracle.graal.nodes.calc.FloatingNode;
  * {@link LoopEndNode}s.
  */
 @NodeInfo
-public abstract class PhiNode extends FloatingNode implements Simplifiable {
+public abstract class PhiNode extends FloatingNode implements Canonicalizable {
 
     public static final NodeClass<PhiNode> TYPE = NodeClass.create(PhiNode.class);
     @Input(InputType.Association) protected AbstractMergeNode merge;
@@ -199,7 +198,7 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
     }
 
     @Override
-    public void simplify(SimplifierTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         ValueNode singleValue;
 
         if (isLoopPhi() && singleBackValue() == this) {
@@ -209,20 +208,9 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
         }
 
         if (singleValue != MULTIPLE_VALUES) {
-            for (Node node : usages().snapshot()) {
-                if (node instanceof ProxyNode && ((ProxyNode) node).proxyPoint() instanceof LoopExitNode && ((LoopExitNode) ((ProxyNode) node).proxyPoint()).loopBegin() == merge) {
-                    tool.addToWorkList(node.usages());
-                    graph().replaceFloating((FloatingNode) node, singleValue);
-                }
-            }
-            for (Node usage : usages().snapshot()) {
-                if (usage != this) {
-                    usage.replaceFirstInput(this, singleValue);
-                }
-            }
-            clearInputs();
-            safeDelete();
+            return singleValue;
         }
+        return this;
     }
 
     public ValueNode firstValue() {
