@@ -32,6 +32,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -43,7 +44,7 @@ import com.oracle.graal.nodes.util.GraphUtil;
  * Denotes the merging of multiple control-flow paths.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Association})
-public abstract class AbstractMergeNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
+public abstract class AbstractMergeNode extends BeginStateSplitNode implements IterableNodeType, Simplifiable, LIRLowerable {
     public static final NodeClass<AbstractMergeNode> TYPE = NodeClass.create(AbstractMergeNode.class);
 
     protected AbstractMergeNode(NodeClass<? extends AbstractMergeNode> c) {

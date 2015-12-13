@@ -23,9 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.IterableNodeType;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 
@@ -43,15 +41,5 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
 
     public LoopBeginNode loopBegin() {
         return loopBegin;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        Node prev = this.predecessor();
-        while (tool.allUsagesAvailable() && prev instanceof BeginNode && prev.hasNoUsages()) {
-            AbstractBeginNode begin = (AbstractBeginNode) prev;
-            prev = prev.predecessor();
-            graph().removeFixed(begin);
-        }
     }
 }

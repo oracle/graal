@@ -25,10 +25,12 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.spi.Simplifiable;
+import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 
 @NodeInfo
-public final class BeginNode extends AbstractBeginNode {
+public final class BeginNode extends AbstractBeginNode implements Simplifiable {
 
     public static final NodeClass<BeginNode> TYPE = NodeClass.create(BeginNode.class);
 
@@ -47,6 +49,21 @@ public final class BeginNode extends AbstractBeginNode {
         } else {
             // This begin node can be removed and all guards moved up to the preceding begin node.
             prepareDelete();
+            graph().removeFixed(this);
+        }
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        FixedNode prev = (FixedNode) this.predecessor();
+        if (prev == null) {
+            // This is the start node.
+        } else if (prev instanceof ControlSplitNode) {
+            // This begin node is necessary.
+        } else {
+            // This begin node can be removed and all guards moved up to the preceding begin node.
+            prepareDelete();
+            tool.addToWorkList(next());
             graph().removeFixed(this);
         }
     }

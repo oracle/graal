@@ -26,8 +26,6 @@ import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.spi.Simplifiable;
-import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -38,16 +36,11 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * by the graph builder.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Association})
-public final class EntryMarkerNode extends BeginStateSplitNode implements IterableNodeType, Simplifiable, LIRLowerable {
+public final class EntryMarkerNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
     public static final NodeClass<EntryMarkerNode> TYPE = NodeClass.create(EntryMarkerNode.class);
 
     public EntryMarkerNode() {
         super(TYPE);
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        // this node should not be removed, this overrides BeginNode.simplify
     }
 
     @Override
