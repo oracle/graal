@@ -237,7 +237,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
-            if (nodeClass.valueNumberable() && !nodeClass.isLeafNode()) {
+            if (nodeClass.valueNumberable()) {
                 Node newNode = node.graph().findDuplicate(node);
                 if (newNode != null) {
                     assert !(node instanceof FixedNode || newNode instanceof FixedNode);
@@ -248,22 +248,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     return true;
                 }
             }
-            assert assertLeafGVN(node, nodeClass);
             return false;
-        }
-
-        /**
-         * Ensures that leaf nodes have already been GVN'ed. This is handled automatically by the
-         * various {@code add} methods in {@link Graph} but uses of
-         * {@link Graph#addWithoutUnique(Node)} and {@link Graph#addWithoutUniqueWithInputs(Node)}
-         * will leave non-unique copies floating around which defeats GVN of users of those nodes.
-         */
-        private boolean assertLeafGVN(Node node, NodeClass<?> nodeClass) {
-            if (node.isAlive() && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
-                Node newNode = node.graph().findDuplicate(node);
-                return (newNode == null || newNode == node);
-            }
-            return true;
         }
 
         private AutoCloseable getCanonicalizeableContractAssertion(Node node) {

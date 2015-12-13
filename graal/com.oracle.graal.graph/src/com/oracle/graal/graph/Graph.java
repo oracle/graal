@@ -591,6 +591,10 @@ public class Graph {
         return result;
     }
 
+    /**
+     * Returns a possible duplicate for the given node in the graph or {@code null} if no such
+     * duplicate exists.
+     */
     @SuppressWarnings("unchecked")
     public <T extends Node> T findDuplicate(T node) {
         NodeClass<?> nodeClass = node.getNodeClass();
@@ -598,7 +602,7 @@ public class Graph {
         if (nodeClass.isLeafNode()) {
             // Leaf node: look up in cache
             Node cachedNode = findNodeInCache(node);
-            if (cachedNode != null) {
+            if (cachedNode != null && cachedNode != node) {
                 return (T) cachedNode;
             } else {
                 return null;
