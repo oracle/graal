@@ -184,7 +184,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
 
             Node newGuard = guard;
             if (survivingSuccessor instanceof LoopExitNode) {
-                newGuard = ProxyNode.forGuard(guard, survivingSuccessor, graph);
+                newGuard = ProxyNode.forGuard(guard, (LoopExitNode) survivingSuccessor, graph);
             }
             survivingSuccessor.replaceAtUsages(InputType.Guard, newGuard);
 
