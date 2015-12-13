@@ -30,7 +30,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.DispatchBeginNode;
+import com.oracle.graal.nodes.BeginStateSplitNode;
 import com.oracle.graal.nodes.InvokeWithExceptionNode;
 import com.oracle.graal.nodes.KillingBeginNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * throw instruction or implicit exception).
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public final class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, MemoryCheckpoint.Single {
+public final class ExceptionObjectNode extends BeginStateSplitNode implements Lowerable, MemoryCheckpoint.Single {
     public static final NodeClass<ExceptionObjectNode> TYPE = NodeClass.create(ExceptionObjectNode.class);
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {

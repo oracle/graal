@@ -324,7 +324,6 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
-import com.oracle.graal.nodes.DispatchBeginNode;
 import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.EntryMarkerNode;
 import com.oracle.graal.nodes.EntryProxyNode;
@@ -1222,24 +1221,24 @@ public class BytecodeParser implements GraphBuilderContext {
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
     }
 
-    private DispatchBeginNode handleException(ValueNode exceptionObject, int bci) {
+    private AbstractBeginNode handleException(ValueNode exceptionObject, int bci) {
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
         FrameStateBuilder dispatchState = frameState.copy();
         dispatchState.clearStack();
 
-        DispatchBeginNode dispatchBegin;
+        AbstractBeginNode dispatchBegin;
         if (exceptionObject == null) {
-            dispatchBegin = graph.add(new ExceptionObjectNode(metaAccess));
+            ExceptionObjectNode newExceptionObject = graph.add(new ExceptionObjectNode(metaAccess));
+            dispatchBegin = newExceptionObject;
             dispatchState.push(JavaKind.Object, dispatchBegin);
             dispatchState.setRethrowException(true);
-            dispatchBegin.setStateAfter(dispatchState.create(bci, dispatchBegin));
+            newExceptionObject.setStateAfter(dispatchState.create(bci, newExceptionObject));
         } else {
-            dispatchBegin = graph.add(new DispatchBeginNode());
+            dispatchBegin = graph.add(new BeginNode());
             dispatchState.push(JavaKind.Object, exceptionObject);
             dispatchState.setRethrowException(true);
-            dispatchBegin.setStateAfter(dispatchState.create(bci, dispatchBegin));
         }
         this.controlFlowSplit = true;
         FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
@@ -1917,7 +1916,7 @@ public class BytecodeParser implements GraphBuilderContext {
             frameState.clearNonLiveLocals(currentBlock, liveness, false);
         }
 
-        DispatchBeginNode exceptionEdge = handleException(null, bci());
+        AbstractBeginNode exceptionEdge = handleException(null, bci());
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
         frameState.pushReturn(resultType, invoke);
         invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
