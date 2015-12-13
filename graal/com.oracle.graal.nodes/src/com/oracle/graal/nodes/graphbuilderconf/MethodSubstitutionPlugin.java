@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.nodes.graphbuilderconf;
 
+import static com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.resolveType;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Launcher;
 
 import com.oracle.graal.nodes.ValueNode;
 
@@ -56,7 +58,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     /**
      * The parameter types of the substitute method.
      */
-    private final Class<?>[] parameters;
+    private final Type[] parameters;
 
     private final boolean originalIsStatic;
 
@@ -69,7 +71,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
      *            static, then {@code parameters[0]} must be the {@link Class} value denoting
      *            {@link InvocationPlugin.Receiver}
      */
-    public MethodSubstitutionPlugin(Class<?> declaringClass, String name, Class<?>... parameters) {
+    public MethodSubstitutionPlugin(Class<?> declaringClass, String name, Type... parameters) {
         this.declaringClass = declaringClass;
         this.name = name;
         this.parameters = parameters;
@@ -83,7 +85,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
      * @param name the name of the substitute method
      * @param parameters the parameter types of the substitute method
      */
-    public MethodSubstitutionPlugin(boolean originalIsStatic, Class<?> declaringClass, String name, Class<?>... parameters) {
+    public MethodSubstitutionPlugin(boolean originalIsStatic, Class<?> declaringClass, String name, Type... parameters) {
         this.declaringClass = declaringClass;
         this.name = name;
         this.parameters = parameters;
@@ -130,12 +132,12 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
                 int start = 0;
                 if (!originalIsStatic) {
                     start = 1;
-                    if (!mparams[0].isAssignableFrom(parameters[0])) {
+                    if (!mparams[0].isAssignableFrom(resolveType(parameters[0], false))) {
                         return false;
                     }
                 }
                 for (int i = start; i < mparams.length; i++) {
-                    if (mparams[i] != parameters[i]) {
+                    if (mparams[i] != resolveType(parameters[i], false)) {
                         return false;
                     }
                 }
@@ -155,27 +157,6 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
             }
         }
         throw new JVMCIError("No method found specified by %s", this);
-    }
-
-    /**
-     * Resolves a name to a class.
-     *
-     * @param className the name of the class to resolve
-     * @param optional if true, resolution failure returns null
-     * @return the resolved class or null if resolution fails and {@code optional} is true
-     */
-    public static Class<?> resolveClass(String className, boolean optional) {
-        try {
-            // Need to use launcher class path to handle classes
-            // that are not on the boot class path
-            ClassLoader cl = Launcher.getLauncher().getClassLoader();
-            return Class.forName(className, false, cl);
-        } catch (ClassNotFoundException e) {
-            if (optional) {
-                return null;
-            }
-            throw new JVMCIError("Could not resolve type " + className);
-        }
     }
 
     @Override
@@ -201,6 +182,6 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     @Override
     public String toString() {
         return String.format("%s[%s.%s(%s)]", getClass().getSimpleName(), declaringClass.getName(), name,
-                        Arrays.asList(parameters).stream().map(c -> c.getSimpleName()).collect(Collectors.joining(", ")));
+                        Arrays.asList(parameters).stream().map(c -> c.getTypeName()).collect(Collectors.joining(", ")));
     }
 }

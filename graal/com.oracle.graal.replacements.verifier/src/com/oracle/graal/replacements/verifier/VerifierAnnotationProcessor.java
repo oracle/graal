@@ -49,6 +49,7 @@ public class VerifierAnnotationProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (!roundEnv.processingOver()) {
+            PluginGenerator generator = new PluginGenerator();
             for (AbstractVerifier verifier : getVerifiers()) {
                 Class<? extends Annotation> annotationClass = verifier.getAnnotationClass();
                 for (Element e : roundEnv.getElementsAnnotatedWith(annotationClass)) {
@@ -57,9 +58,11 @@ public class VerifierAnnotationProcessor extends AbstractProcessor {
                         assert false : "Annotation mirror always expected.";
                         continue;
                     }
-                    verifier.verify(e, annotationMirror);
+                    verifier.verify(e, annotationMirror, generator);
                 }
             }
+
+            generator.generateAll(processingEnv);
         }
         return false;
     }
@@ -84,7 +87,7 @@ public class VerifierAnnotationProcessor extends AbstractProcessor {
             verifiers.add(new ClassSubstitutionVerifier(this.processingEnv));
             verifiers.add(new MethodSubstitutionVerifier(this.processingEnv));
             verifiers.add(new NodeIntrinsicVerifier(this.processingEnv));
-            verifiers.add(new FoldPluginGenerator(this.processingEnv).getVerifier());
+            verifiers.add(new FoldVerifier(this.processingEnv));
         }
         return verifiers;
     }

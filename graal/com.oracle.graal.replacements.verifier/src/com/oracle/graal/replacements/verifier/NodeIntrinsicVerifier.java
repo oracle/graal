@@ -77,11 +77,8 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
         return env.getElementUtils().getTypeElement("com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext").asType();
     }
 
-    private final NodeIntrinsicPluginGenerator factoryGen;
-
     public NodeIntrinsicVerifier(ProcessingEnvironment env) {
         super(env);
-        factoryGen = new NodeIntrinsicPluginGenerator(env);
     }
 
     @Override
@@ -90,7 +87,7 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
     }
 
     @Override
-    public void verify(Element element, AnnotationMirror annotation) {
+    public void verify(Element element, AnnotationMirror annotation, PluginGenerator generator) {
         if (element.getKind() != ElementKind.METHOD) {
             assert false : "Element is guaranteed to be a method.";
             return;
@@ -124,7 +121,7 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
         TypeMirror[] constructorSignature = constructorSignature(intrinsicMethod);
         ExecutableElement custom = findCustomIntrinsifyMethod(nodeClass, constructorSignature);
         if (custom != null) {
-            factoryGen.createPluginFactory(intrinsicMethod, custom, constructorSignature);
+            generator.addPlugin(new GeneratedNodeIntrinsicPlugin.CustomFactoryPlugin(intrinsicMethod, custom, constructorSignature));
         } else {
             if (isNodeType(nodeClass)) {
                 if (nodeClass.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -137,7 +134,7 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
 
                     ExecutableElement constructor = findConstructor(nodeClass, constructorSignature, intrinsicMethod, annotation);
                     if (constructor != null) {
-                        factoryGen.createPluginFactory(intrinsicMethod, constructor, constructorSignature);
+                        generator.addPlugin(new GeneratedNodeIntrinsicPlugin.ConstructorPlugin(intrinsicMethod, constructor, constructorSignature));
                     }
                 }
             } else {

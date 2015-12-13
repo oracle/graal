@@ -41,7 +41,6 @@ import com.oracle.graal.hotspot.HotSpotCounterOp;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
-import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 @Opcode("BenchMarkCounter")
@@ -50,12 +49,12 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
 
     @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue backupSlot;
 
-    public AMD64HotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config, VirtualStackSlot backupSlot) {
+    public AMD64HotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config, AllocatableValue backupSlot) {
         super(TYPE, name, group, increment, registers, config);
         this.backupSlot = backupSlot;
     }
 
-    public AMD64HotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config, VirtualStackSlot backupSlot) {
+    public AMD64HotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config, AllocatableValue backupSlot) {
         super(TYPE, names, groups, increments, registers, config);
         this.backupSlot = backupSlot;
     }

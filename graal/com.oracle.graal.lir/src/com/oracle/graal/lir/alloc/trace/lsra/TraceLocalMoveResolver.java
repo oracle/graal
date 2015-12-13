@@ -45,6 +45,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
@@ -55,6 +56,8 @@ import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 /**
  */
 final class TraceLocalMoveResolver {
+
+    private static final DebugMetric cycleBreakingSlotsAllocated = Debug.metric("TraceRA[cycleBreakingSlotsAllocated(local)]");
 
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private final TraceLinearScan allocator;
@@ -428,6 +431,7 @@ final class TraceLocalMoveResolver {
             if (spillSlot1 == null) {
                 spillSlot1 = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval1.kind());
                 fromInterval1.setSpillSlot(spillSlot1);
+                cycleBreakingSlotsAllocated.increment();
             }
             spillInterval(spillCandidate, fromInterval1, spillSlot1);
             return;

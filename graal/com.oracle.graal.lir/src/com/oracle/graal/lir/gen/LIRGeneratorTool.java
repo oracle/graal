@@ -257,4 +257,6 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
     void emitBlackhole(Value operand);
 
     LIRKind getLIRKind(Stamp stamp);
+
+    void emitPause();
 }

@@ -40,7 +40,7 @@ public final class PauseNode extends FixedWithNextNode implements LIRLowerable {
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.visitPauseNode(this);
+        gen.getLIRGeneratorTool().emitPause();
     }
 
     @NodeIntrinsic

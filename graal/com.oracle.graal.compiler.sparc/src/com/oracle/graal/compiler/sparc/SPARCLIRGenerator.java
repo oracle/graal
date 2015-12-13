@@ -85,6 +85,7 @@ import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.lir.sparc.SPARCOP3Op;
+import com.oracle.graal.lir.sparc.SPARCPauseOp;
 import com.oracle.graal.phases.util.Providers;
 
 /**
@@ -448,5 +449,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     public void beforeRegisterAllocation() {
         LIR lir = getResult().getLIR();
         loadConstantTableBaseOp.setAlive(lir, constantTableBaseProvider.useConstantTableBase);
+    }
+
+    @Override
+    public void emitPause() {
+        append(new SPARCPauseOp());
     }
 }

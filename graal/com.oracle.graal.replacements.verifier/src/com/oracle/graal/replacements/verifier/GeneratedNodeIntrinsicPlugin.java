@@ -24,9 +24,9 @@ package com.oracle.graal.replacements.verifier;
 
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
@@ -43,37 +43,30 @@ import com.oracle.graal.replacements.verifier.InjectedDependencies.WellKnownDepe
 /**
  * Create graph builder plugins for {@link NodeIntrinsic} methods.
  */
-public class NodeIntrinsicPluginGenerator extends PluginGenerator {
+public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
 
-    public NodeIntrinsicPluginGenerator(ProcessingEnvironment env) {
-        super(env);
+    private final TypeMirror[] signature;
+
+    public GeneratedNodeIntrinsicPlugin(ExecutableElement intrinsicMethod, TypeMirror[] signature) {
+        super(intrinsicMethod);
+        this.signature = signature;
     }
 
-    private TypeMirror valueNodeType() {
+    private static TypeMirror valueNodeType(ProcessingEnvironment env) {
         return env.getElementUtils().getTypeElement("com.oracle.graal.nodes.ValueNode").asType();
     }
 
-    @Override
-    protected String getBaseName() {
-        return "NodeIntrinsicFactory";
-    }
+    protected abstract List<? extends VariableElement> getParameters();
+
+    protected abstract void factoryCall(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argCount);
 
     @Override
-    protected void createImports(PrintWriter out, ExecutableElement intrinsicMethod, ExecutableElement targetMethod) {
-        if (targetMethod.getKind() == ElementKind.CONSTRUCTOR && getReturnKind(intrinsicMethod) != JavaKind.Void) {
-            out.printf("import jdk.vm.ci.meta.JavaKind;\n");
-        }
-        super.createImports(out, intrinsicMethod, targetMethod);
-    }
-
-    @Override
-    protected InjectedDependencies createExecute(PrintWriter out, ExecutableElement intrinsicMethod, ExecutableElement constructor, TypeMirror[] signature) {
+    protected InjectedDependencies createExecute(ProcessingEnvironment env, PrintWriter out) {
         InjectedDependencies deps = new InjectedDependencies();
 
-        List<? extends VariableElement> params = constructor.getParameters();
+        List<? extends VariableElement> params = getParameters();
 
-        boolean customFactory = constructor.getKind() != ElementKind.CONSTRUCTOR;
-        int idx = customFactory ? 1 : 0;
+        int idx = 0;
         for (; idx < params.size(); idx++) {
             VariableElement param = params.get(idx);
             if (param.getAnnotation(InjectedNodeParameter.class) == null) {
@@ -85,9 +78,9 @@ public class NodeIntrinsicPluginGenerator extends PluginGenerator {
 
         for (int i = 0; i < signature.length; i++, idx++) {
             if (intrinsicMethod.getParameters().get(i).getAnnotation(ConstantNodeParameter.class) != null) {
-                constantArgument(out, deps, idx, signature[i], i);
+                constantArgument(env, out, deps, idx, signature[i], i);
             } else {
-                if (signature[i].equals(valueNodeType())) {
+                if (signature[i].equals(valueNodeType(env))) {
                     out.printf("            ValueNode arg%d = args[%d];\n", idx, i);
                 } else {
                     out.printf("            %s arg%d = (%s) args[%d];\n", signature[i], idx, signature[i], i);
@@ -95,21 +88,38 @@ public class NodeIntrinsicPluginGenerator extends PluginGenerator {
             }
         }
 
-        if (customFactory) {
-            out.printf("            return %s.%s(b", constructor.getEnclosingElement(), constructor.getSimpleName());
-            for (int i = 1; i < idx; i++) {
-                out.printf(", arg%d", i);
-            }
-            out.printf(");\n");
+        factoryCall(env, out, deps, idx);
 
-            if (intrinsicMethod.getAnnotation(NodeIntrinsic.class).setStampFromReturnType()) {
-                env.getMessager().printMessage(Kind.WARNING, "Ignoring setStampFromReturnType because a custom 'intrinsify' method is used.", intrinsicMethod);
+        return deps;
+    }
+
+    public static class ConstructorPlugin extends GeneratedNodeIntrinsicPlugin {
+
+        private final ExecutableElement constructor;
+
+        public ConstructorPlugin(ExecutableElement intrinsicMethod, ExecutableElement constructor, TypeMirror[] signature) {
+            super(intrinsicMethod, signature);
+            this.constructor = constructor;
+        }
+
+        @Override
+        public void extraImports(Set<String> imports) {
+            if (getReturnKind(intrinsicMethod) != JavaKind.Void) {
+                imports.add("jdk.vm.ci.meta.JavaKind");
             }
-        } else {
+        }
+
+        @Override
+        protected List<? extends VariableElement> getParameters() {
+            return constructor.getParameters();
+        }
+
+        @Override
+        protected void factoryCall(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argCount) {
             out.printf("            %s node = new %s(", constructor.getEnclosingElement(), constructor.getEnclosingElement());
-            if (idx > 0) {
+            if (argCount > 0) {
                 out.printf("arg0");
-                for (int i = 1; i < idx; i++) {
+                for (int i = 1; i < argCount; i++) {
                     out.printf(", arg%d", i);
                 }
             }
@@ -127,7 +137,39 @@ public class NodeIntrinsicPluginGenerator extends PluginGenerator {
             }
             out.printf("            return true;\n");
         }
+    }
 
-        return deps;
+    public static class CustomFactoryPlugin extends GeneratedNodeIntrinsicPlugin {
+
+        private final ExecutableElement customFactory;
+
+        public CustomFactoryPlugin(ExecutableElement intrinsicMethod, ExecutableElement customFactory, TypeMirror[] signature) {
+            super(intrinsicMethod, signature);
+            this.customFactory = customFactory;
+        }
+
+        @Override
+        public void extraImports(Set<String> imports) {
+        }
+
+        @Override
+        protected List<? extends VariableElement> getParameters() {
+            List<? extends VariableElement> ret = customFactory.getParameters();
+            // remove initial GraphBuilderContext parameter
+            return ret.subList(1, ret.size());
+        }
+
+        @Override
+        protected void factoryCall(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argCount) {
+            out.printf("            return %s.%s(b", customFactory.getEnclosingElement(), customFactory.getSimpleName());
+            for (int i = 0; i < argCount; i++) {
+                out.printf(", arg%d", i);
+            }
+            out.printf(");\n");
+
+            if (intrinsicMethod.getAnnotation(NodeIntrinsic.class).setStampFromReturnType()) {
+                env.getMessager().printMessage(Kind.WARNING, "Ignoring setStampFromReturnType because a custom 'intrinsify' method is used.", intrinsicMethod);
+            }
+        }
     }
 }

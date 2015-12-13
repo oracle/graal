@@ -23,19 +23,15 @@
 package com.oracle.graal.replacements.verifier;
 
 import java.io.PrintWriter;
-import java.lang.annotation.Annotation;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
-import javax.tools.Diagnostic.Kind;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.replacements.verifier.InjectedDependencies.WellKnownDependency;
@@ -43,62 +39,25 @@ import com.oracle.graal.replacements.verifier.InjectedDependencies.WellKnownDepe
 /**
  * Create graph builder plugins for {@link Fold} methods.
  */
-public class FoldPluginGenerator extends PluginGenerator {
+public class GeneratedFoldPlugin extends GeneratedPlugin {
 
-    private class FoldVerifier extends AbstractVerifier {
-
-        public FoldVerifier(ProcessingEnvironment env) {
-            super(env);
-        }
-
-        @Override
-        public void verify(Element element, AnnotationMirror annotation) {
-            if (element.getKind() != ElementKind.METHOD) {
-                assert false : "Element is guaranteed to be a method.";
-                return;
-            }
-
-            ExecutableElement intrinsicMethod = (ExecutableElement) element;
-            if (intrinsicMethod.getModifiers().contains(Modifier.PRIVATE)) {
-                env.getMessager().printMessage(Kind.ERROR, "@Fold method can not be private.", element);
-            } else {
-                FoldPluginGenerator.this.createPluginFactory(intrinsicMethod, null, null);
-            }
-        }
-
-        @Override
-        public Class<? extends Annotation> getAnnotationClass() {
-            return Fold.class;
-        }
+    public GeneratedFoldPlugin(ExecutableElement intrinsicMethod) {
+        super(intrinsicMethod);
     }
 
-    private TypeMirror stringType() {
+    private static TypeMirror stringType(ProcessingEnvironment env) {
         return env.getElementUtils().getTypeElement("java.lang.String").asType();
     }
 
-    public FoldPluginGenerator(ProcessingEnvironment env) {
-        super(env);
-    }
-
-    public AbstractVerifier getVerifier() {
-        return new FoldVerifier(env);
+    @Override
+    public void extraImports(Set<String> imports) {
+        imports.add("jdk.vm.ci.meta.JavaConstant");
+        imports.add("jdk.vm.ci.meta.JavaKind");
+        imports.add("com.oracle.graal.nodes.ConstantNode");
     }
 
     @Override
-    protected String getBaseName() {
-        return "FoldFactory";
-    }
-
-    @Override
-    protected void createImports(PrintWriter out, ExecutableElement intrinsicMethod, ExecutableElement targetMethod) {
-        out.printf("import jdk.vm.ci.meta.JavaConstant;\n");
-        out.printf("import jdk.vm.ci.meta.JavaKind;\n");
-        out.printf("import com.oracle.graal.nodes.ConstantNode;\n");
-        super.createImports(out, intrinsicMethod, targetMethod);
-    }
-
-    @Override
-    protected InjectedDependencies createExecute(PrintWriter out, ExecutableElement intrinsicMethod, ExecutableElement constructor, TypeMirror[] signature) {
+    protected InjectedDependencies createExecute(ProcessingEnvironment env, PrintWriter out) {
         InjectedDependencies deps = new InjectedDependencies();
         List<? extends VariableElement> params = intrinsicMethod.getParameters();
 
@@ -109,13 +68,13 @@ public class FoldPluginGenerator extends PluginGenerator {
         } else {
             receiver = "arg0";
             TypeElement type = (TypeElement) intrinsicMethod.getEnclosingElement();
-            constantArgument(out, deps, argCount, type.asType(), argCount);
+            constantArgument(env, out, deps, argCount, type.asType(), argCount);
             argCount++;
         }
 
         int firstArg = argCount;
         for (VariableElement param : params) {
-            constantArgument(out, deps, argCount, param.asType(), argCount);
+            constantArgument(env, out, deps, argCount, param.asType(), argCount);
             argCount++;
         }
 
@@ -154,7 +113,7 @@ public class FoldPluginGenerator extends PluginGenerator {
             case ARRAY:
             case TYPEVAR:
             case DECLARED:
-                if (returnType.equals(stringType())) {
+                if (returnType.equals(stringType(env))) {
                     out.printf("            JavaConstant constant = %s.forString(result);\n", deps.use(WellKnownDependency.CONSTANT_REFLECTION));
                 } else {
                     out.printf("            JavaConstant constant = %s.forObject(result);\n", deps.use(WellKnownDependency.SNIPPET_REFLECTION));
