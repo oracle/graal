@@ -42,15 +42,12 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.graph.spi.Simplifiable;
-import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.PiNode;
-import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -66,7 +63,7 @@ import com.oracle.graal.nodes.type.StampTool;
  * Implements a type check against a compile-time known type.
  */
 @NodeInfo
-public class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Simplifiable, Lowerable, Virtualizable, ValueProxy {
+public class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Virtualizable, ValueProxy {
 
     public static final NodeClass<CheckCastNode> TYPE = NodeClass.create(CheckCastNode.class);
     @Input protected ValueNode object;
@@ -226,22 +223,6 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             return object;
         }
         return null;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        // if the previous node is also a checkcast, with a less precise and compatible type,
-        // replace both with one checkcast checking the more specific type.
-        if (predecessor() instanceof CheckCastNode) {
-            CheckCastNode ccn = (CheckCastNode) predecessor();
-            if (ccn != null && ccn.type != null && ccn == object && ccn.forStoreCheck == forStoreCheck && ccn.type.isAssignableFrom(type)) {
-                StructuredGraph graph = ccn.graph();
-                CheckCastNode newccn = graph.add(new CheckCastNode(type, ccn.object, ccn.profile, ccn.forStoreCheck));
-                graph.replaceFixedWithFixed(ccn, newccn);
-                replaceAtUsages(newccn);
-                graph.removeFixed(this);
-            }
-        }
     }
 
     public ValueNode object() {
