@@ -107,8 +107,8 @@ final class ComplexNumber implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             ComplexNumber complex = (ComplexNumber) ForeignAccess.getReceiver(frame);
-            String identifier = (String) ForeignAccess.getArguments(frame).get(0);
-            Number value = (Number) ForeignAccess.getArguments(frame).get(1);
+            String identifier = TckLanguage.expectString(ForeignAccess.getArguments(frame).get(0));
+            Number value = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(1));
             complex.set(identifier, value.doubleValue());
             return value;
         }
@@ -122,7 +122,7 @@ final class ComplexNumber implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             ComplexNumber complex = (ComplexNumber) ForeignAccess.getReceiver(frame);
-            String identifier = (String) ForeignAccess.getArguments(frame).get(0);
+            String identifier = TckLanguage.expectString(ForeignAccess.getArguments(frame).get(0));
             return complex.get(identifier);
         }
 

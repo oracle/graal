@@ -81,8 +81,9 @@ final class StructuredData implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             StructuredData data = (StructuredData) ForeignAccess.getReceiver(frame);
-            Number index = (Number) ForeignAccess.getArguments(frame).get(0);
-            return new StructuredDataEntry(data.buffer, data.schema, index.intValue());
+            Number index = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(0));
+            int idx = TckLanguage.checkBounds(index.intValue(), data.schema.length());
+            return new StructuredDataEntry(data.buffer, data.schema, idx);
         }
 
     }

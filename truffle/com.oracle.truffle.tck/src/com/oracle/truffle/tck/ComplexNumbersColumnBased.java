@@ -97,15 +97,15 @@ final class ComplexNumbersColumnBased implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             ComplexNumbersColumnBased complexNumbers = (ComplexNumbersColumnBased) ForeignAccess.getReceiver(frame);
-            Number index = (Number) ForeignAccess.getArguments(frame).get(0);
-            TruffleObject value = (TruffleObject) ForeignAccess.getArguments(frame).get(1);
+            Number index = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(0));
+            TruffleObject value = TckLanguage.expectTruffleObject(ForeignAccess.getArguments(frame).get(1));
             if (readReal == null || readImag == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.readReal = insert(Message.READ.createNode());
                 this.readImag = insert(Message.READ.createNode());
             }
-            Number realPart = (Number) ForeignAccess.execute(readReal, frame, value, new Object[]{ComplexNumber.REAL_IDENTIFIER});
-            Number imagPart = (Number) ForeignAccess.execute(readImag, frame, value, new Object[]{ComplexNumber.IMAGINARY_IDENTIFIER});
+            Number realPart = TckLanguage.expectNumber(ForeignAccess.execute(readReal, frame, value, new Object[]{ComplexNumber.REAL_IDENTIFIER}));
+            Number imagPart = TckLanguage.expectNumber(ForeignAccess.execute(readImag, frame, value, new Object[]{ComplexNumber.IMAGINARY_IDENTIFIER}));
 
             complexNumbers.reals[index.intValue()] = realPart.doubleValue();
             complexNumbers.imags[index.intValue()] = imagPart.doubleValue();
@@ -121,7 +121,7 @@ final class ComplexNumbersColumnBased implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             ComplexNumbersColumnBased complexNumbers = (ComplexNumbersColumnBased) ForeignAccess.getReceiver(frame);
-            Number index = (Number) ForeignAccess.getArguments(frame).get(0);
+            Number index = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(0));
             return new ComplexNumberBEntry(complexNumbers, index.intValue());
         }
 
@@ -190,7 +190,7 @@ final class ComplexNumbersColumnBased implements TruffleObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     ComplexNumberBEntry complexNumber = (ComplexNumberBEntry) ForeignAccess.getReceiver(frame);
-                    String name = (String) ForeignAccess.getArguments(frame).get(0);
+                    String name = TckLanguage.expectString(ForeignAccess.getArguments(frame).get(0));
                     if (name.equals(ComplexNumber.IMAGINARY_IDENTIFIER)) {
                         return complexNumber.numbers.imags[complexNumber.index];
                     } else if (name.equals(ComplexNumber.REAL_IDENTIFIER)) {
@@ -209,8 +209,8 @@ final class ComplexNumbersColumnBased implements TruffleObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     ComplexNumberBEntry complexNumber = (ComplexNumberBEntry) ForeignAccess.getReceiver(frame);
-                    String name = (String) ForeignAccess.getArguments(frame).get(0);
-                    Number value = (Number) ForeignAccess.getArguments(frame).get(1);
+                    String name = TckLanguage.expectString(ForeignAccess.getArguments(frame).get(0));
+                    Number value = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(1));
                     if (name.equals(ComplexNumber.IMAGINARY_IDENTIFIER)) {
                         complexNumber.numbers.imags[complexNumber.index] = value.doubleValue();
                     } else if (name.equals(ComplexNumber.REAL_IDENTIFIER)) {

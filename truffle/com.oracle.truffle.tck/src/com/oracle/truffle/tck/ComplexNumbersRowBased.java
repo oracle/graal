@@ -90,18 +90,20 @@ final class ComplexNumbersRowBased implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             ComplexNumbersRowBased complexNumbers = (ComplexNumbersRowBased) ForeignAccess.getReceiver(frame);
-            Number index = (Number) ForeignAccess.getArguments(frame).get(0);
-            TruffleObject value = (TruffleObject) ForeignAccess.getArguments(frame).get(1);
+            Number index = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(0));
+            TruffleObject value = TckLanguage.expectTruffleObject(ForeignAccess.getArguments(frame).get(1));
             if (readReal == null || readImag == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.readReal = insert(Message.READ.createNode());
                 this.readImag = insert(Message.READ.createNode());
             }
-            Number realPart = (Number) ForeignAccess.execute(readReal, frame, value, new Object[]{ComplexNumber.REAL_IDENTIFIER});
-            Number imagPart = (Number) ForeignAccess.execute(readImag, frame, value, new Object[]{ComplexNumber.IMAGINARY_IDENTIFIER});
+            Number realPart = TckLanguage.expectNumber(ForeignAccess.execute(readReal, frame, value, new Object[]{ComplexNumber.REAL_IDENTIFIER}));
+            Number imagPart = TckLanguage.expectNumber(ForeignAccess.execute(readImag, frame, value, new Object[]{ComplexNumber.IMAGINARY_IDENTIFIER}));
 
-            complexNumbers.data[index.intValue() * 2] = realPart.doubleValue();
-            complexNumbers.data[index.intValue() * 2 + 1] = imagPart.doubleValue();
+            int idx = TckLanguage.checkBounds(index.intValue(), complexNumbers.data.length / 2);
+
+            complexNumbers.data[idx * 2] = realPart.doubleValue();
+            complexNumbers.data[idx * 2 + 1] = imagPart.doubleValue();
             return value;
         }
     }
@@ -114,8 +116,9 @@ final class ComplexNumbersRowBased implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             ComplexNumbersRowBased complexNumbers = (ComplexNumbersRowBased) ForeignAccess.getReceiver(frame);
-            Number index = (Number) ForeignAccess.getArguments(frame).get(0);
-            return new ComplexNumberAEntry(complexNumbers, index.intValue());
+            Number index = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(0));
+            int idx = TckLanguage.checkBounds(index.intValue(), complexNumbers.data.length / 2);
+            return new ComplexNumberAEntry(complexNumbers, idx);
         }
     }
 
@@ -181,7 +184,7 @@ final class ComplexNumbersRowBased implements TruffleObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     ComplexNumberAEntry complexNumber = (ComplexNumberAEntry) ForeignAccess.getReceiver(frame);
-                    String name = (String) ForeignAccess.getArguments(frame).get(0);
+                    String name = TckLanguage.expectString(ForeignAccess.getArguments(frame).get(0));
                     if (name.equals(ComplexNumber.IMAGINARY_IDENTIFIER)) {
                         return complexNumber.numbers.data[complexNumber.index * 2 + 1];
                     } else if (name.equals(ComplexNumber.REAL_IDENTIFIER)) {
@@ -200,8 +203,8 @@ final class ComplexNumbersRowBased implements TruffleObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     ComplexNumberAEntry complexNumber = (ComplexNumberAEntry) ForeignAccess.getReceiver(frame);
-                    String name = (String) ForeignAccess.getArguments(frame).get(0);
-                    Number value = (Number) ForeignAccess.getArguments(frame).get(1);
+                    String name = TckLanguage.expectString(ForeignAccess.getArguments(frame).get(0));
+                    Number value = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(1));
                     if (name.equals(ComplexNumber.IMAGINARY_IDENTIFIER)) {
                         complexNumber.numbers.data[complexNumber.index * 2 + 1] = value.doubleValue();
                     } else if (name.equals(ComplexNumber.REAL_IDENTIFIER)) {

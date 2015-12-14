@@ -25,6 +25,7 @@
 package com.oracle.truffle.tck;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+
 import java.io.IOException;
 
 @TruffleLanguage.Registration(mimeType = "application/x-tck", name = "TCK", version = "1.0")
@@ -144,4 +146,37 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         }
 
     }
+
+    public static Number expectNumber(Object o) {
+        if (o instanceof Number) {
+            return (Number) o;
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalArgumentException(o + " not a Number");
+    }
+
+    public static String expectString(Object o) {
+        if (o instanceof String) {
+            return (String) o;
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalArgumentException(o + " not a String");
+    }
+
+    public static TruffleObject expectTruffleObject(Object o) {
+        if (o instanceof TruffleObject) {
+            return (TruffleObject) o;
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalArgumentException(o + " not a TruffleObject");
+    }
+
+    public static int checkBounds(int idx, int size) {
+        if (idx < 0 || idx >= size) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IndexOutOfBoundsException("Index: " + idx + " Size: " + size);
+        }
+        return idx;
+    }
+
 }

@@ -81,7 +81,7 @@ final class StructuredDataEntry implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             StructuredDataEntry data = (StructuredDataEntry) ForeignAccess.getReceiver(frame);
-            String name = (String) ForeignAccess.getArguments(frame).get(0);
+            String name = TckLanguage.expectString(ForeignAccess.getArguments(frame).get(0));
             return data.schema.get(data.buffer, data.index, name);
         }
 
