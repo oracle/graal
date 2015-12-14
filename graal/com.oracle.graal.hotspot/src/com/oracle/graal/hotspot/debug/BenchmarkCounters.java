@@ -87,20 +87,20 @@ public class BenchmarkCounters {
 
         //@formatter:off
         @Option(help = "Turn on the benchmark counters, and displays the results on VM shutdown", type = OptionType.Debug)
-        private static final OptionValue<Boolean> GenericDynamicCounters = new OptionValue<>(false);
+        public static final OptionValue<Boolean> GenericDynamicCounters = new OptionValue<>(false);
         @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds", type = OptionType.Debug)
-        private static final OptionValue<Integer> TimedDynamicCounters = new OptionValue<>(-1);
+        public static final OptionValue<Integer> TimedDynamicCounters = new OptionValue<>(-1);
 
         @Option(help = "Turn on the benchmark counters, and listen for specific patterns on System.out/System.err:%n" +
                        "Format: (err|out),start pattern,end pattern (~ matches multiple digits)%n" +
                        "Examples:%n" +
                        "  dacapo = 'err, starting =====, PASSED in'%n" +
                        "  specjvm2008 = 'out,Iteration ~ (~s) begins:,Iteration ~ (~s) ends:'", type = OptionType.Debug)
-        private static final OptionValue<String> BenchmarkDynamicCounters = new OptionValue<>(null);
+        public static final OptionValue<String> BenchmarkDynamicCounters = new OptionValue<>(null);
         @Option(help = "Use grouping separators for number printing", type = OptionType.Debug)
-        private static final OptionValue<Boolean> DynamicCountersPrintGroupSeparator = new OptionValue<>(true);
+        public static final OptionValue<Boolean> DynamicCountersPrintGroupSeparator = new OptionValue<>(true);
         @Option(help = "Print in human readable format", type = OptionType.Debug)
-        private static final OptionValue<Boolean> DynamicCountersHumanReadable = new OptionValue<>(true);
+        public static final OptionValue<Boolean> DynamicCountersHumanReadable = new OptionValue<>(true);
         //@formatter:on
     }
 
