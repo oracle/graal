@@ -33,7 +33,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public final class ComplexNumber implements TruffleObject {
+final class ComplexNumber implements TruffleObject {
 
     public static final String REAL_IDENTIFIER = "real";
     public static final String IMAGINARY_IDENTIFIER = "imaginary";
@@ -41,7 +41,7 @@ public final class ComplexNumber implements TruffleObject {
     private double real;
     private double imag;
 
-    public ComplexNumber(double real, double imaginary) {
+    ComplexNumber(double real, double imaginary) {
         this.real = real;
         this.imag = imaginary;
     }

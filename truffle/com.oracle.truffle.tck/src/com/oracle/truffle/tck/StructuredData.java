@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.tck;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -35,18 +33,14 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public final class StructuredData implements TruffleObject {
+final class StructuredData implements TruffleObject {
 
     private final byte[] buffer;
     private final Schema schema;
 
-    public StructuredData(byte[] buffer, Schema schema) {
+    StructuredData(byte[] buffer, Schema schema) {
         this.buffer = buffer;
         this.schema = schema;
-    }
-
-    public Map<String, Object> getEntry(int index) {
-        return schema.getEntry(buffer, index);
     }
 
     public ForeignAccess getForeignAccess() {
@@ -88,7 +82,7 @@ public final class StructuredData implements TruffleObject {
         public Object execute(VirtualFrame frame) {
             StructuredData data = (StructuredData) ForeignAccess.getReceiver(frame);
             Number index = (Number) ForeignAccess.getArguments(frame).get(0);
-            return new MapTruffleObject(data.getEntry(index.intValue()));
+            return new StructuredDataEntry(data.buffer, data.schema, index.intValue());
         }
 
     }

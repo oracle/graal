@@ -35,12 +35,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class ComplexNumbersB implements TruffleObject {
+final class ComplexNumbersColumnBased implements TruffleObject {
 
     private final double[] reals;
     private final double[] imags;
 
-    public ComplexNumbersB(double[] reals, double[] imags) {
+    ComplexNumbersColumnBased(double[] reals, double[] imags) {
         assert reals.length == imags.length;
         this.reals = reals;
         this.imags = imags;
@@ -62,7 +62,7 @@ public class ComplexNumbersB implements TruffleObject {
     private static class ComplexNumbersBForeignAccessFactory implements Factory {
 
         public boolean canHandle(TruffleObject obj) {
-            return obj instanceof ComplexNumbersB;
+            return obj instanceof ComplexNumbersColumnBased;
         }
 
         public CallTarget accessMessage(Message tree) {
@@ -96,7 +96,7 @@ public class ComplexNumbersB implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumbersB complexNumbers = (ComplexNumbersB) ForeignAccess.getReceiver(frame);
+            ComplexNumbersColumnBased complexNumbers = (ComplexNumbersColumnBased) ForeignAccess.getReceiver(frame);
             Number index = (Number) ForeignAccess.getArguments(frame).get(0);
             TruffleObject value = (TruffleObject) ForeignAccess.getArguments(frame).get(1);
             if (readReal == null || readImag == null) {
@@ -120,7 +120,7 @@ public class ComplexNumbersB implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumbersB complexNumbers = (ComplexNumbersB) ForeignAccess.getReceiver(frame);
+            ComplexNumbersColumnBased complexNumbers = (ComplexNumbersColumnBased) ForeignAccess.getReceiver(frame);
             Number index = (Number) ForeignAccess.getArguments(frame).get(0);
             return new ComplexNumberBEntry(complexNumbers, index.intValue());
         }
@@ -134,7 +134,7 @@ public class ComplexNumbersB implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumbersB complexNumbers = (ComplexNumbersB) ForeignAccess.getReceiver(frame);
+            ComplexNumbersColumnBased complexNumbers = (ComplexNumbersColumnBased) ForeignAccess.getReceiver(frame);
             assert complexNumbers.reals.length == complexNumbers.imags.length;
             return complexNumbers.reals.length;
         }
@@ -143,10 +143,10 @@ public class ComplexNumbersB implements TruffleObject {
 
     private static class ComplexNumberBEntry implements TruffleObject {
 
-        private final ComplexNumbersB numbers;
+        private final ComplexNumbersColumnBased numbers;
         private final int index;
 
-        public ComplexNumberBEntry(ComplexNumbersB numbers, int index) {
+        public ComplexNumberBEntry(ComplexNumbersColumnBased numbers, int index) {
             this.numbers = numbers;
             this.index = index;
         }

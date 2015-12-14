@@ -35,11 +35,11 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public final class ComplexNumbersA implements TruffleObject {
+final class ComplexNumbersRowBased implements TruffleObject {
 
     private final double[] data;
 
-    public ComplexNumbersA(double[] data) {
+    ComplexNumbersRowBased(double[] data) {
         assert data.length % 2 == 0;
         this.data = data;
     }
@@ -55,7 +55,7 @@ public final class ComplexNumbersA implements TruffleObject {
     private static class ComplexNumbersAForeignAccessFactory implements Factory {
 
         public boolean canHandle(TruffleObject obj) {
-            return obj instanceof ComplexNumbersA;
+            return obj instanceof ComplexNumbersRowBased;
         }
 
         public CallTarget accessMessage(Message tree) {
@@ -89,7 +89,7 @@ public final class ComplexNumbersA implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumbersA complexNumbers = (ComplexNumbersA) ForeignAccess.getReceiver(frame);
+            ComplexNumbersRowBased complexNumbers = (ComplexNumbersRowBased) ForeignAccess.getReceiver(frame);
             Number index = (Number) ForeignAccess.getArguments(frame).get(0);
             TruffleObject value = (TruffleObject) ForeignAccess.getArguments(frame).get(1);
             if (readReal == null || readImag == null) {
@@ -113,7 +113,7 @@ public final class ComplexNumbersA implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumbersA complexNumbers = (ComplexNumbersA) ForeignAccess.getReceiver(frame);
+            ComplexNumbersRowBased complexNumbers = (ComplexNumbersRowBased) ForeignAccess.getReceiver(frame);
             Number index = (Number) ForeignAccess.getArguments(frame).get(0);
             return new ComplexNumberAEntry(complexNumbers, index.intValue());
         }
@@ -126,7 +126,7 @@ public final class ComplexNumbersA implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ComplexNumbersA complexNumbers = (ComplexNumbersA) ForeignAccess.getReceiver(frame);
+            ComplexNumbersRowBased complexNumbers = (ComplexNumbersRowBased) ForeignAccess.getReceiver(frame);
             return complexNumbers.data.length / 2;
         }
 
@@ -134,10 +134,10 @@ public final class ComplexNumbersA implements TruffleObject {
 
     private static class ComplexNumberAEntry implements TruffleObject {
 
-        private final ComplexNumbersA numbers;
+        private final ComplexNumbersRowBased numbers;
         private final int index;
 
-        public ComplexNumberAEntry(ComplexNumbersA numbers, int index) {
+        public ComplexNumberAEntry(ComplexNumbersRowBased numbers, int index) {
             this.numbers = numbers;
             this.index = index;
         }

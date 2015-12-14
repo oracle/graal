@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.tck;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -35,26 +33,30 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
-public final class MapTruffleObject implements TruffleObject {
+final class StructuredDataEntry implements TruffleObject {
 
-    private final Map map;
+    private final byte[] buffer;
+    private final Schema schema;
+    private final int index;
 
-    public MapTruffleObject(Map map) {
-        this.map = map;
+    StructuredDataEntry(byte[] buffer, Schema schema, int index) {
+        this.buffer = buffer;
+        this.schema = schema;
+        this.index = index;
     }
 
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(new MapForeignAccessFactory());
+        return ForeignAccess.create(new StructuredDataEntryForeignAccessFactory());
     }
 
-    private static class MapForeignAccessFactory implements Factory {
+    private static class StructuredDataEntryForeignAccessFactory implements Factory {
 
         public boolean canHandle(TruffleObject obj) {
-            return obj instanceof MapTruffleObject;
+            return obj instanceof StructuredDataEntry;
         }
 
         public CallTarget accessMessage(Message tree) {
+            // for simplicity: this StructuredData is read-only
             if (Message.IS_NULL.equals(tree)) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
             } else if (Message.IS_EXECUTABLE.equals(tree)) {
@@ -62,59 +64,26 @@ public final class MapTruffleObject implements TruffleObject {
             } else if (Message.IS_BOXED.equals(tree)) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
             } else if (Message.HAS_SIZE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
             } else if (Message.READ.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new MapReadNode());
-            } else if (Message.WRITE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new MapWriteNode());
-            } else if (Message.GET_SIZE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new MapSizeNode());
+                return Truffle.getRuntime().createCallTarget(new StructuredDataEntryReadNode());
             } else {
                 throw new IllegalArgumentException(tree.toString() + " not supported");
             }
         }
     }
 
-    private static class MapWriteNode extends RootNode {
-        protected MapWriteNode() {
+    private static class StructuredDataEntryReadNode extends RootNode {
+        protected StructuredDataEntryReadNode() {
             super(TckLanguage.class, null, null);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            MapTruffleObject map = (MapTruffleObject) ForeignAccess.getReceiver(frame);
-            Object key = ForeignAccess.getArguments(frame).get(0);
-            Object value = ForeignAccess.getArguments(frame).get(1);
-            map.map.put(key, value);
-            return value;
-        }
-    }
-
-    private static class MapReadNode extends RootNode {
-        protected MapReadNode() {
-            super(TckLanguage.class, null, null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            MapTruffleObject map = (MapTruffleObject) ForeignAccess.getReceiver(frame);
-            Object key = ForeignAccess.getArguments(frame).get(0);
-            return map.map.get(key);
+            StructuredDataEntry data = (StructuredDataEntry) ForeignAccess.getReceiver(frame);
+            String name = (String) ForeignAccess.getArguments(frame).get(0);
+            return data.schema.get(data.buffer, data.index, name);
         }
 
     }
-
-    private static class MapSizeNode extends RootNode {
-        protected MapSizeNode() {
-            super(TckLanguage.class, null, null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            MapTruffleObject map = (MapTruffleObject) ForeignAccess.getReceiver(frame);
-            return map.map.size();
-        }
-
-    }
-
 }

@@ -834,7 +834,7 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersA numbers = new ComplexNumbersA(new double[]{2, -1, 30, -1, 10, -1});
+        ComplexNumbersRowBased numbers = new ComplexNumbersRowBased(new double[]{2, -1, 30, -1, 10, -1});
 
         Number n = (Number) apply.execute(numbers).get();
         assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
@@ -848,7 +848,7 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersB numbers = new ComplexNumbersB(new double[]{2, 30, 10}, new double[]{-1, -1, -1});
+        ComplexNumbersColumnBased numbers = new ComplexNumbersColumnBased(new double[]{2, 30, 10}, new double[]{-1, -1, -1});
 
         Number n = (Number) apply.execute(numbers).get();
         assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
@@ -897,8 +897,8 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersA a = new ComplexNumbersA(new double[]{-1, -1, -1, -1, -1, -1});
-        ComplexNumbersA b = new ComplexNumbersA(new double[]{41, 42, 43, 44, 45, 46});
+        ComplexNumbersRowBased a = new ComplexNumbersRowBased(new double[]{-1, -1, -1, -1, -1, -1});
+        ComplexNumbersRowBased b = new ComplexNumbersRowBased(new double[]{41, 42, 43, 44, 45, 46});
 
         apply.execute(a, b);
 
@@ -913,8 +913,8 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersB a = new ComplexNumbersB(new double[]{-1, -1, -1}, new double[]{-1, -1, -1});
-        ComplexNumbersB b = new ComplexNumbersB(new double[]{41, 43, 45}, new double[]{42, 44, 46});
+        ComplexNumbersColumnBased a = new ComplexNumbersColumnBased(new double[]{-1, -1, -1}, new double[]{-1, -1, -1});
+        ComplexNumbersColumnBased b = new ComplexNumbersColumnBased(new double[]{41, 43, 45}, new double[]{42, 44, 46});
 
         apply.execute(a, b);
 
@@ -929,7 +929,7 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersA a = new ComplexNumbersA(new double[]{-1, -1, -1, -1, -1, -1});
+        ComplexNumbersRowBased a = new ComplexNumbersRowBased(new double[]{-1, -1, -1, -1, -1, -1});
 
         Schema schema = new Schema(3, true, Arrays.asList(ComplexNumber.REAL_IDENTIFIER, ComplexNumber.IMAGINARY_IDENTIFIER), Arrays.asList(Type.DOUBLE, Type.DOUBLE));
         byte[] buffer = new byte[6 * Double.SIZE / Byte.SIZE];
