@@ -110,8 +110,8 @@ public class OnStackReplacementPhase extends Phase {
 
         for (int i = 0; i < osrState.localsSize(); i++) {
             ValueNode value = osrState.localAt(i);
-            if (value instanceof ProxyNode) {
-                ProxyNode proxy = (ProxyNode) value;
+            if (value instanceof EntryProxyNode) {
+                EntryProxyNode proxy = (EntryProxyNode) value;
                 /*
                  * we need to drop the stamp since the types we see during OSR may be too precise
                  * (if a branch was not parsed for example).
