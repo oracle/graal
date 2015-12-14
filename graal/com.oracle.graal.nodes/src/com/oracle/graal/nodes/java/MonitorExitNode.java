@@ -22,13 +22,10 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.spi.Simplifiable;
-import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.MonitorExit;
@@ -41,13 +38,18 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 /**
  * The {@code MonitorExitNode} represents a monitor release. If it is the release of the monitor of
- * a synchronized method, then the return value of the method will be referenced, so that it will be
- * materialized before releasing the monitor.
+ * a synchronized method, then the return value of the method will be referenced via the edge
+ * {@link #escapedReturnValue}, so that it will be materialized before releasing the monitor.
  */
 @NodeInfo
-public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Simplifiable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single {
+public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single {
 
     public static final NodeClass<MonitorExitNode> TYPE = NodeClass.create(MonitorExitNode.class);
+
+    /**
+     * Non-null for the monitor exit introduced due to a synchronized root method and null in all
+     * other cases.
+     */
     @OptionalInput ValueNode escapedReturnValue;
 
     public MonitorExitNode(ValueNode object, MonitorIdNode monitorId, ValueNode escapedReturnValue) {
@@ -55,27 +57,17 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
         this.escapedReturnValue = escapedReturnValue;
     }
 
-    public ValueNode getEscapedReturnValue() {
-        return escapedReturnValue;
-    }
-
-    public void setEscapedReturnValue(ValueNode x) {
-        updateUsages(escapedReturnValue, x);
-        this.escapedReturnValue = x;
+    /**
+     * Return value is cleared when a synchronized method graph is inlined.
+     */
+    public void clearEscapedReturnValue() {
+        updateUsages(escapedReturnValue, null);
+        this.escapedReturnValue = null;
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
         return LocationIdentity.any();
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        if (escapedReturnValue != null && stateAfter() != null && stateAfter().bci != BytecodeFrame.AFTER_BCI) {
-            ValueNode returnValue = escapedReturnValue;
-            setEscapedReturnValue(null);
-            tool.removeIfUnused(returnValue);
-        }
     }
 
     @Override
@@ -85,7 +77,6 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        // the monitor exit for a synchronized method should never be virtualized
         ValueNode alias = tool.getAlias(object());
         if (alias instanceof VirtualObjectNode) {
             VirtualObjectNode virtual = (VirtualObjectNode) alias;

@@ -92,6 +92,7 @@ import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.java.ExceptionObjectNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.java.MonitorExitNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.type.StampTool;
@@ -544,21 +545,22 @@ public class InliningUtil {
                 }
             }
 
-            /*
-             * pop return kind from invoke's stateAfter and replace with this frameState's return
-             * value (top of stack)
-             */
+            // pop return kind from invoke's stateAfter and replace with this frameState's return
+            // value (top of stack)
             if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
                 stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0));
+            }
+
+            // Return value does no longer need to be limited by the monitor exit.
+            for (MonitorExitNode n : frameState.usages().filter(MonitorExitNode.class)) {
+                n.clearEscapedReturnValue();
             }
 
             frameState.replaceAndDelete(stateAfterReturn);
             return stateAfterReturn;
         } else if (stateAtExceptionEdge != null && isStateAfterException(frameState)) {
-            /*
-             * pop exception object from invoke's stateAfter and replace with this frameState's
-             * exception object (top of stack)
-             */
+            // pop exception object from invoke's stateAfter and replace with this frameState's
+            // exception object (top of stack)
             FrameState stateAfterException = stateAtExceptionEdge;
             if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
                 stateAfterException = stateAtExceptionEdge.duplicateModified(JavaKind.Object, JavaKind.Object, frameState.stackAt(0));
