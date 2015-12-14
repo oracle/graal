@@ -37,13 +37,12 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
 
     public static final NodeClass<ValueProxyNode> TYPE = NodeClass.create(ValueProxyNode.class);
     @Input ValueNode value;
-
     private final boolean loopPhiProxy;
 
-    public ValueProxyNode(ValueNode value, LoopExitNode proxyPoint) {
-        super(TYPE, value.stamp(), proxyPoint);
+    public ValueProxyNode(ValueNode value, LoopExitNode loopExit) {
+        super(TYPE, value.stamp(), loopExit);
         this.value = value;
-        loopPhiProxy = (value instanceof PhiNode && ((PhiNode) value).merge() == proxyPoint.loopBegin());
+        loopPhiProxy = loopExit.loopBegin().isPhiAtMerge(value);
     }
 
     @Override
@@ -58,15 +57,12 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            return value;
+        ValueNode curValue = value;
+        if (curValue.isConstant()) {
+            return curValue;
         }
-        if (loopPhiProxy) {
-            if (!(value instanceof PhiNode)) {
-                return value;
-            } else if (((PhiNode) value).merge() != proxyPoint.loopBegin()) {
-                return value;
-            }
+        if (loopPhiProxy && !loopExit.loopBegin().isPhiAtMerge(curValue)) {
+            return curValue;
         }
         return this;
     }
