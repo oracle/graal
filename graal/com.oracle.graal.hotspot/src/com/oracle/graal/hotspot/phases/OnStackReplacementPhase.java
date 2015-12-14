@@ -37,6 +37,7 @@ import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.EntryMarkerNode;
+import com.oracle.graal.nodes.EntryProxyNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ProxyNode;
@@ -90,7 +91,7 @@ public class OnStackReplacementPhase extends Phase {
             LoopTransformations.peel(osrLoop);
             osr.replaceAtUsages(InputType.Guard, AbstractBeginNode.prevBegin((FixedNode) osr.predecessor()));
             for (Node usage : osr.usages().snapshot()) {
-                ProxyNode proxy = (ProxyNode) usage;
+                EntryProxyNode proxy = (EntryProxyNode) usage;
                 proxy.replaceAndDelete(proxy.value());
             }
             GraphUtil.removeFixedWithUnusedInputs(osr);
