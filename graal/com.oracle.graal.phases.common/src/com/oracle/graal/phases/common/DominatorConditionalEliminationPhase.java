@@ -763,6 +763,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         private void registerNewStamp(ValueNode proxiedValue, Stamp newStamp, ValueNode guard, List<Runnable> undoOperations) {
+            assert proxiedValue != null;
             if (newStamp != null) {
                 ValueNode value = GraphUtil.unproxify(proxiedValue);
                 Info info = map.get(value);
