@@ -40,7 +40,7 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode, Pro
     public static final NodeClass<GuardProxyNode> TYPE = NodeClass.create(GuardProxyNode.class);
     @OptionalInput(InputType.Guard) GuardingNode value;
 
-    public GuardProxyNode(GuardingNode value, AbstractBeginNode proxyPoint) {
+    public GuardProxyNode(GuardingNode value, LoopExitNode proxyPoint) {
         super(TYPE, StampFactory.forVoid(), proxyPoint);
         this.value = value;
     }

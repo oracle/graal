@@ -40,10 +40,10 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
 
     private final boolean loopPhiProxy;
 
-    public ValueProxyNode(ValueNode value, AbstractBeginNode proxyPoint) {
+    public ValueProxyNode(ValueNode value, LoopExitNode proxyPoint) {
         super(TYPE, value.stamp(), proxyPoint);
         this.value = value;
-        loopPhiProxy = (proxyPoint instanceof LoopExitNode && value instanceof PhiNode && ((PhiNode) value).merge() == ((LoopExitNode) proxyPoint).loopBegin());
+        loopPhiProxy = (value instanceof PhiNode && ((PhiNode) value).merge() == proxyPoint.loopBegin());
     }
 
     @Override
@@ -61,10 +61,10 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
         if (value.isConstant()) {
             return value;
         }
-        if (loopPhiProxy && proxyPoint instanceof LoopExitNode) {
+        if (loopPhiProxy) {
             if (!(value instanceof PhiNode)) {
                 return value;
-            } else if (((PhiNode) value).merge() != ((LoopExitNode) proxyPoint).loopBegin()) {
+            } else if (((PhiNode) value).merge() != proxyPoint.loopBegin()) {
                 return value;
             }
         }
