@@ -900,23 +900,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             break;
                         }
                     }
-                    if (compatible && hasIdentity) {
-                        // we still need to check whether this value is referenced by any other phi
-                        outer: for (PhiNode otherPhi : getPhis().filter(otherPhi -> otherPhi != phi)) {
-                            for (int i = 0; i < states.length; i++) {
-                                ValueNode alias = getAliasAndResolve(states[i], getPhiValueAt(otherPhi, i));
-                                if (alias instanceof VirtualObjectNode) {
-                                    VirtualObjectNode phiValueVirtual = (VirtualObjectNode) alias;
-                                    if (Arrays.asList(virtualObjs).contains(phiValueVirtual)) {
-                                        compatible = false;
-                                        break outer;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (compatible) {
+                    if (compatible && !hasIdentity) {
                         VirtualObjectNode virtual = getValueObjectVirtual(phi, virtualObjs[0]);
                         mergeEffects.addFloatingNode(virtual, "valueObjectNode");
                         mergeEffects.deleteNode(phi);
