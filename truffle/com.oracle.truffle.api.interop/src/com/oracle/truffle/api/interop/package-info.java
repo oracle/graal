@@ -33,8 +33,17 @@
  * This package provides inter-operability between different
  * {@link com.oracle.truffle.api.TruffleLanguage Truffle languages}.
  * <p>
- * Languages can exchange primitive Java type wrapper objects (e.g., {@link java.lang.Integer},
- * {@link java.lang.Double}, {@link java.lang.String}, etc) as well as any type implementing
+ * Languages can exchange primitive Java type wrapper objects (e.g., 
+ * {@link java.lang.Byte},
+ * {@link java.lang.Short},
+ * {@link java.lang.Integer},
+ * {@link java.lang.Long},
+ * {@link java.lang.Float},
+ * {@link java.lang.Double},
+ * {@link java.lang.Character},
+ * {@link java.lang.Boolean},
+ * and {@link java.lang.String}) 
+ * as well as any type implementing 
  * {@link com.oracle.truffle.api.interop.TruffleObject}. Foreign objects are precisely those
  * implementing {@link com.oracle.truffle.api.interop.TruffleObject}.
  * <p>

@@ -22,16 +22,21 @@
  */
 package com.oracle.truffle.api;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import org.junit.Test;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import org.junit.Test;
 
 public class FrameDescriptorTest {
 
@@ -66,7 +71,7 @@ public class FrameDescriptorTest {
 
     @Test
     public void nullDefaultValue() {
-        Assert.assertNull(new FrameDescriptor().getDefaultValue());
+        assertNull(new FrameDescriptor().getDefaultValue());
     }
 
     @Test
@@ -82,11 +87,10 @@ public class FrameDescriptorTest {
         assertEquals(d.getSlots().get(1).getIndex(), 1);
 
         FrameDescriptor copy = d.copy();
-
-        assertEquals(copy.getSlots().get(1).getIndex(), 1);
-
-        assertNull("Info isn't copied!", copy.getSlots().get(1).getInfo());
-        assertEquals("Kind isn't copied!", copy.getSlots().get(1).getKind(), FrameSlotKind.Illegal);
+        assertEquals(2, copy.getSize());
+        assertEquals(1, copy.getSlots().get(1).getIndex());
+        assertEquals("Info is copied", "i2", copy.getSlots().get(1).getInfo());
+        assertEquals("Kind isn't copied", FrameSlotKind.Illegal, copy.getSlots().get(1).getKind());
     }
 
     @Test
@@ -113,5 +117,69 @@ public class FrameDescriptorTest {
         firstCopy.setKind(FrameSlotKind.Int);
         assertEquals("Kind is changed", firstCopy.getKind(), FrameSlotKind.Int);
         assertEquals("Kind is changed in original too!", first.getKind(), FrameSlotKind.Int);
+    }
+
+    @Test
+    public void version() {
+        FrameDescriptor d = new FrameDescriptor();
+        s1 = d.addFrameSlot("v1", "i1", FrameSlotKind.Boolean);
+        s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
+
+        Assumption version;
+        version = d.getVersion();
+        assertTrue(version.isValid());
+        // add slot
+        s3 = d.addFrameSlot("v3", "i3", FrameSlotKind.Int);
+        assertEquals(3, d.getSize());
+        assertFalse(version.isValid());
+        version = d.getVersion();
+        assertTrue(version.isValid());
+        assertSame("1st slot", s1, d.getSlots().get(0));
+        assertSame("2nd slot", s2, d.getSlots().get(1));
+        assertSame("3rd slot", s3, d.getSlots().get(2));
+
+        // change kind
+        s3.setKind(FrameSlotKind.Object);
+        assertFalse(version.isValid());
+        version = d.getVersion();
+        assertTrue(version.isValid());
+
+        // remove slot
+        d.removeFrameSlot("v3");
+        assertEquals(2, d.getSize());
+        assertFalse(version.isValid());
+        version = d.getVersion();
+        assertTrue(version.isValid());
+    }
+
+    @Test
+    public void notInFrameAssumption() {
+        FrameDescriptor d = new FrameDescriptor();
+        Assumption[] ass = new Assumption[]{d.getNotInFrameAssumption("v1"), d.getNotInFrameAssumption("v2"), d.getNotInFrameAssumption("v3")};
+        assertTrue(ass[0].isValid());
+        assertTrue(ass[1].isValid());
+        assertTrue(ass[2].isValid());
+        s1 = d.addFrameSlot("v1", "i1", FrameSlotKind.Boolean);
+        assertFalse(ass[0].isValid());
+        assertTrue(ass[1].isValid());
+        assertTrue(ass[2].isValid());
+        s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
+        assertFalse(ass[0].isValid());
+        assertFalse(ass[1].isValid());
+        assertTrue(ass[2].isValid());
+        s3 = d.addFrameSlot("v3", "i3", FrameSlotKind.Int);
+        assertFalse(ass[0].isValid());
+        assertFalse(ass[1].isValid());
+        assertFalse(ass[2].isValid());
+
+        for (String identifier : new String[]{"v1", "v2", "v3"}) {
+            try {
+                d.getNotInFrameAssumption(identifier);
+                fail("expected IllegalArgumentException");
+            } catch (IllegalArgumentException e) {
+                // expected
+            }
+        }
+        d.getNotInFrameAssumption("v4");
     }
 }
