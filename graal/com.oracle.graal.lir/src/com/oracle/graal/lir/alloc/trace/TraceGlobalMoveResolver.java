@@ -351,11 +351,8 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
                 boolean processedInterval = false;
 
                 for (int i = mappingFrom.size() - 1; i >= 0; i--) {
-                    Value fromInterval = mappingFrom.get(i);
-                    AllocatableValue toInterval = mappingTo.get(i);
-
-                    Value fromLocation = fromInterval;
-                    AllocatableValue toLocation = toInterval;
+                    Value fromLocation = mappingFrom.get(i);
+                    AllocatableValue toLocation = mappingTo.get(i);
                     if (safeToProcessMove(fromLocation, toLocation)) {
                         // this interval can be processed because target is free
                         insertMove(fromLocation, toLocation);
@@ -364,7 +361,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
                         mappingTo.remove(i);
 
                         processedInterval = true;
-                    } else if (fromInterval != null && isRegister(fromLocation)) {
+                    } else if (fromLocation != null && isRegister(fromLocation)) {
                         // this interval cannot be processed now because target is not free
                         // it starts in a register, so it is a possible candidate for spilling
                         spillCandidate = i;
