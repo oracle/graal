@@ -288,7 +288,7 @@ public abstract class SPARCAssembler extends Assembler {
         Andcc(0x11, "andcc", ArithOp, BINARY | COMMUTATIVE),
         Orcc(0x12, "orcc", ArithOp, BINARY | COMMUTATIVE),
         Xorcc(0x13, "xorcc", ArithOp, BINARY | COMMUTATIVE),
-        Subcc(0x14, "subcc", ArithOp, BINARY | COMMUTATIVE),
+        Subcc(0x14, "subcc", ArithOp, BINARY),
         Andncc(0x15, "andncc", ArithOp, BINARY | COMMUTATIVE),
         Orncc(0x16, "orncc", ArithOp, BINARY | COMMUTATIVE),
         Xnorcc(0x17, "xnorcc", ArithOp, BINARY | COMMUTATIVE),
