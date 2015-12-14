@@ -123,6 +123,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         if (b) {
             GraalDirectives.ensureVirtualized(object);
         }
+        GraalDirectives.controlFlowAnchor();
         field = object;
     }
 
@@ -138,6 +139,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         } else {
             GraalDirectives.ensureVirtualized(object);
         }
+        GraalDirectives.controlFlowAnchor();
         field = object; // assert here
     }
 
@@ -154,6 +156,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         } else {
             field = 2;
         }
+        GraalDirectives.controlFlowAnchor();
         field = object; // assert here
     }
 
