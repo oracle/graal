@@ -64,11 +64,13 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveResolver {
 
     private static final DebugMetric cycleBreakingSlotsAllocated = Debug.metric("TraceRA[cycleBreakingSlotsAllocated(global)]");
+    private static final DebugMetric cycleBreakingSlotsReused = Debug.metric("TraceRA[cycleBreakingSlotsReused(global)]");
 
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
     private final List<Value> mappingFrom;
+    private final List<Value> mappingFromStack;
     private final List<AllocatableValue> mappingTo;
     private final int[] registerBlocked;
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
@@ -136,6 +138,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
     public TraceGlobalMoveResolver(LIRGenerationResult res, MoveFactory spillMoveFactory, Architecture arch) {
 
         this.mappingFrom = new ArrayList<>(8);
+        this.mappingFromStack = new ArrayList<>(8);
         this.mappingTo = new ArrayList<>(8);
         this.insertIdx = -1;
         this.insertionBuffer = new LIRInsertionBuffer();
@@ -155,7 +158,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
         for (int i = 0; i < stackBlocked.length; i++) {
             assert stackBlocked[i] == 0 : "stack map must be empty before and after processing";
         }
-        assert mappingFrom.size() == 0 && mappingTo.size() == 0 : "list must be empty before and after processing";
+        assert mappingFrom.size() == 0 && mappingTo.size() == 0 && mappingFromStack.size() == 0 : "list must be empty before and after processing";
         for (int i = 0; i < getRegisters().length; i++) {
             assert registerBlocked[i] == 0 : "register map must be empty before and after processing";
         }
@@ -163,7 +166,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
     }
 
     private boolean verifyBeforeResolve() {
-        assert mappingFrom.size() == mappingTo.size() : "length must be equal";
+        assert mappingFrom.size() == mappingTo.size() && mappingFrom.size() == mappingFromStack.size() : "length must be equal";
         assert insertIdx != -1 : "insert position not set";
 
         int i;
@@ -358,6 +361,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
                         insertMove(fromLocation, toLocation);
                         unblock(fromLocation);
                         mappingFrom.remove(i);
+                        mappingFromStack.remove(i);
                         mappingTo.remove(i);
 
                         processedInterval = true;
@@ -387,13 +391,22 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
         // create a new spill interval and assign a stack slot to it
         Value from = mappingFrom.get(spillCandidate);
         try (Indent indent = Debug.logAndIndent("BreakCycle: %s", from)) {
-            VirtualStackSlot spillSlot = frameMapBuilder.allocateSpillSlot(from.getLIRKind());
-            cycleBreakingSlotsAllocated.increment();
-            if (Debug.isLogEnabled()) {
-                Debug.log("created new slot for spilling: %s", spillSlot);
+            AllocatableValue spillSlot = null;
+            if (TraceRegisterAllocationPhase.Options.TraceRAreuseStackSlotsForMoveResolutionCycleBreaking.getValue()) {
+                Value fromStack = mappingFromStack.get(spillCandidate);
+                if (fromStack != null) {
+                    spillSlot = (AllocatableValue) fromStack;
+                    cycleBreakingSlotsReused.increment();
+                    Debug.log("reuse slot for spilling: %s", spillSlot);
+                }
             }
-            // insert a move from register to stack and update the mapping
-            insertMove(from, spillSlot);
+            if (spillSlot == null) {
+                spillSlot = frameMapBuilder.allocateSpillSlot(from.getLIRKind());
+                cycleBreakingSlotsAllocated.increment();
+                Debug.log("created new slot for spilling: %s", spillSlot);
+                // insert a move from register to stack and update the mapping
+                insertMove(from, spillSlot);
+            }
             block(spillSlot);
             mappingFrom.set(spillCandidate, spillSlot);
             unblock(from);
@@ -404,7 +417,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
     private void printMapping() {
         try (Indent indent = Debug.logAndIndent("Mapping")) {
             for (int i = mappingFrom.size() - 1; i >= 0; i--) {
-                Debug.log("move %s <- %s", mappingTo.get(i), mappingFrom.get(i));
+                Debug.log("move %s <- %s (%s)", mappingTo.get(i), mappingFrom.get(i), mappingFromStack.get(i));
             }
         }
     }
@@ -417,14 +430,17 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
     }
 
     @Override
-    public void addMapping(Value from, AllocatableValue to) {
+    public void addMapping(Value from, AllocatableValue to, Value fromStack) {
         if (Debug.isLogEnabled()) {
             Debug.log("add move mapping from %s to %s", from, to);
         }
 
         assert !from.equals(to) : "from and to interval equal: " + from;
         assert LIRKind.verifyMoveKinds(to.getLIRKind(), from.getLIRKind()) : String.format("Kind mismatch: %s vs. %s, from=%s, to=%s", from.getLIRKind(), to.getLIRKind(), from, to);
+        assert fromStack == null || LIRKind.verifyMoveKinds(to.getLIRKind(), fromStack.getLIRKind()) : String.format("Kind mismatch: %s vs. %s, fromStack=%s, to=%s", fromStack.getLIRKind(),
+                        to.getLIRKind(), fromStack, to);
         mappingFrom.add(from);
+        mappingFromStack.add(fromStack);
         mappingTo.add(to);
     }
 

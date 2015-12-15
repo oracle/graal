@@ -109,7 +109,7 @@ public class TraceGlobalMoveResolutionMappingTest {
         private final HashSet<Pair> mapping = new HashSet<>();
 
         @Override
-        public void addMapping(Value src, AllocatableValue dst) {
+        public void addMapping(Value src, AllocatableValue dst, Value srcStack) {
             mapping.add(new Pair(src, dst));
         }
 

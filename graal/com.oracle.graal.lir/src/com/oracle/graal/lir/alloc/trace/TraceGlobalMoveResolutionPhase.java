@@ -54,7 +54,7 @@ public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
      * Abstract move resolver interface for testing.
      */
     public abstract static class MoveResolver {
-        public abstract void addMapping(Value src, AllocatableValue dst);
+        public abstract void addMapping(Value src, AllocatableValue dst, Value fromStack);
     }
 
     @Override
@@ -123,9 +123,10 @@ public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
     private static void addMappingToRegister(MoveResolver moveResolver, Value from, RegisterValue register) {
         if (isShadowedRegisterValue(from)) {
             RegisterValue fromReg = asShadowedRegisterValue(from).getRegister();
-            checkAndAddMapping(moveResolver, fromReg, register);
+            AllocatableValue fromStack = asShadowedRegisterValue(from).getStackSlot();
+            checkAndAddMapping(moveResolver, fromReg, register, fromStack);
         } else {
-            checkAndAddMapping(moveResolver, from, register);
+            checkAndAddMapping(moveResolver, from, register, null);
         }
     }
 
@@ -135,17 +136,17 @@ public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
             RegisterValue fromReg = shadowedFrom.getRegister();
             AllocatableValue fromStack = shadowedFrom.getStackSlot();
             if (!fromStack.equals(stack)) {
-                checkAndAddMapping(moveResolver, fromReg, stack);
+                checkAndAddMapping(moveResolver, fromReg, stack, fromStack);
             }
         } else {
-            checkAndAddMapping(moveResolver, from, stack);
+            checkAndAddMapping(moveResolver, from, stack, null);
         }
 
     }
 
-    private static void checkAndAddMapping(MoveResolver moveResolver, Value from, AllocatableValue to) {
-        if (!from.equals(to)) {
-            moveResolver.addMapping(from, to);
+    private static void checkAndAddMapping(MoveResolver moveResolver, Value from, AllocatableValue to, AllocatableValue fromStack) {
+        if (!from.equals(to) && (fromStack == null || !fromStack.equals(to))) {
+            moveResolver.addMapping(from, to, fromStack);
         }
     }
 }
