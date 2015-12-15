@@ -233,11 +233,15 @@ public class SPARCArithmetic {
         protected void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             try (ScratchRegister tmpScratch = masm.getScratchRegister()) {
                 Register tmp = tmpScratch.getRegister();
-                masm.mulx(asRegister(x, WORD), asRegister(y, WORD), asRegister(result, WORD));
+                Register resultRegister = asRegister(result, WORD);
+                Register xRegister = asRegister(x, WORD);
+                Register yRegister = asRegister(y, WORD);
+                masm.sra(xRegister, 0, xRegister);
+                masm.sra(yRegister, 0, yRegister);
+                masm.mulx(xRegister, yRegister, resultRegister);
                 Label noOverflow = new Label();
-                masm.sra(asRegister(result, WORD), 0, tmp);
-                masm.xorcc(SPARC.g0, SPARC.g0, SPARC.g0);
-                masm.compareBranch(tmp, asRegister(result), Equal, Xcc, noOverflow, PREDICT_TAKEN, null);
+                masm.sra(resultRegister, 0, tmp);
+                masm.compareBranch(tmp, resultRegister, Equal, Xcc, noOverflow, PREDICT_TAKEN, null);
                 masm.wrccr(SPARC.g0, 1 << (SPARCAssembler.CCR_ICC_SHIFT + SPARCAssembler.CCR_V_SHIFT));
                 masm.bind(noOverflow);
             }
