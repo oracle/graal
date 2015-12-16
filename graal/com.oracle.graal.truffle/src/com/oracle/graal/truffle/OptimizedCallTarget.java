@@ -68,8 +68,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
-import com.oracle.truffle.api.utilities.ValueProfile;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.

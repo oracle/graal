@@ -453,6 +453,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return callMethods;
     }
 
+    // cached field access to make it fast in the interpreter
+    private static final boolean PROFILING_ENABLED = TruffleCompilerOptions.TruffleProfilingEnabled.getValue();
+
+    public final boolean isProfilingEnabled() {
+        return PROFILING_ENABLED;
+    }
+
     private final class DispatchTruffleCompilationListener implements GraalTruffleCompilationListener {
 
         public void notifyCompilationQueued(OptimizedCallTarget target) {

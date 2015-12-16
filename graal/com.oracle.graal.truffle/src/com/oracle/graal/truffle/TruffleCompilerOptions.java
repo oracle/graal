@@ -186,5 +186,8 @@ public class TruffleCompilerOptions {
     @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleIterativePartialEscape = new OptionValue<>(false);
 
+    @Option(help = "Enable/disable builtin profiles in com.oracle.truffle.api.profiles.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> TruffleProfilingEnabled = new OptionValue<>(true);
+
     // @formatter:on
 }
