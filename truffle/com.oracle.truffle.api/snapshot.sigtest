@@ -172,6 +172,8 @@ meth public abstract com.oracle.truffle.api.nodes.LoopNode createLoopNode(com.or
 meth public abstract java.lang.String getName()
 meth public abstract java.util.Collection<com.oracle.truffle.api.RootCallTarget> getCallTargets()
 meth public abstract void notifyTransferToInterpreter()
+meth public abstract boolean isProfilingEnabled()
+
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntimeAccess
 meth public abstract com.oracle.truffle.api.TruffleRuntime getRuntime()

@@ -28,8 +28,24 @@
  group="To Review"
  )
  */
-
-/** Various utility methods.
+/**
+ * Various utility classes that aim to make the development of TruffleLanguage guest
+ * languages easier.
+ *
+ * <p>
+ * We try to capture common language patterns in this package. Here is an overview of patterns that
+ * we have captured so far:
+ * <ul>
+ * <li>{@link com.oracle.truffle.api.utilities.AssumedValue} speculates on global values to remain
+ * unchanged.</li>
+ * <li>{@link com.oracle.truffle.api.utilities.CyclicAssumption} speculates on assumptions that
+ * might invalidate more often but are assumed to stabilize over time.</li>
+ * <li>{@link com.oracle.truffle.api.utilities.NeverValidAssumption} utility for assumptions that
+ * are always invalidated</li>
+ * <li>{@link com.oracle.truffle.api.utilities.UnionAssumption} utility for the union of two
+ * assumptions</li>
+ * </ul>
+ * </p>
  */
 package com.oracle.truffle.api.utilities;
 

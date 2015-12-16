@@ -28,14 +28,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
- * Utility class to speculate on conditions to be never true or to be never false. Additionally to
- * {@link BinaryConditionProfile} this implementation of {@link ConditionProfile} also counts the
- * number of times the condition was true and false. This information is reported to the underlying
- * optimization system using {@link CompilerDirectives#injectBranchProbability(double, boolean)}.
- * Condition profiles are intended to be used as part of if conditions.
- *
- * @see ConditionProfile#createCountingProfile()
+ * @deprecated use {@link com.oracle.truffle.api.profiles.ConditionProfile#createCountingProfile()}
+ *             instead
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public final class CountingConditionProfile extends ConditionProfile {
 
     @CompilationFinal private int trueCount;

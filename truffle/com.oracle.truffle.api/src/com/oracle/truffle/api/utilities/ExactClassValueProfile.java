@@ -28,8 +28,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
- * Represents a {@link ValueProfile} that speculates on the exact class of a value.
+ * @deprecated use {@link com.oracle.truffle.api.profiles.ValueProfile#createClassProfile()} instead
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 final class ExactClassValueProfile extends ValueProfile {
 
     @CompilationFinal protected Class<?> cachedClass;

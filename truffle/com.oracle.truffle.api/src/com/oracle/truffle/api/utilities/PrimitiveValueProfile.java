@@ -26,17 +26,14 @@ package com.oracle.truffle.api.utilities;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 import java.util.Objects;
 
 /**
- * Represents a {@link ValueProfile} that speculates on the primitive equality or object identity of
- * values.
- * <p>
- * Note that for {@code float} and {@code double} values we compare primitive equality via
- * {@link Float#floatToRawIntBits} and {@link Double#doubleToRawLongBits}, so that for example
- * {@code -0.0} is not considered the same as {@code 0.0}, even though primitive equality would
- * normally say that it was.
+ * @deprecated use {@link com.oracle.truffle.api.profiles.PrimitiveValueProfile} instead
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public class PrimitiveValueProfile extends ValueProfile {
 
     private static final Object UNINITIALIZED = new Object();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.utilities;
+package com.oracle.truffle.api.profiles;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
@@ -36,6 +36,7 @@ import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
+@SuppressWarnings("deprecation")
 @RunWith(Theories.class)
 public class PrimitiveValueProfileTest {
 
@@ -87,11 +88,11 @@ public class PrimitiveValueProfileTest {
     private static final float FLOAT_DELTA = 0.00001f;
     private static final double DOUBLE_DELTA = 0.00001;
 
-    private PrimitiveValueProfile profile;
+    private PrimitiveValueProfile.Enabled profile;
 
     @Before
     public void create() {
-        profile = ValueProfile.createPrimitiveProfile();
+        profile = (PrimitiveValueProfile.Enabled) PrimitiveValueProfile.Enabled.create();
     }
 
     @Test
@@ -945,6 +946,21 @@ public class PrimitiveValueProfileTest {
         profile.profile(-0.0);
         profile.profile(+0.0);
         assertThat(profile.isGeneric(), is(true));
+    }
+
+    @Test
+    public void testDisabled() {
+        PrimitiveValueProfile.Disabled p = (PrimitiveValueProfile.Disabled) PrimitiveValueProfile.Disabled.INSTANCE;
+        assertThat(p.profile(O1), is(O1));
+        assertThat(p.profile(B1), is(B1));
+        assertThat(p.profile(S1), is(S1));
+        assertThat(p.profile(I1), is(I1));
+        assertThat(p.profile(L1), is(L1));
+        assertThat(p.profile(F1), is(F1));
+        assertThat(p.profile(D1), is(D1));
+        assertThat(p.profile(T1), is(T1));
+        assertThat(p.profile(C1), is(C1));
+        p.toString(); // test that it is not crashing
     }
 
 }

@@ -26,11 +26,15 @@ package com.oracle.truffle.api.utilities;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 import java.util.Objects;
 
 /**
- * Represents a {@link ValueProfile} that speculates on the object identity of a value.
+ * @deprecated use {@link com.oracle.truffle.api.profiles.ValueProfile#createIdentityProfile()}
+ *             instead
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 final class IdentityValueProfile extends ValueProfile {
 
     private static final Object UNINITIALIZED = new Object();

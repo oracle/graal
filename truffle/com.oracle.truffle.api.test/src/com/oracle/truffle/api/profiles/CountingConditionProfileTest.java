@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.utilities;
+package com.oracle.truffle.api.profiles;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -37,17 +37,18 @@ public class CountingConditionProfileTest {
 
     @DataPoints public static boolean[] data = new boolean[]{true, false};
 
-    private CountingConditionProfile profile;
+    private ConditionProfile.Counting profile;
 
     @Before
     public void create() {
-        profile = (CountingConditionProfile) ConditionProfile.createCountingProfile();
+        profile = (ConditionProfile.Counting) ConditionProfile.Counting.create();
     }
 
     @Test
     public void testInitial() {
         assertThat(profile.getTrueCount(), is(0));
         assertThat(profile.getFalseCount(), is(0));
+        profile.toString();
     }
 
     @Theory
@@ -57,6 +58,7 @@ public class CountingConditionProfileTest {
         assertThat(result, is(value));
         assertThat(profile.getTrueCount(), is(value ? 1 : 0));
         assertThat(profile.getFalseCount(), is(!value ? 1 : 0));
+        profile.toString();
     }
 
     @Theory
@@ -68,6 +70,7 @@ public class CountingConditionProfileTest {
         assertThat(result1, is(value1));
         assertThat(profile.getTrueCount(), is((value0 ? 1 : 0) + (value1 ? 1 : 0)));
         assertThat(profile.getFalseCount(), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
+        profile.toString();
     }
 
     @Theory
@@ -81,6 +84,7 @@ public class CountingConditionProfileTest {
         assertThat(result2, is(value2));
         assertThat(profile.getTrueCount(), is((value0 ? 1 : 0) + (value1 ? 1 : 0) + (value2 ? 1 : 0)));
         assertThat(profile.getFalseCount(), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
+        profile.toString();
     }
 
 }

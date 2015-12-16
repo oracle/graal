@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.NodeCloneable;
-
-/**
- * @deprecated use {@link com.oracle.truffle.api.profiles.BranchProfile} instead
+/*
+ @ApiInfo(
+ group="Stable"
+ )
  */
-@Deprecated
-public final class BranchProfile extends NodeCloneable {
+/**
+ * A profile is a Truffle utility class that uses the
+ * {@link com.oracle.truffle.api.CompilerDirectives Truffle compiler directives} to guard for and/or
+ * forward runtime information to the compiler.
+ *
+ * @see com.oracle.truffle.api.profiles.Profile
+ */
+package com.oracle.truffle.api.profiles;
 
-    @CompilationFinal private boolean visited;
-
-    private BranchProfile() {
-    }
-
-    public void enter() {
-        if (!visited) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            visited = true;
-        }
-    }
-
-    public boolean isVisited() {
-        return visited;
-    }
-
-    /**
-     * @deprecated use {@link com.oracle.truffle.api.profiles.BranchProfile#create()} instead
-     */
-    @Deprecated
-    public static BranchProfile create() {
-        return new BranchProfile();
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%s(%s)@%x", getClass().getSimpleName(), visited ? "visited" : "not-visited", hashCode());
-    }
-}

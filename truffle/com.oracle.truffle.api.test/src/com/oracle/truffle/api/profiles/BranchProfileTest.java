@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.utilities;
+package com.oracle.truffle.api.profiles;
 
 import static org.junit.Assert.assertTrue;
 
@@ -30,20 +30,20 @@ public class BranchProfileTest {
 
     @Test
     public void testEnter() {
-        BranchProfile profile = BranchProfile.create();
+        BranchProfile profile = BranchProfile.Enabled.create0();
         profile.enter();
         profile.enter();
     }
 
     @Test
     public void testToString() {
-        BranchProfile profile = BranchProfile.create();
-        assertTrue(profile.toString().contains(profile.getClass().getSimpleName()));
-        assertTrue(profile.toString().contains("not-visited"));
+        BranchProfile profile = BranchProfile.Enabled.create0();
+        assertTrue(profile.toString().contains(BranchProfile.class.getSimpleName()));
+        assertTrue(profile.toString().contains("UNINITIALIZED"));
         assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));
         profile.enter();
-        assertTrue(profile.toString().contains(profile.getClass().getSimpleName()));
-        assertTrue(profile.toString().contains("visited"));
+        assertTrue(profile.toString().contains(BranchProfile.class.getSimpleName()));
+        assertTrue(profile.toString().contains("VISITED"));
         assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));
     }
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.utilities;
+package com.oracle.truffle.api.profiles;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -37,17 +37,18 @@ public class BinaryConditionProfileTest {
 
     @DataPoints public static boolean[] data = new boolean[]{true, false};
 
-    private BinaryConditionProfile profile;
+    private ConditionProfile.Binary profile;
 
     @Before
     public void create() {
-        profile = (BinaryConditionProfile) ConditionProfile.createBinaryProfile();
+        profile = (ConditionProfile.Binary) ConditionProfile.Binary.create();
     }
 
     @Test
     public void testInitial() {
         assertThat(profile.wasTrue(), is(false));
         assertThat(profile.wasFalse(), is(false));
+        profile.toString();
     }
 
     @Theory
@@ -57,6 +58,7 @@ public class BinaryConditionProfileTest {
         assertThat(result, is(value));
         assertThat(profile.wasTrue(), is(value));
         assertThat(profile.wasFalse(), is(!value));
+        profile.toString();
     }
 
     @Theory
@@ -68,6 +70,7 @@ public class BinaryConditionProfileTest {
         assertThat(result1, is(value1));
         assertThat(profile.wasTrue(), is(value0 || value1));
         assertThat(profile.wasFalse(), is(!value0 || !value1));
+        profile.toString();
     }
 
     @Theory
@@ -81,6 +84,7 @@ public class BinaryConditionProfileTest {
         assertThat(result2, is(value2));
         assertThat(profile.wasTrue(), is(value0 || value1 || value2));
         assertThat(profile.wasFalse(), is(!value0 || !value1 || !value2));
+        profile.toString();
     }
 
 }

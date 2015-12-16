@@ -173,4 +173,13 @@ public interface TruffleRuntime {
      */
     void notifyTransferToInterpreter();
 
+    /**
+     * Whether or not the {@link TruffleRuntime} implementation can or wants to use gathered
+     * profiling information Truffle compilation. If this method returns <code>false</code> then all
+     * profiles in the {@link com.oracle.truffle.api.utilities} package are returning void
+     * implementations. If it returns <code>true</code> then all implementations gather profilinig
+     * information.
+     */
+    boolean isProfilingEnabled();
+
 }

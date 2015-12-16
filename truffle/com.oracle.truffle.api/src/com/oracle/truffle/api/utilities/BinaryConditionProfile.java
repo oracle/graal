@@ -28,11 +28,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
- * Utility class to speculate on conditions to be never true or to be never false. Condition
- * profiles are intended to be used as part of if conditions.
- *
- * @see ConditionProfile#createBinaryProfile()
+ * @deprecated package name renamed to {@link com.oracle.truffle.api.profiles.ConditionProfile}
+ *             instead
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public final class BinaryConditionProfile extends ConditionProfile {
 
     @CompilationFinal private boolean wasTrue;
