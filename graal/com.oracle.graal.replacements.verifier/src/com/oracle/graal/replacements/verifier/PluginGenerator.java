@@ -25,16 +25,25 @@ package com.oracle.graal.replacements.verifier;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
+import javax.lang.model.type.WildcardType;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
@@ -58,6 +67,7 @@ public class PluginGenerator {
 
     public void generateAll(ProcessingEnvironment env) {
         for (Entry<Element, List<GeneratedPlugin>> entry : plugins.entrySet()) {
+            disambiguateNames(entry.getValue());
             createPluginFactory(env, entry.getKey(), entry.getValue());
         }
     }
@@ -70,6 +80,71 @@ public class PluginGenerator {
             enclosing = enclosing.getEnclosingElement();
         }
         return prev;
+    }
+
+    private static void disambiguateWith(List<GeneratedPlugin> plugins, Function<GeneratedPlugin, String> genName) {
+        plugins.sort(Comparator.comparing(GeneratedPlugin::getPluginName));
+
+        GeneratedPlugin current = plugins.get(0);
+        String currentName = current.getPluginName();
+
+        for (int i = 1; i < plugins.size(); i++) {
+            GeneratedPlugin next = plugins.get(i);
+            if (currentName.equals(next.getPluginName())) {
+                if (current != null) {
+                    current.setPluginName(genName.apply(current));
+                    current = null;
+                }
+                next.setPluginName(genName.apply(next));
+            } else {
+                current = next;
+                currentName = current.getPluginName();
+            }
+        }
+    }
+
+    private static void appendSimpleTypeName(StringBuilder ret, TypeMirror type) {
+        switch (type.getKind()) {
+            case DECLARED:
+                DeclaredType declared = (DeclaredType) type;
+                TypeElement element = (TypeElement) declared.asElement();
+                ret.append(element.getSimpleName());
+                break;
+            case TYPEVAR:
+                appendSimpleTypeName(ret, ((TypeVariable) type).getUpperBound());
+                break;
+            case WILDCARD:
+                appendSimpleTypeName(ret, ((WildcardType) type).getExtendsBound());
+                break;
+            case ARRAY:
+                appendSimpleTypeName(ret, ((ArrayType) type).getComponentType());
+                ret.append("Array");
+                break;
+            default:
+                ret.append(type);
+        }
+    }
+
+    private static void disambiguateNames(List<GeneratedPlugin> plugins) {
+        // if we have more than one method with the same name, disambiguate with the argument types
+        disambiguateWith(plugins, plugin -> {
+            StringBuilder ret = new StringBuilder(plugin.getPluginName());
+            for (VariableElement param : plugin.intrinsicMethod.getParameters()) {
+                ret.append('_');
+                appendSimpleTypeName(ret, param.asType());
+            }
+            return ret.toString();
+        });
+
+        // since we're using simple names for argument types, we could still have a collision
+        disambiguateWith(plugins, new Function<GeneratedPlugin, String>() {
+
+            private int idx = 0;
+
+            public String apply(GeneratedPlugin plugin) {
+                return plugin.getPluginName() + "_" + (idx++);
+            }
+        });
     }
 
     private static void createPluginFactory(ProcessingEnvironment env, Element topLevelClass, List<GeneratedPlugin> plugins) {
@@ -89,10 +164,9 @@ public class PluginGenerator {
                 out.printf("\n");
                 out.printf("@ServiceProvider(NodeIntrinsicPluginFactory.class)\n");
                 out.printf("public class %s implements NodeIntrinsicPluginFactory {\n", genClassName);
-                int idx = 0;
                 for (GeneratedPlugin plugin : plugins) {
                     out.printf("\n");
-                    plugin.generate(env, out, idx++);
+                    plugin.generate(env, out);
                 }
                 out.printf("\n");
                 createPluginFactoryMethod(out, plugins);
@@ -128,9 +202,8 @@ public class PluginGenerator {
 
     private static void createPluginFactoryMethod(PrintWriter out, List<GeneratedPlugin> plugins) {
         out.printf("    public void registerPlugins(InvocationPlugins plugins, InjectionProvider injection) {\n");
-        int idx = 0;
         for (GeneratedPlugin plugin : plugins) {
-            plugin.register(out, idx++);
+            plugin.register(out);
         }
         out.printf("    }\n");
     }

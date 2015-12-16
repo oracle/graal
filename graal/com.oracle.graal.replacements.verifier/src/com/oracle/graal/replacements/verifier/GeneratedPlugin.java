@@ -46,15 +46,26 @@ public abstract class GeneratedPlugin {
     protected final ExecutableElement intrinsicMethod;
     private boolean needInjectionProvider;
 
+    private String pluginName;
+
     public GeneratedPlugin(ExecutableElement intrinsicMethod) {
         this.intrinsicMethod = intrinsicMethod;
         this.needInjectionProvider = false;
+        this.pluginName = intrinsicMethod.getEnclosingElement().getSimpleName() + "_" + intrinsicMethod.getSimpleName();
     }
 
-    public void generate(ProcessingEnvironment env, PrintWriter out, int idx) {
+    public String getPluginName() {
+        return pluginName;
+    }
+
+    public void setPluginName(String pluginName) {
+        this.pluginName = pluginName;
+    }
+
+    public void generate(ProcessingEnvironment env, PrintWriter out) {
         out.printf("    // class:  %s\n", intrinsicMethod.getEnclosingElement());
         out.printf("    // method: %s\n", intrinsicMethod);
-        out.printf("    private static final class Plugin%d extends GeneratedInvocationPlugin {\n", idx);
+        out.printf("    private static final class %s extends GeneratedInvocationPlugin {\n", pluginName);
         out.printf("\n");
         out.printf("        @Override\n");
         out.printf("        public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {\n");
@@ -64,13 +75,13 @@ public abstract class GeneratedPlugin {
         InjectedDependencies deps = createExecute(env, out);
         out.printf("        }\n");
 
-        createPrivateMembers(out, deps, idx);
+        createPrivateMembers(out, deps);
 
         out.printf("    }\n");
     }
 
-    public void register(PrintWriter out, int idx) {
-        out.printf("        plugins.register(new Plugin%d(", idx);
+    public void register(PrintWriter out) {
+        out.printf("        plugins.register(new %s(", pluginName);
         if (needInjectionProvider) {
             out.printf("injection");
         }
@@ -109,7 +120,7 @@ public abstract class GeneratedPlugin {
         }
     }
 
-    private void createPrivateMembers(PrintWriter out, InjectedDependencies deps, int idx) {
+    private void createPrivateMembers(PrintWriter out, InjectedDependencies deps) {
         if (!deps.isEmpty()) {
             out.printf("\n");
             for (Dependency dep : deps) {
@@ -117,7 +128,7 @@ public abstract class GeneratedPlugin {
             }
 
             out.printf("\n");
-            out.printf("        private Plugin%d(InjectionProvider injection) {\n", idx);
+            out.printf("        private %s(InjectionProvider injection) {\n", pluginName);
             for (Dependency dep : deps) {
                 out.printf("            this.%s = %s;\n", dep.name, dep.inject(intrinsicMethod));
             }
