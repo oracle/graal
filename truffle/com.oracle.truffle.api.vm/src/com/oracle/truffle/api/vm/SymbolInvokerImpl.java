@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -77,6 +78,7 @@ final class SymbolInvokerImpl {
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             if (args.length != argumentLength) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new ArgumentsMishmashException();
             }
             Object tmp = ForeignAccess.execute(foreignAccess, frame, function, args);

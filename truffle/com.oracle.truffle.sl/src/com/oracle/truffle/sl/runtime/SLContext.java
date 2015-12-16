@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -258,6 +259,7 @@ public final class SLContext extends ExecutionContext {
      * @param name the name of the symbol to search for
      * @return object representing the symbol or <code>null</code>
      */
+    @TruffleBoundary
     public Object importSymbol(String name) {
         Object object = env.importSymbol(name);
         Object slValue = fromForeignValue(object);
