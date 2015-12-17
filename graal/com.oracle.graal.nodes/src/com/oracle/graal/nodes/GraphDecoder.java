@@ -488,8 +488,7 @@ public class GraphDecoder {
             LoopExplosionState queryState = new LoopExplosionState(frameState, null);
             LoopExplosionState existingState = loopScope.iterationStates.get(queryState);
             if (existingState != null) {
-                loopBegin.replaceAtUsages(existingState.merge);
-                loopBegin.safeDelete();
+                loopBegin.replaceAtUsagesAndDelete(existingState.merge);
                 successor.safeDelete();
                 for (EndNode predecessor : predecessors) {
                     existingState.merge.addForwardEnd(predecessor);
@@ -499,8 +498,7 @@ public class GraphDecoder {
         }
 
         MergeNode merge = methodScope.graph.add(new MergeNode());
-        loopBegin.replaceAtUsages(merge);
-        loopBegin.safeDelete();
+        loopBegin.replaceAtUsagesAndDelete(merge);
         merge.setStateAfter(frameState);
         merge.setNext(successor);
         for (EndNode predecessor : predecessors) {
@@ -653,7 +651,7 @@ public class GraphDecoder {
                 replacement = phi;
             }
 
-            methodScope.graph.replaceFloating(proxy, replacement);
+            proxy.replaceAtUsagesAndDelete(replacement);
         }
 
         if (merge != null && (merge.stateAfter() == null || phiCreated)) {

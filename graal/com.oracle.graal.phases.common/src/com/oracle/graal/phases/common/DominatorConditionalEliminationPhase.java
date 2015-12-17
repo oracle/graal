@@ -302,9 +302,8 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     if (rewireGuards(infoElement.getGuard(), result.toBoolean(), (guard, checkCastResult) -> {
                         if (checkCastResult) {
                             PiNode piNode = node.graph().unique(new PiNode(node.object(), node.stamp(), guard));
-                            node.replaceAtUsages(piNode);
                             GraphUtil.unlinkFixedNode(node);
-                            node.safeDelete();
+                            node.replaceAtUsagesAndDelete(piNode);
                         } else {
                             DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                             node.replaceAtPredecessor(deopt);

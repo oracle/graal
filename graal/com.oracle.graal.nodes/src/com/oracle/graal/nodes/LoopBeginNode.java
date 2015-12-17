@@ -267,8 +267,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
                 }
             }
             for (PhiNode phi : phis().filter(((NodePredicate) alive::contains).negate()).snapshot()) {
-                phi.replaceAtUsages(null);
-                phi.safeDelete();
+                phi.replaceAtUsagesAndDelete(null);
             }
         }
     }

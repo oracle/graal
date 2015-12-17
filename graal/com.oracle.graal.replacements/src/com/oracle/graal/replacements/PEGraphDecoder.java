@@ -568,8 +568,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             registerNode(loopScope, invokeData.exceptionOrderId, exceptionValue, true, true);
         }
         if (inlineScope.exceptionPlaceholderNode != null) {
-            inlineScope.exceptionPlaceholderNode.replaceAtUsages(exceptionValue);
-            inlineScope.exceptionPlaceholderNode.safeDelete();
+            inlineScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionValue);
         }
         deleteInvoke(invoke);
 

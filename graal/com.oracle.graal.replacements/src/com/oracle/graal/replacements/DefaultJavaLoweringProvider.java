@@ -384,7 +384,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             return;
         }
         ValueNode hub = createReadHub(graph, loadHub.getValue(), tool);
-        graph.replaceFloating(loadHub, hub);
+        loadHub.replaceAtUsagesAndDelete(hub);
     }
 
     protected void lowerMonitorEnterNode(MonitorEnterNode monitorEnter, LoweringTool tool, StructuredGraph graph) {
@@ -631,7 +631,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         for (Node usage : commit.usages().snapshot()) {
             AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
             int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
-            graph.replaceFloating(addObject, allocations[index]);
+            addObject.replaceAtUsagesAndDelete(allocations[index]);
         }
     }
 

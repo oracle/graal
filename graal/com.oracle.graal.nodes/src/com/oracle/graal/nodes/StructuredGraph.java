@@ -330,17 +330,6 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         return hasNode(LoopBeginNode.TYPE);
     }
 
-    public void removeFloating(FloatingNode node) {
-        assert node != null && node.isAlive() : "cannot remove " + node;
-        node.safeDelete();
-    }
-
-    public void replaceFloating(FloatingNode node, Node replacement) {
-        assert node != null && node.isAlive() && (replacement == null || replacement.isAlive()) : "cannot replace " + node + " with " + replacement;
-        node.replaceAtUsages(replacement);
-        node.safeDelete();
-    }
-
     /**
      * Unlinks a node from all its control flow neighbors and then removes it from its graph. The
      * node must have no {@linkplain Node#usages() usages}.
@@ -381,8 +370,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         GraphUtil.unlinkFixedNode(node);
-        node.replaceAtUsages(replacement);
-        node.safeDelete();
+        node.replaceAtUsagesAndDelete(replacement);
     }
 
     public void removeSplit(ControlSplitNode node, AbstractBeginNode survivingSuccessor) {
@@ -438,8 +426,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         assert survivingSuccessor != null;
         node.clearSuccessors();
         node.replaceAtPredecessor(survivingSuccessor);
-        node.replaceAtUsages(replacement);
-        node.safeDelete();
+        node.replaceAtUsagesAndDelete(replacement);
     }
 
     public void addAfterFixed(FixedWithNextNode node, FixedNode newNode) {
@@ -480,8 +467,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         for (PhiNode phi : merge.phis().snapshot()) {
             assert phi.valueCount() == 1;
             ValueNode singleValue = phi.valueAt(0);
-            phi.replaceAtUsages(singleValue);
-            phi.safeDelete();
+            phi.replaceAtUsagesAndDelete(singleValue);
         }
         // remove loop exits
         if (merge instanceof LoopBeginNode) {

@@ -94,7 +94,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      */
     public void replace(StructuredGraph graph, Node replacement) {
         assert graph == graph();
-        graph().replaceFloating(this, replacement);
+        replaceAtUsagesAndDelete(replacement);
     }
 
     @Override

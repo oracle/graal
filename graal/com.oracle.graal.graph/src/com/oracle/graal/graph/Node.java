@@ -670,10 +670,24 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final void replaceAtUsages(Node other) {
-        replaceAtUsages(other, null);
+        replaceAtUsages(other, null, null);
     }
 
     public final void replaceAtUsages(Node other, Predicate<Node> filter) {
+        replaceAtUsages(other, filter, null);
+    }
+
+    public final void replaceAtUsagesAndDelete(Node other) {
+        replaceAtUsages(other, null, this);
+        safeDelete();
+    }
+
+    public final void replaceAtUsagesAndDelete(Node other, Predicate<Node> filter) {
+        replaceAtUsages(other, filter, this);
+        safeDelete();
+    }
+
+    protected void replaceAtUsages(Node other, Predicate<Node> filter, Node toBeDeleted) {
         assert checkReplaceWith(other);
         int i = 0;
         while (i < this.getUsageCount()) {
@@ -681,7 +695,12 @@ public abstract class Node implements Cloneable, Formattable {
             if (filter == null || filter.test(usage)) {
                 boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
                 assert assertTrue(result, "not found in inputs, usage: %s", usage);
-                maybeNotifyInputChanged(usage);
+                /*
+                 * Don't notify for nodes which are about to be deleted.
+                 */
+                if (toBeDeleted == null || usage != toBeDeleted) {
+                    maybeNotifyInputChanged(usage);
+                }
                 if (other != null) {
                     other.addUsage(usage);
                 }
@@ -823,6 +842,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private boolean checkDeletion() {
+        assertTrue(isAlive(), "must be alive");
         assertTrue(hasNoUsages(), "cannot delete node %s because of usages: %s", this, usages());
         assertTrue(predecessor == null, "cannot delete node %s because of predecessor: %s", this, predecessor);
         return true;

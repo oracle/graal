@@ -164,7 +164,7 @@ public class InlineableGraph implements Inlineable {
                     Constant constant = arg.asConstant();
                     parameterUsages = trackParameterUsages(param, parameterUsages);
                     // collect param usages before replacing the param
-                    graph.replaceFloating(param, ConstantNode.forConstant(arg.stamp(), constant, context.getMetaAccess(), graph));
+                    param.replaceAtUsagesAndDelete(ConstantNode.forConstant(arg.stamp(), constant, context.getMetaAccess(), graph));
                     // param-node gone, leaving a gap in the sequence given by param.index()
                 } else {
                     Stamp impro = improvedStamp(arg, param);

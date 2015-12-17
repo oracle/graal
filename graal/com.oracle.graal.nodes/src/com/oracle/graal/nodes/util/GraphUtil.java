@@ -223,7 +223,7 @@ public class GraphUtil {
         if (singleValue != PhiNode.MULTIPLE_VALUES) {
             Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
             Collection<ProxyNode> proxyUsages = phiNode.usages().filter(ProxyNode.class).snapshot();
-            phiNode.graph().replaceFloating(phiNode, singleValue);
+            phiNode.replaceAtUsagesAndDelete(singleValue);
             for (PhiNode phi : phiUsages) {
                 checkRedundantPhi(phi);
             }
@@ -250,7 +250,7 @@ public class GraphUtil {
                 if (vpnValue == v2) {
                     Collection<PhiNode> phiUsages = vpn.usages().filter(PhiNode.class).snapshot();
                     Collection<ProxyNode> proxyUsages = vpn.usages().filter(ProxyNode.class).snapshot();
-                    vpn.graph().replaceFloating(vpn, vpnValue);
+                    vpn.replaceAtUsagesAndDelete(vpnValue);
                     for (PhiNode phi : phiUsages) {
                         checkRedundantPhi(phi);
                     }

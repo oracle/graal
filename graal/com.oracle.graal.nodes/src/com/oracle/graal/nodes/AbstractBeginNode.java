@@ -87,8 +87,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
             outer: while (true) {
                 for (ProxyNode vpn : proxies().snapshot()) {
                     ValueNode value = vpn.value();
-                    vpn.replaceAtUsages(value);
-                    vpn.safeDelete();
+                    vpn.replaceAtUsagesAndDelete(value);
                     if (value == this) {
                         // Guard proxy could have this input as value.
                         continue outer;

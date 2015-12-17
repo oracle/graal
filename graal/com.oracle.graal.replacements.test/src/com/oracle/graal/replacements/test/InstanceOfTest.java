@@ -63,7 +63,7 @@ public class InstanceOfTest extends TypeCheckTest {
         InstanceOfNode ion = graph.getNodes().filter(InstanceOfNode.class).first();
         if (ion != null) {
             LogicNode ionNew = graph.unique(InstanceOfNode.create(ion.type(), ion.getValue(), profile));
-            graph.replaceFloating(ion, ionNew);
+            ion.replaceAtUsagesAndDelete(ionNew);
         }
     }
 

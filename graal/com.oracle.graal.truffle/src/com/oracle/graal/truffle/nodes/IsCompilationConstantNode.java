@@ -51,7 +51,7 @@ public final class IsCompilationConstantNode extends FloatingNode implements Low
 
     @Override
     public void lower(LoweringTool tool) {
-        graph().replaceFloating(this, ConstantNode.forBoolean(false, graph()));
+        replaceAtUsagesAndDelete(ConstantNode.forBoolean(false, graph()));
     }
 
     @Override

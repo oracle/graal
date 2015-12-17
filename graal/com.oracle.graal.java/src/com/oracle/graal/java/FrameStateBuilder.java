@@ -446,8 +446,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         // Remove the phi function from all FrameStates where it is used and then delete it.
         assert node.usages().filter(isNotA(FrameState.class).nor(ValuePhiNode.class).nor(ProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
-        node.replaceAtUsages(null);
-        node.safeDelete();
+        node.replaceAtUsagesAndDelete(null);
 
         for (FloatingNode phiUsage : propagateUsages) {
             propagateDelete(phiUsage);
