@@ -58,6 +58,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.vm",
         "mx:JUNIT",
@@ -140,6 +141,15 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.interop"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.profiles" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["com.oracle.truffle.api"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
@@ -262,6 +272,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.dsl",
+        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",
       ],

@@ -26,7 +26,6 @@ package com.oracle.truffle.api.dsl;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -93,7 +92,7 @@ import java.lang.annotation.Target;
  *      CompilerAsserts.compilationConstant(cachedOperand);
  *      ...
  *  }
- *
+ * 
  *  Example executions:
  *  execute(1) => doCached(1, 1) // new instantiation, localOperand is bound to 1
  *  execute(0) => doCached(0, 1)
@@ -119,7 +118,7 @@ import java.lang.annotation.Target;
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
- *
+ * 
  * Example executions:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -147,10 +146,10 @@ import java.lang.annotation.Target;
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
- *
+ * 
  * &#064;Specialization(contains = &quot;doCached&quot;)
  * void doNormal(int operand) {...}
- *
+ * 
  * Example executions with contains = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -158,7 +157,7 @@ import java.lang.annotation.Target;
  * execute(2) => doCached(2, 2) // new instantiation, cachedOperand is bound to 2
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow; doCached gets removed.
  * execute(1) => doNormal(1)
- *
+ * 
  * Example executions without contains = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -166,7 +165,7 @@ import java.lang.annotation.Target;
  * execute(2) => doCached(2, 2) // new instantiation, cachedOperand is bound to 2
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow
  * execute(1) => doCached(1, 1)
- *
+ * 
  * </code>
  *
  * </li>
@@ -178,7 +177,7 @@ import java.lang.annotation.Target;
  * &#064;Specialization
  * void s(int operand, {@code @Cached}(&quot;transformLocal(operand)&quot;) int cachedOperand) {
  * }
- *
+ * 
  * int transformLocal(int operand) {
  *     return operand & 0x42;
  * }
@@ -194,9 +193,9 @@ import java.lang.annotation.Target;
  * void s(Object operand, {@code @Cached}(&quot;new()&quot;) OtherNode someNode) {
  *     someNode.execute(operand);
  * }
- *
+ * 
  * static class OtherNode extends Node {
- *
+ * 
  *     public String execute(Object value) {
  *         throw new UnsupportedOperationException();
  *     }
@@ -208,7 +207,8 @@ import java.lang.annotation.Target;
  * <li>
  * Java types without public constructor but with a static factory methods can be initialized by
  * just referencing its static factory method and its parameters. In this case
- * {@link BranchProfile#create()} is used to instantiate the {@link BranchProfile} instance.
+ * {@link com.oracle.truffle.api.profiles.BranchProfile#create()} is used to instantiate the
+ * {@link com.oracle.truffle.api.profiles.BranchProfile} instance.
  *
  * <pre>
  * &#064;Specialization
