@@ -316,7 +316,7 @@ public final class FrameDescriptor implements Cloneable {
                 return assumption;
             }
         }
-        Assumption assumption = Truffle.getRuntime().createAssumption("not in frame: " + identifier);
+        Assumption assumption = Truffle.getRuntime().createAssumption("identifier not in frame");
         identifierToNotInFrameAssumptionMap.put(identifier, assumption);
         return assumption;
     }
