@@ -28,7 +28,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 
 /**
  * <p>
@@ -92,7 +91,7 @@ public abstract class ValueProfile extends Profile {
      * @see ValueProfile usage example
      */
     public static ValueProfile createClassProfile() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return ExactClass.create();
         } else {
             return Disabled.INSTANCE;
@@ -112,7 +111,7 @@ public abstract class ValueProfile extends Profile {
      * </p>
      */
     public static ValueProfile createIdentityProfile() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return Identity.create();
         } else {
             return Disabled.INSTANCE;
@@ -135,7 +134,7 @@ public abstract class ValueProfile extends Profile {
      * </p>
      */
     public static ValueProfile createEqualityProfile() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return Equality.create();
         } else {
             return Disabled.INSTANCE;

@@ -26,7 +26,6 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 
 /**
  * <p>
@@ -78,7 +77,7 @@ public abstract class BranchProfile extends Profile {
      * Call to create a new instance of a branch profile.
      */
     public static BranchProfile create() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return Enabled.create0();
         } else {
             return Disabled.INSTANCE;

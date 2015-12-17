@@ -26,7 +26,6 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 
 /**
  * <p>
@@ -118,7 +117,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
      * @see LoopConditionProfile
      */
     public static LoopConditionProfile createCountingProfile() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return Enabled.create();
         } else {
             return Disabled.INSTANCE;

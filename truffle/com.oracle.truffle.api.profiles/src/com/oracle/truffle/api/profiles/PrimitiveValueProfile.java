@@ -28,7 +28,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 
 /**
  * <p>
@@ -70,7 +69,7 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
      * identity of a value.
      */
     public static PrimitiveValueProfile createEqualityProfile() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return Enabled.create();
         } else {
             return Disabled.INSTANCE;

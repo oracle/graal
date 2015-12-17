@@ -26,7 +26,6 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 
 /**
  * <p>
@@ -73,7 +72,7 @@ public abstract class ByteValueProfile extends Profile {
      * @see ByteValueProfile
      */
     public static ByteValueProfile createIdentityProfile() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return Enabled.create();
         } else {
             return Disabled.INSTANCE;

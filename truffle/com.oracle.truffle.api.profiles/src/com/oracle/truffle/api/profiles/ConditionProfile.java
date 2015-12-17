@@ -26,7 +26,6 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 
 /**
  * <p>
@@ -76,7 +75,7 @@ public abstract class ConditionProfile extends Profile {
      * @see #createBinaryProfile()
      */
     public static ConditionProfile createCountingProfile() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return Counting.create();
         } else {
             return Disabled.INSTANCE;
@@ -92,7 +91,7 @@ public abstract class ConditionProfile extends Profile {
      * @see ConditionProfile#createCountingProfile()
      */
     public static ConditionProfile createBinaryProfile() {
-        if (Truffle.getRuntime().isProfilingEnabled()) {
+        if (Profile.isProfilingEnabled()) {
             return Binary.create();
         } else {
             return Disabled.INSTANCE;

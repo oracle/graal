@@ -27,6 +27,7 @@ package com.oracle.truffle.api.profiles;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCloneable;
@@ -90,6 +91,21 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @see Assumption
  */
 public abstract class Profile extends NodeCloneable {
+    private static final boolean ENABLED;
+    static {
+        boolean enabled;
+        try {
+            enabled = Truffle.getRuntime().isProfilingEnabled();
+        } catch (NoSuchMethodError ex) {
+            // running on old version of Graal
+            enabled = true;
+        }
+        ENABLED = enabled;
+    }
+
+    static boolean isProfilingEnabled() {
+        return ENABLED;
+    }
 
     Profile() {
         /* We don't to allow custom profiles. We want to evolve this API further first. Sorry. */
