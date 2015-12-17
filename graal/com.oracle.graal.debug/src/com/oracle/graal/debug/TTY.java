@@ -235,7 +235,7 @@ public class TTY {
         out().println(f);
     }
 
-    public static void print(String format, Object... args) {
+    public static void printf(String format, Object... args) {
         out().printf(format, args);
     }
 

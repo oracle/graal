@@ -243,10 +243,10 @@ public class Util {
         boolean newLine = true;
         for (int i = 0; i < length; i++) {
             if (newLine) {
-                TTY.print("%08x: ", address + i);
+                TTY.printf("%08x: ", address + i);
                 newLine = false;
             }
-            TTY.print("%02x ", array[i]);
+            TTY.printf("%02x ", array[i]);
             if (i % bytesPerLine == bytesPerLine - 1) {
                 TTY.println();
                 newLine = true;
