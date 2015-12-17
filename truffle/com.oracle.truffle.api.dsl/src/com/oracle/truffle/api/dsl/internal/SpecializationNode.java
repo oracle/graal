@@ -24,6 +24,11 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -39,15 +44,9 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.concurrent.Callable;
 
 /**
  * Internal implementation dependent base class for generated specialized nodes.
@@ -83,14 +82,7 @@ public abstract class SpecializationNode extends Node {
     }
 
     private static void updateRootImpl(SpecializationNode start, Node node) {
-        NodeFieldAccessor[] fields = NodeClass.get(start).getFields();
-        for (int i = fields.length - 1; i >= 0; i--) {
-            NodeFieldAccessor f = fields[i];
-            if (f.getName().equals("root")) {
-                f.putObject(start, node);
-                break;
-            }
-        }
+        start.setRoot(node);
         if (start.next != null) {
             updateRootImpl(start.next, node);
         }
@@ -114,6 +106,8 @@ public abstract class SpecializationNode extends Node {
                 return NodeCost.POLYMORPHIC;
         }
     }
+
+    protected abstract void setRoot(Node root);
 
     protected abstract Node[] getSuppliedChildren();
 
