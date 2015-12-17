@@ -52,7 +52,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
  * Internal implementation dependent base class for generated specialized nodes.
  */
 @NodeInfo(cost = NodeCost.NONE)
-@SuppressWarnings("unused")
 public abstract class SpecializationNode extends Node {
 
     @Child protected SpecializationNode next;
@@ -164,30 +163,37 @@ public abstract class SpecializationNode extends Node {
         return getClass() == other.getClass();
     }
 
+    @SuppressWarnings("unused")
     protected boolean isIdentical(SpecializationNode newNode, Frame frame) {
         return isSame(newNode);
     }
 
+    @SuppressWarnings("unused")
     protected boolean isIdentical(SpecializationNode newNode, Frame frame, Object o1) {
         return isSame(newNode);
     }
 
+    @SuppressWarnings("unused")
     protected boolean isIdentical(SpecializationNode newNode, Frame frame, Object o1, Object o2) {
         return isSame(newNode);
     }
 
+    @SuppressWarnings("unused")
     protected boolean isIdentical(SpecializationNode newNode, Frame frame, Object o1, Object o2, Object o3) {
         return isSame(newNode);
     }
 
+    @SuppressWarnings("unused")
     protected boolean isIdentical(SpecializationNode newNode, Frame frame, Object o1, Object o2, Object o3, Object o4) {
         return isSame(newNode);
     }
 
+    @SuppressWarnings("unused")
     protected boolean isIdentical(SpecializationNode newNode, Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
         return isSame(newNode);
     }
 
+    @SuppressWarnings("unused")
     protected boolean isIdentical(SpecializationNode newNode, Frame frame, Object... args) {
         return isSame(newNode);
     }
@@ -263,18 +269,7 @@ public abstract class SpecializationNode extends Node {
     }
 
     protected final SpecializationNode removeSame(final CharSequence reason) {
-        SpecializationNode start = SpecializationNode.this.findStart();
-        SpecializationNode current = start;
-        while (current != null) {
-            if (current.isSame(SpecializationNode.this)) {
-                NodeUtil.nonAtomicReplace(current, current.next, reason);
-                if (current == start) {
-                    start = start.next;
-                }
-            }
-            current = current.next;
-        }
-        return SpecializationNode.this.findEnd().findStart();
+        return removeSameImpl(SpecializationNode.this, reason);
     }
 
     /** Find the topmost of the specialization chain. */
@@ -296,10 +291,6 @@ public abstract class SpecializationNode extends Node {
         return findStart().getParent();
     }
 
-    private SpecializedNode findSpecializedNode() {
-        return (SpecializedNode) findEnd().findStart().getParent();
-    }
-
     private static SpecializationNode removeSameImpl(SpecializationNode toRemove, CharSequence reason) {
         SpecializationNode start = toRemove.findStart();
         SpecializationNode current = start;
@@ -315,30 +306,37 @@ public abstract class SpecializationNode extends Node {
         return toRemove.findEnd().findStart();
     }
 
+    @SuppressWarnings("unused")
     public Object acceptAndExecute(Frame frame) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     public Object acceptAndExecute(Frame frame, Object o1) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     public Object acceptAndExecute(Frame frame, Object o1, Object o2) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     public Object acceptAndExecute(Frame frame, Object o1, Object o2, Object o3) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     public Object acceptAndExecute(Frame frame, Object o1, Object o2, Object o3, Object o4) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     public Object acceptAndExecute(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     public Object acceptAndExecute(Frame frame, Object... args) {
         throw new UnsupportedOperationException();
     }
@@ -351,30 +349,37 @@ public abstract class SpecializationNode extends Node {
         return null;
     }
 
+    @SuppressWarnings("unused")
     protected SpecializationNode createNext(Frame frame) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     protected SpecializationNode createNext(Frame frame, Object o1) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     protected SpecializationNode createNext(Frame frame, Object o1, Object o2) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     protected SpecializationNode createNext(Frame frame, Object o1, Object o2, Object o3) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     protected SpecializationNode createNext(Frame frame, Object o1, Object o2, Object o3, Object o4) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     protected SpecializationNode createNext(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     protected SpecializationNode createNext(Frame frame, Object... args) {
         throw new UnsupportedOperationException();
     }
@@ -470,30 +475,37 @@ public abstract class SpecializationNode extends Node {
         return atomic(new RemoveEventN(this, reason, frame, args)).acceptAndExecute(frame, args);
     }
 
+    @SuppressWarnings("unused")
     protected Object unsupported(Frame frame) {
         throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren());
     }
 
+    @SuppressWarnings("unused")
     protected Object unsupported(Frame frame, Object o1) {
         throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1);
     }
 
+    @SuppressWarnings("unused")
     protected Object unsupported(Frame frame, Object o1, Object o2) {
         throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1, o2);
     }
 
+    @SuppressWarnings("unused")
     protected Object unsupported(Frame frame, Object o1, Object o2, Object o3) {
         throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1, o2, o3);
     }
 
+    @SuppressWarnings("unused")
     protected Object unsupported(Frame frame, Object o1, Object o2, Object o3, Object o4) {
         throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1, o2, o3, o4);
     }
 
+    @SuppressWarnings("unused")
     protected Object unsupported(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
         throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1, o2, o3, o4, o5);
     }
 
+    @SuppressWarnings("unused")
     protected Object unsupported(Frame frame, Object... args) {
         throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), args);
     }
