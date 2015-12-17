@@ -69,9 +69,6 @@ public abstract class GeneratedPlugin {
         out.printf("\n");
         out.printf("        @Override\n");
         out.printf("        public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {\n");
-        out.printf("            if (!b.parsingIntrinsic()) {\n");
-        out.printf("                return false;\n");
-        out.printf("            }\n");
         InjectedDependencies deps = createExecute(env, out);
         out.printf("        }\n");
 
