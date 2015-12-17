@@ -547,12 +547,28 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 assertTrue(state != null, "must be non-null");
             }
         }
+        if (monitorIds() != null && monitorIds().size() > 0) {
+            int depth = outerLockDepth();
+            for (MonitorIdNode monitor : monitorIds()) {
+                assertTrue(monitor.getLockDepth() == depth++, "wrong depth");
+            }
+        }
         assertTrue(locksSize() == monitorIdCount(), "mismatch in number of locks");
         for (ValueNode value : values) {
             assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
             assertTrue(value == null || value instanceof VirtualObjectNode || (value.getStackKind() != JavaKind.Void), "unexpected value: %s", value);
         }
         return super.verify();
+    }
+
+    private int outerLockDepth() {
+        int depth = 0;
+        FrameState outer = outerFrameState;
+        while (outer != null) {
+            depth += outer.monitorIdCount();
+            outer = outer.outerFrameState;
+        }
+        return depth;
     }
 
     @Override
