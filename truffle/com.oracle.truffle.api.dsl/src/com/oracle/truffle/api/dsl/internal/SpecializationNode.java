@@ -60,10 +60,6 @@ public abstract class SpecializationNode extends Node {
 
     private final int index;
 
-    public SpecializationNode() {
-        this(-1);
-    }
-
     public SpecializationNode(int index) {
         this.index = index;
     }
