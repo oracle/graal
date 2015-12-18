@@ -90,6 +90,7 @@ cons public init()
 fld public final static java.lang.String OPTION_PREFIX = "truffle.object."
 innr public final static !enum ImplicitCast
 innr public final static Builder
+meth protected static boolean getPolymorphicUnboxing(com.oracle.truffle.api.object.Layout$Builder)
 meth protected static com.oracle.truffle.api.object.LayoutFactory getFactory()
 meth protected static java.util.EnumSet<com.oracle.truffle.api.object.Layout$ImplicitCast> getAllowedImplicitCasts(com.oracle.truffle.api.object.Layout$Builder)
 meth public abstract com.oracle.truffle.api.object.DynamicObject newInstance(com.oracle.truffle.api.object.Shape)
@@ -108,8 +109,9 @@ CLSS public final static com.oracle.truffle.api.object.Layout$Builder
 meth public com.oracle.truffle.api.object.Layout build()
 meth public com.oracle.truffle.api.object.Layout$Builder addAllowedImplicitCast(com.oracle.truffle.api.object.Layout$ImplicitCast)
 meth public com.oracle.truffle.api.object.Layout$Builder setAllowedImplicitCasts(java.util.EnumSet<com.oracle.truffle.api.object.Layout$ImplicitCast>)
+meth public com.oracle.truffle.api.object.Layout$Builder setPolymorphicUnboxing(boolean)
 supr java.lang.Object
-hfds allowedImplicitCasts
+hfds allowedImplicitCasts,polymorphicUnboxing
 
 CLSS public final static !enum com.oracle.truffle.api.object.Layout$ImplicitCast
  outer com.oracle.truffle.api.object.Layout
@@ -175,6 +177,8 @@ CLSS public com.oracle.truffle.api.object.ObjectType
 cons public init()
 meth public boolean equals(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
 meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory()
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(com.oracle.truffle.api.object.DynamicObject)
 meth public int hashCode(com.oracle.truffle.api.object.DynamicObject)
 meth public java.lang.Object createShapeData(com.oracle.truffle.api.object.Shape)
 meth public java.lang.String toString(com.oracle.truffle.api.object.DynamicObject)
