@@ -269,7 +269,18 @@ public abstract class SpecializationNode extends Node {
     }
 
     protected final SpecializationNode removeSame(final CharSequence reason) {
-        return removeSameImpl(SpecializationNode.this, reason);
+        SpecializationNode start = SpecializationNode.this.findStart();
+        SpecializationNode current = start;
+        while (current != null) {
+            if (current.isSame(SpecializationNode.this)) {
+                NodeUtil.nonAtomicReplace(current, current.next, reason);
+                if (current == start) {
+                    start = start.next;
+                }
+            }
+            current = current.next;
+        }
+        return SpecializationNode.this.findEnd().findStart();
     }
 
     /** Find the topmost of the specialization chain. */
@@ -289,21 +300,6 @@ public abstract class SpecializationNode extends Node {
 
     private Node findRoot() {
         return findStart().getParent();
-    }
-
-    private static SpecializationNode removeSameImpl(SpecializationNode toRemove, CharSequence reason) {
-        SpecializationNode start = toRemove.findStart();
-        SpecializationNode current = start;
-        while (current != null) {
-            if (current.isSame(toRemove)) {
-                NodeUtil.nonAtomicReplace(current, current.next, reason);
-                if (current == start) {
-                    start = start.next;
-                }
-            }
-            current = current.next;
-        }
-        return toRemove.findEnd().findStart();
     }
 
     @SuppressWarnings("unused")
