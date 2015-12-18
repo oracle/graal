@@ -1055,6 +1055,20 @@ public class ElementUtils {
         return 0;
     }
 
+    public static int compareByTypeHierarchy(TypeMirror t1, Set<String> t1SuperSet, TypeMirror t2, Set<String> t2SuperSet) {
+        if (typeEquals(t1, t2)) {
+            return 0;
+        }
+        if (t1SuperSet.contains(getQualifiedName(t2))) {
+            return -1;
+        }
+
+        if (t2SuperSet.contains(getQualifiedName(t1))) {
+            return 1;
+        }
+        return 0;
+    }
+
     public static boolean canThrowType(List<? extends TypeMirror> thrownTypes, TypeMirror exceptionType) {
         if (ElementUtils.containsType(thrownTypes, exceptionType)) {
             return true;

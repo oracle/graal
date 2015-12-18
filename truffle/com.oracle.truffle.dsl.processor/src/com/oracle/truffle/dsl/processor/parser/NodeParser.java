@@ -22,6 +22,35 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
+import javax.tools.Diagnostic.Kind;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CreateCast;
@@ -66,34 +95,6 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData.SpecializationK
 import com.oracle.truffle.dsl.processor.model.SpecializationThrowsData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
-
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
-import javax.tools.Diagnostic.Kind;
 
 @DSLOptions
 public class NodeParser extends AbstractParser<NodeData> {
@@ -354,6 +355,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         TypeElement typeElement = ElementUtils.fromTypeMirror(context.reloadType(importGuardClass.asType()));
 
         List<Element> members = new ArrayList<>();
+
         for (Element importElement : processingEnv.getElementUtils().getAllMembers(typeElement)) {
             if (!importElement.getModifiers().contains(Modifier.PUBLIC)) {
                 continue;
@@ -372,6 +374,36 @@ public class NodeParser extends AbstractParser<NodeData> {
                 members.add(importElement);
             }
         }
+
+        /*
+         * Sort elements by enclosing type to ensure that duplicate static methods are used from the
+         * most concrete subtype.
+         */
+        Collections.sort(members, new Comparator<Element>() {
+            Map<TypeMirror, Set<String>> cachedQualifiedNames = new HashMap<>();
+
+            public int compare(Element o1, Element o2) {
+                TypeMirror e1 = o1.getEnclosingElement() != null ? o1.getEnclosingElement().asType() : null;
+                TypeMirror e2 = o2.getEnclosingElement() != null ? o2.getEnclosingElement().asType() : null;
+
+                Set<String> e1SuperTypes = getCachedSuperTypes(e1);
+                Set<String> e2SuperTypes = getCachedSuperTypes(e2);
+                return ElementUtils.compareByTypeHierarchy(e1, e1SuperTypes, e2, e2SuperTypes);
+            }
+
+            private Set<String> getCachedSuperTypes(TypeMirror e) {
+                if (e == null) {
+                    return Collections.emptySet();
+                }
+                Set<String> superTypes = cachedQualifiedNames.get(e);
+                if (superTypes == null) {
+                    superTypes = new HashSet<>(ElementUtils.getQualifiedSuperTypeNames(ElementUtils.fromTypeMirror(e)));
+                    cachedQualifiedNames.put(e, superTypes);
+                }
+                return superTypes;
+            }
+        });
+
         return members;
     }
 

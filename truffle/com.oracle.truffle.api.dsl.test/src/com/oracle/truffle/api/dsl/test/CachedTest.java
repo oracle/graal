@@ -310,6 +310,30 @@ public class CachedTest {
     }
 
     @NodeChild
+    static class TestCachedWithProfile extends ValueNode {
+
+        @Specialization
+        static int do1(int value, @Cached("create()") MySubClass mySubclass) {
+            return 42;
+        }
+    }
+
+    public static class MyClass {
+
+        public static MyClass create() {
+            return new MyClass();
+        }
+    }
+
+    public static class MySubClass extends MyClass {
+
+        public static MySubClass create() {
+            return new MySubClass();
+        }
+
+    }
+
+    @NodeChild
     static class TestCachesOrder extends ValueNode {
 
         @Specialization(guards = "boundByGuard != 0")
