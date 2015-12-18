@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -102,13 +103,23 @@ public abstract class SLReadPropertyCacheNode extends Node {
         }
     }
 
+    @Specialization(guards = "updateShape(receiver)")
+    public Object updateShapeAndRead(DynamicObject receiver) {
+        return executeObject(receiver);
+    }
+
     /*
      * The generic case is used if the number of shapes accessed overflows the limit.
      */
-    @Specialization(contains = "doCachedObject")
+    @Specialization(contains = {"doCachedObject", "updateShapeAndRead"})
     @TruffleBoundary
     protected Object doGeneric(DynamicObject receiver) {
         return receiver.get(receiver, SLNull.SINGLETON);
+    }
+
+    protected static boolean updateShape(DynamicObject object) {
+        CompilerDirectives.transferToInterpreter();
+        return object.updateShape();
     }
 
 }
