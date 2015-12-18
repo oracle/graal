@@ -28,10 +28,7 @@ import java.util.Set;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
@@ -68,9 +65,7 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
         for (int i = 0; i < zappedRegisters.length; i++) {
             Register reg = zappedRegisters[i];
             if (reg != null) {
-                PlatformKind kind = crb.target.arch.getLargestStorableKind(reg.getRegisterCategory());
-                RegisterValue registerValue = reg.asValue(LIRKind.value(kind));
-                AMD64Move.const2reg(crb, masm, registerValue, zapValues[i]);
+                AMD64Move.const2reg(crb, masm, reg, zapValues[i]);
             }
         }
     }

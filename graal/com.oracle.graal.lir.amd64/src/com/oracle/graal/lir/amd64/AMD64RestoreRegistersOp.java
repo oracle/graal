@@ -28,8 +28,8 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -71,9 +71,8 @@ public class AMD64RestoreRegistersOp extends AMD64LIRInstruction {
         return save.savedRegisters;
     }
 
-    protected void restoreRegister(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register register, StackSlot input) {
-        RegisterValue result = register.asValue(input.getLIRKind());
-        AMD64Move.move(crb, masm, result, input);
+    protected void restoreRegister(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, StackSlot input) {
+        AMD64Move.stack2reg((AMD64Kind) input.getPlatformKind(), crb, masm, result, input);
     }
 
     @Override
