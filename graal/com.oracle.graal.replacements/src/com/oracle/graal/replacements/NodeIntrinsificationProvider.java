@@ -49,14 +49,14 @@ public class NodeIntrinsificationProvider implements InjectionProvider {
     }
 
     @Override
-    public Stamp getReturnStamp(Class<?> type) {
+    public Stamp getReturnStamp(Class<?> type, boolean nonNull) {
         JavaKind kind = JavaKind.fromJavaClass(type);
         if (kind == JavaKind.Object) {
             ResolvedJavaType returnType = metaAccess.lookupJavaType(type);
             if (wordTypes.isWord(returnType)) {
                 return wordTypes.getWordStamp(returnType);
             } else {
-                return StampFactory.declared(returnType);
+                return nonNull ? StampFactory.declaredNonNull(returnType) : StampFactory.declared(returnType);
             }
         } else {
             return StampFactory.forKind(kind);

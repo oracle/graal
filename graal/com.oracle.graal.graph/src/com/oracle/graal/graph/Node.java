@@ -188,6 +188,12 @@ public abstract class Node implements Cloneable, Formattable {
          * ignored and can therefore safely be {@code null}.
          */
         boolean setStampFromReturnType() default false;
+
+        /**
+         * Determines if the stamp of the instantiated intrinsic node is guaranteed to be non-null.
+         * Generally used in conjunction with {@link #setStampFromReturnType()}.
+         */
+        boolean returnStampIsNonNull() default false;
     }
 
     /**
