@@ -802,7 +802,7 @@ public class NodeGenFactory {
             }
         };
 
-        builder.tree(createGuardAndCast(group, genericType, currentLocals, executionFactory));
+        builder.tree(createGuardAndCast(builder, group, null, currentLocals, executionFactory));
         builder.returnFalse();
         return method;
     }
@@ -928,7 +928,7 @@ public class NodeGenFactory {
 
         CodeTreeBuilder builder = method.createBuilder();
         SpecializationGroup group = createSpecializationGroups();
-        CodeTree execution = createGuardAndCast(group, genericType, locals, new SpecializationBody(false, false) {
+        CodeTree execution = createGuardAndCast(builder, group, null, locals, new SpecializationBody(false, false) {
             @Override
             public CodeTree createBody(SpecializationData specialization, LocalContext values) {
                 CodeTypeElement generatedType = specializationClasses.get(specialization);
@@ -1631,8 +1631,8 @@ public class NodeGenFactory {
         return builder.build();
     }
 
-    private CodeTree createCallDelegate(String methodName, String reason, ExecutableTypeData forType, LocalContext currentValues) {
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+    private CodeTree createCallDelegate(CodeTreeBuilder parent, String methodName, String reason, ExecutableTypeData forType, LocalContext currentValues) {
+        CodeTreeBuilder builder = parent.create();
         builder.startCall(methodName);
         if (reason != null) {
             builder.doubleQuote(reason);
@@ -1860,7 +1860,7 @@ public class NodeGenFactory {
         } else if (specialization.isPolymorphic()) {
             builder.tree(createCallNext(builder, executableType, node.getGenericExecutableType(executableType), currentLocals));
         } else if (specialization.isUninitialized()) {
-            builder.startReturn().tree(createCallDelegate("uninitialized", null, executableType, currentLocals)).end();
+            builder.startReturn().tree(createCallDelegate(builder, "uninitialized", null, executableType, currentLocals)).end();
         } else {
             SpecializationGroup group = SpecializationGroup.create(specialization);
             SpecializationBody executionFactory = new SpecializationBody(true, true) {
@@ -1869,7 +1869,7 @@ public class NodeGenFactory {
                     return createFastPathExecute(builder, executableType, s, values);
                 }
             };
-            builder.tree(createGuardAndCast(group, returnType, currentLocals, executionFactory));
+            builder.tree(createGuardAndCast(builder, group, executableType, currentLocals, executionFactory));
             if (hasFallthrough(group, returnType, originalValues, true, null) || group.getSpecialization().isFallback()) {
                 builder.tree(createCallNext(builder, executableType, node.getGenericExecutableType(executableType), originalValues));
             }
@@ -2005,26 +2005,6 @@ public class NodeGenFactory {
         }
         CodeTreeBuilder execute = builder.create();
 
-        if (!specialization.getAssumptionExpressions().isEmpty()) {
-            builder.startTryBlock();
-            for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
-                LocalVariable assumptionVar = currentValues.get(assumptionName(assumption));
-                if (assumptionVar == null) {
-                    throw new AssertionError("Could not resolve assumption var " + currentValues);
-                }
-                builder.startStatement().startCall("check").tree(assumptionVar.createReference()).end().end();
-            }
-            builder.end().startCatchBlock(getType(InvalidAssumptionException.class), "ae");
-            builder.startReturn();
-            List<String> assumptionIds = new ArrayList<>();
-            for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
-                assumptionIds.add(assumption.getId());
-            }
-            builder.tree(createCallDelegate("removeThis", String.format("Assumption %s invalidated", assumptionIds), forType, currentValues));
-            builder.end();
-            builder.end();
-        }
-
         if (specialization.getMethod() == null) {
             execute.startReturn();
             execute.startCall("unsupported");
@@ -2055,8 +2035,8 @@ public class NodeGenFactory {
         return builder.build();
     }
 
-    private CodeTree createGuardAndCast(SpecializationGroup group, TypeMirror forType, LocalContext currentValues, SpecializationBody execution) {
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+    private CodeTree createGuardAndCast(CodeTreeBuilder parent, SpecializationGroup group, ExecutableTypeData forType, LocalContext currentValues, SpecializationBody execution) {
+        CodeTreeBuilder builder = parent.create();
 
         Set<TypeGuard> castGuards;
         if (execution.needsCastedValues()) {
@@ -2071,6 +2051,14 @@ public class NodeGenFactory {
         }
 
         SpecializationData specialization = group.getSpecialization();
+
+        CodeTree assumptionChecks = null;
+        if (specialization != null && execution.isFastPath() && forType != null) {
+            if (!specialization.getAssumptionExpressions().isEmpty()) {
+                assumptionChecks = createFastPathAssumptionCheck(builder, specialization, forType, currentValues);
+            }
+        }
+
         CodeTree[] checkAndCast = createTypeCheckAndLocals(specialization, group.getTypeGuards(), castGuards, currentValues, execution);
 
         CodeTree check = checkAndCast[0];
@@ -2083,6 +2071,9 @@ public class NodeGenFactory {
         CodeTree methodGuards = methodGuardAndAssertions[0];
         CodeTree guardAssertions = methodGuardAndAssertions[1];
 
+        if (assumptionChecks != null) {
+            builder.tree(assumptionChecks);
+        }
         int ifCount = 0;
         if (!check.isEmpty()) {
             builder.startIf();
@@ -2110,7 +2101,7 @@ public class NodeGenFactory {
         boolean reachable = isReachableGroup(group, ifCount);
         if (reachable) {
             for (SpecializationGroup child : group.getChildren()) {
-                builder.tree(createGuardAndCast(child, forType, currentValues.copy(), execution));
+                builder.tree(createGuardAndCast(builder, child, forType, currentValues.copy(), execution));
             }
             if (specialization != null) {
                 builder.tree(execution.createBody(specialization, currentValues));
@@ -2118,6 +2109,28 @@ public class NodeGenFactory {
         }
         builder.end(ifCount);
 
+        return builder.build();
+    }
+
+    private CodeTree createFastPathAssumptionCheck(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData forType, LocalContext currentValues) throws AssertionError {
+        CodeTreeBuilder builder = parent.create();
+        builder.startTryBlock();
+        for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
+            LocalVariable assumptionVar = currentValues.get(assumptionName(assumption));
+            if (assumptionVar == null) {
+                throw new AssertionError("Could not resolve assumption var " + currentValues);
+            }
+            builder.startStatement().startCall("check").tree(assumptionVar.createReference()).end().end();
+        }
+        builder.end().startCatchBlock(getType(InvalidAssumptionException.class), "ae");
+        builder.startReturn();
+        List<String> assumptionIds = new ArrayList<>();
+        for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
+            assumptionIds.add(assumption.getId());
+        }
+        builder.tree(createCallDelegate(builder, "removeThis", String.format("Assumption %s invalidated", assumptionIds), forType, currentValues));
+        builder.end();
+        builder.end();
         return builder.build();
     }
 

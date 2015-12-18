@@ -30,7 +30,6 @@ import static org.junit.Assert.fail;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
@@ -323,7 +322,6 @@ public class AssumptionsTest {
 
     }
 
-    @Ignore
     @Test
     public void testAssumptionRemovesSpecializationBefore() {
         // This only test if a specialization on the chain before the matching one is removed.
