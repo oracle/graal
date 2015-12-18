@@ -87,6 +87,10 @@ public abstract class NodeFieldAccessor {
         return name;
     }
 
+    /**
+     * @deprecated The visibility of this method will be reduced to protected. Do not use.
+     */
+    @Deprecated
     public abstract void putObject(Node receiver, Object value);
 
     public abstract Object getObject(Node receiver);
@@ -101,6 +105,7 @@ public abstract class NodeFieldAccessor {
 
         public abstract long getOffset();
 
+        @SuppressWarnings("deprecation")
         @Override
         public void putObject(Node receiver, Object value) {
             if (!type.isPrimitive() && value == null || type.isInstance(value)) {
@@ -182,6 +187,7 @@ public abstract class NodeFieldAccessor {
             field.setAccessible(true);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public void putObject(Node receiver, Object value) {
             assert !type.isPrimitive() && value == null || type.isInstance(value);
