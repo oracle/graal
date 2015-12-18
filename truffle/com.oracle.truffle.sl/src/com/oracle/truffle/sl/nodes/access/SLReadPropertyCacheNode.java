@@ -108,13 +108,7 @@ public abstract class SLReadPropertyCacheNode extends Node {
     @Specialization(contains = "doCachedObject")
     @TruffleBoundary
     protected Object doGeneric(DynamicObject receiver) {
-        Shape shape = receiver.getShape();
-        Property property = shape.getProperty(propertyName);
-        if (property != null) {
-            return property.get(receiver, shape);
-        } else {
-            return SLNull.SINGLETON;
-        }
+        return receiver.get(receiver, SLNull.SINGLETON);
     }
 
 }
