@@ -25,6 +25,7 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.dsl.test.TestHelper.getNode;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.fail;
 
 import java.util.HashMap;
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MethodTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MultipleAssumptionArraysTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MultipleAssumptionsTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.NodeFieldTest2Factory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.RemoveAndCacheSpecializationTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.RemoveSpecializationTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.StaticFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
@@ -353,6 +355,46 @@ public class AssumptionsTest {
         @Specialization
         boolean invalidated(boolean value) {
             return false;
+        }
+
+    }
+
+    @Test
+    public void testAssumptionRemovesInvalidSpecializationBeforeNext() {
+        CallTarget root = createCallTarget(RemoveAndCacheSpecializationTestFactory.getInstance());
+        RemoveAndCacheSpecializationTest node = getNode(root);
+
+        assertEquals(1, root.call(1));
+        SpecializationNode start0 = ((SpecializedNode) node).getSpecializationNode();
+        assertEquals("ValidAssumptionNode_", start0.getClass().getSimpleName());
+
+        node.assumption1.invalidate();
+        // The specialization should be removed, and a new cached entry be inserted
+        assertEquals(2, root.call(2));
+        SpecializationNode start1 = ((SpecializedNode) node).getSpecializationNode();
+        assertNotSame(start0, start1);
+        assertEquals("ValidAssumptionNode_", start1.getClass().getSimpleName());
+    }
+
+    @NodeChild
+    @SuppressWarnings("unused")
+    static class RemoveAndCacheSpecializationTest extends ValueNode {
+
+        protected final Assumption assumption1 = Truffle.getRuntime().createAssumption();
+        protected final Assumption assumption2 = Truffle.getRuntime().createAssumption();
+
+        protected Assumption assumptionForValue(int value) {
+            return value == 1 ? assumption1 : assumption2;
+        }
+
+        @Specialization(guards = "value == cachedValue", assumptions = "assumptionForValue(cachedValue)", limit = "1")
+        int validAssumption(int value, @Cached("value") int cachedValue) {
+            return cachedValue;
+        }
+
+        @Specialization
+        int uncached(int value) {
+            return -1;
         }
 
     }
