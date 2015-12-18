@@ -89,12 +89,12 @@ public abstract class SLWritePropertyCacheNode extends Node {
     }
 
     @Specialization(guards = "updateShape(receiver)")
-    public void updateShape(DynamicObject receiver, Object value) {
+    public void updateShapeAndWrite(DynamicObject receiver, Object value) {
         executeObject(receiver, value);
     }
 
     @TruffleBoundary
-    @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached", "updateShape"})
+    @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached", "updateShapeAndWrite"})
     public void writeUncached(DynamicObject receiver, Object value) {
         receiver.define(propertyName, value);
     }
