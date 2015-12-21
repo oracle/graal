@@ -28,7 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
- * A slot in a frame that can store a value of a given type.
+ * A slot in a {@link Frame} and {@link FrameDescriptor} that can store a value of a given type.
  */
 public final class FrameSlot implements Cloneable {
 
@@ -38,7 +38,18 @@ public final class FrameSlot implements Cloneable {
     private final int index;
     @CompilationFinal private FrameSlotKind kind;
 
+    /**
+     * @deprecated use
+     *             {@link FrameDescriptor#addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)}
+     *             to create new instance of the slot. This method will be made package private in
+     *             the future.
+     */
+    @Deprecated
     public FrameSlot(FrameDescriptor descriptor, Object identifier, Object info, int index, FrameSlotKind kind) {
+        this(descriptor, identifier, info, kind, index);
+    }
+
+    FrameSlot(FrameDescriptor descriptor, Object identifier, Object info, FrameSlotKind kind, int index) {
         this.descriptor = descriptor;
         this.identifier = identifier;
         this.info = info;
@@ -46,22 +57,56 @@ public final class FrameSlot implements Cloneable {
         this.kind = kind;
     }
 
+    /**
+     * Identifier of the slot.
+     * 
+     * @return value as specified in {@link FrameDescriptor#addFrameSlot(java.lang.Object)}
+     *         parameter
+     */
     public Object getIdentifier() {
         return identifier;
     }
 
+    /**
+     * Information about the slot.
+     * 
+     * @return value as specified as second parameter of
+     *         {@link FrameDescriptor#addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)}
+     */
     public Object getInfo() {
         return info;
     }
 
+    /**
+     * Index of the slot in the {@link FrameDescriptor}.
+     * 
+     * @return position of the slot computed after
+     *         {@link FrameDescriptor#addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)
+     *         adding} it.
+     */
     public int getIndex() {
         return index;
     }
 
+    /**
+     * Kind of the slot. Specified either at
+     * {@link FrameDescriptor#addFrameSlot(java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)
+     * creation time} or updated via {@link #setKind(com.oracle.truffle.api.frame.FrameSlotKind)}
+     * method.
+     * 
+     * @return current kind of this slot
+     */
     public FrameSlotKind getKind() {
         return kind;
     }
 
+    /**
+     * Changes the kind of this slot. Change of the slot kind is done on <em>slow path</em> and
+     * invalidates assumptions about {@link FrameDescriptor#createVersion() version} of
+     * {@link #getFrameDescriptor() associated descriptor}.
+     * 
+     * @param kind new kind of the slot
+     */
     public void setKind(final FrameSlotKind kind) {
         if (this.kind != kind) {
             CompilerDirectives.transferToInterpreter();
@@ -75,6 +120,12 @@ public final class FrameSlot implements Cloneable {
         return "[" + index + "," + identifier + "," + kind + "]";
     }
 
+    /**
+     * Frame descriptor this slot is associated with.
+     * 
+     * @return instance of descriptor that {@link FrameDescriptor#addFrameSlot(java.lang.Object)
+     *         created} the slot
+     */
     public FrameDescriptor getFrameDescriptor() {
         return this.descriptor;
     }

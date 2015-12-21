@@ -133,7 +133,7 @@ public final class FrameDescriptor implements Cloneable {
         if (identifierToSlotMap.containsKey(identifier)) {
             throw new IllegalArgumentException("duplicate frame slot: " + identifier);
         }
-        FrameSlot slot = new FrameSlot(this, identifier, info, slots.size(), kind);
+        FrameSlot slot = new FrameSlot(this, identifier, info, kind, slots.size());
         slots.add(slot);
         identifierToSlotMap.put(identifier, slot);
         updateVersion();
