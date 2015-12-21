@@ -26,9 +26,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -38,6 +35,9 @@ import com.oracle.graal.debug.DebugMemUseTracker;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 /**
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be

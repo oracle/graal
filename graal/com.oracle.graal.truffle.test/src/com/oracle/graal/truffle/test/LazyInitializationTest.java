@@ -30,15 +30,17 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.vm.ci.options.OptionDescriptor;
-import jdk.vm.ci.options.OptionDescriptors;
-import jdk.vm.ci.options.OptionValue;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.CompilerThreadFactory;
+import com.oracle.graal.options.OptionDescriptor;
+import com.oracle.graal.options.OptionDescriptors;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionsParser;
+import com.oracle.graal.options.OptionsParser.OptionDescriptorsProvider;
 import com.oracle.graal.test.SubprocessUtil;
 
 /**
@@ -171,8 +173,13 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (OptionDescriptors.class.isAssignableFrom(cls)) {
+        if (OptionDescriptors.class.isAssignableFrom(cls) || OptionDescriptor.class.isAssignableFrom(cls)) {
             // If options are specified, the corresponding *_OptionDescriptors classes are loaded.
+            return true;
+        }
+
+        if (OptionDescriptorsProvider.class.isAssignableFrom(cls) || cls == OptionsParser.class) {
+            // Classes implementing Graal option loading
             return true;
         }
 

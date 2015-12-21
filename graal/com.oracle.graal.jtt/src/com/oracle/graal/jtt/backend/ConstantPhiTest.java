@@ -27,13 +27,12 @@ import static com.oracle.graal.api.directives.GraalDirectives.injectBranchProbab
 
 import java.lang.reflect.Method;
 
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
-
 import org.junit.Test;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.jtt.JTTTest;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 
 public class ConstantPhiTest extends JTTTest {
 

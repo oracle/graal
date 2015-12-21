@@ -71,11 +71,6 @@ import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.options.OptionDescriptor;
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
-import jdk.vm.ci.options.OptionsParser;
-import jdk.vm.ci.options.OptionsParser.OptionConsumer;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
@@ -89,6 +84,11 @@ import com.oracle.graal.debug.MethodFilter;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
+import com.oracle.graal.options.OptionDescriptor;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionsParser;
+import com.oracle.graal.options.OptionsParser.OptionConsumer;
 
 /**
  * This class implements compile-the-world functionality with JVMCI.
@@ -228,7 +228,6 @@ public final class CompileTheWorld {
         // ...but we want to see exceptions.
         config.putIfAbsent(PrintBailout, true);
         config.putIfAbsent(PrintStackTraceOnException, true);
-        config.putIfAbsent(HotSpotResolvedJavaMethod.Options.UseProfilingInformation, false);
     }
 
     public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler) {
@@ -481,7 +480,9 @@ public final class CompileTheWorld {
             HotSpotResolvedJavaMethod dummyMethod = (HotSpotResolvedJavaMethod) JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(
                             CompileTheWorld.class.getDeclaredMethod("dummy"));
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
-            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L), false);
+            boolean useProfilingInfo = false;
+            boolean installAsDefault = false;
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L), useProfilingInfo, installAsDefault);
             task.runCompilation();
         } catch (NoSuchMethodException | SecurityException e1) {
             e1.printStackTrace();
@@ -676,7 +677,10 @@ public final class CompileTheWorld {
             long allocatedAtStart = MemUseTrackerImpl.getCurrentThreadAllocatedBytes();
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
-            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, false);
+            // For more stable CTW execution, disable use of profiling information
+            boolean useProfilingInfo = false;
+            boolean installAsDefault = false;
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
             task.runCompilation();
 
             memoryUsed.getAndAdd(MemUseTrackerImpl.getCurrentThreadAllocatedBytes() - allocatedAtStart);

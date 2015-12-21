@@ -44,8 +44,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
@@ -91,6 +89,8 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 
 /**

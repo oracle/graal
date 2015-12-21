@@ -44,8 +44,6 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.meta.VMConstant;
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
@@ -72,6 +70,8 @@ import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationO
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;

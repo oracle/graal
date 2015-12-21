@@ -38,7 +38,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.options.StableOptionValue;
 import jdk.vm.ci.service.Services;
 import sun.reflect.Reflection;
 
@@ -74,6 +73,7 @@ import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.options.StableOptionValue;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
 import com.oracle.graal.replacements.MethodHandlePlugin;
 import com.oracle.graal.replacements.NodeIntrinsificationPlugin;

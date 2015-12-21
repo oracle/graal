@@ -25,8 +25,6 @@ package com.oracle.graal.truffle.hotspot;
 import java.util.function.Supplier;
 
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionValue;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
@@ -36,6 +34,8 @@ import jdk.vm.ci.service.Services;
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.hotspot.HotSpotGraalCompilerFactory;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionValue;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 

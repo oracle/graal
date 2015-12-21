@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.jtt.bytecode;
 
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
-
 import org.junit.Test;
 
 import com.oracle.graal.compiler.phases.HighTier;
 import com.oracle.graal.jtt.JTTTest;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
 
 /**

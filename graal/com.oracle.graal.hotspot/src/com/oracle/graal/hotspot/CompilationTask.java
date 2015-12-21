@@ -105,6 +105,8 @@ public class CompilationTask {
      */
     private final boolean installAsDefault;
 
+    private final boolean useProfilingInfo;
+
     static class Lazy {
         /**
          * A {@link com.sun.management.ThreadMXBean} to be able to query some information about the
@@ -113,10 +115,11 @@ public class CompilationTask {
         static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) Management.getThreadMXBean();
     }
 
-    public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean installAsDefault) {
+    public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.request = request;
+        this.useProfilingInfo = useProfilingInfo;
         this.installAsDefault = installAsDefault;
     }
 
@@ -192,7 +195,7 @@ public class CompilationTask {
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(getId()), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
-                result = compiler.compile(method, entryBCI);
+                result = compiler.compile(method, entryBCI, useProfilingInfo);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             } finally {

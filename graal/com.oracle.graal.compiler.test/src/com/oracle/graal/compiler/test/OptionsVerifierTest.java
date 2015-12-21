@@ -48,11 +48,12 @@ import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.internal.org.objectweb.asm.Type;
-import jdk.vm.ci.options.OptionDescriptor;
-import jdk.vm.ci.options.OptionDescriptors;
-import jdk.vm.ci.options.OptionValue;
 
 import org.junit.Test;
+
+import com.oracle.graal.options.OptionDescriptor;
+import com.oracle.graal.options.OptionDescriptors;
+import com.oracle.graal.options.OptionValue;
 
 /**
  * Verifies a class declaring one or more {@linkplain OptionValue options} has a class initializer

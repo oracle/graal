@@ -34,8 +34,6 @@ import static jdk.internal.org.objectweb.asm.Opcodes.LCONST_0;
 import static jdk.internal.org.objectweb.asm.Opcodes.LLOAD;
 import static jdk.internal.org.objectweb.asm.Opcodes.LRETURN;
 import static jdk.internal.org.objectweb.asm.Opcodes.RETURN;
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
@@ -48,6 +46,8 @@ import org.junit.Test;
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.jtt.JTTTest;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 
 public class LargeConstantSectionTest extends JTTTest {
     private static final String NAME = "LargeConstantSection";

@@ -96,6 +96,7 @@ class BootClasspathDist(object):
 
 _compilers = ['graal-economy', 'graal']
 _bootClasspathDists = [
+    BootClasspathDist('GRAAL_OPTIONS'),
     BootClasspathDist('GRAAL_NODEINFO'),
     BootClasspathDist('GRAAL_API'),
     BootClasspathDist('GRAAL_COMPILER'),
@@ -182,7 +183,6 @@ def ctw(args, extraVMarguments=None):
 
     if args.ctwopts:
         # Replace spaces  with '#' since -G: options cannot contain spaces
-        # when they are collated in the "jvmci.options" system property
         vmargs.append('-G:CompileTheWorldConfig=' + re.sub(r'\s+', '#', args.ctwopts))
 
     if args.cp:
@@ -322,15 +322,18 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
         if arg.startswith('-G:+'):
             if '=' in arg:
                 mx.abort('Mixing + and = in -G: option specification: ' + arg)
-            arg = '-Djvmci.option.' + arg[len('-G:+'):] + '=true'
+            arg = '-Dgraal.option.' + arg[len('-G:+'):] + '=true'
         elif arg.startswith('-G:-'):
             if '=' in arg:
                 mx.abort('Mixing - and = in -G: option specification: ' + arg)
-            arg = '-Djvmci.option.' + arg[len('-G:+'):] + '=false'
+            arg = '-Dgraal.option.' + arg[len('-G:+'):] + '=false'
         elif arg.startswith('-G:'):
-            arg = '-Djvmci.option.' + arg[len('-G:'):]
+            arg = '-Dgraal.option.' + arg[len('-G:'):]
         return arg
     args = map(translateGOption, args)
+
+    if '-G:+PrintFlags' in args and '-Xcomp' not in args:
+        mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
 
     bcp = [mx.distribution('truffle:TRUFFLE_API').classpath_repr()]
     if _jvmciModes[_vm.jvmciMode]:
@@ -400,7 +403,7 @@ class GraalArchiveParticipant:
             # jdk.vm.ci.options.Options service created by
             # jdk.vm.ci.options.processor.OptionProcessor.
             provider = arcname[:-len('.class'):].replace('/', '.')
-            self.services.setdefault('jdk.vm.ci.options.OptionDescriptors', []).append(provider)
+            self.services.setdefault('com.oracle.graal.options.OptionDescriptors', []).append(provider)
         return False
 
     def __addsrc__(self, arcname, contents):

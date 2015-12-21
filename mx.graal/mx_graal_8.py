@@ -31,14 +31,16 @@ import sanitycheck
 import re
 
 import mx
-from mx_jvmci import JvmciJDKDeployedDist, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, run_vm, VM, relativeVmLibDirInJdk, isJVMCIEnabled
+from mx_jvmci import JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, VM, relativeVmLibDirInJdk, isJVMCIEnabled
 from mx_jvmci import get_vm as _jvmci_get_vm
+from mx_jvmci import run_vm as _jvmci_run_vm
 from mx_gate import Task
 from sanitycheck import _noneAsEmptyList
 
 from mx_unittest import unittest
 from mx_graal_bench import dacapo
 import mx_gate
+import mx_unittest
 
 _suite = mx.suite('graal')
 
@@ -85,6 +87,7 @@ class GraalJDKDeployedDist(JvmciJDKDeployedDist):
                 fp.write(os.linesep.join(content))
 
 jdkDeployedDists += [
+    JvmciJDKDeployedDist('GRAAL_OPTIONS'),
     JvmciJDKDeployedDist('GRAAL_NODEINFO'),
     JvmciJDKDeployedDist('GRAAL_API'),
     JvmciJDKDeployedDist('GRAAL_COMPILER'),
@@ -169,7 +172,6 @@ def ctw(args, extraVMarguments=None):
 
     if args.ctwopts:
         # Replace spaces  with '#' since -G: options cannot contain spaces
-        # when they are collated in the "jvmci.options" system property
         vmargs.append('-G:CompileTheWorldConfig=' + re.sub(r'\s+', '#', args.ctwopts))
 
     if args.cp:
@@ -376,12 +378,64 @@ def jdkartifactstats(args):
     else:
         print '{:>10}  {}'.format('<missing>', jvmLib)
 
+# Support for -G: options
+def _translateGOption(arg):
+    if arg.startswith('-G:+'):
+        if '=' in arg:
+            mx.abort('Mixing + and = in -G: option specification: ' + arg)
+        arg = '-Dgraal.option.' + arg[len('-G:+'):] + '=true'
+    elif arg.startswith('-G:-'):
+        if '=' in arg:
+            mx.abort('Mixing - and = in -G: option specification: ' + arg)
+        arg = '-Dgraal.option.' + arg[len('-G:+'):] + '=false'
+    elif arg.startswith('-G:'):
+        arg = '-Dgraal.option.' + arg[len('-G:'):]
+    return arg
+
+def run_vm(*positionalargs, **kwargs):
+    """run a Java program by executing the java executable in a Graal JDK"""
+
+    # convert positional args to a list so the first element can be updated
+    positionalargs = list(positionalargs)
+    args = positionalargs[0]
+    if '-G:+PrintFlags' in args and '-Xcomp' not in args:
+        mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
+    positionalargs[0] = map(_translateGOption, args)
+    return _jvmci_run_vm(*positionalargs, **kwargs)
+
+def _unittest_config_participant(config):
+    vmArgs, mainClass, mainClassArgs = config
+    if isJVMCIEnabled(get_vm()):
+        return (map(_translateGOption, vmArgs), mainClass, mainClassArgs)
+    return config
+
+mx_unittest.add_config_participant(_unittest_config_participant)
+
 mx.update_commands(_suite, {
+    'vm': [run_vm, '[-options] class [args...]'],
     'jdkartifactstats' : [jdkartifactstats, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'microbench' : [microbench, '[VM options] [-- [JMH options]]'],
 })
 
+class GraalArchiveParticipant(JVMCIArchiveParticipant):
+    def __init__(self, dist):
+        JVMCIArchiveParticipant.__init__(self, dist)
+
+    def __add__(self, arcname, contents):
+        if arcname.endswith('_OptionDescriptors.class'):
+            # Need to create service files for the providers of the
+            # com.oracle.graal.options.Options service created by
+            # com.oracle.graal.options.processor.OptionProcessor.
+            provider = arcname[:-len('.class'):].replace('/', '.')
+            self.services.setdefault('com.oracle.graal.options.OptionDescriptors', []).append(provider)
+        return JVMCIArchiveParticipant.__add__(self, arcname, contents)
 
 def mx_post_parse_cmd_line(opts):
     add_bootclasspath_prepend(mx.distribution('truffle:TRUFFLE_API'))
+
+    for jdkDist in jdkDeployedDists:
+        dist = jdkDist.dist()
+        # Replace archive participant for Graal suites
+        if isinstance(jdkDist, JvmciJDKDeployedDist) and dist.suite.name != 'jvmci':
+            dist.set_archiveparticipant(GraalArchiveParticipant(dist))

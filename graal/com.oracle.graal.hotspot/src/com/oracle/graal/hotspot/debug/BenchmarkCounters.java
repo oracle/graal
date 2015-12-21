@@ -39,13 +39,13 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.inittimer.SuppressFBWarnings;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 //JaCoCo Exclude
 

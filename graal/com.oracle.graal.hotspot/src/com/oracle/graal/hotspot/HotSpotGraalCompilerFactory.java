@@ -23,19 +23,38 @@
 package com.oracle.graal.hotspot;
 
 import static jdk.vm.ci.inittimer.InitTimer.timer;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.inittimer.InitTimer;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 import jdk.vm.ci.service.Services;
+import sun.misc.VM;
 
+import com.oracle.graal.options.GraalJarsOptionDescriptorsProvider;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
+
+    static {
+        initializeOptions();
+    }
 
     static class Options {
 
@@ -59,6 +78,73 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
 
         static void registerBackends() {
             // force run of static initializer
+        }
+    }
+
+    /**
+     * Parses the options in the file denoted by the {@linkplain VM#getSavedProperty(String) saved}
+     * system property named {@code "graal.options.file"} if the file exists followed by the options
+     * encoded in saved system properties whose names start with {@code "graal.option."}.
+     */
+    @SuppressWarnings("try")
+    private static void initializeOptions() {
+        try (InitTimer t = timer("InitializeOptions")) {
+            boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+            GraalJarsOptionDescriptorsProvider odp = jdk8OrEarlier ? GraalJarsOptionDescriptorsProvider.create() : null;
+
+            String optionsFile = System.getProperty("graal.options.file");
+
+            if (optionsFile != null) {
+                File graalOptions = new File(optionsFile);
+                if (graalOptions.exists()) {
+                    try (BufferedReader br = new BufferedReader(new FileReader(graalOptions))) {
+                        String optionSetting = null;
+                        int lineNo = 1;
+                        List<String> optionSettings = new ArrayList<>();
+                        while ((optionSetting = br.readLine()) != null) {
+                            if (!optionSetting.isEmpty() && optionSetting.charAt(0) != '#') {
+                                try {
+                                    OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
+                                } catch (Throwable e) {
+                                    throw new InternalError("Error parsing " + graalOptions + ", line " + lineNo, e);
+                                }
+                            }
+                            lineNo++;
+                        }
+                        try {
+                            OptionsParser.parseOptions(optionSettings.toArray(new String[optionSettings.size()]), null, odp, null);
+                        } catch (Throwable e) {
+                            throw new InternalError("Error parsing an option from " + graalOptions, e);
+                        }
+                    } catch (IOException e) {
+                        throw new InternalError("Error reading " + graalOptions, e);
+                    }
+                }
+            }
+
+            Properties savedProps = getSavedProperties();
+
+            List<String> optionSettings = new ArrayList<>();
+            for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
+                String name = (String) e.getKey();
+                if (name.startsWith("graal.option.")) {
+                    String value = (String) e.getValue();
+                    optionSettings.add(name.substring("graal.option.".length()));
+                    optionSettings.add(value);
+                }
+            }
+
+            OptionsParser.parseOptions(optionSettings.toArray(new String[optionSettings.size()]), null, odp, null);
+        }
+    }
+
+    private static Properties getSavedProperties() {
+        try {
+            Field savedPropsField = VM.class.getDeclaredField("savedProps");
+            savedPropsField.setAccessible(true);
+            return (Properties) savedPropsField.get(null);
+        } catch (Exception e) {
+            throw new JVMCIError(e);
         }
     }
 
