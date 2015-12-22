@@ -24,13 +24,11 @@ package com.oracle.graal.hotspot;
 
 import static jdk.vm.ci.inittimer.InitTimer.timer;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -84,7 +82,9 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
     /**
      * Parses the options in the file denoted by the {@linkplain VM#getSavedProperty(String) saved}
      * system property named {@code "graal.options.file"} if the file exists followed by the options
-     * encoded in saved system properties whose names start with {@code "graal.option."}.
+     * encoded in saved system properties whose names start with {@code "graal.option."}. Key/value
+     * pairs are parsed from the file denoted by {@code "graal.options.file"} with
+     * {@link Properties#load(java.io.Reader)}.
      */
     @SuppressWarnings("try")
     private static void initializeOptions() {
@@ -97,22 +97,15 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
             if (optionsFile != null) {
                 File graalOptions = new File(optionsFile);
                 if (graalOptions.exists()) {
-                    try (BufferedReader br = new BufferedReader(new FileReader(graalOptions))) {
-                        String optionSetting = null;
-                        int lineNo = 1;
-                        List<String> optionSettings = new ArrayList<>();
-                        while ((optionSetting = br.readLine()) != null) {
-                            if (!optionSetting.isEmpty() && optionSetting.charAt(0) != '#') {
-                                try {
-                                    OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
-                                } catch (Throwable e) {
-                                    throw new InternalError("Error parsing " + graalOptions + ", line " + lineNo, e);
-                                }
-                            }
-                            lineNo++;
+                    try (FileReader fr = new FileReader(graalOptions)) {
+                        Properties props = new Properties();
+                        props.load(fr);
+                        Map<String, String> optionSettings = new HashMap<>();
+                        for (Map.Entry<Object, Object> e : props.entrySet()) {
+                            optionSettings.put((String) e.getKey(), (String) e.getValue());
                         }
                         try {
-                            OptionsParser.parseOptions(optionSettings.toArray(new String[optionSettings.size()]), null, odp, null);
+                            OptionsParser.parseOptions(optionSettings, null, odp, null);
                         } catch (Throwable e) {
                             throw new InternalError("Error parsing an option from " + graalOptions, e);
                         }
@@ -124,17 +117,16 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
 
             Properties savedProps = getSavedProperties();
 
-            List<String> optionSettings = new ArrayList<>();
+            Map<String, String> optionSettings = new HashMap<>();
             for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
                 String name = (String) e.getKey();
                 if (name.startsWith("graal.option.")) {
                     String value = (String) e.getValue();
-                    optionSettings.add(name.substring("graal.option.".length()));
-                    optionSettings.add(value);
+                    optionSettings.put(name.substring("graal.option.".length()), value);
                 }
             }
 
-            OptionsParser.parseOptions(optionSettings.toArray(new String[optionSettings.size()]), null, odp, null);
+            OptionsParser.parseOptions(optionSettings, null, odp, null);
         }
     }
 

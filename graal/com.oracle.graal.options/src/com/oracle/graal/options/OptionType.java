@@ -23,7 +23,7 @@
 package com.oracle.graal.options;
 
 /**
- * Classifies JVMCI options in several categories depending on who this option is relevant for.
+ * Classifies Graal options in several categories depending on who this option is relevant for.
  *
  */
 public enum OptionType {

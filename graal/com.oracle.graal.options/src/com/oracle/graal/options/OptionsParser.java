@@ -26,16 +26,16 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Formatter;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
- * This class contains methods for parsing JVMCI options and matching them against a set of
- * {@link OptionDescriptors}. The {@link OptionDescriptors} are loaded from JVMCI jars, either
+ * This class contains methods for parsing Graal options and matching them against a set of
+ * {@link OptionDescriptors}. The {@link OptionDescriptors} are loaded from Graal jars, either
  * {@linkplain GraalJarsOptionDescriptorsProvider directly} or via a {@link ServiceLoader}.
  */
 public class OptionsParser {
@@ -59,33 +59,23 @@ public class OptionsParser {
     }
 
     /**
-     * Parses an ordered list of (name, value) pairs assigning values to JVMCI options.
+     * Parses a map representing assignments of values to options.
      *
-     * @param optionSettings JVMCI options as serialized (name, value) pairs
+     * @param optionSettings option settings (i.e., assignments of values to options)
      * @param setter the object to notify of the parsed option and value
      * @param odp if non-null, the service to use for looking up {@link OptionDescriptor}s
      * @param options the options database to use if {@code odp == null}. If
      *            {@code options == null && odp == null}, {@link OptionsLoader#options} is used.
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    public static void parseOptions(String[] optionSettings, OptionConsumer setter, OptionDescriptorsProvider odp, SortedMap<String, OptionDescriptor> options) {
-        if (optionSettings != null && optionSettings.length != 0) {
-            assert optionSettings.length % 2 == 0;
+    public static void parseOptions(Map<String, String> optionSettings, OptionConsumer setter, OptionDescriptorsProvider odp, Map<String, OptionDescriptor> options) {
+        if (optionSettings != null && !optionSettings.isEmpty()) {
 
-            moveHelpFlagsToTail(optionSettings);
-
-            for (int i = 0; i < optionSettings.length / 2; i++) {
-                String name = optionSettings[i * 2];
-                String value = optionSettings[i * 2 + 1];
-                parseOption(name, value, setter, odp, options);
+            for (Map.Entry<String, String> e : optionSettings.entrySet()) {
+                parseOption(e.getKey(), e.getValue(), setter, odp, options);
             }
             if (PrintFlags.getValue() || ShowFlags.getValue()) {
-                Set<String> explicitlyAssigned = new HashSet<>(optionSettings.length / 2);
-                for (int i = 0; i < optionSettings.length / 2; i++) {
-                    String name = optionSettings[i * 2];
-                    explicitlyAssigned.add(name);
-                }
-                printFlags(resolveOptions(options), "JVMCI", System.out, explicitlyAssigned);
+                printFlags(resolveOptions(options), "Graal", System.out, optionSettings.keySet());
                 if (PrintFlags.getValue()) {
                     System.exit(0);
                 }
@@ -94,54 +84,23 @@ public class OptionsParser {
     }
 
     /**
-     * Moves all {@code PrintFlags} and {@code ShowFlags} option settings to the back of
-     * {@code optionSettings}. This allows the help message to show which options had their value
-     * explicitly set (even if to their default value).
-     */
-    private static void moveHelpFlagsToTail(String[] optionSettings) {
-        List<String> tail = null;
-        int insert = 0;
-        for (int i = 0; i < optionSettings.length / 2; i++) {
-            String name = optionSettings[i * 2];
-            String value = optionSettings[i * 2 + 1];
-            if (name.equals("ShowFlags") || name.equals("PrintFlags")) {
-                if (tail == null) {
-                    tail = new ArrayList<>(4);
-                    insert = i * 2;
-                }
-                tail.add(name);
-                tail.add(value);
-            } else if (tail != null) {
-                optionSettings[insert++] = name;
-                optionSettings[insert++] = value;
-            }
-        }
-        if (tail != null) {
-            assert tail.size() + insert == optionSettings.length;
-            String[] tailArr = tail.toArray(new String[tail.size()]);
-            System.arraycopy(tailArr, 0, optionSettings, insert, tailArr.length);
-        }
-    }
-
-    /**
-     * Parses a given option setting string to a list of (name, value) pairs.
+     * Parses a given option setting string to a map of settings.
      *
      * @param optionSetting a string matching the pattern {@code <name>=<value>}
      */
-    public static void parseOptionSettingTo(String optionSetting, List<String> dst) {
+    public static void parseOptionSettingTo(String optionSetting, Map<String, String> dst) {
         int eqIndex = optionSetting.indexOf('=');
         if (eqIndex == -1) {
             throw new InternalError("Option setting has does not match the pattern <name>=<value>: " + optionSetting);
         }
-        dst.add(optionSetting.substring(0, eqIndex));
-        dst.add(optionSetting.substring(eqIndex + 1));
+        dst.put(optionSetting.substring(0, eqIndex), optionSetting.substring(eqIndex + 1));
     }
 
     /**
      * Resolves {@code options} to a non-null value. This ensures {@link OptionsLoader#options} is
      * only loaded if necessary.
      */
-    private static SortedMap<String, OptionDescriptor> resolveOptions(SortedMap<String, OptionDescriptor> options) {
+    private static Map<String, OptionDescriptor> resolveOptions(Map<String, OptionDescriptor> options) {
         return options != null ? options : OptionsLoader.options;
     }
 
@@ -156,14 +115,14 @@ public class OptionsParser {
      *            {@code options == null && odp == null}, {@link OptionsLoader#options} is used.
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    private static void parseOption(String name, String valueString, OptionConsumer setter, OptionDescriptorsProvider odp, SortedMap<String, OptionDescriptor> options) {
+    private static void parseOption(String name, String valueString, OptionConsumer setter, OptionDescriptorsProvider odp, Map<String, OptionDescriptor> options) {
 
         OptionDescriptor desc = odp != null ? odp.get(name) : resolveOptions(options).get(name);
         if (desc == null) {
             if (name.equals("PrintFlags")) {
-                desc = OptionDescriptor.create("PrintFlags", Boolean.class, "Prints all JVMCI flags and exits", OptionsParser.class, "PrintFlags", PrintFlags);
+                desc = OptionDescriptor.create("PrintFlags", Boolean.class, "Prints all Graal flags and exits", OptionsParser.class, "PrintFlags", PrintFlags);
             } else if (name.equals("ShowFlags")) {
-                desc = OptionDescriptor.create("ShowFlags", Boolean.class, "Prints all JVMCI flags and continues", OptionsParser.class, "ShowFlags", ShowFlags);
+                desc = OptionDescriptor.create("ShowFlags", Boolean.class, "Prints all Graal flags and continues", OptionsParser.class, "ShowFlags", ShowFlags);
             }
         }
         if (desc == null) {
@@ -272,10 +231,15 @@ public class OptionsParser {
         return lines;
     }
 
-    private static void printFlags(SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out, Set<String> explicitlyAssigned) {
+    private static void printFlags(Map<String, OptionDescriptor> options, String prefix, PrintStream out, Set<String> explicitlyAssigned) {
+        SortedMap<String, OptionDescriptor> sortedOptions;
+        if (options instanceof SortedMap) {
+            sortedOptions = (SortedMap<String, OptionDescriptor>) options;
+        } else {
+            sortedOptions = new TreeMap<>(options);
+        }
         out.println("[List of " + prefix + " options]");
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
-            e.getKey();
             OptionDescriptor desc = e.getValue();
             Object value = desc.getOptionValue().getValue();
             List<String> helpLines = wrap(desc.getHelp(), 70);
@@ -311,7 +275,7 @@ public class OptionsParser {
     /**
      * Returns the set of options that fuzzy match a given option name.
      */
-    private static List<OptionDescriptor> fuzzyMatch(SortedMap<String, OptionDescriptor> options, String optionName) {
+    private static List<OptionDescriptor> fuzzyMatch(Map<String, OptionDescriptor> options, String optionName) {
         List<OptionDescriptor> matches = new ArrayList<>();
         for (Map.Entry<String, OptionDescriptor> e : options.entrySet()) {
             float score = stringSimiliarity(e.getKey(), optionName);

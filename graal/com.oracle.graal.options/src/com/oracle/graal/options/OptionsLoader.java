@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.options;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 /**
  * Helper class used to load option descriptors. Only to be used in the slow-path.
  */
 public class OptionsLoader {
-    public static final SortedMap<String, OptionDescriptor> options = new TreeMap<>();
+    public static final Map<String, OptionDescriptor> options = new HashMap<>();
 
     /**
      * Initializes {@link #options} from {@link Options} services.

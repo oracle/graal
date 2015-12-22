@@ -53,6 +53,7 @@ import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -125,19 +126,17 @@ public final class CompileTheWorld {
          */
         public Config(String options) {
             if (options != null) {
-                List<String> optionSettings = new ArrayList<>();
+                Map<String, String> optionSettings = new HashMap<>();
                 for (String optionSetting : options.split("\\s+|#")) {
                     if (optionSetting.charAt(0) == '-') {
-                        optionSettings.add(optionSetting.substring(1));
-                        optionSettings.add("false");
+                        optionSettings.put(optionSetting.substring(1), "false");
                     } else if (optionSetting.charAt(0) == '+') {
-                        optionSettings.add(optionSetting.substring(1));
-                        optionSettings.add("true");
+                        optionSettings.put(optionSetting.substring(1), "true");
                     } else {
                         OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
                     }
                 }
-                OptionsParser.parseOptions(optionSettings.toArray(new String[optionSettings.size()]), this, null, null);
+                OptionsParser.parseOptions(optionSettings, this, null, null);
             }
         }
 
