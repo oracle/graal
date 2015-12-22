@@ -113,7 +113,20 @@ public class SLTckTest extends TruffleTCK {
                 "  obj.returnsNull = returnsNull;\n" +
                 "  obj.returnsThis = obj;\n" +
                 "  return obj;\n" +
-                "}\n", "SL TCK"
+                "}\n" +
+                "function valuesObject() {\n" +
+                "  obj = new();\n" +
+                "  obj.byteValue = 0;\n" +
+                "  obj.shortValue = 0;\n" +
+                "  obj.intValue = 0;\n" +
+                "  obj.longValue = 0;\n" +
+                "  obj.floatValue = 0;\n" +
+                "  obj.doubleValue = 0;\n" +
+                "  obj.charValue = \"0\";\n" +
+                "  obj.booleanValue = (1 == 0);\n" +
+                "  return obj;\n" +
+                "}\n",
+                "SL TCK"
             ).withMimeType("application/x-sl")
         );
         // @formatter:on
@@ -153,6 +166,11 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected String compoundObject() {
         return "compoundObject";
+    }
+
+    @Override
+    protected String valuesObject() {
+        return "valuesObject";
     }
 
     @Override
@@ -251,4 +269,11 @@ public class SLTckTest extends TruffleTCK {
     public void testCopyStructuredComplexToComplexNumbersA() throws Exception {
     }
 
+    @Override
+    public void readWriteDoubleValue() throws Exception {
+    }
+
+    @Override
+    public void readWriteFloatValue() throws Exception {
+    }
 }

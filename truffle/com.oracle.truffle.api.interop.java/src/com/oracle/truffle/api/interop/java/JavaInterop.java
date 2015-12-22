@@ -273,15 +273,16 @@ public final class JavaInterop {
     }
 
     static Object toJava(Object ret, Method method) {
-        if (isPrimitive(ret)) {
-            return ret;
+        Class<?> retType = method.getReturnType();
+        Object primitiveRet = toPrimitive(ret, retType);
+        if (primitiveRet != null) {
+            return primitiveRet;
         }
         if (ret instanceof TruffleObject) {
             if (Boolean.TRUE.equals(message(Message.IS_NULL, ret))) {
                 return null;
             }
         }
-        Class<?> retType = method.getReturnType();
         if (retType.isInstance(ret)) {
             return ret;
         }
@@ -397,8 +398,9 @@ public final class JavaInterop {
                     ret = message(Message.createInvoke(args.length), obj, callArgs.toArray());
                 } catch (IllegalArgumentException ex) {
                     val = message(Message.READ, obj, name);
-                    if (isPrimitive(val)) {
-                        return val;
+                    Object primitiveVal = toPrimitive(val, method.getReturnType());
+                    if (primitiveVal != null) {
+                        return primitiveVal;
                     }
                     TruffleObject attr = (TruffleObject) val;
                     if (Boolean.FALSE.equals(message(Message.IS_EXECUTABLE, attr))) {
@@ -419,22 +421,56 @@ public final class JavaInterop {
     }
 
     static boolean isPrimitive(Object attr) {
+        return toPrimitive(attr, null) != null;
+    }
+
+    static Object toPrimitive(Object attr, Class<?> requestedType) {
         if (attr instanceof TruffleObject) {
-            return false;
+            return null;
         }
         if (attr instanceof Number) {
-            return true;
+            if (requestedType == null) {
+                return attr;
+            }
+            Number n = (Number) attr;
+            if (requestedType == byte.class || requestedType == Byte.class) {
+                return n.byteValue();
+            }
+            if (requestedType == short.class || requestedType == Short.class) {
+                return n.shortValue();
+            }
+            if (requestedType == int.class || requestedType == Integer.class) {
+                return n.intValue();
+            }
+            if (requestedType == long.class || requestedType == Long.class) {
+                return n.longValue();
+            }
+            if (requestedType == float.class || requestedType == Float.class) {
+                return n.floatValue();
+            }
+            if (requestedType == double.class || requestedType == Double.class) {
+                return n.doubleValue();
+            }
+            if (requestedType == char.class || requestedType == Character.class) {
+                return (char) n.intValue();
+            }
+            return n;
         }
         if (attr instanceof String) {
-            return true;
+            if (requestedType == char.class || requestedType == Character.class) {
+                if (((String) attr).length() == 1) {
+                    return ((String) attr).charAt(0);
+                }
+            }
+            return attr;
         }
         if (attr instanceof Character) {
-            return true;
+            return attr;
         }
         if (attr instanceof Boolean) {
-            return true;
+            return attr;
         }
-        return false;
+        return null;
     }
 
     static Object message(final Message m, Object receiver, Object... arr) {

@@ -44,6 +44,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
@@ -116,7 +117,7 @@ public abstract class TruffleTCK {
 
     /**
      * Name of function to add two numbers together. The symbol will be invoked with two parameters
-     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number}
+     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number} 
      * which's {@link Number#intValue()} is equivalent of <code>param1 + param2</code>. As some
      * languages may have different operations for different types of numbers, the actual types are
      * passed to the method and the implementation can decide to return different symbol based on
@@ -269,6 +270,35 @@ public abstract class TruffleTCK {
      */
     protected String compoundObject() {
         throw new UnsupportedOperationException("compoundObject() method not implemented");
+    }
+
+    /**
+     * Name of a function that returns a compound object with members representing certain primitive
+     * types. In the JavaScript the object should look like:
+     *
+     * <pre>
+     * <b>var</b> obj = {
+     *   'byteValue': 0,
+     *   'shortValue': 0,
+     *   'intValue': 0,
+     *   'longValue': 0,
+     *   'floatValue': 0.0,
+     *   'doubleValue': 0.0,
+     *   'charValue': '0',
+     *   'stringValue': '',
+     *   'booleanVlaue': false
+     * };
+     * <b>return</b> obj;
+     * </pre>
+     *
+     * The returned object shall have slots for these values that can be read and written to.
+     * Various test methods try to read and modify the values. Each invocation of the function
+     * should yield new object.
+     *
+     * @return name of a function that returns such values object
+     */
+    protected String valuesObject() {
+        throw new UnsupportedOperationException("valuesObject() method not implemented");
     }
 
     private PolyglotEngine vm() throws Exception {
@@ -942,6 +972,78 @@ public abstract class TruffleTCK {
         Assert.assertArrayEquals(new double[]{41, 42, 43, 44, 45, 46}, a.getData(), 0.1);
     }
 
+    @Test
+    public void readWriteByteValue() throws Exception {
+        String id = valuesObject();
+        ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
+        assertEquals("Zero", 0, values.byteValue());
+        final byte value = (byte) RANDOM.nextInt(128);
+        values.byteValue(value);
+        assertEquals("Correct value", value, values.byteValue());
+    }
+
+    @Test
+    public void readWriteShortValue() throws Exception {
+        String id = valuesObject();
+        ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
+        assertEquals("Zero", 0, values.shortValue());
+        final short value = (short) RANDOM.nextInt(32768);
+        values.shortValue(value);
+        assertEquals("Correct value", value, values.shortValue());
+    }
+
+    @Test
+    public void readWriteIntValue() throws Exception {
+        String id = valuesObject();
+        ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
+        assertEquals("Zero", 0, values.intValue());
+        final int value = RANDOM.nextInt();
+        values.intValue(value);
+        assertEquals("Correct value", value, values.intValue());
+    }
+
+    @Test
+    public void readWriteFloatValue() throws Exception {
+        String id = valuesObject();
+        ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
+        assertEquals("Zero", 0, values.floatValue(), 0.1);
+        final float value = RANDOM.nextFloat() * 1000.0f;
+        values.floatValue(value);
+        assertEquals("Correct value", value, values.floatValue(), 0.1);
+    }
+
+    @Test
+    public void readWriteDoubleValue() throws Exception {
+        String id = valuesObject();
+        ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
+        assertEquals("Zero", 0, values.doubleValue(), 0.1);
+        final double value = RANDOM.nextDouble() * 1000.0;
+        values.doubleValue(value);
+        assertEquals("Correct value", value, values.doubleValue(), 0.1);
+    }
+
+    @Test
+    public void readWriteCharValue() throws Exception {
+        String id = valuesObject();
+        ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
+        assertEquals("Zero", '0', values.charValue());
+        String letters = "P\u0159\u00EDli\u0161 \u017Elu\u0165ou\u010Dk\u00FD k\u016F\u0148 \u00FAp\u011Bl \u010F\u00E1belsk\u00E9 \u00F3dy";
+        final char value = letters.charAt(RANDOM.nextInt(letters.length()));
+        values.charValue(value);
+        assertEquals("Correct value", value, values.charValue());
+    }
+
+    @Test
+    public void readWriteBooleanValue() throws Exception {
+        String id = valuesObject();
+        ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
+        assertEquals("False", false, values.booleanValue());
+        values.booleanValue(true);
+        assertEquals("Correct value", true, values.booleanValue());
+        values.booleanValue(false);
+        assertEquals("Correct value2", false, values.booleanValue());
+    }
+
     private static void putDoubles(byte[] buffer, double[] values) {
         for (int index = 0; index < values.length; index++) {
             int doubleSize = Double.SIZE / Byte.SIZE;
@@ -1004,5 +1106,47 @@ public abstract class TruffleTCK {
         Object returnsNull();
 
         CompoundObject returnsThis();
+    }
+
+    interface ValuesObject {
+        byte byteValue();
+
+        @MethodMessage(message = "WRITE")
+        void byteValue(byte v);
+
+        short shortValue();
+
+        @MethodMessage(message = "WRITE")
+        void shortValue(short v);
+
+        int intValue();
+
+        @MethodMessage(message = "WRITE")
+        void intValue(int v);
+
+        long longValue();
+
+        @MethodMessage(message = "WRITE")
+        void longValue(long v);
+
+        float floatValue();
+
+        @MethodMessage(message = "WRITE")
+        void floatValue(float v);
+
+        double doubleValue();
+
+        @MethodMessage(message = "WRITE")
+        void doubleValue(double v);
+
+        char charValue();
+
+        @MethodMessage(message = "WRITE")
+        void charValue(char v);
+
+        boolean booleanValue();
+
+        @MethodMessage(message = "WRITE")
+        void booleanValue(boolean v);
     }
 }

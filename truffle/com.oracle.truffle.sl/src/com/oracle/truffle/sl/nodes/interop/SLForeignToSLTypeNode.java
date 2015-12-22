@@ -70,6 +70,16 @@ public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
         return value;
     }
 
+    @Specialization
+    public Object fromBoolean(boolean value) {
+        return value;
+    }
+
+    @Specialization
+    public Object fromChar(char value) {
+        return String.valueOf(value);
+    }
+
     @Specialization(guards = "isBoxedPrimitive(frame, value)")
     public Object unbox(VirtualFrame frame, TruffleObject value) {
         Object unboxed = doUnbox(frame, value);
