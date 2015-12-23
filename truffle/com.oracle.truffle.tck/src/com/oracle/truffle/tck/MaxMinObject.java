@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tck;
 
+import com.oracle.truffle.tck.impl.LongBinaryOperation;
+
 final class MaxMinObject implements LongBinaryOperation {
     private final boolean max;
 

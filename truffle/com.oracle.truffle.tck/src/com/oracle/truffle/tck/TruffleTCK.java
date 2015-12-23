@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tck;
 
+import com.oracle.truffle.tck.impl.LongBinaryOperation;
+import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;

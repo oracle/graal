@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tck;
+package com.oracle.truffle.tck.impl;
 
 /**
- * Binary operation on any objects. Mimics "functional interface" - e.g. has just a single method,
- * so it should be easily usable with lamdas.
+ * Binary operation on numbers. Mimics "functional interface" - e.g. has just a single method, so it
+ * should be easily usable with lamdas.
  */
-public interface ObjectBinaryOperation {
-    Object compute(Object a, Object b);
+public interface LongBinaryOperation {
+    long compute(long a, long b);
 }
