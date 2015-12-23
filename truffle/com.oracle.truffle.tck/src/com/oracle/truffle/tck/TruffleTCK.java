@@ -42,18 +42,73 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tck.Schema.Type;
 
 /**
- * A collection of tests that can certify language implementation to be compliant with most recent
- * requirements of the Truffle infrastructure and tooling. Subclass, implement abstract methods and
- * include in your test suite.
+ * Test compatibility kit (the <em>TCK</em>) is a collection of tests to certify your
+ * {@link TruffleLanguage language implementation} compliance. If you want your language to be
+ * compliant with most recent requirements of the Truffle infrastructure and tooling, subclass,
+ * implement <b>protected</b> methods and include in your test suite:
+ * 
+ * <pre>
+ * <b>public class</b> MyLanguageTCKTest <b>extends</b> {@link TruffleTCK} {
+ *   {@link Override @Override}
+ *   <b>protected</b> {@link PolyglotEngine} {@link #prepareVM() prepareVM}() {
+ *     <em>// create the engine</em>
+ *     <em>// execute necessary scripts</em>
+ *   }
+ * 
+ *   {@link Override @Override}
+ *   <b>protected</b> {@link String} fourtyTwo() {
+ *     <b>return</b> <em>// name of function that returns 42</em>
+ *   }
+ * 
+ *   <em>// and so on...</em>
+ * }
+ * </pre>
+ * 
+ * The <em>TCK</em> is carefully designed to accommodate differences between languages. The
+ * <em>TCK</em> doesn't dictate what object your language is using to represent {@link Number
+ * numbers} or {@link String strings} internally. The <em>TCK</em> doesn't prescribe the precise
+ * type of values returned from your
+ * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) language evaluations}. The tests
+ * just assume that if the result is supposed to be a number, the returned value will be an instance
+ * of {@link Number} or be {@link Message#UNBOX convertible} to a {@link Number} and keeps
+ * sufficient level of precision. Similarly for {@link String strings}. As such the tests in the
+ * <em>TCK</em> should be applicable to wide range of languages. Should there be a test that cannot
+ * be implemented in your language, it can be suppressed by overriding its test method and doing
+ * nothing:
+ * 
+ * <pre>
+ *   {@link Override @Override}
+ *   <b>public void</b> {@link #testFortyTwo() testFortyTwo}() {
+ *     <em>// do nothing</em>
+ *   }
+ * </pre>
+ * <p>
+ * The primary goal of the <em>TCK</em> is to ensure your {@link TruffleLanguage language
+ * implementation} plays well with other languages in the {@link PolyglotEngine} - e.g. that data
+ * can be exchanged between your and other languages. The {@link com.oracle.truffle.api.interop
+ * interop package} defines what types of data can be interchanged between the languages and the
+ * <em>TCK</em> does its best to make sure all these data are really accepted as an input on a
+ * boundary of your {@link TruffleLanguage language implementation}. That doesn't mean such data
+ * need to be used internally, many languages do conversions in their {@link Factory10 foreign
+ * access} {@link RootNode nodes} to more suitable internal representation. Such conversion is fully
+ * acceptable as nobody prescribes what is the actual type of output after executing a function/code
+ * snippet in your language.
+ * <p>
+ * Should the <em>TCK</em> be found unsuitable for your {@link TruffleLanguage language
+ * implementation} please speak-up (at <em>Truffle/Graal</em> mailing list for example) and we do
+ * our best to analyze your case and adjust the <em>TCK</em> to suite everyone's needs.
  */
 public abstract class TruffleTCK {
     private static final Random RANDOM = new Random();
