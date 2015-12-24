@@ -39,7 +39,7 @@ suite = {
             {
                "name" : "jvmci",
                "optional" : "true",
-               "version" : "a130b51efb072b754f9ecad316dcda01bd2f0e9f",
+               "version" : "577a4a8caa72d06edaef3d40a4d24022df2a8e7c",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -277,6 +277,23 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
+    "com.oracle.graal.hotspot.aarch64" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.compiler.aarch64",
+        "com.oracle.graal.hotspot",
+        "com.oracle.graal.replacements.aarch64",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "annotationProcessors" : deps([
+        "jvmci:JVMCI_SERVICE_PROCESSOR",
+        "GRAAL_NODEINFO_PROCESSOR"
+      ]),
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,HotSpot,AArch64",
+    },
+
     "com.oracle.graal.hotspot.amd64" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
@@ -319,6 +336,19 @@ suite = {
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,HotSpot,Test",
+    },
+
+    "com.oracle.graal.hotspot.aarch64.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.asm.aarch64",
+        "com.oracle.graal.hotspot.test",
+      ],
+      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,HotSpot,AArch64,Test",
     },
 
     "com.oracle.graal.hotspot.amd64.test" : {
@@ -392,6 +422,17 @@ suite = {
       "workingSets" : "Graal,Assembler",
     },
 
+    "com.oracle.graal.asm.aarch64" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.asm",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,Assembler,AArch64",
+    },
+
     "com.oracle.graal.asm.amd64" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
@@ -433,6 +474,18 @@ suite = {
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Assembler,Test",
+    },
+
+    "com.oracle.graal.asm.aarch64.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.asm.test",
+        "com.oracle.graal.asm.aarch64",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,Assembler,AArch64,Test",
     },
 
     "com.oracle.graal.asm.amd64.test" : {
@@ -483,6 +536,19 @@ suite = {
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,LIR",
+    },
+
+    "com.oracle.graal.lir.aarch64" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.lir",
+        "com.oracle.graal.asm.aarch64",
+      ],
+      "annotationProcessors" : deps(["GRAAL_OPTIONS_PROCESSOR"]),
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,LIR,AArch64",
     },
 
     "com.oracle.graal.lir.amd64" : {
@@ -537,6 +603,22 @@ suite = {
         "GRAAL_NODEINFO_PROCESSOR",
       ]),
       "workingSets" : "Graal,Replacements",
+    },
+
+    "com.oracle.graal.replacements.aarch64" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "com.oracle.graal.replacements",
+          "com.oracle.graal.lir.aarch64",
+          ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : [
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_VERIFIER",
+      ],
+      "workingSets" : "Graal,Replacements,AArch64",
     },
 
     "com.oracle.graal.replacements.amd64" : {
@@ -746,6 +828,36 @@ suite = {
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Codegen",
+    },
+
+    "com.oracle.graal.compiler.aarch64" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.compiler",
+        "com.oracle.graal.lir.aarch64",
+        "com.oracle.graal.java",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "annotationProcessors" : deps([
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_COMPILER_MATCH_PROCESSOR",
+      ]),
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,AArch64",
+    },
+
+    "com.oracle.graal.compiler.aarch64.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : deps([
+        "com.oracle.graal.lir.jtt",
+        "com.oracle.graal.lir.aarch64",
+        "jvmci:JVMCI_HOTSPOT"
+      ]),
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,AArch64,Test",
     },
 
     "com.oracle.graal.compiler.amd64" : {
@@ -1064,6 +1176,8 @@ suite = {
         "com.oracle.graal.runtime",
         "com.oracle.graal.code",
         "com.oracle.graal.printer",
+        "com.oracle.graal.compiler.aarch64",
+        "com.oracle.graal.replacements.aarch64",
         "com.oracle.graal.compiler.amd64",
         "com.oracle.graal.replacements.amd64",
         "com.oracle.graal.compiler.sparc",
@@ -1080,6 +1194,7 @@ suite = {
     "GRAAL_HOTSPOT" : {
       "subDir" : "graal",
       "dependencies" : [
+        "com.oracle.graal.hotspot.aarch64",
         "com.oracle.graal.hotspot.amd64",
         "com.oracle.graal.hotspot.sparc",
         "com.oracle.graal.hotspot",
@@ -1097,9 +1212,12 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.api.test",
         "com.oracle.graal.api.directives.test",
+        "com.oracle.graal.asm.aarch64.test",
         "com.oracle.graal.asm.amd64.test",
+        "com.oracle.graal.compiler.aarch64.test",
         "com.oracle.graal.compiler.amd64.test",
         "com.oracle.graal.compiler.sparc.test",
+        "com.oracle.graal.hotspot.aarch64.test",
         "com.oracle.graal.hotspot.amd64.test",
         "com.oracle.graal.options.test",
         "com.oracle.graal.jtt",
