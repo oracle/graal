@@ -91,7 +91,7 @@ jdkDeployedDists += [
     JvmciJDKDeployedDist('GRAAL_NODEINFO'),
     JvmciJDKDeployedDist('GRAAL_API'),
     JvmciJDKDeployedDist('GRAAL_COMPILER'),
-    JvmciJDKDeployedDist('GRAAL'),
+    JvmciJDKDeployedDist('GRAAL_RUNTIME'),
     GraalJDKDeployedDist(),
     JvmciJDKDeployedDist('GRAAL_TRUFFLE'),
     JvmciJDKDeployedDist('GRAAL_TRUFFLE_HOTSPOT'),

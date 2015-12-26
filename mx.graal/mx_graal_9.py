@@ -96,14 +96,7 @@ class BootClasspathDist(object):
 
 _compilers = ['graal-economy', 'graal']
 _bootClasspathDists = [
-    BootClasspathDist('GRAAL_OPTIONS'),
-    BootClasspathDist('GRAAL_NODEINFO'),
-    BootClasspathDist('GRAAL_API'),
-    BootClasspathDist('GRAAL_COMPILER'),
     BootClasspathDist('GRAAL'),
-    BootClasspathDist('GRAAL_HOTSPOT'),
-    BootClasspathDist('GRAAL_TRUFFLE'),
-    BootClasspathDist('GRAAL_TRUFFLE_HOTSPOT'),
 ]
 
 def add_compiler(compilerName):

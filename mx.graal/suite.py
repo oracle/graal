@@ -93,10 +93,10 @@ suite = {
     # This library is not added to the boot class path at run time and so code
     # compiled against this library must be run on (JVMCI enabled) JDK9.
     "JVMCI" : {
-        "sha1" : "a4fbc1bccc729cdfd5678c4a27a2cbabbef384d2",
-        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-2d4718284a09.jar"],
-        "sourceSha1" : "ce91feae6de27b8fa85579a43333fea1320b9d35",
-        "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-2d4718284a09.src.zip"],
+        "sha1" : "c9d62b2b7408592cd8805aa1cdb2f01189b81dff",
+        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-5ecfc0f99fed.jar"],
+        "sourceSha1" : "ef74ca52fa2d09ab3dfc210e8be6c87ef02f4693",
+        "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-5ecfc0f99fed.src.zip"],
         "license": "GPLv2-CPE",
      },
   }),
@@ -1169,7 +1169,7 @@ suite = {
       ],
     },
 
-    "GRAAL" : {
+    "GRAAL_RUNTIME" : {
       "subDir" : "graal",
       "dependencies" : [
         "com.oracle.graal.replacements",
@@ -1203,7 +1203,7 @@ suite = {
       "distDependencies" : deps([
         "jvmci:JVMCI_HOTSPOT",
         "GRAAL_COMPILER",
-        "GRAAL",
+        "GRAAL_RUNTIME",
       ]),
     },
 
@@ -1243,7 +1243,7 @@ suite = {
         "com.oracle.graal.truffle",
       ],
       "distDependencies" : [
-        "GRAAL",
+        "GRAAL_RUNTIME",
         "truffle:TRUFFLE_API",
       ],
     },
@@ -1300,3 +1300,48 @@ suite = {
     },
   },
 }
+
+if JDK9:
+    # Define a monolithic graal.jar for ease of Graal deployment without mx
+    suite["distributions"]["GRAAL"] = {
+      "subDir" : "graal",
+      "overlaps" : [
+        "GRAAL_OPTIONS",
+        "GRAAL_NODEINFO",
+        "GRAAL_API",
+        "GRAAL_COMPILER",
+        "GRAAL_RUNTIME",
+        "GRAAL_HOTSPOT",
+        "GRAAL_TRUFFLE",
+        "GRAAL_TRUFFLE_HOTSPOT",
+      ],
+      "dependencies" : [
+        "com.oracle.graal.options",
+        "com.oracle.graal.nodeinfo",
+        "com.oracle.graal.api.replacements",
+        "com.oracle.graal.api.runtime",
+        "com.oracle.graal.graph",
+        "com.oracle.graal.compiler",
+        "com.oracle.graal.replacements",
+        "com.oracle.graal.runtime",
+        "com.oracle.graal.code",
+        "com.oracle.graal.printer",
+        "com.oracle.graal.compiler.aarch64",
+        "com.oracle.graal.replacements.aarch64",
+        "com.oracle.graal.compiler.amd64",
+        "com.oracle.graal.replacements.amd64",
+        "com.oracle.graal.compiler.sparc",
+        "com.oracle.graal.replacements.sparc",
+        "com.oracle.graal.salver",
+        "com.oracle.graal.hotspot.aarch64",
+        "com.oracle.graal.hotspot.amd64",
+        "com.oracle.graal.hotspot.sparc",
+        "com.oracle.graal.hotspot",
+        "com.oracle.graal.truffle",
+        "com.oracle.graal.truffle.hotspot.amd64",
+        "com.oracle.graal.truffle.hotspot.sparc"
+      ],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+    }
