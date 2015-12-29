@@ -91,7 +91,7 @@ suite = {
 
     # Library that allows Graal to compile against JVMCI without the jvmci suite.
     # This library is not added to the boot class path at run time and so code
-    # compiled against this library must be run on (JVMCI enabled) JDK9.
+    # compiled against this library must be run on (a JVMCI enabled) JDK9.
     "JVMCI" : {
         "sha1" : "c9d62b2b7408592cd8805aa1cdb2f01189b81dff",
         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jvmci-5ecfc0f99fed.jar"],
@@ -1341,6 +1341,7 @@ if JDK9:
         "com.oracle.graal.truffle.hotspot.amd64",
         "com.oracle.graal.truffle.hotspot.sparc"
       ],
+      "exclude" : deps(["JVMCI"]),
       "distDependencies" : [
         "truffle:TRUFFLE_API",
       ],
