@@ -37,22 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * </p>
  *
  * <p>
- * <b> Usage example: </b>
- *
- * <pre>
- * class SampleNode extends Node {
- *
- *     final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
- *
- *     byte execute(byte input) {
- *         byte profiledValue = profile.profile(input);
- *         // compiler may know now more about profiledValue
- *         return profiledValue;
- *     }
- * }
- * </pre>
- * <p>
- *
+ * <b> Usage example: </b> {@codesnippet ByteValueProfileSample}
  *
  * {@inheritDoc}
  *
