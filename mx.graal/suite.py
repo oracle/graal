@@ -131,7 +131,7 @@ suite = {
     "com.oracle.graal.serviceprovider" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
-      "dependencies" : ["jvmci:JVMCI_SERVICES"],
+      "dependencies" : deps(["jvmci:JVMCI_SERVICES"]),
       "javaCompliance" : "1.8",
       "workingSets" : "API,Graal",
     },
