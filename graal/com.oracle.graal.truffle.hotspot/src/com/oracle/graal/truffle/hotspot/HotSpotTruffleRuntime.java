@@ -55,7 +55,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.compiler.target.Backend;

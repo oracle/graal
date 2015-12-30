@@ -24,15 +24,14 @@ package com.oracle.graal.lir.aarch64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
-
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * Bit manipulation ops for ARMv8 ISA.

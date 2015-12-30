@@ -29,7 +29,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.debug.Debug;

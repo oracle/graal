@@ -38,7 +38,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 import sun.misc.VM;
 
 import com.oracle.graal.options.GraalJarsOptionDescriptorsProvider;

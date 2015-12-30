@@ -385,8 +385,8 @@ class GraalArchiveParticipant:
         self.arc = arc
 
     def __add__(self, arcname, contents):
-        if arcname.startswith('META-INF/jvmci.providers/'):
-            provider = arcname[len('META-INF/jvmci.providers/'):]
+        if arcname.startswith('META-INF/providers/'):
+            provider = arcname[len('META-INF/providers/'):]
             for service in contents.strip().split(os.linesep):
                 assert service
                 self.services.setdefault(service, []).append(provider)

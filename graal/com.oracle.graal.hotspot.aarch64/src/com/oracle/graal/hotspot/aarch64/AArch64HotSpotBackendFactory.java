@@ -24,6 +24,20 @@ package com.oracle.graal.hotspot.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.inittimer.InitTimer.timer;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
+import jdk.vm.ci.inittimer.InitTimer;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.runtime.JVMCIBackend;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.aarch64.AArch64AddressLowering;
@@ -49,23 +63,8 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.aarch64.AArch64GraphBuilderPlugins;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.graal.word.WordTypes;
-
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
-import jdk.vm.ci.inittimer.InitTimer;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.runtime.JVMCIBackend;
-import jdk.vm.ci.service.ServiceProvider;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {

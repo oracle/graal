@@ -36,6 +36,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.CompilerThreadFactory;
+import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionValue;
@@ -70,6 +71,9 @@ public class LazyInitializationTest {
         spawnUnitTests("com.oracle.truffle.sl.test.SLTckTest");
     }
 
+    private static final String VERBOSE_PROPERTY = "LazyInitializationTest.verbose";
+    private static final boolean VERBOSE = Boolean.getBoolean(VERBOSE_PROPERTY);
+
     /**
      * Spawn a new VM, execute unit tests, and check which classes are loaded.
      */
@@ -89,10 +93,17 @@ public class LazyInitializationTest {
 
         Process process = new ProcessBuilder(args).start();
 
+        if (VERBOSE) {
+            System.out.println("-----------------------------------------------------------------------------");
+            System.out.println(Util.join(args, " "));
+        }
         int testCount = 0;
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         String line;
         while ((line = stdout.readLine()) != null) {
+            if (VERBOSE) {
+                System.out.println(line);
+            }
             if (line.startsWith("[Loaded ")) {
                 int start = "[Loaded ".length();
                 int end = line.indexOf(' ', start);
@@ -111,11 +122,15 @@ public class LazyInitializationTest {
                 testCount = Integer.parseInt(line.substring(start, end));
             }
         }
+        if (VERBOSE) {
+            System.out.println("-----------------------------------------------------------------------------");
+        }
 
-        Assert.assertNotEquals("test count", 0, testCount);
-        Assert.assertEquals("exit code", 0, process.waitFor());
+        String suffix = VERBOSE ? "" : " (use -D" + VERBOSE_PROPERTY + "=true to debug)";
+        Assert.assertNotEquals("test count" + suffix, 0, testCount);
+        Assert.assertEquals("exit code" + suffix, 0, process.waitFor());
 
-        checkAllowedGraalClasses(loadedGraalClasses);
+        checkAllowedGraalClasses(loadedGraalClasses, suffix);
     }
 
     private static boolean isGraalClass(String className) {
@@ -127,7 +142,7 @@ public class LazyInitializationTest {
         }
     }
 
-    private void checkAllowedGraalClasses(List<Class<?>> loadedGraalClasses) {
+    private void checkAllowedGraalClasses(List<Class<?>> loadedGraalClasses, String errorMessageSuffix) {
         HashSet<Class<?>> whitelist = new HashSet<>();
 
         /*
@@ -152,7 +167,7 @@ public class LazyInitializationTest {
             }
 
             if (!isGraalClassAllowed(cls)) {
-                Assert.fail("loaded class: " + cls.getName());
+                Assert.fail("loaded class: " + cls.getName() + errorMessageSuffix);
             }
         }
     }

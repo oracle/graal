@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.common.util;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
@@ -149,6 +150,29 @@ public class Util {
         assert CodeUtil.isPowerOf2(16);
         assert CodeUtil.isPowerOf2(32);
         assert CodeUtil.isPowerOf2(64);
+    }
+
+    public interface Stringify {
+        String apply(Object o);
+    }
+
+    public static String join(Collection<?> c, String sep) {
+        return join(c, sep, "", "", null);
+    }
+
+    public static String join(Collection<?> c, String sep, String prefix, String suffix, Stringify stringify) {
+        StringBuilder buf = new StringBuilder(prefix);
+        boolean first = true;
+        for (Object e : c) {
+            if (!first) {
+                buf.append(sep);
+            } else {
+                first = false;
+            }
+            buf.append(stringify != null ? stringify.apply(e) : String.valueOf(e));
+        }
+        buf.append(suffix);
+        return buf.toString();
     }
 
     /**

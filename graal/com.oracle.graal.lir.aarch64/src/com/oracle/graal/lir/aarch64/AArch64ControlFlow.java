@@ -27,6 +27,15 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.function.Function;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.CompilationResult.JumpTable;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Address;
@@ -42,15 +51,6 @@ import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
-
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.code.CompilationResult.JumpTable;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
 
 public class AArch64ControlFlow {
 

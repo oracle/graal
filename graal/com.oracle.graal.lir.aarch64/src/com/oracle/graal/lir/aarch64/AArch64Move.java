@@ -34,6 +34,16 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.aarch64.AArch64Address;
@@ -47,17 +57,6 @@ import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
-
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
 
 public class AArch64Move {
 

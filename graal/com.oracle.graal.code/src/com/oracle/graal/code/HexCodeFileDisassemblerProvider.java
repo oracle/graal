@@ -39,7 +39,8 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.service.ServiceProvider;
+
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 /**
  * {@link HexCodeFile} based implementation of {@link DisassemblerProvider}.

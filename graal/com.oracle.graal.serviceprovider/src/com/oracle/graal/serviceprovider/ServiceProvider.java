@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot.nfi;
+package com.oracle.graal.serviceprovider;
 
-import com.oracle.graal.serviceprovider.ServiceProvider;
-import com.oracle.graal.truffle.hotspot.HotSpotTruffleRuntime;
-import com.oracle.nfi.api.NativeFunctionInterface;
-import com.oracle.nfi.api.NativeFunctionInterfaceAccess;
-import com.oracle.truffle.api.Truffle;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@ServiceProvider(NativeFunctionInterfaceAccess.class)
-public class HotSpotNativeFunctionInterfaceAccess implements NativeFunctionInterfaceAccess {
-    private final NativeFunctionInterface instance = createNativeFunctionInterface();
+import jdk.vm.ci.services.Services;
 
-    public NativeFunctionInterface getNativeFunctionInterface() {
-        return instance;
-    }
+/**
+ * Annotates a service provider than can be loaded via {@linkplain Services#load(Class)} or
+ * {@link Services#loadSingle(Class, boolean)}.
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.TYPE)
+public @interface ServiceProvider {
 
-    private static NativeFunctionInterface createNativeFunctionInterface() {
-        HotSpotTruffleRuntime runtime = (HotSpotTruffleRuntime) Truffle.getRuntime();
-        return runtime.createNativeFunctionInterface();
-    }
+    /**
+     * The interface or class defining the service implemented by the annotated class.
+     */
+    Class<?> value();
 }

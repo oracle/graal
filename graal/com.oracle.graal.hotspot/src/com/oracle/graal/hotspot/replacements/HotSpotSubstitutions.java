@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import sun.reflect.ConstantPool;
+import sun.reflect.Reflection;
+
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.ReplacementsProvider;
-
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.service.ServiceProvider;
-import sun.reflect.ConstantPool;
-import sun.reflect.Reflection;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(ReplacementsProvider.class)
 public class HotSpotSubstitutions implements ReplacementsProvider {

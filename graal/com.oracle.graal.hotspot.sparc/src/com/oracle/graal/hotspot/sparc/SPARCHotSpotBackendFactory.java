@@ -37,7 +37,6 @@ import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
-import jdk.vm.ci.service.ServiceProvider;
 import jdk.vm.ci.sparc.SPARC;
 
 import com.oracle.graal.compiler.sparc.SPARCAddressLowering;
@@ -63,6 +62,7 @@ import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.sparc.SPARCGraphBuilderPlugins;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {

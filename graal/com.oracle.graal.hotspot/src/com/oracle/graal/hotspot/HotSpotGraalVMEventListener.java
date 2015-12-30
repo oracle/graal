@@ -28,9 +28,9 @@ import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
-import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {

@@ -24,11 +24,10 @@ package com.oracle.graal.hotspot;
 
 import java.io.PrintStream;
 
-import jdk.vm.ci.service.ServiceProvider;
-
 import com.oracle.graal.debug.TTYStreamProvider;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(TTYStreamProvider.class)
 public class HotSpotTTYStreamProvider implements TTYStreamProvider {

@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 import sun.reflect.Reflection;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;

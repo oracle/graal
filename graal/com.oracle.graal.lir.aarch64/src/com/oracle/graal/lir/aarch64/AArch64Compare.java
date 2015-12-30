@@ -28,6 +28,10 @@ import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
@@ -35,11 +39,6 @@ import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
-
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.Value;
 
 public class AArch64Compare {
 

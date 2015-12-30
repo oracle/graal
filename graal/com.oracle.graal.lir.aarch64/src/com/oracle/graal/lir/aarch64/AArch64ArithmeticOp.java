@@ -29,6 +29,10 @@ import static com.oracle.graal.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCate
 import static com.oracle.graal.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.SHIFT;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
@@ -36,11 +40,6 @@ import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
-
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
 
 public enum AArch64ArithmeticOp {
     // TODO At least add and sub *can* be used with SP, so this should be supported

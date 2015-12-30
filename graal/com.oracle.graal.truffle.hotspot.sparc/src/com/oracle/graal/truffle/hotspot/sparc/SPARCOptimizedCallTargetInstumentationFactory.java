@@ -31,7 +31,6 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
@@ -42,6 +41,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.FrameContext;
 import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentation;
 import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentationFactory;
 

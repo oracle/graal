@@ -24,6 +24,13 @@ package com.oracle.graal.lir.aarch64;
 
 import java.util.EnumSet;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+
 import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.lir.CompositeValue;
@@ -31,13 +38,6 @@ import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
 
 public final class AArch64AddressValue extends CompositeValue {
     private static final EnumSet<OperandFlag> flags = EnumSet.of(OperandFlag.REG, OperandFlag.ILLEGAL);

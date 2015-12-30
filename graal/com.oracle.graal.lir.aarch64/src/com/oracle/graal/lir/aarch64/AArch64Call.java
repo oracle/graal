@@ -27,6 +27,11 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.InvokeTarget;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
@@ -35,12 +40,6 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
-
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.InvokeTarget;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Value;
 
 public class AArch64Call {
 

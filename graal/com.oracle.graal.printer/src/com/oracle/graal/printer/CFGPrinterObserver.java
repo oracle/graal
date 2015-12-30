@@ -40,7 +40,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.code.DisassemblerProvider;
 import com.oracle.graal.compiler.common.GraalOptions;

@@ -27,8 +27,7 @@ import static com.oracle.graal.salver.SalverOptions.Salver;
 import com.oracle.graal.debug.DebugConfig;
 import com.oracle.graal.debug.DebugConfigCustomizer;
 import com.oracle.graal.salver.handler.GraphDumpHandler;
-
-import jdk.vm.ci.service.ServiceProvider;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class SalverDebugConfigCustomizer implements DebugConfigCustomizer {

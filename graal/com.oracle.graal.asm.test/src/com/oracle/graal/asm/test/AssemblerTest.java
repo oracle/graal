@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCIBackend;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 
 import org.junit.Assert;
 

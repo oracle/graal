@@ -49,7 +49,7 @@ import jdk.vm.ci.hotspot.events.EventProvider;
 import jdk.vm.ci.hotspot.events.EventProvider.CompilationEvent;
 import jdk.vm.ci.hotspot.events.EventProvider.CompilerFailureEvent;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.debug.Debug;
