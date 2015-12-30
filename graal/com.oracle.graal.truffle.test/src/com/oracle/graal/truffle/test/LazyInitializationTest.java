@@ -104,8 +104,9 @@ public class LazyInitializationTest {
             if (VERBOSE) {
                 System.out.println(line);
             }
-            if (line.startsWith("[Loaded ")) {
-                int start = "[Loaded ".length();
+            int index = line.indexOf("[Loaded ");
+            if (index != -1) {
+                int start = index + "[Loaded ".length();
                 int end = line.indexOf(' ', start);
                 String loadedClass = line.substring(start, end);
                 if (isGraalClass(loadedClass)) {
@@ -200,6 +201,11 @@ public class LazyInitializationTest {
 
         if (OptionValue.class.isAssignableFrom(cls)) {
             // If options are specified, that may implicitly load a custom OptionValue subclass.
+            return true;
+        }
+
+        if (OptionValue.OverrideScope.class.isAssignableFrom(cls)) {
+            // Reading options can check override scopes
             return true;
         }
 
