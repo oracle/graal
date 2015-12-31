@@ -1351,6 +1351,7 @@ if JDK9:
         "GRAAL_COMPILER",
         "GRAAL_RUNTIME",
         "GRAAL_HOTSPOT",
+        "GRAAL_SERVICEPROVIDER",
         "GRAAL_TRUFFLE",
         "GRAAL_TRUFFLE_HOTSPOT",
       ],
