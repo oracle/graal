@@ -32,7 +32,6 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
@@ -54,14 +53,6 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
 
     public ValueNode getInstanceType() {
         return clazz;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        /*
-         * Do not call the super implementation: we must not eliminate unused allocations because
-         * throwing an InstantiationException is a possible side effect of an unused allocation.
-         */
     }
 
     @Override
