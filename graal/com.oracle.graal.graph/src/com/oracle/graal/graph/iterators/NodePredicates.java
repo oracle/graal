@@ -42,26 +42,12 @@ public abstract class NodePredicates {
         return IS_NULL;
     }
 
-    public static NodePredicate equals(Node n) {
-        return new EqualsPredicate(n);
-    }
-
     public static NegativeTypePredicate isNotA(Class<? extends Node> clazz) {
         return new NegativeTypePredicate(clazz);
     }
 
     public static PositiveTypePredicate isA(Class<? extends Node> clazz) {
         return new PositiveTypePredicate(clazz);
-    }
-
-    public static NodePredicate isAInterface(Class<?> iface) {
-        assert iface.isInterface();
-        return new PositiveTypePredicate(iface);
-    }
-
-    public static NodePredicate isNotAInterface(Class<?> iface) {
-        assert iface.isInterface();
-        return new NegativeTypePredicate(iface);
     }
 
     static final class TautologyPredicate implements NodePredicate {
@@ -127,38 +113,6 @@ public abstract class NodePredicates {
         @Override
         public boolean apply(Node n) {
             return n == null;
-        }
-    }
-
-    static final class EqualsPredicate implements NodePredicate {
-
-        private final Node u;
-
-        EqualsPredicate(Node u) {
-            this.u = u;
-        }
-
-        @Override
-        public boolean apply(Node n) {
-            return u == n;
-        }
-    }
-
-    static final class NotEqualsPredicate implements NodePredicate {
-
-        private final Node u;
-
-        NotEqualsPredicate(Node u) {
-            this.u = u;
-        }
-
-        @Override
-        public boolean apply(Node n) {
-            return u != n;
-        }
-
-        public NodePredicate negate() {
-            return new EqualsPredicate(u);
         }
     }
 
