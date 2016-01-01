@@ -40,11 +40,6 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
         return this;
     }
 
-    public FilteredNodeIterable<T> or(NodePredicate nodePredicate) {
-        this.predicate = this.predicate.or(nodePredicate);
-        return this;
-    }
-
     @Override
     public DistinctFilteredNodeIterable<T> distinct() {
         DistinctFilteredNodeIterable<T> distinct = new DistinctFilteredNodeIterable<>(nodeIterable);

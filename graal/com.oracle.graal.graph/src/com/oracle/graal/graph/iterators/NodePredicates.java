@@ -83,10 +83,6 @@ public abstract class NodePredicates {
         public NodePredicate negate() {
             return CONTRADICTION;
         }
-
-        public NodePredicate or(NodePredicate np) {
-            return this;
-        }
     }
 
     static final class ContradictionPredicate implements NodePredicate {
@@ -102,10 +98,6 @@ public abstract class NodePredicates {
 
         public NodePredicate negate() {
             return TAUTOLOGY;
-        }
-
-        public NodePredicate or(NodePredicate np) {
-            return np;
         }
     }
 
@@ -140,22 +132,6 @@ public abstract class NodePredicates {
 
         public NodePredicate negate() {
             return a;
-        }
-    }
-
-    static final class OrPredicate implements NodePredicate {
-
-        private final NodePredicate a;
-        private final NodePredicate b;
-
-        OrPredicate(NodePredicate a, NodePredicate b) {
-            this.a = a;
-            this.b = b;
-        }
-
-        @Override
-        public boolean apply(Node n) {
-            return a.apply(n) || b.apply(n);
         }
     }
 
