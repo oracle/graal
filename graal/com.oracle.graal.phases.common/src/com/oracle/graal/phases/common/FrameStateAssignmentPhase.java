@@ -117,7 +117,7 @@ public class FrameStateAssignmentPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        assert !graph.getGuardsStage().allowsFloatingGuards() && checkFixedDeopts(graph);
+        assert !graph.getGuardsStage().allowsFloatingGuards() && !hasFloatingDeopts(graph);
         if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
             ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
             graph.setGuardsStage(GuardsStage.AFTER_FSA);
@@ -125,13 +125,16 @@ public class FrameStateAssignmentPhase extends Phase {
         }
     }
 
-    private static boolean checkFixedDeopts(StructuredGraph graph) {
-        for (Node n : graph.getNodes().filterInterface(DeoptimizingNode.class)) {
-            if (((DeoptimizingNode) n).canDeoptimize() && GraphUtil.isFloatingNode(n)) {
-                return false;
+    private static boolean hasFloatingDeopts(StructuredGraph graph) {
+        for (Node n : graph.getNodes()) {
+            if (n instanceof DeoptimizingNode) {
+                DeoptimizingNode deoptimizingNode = (DeoptimizingNode) n;
+                if (deoptimizingNode.canDeoptimize()) {
+                    return true;
+                }
             }
         }
-        return true;
+        return false;
     }
 
     private static FrameState singleFrameState(List<FrameState> states) {
