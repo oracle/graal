@@ -46,12 +46,6 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
     }
 
     @Override
-    public FilteredNodeIterable<T> nonNull() {
-        this.predicate = this.predicate.and(NodePredicates.isNotNull());
-        return this;
-    }
-
-    @Override
     public DistinctFilteredNodeIterable<T> distinct() {
         DistinctFilteredNodeIterable<T> distinct = new DistinctFilteredNodeIterable<>(nodeIterable);
         distinct.predicate = predicate;
@@ -74,8 +68,4 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
         return this.and(p);
     }
 
-    @Override
-    public FilteredNodeIterable<T> filterInterface(Class<?> iface) {
-        return this.and(NodePredicates.isAInterface(iface));
-    }
 }

@@ -25,7 +25,6 @@ package com.oracle.graal.phases.graph;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -226,17 +225,18 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * </p>
      */
     private void queueSuccessors(FixedNode x) {
-        Iterator<Node> iter = x.successors().nonNull().iterator();
-        if (iter.hasNext()) {
-            AbstractBeginNode begin = (AbstractBeginNode) iter.next();
-            // the current state isn't cloned for the first successor
-            // conceptually, the state is handed over to it
-            nodeQueue.addFirst(new PathStart<>(begin, state));
-        }
-        while (iter.hasNext()) {
-            AbstractBeginNode begin = (AbstractBeginNode) iter.next();
-            // for all other successors it is cloned
-            nodeQueue.addFirst(new PathStart<>(begin, state.clone()));
+        T startState = state;
+        T curState = startState;
+        for (Node succ : x.successors()) {
+            if (succ != null) {
+                if (curState == null) {
+                    // the current state isn't cloned for the first successor
+                    // conceptually, the state is handed over to it
+                    curState = startState.clone();
+                }
+                AbstractBeginNode begin = (AbstractBeginNode) succ;
+                nodeQueue.addFirst(new PathStart<>(begin, curState));
+            }
         }
     }
 

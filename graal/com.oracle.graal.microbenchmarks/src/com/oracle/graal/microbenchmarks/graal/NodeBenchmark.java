@@ -71,16 +71,6 @@ public class NodeBenchmark extends GraalBenchmark {
     public static class HashMapComputeIfAbsent extends NodesState {
     }
 
-    @Benchmark
-    @Warmup(iterations = 20)
-    public void nonNullInputs(HashMapComputeIfAbsent s, Blackhole bh) {
-        for (Node n : s.nodes) {
-            for (Node input : n.inputs().nonNull()) {
-                bh.consume(input);
-            }
-        }
-    }
-
     // Checkstyle: stop method name check
     @Benchmark
     @Warmup(iterations = 20)

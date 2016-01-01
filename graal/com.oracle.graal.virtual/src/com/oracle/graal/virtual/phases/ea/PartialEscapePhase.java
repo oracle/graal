@@ -30,7 +30,6 @@ import java.util.Set;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
