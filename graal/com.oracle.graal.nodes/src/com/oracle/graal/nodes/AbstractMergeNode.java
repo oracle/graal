@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
-
 import java.util.List;
 
 import com.oracle.graal.debug.Debug;

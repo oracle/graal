@@ -78,24 +78,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
     }
 
     public void prepareDelete(FixedNode evacuateFrom) {
-        removeProxies();
         evacuateGuards(evacuateFrom);
-    }
-
-    public void removeProxies() {
-        if (this.hasUsages()) {
-            outer: while (true) {
-                for (ProxyNode vpn : proxies().snapshot()) {
-                    ValueNode value = vpn.value();
-                    vpn.replaceAtUsagesAndDelete(value);
-                    if (value == this) {
-                        // Guard proxy could have this input as value.
-                        continue outer;
-                    }
-                }
-                break;
-            }
-        }
     }
 
     @Override
@@ -114,24 +97,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
     }
 
     public NodeIterable<Node> anchored() {
-        return usages().filter(n -> {
-            if (n instanceof ProxyNode) {
-                ProxyNode proxyNode = (ProxyNode) n;
-                return proxyNode.proxyPoint() != this;
-            }
-            return true;
-        });
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public NodeIterable<ProxyNode> proxies() {
-        return (NodeIterable) usages().filter(n -> {
-            if (n instanceof ProxyNode) {
-                ProxyNode proxyNode = (ProxyNode) n;
-                return proxyNode.proxyPoint() == this;
-            }
-            return false;
-        });
+        return usages();
     }
 
     public NodeIterable<FixedNode> getBlockNodes() {
