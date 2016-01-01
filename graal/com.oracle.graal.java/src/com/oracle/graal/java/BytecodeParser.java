@@ -2464,7 +2464,6 @@ public class BytecodeParser implements GraphBuilderContext {
 
             lastInstr = firstInstruction;
             frameState = getEntryState(block, currentDimension);
-            frameState.cleanDeletedNodes();
             parser.setCurrentFrameState(frameState);
             currentBlock = block;
 

@@ -31,8 +31,6 @@ import static com.oracle.graal.bytecode.Bytecodes.DUP_X2;
 import static com.oracle.graal.bytecode.Bytecodes.POP;
 import static com.oracle.graal.bytecode.Bytecodes.POP2;
 import static com.oracle.graal.bytecode.Bytecodes.SWAP;
-import static com.oracle.graal.graph.iterators.NodePredicates.isA;
-import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
 import static com.oracle.graal.java.BytecodeParserOptions.HideSubstitutionStates;
 import static com.oracle.graal.nodes.FrameState.TWO_SLOT_MARKER;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
@@ -57,6 +55,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.LoopExitNode;
@@ -67,7 +66,6 @@ import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
-import com.oracle.graal.nodes.ValueProxyNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
@@ -356,29 +354,6 @@ public final class FrameStateBuilder implements SideEffectsState {
         return true;
     }
 
-    /**
-     * Phi nodes are recursively deleted in {@link #propagateDelete}. However, this does not cover
-     * frame state builder objects, since these are not nodes and not in the usage list of the phi
-     * node. Therefore, we clean the frame state builder manually here, before we parse a block.
-     */
-    public void cleanDeletedNodes() {
-        for (int i = 0; i < localsSize(); i++) {
-            ValueNode node = locals[i];
-            if (node != null && node.isDeleted()) {
-                assert node instanceof ValuePhiNode || node instanceof ValueProxyNode;
-                locals[i] = null;
-            }
-        }
-        for (int i = 0; i < stackSize(); i++) {
-            ValueNode node = stack[i];
-            assert node == null || !node.isDeleted();
-        }
-        for (int i = 0; i < lockedObjects.length; i++) {
-            ValueNode node = lockedObjects[i];
-            assert !node.isDeleted();
-        }
-    }
-
     public void merge(AbstractMergeNode block, FrameStateBuilder other) {
         assert isCompatibleWith(other);
 
@@ -407,10 +382,12 @@ public final class FrameStateBuilder implements SideEffectsState {
             return null;
         } else if (block.isPhiAtMerge(currentValue)) {
             if (otherValue == null || otherValue == TWO_SLOT_MARKER || otherValue.isDeleted() || currentValue.getStackKind() != otherValue.getStackKind()) {
-                propagateDelete((ValuePhiNode) currentValue);
-                return null;
+                // This phi must be dead anyway, add input of correct stack kind to keep the graph
+                // invariants.
+                ((PhiNode) currentValue).addInput(ConstantNode.defaultForKind(currentValue.getStackKind()));
+            } else {
+                ((PhiNode) currentValue).addInput(otherValue);
             }
-            ((PhiNode) currentValue).addInput(otherValue);
             return currentValue;
         } else if (currentValue != otherValue) {
             if (currentValue == TWO_SLOT_MARKER || otherValue == TWO_SLOT_MARKER) {
@@ -433,24 +410,6 @@ public final class FrameStateBuilder implements SideEffectsState {
         phi.addInput(otherValue);
         assert phi.valueCount() == block.phiPredecessorCount() + 1;
         return phi;
-    }
-
-    private void propagateDelete(FloatingNode node) {
-        assert node instanceof ValuePhiNode || node instanceof ProxyNode;
-        if (node.isDeleted()) {
-            return;
-        }
-        // Collect all phi functions that use this phi so that we can delete them recursively (after
-        // we delete ourselves to avoid circles).
-        List<FloatingNode> propagateUsages = node.usages().filter(FloatingNode.class).filter(isA(ValuePhiNode.class).or(ProxyNode.class)).snapshot();
-
-        // Remove the phi function from all FrameStates where it is used and then delete it.
-        assert node.usages().filter(isNotA(FrameState.class).nor(ValuePhiNode.class).nor(ProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
-        node.replaceAtUsagesAndDelete(null);
-
-        for (FloatingNode phiUsage : propagateUsages) {
-            propagateDelete(phiUsage);
-        }
     }
 
     public void inferPhiStamps(AbstractMergeNode block) {
