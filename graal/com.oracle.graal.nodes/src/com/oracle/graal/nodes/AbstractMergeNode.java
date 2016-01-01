@@ -105,7 +105,7 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
             }
             ValueNode removedValue = phi.valueAt(predIndex);
             phi.removeInput(predIndex);
-            if (removedValue != null && removedValue.isAlive() && removedValue.hasNoUsages() && GraphUtil.isFloatingNode().apply(removedValue)) {
+            if (removedValue != null && removedValue.isAlive() && removedValue.hasNoUsages() && GraphUtil.isFloatingNode(removedValue)) {
                 GraphUtil.killWithUnusedFloatingInputs(removedValue);
             }
         }

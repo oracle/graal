@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeWorkList;
 import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.graph.iterators.NodePredicate;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractEndNode;
@@ -59,14 +58,6 @@ import com.oracle.graal.nodes.spi.LimitedValueProxy;
 import com.oracle.graal.nodes.spi.ValueProxy;
 
 public class GraphUtil {
-
-    private static final NodePredicate FLOATING = new NodePredicate() {
-
-        @Override
-        public final boolean apply(Node n) {
-            return !(n instanceof FixedNode);
-        }
-    };
 
     public static void killCFG(Node node, SimplifierTool tool) {
         assert node.isAlive();
@@ -133,8 +124,8 @@ public class GraphUtil {
         }
     }
 
-    public static NodePredicate isFloatingNode() {
-        return FLOATING;
+    public static boolean isFloatingNode(Node n) {
+        return !(n instanceof FixedNode);
     }
 
     private static void propagateKill(Node node) {
@@ -496,7 +487,7 @@ public class GraphUtil {
     }
 
     public static boolean tryKillUnused(Node node) {
-        if (node.isAlive() && isFloatingNode().apply(node) && node.hasNoUsages()) {
+        if (node.isAlive() && isFloatingNode(node) && node.hasNoUsages()) {
             killWithUnusedFloatingInputs(node);
             return true;
         }

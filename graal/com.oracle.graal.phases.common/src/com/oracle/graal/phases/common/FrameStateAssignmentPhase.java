@@ -54,6 +54,7 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
  * This Phase processes the graph in post order, assigning the {@link FrameState} from the last
  * {@link StateSplit} node to {@link DeoptimizingNode DeoptimizingNodes}.
  */
+@SuppressWarnings("unused")
 public class FrameStateAssignmentPhase extends Phase {
 
     private static class FrameStateAssignmentClosure extends NodeIteratorClosure<FrameState> {
@@ -125,9 +126,8 @@ public class FrameStateAssignmentPhase extends Phase {
     }
 
     private static boolean checkFixedDeopts(StructuredGraph graph) {
-        NodePredicate isFloatingNode = GraphUtil.isFloatingNode();
         for (Node n : graph.getNodes().filterInterface(DeoptimizingNode.class)) {
-            if (((DeoptimizingNode) n).canDeoptimize() && isFloatingNode.apply(n)) {
+            if (((DeoptimizingNode) n).canDeoptimize() && GraphUtil.isFloatingNode(n)) {
                 return false;
             }
         }

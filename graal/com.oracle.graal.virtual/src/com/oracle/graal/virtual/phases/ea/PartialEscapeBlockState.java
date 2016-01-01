@@ -150,6 +150,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         List<ValueNode> otherAllocations = new ArrayList<>(2);
         List<Boolean> ensureVirtual = new ArrayList<>(2);
         materializeWithCommit(fixed, virtual, objects, locks, values, ensureVirtual, otherAllocations);
+        assert fixed != null;
 
         materializeEffects.add("materializeBefore", (graph, obsoleteNodes) -> {
             for (ValueNode otherAllocation : otherAllocations) {
