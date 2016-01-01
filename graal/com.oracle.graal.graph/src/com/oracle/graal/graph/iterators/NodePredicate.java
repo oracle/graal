@@ -24,7 +24,6 @@ package com.oracle.graal.graph.iterators;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodePredicates.AndPredicate;
-import com.oracle.graal.graph.iterators.NodePredicates.NotPredicate;
 
 public interface NodePredicate {
 
@@ -32,9 +31,5 @@ public interface NodePredicate {
 
     default NodePredicate and(NodePredicate np) {
         return new AndPredicate(this, np);
-    }
-
-    default NodePredicate negate() {
-        return new NotPredicate(this);
     }
 }

@@ -40,10 +40,6 @@ public interface NodeIterable<T extends Node> extends Iterable<T> {
         return new FilteredNodeIterable<>(this).and(predicate);
     }
 
-    default FilteredNodeIterable<T> nonNull() {
-        return new FilteredNodeIterable<>(this).and(NodePredicates.isNotNull());
-    }
-
     default NodeIterable<T> distinct() {
         return new FilteredNodeIterable<>(this).distinct();
     }
