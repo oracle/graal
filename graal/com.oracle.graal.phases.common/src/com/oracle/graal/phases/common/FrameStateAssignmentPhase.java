@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,7 +127,7 @@ public class FrameStateAssignmentPhase extends Phase {
 
     private static boolean hasFloatingDeopts(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
-            if (n instanceof DeoptimizingNode) {
+            if (n instanceof DeoptimizingNode && GraphUtil.isFloatingNode(n)) {
                 DeoptimizingNode deoptimizingNode = (DeoptimizingNode) n;
                 if (deoptimizingNode.canDeoptimize()) {
                     return true;
