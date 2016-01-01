@@ -191,6 +191,8 @@ public class TypeSystemTest extends GraalCompilerTest {
         // a second canonicalizer is needed to process nested MaterializeNodes
         new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
+        new ConditionalEliminationPhase().apply(referenceGraph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(referenceGraph, new PhaseContext(getProviders()));
         new CanonicalizerPhase().apply(referenceGraph, new PhaseContext(getProviders()));
         assertEquals(referenceGraph, graph);
     }
