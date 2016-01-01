@@ -77,7 +77,7 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
         if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
-            if (readElimination || graph.getNodes().filterInterface(VirtualizableAllocation.class).isNotEmpty()) {
+            if (readElimination || graph.hasVirtualizableAllocation()) {
                 runAnalysis(graph, context);
             }
         }

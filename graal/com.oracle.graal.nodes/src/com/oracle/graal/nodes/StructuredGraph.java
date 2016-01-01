@@ -43,6 +43,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.util.GraphUtil;
 
 /**
@@ -608,5 +609,14 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
                 }
             }
         }
+    }
+
+    public final boolean hasVirtualizableAllocation() {
+        for (Node n : getNodes()) {
+            if (n instanceof VirtualizableAllocation) {
+                return true;
+            }
+        }
+        return false;
     }
 }

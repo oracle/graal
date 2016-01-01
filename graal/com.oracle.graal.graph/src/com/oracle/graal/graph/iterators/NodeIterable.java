@@ -36,10 +36,6 @@ public interface NodeIterable<T extends Node> extends Iterable<T> {
         return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
     }
 
-    default NodeIterable<T> filterInterface(Class<?> iface) {
-        return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
-    }
-
     default FilteredNodeIterable<T> filter(NodePredicate predicate) {
         return new FilteredNodeIterable<>(this).and(predicate);
     }
