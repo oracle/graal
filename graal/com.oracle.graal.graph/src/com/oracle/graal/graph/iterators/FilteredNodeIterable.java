@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,13 +38,6 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
     public FilteredNodeIterable<T> and(NodePredicate nodePredicate) {
         this.predicate = this.predicate.and(nodePredicate);
         return this;
-    }
-
-    @Override
-    public DistinctFilteredNodeIterable<T> distinct() {
-        DistinctFilteredNodeIterable<T> distinct = new DistinctFilteredNodeIterable<>(nodeIterable);
-        distinct.predicate = predicate;
-        return distinct;
     }
 
     @Override
