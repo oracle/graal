@@ -39,17 +39,14 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StartNode;
-import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.memory.FloatingReadNode;
 import com.oracle.graal.nodes.memory.WriteNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.OptimisticOptimizations;
@@ -736,15 +733,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 }
                 new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                    for (Node node : graph.getNodes()) {
-                        if (node instanceof StateSplit) {
-                            FrameState stateAfter = ((StateSplit) node).stateAfter();
-                            if (stateAfter != null) {
-                                ((StateSplit) node).setStateAfter(null);
-                                GraphUtil.killWithUnusedFloatingInputs(stateAfter);
-                            }
-                        }
-                    }
+                    graph.clearAllStateAfter();
                 }
                 Debug.dump(graph, "after removal of framestates");
 

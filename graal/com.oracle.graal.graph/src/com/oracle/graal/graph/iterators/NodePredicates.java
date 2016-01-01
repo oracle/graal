@@ -51,10 +51,6 @@ public abstract class NodePredicates {
         return new EqualsPredicate(n);
     }
 
-    public static NodePredicate not(NodePredicate a) {
-        return a.negate();
-    }
-
     public static NegativeTypePredicate isNotA(Class<? extends Node> clazz) {
         return new NegativeTypePredicate(clazz);
     }

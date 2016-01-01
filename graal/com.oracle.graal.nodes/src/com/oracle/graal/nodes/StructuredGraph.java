@@ -597,4 +597,16 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     public SpeculationLog getSpeculationLog() {
         return speculationLog;
     }
+
+    public final void clearAllStateAfter() {
+        for (Node node : getNodes()) {
+            if (node instanceof StateSplit) {
+                FrameState stateAfter = ((StateSplit) node).stateAfter();
+                if (stateAfter != null) {
+                    ((StateSplit) node).setStateAfter(null);
+                    GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+                }
+            }
+        }
+    }
 }
