@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,14 @@ import static com.oracle.graal.compiler.common.GraalOptions.MinimumPeelProbabili
 
 import java.util.List;
 
+import jdk.vm.ci.code.BytecodeFrame;
+
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.VirtualState;
@@ -66,6 +69,12 @@ public class DefaultLoopPolicies implements LoopPolicies {
             for (Node node : loop.inside().nodes()) {
                 if (node instanceof ControlFlowAnchorNode) {
                     return false;
+                }
+                if (node instanceof FrameState) {
+                    FrameState frameState = (FrameState) node;
+                    if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                        return false;
+                    }
                 }
             }
             return true;
