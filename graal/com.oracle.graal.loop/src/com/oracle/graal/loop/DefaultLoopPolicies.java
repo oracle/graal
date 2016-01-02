@@ -99,6 +99,12 @@ public class DefaultLoopPolicies implements LoopPolicies {
                 if (node instanceof ControlFlowAnchorNode) {
                     return false;
                 }
+                if (node instanceof FrameState) {
+                    FrameState frameState = (FrameState) node;
+                    if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                        return false;
+                    }
+                }
             }
             return true;
         } else {
