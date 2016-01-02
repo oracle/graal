@@ -848,7 +848,7 @@ public final class BciBlockMapping {
         ExceptionDispatchBlock unwindBlock = new ExceptionDispatchBlock();
         unwindBlock.startBci = -1;
         unwindBlock.endBci = -1;
-        unwindBlock.deoptBci = method.isSynchronized() ? BytecodeFrame.UNWIND_BCI : BytecodeFrame.AFTER_EXCEPTION_BCI;
+        unwindBlock.deoptBci = BytecodeFrame.UNWIND_BCI;
         unwindBlock.setId(newBlocks.length - 1);
         newBlocks[newBlocks.length - 1] = unwindBlock;
 
