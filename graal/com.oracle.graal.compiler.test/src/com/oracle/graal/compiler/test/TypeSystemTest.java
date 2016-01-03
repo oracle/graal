@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
@@ -208,8 +209,9 @@ public class TypeSystemTest extends GraalCompilerTest {
 
     public static void outputGraph(StructuredGraph graph, String message) {
         TTY.println("========================= " + message);
-        SchedulePhase schedule = new SchedulePhase();
-        schedule.apply(graph);
+        SchedulePhase schedulePhase = new SchedulePhase();
+        schedulePhase.apply(graph);
+        ScheduleResult schedule = graph.getLastSchedule();
         for (Block block : schedule.getCFG().getBlocks()) {
             TTY.print("Block " + block + " ");
             if (block == schedule.getCFG().getStartBlock()) {

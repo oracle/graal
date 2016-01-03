@@ -53,6 +53,7 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
@@ -90,13 +91,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         resolveMethodContext();
 
         try (Scope s = Debug.sandbox(getClass().getSimpleName(), null)) {
-            SchedulePhase predefinedSchedule = null;
-            for (Object obj : Debug.context()) {
-                if (obj instanceof SchedulePhase) {
-                    predefinedSchedule = (SchedulePhase) obj;
-                }
-            }
-            processGraph(graph, msg, predefinedSchedule);
+            processGraph(graph, msg);
         } catch (IOException e) {
             throw e;
         } catch (Throwable e) {
@@ -104,15 +99,24 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         }
     }
 
-    private void processGraph(Graph graph, String name, SchedulePhase predefinedSchedule) throws IOException {
-        SchedulePhase schedule = predefinedSchedule;
-        if (schedule == null) {
-            // Also provide a schedule when an error occurs
-            if (PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
-                if (graph instanceof StructuredGraph) {
-                    schedule = new SchedulePhase();
-                    schedule.apply((StructuredGraph) graph);
+    private void processGraph(Graph graph, String name) throws IOException {
+
+        ScheduleResult scheduleResult = null;
+        if (graph instanceof StructuredGraph) {
+
+            StructuredGraph structuredGraph = (StructuredGraph) graph;
+            scheduleResult = structuredGraph.getLastSchedule();
+            if (scheduleResult == null) {
+
+                // Also provide a schedule when an error occurs
+                if (PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
+                    try {
+                        SchedulePhase schedule = new SchedulePhase();
+                        schedule.apply(structuredGraph);
+                    } catch (Throwable t) {
+                    }
                 }
+
             }
         }
 
@@ -123,19 +127,19 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         DataDict graphDict = new DataDict();
         dataDict.put("graph", graphDict);
 
-        processNodes(graphDict, graph.getNodes(), schedule);
+        processNodes(graphDict, graph.getNodes(), scheduleResult);
 
-        if (schedule != null) {
-            ControlFlowGraph cfg = schedule.getCFG();
+        if (scheduleResult != null) {
+            ControlFlowGraph cfg = scheduleResult.getCFG();
             if (cfg != null) {
                 List<Block> blocks = cfg.getBlocks();
-                processBlocks(graphDict, blocks, schedule);
+                processBlocks(graphDict, blocks, scheduleResult);
             }
         }
         serializeAndFlush(createEventDictWithId("graph", dataDict));
     }
 
-    private static void processNodes(DataDict graphDict, NodeIterable<Node> nodes, SchedulePhase schedule) {
+    private static void processNodes(DataDict graphDict, NodeIterable<Node> nodes, ScheduleResult schedule) {
         Map<NodeClass<?>, Integer> classMap = new HashMap<>();
 
         DataList classList = new DataList();
@@ -172,7 +176,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         }
     }
 
-    private static void processNodeSchedule(DataDict nodeDict, Node node, SchedulePhase schedule) {
+    private static void processNodeSchedule(DataDict nodeDict, Node node, ScheduleResult schedule) {
         NodeMap<Block> nodeToBlock = schedule.getNodeToBlockMap();
         if (nodeToBlock != null) {
             if (nodeToBlock.isNew(node)) {
@@ -195,7 +199,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         }
     }
 
-    private static void processBlocks(DataDict graphDict, List<Block> blocks, SchedulePhase schedule) {
+    private static void processBlocks(DataDict graphDict, List<Block> blocks, ScheduleResult schedule) {
         BlockMap<List<Node>> blockToNodes = schedule.getBlockToNodesMap();
         DataList blockList = new DataList();
         graphDict.put("blocks", blockList);

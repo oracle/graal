@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
 import com.oracle.graal.nodes.cfg.Block;
@@ -59,8 +60,9 @@ public class SchedulingTest extends GraphScheduleTest {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
         }
-        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST);
-        schedule.apply(graph);
+        SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST);
+        schedulePhase.apply(graph);
+        ScheduleResult schedule = graph.getLastSchedule();
         NodeMap<Block> nodeToBlock = schedule.getCFG().getNodeToBlock();
         assertTrue(graph.getNodes().filter(LoopExitNode.class).count() == 1);
         LoopExitNode loopExit = graph.getNodes().filter(LoopExitNode.class).first();

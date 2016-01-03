@@ -34,7 +34,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 
 public abstract class BackendTest extends GraalCompilerTest {
 
@@ -48,15 +47,14 @@ public abstract class BackendTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     protected LIRGenerationResult getLIRGenerationResult(final StructuredGraph graph) {
-        SchedulePhase schedule = null;
         try (Scope s = Debug.scope("FrontEnd")) {
-            schedule = GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE, graph.method().getProfilingInfo(), getSuites());
+            GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE, graph.method().getProfilingInfo(), getSuites());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
 
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), schedule, graph, null, cc, null, getLIRSuites());
+        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), graph, null, cc, null, getLIRSuites());
         return lirGen;
     }
 

@@ -56,6 +56,7 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
@@ -141,32 +142,35 @@ public class BinaryGraphPrinter implements GraphPrinter {
         this.channel = channel;
     }
 
-    public void print(Graph graph, String title, SchedulePhase predefinedSchedule) throws IOException {
+    public void print(Graph graph, String title) throws IOException {
         writeByte(BEGIN_GRAPH);
         writePoolObject(title);
-        writeGraph(graph, predefinedSchedule);
+        writeGraph(graph);
         flush();
     }
 
     private void writeGraph(Graph graph) throws IOException {
-        writeGraph(graph, null);
-    }
+        ScheduleResult scheduleResult = null;
+        if (graph instanceof StructuredGraph) {
 
-    private void writeGraph(Graph graph, SchedulePhase predefinedSchedule) throws IOException {
-        SchedulePhase schedule = predefinedSchedule;
-        if (schedule == null) {
-            // Also provide a schedule when an error occurs
-            if (PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
-                try {
-                    schedule = new SchedulePhase();
-                    schedule.apply((StructuredGraph) graph);
-                } catch (Throwable t) {
+            StructuredGraph structuredGraph = (StructuredGraph) graph;
+            scheduleResult = structuredGraph.getLastSchedule();
+            if (scheduleResult == null) {
+
+                // Also provide a schedule when an error occurs
+                if (PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
+                    try {
+                        SchedulePhase schedule = new SchedulePhase();
+                        schedule.apply(structuredGraph);
+                    } catch (Throwable t) {
+                    }
                 }
+
             }
         }
-        ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
-        BlockMap<List<Node>> blockToNodes = schedule == null ? null : schedule.getBlockToNodesMap();
-        NodeMap<Block> nodeToBlocks = schedule == null ? null : schedule.getNodeToBlockMap();
+        ControlFlowGraph cfg = scheduleResult == null ? null : scheduleResult.getCFG();
+        BlockMap<List<Node>> blockToNodes = scheduleResult == null ? null : scheduleResult.getBlockToNodesMap();
+        NodeMap<Block> nodeToBlocks = scheduleResult == null ? null : scheduleResult.getNodeToBlockMap();
         List<Block> blocks = cfg == null ? null : cfg.getBlocks();
         writeNodes(graph, nodeToBlocks, cfg);
         writeBlocks(blocks, blockToNodes);

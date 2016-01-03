@@ -29,6 +29,7 @@ import org.junit.Assert;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.phases.schedule.SchedulePhase;
 
@@ -37,10 +38,10 @@ public class GraphScheduleTest extends GraalCompilerTest {
     protected void assertOrderedAfterSchedule(StructuredGraph graph, Node a, Node b) {
         SchedulePhase ibp = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST);
         ibp.apply(graph);
-        assertOrderedAfterSchedule(ibp, a, b);
+        assertOrderedAfterSchedule(graph.getLastSchedule(), a, b);
     }
 
-    protected void assertOrderedAfterSchedule(SchedulePhase ibp, Node a, Node b) {
+    protected void assertOrderedAfterSchedule(ScheduleResult ibp, Node a, Node b) {
         NodeMap<Block> nodeToBlock = ibp.getCFG().getNodeToBlock();
         Block bBlock = nodeToBlock.get(b);
         Block aBlock = nodeToBlock.get(a);

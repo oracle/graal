@@ -56,8 +56,8 @@ import com.oracle.graal.java.BytecodeDisassembler;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.debug.IntervalDumper;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -188,8 +188,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 cfgPrinter.printIntervals(message, delayedIntervals);
                 delayedIntervals = null;
             }
-        } else if (object instanceof SchedulePhase) {
-            cfgPrinter.printSchedule(message, (SchedulePhase) object);
+        } else if (object instanceof ScheduleResult) {
+            cfgPrinter.printSchedule(message, (ScheduleResult) object);
         } else if (object instanceof StructuredGraph) {
             if (cfgPrinter.cfg == null) {
                 StructuredGraph graph = (StructuredGraph) object;

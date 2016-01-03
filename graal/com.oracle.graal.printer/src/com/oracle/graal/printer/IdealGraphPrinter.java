@@ -48,6 +48,7 @@ import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.phases.schedule.SchedulePhase;
@@ -89,25 +90,26 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         endMethod();
     }
 
-    public void print(Graph graph, String title) {
-        print(graph, title, null);
-    }
-
     /**
      * Prints an entire {@link Graph} with the specified title, optionally using short names for
      * nodes.
      */
     @Override
-    public void print(Graph graph, String title, SchedulePhase predefinedSchedule) {
+    public void print(Graph graph, String title) {
         beginGraph(title);
         Set<Node> noBlockNodes = Node.newSet();
-        SchedulePhase schedule = predefinedSchedule;
-        if (schedule == null && tryToSchedule) {
-            if (PrintIdealGraphSchedule.getValue()) {
-                try {
-                    schedule = new SchedulePhase();
-                    schedule.apply((StructuredGraph) graph);
-                } catch (Throwable t) {
+        ScheduleResult schedule = null;
+        if (graph instanceof StructuredGraph) {
+            StructuredGraph structuredGraph = (StructuredGraph) graph;
+            schedule = structuredGraph.getLastSchedule();
+            if (schedule == null && tryToSchedule) {
+                if (PrintIdealGraphSchedule.getValue()) {
+                    try {
+                        SchedulePhase schedulePhase = new SchedulePhase();
+                        schedulePhase.apply(structuredGraph);
+                        schedule = structuredGraph.getLastSchedule();
+                    } catch (Throwable t) {
+                    }
                 }
             }
         }

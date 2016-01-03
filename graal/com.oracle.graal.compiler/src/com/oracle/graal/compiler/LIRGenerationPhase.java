@@ -36,9 +36,9 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.phases.LIRPhase;
 import com.oracle.graal.lir.ssa.SSAUtil;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 
 public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGenerationContext> {
 
@@ -46,9 +46,9 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         private final NodeLIRBuilderTool nodeLirBuilder;
         private final LIRGeneratorTool lirGen;
         private final StructuredGraph graph;
-        private final SchedulePhase schedule;
+        private final ScheduleResult schedule;
 
-        public LIRGenerationContext(LIRGeneratorTool lirGen, NodeLIRBuilderTool nodeLirBuilder, StructuredGraph graph, SchedulePhase schedule) {
+        public LIRGenerationContext(LIRGeneratorTool lirGen, NodeLIRBuilderTool nodeLirBuilder, StructuredGraph graph, ScheduleResult schedule) {
             this.nodeLirBuilder = nodeLirBuilder;
             this.lirGen = lirGen;
             this.graph = graph;
@@ -61,7 +61,7 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
                     LIRGenerationPhase.LIRGenerationContext context) {
         NodeLIRBuilderTool nodeLirBuilder = context.nodeLirBuilder;
         StructuredGraph graph = context.graph;
-        SchedulePhase schedule = context.schedule;
+        ScheduleResult schedule = context.schedule;
         for (B b : linearScanOrder) {
             emitBlock(nodeLirBuilder, lirGenRes, (Block) b, graph, schedule.getBlockToNodesMap());
         }

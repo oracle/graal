@@ -62,6 +62,7 @@ import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.ValueProxyNode;
@@ -74,7 +75,6 @@ import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 
 public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockState<BlockT>> extends EffectsClosure<BlockT> {
 
@@ -128,7 +128,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     public static final class Final extends PartialEscapeClosure<PartialEscapeBlockState.Final> {
 
-        public Final(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        public Final(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
             super(schedule, metaAccess, constantReflection);
         }
 
@@ -143,7 +143,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    public PartialEscapeClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         super(schedule, schedule.getCFG());
         this.hasVirtualInputs = schedule.getCFG().graph.createNodeBitMap();
         this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, this);

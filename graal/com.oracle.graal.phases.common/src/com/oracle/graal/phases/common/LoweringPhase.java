@@ -58,6 +58,7 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.GuardNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.cfg.Block;
@@ -272,7 +273,8 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
         private final PhaseContext context;
         private final LoweringMode mode;
-        private final SchedulePhase schedule;
+        private ScheduleResult schedule;
+        private final SchedulePhase schedulePhase;
 
         private Round(PhaseContext context, LoweringMode mode) {
             this.context = context;
@@ -285,7 +287,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
              */
             boolean immutableSchedule = mode == LoweringMode.VERIFY_LOWERING;
 
-            this.schedule = new SchedulePhase(immutableSchedule);
+            this.schedulePhase = new SchedulePhase(immutableSchedule);
         }
 
         @Override
@@ -302,7 +304,8 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
         @Override
         public void run(StructuredGraph graph) {
-            schedule.apply(graph, false);
+            schedulePhase.apply(graph, false);
+            schedule = graph.getLastSchedule();
             schedule.getCFG().computePostdominators();
             Block startBlock = schedule.getCFG().getStartBlock();
             ProcessFrame rootFrame = new ProcessFrame(startBlock, graph.createNodeBitMap(), startBlock.getBeginNode(), null);
@@ -457,7 +460,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     *
+     * 
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {

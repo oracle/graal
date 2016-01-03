@@ -57,12 +57,12 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.StateSplit;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 
 /**
  * Utility for printing Graal IR at various compilation phases.
@@ -73,7 +73,7 @@ class CFGPrinter extends CompilationPrinter {
     protected LIR lir;
     protected NodeLIRBuilder nodeLirGenerator;
     protected ControlFlowGraph cfg;
-    protected SchedulePhase schedule;
+    protected ScheduleResult schedule;
     protected ResolvedJavaMethod method;
 
     /**
@@ -564,7 +564,7 @@ class CFGPrinter extends CompilationPrinter {
         end("intervals");
     }
 
-    public void printSchedule(String message, SchedulePhase theSchedule) {
+    public void printSchedule(String message, ScheduleResult theSchedule) {
         schedule = theSchedule;
         cfg = schedule.getCFG();
         printedNodes = new NodeBitMap(cfg.graph);

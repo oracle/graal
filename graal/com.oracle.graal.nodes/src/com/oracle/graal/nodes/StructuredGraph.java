@@ -36,12 +36,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
+import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.JavaMethodContext;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -108,6 +112,34 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    public static class ScheduleResult {
+        private final ControlFlowGraph cfg;
+        private final NodeMap<Block> nodeToBlockMap;
+        private final BlockMap<List<Node>> blockToNodesMap;
+
+        public ScheduleResult(ControlFlowGraph cfg, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
+            this.cfg = cfg;
+            this.nodeToBlockMap = nodeToBlockMap;
+            this.blockToNodesMap = blockToNodesMap;
+        }
+
+        public ControlFlowGraph getCFG() {
+            return cfg;
+        }
+
+        public NodeMap<Block> getNodeToBlockMap() {
+            return nodeToBlockMap;
+        }
+
+        public BlockMap<List<Node>> getBlockToNodesMap() {
+            return blockToNodesMap;
+        }
+
+        public List<Node> nodesFor(Block block) {
+            return blockToNodesMap.get(block);
+        }
+    }
+
     public static final long INVALID_GRAPH_ID = -1;
 
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
@@ -126,6 +158,8 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     private final Assumptions assumptions;
 
     private final SpeculationLog speculationLog;
+
+    private ScheduleResult lastSchedule;
 
     /**
      * Records the methods that were inlined while constructing this graph, one entry for each time
@@ -181,6 +215,18 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         this.entryBCI = entryBCI;
         this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
         this.speculationLog = speculationLog;
+    }
+
+    public void setLastSchedule(ScheduleResult result) {
+        lastSchedule = result;
+    }
+
+    public ScheduleResult getLastSchedule() {
+        return lastSchedule;
+    }
+
+    public void clearLastSchedule() {
+        setLastSchedule(null);
     }
 
     public Stamp getReturnStamp() {

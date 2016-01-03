@@ -42,6 +42,7 @@ import com.oracle.graal.phases.common.ProfileCompiledMethodsPhase;
 import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.common.UseTrappingNullChecksPhase;
 import com.oracle.graal.phases.common.instrumentation.InlineInstrumentationPhase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.LowTierContext;
 
 public class LowTier extends PhaseSuite<LowTierContext> {
@@ -84,5 +85,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new UseTrappingNullChecksPhase());
 
         appendPhase(new DeadCodeEliminationPhase(Required));
+
+        appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.FINAL_SCHEDULE));
     }
 }

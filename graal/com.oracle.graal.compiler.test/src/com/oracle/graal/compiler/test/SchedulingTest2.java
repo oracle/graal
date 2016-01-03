@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
 import com.oracle.graal.nodes.cfg.Block;
@@ -69,8 +70,9 @@ public class SchedulingTest2 extends GraphScheduleTest {
         returnNode.replaceAtPredecessor(beginNode);
         beginNode.setNext(returnNode);
         Debug.dump(graph, "Graph");
-        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
-        schedule.apply(graph);
+        SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.EARLIEST);
+        schedulePhase.apply(graph);
+        ScheduleResult schedule = graph.getLastSchedule();
         BlockMap<List<Node>> blockToNodesMap = schedule.getBlockToNodesMap();
         NodeMap<Block> nodeToBlock = schedule.getNodeToBlockMap();
         assertDeepEquals(2, schedule.getCFG().getBlocks().size());
@@ -103,8 +105,8 @@ public class SchedulingTest2 extends GraphScheduleTest {
         FrameStateAssignmentPhase phase = new FrameStateAssignmentPhase();
         phase.apply(graph);
 
-        schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
-        schedule.apply(graph);
+        schedulePhase.apply(graph);
+        schedule = graph.getLastSchedule();
         blockToNodesMap = schedule.getBlockToNodesMap();
         nodeToBlock = schedule.getNodeToBlockMap();
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {

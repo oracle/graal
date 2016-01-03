@@ -45,6 +45,7 @@ import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValueProxyNode;
 import com.oracle.graal.nodes.cfg.Block;
@@ -60,7 +61,6 @@ import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
 
 public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadEliminationBlockState> {
@@ -73,7 +73,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         }
     }
 
-    public PEReadEliminationClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    public PEReadEliminationClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         super(schedule, metaAccess, constantReflection);
     }
 
