@@ -118,6 +118,7 @@ public final class SchedulePhase extends Phase {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph) {
         try (NodeEventScope scope = verifyImmutableGraph(graph)) {
             Instance inst = new Instance();
