@@ -128,15 +128,12 @@ public final class SchedulePhase extends Phase {
 
     public static class Instance {
 
-        private ControlFlowGraph cfg;
-
         /**
          * Map from blocks to the nodes in each block.
          */
-        private BlockMap<List<Node>> blockToNodesMap;
-        private BlockMap<LocationSet> blockToKillSet;
-
-        private NodeMap<Block> nodeToBlockMap;
+        protected ControlFlowGraph cfg;
+        protected BlockMap<List<Node>> blockToNodesMap;
+        protected NodeMap<Block> nodeToBlockMap;
 
         @SuppressWarnings("try")
         public void run(StructuredGraph graph, SchedulingStrategy selectedStrategy, boolean immutableGraph) {
@@ -813,15 +810,6 @@ public final class SchedulePhase extends Phase {
                 buf.format("dom: %s. ", b.getDominator());
                 buf.format("preds: %s. ", b.getPredecessors());
                 buf.format("succs: %s ====%n", b.getSuccessors());
-                BlockMap<LocationSet> killSets = blockToKillSet;
-                if (killSets != null) {
-                    buf.format("X block kills: %n");
-                    if (killSets.get(b) != null) {
-                        for (LocationIdentity locId : killSets.get(b).getCopyAsList()) {
-                            buf.format("X %s killed by %s%n", locId, "dunno anymore");
-                        }
-                    }
-                }
 
                 if (blockToNodesMap.get(b) != null) {
                     for (Node n : nodesFor(b)) {
