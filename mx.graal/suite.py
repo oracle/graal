@@ -2,8 +2,29 @@ import mx
 JDK9 = mx.get_jdk(tag='default').javaCompliance >= "1.9"
 
 def deps(l):
-    """ Filters out dependencies starting with 'jvmci:' if using JDK9. """
-    return [d for d in l if not JDK9 or not d.startswith("jvmci:")]
+    """
+    If using JDK9, replaces dependencies starting with 'jvmci:' with 'JVMCI'.
+    Otherwise, excludes "JVMCI".
+    """
+    if JDK9:
+        res = []
+        for e in l:
+            if e.startswith("jvmci:"):
+                if not "JVMCI" in res:
+                    res.append("JVMCI")
+            else:
+                res.append(e)
+        return res
+    else:
+        return [d for d in l if d != "JVMCI"]
+
+def libs(d):
+    """
+    If not using JDK9, excludes "JVMCI" library.
+    """
+    if not JDK9:
+        del d["JVMCI"]
+    return d
 
 def suites(l):
     """ Filters out suites named 'jvmci' if using JDK9. """
@@ -37,7 +58,7 @@ suite = {
 
   "defaultLicense" : "GPLv2-CPE",
 
-  "libraries" : {
+  "libraries" : libs({
 
     # ------------- Libraries -------------
 
@@ -69,7 +90,16 @@ suite = {
       "sourceSha1" : "12a67f0dcdfe7e43218bf38c1d7fd766122a3dc7",
       "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.11.2-sources.jar"],
     },
-  },
+
+    # This is a library synthesized from the JVMCI classes in JDK9.
+    # It enables Graal to be compiled against JVMCI when targeting JDK8.
+    # (i.e., compiled with javac option -target 1.8).
+    # The "path" and "sha1" attributes are added when mx_graal_9 is loaded
+    # (see mx_graal_9._update_JVMCI_library()).
+    "JVMCI" : {
+        "license" : "GPLv2-CPE",
+     },
+  }),
 
   "projects" : {
 
@@ -782,8 +812,8 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-	 "com.oracle.graal.loop",
-	 "com.oracle.graal.phases.common",
+     "com.oracle.graal.loop",
+     "com.oracle.graal.phases.common",
        ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
@@ -1138,6 +1168,7 @@ suite = {
         "com.oracle.graal.api.runtime",
         "com.oracle.graal.graph",
       ],
+      "exclude" : deps(["JVMCI"]),
       "distDependencies" : deps([
         "jvmci:JVMCI_API",
         "GRAAL_NODEINFO",
@@ -1150,6 +1181,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.compiler",
       ],
+      "exclude" : deps(["JVMCI"]),
       "distDependencies" : [
         "GRAAL_API",
         "GRAAL_SERVICEPROVIDER",
@@ -1171,6 +1203,7 @@ suite = {
         "com.oracle.graal.replacements.sparc",
         "com.oracle.graal.salver",
       ],
+      "exclude" : deps(["JVMCI"]),
       "distDependencies" : [
         "GRAAL_API",
         "GRAAL_COMPILER",
@@ -1185,6 +1218,7 @@ suite = {
         "com.oracle.graal.hotspot.sparc",
         "com.oracle.graal.hotspot",
       ],
+      "exclude" : deps(["JVMCI"]),
       "distDependencies" : deps([
         "jvmci:JVMCI_HOTSPOT",
         "GRAAL_COMPILER",
@@ -1218,6 +1252,7 @@ suite = {
       "exclude" : deps([
         "mx:JUNIT",
         "JAVA_ALLOCATION_INSTRUMENTER",
+        "JVMCI"
       ]),
     },
 
@@ -1344,6 +1379,7 @@ if JDK9:
         "com.oracle.graal.truffle.hotspot.amd64",
         "com.oracle.graal.truffle.hotspot.sparc"
       ],
+      "exclude" : ["JVMCI"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
       ],

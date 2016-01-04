@@ -25,7 +25,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
-from os.path import join
+from os.path import join, exists, abspath
 from argparse import ArgumentParser
 import sanitycheck
 import re
@@ -334,6 +334,13 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
 
     args = ['-Xbootclasspath/p:' + os.pathsep.join(bcp)] + args
 
+    # Remove JVMCI from class path. It's only there to support compilation.
+    cpIndex, cp = mx.find_classpath_arg(args)
+    if cp:
+        jvmciLib = mx.library('JVMCI').path
+        cp = os.pathsep.join([e for e in cp.split(os.pathsep) if e != jvmciLib])
+        args[cpIndex] = cp
+
     # Set the default JVMCI compiler
     jvmciCompiler = _compilers[-1]
     args = ['-Djvmci.compiler=' + jvmciCompiler] + args
@@ -418,3 +425,69 @@ def mx_post_parse_cmd_line(opts):
         _vm.update(opts.jvmci_mode)
     for dist in [d.dist() for d in _bootClasspathDists]:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist))
+
+def _update_JVMCI_library():
+    """
+    Updates the "path" and "sha1" attributes of the "JVMCI" library to
+    refer to a jvmci.jar created from the JVMCI classes in JDK9.
+    """
+    suiteDict = _suite.suiteDict
+    jvmciLib = suiteDict['libraries']['JVMCI']
+    d = join(_suite.get_output_root(), abspath(_jdk.home)[1:])
+    path = join(d, 'jvmci.jar')
+    if not exists(path):
+        explodedModule = join(_jdk.home, 'modules', 'jdk.vm.ci')
+        if exists(explodedModule):
+            with mx.Archiver(path, kind='zip') as arc:
+                for root, _, files in os.walk(explodedModule):
+                    relpath = root[len(explodedModule) + 1:]
+                    for f in files:
+                        arcname = join(relpath, f).replace(os.sep, '/')
+                        with open(join(root, f), 'rb') as fp:
+                            contents = fp.read()
+                            arc.zf.writestr(arcname, contents)
+        else:
+            # Use the jdk.internal.jimage utility since it's the only way
+            # (currently) to read .jimage files and unfortunately the
+            # JDK9 jimage tool does not support partial extraction.
+            bootmodules = join(_jdk.home, 'lib', 'modules', 'bootmodules.jimage')
+            if not exists(bootmodules):
+                mx.abort('Could not find JVMCI classes at ' + bootmodules + ' or ' + explodedModule)
+            mx.ensure_dir_exists(d)
+            javaSource = join(d, 'ExtractJVMCI.java')
+            with open(javaSource, 'w') as fp:
+                print >> fp, """import java.io.FileOutputStream;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+import jdk.internal.jimage.BasicImageReader;
+
+public class ExtractJVMCI {
+    public static void main(String[] args) throws Exception {
+        BasicImageReader image = BasicImageReader.open(args[0]);
+        String[] names = image.getEntryNames();
+        if (names.length == 0) {
+            return;
+        }
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(args[1]))) {
+            for (String name : names) {
+                if (name.startsWith("/jdk.vm.ci/")) {
+                    String ename = name.substring("/jdk.vm.ci/".length());
+                    JarEntry je = new JarEntry(ename);
+                    jos.putNextEntry(je);
+                    jos.write(image.getResource(name));
+                    jos.closeEntry();
+                }
+            }
+        }
+    }
+}
+"""
+            mx.run([_jdk.javac, '-d', d, javaSource])
+            mx.run([_jdk.java, '-cp', d, 'ExtractJVMCI', bootmodules, path])
+            if not exists(path):
+                mx.abort('Could not find the JVMCI classes in ' + bootmodules)
+
+    jvmciLib['path'] = path
+    jvmciLib['sha1'] = mx.sha1OfFile(path)
+
+_update_JVMCI_library()
