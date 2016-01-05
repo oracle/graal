@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.5.7",
+  "mxversion" : "5.6.6",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -282,6 +282,7 @@ suite = {
       ],
       "description" : """Truffle is a multi-language framework for executing dynamic languages
         that achieves high performance when combined with Graal.""",
+      "javadocType": "api",
     },
 
     "TRUFFLE_TCK" : {
@@ -332,6 +333,7 @@ suite = {
           "TRUFFLE_API",
       ],
       "description" : "Experimental REPL server to build your debugger console for your language.",
+      "allowsJavadocWarnings": True,
      }
   },
 }
