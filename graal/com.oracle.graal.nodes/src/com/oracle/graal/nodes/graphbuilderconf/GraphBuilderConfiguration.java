@@ -279,7 +279,9 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getSnippetDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        GraphBuilderConfiguration config = new GraphBuilderConfiguration(true, true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        config.setUseProfiling(false);
+        return config;
     }
 
     public static GraphBuilderConfiguration getFullDebugDefault(Plugins plugins) {

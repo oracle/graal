@@ -33,10 +33,12 @@ import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
@@ -130,7 +132,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         }
         Suites suites = getSuites(providers);
         LIRSuites lirSuites = getLIRSuites(providers);
-        ProfilingInfo profilingInfo = method.getProfilingInfo(!isOSR, isOSR);
+        ProfilingInfo profilingInfo = useProfilingInfo ? method.getProfilingInfo(!isOSR, isOSR) : DefaultProfilingInfo.get(TriState.FALSE);
         OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
         if (isOSR) {
             // In OSR compiles, we cannot rely on never executed code profiles, because
@@ -143,7 +145,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, isOSR, useProfilingInfo);
         GraalCompiler.compileGraph(graph, cc, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, CompilationResultBuilderFactory.Default);
 
-        if (!isOSR) {
+        if (!isOSR && useProfilingInfo) {
             ProfilingInfo profile = method.getProfilingInfo();
             profile.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
         }
