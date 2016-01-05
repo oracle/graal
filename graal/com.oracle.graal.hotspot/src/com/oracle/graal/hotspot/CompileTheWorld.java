@@ -283,6 +283,12 @@ public final class CompileTheWorld {
         }
     }
 
+    public void printStackTrace(Throwable t) {
+        if (verbose) {
+            t.printStackTrace(TTY.out);
+        }
+    }
+
     @SuppressWarnings("unused")
     private static void dummy() {
     }
@@ -484,7 +490,7 @@ public final class CompileTheWorld {
             CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L), useProfilingInfo, installAsDefault);
             task.runCompilation();
         } catch (NoSuchMethodException | SecurityException e1) {
-            e1.printStackTrace();
+            printStackTrace(e1);
         }
 
         /*
@@ -597,7 +603,7 @@ public final class CompileTheWorld {
                         }
                     } catch (Throwable t) {
                         println("CompileTheWorld (%d) : Skipping %s %s", classFileCounter, className, t.toString());
-                        t.printStackTrace();
+                        printStackTrace(t);
                     }
                 }
                 cpe.close();
@@ -688,7 +694,7 @@ public final class CompileTheWorld {
         } catch (Throwable t) {
             // Catch everything and print a message
             println("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r"));
-            t.printStackTrace(TTY.out);
+            printStackTrace(t);
         }
     }
 
