@@ -35,7 +35,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Value;
 
 /**
- * This class implements the SPARC specific portion of the LIR generator.
+ * This class implements the AArch64 specific portion of the LIR generator.
  */
 public abstract class AArch64NodeLIRBuilder extends NodeLIRBuilder {
 
