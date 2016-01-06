@@ -26,13 +26,6 @@ package com.oracle.truffle.tck;
 
 import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -54,6 +47,13 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tck.Schema.Type;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Test compatibility kit (the <em>TCK</em>) is a collection of tests to certify your
@@ -225,7 +225,7 @@ public abstract class TruffleTCK {
      * argument and provides the sum of all real parts. The argument is an array/buffer of complex
      * numbers.
      *
-     * @return name of globally exported symbol
+     * @return name of globally exported symbol, <code>null</code> if the test should be skipped
      */
     protected String complexSumReal() {
         throw new UnsupportedOperationException("complexSumReal() method not implemented");
@@ -237,7 +237,7 @@ public abstract class TruffleTCK {
      * called real and imaginary. The first argument is the destination, the second argument is the
      * source.
      *
-     * @return name of globally exported symbol
+     * @return name of globally exported symbol, <code>null</code> if the test should be skipped
      */
     protected String complexCopy() {
         throw new UnsupportedOperationException("complexCopy() method not implemented");
@@ -358,6 +358,25 @@ public abstract class TruffleTCK {
         throw new UnsupportedOperationException("valuesObject() method not implemented");
     }
 
+    /** Assert two double values are the same. Various languages may have different
+     * semantics with respect to double numbers. Some of the language may not
+     * support <b>double</b> or <b>float</b> values at all. Those languages
+     * may override this method and compare the values with as much precision
+     * as they like.
+     * <p>
+     * Default implementation of this method calls
+     * {@link Assert#assertEquals(java.lang.String, double, double, double)}
+     * with delta <code>0.1</code>.
+     * 
+     * @param msg assertion message to display in case of error
+     * @param expectedValue the value expected by the test
+     * @param actualValue the real value produced by the language
+     * @throws AssertionError if the values are different according to the language semantics
+     */
+    protected void assertDouble(String msg, double expectedValue, double actualValue) {
+        assertEquals(msg, expectedValue, actualValue, 0.1);
+    }
+
     private PolyglotEngine vm() throws Exception {
         if (tckVM == null) {
             tckVM = prepareVM();
@@ -466,24 +485,24 @@ public abstract class TruffleTCK {
 
     @Test
     public void testPlusWithFloat() throws Exception {
-        float a = RANDOM.nextFloat();
-        float b = RANDOM.nextFloat();
+        float a = RANDOM.nextFloat() * 100.0f;
+        float b = RANDOM.nextFloat() * 100.0f;
 
         PolyglotEngine.Value plus = findGlobalSymbol(plus(float.class, float.class));
 
         Number n = plus.execute(a, b).as(Number.class);
-        assertEquals("Correct value computed", a + b, n.floatValue(), 0.01f);
+        assertDouble("Correct value computed", a + b, n.floatValue());
     }
 
     @Test
     public void testPlusWithDouble() throws Exception {
-        double a = RANDOM.nextDouble();
-        double b = RANDOM.nextDouble();
+        double a = RANDOM.nextDouble() * 100.0;
+        double b = RANDOM.nextDouble() * 100.0;
 
         PolyglotEngine.Value plus = findGlobalSymbol(plus(float.class, float.class));
 
         Number n = plus.execute(a, b).as(Number.class);
-        assertEquals("Correct value computed", a + b, n.doubleValue(), 0.01);
+        assertDouble("Correct value computed", a + b, n.doubleValue());
     }
 
     @Test
@@ -592,7 +611,7 @@ public abstract class TruffleTCK {
 
         TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
         Number n = apply.execute(fn).as(Number.class);
-        assertEquals("The same value returned", value + 10, n.floatValue(), 0.01);
+        assertDouble("The same value returned", value + 10, n.floatValue());
     }
 
     @Test
@@ -603,7 +622,7 @@ public abstract class TruffleTCK {
 
         TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
         Number n = apply.execute(fn).as(Number.class);
-        assertEquals("The same value returned", value + 10, n.doubleValue(), 0.01);
+        assertDouble("The same value returned", value + 10, n.doubleValue());
     }
 
     @Test
@@ -732,7 +751,7 @@ public abstract class TruffleTCK {
         float value = RANDOM.nextInt(1000) + RANDOM.nextFloat();
 
         Number n = (Number) apply.execute(value).get();
-        assertEquals("The same value returned", value, n.floatValue(), 0.01);
+        assertDouble("The same value returned", value, n.floatValue());
     }
 
     @Test
@@ -747,7 +766,7 @@ public abstract class TruffleTCK {
         BoxedValue boxed = new BoxedValue(value);
 
         Number n = (Number) apply.execute(boxed).get();
-        assertEquals("The same value returned", value, n.floatValue(), 0.01);
+        assertDouble("The same value returned", value, n.floatValue());
     }
 
     @Test
@@ -761,7 +780,7 @@ public abstract class TruffleTCK {
         double value = RANDOM.nextInt(1000) + RANDOM.nextDouble();
 
         Number n = (Number) apply.execute(value).get();
-        assertEquals("The same value returned", value, n.doubleValue(), 0.01);
+        assertDouble("The same value returned", value, n.doubleValue());
     }
 
     @Test
@@ -776,7 +795,7 @@ public abstract class TruffleTCK {
         BoxedValue boxed = new BoxedValue(value);
 
         Number n = (Number) apply.execute(boxed).get();
-        assertEquals("The same value returned", value, n.doubleValue(), 0.01);
+        assertDouble("The same value returned", value, n.doubleValue());
     }
 
     @Test
@@ -880,7 +899,7 @@ public abstract class TruffleTCK {
         Object parsed = function.execute("application/x-tck", "" + expect).get();
         assertTrue("Expecting numeric result, was:" + expect, parsed instanceof Number);
         double value = ((Number) parsed).doubleValue();
-        assertEquals("Gets the double", expect, value, 0.01);
+        assertDouble("Gets the double", expect, value);
     }
 
     @Test
@@ -924,7 +943,7 @@ public abstract class TruffleTCK {
         ComplexNumbersRowBased numbers = new ComplexNumbersRowBased(new double[]{2, -1, 30, -1, 10, -1});
 
         Number n = (Number) apply.execute(numbers).get();
-        assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
+        assertDouble("The same value returned", 42.0, n.doubleValue());
     }
 
     @Test
@@ -938,7 +957,7 @@ public abstract class TruffleTCK {
         ComplexNumbersColumnBased numbers = new ComplexNumbersColumnBased(new double[]{2, 30, 10}, new double[]{-1, -1, -1});
 
         Number n = (Number) apply.execute(numbers).get();
-        assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
+        assertDouble("The same value returned", 42.0, n.doubleValue());
     }
 
     @Test
@@ -955,7 +974,7 @@ public abstract class TruffleTCK {
         StructuredData numbers = new StructuredData(buffer, schema);
 
         Number n = (Number) apply.execute(numbers).get();
-        assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
+        assertDouble("The same value returned", 42.0, n.doubleValue());
     }
 
     @Test
@@ -973,7 +992,7 @@ public abstract class TruffleTCK {
         StructuredData numbers = new StructuredData(buffer, schema);
 
         Number n = (Number) apply.execute(numbers).get();
-        assertEquals("The same value returned", 42.0, n.doubleValue(), 0.01);
+        assertDouble("The same value returned", 42.0, n.doubleValue());
     }
 
     @Test
@@ -1063,20 +1082,20 @@ public abstract class TruffleTCK {
     public void readWriteFloatValue() throws Exception {
         String id = valuesObject();
         ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
-        assertEquals("Zero", 0, values.floatValue(), 0.1);
+        assertDouble("Zero", 0, values.floatValue());
         final float value = RANDOM.nextFloat() * 1000.0f;
         values.floatValue(value);
-        assertEquals("Correct value", value, values.floatValue(), 0.1);
+        assertDouble("Correct value", value, values.floatValue());
     }
 
     @Test
     public void readWriteDoubleValue() throws Exception {
         String id = valuesObject();
         ValuesObject values = findGlobalSymbol(id).execute().as(ValuesObject.class);
-        assertEquals("Zero", 0, values.doubleValue(), 0.1);
+        assertDouble("Zero", 0, values.doubleValue());
         final double value = RANDOM.nextDouble() * 1000.0;
         values.doubleValue(value);
-        assertEquals("Correct value", value, values.doubleValue(), 0.1);
+        assertDouble("Correct value", value, values.doubleValue());
     }
 
     @Test
