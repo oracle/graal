@@ -424,9 +424,15 @@ public final class JavaInterop {
         return toPrimitive(attr, null) != null;
     }
 
-    static Object toPrimitive(Object attr, Class<?> requestedType) {
-        if (attr instanceof TruffleObject) {
-            return null;
+    static Object toPrimitive(Object value, Class<?> requestedType) {
+        Object attr;
+        if (value instanceof TruffleObject) {
+            if (!Boolean.TRUE.equals(message(Message.IS_BOXED, value))) {
+                return null;
+            }
+            attr = message(Message.UNBOX, value);
+        } else {
+            attr = value;
         }
         if (attr instanceof Number) {
             if (requestedType == null) {
