@@ -117,6 +117,43 @@ public abstract class GeneratedPlugin {
         }
     }
 
+    static boolean hasRawtypeWarning(TypeMirror type) {
+        switch (type.getKind()) {
+            case DECLARED:
+                DeclaredType declared = (DeclaredType) type;
+                return declared.getTypeArguments().size() > 0;
+            case TYPEVAR:
+                return false;
+            case WILDCARD:
+                return false;
+            case ARRAY:
+                return hasRawtypeWarning(((ArrayType) type).getComponentType());
+            default:
+                return false;
+        }
+    }
+
+    static boolean hasUncheckedWarning(TypeMirror type) {
+        switch (type.getKind()) {
+            case DECLARED:
+                DeclaredType declared = (DeclaredType) type;
+                for (TypeMirror typeParam : declared.getTypeArguments()) {
+                    if (hasUncheckedWarning(typeParam)) {
+                        return true;
+                    }
+                }
+                return false;
+            case TYPEVAR:
+                return true;
+            case WILDCARD:
+                return ((WildcardType) type).getExtendsBound() != null;
+            case ARRAY:
+                return hasUncheckedWarning(((ArrayType) type).getComponentType());
+            default:
+                return false;
+        }
+    }
+
     private void createPrivateMembers(PrintWriter out, InjectedDependencies deps) {
         if (!deps.isEmpty()) {
             out.printf("\n");
@@ -161,7 +198,10 @@ public abstract class GeneratedPlugin {
     }
 
     protected static void constantArgument(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argIdx, TypeMirror type, int nodeIdx) {
-        out.printf("            %s arg%d;\n", type, argIdx);
+        if (hasRawtypeWarning(type)) {
+            out.printf("            @SuppressWarnings({\"rawtypes\"})\n");
+        }
+        out.printf("            %s arg%d;\n", getErasedType(type), argIdx);
         out.printf("            if (args[%d].isConstant()) {\n", nodeIdx);
         if (type.equals(resolvedJavaTypeType(env))) {
             out.printf("                arg%d = %s.asJavaType(args[%d].asConstant());\n", argIdx, deps.use(WellKnownDependency.CONSTANT_REFLECTION), nodeIdx);
@@ -192,7 +232,7 @@ public abstract class GeneratedPlugin {
                     out.printf("                arg%d = args[%d].asJavaConstant().asDouble();\n", argIdx, nodeIdx);
                     break;
                 case DECLARED:
-                    out.printf("                arg%d = %s.asObject(%s.class, args[%d].asJavaConstant());\n", argIdx, deps.use(WellKnownDependency.SNIPPET_REFLECTION), type, nodeIdx);
+                    out.printf("                arg%d = %s.asObject(%s.class, args[%d].asJavaConstant());\n", argIdx, deps.use(WellKnownDependency.SNIPPET_REFLECTION), getErasedType(type), nodeIdx);
                     break;
                 default:
                     throw new IllegalArgumentException();

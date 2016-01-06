@@ -25,6 +25,7 @@ package com.oracle.graal.replacements.verifier;
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
@@ -78,10 +79,29 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
             argCount++;
         }
 
+        Set<String> suppressWarnings = new TreeSet<>();
         if (intrinsicMethod.getAnnotation(Deprecated.class) != null) {
-            out.printf("            @SuppressWarnings(\"deprecation\")\n");
+            suppressWarnings.add("deprecation");
         }
-        out.printf("            %s result = %s.%s(", intrinsicMethod.getReturnType(), receiver, intrinsicMethod.getSimpleName());
+        if (hasRawtypeWarning(intrinsicMethod.getReturnType())) {
+            suppressWarnings.add("rawtypes");
+        }
+        for (VariableElement param : params) {
+            if (hasUncheckedWarning(param.asType())) {
+                suppressWarnings.add("unchecked");
+            }
+        }
+        if (suppressWarnings.size() > 0) {
+            out.printf("            @SuppressWarnings({");
+            String sep = "";
+            for (String suppressWarning : suppressWarnings) {
+                out.printf("%s\"%s\"", sep, suppressWarning);
+                sep = ", ";
+            }
+            out.printf("})\n");
+        }
+
+        out.printf("            %s result = %s.%s(", getErasedType(intrinsicMethod.getReturnType()), receiver, intrinsicMethod.getSimpleName());
         if (argCount > firstArg) {
             out.printf("arg%d", firstArg);
             for (int i = firstArg + 1; i < argCount; i++) {
