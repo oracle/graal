@@ -24,6 +24,9 @@ package com.oracle.graal.phases.common.inlining;
 
 import java.util.Map;
 
+import jdk.vm.ci.code.BailoutException;
+
+import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
@@ -40,10 +43,16 @@ public class InliningPhase extends AbstractInliningPhase {
 
     public static class Options {
 
-        // @formatter:off
-        @Option(help = "Unconditionally inline intrinsics", type = OptionType.Debug)
+        @Option(help = "Unconditionally inline intrinsics", type = OptionType.Debug)//
         public static final OptionValue<Boolean> AlwaysInlineIntrinsics = new OptionValue<>(false);
-        // @formatter:on
+
+        /**
+         * This is a defensive measure against known pathologies of the inliner where the breadth of
+         * the inlining call tree exploration can be wide enough to prevent inlining from completing
+         * in reasonable time.
+         */
+        @Option(help = "Per-compilation method inlining limit before bailing out (use 0 to disable)", type = OptionType.Debug)//
+        public static final OptionValue<Integer> MethodInlineBailoutLimit = new OptionValue<>(5000);
     }
 
     private final InliningPolicy inliningPolicy;
@@ -85,15 +94,21 @@ public class InliningPhase extends AbstractInliningPhase {
     protected void run(final StructuredGraph graph, final HighTierContext context) {
         final InliningData data = new InliningData(graph, context, maxMethodPerInlining, canonicalizer, inliningPolicy);
 
+        int count = 0;
         assert data.repOK();
+        int limit = Options.MethodInlineBailoutLimit.getValue();
         while (data.hasUnprocessedGraphs()) {
             boolean wasInlined = data.moveForward();
             assert data.repOK();
             if (wasInlined) {
-                inliningCount++;
+                count++;
+                if (limit > 0 && count == limit) {
+                    throw new BailoutException("Reached method inline limit %d%nInvocation stack:%n  %s", limit, Util.join(data.getInvocationStackTrace(), "\n  "));
+                }
             }
         }
 
+        inliningCount += count;
         assert data.inliningDepth() == 0;
         assert data.graphCount() == 0;
     }

@@ -28,6 +28,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
@@ -79,6 +80,14 @@ public class LazyInitializationTest {
      */
     private void spawnUnitTests(String... tests) throws IOException, InterruptedException {
         ArrayList<String> args = new ArrayList<>(SubprocessUtil.getVMCommandLine());
+
+        // Remove debugger arguments
+        for (Iterator<String> i = args.iterator(); i.hasNext();) {
+            String arg = i.next();
+            if (arg.equals("-Xdebug") || arg.startsWith("-Xrunjdwp:")) {
+                i.remove();
+            }
+        }
 
         int jvmciArg = args.indexOf("-jvmci");
         if (jvmciArg >= 0) {
