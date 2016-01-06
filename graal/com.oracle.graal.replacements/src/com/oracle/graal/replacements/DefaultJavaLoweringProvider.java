@@ -809,7 +809,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         GuardingNode guard = tool.createGuard(n, graph.unique(new IntegerBelowNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
         IntegerStamp lengthStamp = (IntegerStamp) arrayLength.stamp();
-        IntegerStamp indexStamp = StampFactory.forInteger(32, 0, lengthStamp.upperBound());
+        IntegerStamp indexStamp = StampFactory.forInteger(32, 0, lengthStamp.upperBound() - 1);
         return graph.unique(new PiNode(n.index(), indexStamp, guard.asNode()));
     }
 
