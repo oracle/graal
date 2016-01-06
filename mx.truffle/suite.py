@@ -25,6 +25,8 @@ suite = {
         "https://search.maven.org/remotecontent?filepath=jline/jline/2.11/jline-2.11.jar",
       ],
       "sha1" : "9504d5e2da5d78237239c5226e8200ec21182040",
+      "sourcePath" : "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline-2.11-sources.jar",
+      "sourceSha1" : "ef2539b992e5605be966b6db7cfc83930f0da39b",
       "maven" : {
       	"groupId" : "jline",
     	"artifactId" : "jline",
