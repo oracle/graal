@@ -100,8 +100,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
 
         ConditionalNode equalValue = graph().unique(new ConditionalNode(equalComp, ConstantNode.forInt(0, graph()), ConstantNode.forInt(1, graph())));
         ConditionalNode value = graph().unique(new ConditionalNode(lessComp, ConstantNode.forInt(-1, graph()), equalValue));
-
-        graph().replaceFloating(this, value);
+        replaceAtUsagesAndDelete(value);
     }
 
     @Override

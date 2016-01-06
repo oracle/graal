@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import java.util.Iterator;
 import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -199,14 +200,26 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        ValueNode singleValue;
 
-        if (isLoopPhi() && singleBackValue() == this) {
-            singleValue = firstValue();
-        } else {
-            singleValue = singleValue();
+        if (isLoopPhi()) {
+            if (singleBackValue() == this) {
+                return firstValue();
+            }
+
+            boolean onlySelfUsage = true;
+            for (Node n : this.usages()) {
+                if (n != this) {
+                    onlySelfUsage = false;
+                    break;
+                }
+            }
+
+            if (onlySelfUsage) {
+                return null;
+            }
         }
 
+        ValueNode singleValue = singleValue();
         if (singleValue != MULTIPLE_VALUES) {
             return singleValue;
         }

@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.compiler;
 
-import jdk.vm.ci.service.ServiceProvider;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugInitializationPropertyProvider;
 import com.oracle.graal.debug.GraalDebugConfig;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 /**
  * Sets system properties used in the initialization of {@link Debug} based on the values specified

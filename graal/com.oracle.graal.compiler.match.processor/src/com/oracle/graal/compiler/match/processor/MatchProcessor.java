@@ -63,7 +63,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.compiler.match.ComplexMatchResult;
@@ -75,6 +74,7 @@ import com.oracle.graal.compiler.match.MatchableNode;
 import com.oracle.graal.compiler.match.MatchableNodes;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 /**
  * Processes classes annotated with {@link MatchRule}. A {@link MatchStatementSet} service is

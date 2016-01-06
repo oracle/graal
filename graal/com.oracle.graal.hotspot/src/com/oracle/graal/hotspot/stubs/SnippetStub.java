@@ -104,6 +104,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
         Plugins plugins = new Plugins(defaultPlugins);
         plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), metaAccess, providers.getSnippetReflection()));
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
+        config.setUseProfiling(false);
 
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM.

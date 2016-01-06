@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler;
 
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 /**
  * Options related to {@link GraalCompiler}.

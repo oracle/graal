@@ -32,9 +32,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.debug.Debug;
@@ -44,6 +41,9 @@ import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.

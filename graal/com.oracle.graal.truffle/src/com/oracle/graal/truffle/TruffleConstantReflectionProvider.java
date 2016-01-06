@@ -25,7 +25,6 @@ package com.oracle.graal.truffle;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -67,8 +66,7 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
         return graalConstantReflection.readConstantArrayElementForOffset(array, offset);
     }
 
-    public JavaConstant readConstantFieldValue(JavaField field0, JavaConstant receiver) {
-        ResolvedJavaField field = (ResolvedJavaField) field0;
+    public JavaConstant readConstantFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         if (!field.isStatic() && receiver.isNonNull()) {
             JavaType fieldType = field.getType();
             if (field.isFinal() || field.getAnnotation(CompilationFinal.class) != null ||
@@ -100,11 +98,11 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
         return true;
     }
 
-    public JavaConstant readFieldValue(JavaField field, JavaConstant receiver) {
+    public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         return graalConstantReflection.readFieldValue(field, receiver);
     }
 
-    public JavaConstant readStableFieldValue(JavaField field, JavaConstant receiver, boolean isDefaultStable) {
+    public JavaConstant readStableFieldValue(ResolvedJavaField field, JavaConstant receiver, boolean isDefaultStable) {
         return graalConstantReflection.readStableFieldValue(field, receiver, isDefaultStable);
     }
 

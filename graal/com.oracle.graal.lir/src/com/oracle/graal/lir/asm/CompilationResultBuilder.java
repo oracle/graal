@@ -50,9 +50,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.asm.AbstractAddress;
 import com.oracle.graal.asm.Assembler;
@@ -65,6 +62,9 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.

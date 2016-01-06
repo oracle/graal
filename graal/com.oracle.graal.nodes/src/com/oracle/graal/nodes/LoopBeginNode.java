@@ -24,14 +24,11 @@ package com.oracle.graal.nodes;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
 
-import java.util.Set;
-
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.graph.iterators.NodePredicate;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -220,7 +217,6 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     @Override
     public void simplify(SimplifierTool tool) {
-        removeDeadPhis();
         canonicalizePhis(tool);
     }
 
@@ -246,31 +242,6 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     public void setOverflowGuard(GuardingNode overflowGuard) {
         updateUsagesInterface(this.overflowGuard, overflowGuard);
         this.overflowGuard = overflowGuard;
-    }
-
-    /**
-     * Removes dead {@linkplain PhiNode phi nodes} hanging from this node.
-     *
-     * This method uses the heuristic that any node which not a phi node of this LoopBeginNode is
-     * alive. This allows the removal of dead phi loops.
-     */
-    public void removeDeadPhis() {
-        if (phis().isNotEmpty()) {
-            Set<PhiNode> alive = Node.newSet();
-            for (PhiNode phi : phis()) {
-                NodePredicate isAlive = u -> !isPhiAtMerge(u) || alive.contains(u);
-                if (phi.usages().filter(isAlive).isNotEmpty()) {
-                    alive.add(phi);
-                    for (PhiNode keptAlive : phi.values().filter(PhiNode.class).filter(isAlive.negate())) {
-                        alive.add(keptAlive);
-                    }
-                }
-            }
-            for (PhiNode phi : phis().filter(((NodePredicate) alive::contains).negate()).snapshot()) {
-                phi.replaceAtUsages(null);
-                phi.safeDelete();
-            }
-        }
     }
 
     private static final int NO_INCREMENT = Integer.MIN_VALUE;

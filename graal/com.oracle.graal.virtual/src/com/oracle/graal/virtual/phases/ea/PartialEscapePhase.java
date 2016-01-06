@@ -27,18 +27,16 @@ import static com.oracle.graal.compiler.common.GraalOptions.EscapeAnalyzeOnly;
 
 import java.util.Set;
 
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 
 public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
@@ -78,14 +76,14 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
         if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
-            if (readElimination || graph.getNodes().filterInterface(VirtualizableAllocation.class).isNotEmpty()) {
+            if (readElimination || graph.hasVirtualizableAllocation()) {
                 runAnalysis(graph, context);
             }
         }
     }
 
     @Override
-    protected Closure<?> createEffectsClosure(PhaseContext context, SchedulePhase schedule, ControlFlowGraph cfg) {
+    protected Closure<?> createEffectsClosure(PhaseContext context, ScheduleResult schedule, ControlFlowGraph cfg) {
         for (VirtualObjectNode virtual : cfg.graph.getNodes(VirtualObjectNode.TYPE)) {
             virtual.resetObjectId();
         }

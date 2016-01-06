@@ -457,7 +457,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 op = Op3s.Sllx;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere(String.format("Unsupported kind %s", aKind));
         }
         return emitBinary(resultKind, op, a, b);
     }

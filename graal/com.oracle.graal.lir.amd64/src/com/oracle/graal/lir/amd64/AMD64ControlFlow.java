@@ -199,7 +199,7 @@ public class AMD64ControlFlow {
                         masm.cmpq(keyRegister, (AMD64Address) crb.asLongConstRef(jc));
                         break;
                     case Object:
-                        AMD64Move.const2reg(crb, masm, scratch, jc);
+                        AMD64Move.const2reg(crb, masm, asRegister(scratch), jc);
                         masm.cmpptr(keyRegister, asRegister(scratch));
                         break;
                     default:

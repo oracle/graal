@@ -45,10 +45,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.options.NestedBooleanOptionValue;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -71,6 +67,10 @@ import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
+import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 /**
  * An implementation of the linear scan register allocator algorithm described in <a

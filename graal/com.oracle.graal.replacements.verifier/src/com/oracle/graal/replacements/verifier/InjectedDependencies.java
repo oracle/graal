@@ -30,6 +30,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.replacements.verifier.InjectedDependencies.Dependency;
 
 public class InjectedDependencies implements Iterable<Dependency> {
@@ -67,7 +68,8 @@ public class InjectedDependencies implements Iterable<Dependency> {
 
         @Override
         public String inject(ExecutableElement inject) {
-            return String.format("injection.getReturnStamp(%s.class)", GeneratedPlugin.getErasedType(inject.getReturnType()));
+            NodeIntrinsic nodeIntrinsic = inject.getAnnotation(NodeIntrinsic.class);
+            return String.format("injection.getReturnStamp(%s.class, %s)", GeneratedPlugin.getErasedType(inject.getReturnType()), nodeIntrinsic != null && nodeIntrinsic.returnStampIsNonNull());
         }
     }
 

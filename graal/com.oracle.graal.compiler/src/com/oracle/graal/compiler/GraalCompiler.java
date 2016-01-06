@@ -44,8 +44,6 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.meta.VMConstant;
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
@@ -70,8 +68,11 @@ import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
@@ -176,8 +177,8 @@ public class GraalCompiler {
     public static <T extends CompilationResult> T compile(Request<T> r) {
         assert !r.graph.isFrozen();
         try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
-            SchedulePhase schedule = emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
-            emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.compilationResult, r.factory, schedule, null, r.lirSuites);
+            emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
+            emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.compilationResult, r.factory, null, r.lirSuites);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -196,7 +197,7 @@ public class GraalCompiler {
      * Builds the graph, optimizes it.
      */
     @SuppressWarnings("try")
-    public static SchedulePhase emitFrontEnd(Providers providers, TargetProvider target, StructuredGraph graph, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts,
+    public static void emitFrontEnd(Providers providers, TargetProvider target, StructuredGraph graph, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts,
                     ProfilingInfo profilingInfo, Suites suites) {
         try (Scope s = Debug.scope("FrontEnd"); DebugCloseable a = FrontEnd.start()) {
             HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
@@ -219,12 +220,8 @@ public class GraalCompiler {
 
             LowTierContext lowTierContext = new LowTierContext(providers, target);
             suites.getLowTier().apply(graph, lowTierContext);
-            graph.maybeCompress();
 
-            SchedulePhase schedule = new SchedulePhase();
-            schedule.apply(graph);
-            Debug.dump(schedule, "Final HIR schedule");
-            return schedule;
+            Debug.dump(graph.getLastSchedule(), "Final HIR schedule");
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -232,17 +229,17 @@ public class GraalCompiler {
 
     @SuppressWarnings("try")
     public static <T extends CompilationResult> void emitBackEnd(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Backend backend, T compilationResult,
-                    CompilationResultBuilderFactory factory, SchedulePhase schedule, RegisterConfig registerConfig, LIRSuites lirSuites) {
-        try (Scope s = Debug.scope("BackEnd", schedule); DebugCloseable a = BackEnd.start()) {
+                    CompilationResultBuilderFactory factory, RegisterConfig registerConfig, LIRSuites lirSuites) {
+        try (Scope s = Debug.scope("BackEnd", graph.getLastSchedule()); DebugCloseable a = BackEnd.start()) {
             // Repeatedly run the LIR code generation pass to improve statistical profiling results.
             for (int i = 0; i < EmitLIRRepeatCount.getValue(); i++) {
                 SchedulePhase dummySchedule = new SchedulePhase();
                 dummySchedule.apply(graph);
-                emitLIR(backend, dummySchedule, graph, stub, cc, registerConfig, lirSuites);
+                emitLIR(backend, graph, stub, cc, registerConfig, lirSuites);
             }
 
             LIRGenerationResult lirGen = null;
-            lirGen = emitLIR(backend, schedule, graph, stub, cc, registerConfig, lirSuites);
+            lirGen = emitLIR(backend, graph, stub, cc, registerConfig, lirSuites);
             try (Scope s2 = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
                 int bytecodeSize = graph.method() == null ? 0 : graph.getBytecodeSize();
                 compilationResult.setHasUnsafeAccess(graph.hasUnsafeAccess());
@@ -256,14 +253,14 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    public static LIRGenerationResult emitLIR(Backend backend, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc, RegisterConfig registerConfig, LIRSuites lirSuites) {
+    public static LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, CallingConvention cc, RegisterConfig registerConfig, LIRSuites lirSuites) {
         try {
-            return emitLIR0(backend, schedule, graph, stub, cc, registerConfig, lirSuites);
+            return emitLIR0(backend, graph, stub, cc, registerConfig, lirSuites);
         } catch (OutOfRegistersException e) {
             if (RegisterPressure.getValue() != null && !RegisterPressure.getValue().equals(ALL_REGISTERS)) {
                 try (OverrideScope s = OptionValue.override(RegisterPressure, ALL_REGISTERS)) {
                     // retry with default register set
-                    return emitLIR0(backend, schedule, graph, stub, cc, registerConfig, lirSuites);
+                    return emitLIR0(backend, graph, stub, cc, registerConfig, lirSuites);
                 }
             } else {
                 throw e;
@@ -272,8 +269,9 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    private static LIRGenerationResult emitLIR0(Backend backend, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc, RegisterConfig registerConfig, LIRSuites lirSuites) {
+    private static LIRGenerationResult emitLIR0(Backend backend, StructuredGraph graph, Object stub, CallingConvention cc, RegisterConfig registerConfig, LIRSuites lirSuites) {
         try (Scope ds = Debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start()) {
+            ScheduleResult schedule = graph.getLastSchedule();
             List<Block> blocks = schedule.getCFG().getBlocks();
             Block startBlock = schedule.getCFG().getStartBlock();
             assert startBlock != null;

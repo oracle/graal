@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.amd64.test;
 
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -37,6 +35,8 @@ import com.oracle.graal.hotspot.test.HotSpotGraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 
 /**
  * Ensures that frame omission works in cases where it is expected to.

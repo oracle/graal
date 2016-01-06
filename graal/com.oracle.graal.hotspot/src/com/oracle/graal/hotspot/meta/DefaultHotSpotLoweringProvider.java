@@ -332,7 +332,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         StructuredGraph graph = n.graph();
         assert !n.getHub().isConstant();
         AddressNode address = createOffsetAddress(graph, n.getHub(), config().klassLayoutHelperOffset);
-        graph.replaceFloating(n, graph.unique(new FloatingReadNode(address, KLASS_LAYOUT_HELPER_LOCATION, null, n.stamp(), n.getGuard(), BarrierType.NONE)));
+        n.replaceAtUsagesAndDelete(graph.unique(new FloatingReadNode(address, KLASS_LAYOUT_HELPER_LOCATION, null, n.stamp(), n.getGuard(), BarrierType.NONE)));
     }
 
     private void lowerHubGetClassNode(HubGetClassNode n, LoweringTool tool) {
@@ -344,7 +344,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         assert !n.getHub().isConstant();
         AddressNode address = createOffsetAddress(graph, n.getHub(), config().classMirrorOffset);
         FloatingReadNode read = graph.unique(new FloatingReadNode(address, CLASS_MIRROR_LOCATION, null, n.stamp(), n.getGuard(), BarrierType.NONE));
-        graph.replaceFloating(n, read);
+        n.replaceAtUsagesAndDelete(read);
     }
 
     private void lowerClassGetHubNode(ClassGetHubNode n, LoweringTool tool) {
@@ -356,7 +356,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         assert !n.getValue().isConstant();
         AddressNode address = createOffsetAddress(graph, n.getValue(), config().klassOffset);
         FloatingReadNode read = graph.unique(new FloatingReadNode(address, CLASS_KLASS_LOCATION, null, n.stamp(), n.getGuard(), BarrierType.NONE));
-        graph.replaceFloating(n, read);
+        n.replaceAtUsagesAndDelete(read);
     }
 
     private void lowerInvoke(Invoke invoke, LoweringTool tool, StructuredGraph graph) {
@@ -466,7 +466,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         StampProvider stampProvider = tool.getStampProvider();
         LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, getClass.getObject()));
         HubGetClassNode hubGetClass = graph.unique(new HubGetClassNode(tool.getMetaAccess(), hub));
-        graph.replaceFloating(getClass, hubGetClass);
+        getClass.replaceAtUsagesAndDelete(hubGetClass);
         hub.lower(tool);
         hubGetClass.lower(tool);
     }
@@ -510,8 +510,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
             }
-            osrStart.replaceAtUsages(newStart);
-            osrStart.safeDelete();
+            osrStart.replaceAtUsagesAndDelete(newStart);
         }
     }
 

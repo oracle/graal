@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 
 public class DebugEnvironment {
 

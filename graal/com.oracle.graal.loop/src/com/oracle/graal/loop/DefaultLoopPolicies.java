@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,15 +28,14 @@ import static com.oracle.graal.compiler.common.GraalOptions.MinimumPeelProbabili
 
 import java.util.List;
 
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
+import jdk.vm.ci.code.BytecodeFrame;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.VirtualState;
@@ -44,6 +43,9 @@ import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 public class DefaultLoopPolicies implements LoopPolicies {
     @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> LoopUnswitchMaxIncrease = new OptionValue<>(500);
@@ -68,6 +70,12 @@ public class DefaultLoopPolicies implements LoopPolicies {
                 if (node instanceof ControlFlowAnchorNode) {
                     return false;
                 }
+                if (node instanceof FrameState) {
+                    FrameState frameState = (FrameState) node;
+                    if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                        return false;
+                    }
+                }
             }
             return true;
         } else {
@@ -90,6 +98,12 @@ public class DefaultLoopPolicies implements LoopPolicies {
             for (Node node : loop.inside().nodes()) {
                 if (node instanceof ControlFlowAnchorNode) {
                     return false;
+                }
+                if (node instanceof FrameState) {
+                    FrameState frameState = (FrameState) node;
+                    if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                        return false;
+                    }
                 }
             }
             return true;

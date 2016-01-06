@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.debug.Debug;

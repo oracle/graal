@@ -40,7 +40,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import jdk.vm.ci.service.Services;
+import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.debug.DelegatingDebugConfig.Level;
 import com.oracle.graal.debug.internal.DebugHistogramImpl;
@@ -1404,7 +1404,7 @@ public class Debug {
     }
 
     private static boolean findMatch(Set<String> haystack, Set<String> haystackSubstrings, String needle) {
-        if (haystack.isEmpty()) {
+        if (haystack.isEmpty() && haystackSubstrings.isEmpty()) {
             // Empty haystack means match all
             return true;
         }

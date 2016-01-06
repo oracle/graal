@@ -49,13 +49,17 @@ public final class NativeFunctionInterfaceRuntime {
         NativeFunctionInterfaceAccess access = null;
         Class<?> servicesClass = null;
         try {
-            servicesClass = Class.forName("jdk.vm.ci.service.Services");
+            servicesClass = Class.forName("jdk.vm.ci.services.Services");
         } catch (ClassNotFoundException e) {
             try {
-                // Legacy support
-                servicesClass = Class.forName("com.oracle.jvmci.service.Services");
+                servicesClass = Class.forName("jdk.vm.ci.service.Services");
             } catch (ClassNotFoundException e2) {
-                // JVMCI is unavailable
+                try {
+                    // Legacy support
+                    servicesClass = Class.forName("com.oracle.jvmci.service.Services");
+                } catch (ClassNotFoundException e3) {
+                    // JVMCI is unavailable
+                }
             }
         }
         if (servicesClass != null) {

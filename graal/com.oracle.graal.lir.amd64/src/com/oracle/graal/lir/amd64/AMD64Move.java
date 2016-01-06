@@ -141,7 +141,7 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(result)) {
-                const2reg(crb, masm, result, input);
+                const2reg(crb, masm, asRegister(result), input);
             } else {
                 assert isStackSlot(result);
                 const2stack(crb, masm, result, input);
@@ -513,7 +513,7 @@ public class AMD64Move {
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
-                const2reg(crb, masm, result, asJavaConstant(input));
+                const2reg(crb, masm, asRegister(result), asJavaConstant(input));
             } else if (isStackSlot(result)) {
                 const2stack(crb, masm, result, asJavaConstant(input));
             } else {
@@ -548,7 +548,7 @@ public class AMD64Move {
         }
     }
 
-    private static void reg2stack(AMD64Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Register input) {
+    public static void reg2stack(AMD64Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Register input) {
         AMD64Address dest = (AMD64Address) crb.asAddress(result);
         switch (kind) {
             case BYTE:
@@ -574,7 +574,7 @@ public class AMD64Move {
         }
     }
 
-    private static void stack2reg(AMD64Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, Value input) {
+    public static void stack2reg(AMD64Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, Value input) {
         AMD64Address src = (AMD64Address) crb.asAddress(input);
         switch (kind) {
             case BYTE:
@@ -600,7 +600,7 @@ public class AMD64Move {
         }
     }
 
-    public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, JavaConstant input) {
+    public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, JavaConstant input) {
         /*
          * Note: we use the kind of the input operand (and not the kind of the result operand)
          * because they don't match in all cases. For example, an object constant can be loaded to a
@@ -615,7 +615,7 @@ public class AMD64Move {
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                masm.movl(asRegister(result), input.asInt());
+                masm.movl(result, input.asInt());
 
                 break;
             case Long:
@@ -628,16 +628,16 @@ public class AMD64Move {
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
                 if (patch) {
-                    masm.movq(asRegister(result), input.asLong());
+                    masm.movq(result, input.asLong());
                 } else {
                     if (input.asLong() == (int) input.asLong()) {
                         // Sign extended to long
-                        masm.movslq(asRegister(result), (int) input.asLong());
+                        masm.movslq(result, (int) input.asLong());
                     } else if ((input.asLong() & 0xFFFFFFFFL) == input.asLong()) {
                         // Zero extended to long
-                        masm.movl(asRegister(result), (int) input.asLong());
+                        masm.movl(result, (int) input.asLong());
                     } else {
-                        masm.movq(asRegister(result), input.asLong());
+                        masm.movq(result, input.asLong());
                     }
                 }
                 break;
@@ -645,18 +645,18 @@ public class AMD64Move {
                 // This is *not* the same as 'constant == 0.0f' in the case where constant is -0.0f
                 if (Float.floatToRawIntBits(input.asFloat()) == Float.floatToRawIntBits(0.0f)) {
                     assert !crb.codeCache.needsDataPatch(input);
-                    masm.xorps(asRegister(result, AMD64Kind.SINGLE), asRegister(result));
+                    masm.xorps(result, result);
                 } else {
-                    masm.movflt(asRegister(result, AMD64Kind.SINGLE), (AMD64Address) crb.asFloatConstRef(input));
+                    masm.movflt(result, (AMD64Address) crb.asFloatConstRef(input));
                 }
                 break;
             case Double:
                 // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
                 if (Double.doubleToRawLongBits(input.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
                     assert !crb.codeCache.needsDataPatch(input);
-                    masm.xorpd(asRegister(result, AMD64Kind.DOUBLE), asRegister(result));
+                    masm.xorpd(result, result);
                 } else {
-                    masm.movdbl(asRegister(result, AMD64Kind.DOUBLE), (AMD64Address) crb.asDoubleConstRef(input));
+                    masm.movdbl(result, (AMD64Address) crb.asDoubleConstRef(input));
                 }
                 break;
             case Object:
@@ -664,12 +664,12 @@ public class AMD64Move {
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
                 if (input.isNull()) {
-                    masm.movq(asRegister(result), 0x0L);
+                    masm.movq(result, 0x0L);
                 } else if (crb.target.inlineObjects) {
                     crb.recordInlineDataInCode(input);
-                    masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
+                    masm.movq(result, 0xDEADDEADDEADDEADL);
                 } else {
-                    masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, 0));
+                    masm.movq(result, (AMD64Address) crb.recordDataReferenceInCode(input, 0));
                 }
                 break;
             default:

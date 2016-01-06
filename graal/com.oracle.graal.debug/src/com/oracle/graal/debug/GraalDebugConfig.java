@@ -29,11 +29,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
+
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 public class GraalDebugConfig implements DebugConfig {
     @SuppressWarnings("all")

@@ -27,13 +27,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.debug.DebugVerifyHandler;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
 /**

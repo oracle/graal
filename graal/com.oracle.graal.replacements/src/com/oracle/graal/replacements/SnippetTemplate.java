@@ -25,7 +25,6 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static com.oracle.graal.debug.Debug.applyFormattingFlagsAndWidth;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates.UseSnippetTemplateCache;
 import static java.util.FormattableFlags.ALTERNATE;
 import static jdk.vm.ci.meta.LocationIdentity.any;
 
@@ -38,10 +37,10 @@ import java.util.Collections;
 import java.util.Formattable;
 import java.util.Formatter;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -66,7 +65,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -214,16 +212,6 @@ public class SnippetTemplate {
             instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method.getName());
             assert method.isStatic() : "snippet method must be static: " + method.format("%H.%n");
-        }
-
-        private int templateCount;
-
-        void notifyNewTemplate() {
-            templateCount++;
-            if (templateCount == MaxTemplatesPerSnippet) {
-                TTY.print("WARNING: Exceeded %d templates for snippet %s%n" + "         Adjust maximum with %s system property%n", MaxTemplatesPerSnippet, method.format("%h.%n(%p)"),
-                                MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME);
-            }
         }
 
         public ResolvedJavaMethod getMethod() {
@@ -548,18 +536,17 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements com.oracle.graal.api.replacements.SnippetTemplateCache {
 
         static final boolean UseSnippetTemplateCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetTemplateCache", "true"));
-
         protected final Providers providers;
         protected final SnippetReflectionProvider snippetReflection;
         protected final TargetDescription target;
-        private final ConcurrentHashMap<CacheKey, SnippetTemplate> templates;
+        private final Map<CacheKey, SnippetTemplate> templates;
 
         protected AbstractTemplates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             this.providers = providers;
             this.snippetReflection = snippetReflection;
             this.target = target;
             if (UseSnippetTemplateCache) {
-                this.templates = new ConcurrentHashMap<>();
+                this.templates = Collections.synchronizedMap(new LRUCache<>(MaxTemplatesPerSnippet, MaxTemplatesPerSnippet));
             } else {
                 this.templates = null;
             }
@@ -612,6 +599,21 @@ public class SnippetTemplate {
                 }
             }
             return template;
+        }
+    }
+
+    private static final class LRUCache<K, V> extends LinkedHashMap<K, V> {
+        private static final long serialVersionUID = 1L;
+        private final int maxCacheSize;
+
+        public LRUCache(int initialCapacity, int maxCacheSize) {
+            super(initialCapacity, 0.75F, true);
+            this.maxCacheSize = maxCacheSize;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(java.util.Map.Entry<K, V> eldest) {
+            return size() > maxCacheSize;
         }
     }
 
@@ -858,9 +860,6 @@ public class SnippetTemplate {
             }
 
             Debug.metric("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
-            if (UseSnippetTemplateCache && args.cacheable) {
-                args.info.notifyNewTemplate();
-            }
             Debug.dump(snippet, "SnippetTemplate final state");
 
         } catch (Throwable ex) {

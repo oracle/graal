@@ -24,12 +24,11 @@ package com.oracle.graal.phases.common.inlining;
 
 import java.util.Map;
 
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
-
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.policy.GreedyInliningPolicy;

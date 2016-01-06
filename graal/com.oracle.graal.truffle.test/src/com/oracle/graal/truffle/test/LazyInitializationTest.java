@@ -30,15 +30,18 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.vm.ci.options.OptionDescriptor;
-import jdk.vm.ci.options.OptionDescriptors;
-import jdk.vm.ci.options.OptionValue;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.CompilerThreadFactory;
+import com.oracle.graal.compiler.common.util.Util;
+import com.oracle.graal.options.OptionDescriptor;
+import com.oracle.graal.options.OptionDescriptors;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionsParser;
+import com.oracle.graal.options.OptionsParser.OptionDescriptorsProvider;
 import com.oracle.graal.test.SubprocessUtil;
 
 /**
@@ -68,6 +71,9 @@ public class LazyInitializationTest {
         spawnUnitTests("com.oracle.truffle.sl.test.SLTckTest");
     }
 
+    private static final String VERBOSE_PROPERTY = "LazyInitializationTest.verbose";
+    private static final boolean VERBOSE = Boolean.getBoolean(VERBOSE_PROPERTY);
+
     /**
      * Spawn a new VM, execute unit tests, and check which classes are loaded.
      */
@@ -87,12 +93,20 @@ public class LazyInitializationTest {
 
         Process process = new ProcessBuilder(args).start();
 
+        if (VERBOSE) {
+            System.out.println("-----------------------------------------------------------------------------");
+            System.out.println(Util.join(args, " "));
+        }
         int testCount = 0;
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         String line;
         while ((line = stdout.readLine()) != null) {
-            if (line.startsWith("[Loaded ")) {
-                int start = "[Loaded ".length();
+            if (VERBOSE) {
+                System.out.println(line);
+            }
+            int index = line.indexOf("[Loaded ");
+            if (index != -1) {
+                int start = index + "[Loaded ".length();
                 int end = line.indexOf(' ', start);
                 String loadedClass = line.substring(start, end);
                 if (isGraalClass(loadedClass)) {
@@ -109,11 +123,15 @@ public class LazyInitializationTest {
                 testCount = Integer.parseInt(line.substring(start, end));
             }
         }
+        if (VERBOSE) {
+            System.out.println("-----------------------------------------------------------------------------");
+        }
 
-        Assert.assertNotEquals("test count", 0, testCount);
-        Assert.assertEquals("exit code", 0, process.waitFor());
+        String suffix = VERBOSE ? "" : " (use -D" + VERBOSE_PROPERTY + "=true to debug)";
+        Assert.assertNotEquals("test count" + suffix, 0, testCount);
+        Assert.assertEquals("exit code" + suffix, 0, process.waitFor());
 
-        checkAllowedGraalClasses(loadedGraalClasses);
+        checkAllowedGraalClasses(loadedGraalClasses, suffix);
     }
 
     private static boolean isGraalClass(String className) {
@@ -125,7 +143,7 @@ public class LazyInitializationTest {
         }
     }
 
-    private void checkAllowedGraalClasses(List<Class<?>> loadedGraalClasses) {
+    private void checkAllowedGraalClasses(List<Class<?>> loadedGraalClasses, String errorMessageSuffix) {
         HashSet<Class<?>> whitelist = new HashSet<>();
 
         /*
@@ -150,7 +168,7 @@ public class LazyInitializationTest {
             }
 
             if (!isGraalClassAllowed(cls)) {
-                Assert.fail("loaded class: " + cls.getName());
+                Assert.fail("loaded class: " + cls.getName() + errorMessageSuffix);
             }
         }
     }
@@ -171,13 +189,23 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (OptionDescriptors.class.isAssignableFrom(cls)) {
+        if (OptionDescriptors.class.isAssignableFrom(cls) || OptionDescriptor.class.isAssignableFrom(cls)) {
             // If options are specified, the corresponding *_OptionDescriptors classes are loaded.
+            return true;
+        }
+
+        if (OptionDescriptorsProvider.class.isAssignableFrom(cls) || cls == OptionsParser.class) {
+            // Classes implementing Graal option loading
             return true;
         }
 
         if (OptionValue.class.isAssignableFrom(cls)) {
             // If options are specified, that may implicitly load a custom OptionValue subclass.
+            return true;
+        }
+
+        if (OptionValue.OverrideScope.class.isAssignableFrom(cls)) {
+            // Reading options can check override scopes
             return true;
         }
 

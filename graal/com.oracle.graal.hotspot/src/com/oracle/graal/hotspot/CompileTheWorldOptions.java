@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
+
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 /**
  * Options related to {@link CompileTheWorld}.

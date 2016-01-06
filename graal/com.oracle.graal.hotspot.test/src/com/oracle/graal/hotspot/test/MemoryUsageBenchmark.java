@@ -143,7 +143,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, jvmciEnv);
-            CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, false);
+            CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false);
             task.runCompilation();
         }
     }
@@ -160,7 +160,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             try (AllocSpy as = AllocSpy.open(methodName)) {
                 HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
                 HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, JVMCICompiler.INVOCATION_ENTRY_BCI, jvmciEnv);
-                CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, false);
+                CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false);
                 task.runCompilation();
             }
         }

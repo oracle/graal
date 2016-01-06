@@ -40,9 +40,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.options.NestedBooleanOptionValue;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -61,6 +58,9 @@ import com.oracle.graal.lir.framemap.SimpleVirtualStackSlot;
 import com.oracle.graal.lir.framemap.VirtualStackSlotRange;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
+import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
 
 /**
  * Linear Scan {@link StackSlotAllocator}.

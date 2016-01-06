@@ -26,9 +26,9 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.code.DisassemblerProvider;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 /**
  * HotSpot implementation of {@link DisassemblerProvider}.

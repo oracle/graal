@@ -29,9 +29,9 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import java.util.Arrays;
 import java.util.Set;
 
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -84,9 +84,8 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
         this.supportsRemove = supportsRemove;
     }
 
-    protected void saveRegister(CompilationResultBuilder crb, AMD64MacroAssembler masm, StackSlot result, Register register) {
-        RegisterValue input = register.asValue(result.getLIRKind());
-        AMD64Move.move(crb, masm, result, input);
+    protected void saveRegister(CompilationResultBuilder crb, AMD64MacroAssembler masm, StackSlot result, Register input) {
+        AMD64Move.reg2stack((AMD64Kind) result.getPlatformKind(), crb, masm, result, input);
     }
 
     @Override

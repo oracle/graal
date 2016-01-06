@@ -50,9 +50,6 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -74,6 +71,9 @@ import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.

@@ -23,10 +23,6 @@
 package com.oracle.graal.lir.phases;
 
 import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
-import jdk.vm.ci.options.NestedBooleanOptionValue;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
-import jdk.vm.ci.options.OptionValue;
 
 import com.oracle.graal.lir.ControlFlowOptimizer;
 import com.oracle.graal.lir.EdgeMoveOptimizer;
@@ -34,6 +30,10 @@ import com.oracle.graal.lir.NullCheckOptimizer;
 import com.oracle.graal.lir.RedundantMoveElimination;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.profiling.MoveProfiling;
+import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public static class Options {

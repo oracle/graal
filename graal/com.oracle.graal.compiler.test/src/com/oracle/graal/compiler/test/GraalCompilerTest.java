@@ -58,7 +58,6 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.options.DerivedOptionValue;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -92,6 +91,7 @@ import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -102,6 +102,7 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.options.DerivedOptionValue;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.Phase;
@@ -348,6 +349,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
         SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
         schedule.apply(graph);
+        ScheduleResult scheduleResult = graph.getLastSchedule();
 
         NodeMap<Integer> canonicalId = graph.createNodeMap();
         int nextId = 0;
@@ -355,9 +357,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         List<String> constantsLines = new ArrayList<>();
 
         StringBuilder result = new StringBuilder();
-        for (Block block : schedule.getCFG().getBlocks()) {
+        for (Block block : scheduleResult.getCFG().getBlocks()) {
             result.append("Block " + block + " ");
-            if (block == schedule.getCFG().getStartBlock()) {
+            if (block == scheduleResult.getCFG().getStartBlock()) {
                 result.append("* ");
             }
             result.append("-> ");
@@ -365,7 +367,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 result.append(succ + " ");
             }
             result.append("\n");
-            for (Node node : schedule.getBlockToNodesMap().get(block)) {
+            for (Node node : scheduleResult.getBlockToNodesMap().get(block)) {
                 if (node instanceof ValueNode && node.isAlive()) {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode || node instanceof InfopointNode)) {
                         if (node instanceof ConstantNode) {

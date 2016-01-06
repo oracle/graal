@@ -45,6 +45,7 @@ import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
@@ -154,9 +155,10 @@ public final class GraphOrder {
      */
     public static boolean assertSchedulableGraph(final StructuredGraph graph) {
         try {
-            final SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
+            final SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
             final Map<LoopBeginNode, NodeBitMap> loopEntryStates = Node.newIdentityMap();
-            schedule.apply(graph, false);
+            schedulePhase.apply(graph, false);
+            final ScheduleResult schedule = graph.getLastSchedule();
 
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {
 
@@ -167,7 +169,7 @@ public final class GraphOrder {
 
                 @Override
                 protected NodeBitMap processBlock(final Block block, final NodeBitMap currentState) {
-                    final List<Node> list = schedule.getBlockToNodesMap().get(block);
+                    final List<Node> list = graph.getLastSchedule().getBlockToNodesMap().get(block);
 
                     /*
                      * A stateAfter is not valid directly after its associated state split, but

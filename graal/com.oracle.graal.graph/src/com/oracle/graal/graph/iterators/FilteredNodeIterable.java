@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,24 +40,6 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
         return this;
     }
 
-    public FilteredNodeIterable<T> or(NodePredicate nodePredicate) {
-        this.predicate = this.predicate.or(nodePredicate);
-        return this;
-    }
-
-    @Override
-    public FilteredNodeIterable<T> nonNull() {
-        this.predicate = this.predicate.and(NodePredicates.isNotNull());
-        return this;
-    }
-
-    @Override
-    public DistinctFilteredNodeIterable<T> distinct() {
-        DistinctFilteredNodeIterable<T> distinct = new DistinctFilteredNodeIterable<>(nodeIterable);
-        distinct.predicate = predicate;
-        return distinct;
-    }
-
     @Override
     public Iterator<T> iterator() {
         return new PredicatedProxyNodeIterator<>(nodeIterable.iterator(), predicate);
@@ -74,8 +56,4 @@ public class FilteredNodeIterable<T extends Node> implements NodeIterable<T> {
         return this.and(p);
     }
 
-    @Override
-    public FilteredNodeIterable<T> filterInterface(Class<?> iface) {
-        return this.and(NodePredicates.isAInterface(iface));
-    }
 }

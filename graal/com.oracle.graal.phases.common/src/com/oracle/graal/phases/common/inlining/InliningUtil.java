@@ -121,7 +121,7 @@ public class InliningUtil {
             // 1234
             TTY.print("     ");        // print compilation number
             // % s ! b n
-            TTY.print("%c%c%c%c%c ", ' ', method.isSynchronized() ? 's' : ' ', ' ', ' ', method.isNative() ? 'n' : ' ');
+            TTY.printf("%c%c%c%c%c ", ' ', method.isSynchronized() ? 's' : ' ', ' ', ' ', method.isNative() ? 'n' : ' ');
             TTY.print("     ");        // more indent
             TTY.print("    ");         // initial inlining indent
             for (int i = 0; i < inliningDepth; i++) {

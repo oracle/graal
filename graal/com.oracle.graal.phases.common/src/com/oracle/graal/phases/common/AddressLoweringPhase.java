@@ -28,6 +28,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.memory.address.RawAddressNode;
+import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.Phase;
 
 public class AddressLoweringPhase extends Phase {
@@ -59,8 +60,8 @@ public class AddressLoweringPhase extends Phase {
             } else {
                 continue;
             }
-
-            node.replaceAndDelete(lowered);
+            node.replaceAtUsages(lowered);
+            GraphUtil.killWithUnusedFloatingInputs(node);
         }
     }
 }

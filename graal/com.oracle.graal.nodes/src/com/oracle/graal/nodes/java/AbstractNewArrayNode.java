@@ -22,10 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
@@ -63,14 +61,5 @@ public abstract class AbstractNewArrayNode extends AbstractNewObjectNode impleme
      */
     public int dimensionCount() {
         return 1;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        Stamp lengthStamp = length.stamp();
-        if (lengthStamp instanceof IntegerStamp && ((IntegerStamp) lengthStamp).isPositive()) {
-            // otherwise, removing the allocation might swallow a NegativeArraySizeException
-            super.simplify(tool);
-        }
     }
 }

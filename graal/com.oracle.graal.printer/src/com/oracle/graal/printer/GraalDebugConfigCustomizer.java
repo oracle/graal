@@ -25,7 +25,6 @@ package com.oracle.graal.printer;
 import static com.oracle.graal.compiler.common.GraalOptions.PrintBackendCFG;
 import static com.oracle.graal.compiler.common.GraalOptions.PrintBinaryGraphs;
 import static com.oracle.graal.compiler.common.GraalOptions.PrintCFG;
-import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfig;
@@ -35,6 +34,7 @@ import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {

@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.compiler.GraalCompiler.emitBackEnd;
 import static com.oracle.graal.compiler.GraalCompiler.emitFrontEnd;
-import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 
 import java.util.ListIterator;
@@ -41,7 +40,9 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
@@ -58,7 +59,6 @@ import com.oracle.graal.lir.profiling.MoveProfiling;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.Suites;
 
 //JaCoCo Exclude
@@ -182,9 +182,9 @@ public abstract class Stub {
                 try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
                     Suites defaultSuites = providers.getSuites().getDefaultSuites();
                     Suites suites = new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
-                    SchedulePhase schedule = emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), suites);
+                    emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites);
                     LIRSuites lirSuites = createLIRSuites();
-                    emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, compResult, CompilationResultBuilderFactory.Default, schedule, getRegisterConfig(), lirSuites);
+                    emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, compResult, CompilationResultBuilderFactory.Default, getRegisterConfig(), lirSuites);
                     assert checkStubInvariants();
                 } catch (Throwable e) {
                     throw Debug.handle(e);

@@ -28,14 +28,14 @@ import java.util.function.IntBinaryOperator;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import org.junit.Test;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 
 public class LambdaEagerTest extends GraalCompilerTest {
 

@@ -36,20 +36,8 @@ public interface NodeIterable<T extends Node> extends Iterable<T> {
         return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
     }
 
-    default NodeIterable<T> filterInterface(Class<?> iface) {
-        return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
-    }
-
     default FilteredNodeIterable<T> filter(NodePredicate predicate) {
         return new FilteredNodeIterable<>(this).and(predicate);
-    }
-
-    default FilteredNodeIterable<T> nonNull() {
-        return new FilteredNodeIterable<>(this).and(NodePredicates.isNotNull());
-    }
-
-    default NodeIterable<T> distinct() {
-        return new FilteredNodeIterable<>(this).distinct();
     }
 
     default List<T> snapshot() {
@@ -91,6 +79,13 @@ public interface NodeIterable<T extends Node> extends Iterable<T> {
     }
 
     default boolean contains(T node) {
-        return this.filter(NodePredicates.equals(node)).isNotEmpty();
+        Iterator<T> iterator = iterator();
+        while (iterator.hasNext()) {
+            T next = iterator.next();
+            if (next == node) {
+                return true;
+            }
+        }
+        return false;
     }
 }

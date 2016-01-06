@@ -5,6 +5,16 @@ This changelog summarizes major changes between Graal versions relevant to devel
 ## `tip`
 ...
 
+## Version 0.11
+23-Dec-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal-compiler/shortlog/graal-0.11)
+* Moved support for command line options from JVMCI to Graal.
+* Made invocation plugin initialization lazy: plugins for a class are initialized first time compiler parses a method in the class.
+* Removed method handle special case logic for 8u60 and later.
+* Generate graph builder plugins for @NodeIntrinsic and @Fold methods instead of using reflection.
+* Converted LoadHubNode into normal FloatingNode from FloatingGuardedNode.
+* Enabled CRC32 intrinsics on SPARC.
+* Added log methods to Debug with 9 and 10 arguments.
+
 ## Version 0.10
 17-Nov-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal-compiler/shortlog/graal-0.10)
 * Added experimental Trace Register Allocator.

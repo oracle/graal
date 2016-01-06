@@ -38,7 +38,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.java.FrameStateBuilder;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -52,7 +51,6 @@ import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.InvokeNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.MergeNode;
-import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
@@ -264,11 +262,7 @@ public class GraphKit {
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(calleeGraph);
 
         // Remove all frame states from inlinee
-        for (Node node : calleeGraph.getNodes()) {
-            if (node instanceof StateSplit) {
-                ((StateSplit) node).setStateAfter(null);
-            }
-        }
+        calleeGraph.clearAllStateAfter();
         new DeadCodeEliminationPhase(Optionality.Required).apply(calleeGraph);
 
         InliningUtil.inline(invoke, calleeGraph, false, null);

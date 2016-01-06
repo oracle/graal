@@ -24,11 +24,11 @@ package com.oracle.graal.truffle.hotspot.amd64;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.hotspot.amd64.AMD64RawNativeCallNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.graal.truffle.hotspot.nfi.RawNativeCallNodeFactory;
 
 @ServiceProvider(RawNativeCallNodeFactory.class)

@@ -27,10 +27,8 @@ import org.junit.Test;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.loop.DefaultLoopPolicies;
 import com.oracle.graal.loop.phases.LoopUnswitchingPhase;
-import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
@@ -132,12 +130,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         new LoopUnswitchingPhase(new DefaultLoopPolicies()).apply(graph);
 
         // Framestates create comparison problems
-        for (Node stateSplit : graph.getNodes().filterInterface(StateSplit.class)) {
-            ((StateSplit) stateSplit).setStateAfter(null);
-        }
-        for (Node stateSplit : referenceGraph.getNodes().filterInterface(StateSplit.class)) {
-            ((StateSplit) stateSplit).setStateAfter(null);
-        }
+        graph.clearAllStateAfter();
+        referenceGraph.clearAllStateAfter();
 
         new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         new CanonicalizerPhase().apply(referenceGraph, new PhaseContext(getProviders()));

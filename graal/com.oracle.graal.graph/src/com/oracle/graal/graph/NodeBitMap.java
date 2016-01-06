@@ -220,11 +220,6 @@ public final class NodeBitMap implements NodeIterable<Node> {
     }
 
     @Override
-    public NodeIterable<Node> distinct() {
-        return this;
-    }
-
-    @Override
     public int count() {
         int count = 0;
         for (long l : bits) {

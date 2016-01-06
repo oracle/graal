@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
-
 import java.util.List;
 
 import com.oracle.graal.debug.Debug;
@@ -105,7 +103,7 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
             }
             ValueNode removedValue = phi.valueAt(predIndex);
             phi.removeInput(predIndex);
-            if (removedValue != null && removedValue.isAlive() && removedValue.hasNoUsages() && GraphUtil.isFloatingNode().apply(removedValue)) {
+            if (removedValue != null && removedValue.isAlive() && removedValue.hasNoUsages() && GraphUtil.isFloatingNode(removedValue)) {
                 GraphUtil.killWithUnusedFloatingInputs(removedValue);
             }
         }
@@ -171,8 +169,10 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
                 return;
             }
             for (PhiNode phi : phis()) {
-                if (phi.usages().filter(isNotA(VirtualState.class)).and(node -> !merge.isPhiAtMerge(node)).isNotEmpty()) {
-                    return;
+                for (Node usage : phi.usages()) {
+                    if (!(usage instanceof VirtualState) && !merge.isPhiAtMerge(usage)) {
+                        return;
+                    }
                 }
             }
             Debug.log("Split %s into ends for %s.", this, merge);
@@ -216,8 +216,8 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
             }
             List<PhiNode> phis = phis().snapshot();
             for (PhiNode phi : phis) {
-                for (Node usage : phi.usages().filter(isNotA(FrameState.class))) {
-                    if (usage != returnNode) {
+                for (Node usage : phi.usages()) {
+                    if (usage != returnNode && !(usage instanceof FrameState)) {
                         return;
                     }
                 }

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -94,8 +92,10 @@ public class MonitorGraphTest extends GraalCompilerTest {
         ParameterNode param = graph.getNodes(ParameterNode.TYPE).first();
         if (param != null) {
             ConstantNode constant = ConstantNode.forInt(0, graph);
-            for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {
-                n.replaceFirstInput(param, constant);
+            for (Node n : param.usages().snapshot()) {
+                if (!(n instanceof FrameState)) {
+                    n.replaceFirstInput(param, constant);
+                }
             }
         }
         Map<Invoke, Double> hints = new HashMap<>();

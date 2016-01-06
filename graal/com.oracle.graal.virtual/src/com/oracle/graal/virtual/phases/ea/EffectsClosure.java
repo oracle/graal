@@ -47,6 +47,7 @@ import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.cfg.Block;
@@ -59,12 +60,11 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 
     protected final ControlFlowGraph cfg;
-    protected final SchedulePhase schedule;
+    protected final ScheduleResult schedule;
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
@@ -74,7 +74,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected boolean changed;
 
-    public EffectsClosure(SchedulePhase schedule, ControlFlowGraph cfg) {
+    public EffectsClosure(ScheduleResult schedule, ControlFlowGraph cfg) {
         this.schedule = schedule;
         this.cfg = cfg;
         this.aliases = cfg.graph.createNodeMap();

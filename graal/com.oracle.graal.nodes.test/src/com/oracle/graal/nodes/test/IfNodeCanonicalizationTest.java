@@ -29,7 +29,6 @@ import org.junit.Test;
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -157,9 +156,7 @@ public class IfNodeCanonicalizationTest extends GraalCompilerTest {
 
         PhaseContext context = new PhaseContext(getProviders());
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        for (AbstractMergeNode merge : graph.getNodes(AbstractMergeNode.TYPE)) {
-            merge.setStateAfter(null);
-        }
+        graph.clearAllStateAfter();
         canonicalizer.apply(graph, context);
 
         new ConvertDeoptimizeToGuardPhase().apply(graph, context);

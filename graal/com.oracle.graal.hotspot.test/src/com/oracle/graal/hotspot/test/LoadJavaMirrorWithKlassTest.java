@@ -25,8 +25,6 @@ package com.oracle.graal.hotspot.test;
 import java.util.Objects;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
 
 import org.junit.Test;
 
@@ -34,6 +32,8 @@ import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
 
 public class LoadJavaMirrorWithKlassTest extends GraalCompilerTest {

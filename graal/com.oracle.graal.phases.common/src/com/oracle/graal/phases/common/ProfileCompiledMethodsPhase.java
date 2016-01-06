@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.SafepointNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.UnwindNode;
 import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.calc.BinaryNode;
@@ -97,7 +98,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
         for (Loop<Block> loop : cfg.getLoops()) {
             double loopProbability = cfg.blockFor(loop.getHeader().getBeginNode()).probability();
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
-                addSectionCounters(loop.getHeader().getBeginNode(), loop.getBlocks(), loop.getChildren(), schedule, cfg);
+                addSectionCounters(loop.getHeader().getBeginNode(), loop.getBlocks(), loop.getChildren(), graph.getLastSchedule(), cfg);
             }
         }
         // don't put the counter increase directly after the start (problems with OSR)
@@ -105,7 +106,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
         while (current.next() instanceof FixedWithNextNode) {
             current = (FixedWithNextNode) current.next();
         }
-        addSectionCounters(current, cfg.getBlocks(), cfg.getLoops(), schedule, cfg);
+        addSectionCounters(current, cfg.getBlocks(), cfg.getLoops(), graph.getLastSchedule(), cfg);
 
         if (WITH_INVOKES) {
             for (Node node : graph.getNodes()) {
@@ -118,7 +119,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, SchedulePhase schedule, ControlFlowGraph cfg) {
+    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
         HashSet<Block> blocks = new HashSet<>(sectionBlocks);
         for (Loop<?> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
@@ -138,7 +139,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static double getSectionWeight(SchedulePhase schedule, Collection<Block> blocks) {
+    private static double getSectionWeight(ScheduleResult schedule, Collection<Block> blocks) {
         double count = 0;
         for (Block block : blocks) {
             double blockProbability = block.probability();

@@ -35,13 +35,15 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
 
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.StableOptionValue;
 import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.replacements.SnippetTemplate;
@@ -49,7 +51,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
 /**
  * Extends {@link HotSpotConstantReflectionProvider} to override the implementation of
- * {@link #readConstantFieldValue(JavaField, JavaConstant)} with Graal specific semantics.
+ * {@link #readConstantFieldValue(ResolvedJavaField, JavaConstant)} with Graal specific semantics.
  */
 public class HotSpotGraalConstantReflectionProvider extends HotSpotConstantReflectionProvider {
 
@@ -57,10 +59,24 @@ public class HotSpotGraalConstantReflectionProvider extends HotSpotConstantRefle
         super(runtime);
     }
 
+    private ResolvedJavaType cachedStableOptionValueType;
+
+    /**
+     * The {@code value} field in {@link OptionValue} is considered constant if {@code receiver} is
+     * a {@link StableOptionValue} instance.
+     */
     @Override
-    public JavaConstant readConstantFieldValue(JavaField field, JavaConstant receiver) {
+    public JavaConstant readConstantFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
         assert !ImmutableCode.getValue() || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null || FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
+        if (!field.isStatic() && field.getName().equals("value")) {
+            if (cachedStableOptionValueType == null) {
+                cachedStableOptionValueType = metaAccess.lookupJavaType(StableOptionValue.class);
+            }
+            if (cachedStableOptionValueType.isInstance(receiver)) {
+                return readFieldValue(field, receiver);
+            }
+        }
         return super.readConstantFieldValue(field, receiver);
     }
 
@@ -116,8 +132,8 @@ public class HotSpotGraalConstantReflectionProvider extends HotSpotConstantRefle
 
         /**
          * If the compiler is configured for AOT mode,
-         * {@link #readConstantFieldValue(JavaField, JavaConstant)} should be only called for
-         * snippets or replacements.
+         * {@link #readConstantFieldValue(ResolvedJavaField, JavaConstant)} should be only called
+         * for snippets or replacements.
          */
         static boolean isCalledForSnippets(MetaAccessProvider metaAccess) {
             assert ImmutableCode.getValue();

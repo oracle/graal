@@ -37,9 +37,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.options.NestedBooleanOptionValue;
-import jdk.vm.ci.options.Option;
-import jdk.vm.ci.options.OptionType;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
@@ -61,6 +58,9 @@ import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase;
+import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
 
 /**
  * This optimization tries to improve the handling of constants by replacing a single definition of

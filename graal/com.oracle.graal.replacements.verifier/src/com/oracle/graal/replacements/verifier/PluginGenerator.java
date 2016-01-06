@@ -179,7 +179,7 @@ public class PluginGenerator {
 
     protected static void createImports(PrintWriter out, List<GeneratedPlugin> plugins) {
         out.printf("import jdk.vm.ci.meta.ResolvedJavaMethod;\n");
-        out.printf("import jdk.vm.ci.service.ServiceProvider;\n");
+        out.printf("import com.oracle.graal.serviceprovider.ServiceProvider;\n");
         out.printf("\n");
         out.printf("import com.oracle.graal.nodes.ValueNode;\n");
         out.printf("import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;\n");

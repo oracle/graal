@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -234,7 +234,8 @@ public class LoopFragmentInside extends LoopFragment {
         }
         markStateNodes(loopBegin, usagesToPatch);
 
-        for (PhiNode phi : loopBegin.phis().snapshot()) {
+        List<PhiNode> oldPhis = loopBegin.phis().snapshot();
+        for (PhiNode phi : oldPhis) {
             if (phi.hasNoUsages()) {
                 continue;
             }
@@ -275,7 +276,32 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
 
-        for (PhiNode deadPhi : loopBegin.phis().filter(n -> n.hasNoUsages()).snapshot()) {
+        int oldPhisSize;
+        do {
+            oldPhisSize = oldPhis.size();
+            int i = 0;
+            outer: while (i < oldPhisSize) {
+                PhiNode oldPhi = oldPhis.get(i);
+                for (Node usage : oldPhi.usages()) {
+                    if (usage instanceof PhiNode && oldPhis.contains(usage)) {
+                        // Do not mark.
+                    } else {
+                        // Mark alive by removing from delete set.
+                        oldPhis.set(i, oldPhis.get(oldPhisSize - 1));
+                        oldPhisSize--;
+                        continue outer;
+                    }
+                }
+                i++;
+            }
+            // Check for progress.
+        } while (oldPhisSize != oldPhis.size());
+
+        for (PhiNode deadPhi : oldPhis) {
+            deadPhi.clearInputs();
+        }
+
+        for (PhiNode deadPhi : oldPhis) {
             if (deadPhi.isAlive()) {
                 GraphUtil.killWithUnusedFloatingInputs(deadPhi);
             }

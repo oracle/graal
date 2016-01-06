@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,41 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.iterators;
+package com.oracle.graal.options;
 
-import java.util.Iterator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ServiceLoader;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeBitMap;
+/**
+ * Helper class used to load option descriptors. Only to be used in the slow-path.
+ */
+public class OptionsLoader {
+    public static final Map<String, OptionDescriptor> options = new HashMap<>();
 
-public class DistinctPredicatedProxyNodeIterator<T extends Node> extends PredicatedProxyNodeIterator<T> {
-
-    private NodeBitMap visited;
-
-    public DistinctPredicatedProxyNodeIterator(Iterator<T> iterator, NodePredicate predicate) {
-        super(iterator, predicate);
-    }
-
-    @Override
-    protected void forward() {
-        if (current == null) {
-            super.forward();
-            while (!accept(current)) {
-                current = null;
-                super.forward();
+    /**
+     * Initializes {@link #options} from {@link Options} services.
+     */
+    static {
+        for (OptionDescriptors opts : ServiceLoader.load(OptionDescriptors.class, OptionsLoader.class.getClassLoader())) {
+            for (OptionDescriptor desc : opts) {
+                String name = desc.getName();
+                OptionDescriptor existing = options.put(name, desc);
+                assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
-    }
-
-    private boolean accept(T n) {
-        if (n == null) {
-            return true;
-        }
-        if (visited == null) {
-            visited = n.graph().createNodeBitMap();
-        }
-        boolean accept = !visited.isMarked(n);
-        visited.mark(n);
-        return accept;
     }
 }

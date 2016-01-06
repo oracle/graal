@@ -41,7 +41,6 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
-import jdk.vm.ci.service.ServiceProvider;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.amd64.AMD64SuitesProvider;
@@ -66,6 +65,7 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.amd64.AMD64GraphBuilderPlugins;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.graal.word.WordTypes;
 
 @ServiceProvider(HotSpotBackendFactory.class)
@@ -202,15 +202,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             *
+             * 
              * Draft Version 0.96
-             *
+             * 
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             *
+             * 
              * 3.2.1
-             *
+             * 
              * ...
-             *
+             * 
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these

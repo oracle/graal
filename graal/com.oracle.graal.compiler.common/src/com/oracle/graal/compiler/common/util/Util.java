@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.common.util;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
@@ -151,6 +152,29 @@ public class Util {
         assert CodeUtil.isPowerOf2(64);
     }
 
+    public interface Stringify {
+        String apply(Object o);
+    }
+
+    public static String join(Collection<?> c, String sep) {
+        return join(c, sep, "", "", null);
+    }
+
+    public static String join(Collection<?> c, String sep, String prefix, String suffix, Stringify stringify) {
+        StringBuilder buf = new StringBuilder(prefix);
+        boolean first = true;
+        for (Object e : c) {
+            if (!first) {
+                buf.append(sep);
+            } else {
+                first = false;
+            }
+            buf.append(stringify != null ? stringify.apply(e) : String.valueOf(e));
+        }
+        buf.append(suffix);
+        return buf.toString();
+    }
+
     /**
      * Sets the element at a given position of a list and ensures that this position exists. If the
      * list is current shorter than the position, intermediate positions are filled with a given
@@ -243,10 +267,10 @@ public class Util {
         boolean newLine = true;
         for (int i = 0; i < length; i++) {
             if (newLine) {
-                TTY.print("%08x: ", address + i);
+                TTY.printf("%08x: ", address + i);
                 newLine = false;
             }
-            TTY.print("%02x ", array[i]);
+            TTY.printf("%02x ", array[i]);
             if (i % bytesPerLine == bytesPerLine - 1) {
                 TTY.println();
                 newLine = true;

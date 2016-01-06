@@ -25,9 +25,9 @@ package com.oracle.graal.virtual.phases.ea;
 import static com.oracle.graal.compiler.common.GraalOptions.EscapeAnalyzeOnly;
 
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 
 public class EarlyReadEliminationPhase extends EffectsPhase<PhaseContext> {
@@ -44,7 +44,7 @@ public class EarlyReadEliminationPhase extends EffectsPhase<PhaseContext> {
     }
 
     @Override
-    protected Closure<?> createEffectsClosure(PhaseContext context, SchedulePhase schedule, ControlFlowGraph cfg) {
+    protected Closure<?> createEffectsClosure(PhaseContext context, ScheduleResult schedule, ControlFlowGraph cfg) {
         assert schedule == null;
         return new ReadEliminationClosure(cfg);
     }

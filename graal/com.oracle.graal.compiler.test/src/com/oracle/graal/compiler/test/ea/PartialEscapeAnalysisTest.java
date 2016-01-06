@@ -130,6 +130,20 @@ public class PartialEscapeAnalysisTest extends EATestBase {
     }
 
     @Test
+    public void testArrayCopy() {
+        testPartialEscapeAnalysis("testArrayCopySnippet", 0, 0);
+    }
+
+    public static Object[] array = new Object[]{1, 2, 3, 4, 5, "asdf", "asdf"};
+
+    public static Object testArrayCopySnippet(int a) {
+        Object[] tmp = new Object[]{a != 1 ? array[a] : null};
+        Object[] tmp2 = new Object[5];
+        System.arraycopy(tmp, 0, tmp2, 4, 1);
+        return tmp2[4];
+    }
+
+    @Test
     @Ignore
     public void testCache() {
         testPartialEscapeAnalysis("testCacheSnippet", 0.75, 1);

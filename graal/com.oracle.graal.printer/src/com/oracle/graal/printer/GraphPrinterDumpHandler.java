@@ -57,7 +57,6 @@ import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugDumpScope;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
-import com.oracle.graal.phases.schedule.SchedulePhase;
 
 //JaCoCo Exclude
 
@@ -202,10 +201,9 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 // Save inline context for next dump.
                 previousInlineContext = inlineContext;
 
-                final SchedulePhase predefinedSchedule = getPredefinedSchedule();
                 try (Scope s = Debug.sandbox("PrintingGraph", null)) {
                     // Finally, output the graph.
-                    printer.print(graph, nextDumpId() + ":" + message, predefinedSchedule);
+                    printer.print(graph, nextDumpId() + ":" + message);
                 } catch (IOException e) {
                     failuresCount++;
                     printer = null;
@@ -244,16 +242,6 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         }
         if (result.isEmpty()) {
             result.add("Top Scope");
-        }
-        return result;
-    }
-
-    private static SchedulePhase getPredefinedSchedule() {
-        SchedulePhase result = null;
-        for (Object o : Debug.context()) {
-            if (o instanceof SchedulePhase) {
-                result = (SchedulePhase) o;
-            }
         }
         return result;
     }

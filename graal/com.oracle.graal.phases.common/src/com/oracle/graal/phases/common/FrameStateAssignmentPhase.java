@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
  * This Phase processes the graph in post order, assigning the {@link FrameState} from the last
  * {@link StateSplit} node to {@link DeoptimizingNode DeoptimizingNodes}.
  */
+@SuppressWarnings("unused")
 public class FrameStateAssignmentPhase extends Phase {
 
     private static class FrameStateAssignmentClosure extends NodeIteratorClosure<FrameState> {
@@ -116,7 +117,7 @@ public class FrameStateAssignmentPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        assert !graph.getGuardsStage().allowsFloatingGuards() && checkFixedDeopts(graph);
+        assert !graph.getGuardsStage().allowsFloatingGuards() && !hasFloatingDeopts(graph);
         if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
             ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
             graph.setGuardsStage(GuardsStage.AFTER_FSA);
@@ -124,14 +125,16 @@ public class FrameStateAssignmentPhase extends Phase {
         }
     }
 
-    private static boolean checkFixedDeopts(StructuredGraph graph) {
-        NodePredicate isFloatingNode = GraphUtil.isFloatingNode();
-        for (Node n : graph.getNodes().filterInterface(DeoptimizingNode.class)) {
-            if (((DeoptimizingNode) n).canDeoptimize() && isFloatingNode.apply(n)) {
-                return false;
+    private static boolean hasFloatingDeopts(StructuredGraph graph) {
+        for (Node n : graph.getNodes()) {
+            if (n instanceof DeoptimizingNode && GraphUtil.isFloatingNode(n)) {
+                DeoptimizingNode deoptimizingNode = (DeoptimizingNode) n;
+                if (deoptimizingNode.canDeoptimize()) {
+                    return true;
+                }
             }
         }
-        return true;
+        return false;
     }
 
     private static FrameState singleFrameState(List<FrameState> states) {

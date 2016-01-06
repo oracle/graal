@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.iterators;
+package com.oracle.graal.options;
 
-import java.util.Iterator;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.oracle.graal.graph.Node;
+/**
+ * Describes the attributes of an option whose {@link OptionValue value} is in a static field
+ * annotated by this annotation type.
+ *
+ * @see OptionDescriptor
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.FIELD)
+public @interface Option {
 
-public class DistinctFilteredNodeIterable<T extends Node> extends FilteredNodeIterable<T> {
+    /**
+     * Gets a help message for the option. New lines can be embedded in the message with
+     * {@code "%n"}.
+     */
+    String help();
 
-    public DistinctFilteredNodeIterable(NodeIterable<T> nodeIterable) {
-        super(nodeIterable);
-    }
+    /**
+     * The name of the option. By default, the name of the annotated field should be used.
+     */
+    String name() default "";
 
-    @Override
-    public DistinctFilteredNodeIterable<T> distinct() {
-        return this;
-    }
-
-    @Override
-    public Iterator<T> iterator() {
-        return new DistinctPredicatedProxyNodeIterator<>(nodeIterable.iterator(), predicate);
-    }
+    /**
+     * Specifies the type of the option.
+     */
+    OptionType type() default OptionType.Debug;
 }

@@ -31,9 +31,6 @@ import static org.junit.Assert.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.options.OptionValue;
-import jdk.vm.ci.options.OptionValue.OverrideScope;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -42,17 +39,17 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StartNode;
-import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.memory.FloatingReadNode;
 import com.oracle.graal.nodes.memory.WriteNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.FloatingReadPhase;
@@ -107,7 +104,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testSimple() {
         for (TestMode mode : TestMode.values()) {
-            SchedulePhase schedule = getFinalSchedule("testSimpleSnippet", mode);
+            ScheduleResult schedule = getFinalSchedule("testSimpleSnippet", mode);
             StructuredGraph graph = schedule.getCFG().graph;
             assertReadAndWriteInSameBlock(schedule, true);
             assertOrderedAfterSchedule(schedule, graph.getNodes().filter(FloatingReadNode.class).first(), graph.getNodes().filter(WriteNode.class).first());
@@ -132,7 +129,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testSplit1() {
         for (TestMode mode : TestMode.values()) {
-            SchedulePhase schedule = getFinalSchedule("testSplit1Snippet", mode);
+            ScheduleResult schedule = getFinalSchedule("testSplit1Snippet", mode);
             assertReadWithinStartBlock(schedule, true);
             assertReadWithinAllReturnBlocks(schedule, false);
         }
@@ -156,7 +153,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testSplit2() {
-        SchedulePhase schedule = getFinalSchedule("testSplit2Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testSplit2Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, true);
     }
@@ -180,7 +177,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop1() {
-        SchedulePhase schedule = getFinalSchedule("testLoop1Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop1Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(6, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, true);
         assertReadWithinAllReturnBlocks(schedule, false);
@@ -205,7 +202,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop2() {
-        SchedulePhase schedule = getFinalSchedule("testLoop2Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop2Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(6, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, true);
@@ -227,7 +224,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop3() {
-        SchedulePhase schedule = getFinalSchedule("testLoop3Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop3Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(6, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, true);
         assertReadWithinAllReturnBlocks(schedule, false);
@@ -263,7 +260,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop5() {
-        SchedulePhase schedule = getFinalSchedule("testLoop5Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop5Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(10, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
@@ -292,7 +289,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop6() {
-        SchedulePhase schedule = getFinalSchedule("testLoop6Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop6Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(13, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
@@ -325,7 +322,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop7() {
-        SchedulePhase schedule = getFinalSchedule("testLoop7Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop7Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(18, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
@@ -352,7 +349,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop8() {
-        SchedulePhase schedule = getFinalSchedule("testLoop8Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop8Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(10, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, true);
         assertReadWithinAllReturnBlocks(schedule, false);
@@ -372,7 +369,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop9() {
-        SchedulePhase schedule = getFinalSchedule("testLoop9Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop9Snippet", TestMode.WITHOUT_FRAMESTATES);
         StructuredGraph graph = schedule.getCFG().getStartBlock().getBeginNode().graph();
         assertThat(graph.getNodes(ReturnNode.TYPE), hasCount(1));
         ReturnNode ret = graph.getNodes(ReturnNode.TYPE).first();
@@ -391,7 +388,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testArrayCopy() {
-        SchedulePhase schedule = getFinalSchedule("testArrayCopySnippet", TestMode.INLINED_WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testArrayCopySnippet", TestMode.INLINED_WITHOUT_FRAMESTATES);
         StructuredGraph graph = schedule.getCFG().getStartBlock().getBeginNode().graph();
         assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
         ReturnNode ret = graph.getNodes(ReturnNode.TYPE).first();
@@ -413,7 +410,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testIfRead1() {
-        SchedulePhase schedule = getFinalSchedule("testIfRead1Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testIfRead1Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(3, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, true);
         assertReadAndWriteInSameBlock(schedule, false);
@@ -434,7 +431,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testIfRead2() {
-        SchedulePhase schedule = getFinalSchedule("testIfRead2Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testIfRead2Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(3, schedule.getCFG().getBlocks().size());
         assertDeepEquals(1, schedule.getCFG().graph.getNodes().filter(FloatingReadNode.class).count());
         assertReadWithinStartBlock(schedule, false);
@@ -456,7 +453,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testIfRead3() {
-        SchedulePhase schedule = getFinalSchedule("testIfRead3Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testIfRead3Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(4, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, true);
@@ -477,7 +474,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testIfRead4() {
-        SchedulePhase schedule = getFinalSchedule("testIfRead4Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testIfRead4Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(3, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
@@ -496,7 +493,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testIfRead5() {
-        SchedulePhase schedule = getFinalSchedule("testIfRead5Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testIfRead5Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(4, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, true);
@@ -522,7 +519,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testAntiDependency() {
-        SchedulePhase schedule = getFinalSchedule("testAntiDependencySnippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testAntiDependencySnippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(4, schedule.getCFG().getBlocks().size());
         assertReadBeforeAllWritesInStartBlock(schedule);
     }
@@ -546,7 +543,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testBlockSchedule() {
-        SchedulePhase schedule = getFinalSchedule("testBlockScheduleSnippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testBlockScheduleSnippet", TestMode.WITHOUT_FRAMESTATES);
         StructuredGraph graph = schedule.getCFG().graph;
         NodeIterable<WriteNode> writeNodes = graph.getNodes().filter(WriteNode.class);
 
@@ -587,7 +584,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testBlockSchedule2() {
-        SchedulePhase schedule = getFinalSchedule("testBlockSchedule2Snippet", TestMode.WITHOUT_FRAMESTATES, SchedulingStrategy.LATEST);
+        ScheduleResult schedule = getFinalSchedule("testBlockSchedule2Snippet", TestMode.WITHOUT_FRAMESTATES, SchedulingStrategy.LATEST);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
         assertReadAndWriteInSameBlock(schedule, false);
@@ -610,7 +607,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testProxy() {
-        SchedulePhase schedule = getFinalSchedule("testProxySnippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testProxySnippet", TestMode.WITHOUT_FRAMESTATES);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
     }
@@ -633,7 +630,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testStringHashCode() {
-        SchedulePhase schedule = getFinalSchedule("testStringHashCodeSnippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testStringHashCodeSnippet", TestMode.WITHOUT_FRAMESTATES);
         assertReadWithinStartBlock(schedule, true);
         assertReadWithinAllReturnBlocks(schedule, false);
 
@@ -665,12 +662,12 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop4() {
-        SchedulePhase schedule = getFinalSchedule("testLoop4Snippet", TestMode.WITHOUT_FRAMESTATES);
+        ScheduleResult schedule = getFinalSchedule("testLoop4Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
     }
 
-    private void assertReadWithinAllReturnBlocks(SchedulePhase schedule, boolean withinReturnBlock) {
+    private void assertReadWithinAllReturnBlocks(ScheduleResult schedule, boolean withinReturnBlock) {
         StructuredGraph graph = schedule.getCFG().graph;
         assertTrue(graph.getNodes(ReturnNode.TYPE).isNotEmpty());
 
@@ -689,7 +686,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertDeepEquals(withRead == returnBlocks, withinReturnBlock);
     }
 
-    private void assertReadWithinStartBlock(SchedulePhase schedule, boolean withinStartBlock) {
+    private void assertReadWithinStartBlock(ScheduleResult schedule, boolean withinStartBlock) {
         boolean readEncountered = false;
         for (Node node : schedule.getBlockToNodesMap().get(schedule.getCFG().getStartBlock())) {
             if (node instanceof FloatingReadNode) {
@@ -699,14 +696,14 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertDeepEquals(withinStartBlock, readEncountered);
     }
 
-    private static void assertReadAndWriteInSameBlock(SchedulePhase schedule, boolean inSame) {
+    private static void assertReadAndWriteInSameBlock(ScheduleResult schedule, boolean inSame) {
         StructuredGraph graph = schedule.getCFG().graph;
         FloatingReadNode read = graph.getNodes().filter(FloatingReadNode.class).first();
         WriteNode write = graph.getNodes().filter(WriteNode.class).first();
         assertTrue(!(inSame ^ schedule.getCFG().blockFor(read) == schedule.getCFG().blockFor(write)));
     }
 
-    private static void assertReadBeforeAllWritesInStartBlock(SchedulePhase schedule) {
+    private static void assertReadBeforeAllWritesInStartBlock(ScheduleResult schedule) {
         boolean writeNodeFound = false;
         boolean readNodeFound = false;
         for (Node node : schedule.nodesFor(schedule.getCFG().getStartBlock())) {
@@ -720,12 +717,12 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertTrue(readNodeFound);
     }
 
-    private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode) {
+    private ScheduleResult getFinalSchedule(final String snippet, final TestMode mode) {
         return getFinalSchedule(snippet, mode, SchedulingStrategy.LATEST_OUT_OF_LOOPS);
     }
 
     @SuppressWarnings("try")
-    private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final SchedulingStrategy schedulingStrategy) {
+    private ScheduleResult getFinalSchedule(final String snippet, final TestMode mode, final SchedulingStrategy schedulingStrategy) {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
             try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
@@ -737,15 +734,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 }
                 new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                    for (Node node : graph.getNodes()) {
-                        if (node instanceof StateSplit) {
-                            FrameState stateAfter = ((StateSplit) node).stateAfter();
-                            if (stateAfter != null) {
-                                ((StateSplit) node).setStateAfter(null);
-                                GraphUtil.killWithUnusedFloatingInputs(stateAfter);
-                            }
-                        }
-                    }
+                    graph.clearAllStateAfter();
                 }
                 Debug.dump(graph, "after removal of framestates");
 
@@ -760,7 +749,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 SchedulePhase schedule = new SchedulePhase(schedulingStrategy);
                 schedule.apply(graph);
                 assertDeepEquals(1, graph.getNodes().filter(StartNode.class).count());
-                return schedule;
+                return graph.getLastSchedule();
             }
         } catch (Throwable e) {
             throw Debug.handle(e);
