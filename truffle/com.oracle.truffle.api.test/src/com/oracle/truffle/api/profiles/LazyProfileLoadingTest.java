@@ -24,16 +24,12 @@ package com.oracle.truffle.api.profiles;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URLClassLoader;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.BlockJUnit4ClassRunner;
-import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.profiles.LazyProfileLoadingTest.SeparateClassloaderTestRunner;
 
 @RunWith(SeparateClassloaderTestRunner.class)
 public class LazyProfileLoadingTest {
@@ -102,36 +98,6 @@ public class LazyProfileLoadingTest {
             return m.invoke(classLoader, className) != null;
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public static class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner {
-
-        public SeparateClassloaderTestRunner(Class<?> clazz) throws InitializationError {
-            super(getFromTestClassloader(clazz));
-        }
-
-        private static Class<?> getFromTestClassloader(Class<?> clazz) throws InitializationError {
-            try {
-                ClassLoader testClassLoader = new TestClassLoader();
-                return Class.forName(clazz.getName(), true, testClassLoader);
-            } catch (ClassNotFoundException e) {
-                throw new InitializationError(e);
-            }
-        }
-
-        public static class TestClassLoader extends URLClassLoader {
-            public TestClassLoader() {
-                super(((URLClassLoader) getSystemClassLoader()).getURLs());
-            }
-
-            @Override
-            public Class<?> loadClass(String name) throws ClassNotFoundException {
-                if (name.startsWith(Profile.class.getPackage().getName())) {
-                    return super.findClass(name);
-                }
-                return super.loadClass(name);
-            }
         }
     }
 

@@ -32,12 +32,11 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
-import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 @SuppressWarnings("deprecation")
-@RunWith(Theories.class)
+@RunWith(SeparateClassloaderTestRunner.Theories.class)
 public class PrimitiveValueProfileTest {
 
     @DataPoint public static final String O1 = new String();
