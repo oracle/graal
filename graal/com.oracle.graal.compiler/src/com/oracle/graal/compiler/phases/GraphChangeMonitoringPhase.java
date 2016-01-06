@@ -81,7 +81,7 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
          * Ignore LogicConstantNode since those are sometimes created and deleted as part of running
          * a phase.
          */
-        if (listener.getNodes().stream().filter(e -> !(e instanceof LogicConstantNode)).findFirst().get() != null) {
+        if (listener.getNodes().stream().filter(e -> !(e instanceof LogicConstantNode)).findFirst().isPresent()) {
             /* rerun it on the real graph in a new Debug scope so Dump and Log can find it. */
             listener = new HashSetNodeEventListener();
             try (NodeEventScope s = graph.trackNodeEvents(listener)) {
