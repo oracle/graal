@@ -384,7 +384,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             if (otherValue == null || otherValue == TWO_SLOT_MARKER || otherValue.isDeleted() || currentValue.getStackKind() != otherValue.getStackKind()) {
                 // This phi must be dead anyway, add input of correct stack kind to keep the graph
                 // invariants.
-                ((PhiNode) currentValue).addInput(ConstantNode.defaultForKind(currentValue.getStackKind()));
+                ((PhiNode) currentValue).addInput(ConstantNode.defaultForKind(currentValue.getStackKind(), graph));
             } else {
                 ((PhiNode) currentValue).addInput(otherValue);
             }
