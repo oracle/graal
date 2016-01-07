@@ -174,8 +174,8 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
     @SuppressWarnings("try")
     private InstalledCode installNativeFunctionStub(long functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
         StructuredGraph g = getGraph(providers, factory, functionPointer, returnType, argumentTypes);
-        Suites suites = providers.getSuites().createSuites();
-        LIRSuites lirSuites = providers.getSuites().createLIRSuites();
+        Suites suites = providers.getSuites().getDefaultSuites();
+        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites();
         PhaseSuite<HighTierContext> phaseSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, g.method(), false);
         CompilationResult compResult = GraalCompiler.compileGraph(g, cc, g.method(), providers, backend, phaseSuite, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,

@@ -105,12 +105,12 @@ public class InvokeGraal {
              * The optimization phases that are applied to the graph. This is the main configuration
              * point for Graal. Add or remove phases to customize your compilation.
              */
-            Suites suites = backend.getSuites().createSuites();
+            Suites suites = backend.getSuites().getDefaultSuites();
 
             /*
              * The low-level phases that are applied to the low-level representation.
              */
-            LIRSuites lirSuites = backend.getSuites().createLIRSuites();
+            LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites();
 
             /*
              * The calling convention for the machine code. You should have a very good reason

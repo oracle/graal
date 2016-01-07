@@ -240,8 +240,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private CompilationResult compileMethod(ResolvedJavaMethod javaMethod) {
         HotSpotProviders providers = getHotSpotProviders();
         SuitesProvider suitesProvider = providers.getSuites();
-        Suites suites = suitesProvider.createSuites();
-        LIRSuites lirSuites = suitesProvider.createLIRSuites();
+        Suites suites = suitesProvider.getDefaultSuites().copy();
+        LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites();
         removeInliningPhase(suites);
         StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO);
 

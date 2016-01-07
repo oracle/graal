@@ -34,6 +34,7 @@ import com.oracle.graal.hotspot.phases.LoadJavaMirrorWithKlassPhase;
 import com.oracle.graal.hotspot.phases.WriteBarrierAdditionPhase;
 import com.oracle.graal.hotspot.phases.WriteBarrierVerificationPhase;
 import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.java.SuitesProviderBase;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.EncodedGraph;
 import com.oracle.graal.nodes.GraphEncoder;
@@ -42,8 +43,6 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;
-import com.oracle.graal.options.DerivedOptionValue;
-import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.AddressLoweringPhase;
@@ -51,62 +50,30 @@ import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
 import com.oracle.graal.phases.common.ExpandLogicPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
-import com.oracle.graal.phases.tiers.SuitesProvider;
+import com.oracle.graal.phases.tiers.SuitesCreator;
 
 /**
- * HotSpot implementation of {@link SuitesProvider}.
+ * HotSpot implementation of {@link SuitesCreator}.
  */
-public class HotSpotSuitesProvider implements SuitesProvider {
+public class HotSpotSuitesProvider extends SuitesProviderBase {
 
-    protected final DerivedOptionValue<Suites> defaultSuites;
-    protected final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
-    private final DerivedOptionValue<LIRSuites> defaultLIRSuites;
     protected final HotSpotVMConfig config;
     protected final HotSpotGraalRuntimeProvider runtime;
 
     private final AddressLowering addressLowering;
-    private final SuitesProvider defaultSuitesProvider;
+    private final SuitesCreator defaultSuitesCreator;
 
-    private class SuitesSupplier implements OptionSupplier<Suites> {
-
-        private static final long serialVersionUID = -3444304453553320390L;
-
-        public Suites get() {
-            return createSuites();
-        }
-
-    }
-
-    private class LIRSuitesSupplier implements OptionSupplier<LIRSuites> {
-
-        private static final long serialVersionUID = -1558586374095874299L;
-
-        public LIRSuites get() {
-            return createLIRSuites();
-        }
-
-    }
-
-    public HotSpotSuitesProvider(SuitesProvider defaultSuitesProvider, HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLowering addressLowering) {
+    public HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLowering addressLowering) {
+        this.defaultSuitesCreator = defaultSuitesCreator;
         this.config = config;
         this.runtime = runtime;
         this.addressLowering = addressLowering;
-        this.defaultSuitesProvider = defaultSuitesProvider;
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
-        this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
-        this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
     }
 
-    public Suites getDefaultSuites() {
-        return defaultSuites.getValue();
-    }
-
-    public PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
-        return defaultGraphBuilderSuite;
-    }
-
+    @Override
     public Suites createSuites() {
-        Suites ret = defaultSuitesProvider.createSuites();
+        Suites ret = defaultSuitesCreator.createSuites();
 
         if (ImmutableCode.getValue()) {
             // lowering introduces class constants, therefore it must be after lowering
@@ -127,7 +94,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     }
 
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
-        PhaseSuite<HighTierContext> suite = defaultSuitesProvider.getDefaultGraphBuilderSuite().copy();
+        PhaseSuite<HighTierContext> suite = defaultSuitesCreator.getDefaultGraphBuilderSuite().copy();
         assert appendGraphEncoderTest(suite);
         return suite;
     }
@@ -170,12 +137,9 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         return newGbs;
     }
 
-    public LIRSuites getDefaultLIRSuites() {
-        return defaultLIRSuites.getValue();
-    }
-
+    @Override
     public LIRSuites createLIRSuites() {
-        LIRSuites suites = defaultSuitesProvider.createLIRSuites();
+        LIRSuites suites = defaultSuitesCreator.createLIRSuites();
         String profileInstructions = HotSpotBackend.Options.ASMInstructionProfiling.getValue();
         if (profileInstructions != null) {
             suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotInstructionProfiling(profileInstructions));

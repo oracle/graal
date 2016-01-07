@@ -25,59 +25,24 @@ package com.oracle.graal.java;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.options.DerivedOptionValue;
-import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
-import com.oracle.graal.phases.tiers.SuitesProvider;
 
-public class DefaultSuitesProvider implements SuitesProvider {
+public class DefaultSuitesProvider extends SuitesProviderBase {
 
     private final CompilerConfiguration compilerConfiguration;
 
-    private final DerivedOptionValue<Suites> defaultSuites;
-    private final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
-    private final DerivedOptionValue<LIRSuites> defaultLIRSuites;
-
-    private class SuitesSupplier implements OptionSupplier<Suites> {
-
-        private static final long serialVersionUID = 2677805381215454728L;
-
-        public Suites get() {
-            return createSuites();
-        }
-
-    }
-
-    private class LIRSuitesSupplier implements OptionSupplier<LIRSuites> {
-
-        private static final long serialVersionUID = 312070237227476252L;
-
-        public LIRSuites get() {
-            return createLIRSuites();
-        }
-
-    }
-
     public DefaultSuitesProvider(CompilerConfiguration compilerConfiguration, Plugins plugins) {
-        this.compilerConfiguration = compilerConfiguration;
+        super();
         this.defaultGraphBuilderSuite = createGraphBuilderSuite(plugins);
-        this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
-        this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
+        this.compilerConfiguration = compilerConfiguration;
     }
 
-    public Suites getDefaultSuites() {
-        return defaultSuites.getValue();
-    }
-
+    @Override
     public Suites createSuites() {
         return Suites.createSuites(compilerConfiguration);
-    }
-
-    public PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
-        return defaultGraphBuilderSuite;
     }
 
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {
@@ -86,10 +51,7 @@ public class DefaultSuitesProvider implements SuitesProvider {
         return suite;
     }
 
-    public LIRSuites getDefaultLIRSuites() {
-        return defaultLIRSuites.getValue();
-    }
-
+    @Override
     public LIRSuites createLIRSuites() {
         return Suites.createLIRSuites(compilerConfiguration);
     }

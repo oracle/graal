@@ -179,7 +179,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Suites createSuites() {
-        Suites ret = backend.getSuites().createSuites();
+        Suites ret = backend.getSuites().getDefaultSuites().copy();
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class);
         PhaseSuite.findNextPhase(iter, CanonicalizerPhase.class);
         iter.add(new Phase("ComputeLoopFrequenciesPhase") {
@@ -214,7 +214,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected LIRSuites createLIRSuites() {
-        LIRSuites ret = backend.getSuites().createLIRSuites();
+        LIRSuites ret = backend.getSuites().getDefaultLIRSuites().copy();
         return ret;
     }
 

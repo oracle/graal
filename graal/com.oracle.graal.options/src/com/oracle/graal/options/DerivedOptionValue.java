@@ -35,13 +35,11 @@ public class DerivedOptionValue<T> {
     public interface OptionSupplier<T> extends Supplier<T>, Serializable {
     }
 
-    private final T initialValue;
+    private T initialValue;
     private final OptionSupplier<T> supplier;
 
     public DerivedOptionValue(OptionSupplier<T> supplier) {
         this.supplier = supplier;
-        assert OptionValue.getOverrideScope() == null : "derived option value should be initialized outside any override scope";
-        this.initialValue = createValue();
     }
 
     public T getValue() {
@@ -49,6 +47,9 @@ public class DerivedOptionValue<T> {
         if (overrideScope != null) {
             return overrideScope.getDerived(this);
         } else {
+            if (initialValue == null) {
+                initialValue = createValue();
+            }
             return initialValue;
         }
     }

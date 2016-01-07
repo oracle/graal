@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.phases;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -32,7 +33,8 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 public class LIRPhaseSuite<C> extends LIRPhase<C> {
-    private final List<LIRPhase<C>> phases;
+    private List<LIRPhase<C>> phases;
+    private boolean immutable;
 
     public LIRPhaseSuite() {
         phases = new ArrayList<>();
@@ -93,5 +95,16 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> {
         LIRPhaseSuite<C> suite = new LIRPhaseSuite<>();
         suite.phases.addAll(phases);
         return suite;
+    }
+
+    public boolean isImmutable() {
+        return immutable;
+    }
+
+    public synchronized void setImmutable() {
+        if (!immutable) {
+            phases = Collections.unmodifiableList(phases);
+            immutable = true;
+        }
     }
 }

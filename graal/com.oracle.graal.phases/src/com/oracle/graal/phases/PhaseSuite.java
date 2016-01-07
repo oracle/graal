@@ -23,6 +23,7 @@
 package com.oracle.graal.phases;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -33,10 +34,22 @@ import com.oracle.graal.nodes.StructuredGraph;
  */
 public class PhaseSuite<C> extends BasePhase<C> {
 
-    private final List<BasePhase<? super C>> phases;
+    private List<BasePhase<? super C>> phases;
+    private boolean immutable;
 
     public PhaseSuite() {
         this.phases = new ArrayList<>();
+    }
+
+    public boolean isImmutable() {
+        return immutable;
+    }
+
+    public synchronized void setImmutable() {
+        if (!immutable) {
+            phases = Collections.unmodifiableList(phases);
+            immutable = true;
+        }
     }
 
     /**

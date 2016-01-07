@@ -38,6 +38,7 @@ public class LIRSuites {
     private final LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage;
     private final LIRPhaseSuite<AllocationContext> allocStage;
     private final LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage;
+    private boolean immutable;
 
     public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<AllocationContext> allocStage, LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage) {
         this.preAllocOptStage = preAllocOptStage;
@@ -83,4 +84,20 @@ public class LIRSuites {
         return postAllocStage;
     }
 
+    public boolean isImmutable() {
+        return immutable;
+    }
+
+    public synchronized void setImmutable() {
+        if (!immutable) {
+            preAllocOptStage.setImmutable();
+            allocStage.setImmutable();
+            postAllocStage.setImmutable();
+            immutable = true;
+        }
+    }
+
+    public LIRSuites copy() {
+        return new LIRSuites(preAllocOptStage.copy(), allocStage.copy(), postAllocStage.copy());
+    }
 }

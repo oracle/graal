@@ -30,6 +30,7 @@ public final class Suites {
     private final PhaseSuite<HighTierContext> highTier;
     private final PhaseSuite<MidTierContext> midTier;
     private final PhaseSuite<LowTierContext> lowTier;
+    private boolean immutable;
 
     public PhaseSuite<HighTierContext> getHighTier() {
         return highTier;
@@ -55,5 +56,22 @@ public final class Suites {
 
     public static LIRSuites createLIRSuites(CompilerConfiguration config) {
         return new LIRSuites(config.createPreAllocationOptimizationStage(), config.createAllocationStage(), config.createPostAllocationOptimizationStage());
+    }
+
+    public boolean isImmutable() {
+        return immutable;
+    }
+
+    public synchronized void setImmutable() {
+        if (!immutable) {
+            highTier.setImmutable();
+            midTier.setImmutable();
+            lowTier.setImmutable();
+            immutable = true;
+        }
+    }
+
+    public Suites copy() {
+        return new Suites(highTier.copy(), midTier.copy(), lowTier.copy());
     }
 }
