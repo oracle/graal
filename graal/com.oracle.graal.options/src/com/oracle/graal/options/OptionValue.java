@@ -453,6 +453,10 @@ public class OptionValue<T> {
 
     static {
         if (ShowReadsHistogram) {
+            // Trigger initialization of OptionsLoader to ensure all option values have
+            // a descriptor which is required for them to have meaningful names.
+            OptionsLoader.options.hashCode();
+
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
                 public void run() {
