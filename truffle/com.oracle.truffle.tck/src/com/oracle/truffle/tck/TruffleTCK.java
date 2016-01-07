@@ -522,6 +522,28 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testPlusWithDoubleFloatSameAsInt() throws Exception {
+        int x = RANDOM.nextInt(100);
+        int y = RANDOM.nextInt(100);
+        float a = x;
+        float b = y;
+        double u = a;
+        double v = b;
+
+        PolyglotEngine.Value floatPlus = findGlobalSymbol(plus(float.class, float.class));
+        PolyglotEngine.Value doublePlus = findGlobalSymbol(plus(double.class, double.class));
+        PolyglotEngine.Value intPlus = findGlobalSymbol(plus(int.class, int.class));
+
+        Number floatResult = floatPlus.execute(a, b).as(Number.class);
+        Number doubleResult = doublePlus.execute(a, b).as(Number.class);
+        Number intResult = intPlus.execute(a, b).as(Number.class);
+
+        assertEquals("Correct value computed via int: (" + a + " + " + b + ")", x + y, intResult.intValue());
+        assertEquals("Correct value computed via float: (" + a + " + " + b + ")", intResult.intValue(), floatResult.intValue());
+        assertEquals("Correct value computed via double: (" + a + " + " + b + ")", intResult.intValue(), doubleResult.intValue());
+    }
+
+    @Test
     public void testPlusWithFloat() throws Exception {
         float a = RANDOM.nextFloat() * 100.0f;
         float b = RANDOM.nextFloat() * 100.0f;
