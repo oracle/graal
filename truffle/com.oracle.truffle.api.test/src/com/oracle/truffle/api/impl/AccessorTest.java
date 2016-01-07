@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
-import java.lang.reflect.Field;
 import java.util.concurrent.Executors;
 
 import org.junit.BeforeClass;
@@ -35,15 +31,17 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
 import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.lang.reflect.Method;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 public class AccessorTest {
-    public static Accessor API;
+    public static Method find;
 
     @BeforeClass
     public static void initAccessors() throws Exception {
-        Field f = Accessor.class.getDeclaredField("API");
-        f.setAccessible(true);
-        API = (Accessor) f.get(null);
+        find = Accessor.class.getDeclaredMethod("findLanguageByClass", Object.class, Class.class);
+        find.setAccessible(true);
     }
 
     @Test
@@ -56,7 +54,7 @@ public class AccessorTest {
         Object ret = language.eval(s).get();
         assertNull("nothing is returned", ret);
 
-        ExportImportLanguage1 afterInitialization = Accessor.findLanguageByClass(vm, ExportImportLanguage1.class);
+        ExportImportLanguage1 afterInitialization = (ExportImportLanguage1) find.invoke(null, vm, ExportImportLanguage1.class);
         assertNotNull("Language found", afterInitialization);
     }
 }
