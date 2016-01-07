@@ -604,14 +604,6 @@ innr public abstract interface static !annotation CustomGraphPrintHandler
 innr public abstract interface static !annotation NullGraphPrintHandler
 innr public abstract interface static GraphPrintHandler
 intf java.io.Closeable
-meth protected java.lang.Object getElementByObject(java.lang.Object)
- anno 0 java.lang.Deprecated()
-meth protected void connectNodes(java.lang.Object,java.lang.Object,java.lang.String)
- anno 0 java.lang.Deprecated()
-meth protected void createElementForNode(java.lang.Object)
- anno 0 java.lang.Deprecated()
-meth protected void setNodeProperty(java.lang.Object,java.lang.String,java.lang.Object)
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.nodes.GraphPrintVisitor beginGraph(java.lang.String)
 meth public com.oracle.truffle.api.nodes.GraphPrintVisitor beginGroup(java.lang.String)
 meth public com.oracle.truffle.api.nodes.GraphPrintVisitor endGraph()

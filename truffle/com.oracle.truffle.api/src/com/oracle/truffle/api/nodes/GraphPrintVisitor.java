@@ -435,37 +435,25 @@ public class GraphPrintVisitor implements Closeable {
         }
     }
 
-    /**
-     * @deprecated to be removed
-     */
-    @Deprecated
-    protected Object getElementByObject(Object obj) {
-        return getElementByObjectImpl(obj);
-    }
-
-    final NodeElement getElementByObjectImpl(Object obj) {
+    final NodeElement getElementByObject(Object obj) {
         return nodeMap.get(obj);
     }
 
-    /**
-     * @deprecated to be removed
-     */
-    @Deprecated
-    protected void createElementForNode(Object node) {
+    final void createElementForNode(Object node) {
         boolean exists = nodeMap.containsKey(node);
         if (!exists) {
             int nodeId = !exists ? oldOrNextId(node) : nextId();
             nodeMap.put(node, new NodeElement(nodeId));
 
-            setNodePropertyImpl(node, "name", node.getClass().getSimpleName().replaceFirst("Node$", ""));
+            setNodeProperty(node, "name", node.getClass().getSimpleName().replaceFirst("Node$", ""));
             NodeInfo nodeInfo = node.getClass().getAnnotation(NodeInfo.class);
             if (nodeInfo != null) {
-                setNodePropertyImpl(node, "cost", nodeInfo.cost());
+                setNodeProperty(node, "cost", nodeInfo.cost());
                 if (!nodeInfo.shortName().isEmpty()) {
-                    setNodePropertyImpl(node, "shortName", nodeInfo.shortName());
+                    setNodeProperty(node, "shortName", nodeInfo.shortName());
                 }
             }
-            setNodePropertyImpl(node, "class", node.getClass().getSimpleName());
+            setNodeProperty(node, "class", node.getClass().getSimpleName());
             if (node instanceof Node) {
                 readNodeProperties((Node) node);
                 copyDebugProperties((Node) node);
@@ -473,23 +461,15 @@ public class GraphPrintVisitor implements Closeable {
         }
     }
 
-    /**
-     * @deprecated to be removed
-     */
-    @Deprecated
-    protected void setNodeProperty(Object node, String propertyName, Object value) {
-        setNodePropertyImpl(node, propertyName, value);
-    }
-
-    final void setNodePropertyImpl(Object node, String propertyName, Object value) {
-        NodeElement nodeElem = getElementByObjectImpl(node);
+    final void setNodeProperty(Object node, String propertyName, Object value) {
+        NodeElement nodeElem = getElementByObject(node);
         nodeElem.getProperties().put(propertyName, value);
     }
 
     private void copyDebugProperties(Node node) {
         Map<String, Object> debugProperties = node.getDebugProperties();
         for (Map.Entry<String, Object> property : debugProperties.entrySet()) {
-            setNodePropertyImpl(node, property.getKey(), property.getValue());
+            setNodeProperty(node, property.getKey(), property.getValue());
         }
     }
 
@@ -498,25 +478,17 @@ public class GraphPrintVisitor implements Closeable {
         for (NodeFieldAccessor field : fields) {
             if (field.getKind() == NodeFieldKind.DATA) {
                 String key = field.getName();
-                if (!getElementByObjectImpl(node).getProperties().containsKey(key)) {
+                if (!getElementByObject(node).getProperties().containsKey(key)) {
                     Object value = field.loadValue(node);
-                    setNodePropertyImpl(node, key, value);
+                    setNodeProperty(node, key, value);
                 }
             }
         }
     }
 
-    /**
-     * @deprecated to be removed
-     */
-    @Deprecated
-    protected void connectNodes(Object a, Object b, String label) {
-        connectNodesImpl(a, b, label);
-    }
-
-    final void connectNodesImpl(Object a, Object b, String label) {
-        NodeElement fromNode = getElementByObjectImpl(a);
-        NodeElement toNode = getElementByObjectImpl(b);
+    final void connectNodes(Object a, Object b, String label) {
+        NodeElement fromNode = getElementByObject(a);
+        NodeElement toNode = getElementByObject(b);
         if (fromNode == null || toNode == null) {
             return;
         }
@@ -538,7 +510,7 @@ public class GraphPrintVisitor implements Closeable {
         }
 
         // if node is visited once again, skip
-        if (getElementByObjectImpl(node) != null) {
+        if (getElementByObject(node) != null) {
             return this;
         }
 
@@ -621,19 +593,19 @@ public class GraphPrintVisitor implements Closeable {
         }
 
         public void connectNodes(Object node, Object child) {
-            GraphPrintVisitor.this.connectNodesImpl(node, child, null);
+            GraphPrintVisitor.this.connectNodes(node, child, null);
         }
 
         public void connectNodes(Object node, Object child, String label) {
-            GraphPrintVisitor.this.connectNodesImpl(node, child, label);
+            GraphPrintVisitor.this.connectNodes(node, child, label);
         }
 
         public void setNodeProperty(Object node, String propertyName, Object value) {
-            GraphPrintVisitor.this.setNodePropertyImpl(node, propertyName, value);
+            GraphPrintVisitor.this.setNodeProperty(node, propertyName, value);
         }
 
         public boolean visited(Object node) {
-            return GraphPrintVisitor.this.getElementByObjectImpl(node) != null;
+            return GraphPrintVisitor.this.getElementByObject(node) != null;
         }
     }
 
