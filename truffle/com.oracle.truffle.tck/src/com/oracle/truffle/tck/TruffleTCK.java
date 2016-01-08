@@ -60,7 +60,7 @@ import com.oracle.truffle.tck.Schema.Type;
  * {@link TruffleLanguage language implementation} compliance. If you want your language to be
  * compliant with most recent requirements of the Truffle infrastructure and tooling, subclass,
  * implement <b>protected</b> methods and include in your test suite:
- * 
+ *
  * <pre>
  * <b>public class</b> MyLanguageTCKTest <b>extends</b> {@link TruffleTCK} {
  *   {@link Override @Override}
@@ -77,7 +77,7 @@ import com.oracle.truffle.tck.Schema.Type;
  *   <em>// and so on...</em>
  * }
  * </pre>
- * 
+ *
  * The <em>TCK</em> is carefully designed to accommodate differences between languages. The
  * <em>TCK</em> doesn't dictate what object your language is using to represent {@link Number
  * numbers} or {@link String strings} internally. The <em>TCK</em> doesn't prescribe the precise
@@ -89,7 +89,7 @@ import com.oracle.truffle.tck.Schema.Type;
  * <em>TCK</em> should be applicable to wide range of languages. Should there be a test that cannot
  * be implemented in your language, it can be suppressed by overriding its test method and doing
  * nothing:
- * 
+ *
  * <pre>
  *   {@link Override @Override}
  *   <b>public void</b> {@link #testFortyTwo() testFortyTwo}() {
@@ -861,7 +861,7 @@ public abstract class TruffleTCK {
         }
 
         Language language = vm().getLanguages().get(mimeType());
-        assertNotNull("Langugage for " + mimeType() + " found", language);
+        assertNotNull("Language for " + mimeType() + " found", language);
 
         PolyglotEngine.Value function = vm().findGlobalSymbol(globalObjectFunction);
         Object global = function.execute().get();
@@ -871,7 +871,7 @@ public abstract class TruffleTCK {
     @Test
     public void testEvaluateSource() throws Exception {
         Language language = vm().getLanguages().get(mimeType());
-        assertNotNull("Langugage for " + mimeType() + " found", language);
+        assertNotNull("Language for " + mimeType() + " found", language);
 
         PolyglotEngine.Value function = vm().findGlobalSymbol(evaluateSource());
         assertNotNull(evaluateSource() + " found", function);
