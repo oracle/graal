@@ -30,6 +30,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.lang.reflect.Field;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrument.Instrumenter;
@@ -47,33 +48,34 @@ public class NodeExecCounterTest {
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
         final NodeExecCounter tool = new NodeExecCounter();
-        assertEquals(tool.getCounts().length, 0);
+        assertEquals(0, tool.getCounts().length);
         instrumenter.install(tool);
-        assertEquals(tool.getCounts().length, 0);
+        assertEquals(0, tool.getCounts().length);
         tool.setEnabled(false);
-        assertEquals(tool.getCounts().length, 0);
+        assertEquals(0, tool.getCounts().length);
         tool.setEnabled(true);
-        assertEquals(tool.getCounts().length, 0);
+        assertEquals(0, tool.getCounts().length);
         tool.reset();
-        assertEquals(tool.getCounts().length, 0);
+        assertEquals(0, tool.getCounts().length);
         tool.dispose();
-        assertEquals(tool.getCounts().length, 0);
+        assertEquals(0, tool.getCounts().length);
     }
 
     void checkCounts(NodeExecCounter execTool, int addCount, int valueCount) {
         NodeExecutionCount[] counts = execTool.getCounts();
-        assertEquals(counts.length, 2);
+        assertEquals(2, counts.length);
         for (NodeExecutionCount counter : counts) {
             if (counter.nodeClass() == ToolTestUtil.TestAdditionNode.class) {
-                assertEquals(counter.executionCount(), addCount);
+                assertEquals(addCount, counter.executionCount());
             } else if (counter.nodeClass() == ToolTestUtil.TestValueNode.class) {
-                assertEquals(counter.executionCount(), valueCount);
+                assertEquals(valueCount, counter.executionCount());
             } else {
                 fail("correct classes counted");
             }
         }
     }
 
+    @Ignore("GRAAL-1385")
     @Test
     public void testCounting() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
         final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
@@ -84,19 +86,19 @@ public class NodeExecCounterTest {
         final NodeExecCounter execTool = new NodeExecCounter();
         instrumenter.install(execTool);
 
-        assertEquals(execTool.getCounts().length, 0);
+        assertEquals(0, execTool.getCounts().length);
 
-        assertEquals(vm.eval(source).get(), 13);
+        assertEquals(13, vm.eval(source).get());
 
         checkCounts(execTool, 1, 2);
 
         for (int i = 0; i < 99; i++) {
-            assertEquals(vm.eval(source).get(), 13);
+            assertEquals(13, vm.eval(source).get());
         }
         checkCounts(execTool, 100, 200);
 
         execTool.setEnabled(false);
-        assertEquals(vm.eval(source).get(), 13);
+        assertEquals(13, vm.eval(source).get());
         checkCounts(execTool, 100, 200);
 
         execTool.dispose();
