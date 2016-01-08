@@ -155,6 +155,12 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
     }
 
     private void visitDeoptBegin(AbstractBeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, JavaConstant speculation, StructuredGraph graph) {
+        if (deoptBegin.predecessor() instanceof AbstractBeginNode) {
+            /* Walk up chains of LoopExitNodes to the "real" BeginNode that leads to deoptimization. */
+            visitDeoptBegin((AbstractBeginNode) deoptBegin.predecessor(), deoptAction, deoptReason, speculation, graph);
+            return;
+        }
+
         if (deoptBegin instanceof AbstractMergeNode) {
             AbstractMergeNode mergeNode = (AbstractMergeNode) deoptBegin;
             Debug.log("Visiting %s", mergeNode);
