@@ -91,8 +91,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @see Assumption
  */
 public abstract class Profile extends NodeCloneable {
-    private static final boolean ENABLED;
-    static {
+    static boolean isProfilingEnabled() {
         boolean enabled;
         try {
             enabled = Truffle.getRuntime().isProfilingEnabled();
@@ -100,11 +99,7 @@ public abstract class Profile extends NodeCloneable {
             // running on old version of Graal
             enabled = true;
         }
-        ENABLED = enabled;
-    }
-
-    static boolean isProfilingEnabled() {
-        return ENABLED;
+        return enabled;
     }
 
     Profile() {
