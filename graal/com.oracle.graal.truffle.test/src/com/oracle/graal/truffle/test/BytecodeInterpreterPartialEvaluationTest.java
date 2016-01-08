@@ -22,17 +22,11 @@
  */
 package com.oracle.graal.truffle.test;
 
-import java.util.Random;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.truffle.PartialEvaluator;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -72,6 +66,28 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     }
 
     public static boolean TRACE = false;
+
+    /*
+     * A method with a non-exploded loop, which goes away after loop unrolling as long as the
+     * parameter is a compilation constant. The method is called from multiple places to inject
+     * additional loops into the test cases, i.e., to stress the partial evaluator and compiler
+     * optimizations.
+     */
+    static int nonExplodedLoop(int x) {
+        if (x >= 0 && x < 50) {
+            int result = 0;
+            for (int i = 0; i < x; i++) {
+                result++;
+                if (result > 100) {
+                    /* Dead branch because result < 50, just to complicate the loop structure. */
+                    CompilerDirectives.transferToInterpreter();
+                }
+            }
+            return result;
+        } else {
+            return x;
+        }
+    }
 
     public static class Program extends RootNode {
         private final String name;
@@ -124,7 +140,9 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
             trace("Start program");
             int topOfStack = -1;
             int bci = 0;
-            outer: while (true) {
+            int result = 0;
+            boolean running = true;
+            outer: while (running) {
                 CompilerAsserts.partialEvaluationConstant(bci);
                 byte bc = bytecodes[bci];
                 byte value = 0;
@@ -132,13 +150,15 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                     case Bytecode.CONST:
                         value = bytecodes[bci + 1];
                         trace("%d (%d): CONST %s", bci, topOfStack, value);
-                        setInt(frame, ++topOfStack, value);
+                        setInt(frame, ++topOfStack, nonExplodedLoop(value));
                         bci = bci + 2;
                         continue;
 
                     case Bytecode.RETURN:
                         trace("%d (%d): RETURN", bci, topOfStack);
-                        return getInt(frame, topOfStack);
+                        result = nonExplodedLoop(getInt(frame, topOfStack));
+                        running = false;
+                        continue;
 
                     case Bytecode.ADD: {
                         int left = getInt(frame, topOfStack);
@@ -167,18 +187,11 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         for (int i = 0; i < value; ++i) {
                             if (switchValue == i) {
                                 bci = bytecodes[bci + i + 2];
-                                // Need this seemingly useless condition here for two reasons:
-                                // 1. Bytecode analysis will consider the current block as
-                                // being within the inner loop.
-                                // 2. The if body will be an empty block that directly
-                                // jumps to the begin of the outer loop.
-                                if (i != -1) {
-                                    continue outer;
-                                }
+                                continue outer;
                             }
                         }
                         // Continue with the code after the switch.
-                        bci += value + 1;
+                        bci += value + 2;
                         continue;
 
                     case Bytecode.POP:
@@ -200,6 +213,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         continue;
                 }
             }
+            return nonExplodedLoop(result);
         }
     }
 
@@ -391,7 +405,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
             @Override
             public boolean execute(VirtualFrame frame) {
-                frame.setInt(slot, value);
+                frame.setInt(slot, nonExplodedLoop(value));
                 return true;
             }
 
@@ -512,7 +526,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                     ip = inst[ip].getFalseSucc();
                 }
             }
-            return FrameUtil.getIntSafe(frame, returnSlot);
+            return nonExplodedLoop(FrameUtil.getIntSafe(frame, returnSlot));
         }
     }
 
@@ -529,55 +543,6 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         /* 4: */new Inst.Const(returnSlot, 42, 5),
         /* 5: */new Inst.Return()};
         assertPartialEvalEqualsAndRunsCorrect(new InstArrayProgram("instArraySimpleIfProgram", inst, returnSlot, fd));
-    }
-
-    /**
-     * Slightly modified version to expose a partial evaluation bug with ExplodeLoop(merge=true).
-     */
-    public static class InstArrayProgram2 extends InstArrayProgram {
-        public InstArrayProgram2(String name, Inst[] inst, FrameSlot returnSlot, FrameDescriptor fd) {
-            super(name, inst, returnSlot, fd);
-        }
-
-        @Override
-        @ExplodeLoop(merge = true)
-        public Object execute(VirtualFrame frame) {
-            int ip = 0;
-            while (ip != -1) {
-                CompilerAsserts.partialEvaluationConstant(ip);
-                if (inst[ip].execute(frame)) {
-                    ip = inst[ip].getTrueSucc();
-                } else {
-                    ip = inst[ip].getFalseSucc();
-                }
-            }
-            if (frame.getArguments().length > 0) {
-                return new Random();
-            } else {
-                return FrameUtil.getIntSafe(frame, returnSlot);
-            }
-        }
-    }
-
-    @Ignore("produces a bad graph")
-    @Test
-    public void instArraySimpleIfProgram2() {
-        FrameDescriptor fd = new FrameDescriptor();
-        FrameSlot value1Slot = fd.addFrameSlot("value1", FrameSlotKind.Int);
-        FrameSlot value2Slot = fd.addFrameSlot("value2", FrameSlotKind.Int);
-        FrameSlot returnSlot = fd.addFrameSlot("return", FrameSlotKind.Int);
-        Inst[] inst = new Inst[]{
-        /* 0: */new Inst.Const(value1Slot, 100, 1),
-        /* 1: */new Inst.Const(value2Slot, 100, 2),
-        /* 2: */new Inst.IfLt(value1Slot, value2Slot, 3, 5),
-        /* 3: */new Inst.Const(returnSlot, 41, 4),
-        /* 4: */new Inst.Return(),
-        /* 5: */new Inst.Const(returnSlot, 42, 6),
-        /* 6: */new Inst.Return()};
-        InstArrayProgram program = new InstArrayProgram2("instArraySimpleIfProgram2", inst, returnSlot, fd);
-        program.execute(Truffle.getRuntime().createVirtualFrame(new Object[0], fd));
-        program.execute(Truffle.getRuntime().createVirtualFrame(new Object[1], fd));
-        assertPartialEvalEqualsAndRunsCorrect(program);
     }
 
     @Test
@@ -600,8 +565,26 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         /* 13: */42,
         /* 14: */Bytecode.RETURN};
         Program program = new Program("simpleSwitchProgram", bytecodes, 0, 3);
-        try (OverrideScope s = OptionValue.override(PartialEvaluator.GraphPE, false)) {
-            assertPartialEvalEqualsAndRunsCorrect(program);
-        }
+        assertPartialEvalEqualsAndRunsCorrect(program);
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void loopSwitchProgram() {
+        byte[] bytecodes = new byte[]{
+        /* 0: */Bytecode.CONST,
+        /* 1: */1,
+        /* 2: */Bytecode.SWITCH,
+        /* 3: */2,
+        /* 4: */0,
+        /* 5: */9,
+        /* 6: */Bytecode.CONST,
+        /* 7: */40,
+        /* 8: */Bytecode.RETURN,
+        /* 9: */Bytecode.CONST,
+        /* 10: */42,
+        /* 11: */Bytecode.RETURN};
+        Program program = new Program("loopSwitchProgram", bytecodes, 0, 3);
+        assertPartialEvalEqualsAndRunsCorrect(program);
     }
 }
