@@ -320,7 +320,7 @@ graal_bootstrap_tests = [
 ]
 
 def _graal_gate_runner(args, tasks):
-    compiler_gate_runner(['graal'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    compiler_gate_runner(['graal', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 mx_gate.add_gate_argument('--extra-vm-argument', action='append', help='add extra vm argument to gate tasks if applicable (multiple occurrences allowed)')
@@ -395,6 +395,8 @@ def _translateGOption(arg):
             mx.abort('Mixing - and = in -G: option specification: ' + arg)
         arg = '-Dgraal.option.' + arg[len('-G:+'):] + '=false'
     elif arg.startswith('-G:'):
+        if '=' not in arg:
+            mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
         arg = '-Dgraal.option.' + arg[len('-G:'):]
     return arg
 

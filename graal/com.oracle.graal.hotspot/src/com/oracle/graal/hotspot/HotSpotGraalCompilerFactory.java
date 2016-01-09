@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.options.OptionValue.PROFILE_OPTIONVALUE_PROPERTY_NAME;
 import static jdk.vm.ci.inittimer.InitTimer.timer;
 
 import java.io.File;
@@ -49,6 +50,25 @@ import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
+
+    /**
+     * The name of the system property specifying a file containing extra Graal option settings.
+     */
+    private static final String GRAAL_OPTIONS_FILE_PROPERTY_NAME = "graal.options.file";
+
+    /**
+     * The prefix for system properties that correspond to {@link Option} annotated fields. A field
+     * named {@code MyOption} will have its value set from a system property with the name
+     * {@code GRAAL_OPTION_PROPERTY_PREFIX + "MyOption"}.
+     */
+    public static final String GRAAL_OPTION_PROPERTY_PREFIX = "graal.option.";
+
+    /**
+     * Gets the system property assignment that would set the current value for a given option.
+     */
+    public static String asSystemPropertySetting(OptionValue<?> value) {
+        return GRAAL_OPTION_PROPERTY_PREFIX + value.getName() + "=" + value.getValue();
+    }
 
     static {
         initializeOptions();
@@ -81,10 +101,10 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
 
     /**
      * Parses the options in the file denoted by the {@linkplain VM#getSavedProperty(String) saved}
-     * system property named {@code "graal.options.file"} if the file exists followed by the options
-     * encoded in saved system properties whose names start with {@code "graal.option."}. Key/value
-     * pairs are parsed from the file denoted by {@code "graal.options.file"} with
-     * {@link Properties#load(java.io.Reader)}.
+     * system property named {@value HotSpotGraalCompilerFactory#GRAAL_OPTIONS_FILE_PROPERTY_NAME}
+     * if the file exists followed by the options encoded in saved system properties whose names
+     * start with {@code "graal.option."}. Key/value pairs are parsed from the file denoted by
+     * {@code "graal.options.file"} with {@link Properties#load(java.io.Reader)}.
      */
     @SuppressWarnings("try")
     private static void initializeOptions() {
@@ -92,7 +112,7 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
             boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
             GraalJarsOptionDescriptorsProvider odp = jdk8OrEarlier ? GraalJarsOptionDescriptorsProvider.create() : null;
 
-            String optionsFile = System.getProperty("graal.options.file");
+            String optionsFile = System.getProperty(GRAAL_OPTIONS_FILE_PROPERTY_NAME);
 
             if (optionsFile != null) {
                 File graalOptions = new File(optionsFile);
@@ -120,9 +140,13 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
             Map<String, String> optionSettings = new HashMap<>();
             for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
                 String name = (String) e.getKey();
-                if (name.startsWith("graal.option.")) {
-                    String value = (String) e.getValue();
-                    optionSettings.put(name.substring("graal.option.".length()), value);
+                if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
+                    if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(PROFILE_OPTIONVALUE_PROPERTY_NAME)) {
+                        // Ignore well known properties that do not denote an option
+                    } else {
+                        String value = (String) e.getValue();
+                        optionSettings.put(name.substring(GRAAL_OPTION_PROPERTY_PREFIX.length()), value);
+                    }
                 }
             }
 

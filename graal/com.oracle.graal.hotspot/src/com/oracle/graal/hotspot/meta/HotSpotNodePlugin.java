@@ -31,9 +31,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
@@ -41,7 +39,6 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
-import com.oracle.graal.replacements.NodeIntrinsificationPlugin;
 import com.oracle.graal.replacements.WordOperationPlugin;
 import com.oracle.graal.word.Word;
 
@@ -55,24 +52,19 @@ import com.oracle.graal.word.Word;
  * necessary because HotSpot only uses the {@link Word} type in methods that are force-inlined,
  * i.e., there are never non-inlined invokes that involve the {@link Word} type.
  * <p>
- * Handling of {@link Fold} and {@link NodeIntrinsic} annotated methods, by forwarding to the
- * {@link NodeIntrinsificationPlugin} when parsing intrinsic functions.
- * <p>
  * Constant folding of field loads.
  */
 public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
     protected final WordOperationPlugin wordOperationPlugin;
-    protected final NodeIntrinsificationPlugin nodeIntrinsificationPlugin;
 
-    public HotSpotNodePlugin(WordOperationPlugin wordOperationPlugin, NodeIntrinsificationPlugin nodeIntrinsificationPlugin) {
+    public HotSpotNodePlugin(WordOperationPlugin wordOperationPlugin) {
         this.wordOperationPlugin = wordOperationPlugin;
-        this.nodeIntrinsificationPlugin = nodeIntrinsificationPlugin;
     }
 
     @Override
     public boolean canChangeStackKind(GraphBuilderContext b) {
         if (b.parsingIntrinsic()) {
-            return wordOperationPlugin.canChangeStackKind(b) || nodeIntrinsificationPlugin.canChangeStackKind(b);
+            return wordOperationPlugin.canChangeStackKind(b);
         }
         return false;
     }
@@ -88,9 +80,6 @@ public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
     @Override
     public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         if (b.parsingIntrinsic() && wordOperationPlugin.handleInvoke(b, method, args)) {
-            return true;
-        }
-        if (b.parsingIntrinsic() && nodeIntrinsificationPlugin.handleInvoke(b, method, args)) {
             return true;
         }
         return false;

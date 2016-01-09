@@ -52,7 +52,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useT
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeTlabTop;
-import static com.oracle.graal.hotspot.replacements.NewObjectSnippetsOptions.ProfileAllocations;
 import static com.oracle.graal.nodes.PiArrayNode.piArrayCast;
 import static com.oracle.graal.nodes.PiNode.piCast;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
@@ -156,7 +155,7 @@ public class NewObjectSnippets implements Snippets {
 
     @Fold
     static boolean doProfile() {
-        return ProfileAllocations.getValue();
+        return HotspotSnippetsOptions.ProfileAllocations.getValue();
     }
 
     protected static void profileAllocation(String path, long size, String typeContext) {
@@ -506,7 +505,7 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("fillContents", newInstanceNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("constantSize", true);
-            args.addConst("typeContext", ProfileAllocations.getValue() ? type.toJavaName(false) : "");
+            args.addConst("typeContext", HotspotSnippetsOptions.ProfileAllocations.getValue() ? type.toJavaName(false) : "");
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, args);
@@ -536,7 +535,7 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("fillContents", newArrayNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("typeContext", ProfileAllocations.getValue() ? arrayType.toJavaName(false) : "");
+            args.addConst("typeContext", HotspotSnippetsOptions.ProfileAllocations.getValue() ? arrayType.toJavaName(false) : "");
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);

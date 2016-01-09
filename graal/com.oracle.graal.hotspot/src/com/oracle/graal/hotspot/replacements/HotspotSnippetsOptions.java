@@ -27,12 +27,12 @@ import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 
 /**
- * Options related to {@link InstanceOfSnippets}.
+ * Options related to HotSpot snippets in this package.
  *
  * Note: This must be a top level class to work around for <a
  * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
  */
-class InstanceOfSnippetsOptions {
+class HotspotSnippetsOptions {
 
     // @formatter:off
     @Option(help = "If the probability that a type check will hit one the profiled types (up to " +
@@ -42,5 +42,23 @@ class InstanceOfSnippetsOptions {
     @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
                     "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Expert)
     static final OptionValue<Integer> TypeCheckMaxHints = new OptionValue<>(2);
-    // @formatter:on
+
+    @Option(help = "Use a VM runtime call to load and clear the exception object from the thread at the start of a compiled exception handler.", type = OptionType.Debug)
+    static final OptionValue<Boolean> LoadExceptionObjectInVM = new OptionValue<>(false);
+
+    @Option(help = "Enable profiling of allocation sites.", type = OptionType.Debug)
+    static final OptionValue<Boolean> ProfileAllocations = new OptionValue<>(false);
+
+    @Option(help = "Enable profiling of monitor operations.", type = OptionType.Debug)
+    static final OptionValue<Boolean> ProfileMonitors = new OptionValue<>(false);
+
+    @Option(help = "Trace monitor operations on objects whose type contains this substring.", type = OptionType.Debug)
+    static final OptionValue<String> TraceMonitorsTypeFilter = new OptionValue<>(null);
+
+    @Option(help = "Trace monitor operations in methods whose fully qualified name contains this substring.", type = OptionType.Debug)
+    static final OptionValue<String> TraceMonitorsMethodFilter = new OptionValue<>(null);
+
+    @Option(help = "Emit extra code to dynamically check monitor operations are balanced.", type = OptionType.Debug)
+    static final OptionValue<Boolean> VerifyBalancedMonitors = new OptionValue<>(false);
+    //@formatter:on
 }

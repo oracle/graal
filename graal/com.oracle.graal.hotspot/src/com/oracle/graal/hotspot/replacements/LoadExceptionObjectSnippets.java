@@ -65,7 +65,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
     /**
      * Alternative way to implement exception object loading.
      */
-    private static final boolean USE_C_RUNTIME = Boolean.getBoolean("graal.loadExceptionObject.useCRuntime");
+    private static final boolean USE_C_RUNTIME = HotspotSnippetsOptions.LoadExceptionObjectInVM.getValue();
 
     @Snippet
     public static Object loadException(@ConstantParameter Register threadRegister) {

@@ -58,6 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
@@ -109,6 +110,8 @@ import com.oracle.graal.nodes.spi.ArrayLengthProvider;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.MemoryProxy;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.common.FloatingReadPhase;
@@ -133,7 +136,6 @@ import com.oracle.graal.word.WordBase;
  */
 public class SnippetTemplate {
 
-    private static final boolean EAGER_SNIPPETS = Boolean.getBoolean("graal.snippets.eager");
     private boolean mayRemoveLocation = false;
 
     /**
@@ -527,15 +529,19 @@ public class SnippetTemplate {
     private static final DebugTimer SnippetTemplateCreationTime = Debug.timer("SnippetTemplateCreationTime");
     private static final DebugMetric SnippetTemplates = Debug.metric("SnippetTemplateCount");
 
-    private static final String MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME = "graal.maxTemplatesPerSnippet";
-    private static final int MaxTemplatesPerSnippet = Integer.getInteger(MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME, 50);
+    static class Options {
+        @Option(help = "Use a LRU cache for snippet templates.")//
+        static final OptionValue<Boolean> UseSnippetTemplateCache = new OptionValue<>(true);
+
+        @Option(help = "")//
+        static final OptionValue<Integer> MaxTemplatesPerSnippet = new OptionValue<>(50);
+    }
 
     /**
      * Base class for snippet classes. It provides a cache for {@link SnippetTemplate}s.
      */
     public abstract static class AbstractTemplates implements com.oracle.graal.api.replacements.SnippetTemplateCache {
 
-        static final boolean UseSnippetTemplateCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetTemplateCache", "true"));
         protected final Providers providers;
         protected final SnippetReflectionProvider snippetReflection;
         protected final TargetDescription target;
@@ -545,8 +551,9 @@ public class SnippetTemplate {
             this.providers = providers;
             this.snippetReflection = snippetReflection;
             this.target = target;
-            if (UseSnippetTemplateCache) {
-                this.templates = Collections.synchronizedMap(new LRUCache<>(MaxTemplatesPerSnippet, MaxTemplatesPerSnippet));
+            if (Options.UseSnippetTemplateCache.getValue()) {
+                int size = Options.MaxTemplatesPerSnippet.getValue();
+                this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
             } else {
                 this.templates = null;
             }
@@ -574,7 +581,7 @@ public class SnippetTemplate {
             assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
             providers.getReplacements().registerSnippet(javaMethod);
-            if (EAGER_SNIPPETS) {
+            if (GraalOptions.EagerSnippets.getValue()) {
                 return new EagerSnippetInfo(javaMethod, privateLocations);
             } else {
                 return new LazySnippetInfo(javaMethod, privateLocations);
@@ -586,12 +593,12 @@ public class SnippetTemplate {
          */
         @SuppressWarnings("try")
         protected SnippetTemplate template(final Arguments args) {
-            SnippetTemplate template = UseSnippetTemplateCache && args.cacheable ? templates.get(args.cacheKey) : null;
+            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue() && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetTemplates.increment();
                 try (DebugCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
                     template = new SnippetTemplate(providers, snippetReflection, args);
-                    if (UseSnippetTemplateCache && args.cacheable) {
+                    if (Options.UseSnippetTemplateCache.getValue() && args.cacheable) {
                         templates.put(args.cacheKey, template);
                     }
                 } catch (Throwable e) {

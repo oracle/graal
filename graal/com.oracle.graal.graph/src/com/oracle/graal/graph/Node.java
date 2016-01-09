@@ -100,7 +100,7 @@ import com.oracle.graal.nodeinfo.Verbosity;
 public abstract class Node implements Cloneable, Formattable {
 
     public static final NodeClass<?> TYPE = null;
-    public static final boolean USE_UNSAFE_TO_CLONE = Boolean.parseBoolean(System.getProperty("graal.node.useUnsafeToClone", "true"));
+    public static final boolean USE_UNSAFE_TO_CLONE = Graph.Options.CloneNodesWithUnsafe.getValue();
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;

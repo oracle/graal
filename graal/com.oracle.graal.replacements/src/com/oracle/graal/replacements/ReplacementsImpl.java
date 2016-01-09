@@ -24,6 +24,7 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DeoptALot;
 import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
+import static com.oracle.graal.compiler.common.GraalOptions.UseSnippetGraphCache;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
@@ -318,7 +319,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         this.snippetTemplateCache = CollectionsFactory.newMap();
     }
 
-    private static final boolean UseSnippetGraphCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetGraphCache", "true"));
     private static final DebugTimer SnippetPreparationTime = Debug.timer("SnippetPreparationTime");
 
     /**
@@ -348,12 +348,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
-        StructuredGraph graph = UseSnippetGraphCache ? graphs.get(method) : null;
+        StructuredGraph graph = UseSnippetGraphCache.getValue() ? graphs.get(method) : null;
         if (graph == null) {
             try (DebugCloseable a = SnippetPreparationTime.start()) {
                 StructuredGraph newGraph = makeGraph(method, args, recursiveEntry);
                 Debug.metric("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
-                if (!UseSnippetGraphCache || args != null) {
+                if (!UseSnippetGraphCache.getValue() || args != null) {
                     return newGraph;
                 }
                 graphs.putIfAbsent(method, newGraph);
