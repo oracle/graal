@@ -27,6 +27,7 @@ import java.util.List;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -62,8 +63,8 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
-    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor,
-                    ValueNode... arguments) {
+    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls,
+                    ForeignCallDescriptor descriptor, ValueNode... arguments) {
         ForeignCallNode node = new ForeignCallNode(foreignCalls, descriptor, arguments);
         node.setStamp(returnStamp);
 
@@ -77,7 +78,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
             node.setBci(nonIntrinsicAncestor.bci());
         }
 
-        JavaKind returnKind = returnStamp.getStackKind();
+        JavaKind returnKind = targetMethod.getSignature().getReturnKind();
         if (returnKind == JavaKind.Void) {
             b.add(node);
         } else {

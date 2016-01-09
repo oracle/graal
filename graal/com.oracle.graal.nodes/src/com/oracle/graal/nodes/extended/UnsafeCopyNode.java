@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -36,8 +37,8 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
  */
 public final class UnsafeCopyNode {
 
-    public static boolean intrinsify(GraphBuilderContext b, ValueNode sourceObject, ValueNode sourceOffset, ValueNode destinationObject, ValueNode destinationOffset, JavaKind accessKind,
-                    LocationIdentity locationIdentity) {
+    public static boolean intrinsify(GraphBuilderContext b, @SuppressWarnings("unused") ResolvedJavaMethod targetMethod, ValueNode sourceObject, ValueNode sourceOffset, ValueNode destinationObject,
+                    ValueNode destinationOffset, JavaKind accessKind, LocationIdentity locationIdentity) {
         UnsafeLoadNode value = b.add(new UnsafeLoadNode(sourceObject, sourceOffset, accessKind, locationIdentity));
         b.add(new UnsafeStoreNode(destinationObject, destinationOffset, value, accessKind, locationIdentity));
         return true;

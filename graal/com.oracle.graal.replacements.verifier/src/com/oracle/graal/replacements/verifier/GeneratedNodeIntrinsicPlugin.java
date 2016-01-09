@@ -155,13 +155,13 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
         @Override
         protected List<? extends VariableElement> getParameters() {
             List<? extends VariableElement> ret = customFactory.getParameters();
-            // remove initial GraphBuilderContext parameter
-            return ret.subList(1, ret.size());
+            // remove initial GraphBuilderContext and ResolvedJavaMethod parameters
+            return ret.subList(2, ret.size());
         }
 
         @Override
         protected void factoryCall(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argCount) {
-            out.printf("            return %s.%s(b", customFactory.getEnclosingElement(), customFactory.getSimpleName());
+            out.printf("            return %s.%s(b, targetMethod", customFactory.getEnclosingElement(), customFactory.getSimpleName());
             for (int i = 0; i < argCount; i++) {
                 out.printf(", arg%d", i);
             }

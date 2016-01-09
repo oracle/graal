@@ -69,6 +69,10 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
         return env.getElementUtils().getTypeElement("jdk.vm.ci.meta.ResolvedJavaType").asType();
     }
 
+    private TypeMirror resolvedJavaMethodType() {
+        return env.getElementUtils().getTypeElement("jdk.vm.ci.meta.ResolvedJavaMethod").asType();
+    }
+
     private TypeMirror structuralInputType() {
         return env.getElementUtils().getTypeElement("com.oracle.graal.nodeinfo.StructuralInput").asType();
     }
@@ -202,7 +206,7 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
         List<String> failureReasons = new ArrayList<>();
 
         for (ExecutableElement constructor : constructors) {
-            String failureReason = matchSignature(false, constructor, signature);
+            String failureReason = matchSignature(0, constructor, signature);
             if (failureReason == null) {
                 // found
                 return constructor;
@@ -230,7 +234,7 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
                 continue;
             }
 
-            if (method.getParameters().isEmpty()) {
+            if (method.getParameters().size() < 2) {
                 continue;
             }
 
@@ -239,7 +243,12 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
                 continue;
             }
 
-            String failureReason = matchSignature(true, method, signature);
+            VariableElement secondArg = method.getParameters().get(1);
+            if (!isTypeCompatible(secondArg.asType(), resolvedJavaMethodType())) {
+                continue;
+            }
+
+            String failureReason = matchSignature(2, method, signature);
             if (failureReason == null) {
                 // found
                 return method;
@@ -249,9 +258,9 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
         return null;
     }
 
-    private String matchSignature(boolean skipFirst, ExecutableElement method, TypeMirror[] signature) {
+    private String matchSignature(int numSkippedParameters, ExecutableElement method, TypeMirror[] signature) {
         int sIdx = 0;
-        int cIdx = skipFirst ? 1 : 0;
+        int cIdx = numSkippedParameters;
         while (cIdx < method.getParameters().size()) {
             VariableElement parameter = method.getParameters().get(cIdx++);
             if (parameter.getAnnotation(InjectedNodeParameter.class) != null) {
