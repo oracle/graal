@@ -55,6 +55,10 @@ public class Graph {
         public static final OptionValue<Boolean> VerifyGraalGraphs = new OptionValue<>(true);
         @Option(help = "Perform expensive verification of graph inputs, usages, successors and predecessors", type = OptionType.Debug)//
         public static final OptionValue<Boolean> VerifyGraalGraphEdges = new OptionValue<>(false);
+        @Option(help = "Graal graph compression is performed when percent of live nodes falls below this value", type = OptionType.Debug)//
+        public static final OptionValue<Integer> GraphCompressionThreshold = new OptionValue<>(70);
+        @Option(help = "Use Unsafe to clone graph nodes thus avoiding copying fields that will be re-initialized anyway", type = OptionType.Debug)//
+        public static final OptionValue<Boolean> CloneNodesWithUnsafe = new OptionValue<>(true);
     }
 
     public final String name;
@@ -751,11 +755,7 @@ public class Graph {
 
     static final Node PLACE_HOLDER = new PlaceHolderNode();
 
-    /**
-     * When the percent of live nodes in {@link #nodes} fall below this number, a call to
-     * {@link #maybeCompress()} will actually do compression.
-     */
-    public static final int COMPRESSION_THRESHOLD = Integer.getInteger("graal.graphCompressionThreshold", 70);
+    public static final int COMPRESSION_THRESHOLD = Options.GraphCompressionThreshold.getValue();
 
     private static final DebugMetric GraphCompressions = Debug.metric("GraphCompressions");
 

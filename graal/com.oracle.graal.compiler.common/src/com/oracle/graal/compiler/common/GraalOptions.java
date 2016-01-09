@@ -302,11 +302,14 @@ public final class GraalOptions {
     @Option(help = "Generate SSA LIR.", type = OptionType.Debug)
     public static final OptionValue<Boolean> SSA_LIR = new OptionValue<>(true);
 
-    /**
-     * Counts the various paths taken through snippets.
-     */
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Enable counters for various paths in snippets.", type = OptionType.Debug)
     public static final OptionValue<Boolean> SnippetCounters = new OptionValue<>(false);
+
+    @Option(help = "Eagerly construct extra snippet info.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> EagerSnippets = new OptionValue<>(false);
+
+    @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> UseSnippetGraphCache = new OptionValue<>(true);
 
     @Option(help = "Enable expensive assertions", type = OptionType.Debug)
     public static final OptionValue<Boolean> DetailedAsserts = new StableOptionValue<Boolean>() {

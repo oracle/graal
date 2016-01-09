@@ -127,7 +127,7 @@ public class NewInstanceStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return Boolean.getBoolean("graal.logNewInstanceStub");
+        return StubOptions.TraceNewInstanceStub.getValue();
     }
 
     /**
@@ -295,7 +295,7 @@ public class NewInstanceStub extends SnippetStub {
 
     @Fold
     static boolean forceSlowPath() {
-        return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
+        return StubOptions.ForceUseOfNewInstanceStub.getValue();
     }
 
     public static final ForeignCallDescriptor NEW_INSTANCE_C = newDescriptor(NewInstanceStub.class, "newInstanceC", void.class, Word.class, KlassPointer.class);

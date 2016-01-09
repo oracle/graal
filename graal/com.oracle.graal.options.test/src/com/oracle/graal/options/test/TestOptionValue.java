@@ -117,11 +117,11 @@ public class TestOptionValue {
 
     @Test
     public void toStringTest() {
-        assertEquals("com.oracle.graal.options.test.TestOptionValue$Options.Mutable=original", Mutable.toString());
+        assertEquals("Mutable=original", Mutable.toString());
         try (OverrideScope s1 = OptionValue.override(Mutable, "override1")) {
-            assertEquals("com.oracle.graal.options.test.TestOptionValue$Options.Mutable=override1", Mutable.toString());
+            assertEquals("Mutable=override1", Mutable.toString());
             try (OverrideScope s2 = OptionValue.override(Mutable, "override2")) {
-                assertEquals("com.oracle.graal.options.test.TestOptionValue$Options.Mutable=override2", Mutable.toString());
+                assertEquals("Mutable=override2", Mutable.toString());
             }
         }
     }

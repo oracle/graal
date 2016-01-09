@@ -45,6 +45,10 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.unlo
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useBiasedLocking;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
+import static com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions.ProfileMonitors;
+import static com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions.TraceMonitorsMethodFilter;
+import static com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions.TraceMonitorsTypeFilter;
+import static com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions.VerifyBalancedMonitors;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
@@ -96,9 +100,6 @@ import com.oracle.graal.nodes.java.RawMonitorEnterNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.type.StampTool;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.replacements.Log;
 import com.oracle.graal.replacements.Snippet;
@@ -129,25 +130,25 @@ import com.oracle.graal.word.WordBase;
  *             JavaThread*:23 epoch:2 age:4    biased_lock:1 lock:2 (biased object)
  *             size:32 ------------------------------------------>| (CMS free block)
  *             PromotedObject*:29 ---------->| promo_bits:3 ----->| (CMS promoted object)
- *
+ * 
  *  64 bits:
  *  --------
  *  unused:25 hash:31 -->| unused:1   age:4    biased_lock:1 lock:2 (normal object)
  *  JavaThread*:54 epoch:2 unused:1   age:4    biased_lock:1 lock:2 (biased object)
  *  PromotedObject*:61 --------------------->| promo_bits:3 ----->| (CMS promoted object)
  *  size:64 ----------------------------------------------------->| (CMS free block)
- *
+ * 
  *  unused:25 hash:31 -->| cms_free:1 age:4    biased_lock:1 lock:2 (COOPs && normal object)
  *  JavaThread*:54 epoch:2 cms_free:1 age:4    biased_lock:1 lock:2 (COOPs && biased object)
  *  narrowOop:32 unused:24 cms_free:1 unused:4 promo_bits:3 ----->| (COOPs && CMS promoted object)
  *  unused:21 size:35 -->| cms_free:1 unused:7 ------------------>| (COOPs && CMS free block)
- *
+ * 
  *  - hash contains the identity hash value: largest value is
  *    31 bits, see os::random().  Also, 64-bit vm's require
  *    a hash value no bigger than 32 bits because they will not
  *    properly generate a mask larger than that: see library_call.cpp
  *    and c1_CodePatterns_sparc.cpp.
- *
+ * 
  *  - the biased lock pattern is used to bias a lock toward a given
  *    thread. When this pattern is set in the low three bits, the lock
  *    is either biased toward a given thread or "anonymously" biased,
@@ -156,12 +157,12 @@ import com.oracle.graal.word.WordBase;
  *    be performed by that thread without using atomic operations.
  *    When a lock's bias is revoked, it reverts back to the normal
  *    locking scheme described below.
- *
+ * 
  *    Note that we are overloading the meaning of the "unlocked" state
  *    of the header. Because we steal a bit from the age we can
  *    guarantee that the bias pattern will never be seen for a truly
  *    unlocked object.
- *
+ * 
  *    Note also that the biased state contains the age bits normally
  *    contained in the object header. Large increases in scavenge
  *    times were seen when these bits were absent and an arbitrary age
@@ -172,18 +173,18 @@ import com.oracle.graal.word.WordBase;
  *    a very large value (currently 128 bytes (32bVM) or 256 bytes (64bVM))
  *    to make room for the age bits & the epoch bits (used in support of
  *    biased locking), and for the CMS "freeness" bit in the 64bVM (+COOPs).
- *
+ * 
  *    [JavaThread* | epoch | age | 1 | 01]       lock is biased toward given thread
  *    [0           | epoch | age | 1 | 01]       lock is anonymously biased
- *
+ * 
  *  - the two lock bits are used to describe three states: locked/unlocked and monitor.
- *
+ * 
  *    [ptr             | 00]  locked             ptr points to real header on stack
  *    [header      | 0 | 01]  unlocked           regular object header
  *    [ptr             | 10]  monitor            inflated lock (header is wapped out)
  *    [ptr             | 11]  marked             used by markSweep to mark an object
  *                                               not valid at any other time
- *
+ * 
  *    We assume that stack/thread pointers have the lowest two bits cleared.
  * </pre>
  *
@@ -192,33 +193,12 @@ import com.oracle.graal.word.WordBase;
  */
 public class MonitorSnippets implements Snippets {
 
-    public static class Options {
-
-        //@formatter:off
-        @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> ProfileMonitors = new OptionValue<>(false);
-        //@formatter:on
-    }
-
     private static final boolean PROFILE_CONTEXT = false;
 
     @Fold
     static boolean doProfile() {
-        return Options.ProfileMonitors.getValue();
+        return ProfileMonitors.getValue();
     }
-
-    /**
-     * Monitor operations on objects whose type contains this substring will be traced.
-     */
-    private static final String TRACE_TYPE_FILTER = System.getProperty("graal.monitors.trace.typeFilter");
-
-    /**
-     * Monitor operations in methods whose fully qualified name contains this substring will be
-     * traced.
-     */
-    private static final String TRACE_METHOD_FILTER = System.getProperty("graal.monitors.trace.methodFilter");
-
-    public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
     public static void monitorenter(Object object, KlassPointer hub, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister,
@@ -509,8 +489,10 @@ public class MonitorSnippets implements Snippets {
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word mark, Word tmp, Word value);
 
+    private static final boolean VERIFY_BALANCED_MONITORS = VerifyBalancedMonitors.getValue();
+
     public static void incCounter() {
-        if (CHECK_BALANCED_MONITORS) {
+        if (VERIFY_BALANCED_MONITORS) {
             final Word counter = MonitorCounterNode.counter();
             final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
             counter.writeInt(0, count + 1, MONITOR_COUNTER_LOCATION);
@@ -518,7 +500,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     public static void decCounter() {
-        if (CHECK_BALANCED_MONITORS) {
+        if (VERIFY_BALANCED_MONITORS) {
             final Word counter = MonitorCounterNode.counter();
             final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
             counter.writeInt(0, count - 1, MONITOR_COUNTER_LOCATION);
@@ -596,30 +578,32 @@ public class MonitorSnippets implements Snippets {
 
         public static boolean isTracingEnabledForType(ValueNode object) {
             ResolvedJavaType type = StampTool.typeOrNull(object.stamp());
-            if (TRACE_TYPE_FILTER == null) {
+            String filter = TraceMonitorsTypeFilter.getValue();
+            if (filter == null) {
                 return false;
             } else {
-                if (TRACE_TYPE_FILTER.length() == 0) {
+                if (filter.length() == 0) {
                     return true;
                 }
                 if (type == null) {
                     return false;
                 }
-                return (type.getName().contains(TRACE_TYPE_FILTER));
+                return (type.getName().contains(filter));
             }
         }
 
         public static boolean isTracingEnabledForMethod(ResolvedJavaMethod method) {
-            if (TRACE_METHOD_FILTER == null) {
+            String filter = TraceMonitorsMethodFilter.getValue();
+            if (filter == null) {
                 return false;
             } else {
-                if (TRACE_METHOD_FILTER.length() == 0) {
+                if (filter.length() == 0) {
                     return true;
                 }
                 if (method == null) {
                     return false;
                 }
-                return (method.format("%H.%n").contains(TRACE_METHOD_FILTER));
+                return (method.format("%H.%n").contains(filter));
             }
         }
 
@@ -628,7 +612,7 @@ public class MonitorSnippets implements Snippets {
          * return points of the graph to initialize and check the monitor counter respectively.
          */
         private void checkBalancedMonitors(StructuredGraph graph, LoweringTool tool) {
-            if (CHECK_BALANCED_MONITORS) {
+            if (VERIFY_BALANCED_MONITORS) {
                 NodeIterable<MonitorCounterNode> nodes = graph.getNodes().filter(MonitorCounterNode.class);
                 if (nodes.isEmpty()) {
                     // Only insert the nodes if this is the first monitorenter being lowered.

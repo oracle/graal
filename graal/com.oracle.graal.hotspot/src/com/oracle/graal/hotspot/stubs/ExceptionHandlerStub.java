@@ -134,7 +134,7 @@ public class ExceptionHandlerStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return Boolean.getBoolean("graal.logExceptionHandlerStub");
+        return StubOptions.TraceExceptionHandlerStub.getValue();
     }
 
     /**

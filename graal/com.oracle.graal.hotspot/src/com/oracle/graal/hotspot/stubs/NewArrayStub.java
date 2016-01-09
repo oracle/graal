@@ -85,7 +85,7 @@ public class NewArrayStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return Boolean.getBoolean("graal.logNewArrayStub");
+        return StubOptions.TraceNewArrayStub.getValue();
     }
 
     /**

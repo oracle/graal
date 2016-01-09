@@ -97,7 +97,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return Boolean.getBoolean("graal.logUnwindExceptionToCallerStub");
+        return StubOptions.TraceUnwindStub.getValue();
     }
 
     /**
