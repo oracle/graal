@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.nodes.graphbuilderconf;
 
+import java.lang.reflect.Method;
+
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.nodes.ValueNode;
@@ -29,4 +33,15 @@ import com.oracle.graal.nodes.ValueNode;
 public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
 
     public abstract boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args);
+
+    @Override
+    public StackTraceElement getApplySourceLocation(MetaAccessProvider metaAccess) {
+        Class<?> c = getClass();
+        for (Method m : c.getDeclaredMethods()) {
+            if (m.getName().equals("execute")) {
+                return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
+            }
+        }
+        throw new JVMCIError("could not find method named \"execute\" in " + c.getName());
+    }
 }
