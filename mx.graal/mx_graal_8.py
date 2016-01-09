@@ -395,6 +395,8 @@ def _translateGOption(arg):
             mx.abort('Mixing - and = in -G: option specification: ' + arg)
         arg = '-Dgraal.option.' + arg[len('-G:+'):] + '=false'
     elif arg.startswith('-G:'):
+        if '=' not in arg:
+            mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
         arg = '-Dgraal.option.' + arg[len('-G:'):]
     return arg
 
