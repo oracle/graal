@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,14 @@
  */
 package com.oracle.graal.compiler.sparc;
 
+import java.util.ListIterator;
+
 import com.oracle.graal.java.DefaultSuitesProvider;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import com.oracle.graal.phases.tiers.LowTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 
 public class SPARCSuitesProvider extends DefaultSuitesProvider {
@@ -35,7 +40,9 @@ public class SPARCSuitesProvider extends DefaultSuitesProvider {
     @Override
     public Suites createSuites() {
         Suites s = super.createSuites();
-        s.getLowTier().appendPhase(new SPARCSubIntCompareCanonicalizationPhase());
+        ListIterator<BasePhase<? super LowTierContext>> l = s.getLowTier().findPhase(SchedulePhase.class);
+        l.previous();
+        l.add(new SPARCSubIntCompareCanonicalizationPhase());
         return s;
     }
 }
