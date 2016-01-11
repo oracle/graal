@@ -92,23 +92,21 @@ import java.math.BigInteger;
 public final class SLContext extends ExecutionContext {
     private static final Layout LAYOUT = Layout.createLayout();
 
-    private final SLLanguage language;
     private final BufferedReader input;
     private final PrintWriter output;
     private final SLFunctionRegistry functionRegistry;
     private final Shape emptyShape;
     private final TruffleLanguage.Env env;
 
-    public SLContext(SLLanguage language, TruffleLanguage.Env env, BufferedReader input, PrintWriter output) {
-        this(language, env, input, output, true);
+    public SLContext(TruffleLanguage.Env env, BufferedReader input, PrintWriter output) {
+        this(env, input, output, true);
     }
 
-    public SLContext(SLLanguage language) {
-        this(language, null, null, null, false);
+    public SLContext() {
+        this(null, null, null, false);
     }
 
-    private SLContext(SLLanguage language, TruffleLanguage.Env env, BufferedReader input, PrintWriter output, boolean installBuiltins) {
-        this.language = language;
+    private SLContext(TruffleLanguage.Env env, BufferedReader input, PrintWriter output, boolean installBuiltins) {
         this.input = input;
         this.output = output;
         this.env = env;
@@ -139,10 +137,6 @@ public final class SLContext extends ExecutionContext {
      */
     public SLFunctionRegistry getFunctionRegistry() {
         return functionRegistry;
-    }
-
-    public SLLanguage getLanguage() {
-        return language;
     }
 
     /**

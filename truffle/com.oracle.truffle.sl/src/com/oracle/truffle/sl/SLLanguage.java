@@ -209,7 +209,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     protected SLContext createContext(Env env) {
         final BufferedReader in = new BufferedReader(new InputStreamReader(env.in()));
         final PrintWriter out = new PrintWriter(env.out(), true);
-        SLContext context = new SLContext(this, env, in, out);
+        SLContext context = new SLContext(env, in, out);
         for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
             context.installBuiltin(builtin, true);
         }
@@ -411,7 +411,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             return cached;
         }
         parsingCount++;
-        final SLContext c = new SLContext(this);
+        final SLContext c = new SLContext();
         final Exception[] failed = {null};
         try {
             c.evalSource(code);
