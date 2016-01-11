@@ -389,15 +389,15 @@ def _translateGOption(arg):
     if arg.startswith('-G:+'):
         if '=' in arg:
             mx.abort('Mixing + and = in -G: option specification: ' + arg)
-        arg = '-Dgraal.option.' + arg[len('-G:+'):] + '=true'
+        arg = '-Dgraal.' + arg[len('-G:+'):] + '=true'
     elif arg.startswith('-G:-'):
         if '=' in arg:
             mx.abort('Mixing - and = in -G: option specification: ' + arg)
-        arg = '-Dgraal.option.' + arg[len('-G:+'):] + '=false'
+        arg = '-Dgraal.' + arg[len('-G:+'):] + '=false'
     elif arg.startswith('-G:'):
         if '=' not in arg:
             mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
-        arg = '-Dgraal.option.' + arg[len('-G:'):]
+        arg = '-Dgraal.' + arg[len('-G:'):]
     return arg
 
 def run_vm(*positionalargs, **kwargs):

@@ -57,11 +57,16 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
     private static final String GRAAL_OPTIONS_FILE_PROPERTY_NAME = "graal.options.file";
 
     /**
+     * The name of the system property specifying the Graal version.
+     */
+    private static final String GRAAL_VERSION_PROPERTY_NAME = "graal.version";
+
+    /**
      * The prefix for system properties that correspond to {@link Option} annotated fields. A field
      * named {@code MyOption} will have its value set from a system property with the name
      * {@code GRAAL_OPTION_PROPERTY_PREFIX + "MyOption"}.
      */
-    public static final String GRAAL_OPTION_PROPERTY_PREFIX = "graal.option.";
+    public static final String GRAAL_OPTION_PROPERTY_PREFIX = "graal.";
 
     /**
      * Gets the system property assignment that would set the current value for a given option.
@@ -141,7 +146,7 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
             for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
                 String name = (String) e.getKey();
                 if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
-                    if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(PROFILE_OPTIONVALUE_PROPERTY_NAME)) {
+                    if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(GRAAL_VERSION_PROPERTY_NAME) || name.equals(PROFILE_OPTIONVALUE_PROPERTY_NAME)) {
                         // Ignore well known properties that do not denote an option
                     } else {
                         String value = (String) e.getValue();
