@@ -23,30 +23,31 @@
 package com.oracle.graal.compiler;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugInitializationPropertyProvider;
+import com.oracle.graal.debug.Debug.Params;
+import com.oracle.graal.debug.DebugInitializationParticipant;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
 /**
- * Sets system properties used in the initialization of {@link Debug} based on the values specified
- * for various {@link GraalDebugConfig} options.
+ * A service provider that may modify the initialization of {@link Debug} based on the values
+ * specified for various {@link GraalDebugConfig} options.
  */
-@ServiceProvider(DebugInitializationPropertyProvider.class)
-public class GraalDebugInitializationPropertyProvider implements DebugInitializationPropertyProvider {
+@ServiceProvider(DebugInitializationParticipant.class)
+public class GraalDebugInitializationParticipant implements DebugInitializationParticipant {
 
     @Override
-    public void apply() {
+    public void apply(Params params) {
         if (GraalDebugConfig.areDebugScopePatternsEnabled()) {
-            System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
+            params.enable = true;
         }
         if ("".equals(GraalDebugConfig.Options.Meter.getValue())) {
-            System.setProperty(Debug.ENABLE_UNSCOPED_METRICS_PROPERTY_NAME, "true");
+            params.enableUnscopedMetrics = true;
         }
         if ("".equals(GraalDebugConfig.Options.Time.getValue())) {
-            System.setProperty(Debug.ENABLE_UNSCOPED_TIMERS_PROPERTY_NAME, "true");
+            params.enableUnscopedTimers = true;
         }
         if ("".equals(GraalDebugConfig.Options.TrackMemUse.getValue())) {
-            System.setProperty(Debug.ENABLE_UNSCOPED_MEM_USE_TRACKERS_PROPERTY_NAME, "true");
+            params.enableUnscopedMemUseTrackers = true;
         }
     }
 }

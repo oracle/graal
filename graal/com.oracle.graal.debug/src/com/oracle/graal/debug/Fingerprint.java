@@ -44,8 +44,6 @@ public class Fingerprint implements AutoCloseable {
         public static final OptionValue<Integer> FingerprintingBreakpointEvent = new OptionValue<>(-1);
     }
 
-    // public static final String ENABLED_PROPERTY_NAME = "jvmci.fingerprint";
-
     /**
      * Determines whether fingerprinting is enabled.
      */

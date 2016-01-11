@@ -22,9 +22,15 @@
  */
 package com.oracle.graal.debug;
 
+import com.oracle.graal.debug.Debug.Params;
+
 /**
- * Sets one or more system properties used during initialization of the {@link Debug} class.
+ * Defines a service that can modify the {@linkplain Params parameters} for {@link Debug}.
  */
-public interface DebugInitializationPropertyProvider {
-    void apply();
+public interface DebugInitializationParticipant {
+
+    /**
+     * Modifies the given {@link Debug} initialization parameters as necessary.
+     */
+    void apply(Params params);
 }

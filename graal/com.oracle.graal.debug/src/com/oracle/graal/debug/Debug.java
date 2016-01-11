@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.debug;
 
-import static com.oracle.graal.debug.Debug.Initialization.INITIALIZER_PROPERTY_NAME;
 import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
 import static java.util.FormattableFlags.LEFT_JUSTIFY;
@@ -50,42 +49,46 @@ import com.oracle.graal.debug.internal.MetricImpl;
 import com.oracle.graal.debug.internal.TimerImpl;
 
 /**
- * Scope based debugging facility. This facility is {@link #isEnabled()} if assertions are enabled
- * for the {@link Debug} class or the {@value Initialization#INITIALIZER_PROPERTY_NAME} system
- * property is {@code "true"} when {@link Debug} is initialized.
+ * Scope based debugging facility.
+ *
+ * This facility is {@linkplain #isEnabled() enabled} if any of the following hold when the
+ * {@link Debug} class is initialized:
+ * <ul>
+ * <li>assertions are enabled for the {@link Debug} class</li>
+ * <li>{@link Debug#params}{@code .enable} is {@code true}</li>
+ * </ul>
  */
 public class Debug {
 
+    private static final Params params = new Params();
+
     static {
-        for (DebugInitializationPropertyProvider p : Services.load(DebugInitializationPropertyProvider.class)) {
-            p.apply();
+        // Load the service providers that may want to modify any of the
+        // parameters encapsulated by the Initialization class below.
+        for (DebugInitializationParticipant p : Services.load(DebugInitializationParticipant.class)) {
+            p.apply(params);
+        }
+        if (!params.enable && (params.enableUnscopedMetrics || params.enableUnscopedTimers || params.enableUnscopedMemUseTrackers)) {
+            params.enable = true;
         }
     }
 
     /**
-     * Class to assist with initialization of {@link Debug}.
+     * The parameters for configuring the initialization of {@link Debug} class.
      */
-    public static class Initialization {
+    public static class Params {
 
-        public static final String INITIALIZER_PROPERTY_NAME = "jvmci.debug.enable";
-
-        private static boolean initialized;
-
-        /**
-         * Determines if {@link Debug} has been initialized.
-         */
-        public static boolean isDebugInitialized() {
-            return initialized;
-        }
-
+        public boolean enable;
+        public boolean enableUnscopedTimers;
+        public boolean enableUnscopedMetrics;
+        public boolean enableUnscopedMemUseTrackers;
     }
 
     @SuppressWarnings("all")
     private static boolean initialize() {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
-        Initialization.initialized = true;
-        return assertionsEnabled || Boolean.getBoolean(INITIALIZER_PROPERTY_NAME);
+        return assertionsEnabled || params.enable;
     }
 
     private static final boolean ENABLED = initialize();
@@ -1118,7 +1121,7 @@ public class Debug {
 
     /**
      * Creates a {@linkplain DebugMetric metric} that is enabled iff debugging is
-     * {@linkplain #isEnabled() enabled} or the system property whose name is formed by adding to
+     * {@linkplain #isEnabled() enabled} or the system property whose name is formed by adding
      * {@value #ENABLE_METRIC_PROPERTY_NAME_PREFIX} to {@code name} is
      * {@linkplain Boolean#getBoolean(String) true}. If the latter condition is true, then the
      * returned metric is {@linkplain DebugMetric#isConditional() unconditional} otherwise it is
@@ -1347,19 +1350,15 @@ public class Debug {
         }
     };
 
-    public static final String ENABLE_UNSCOPED_TIMERS_PROPERTY_NAME = "jvmci.debug.unscopedTimers";
-    public static final String ENABLE_UNSCOPED_METRICS_PROPERTY_NAME = "jvmci.debug.unscopedMetrics";
-    public static final String ENABLE_UNSCOPED_MEM_USE_TRACKERS_PROPERTY_NAME = "jvmci.debug.unscopedMemUseTrackers";
-
     /**
      * @see #timer(CharSequence)
      */
-    public static final String ENABLE_TIMER_PROPERTY_NAME_PREFIX = "jvmci.debug.timer.";
+    public static final String ENABLE_TIMER_PROPERTY_NAME_PREFIX = "graaldebug.timer.";
 
     /**
      * @see #metric(CharSequence)
      */
-    public static final String ENABLE_METRIC_PROPERTY_NAME_PREFIX = "jvmci.debug.metric.";
+    public static final String ENABLE_METRIC_PROPERTY_NAME_PREFIX = "graaldebug.metric.";
 
     /**
      * Set of unconditionally enabled metrics. Possible values and their meanings:
@@ -1392,15 +1391,15 @@ public class Debug {
         parseMetricAndTimerSystemProperties(metrics, timers, enabledMetricsSubstrings, enabledTimersSubstrings);
         metrics = metrics.isEmpty() && enabledMetricsSubstrings.isEmpty() ? null : metrics;
         timers = timers.isEmpty() && enabledTimersSubstrings.isEmpty() ? null : timers;
-        if (metrics == null && Boolean.getBoolean(ENABLE_UNSCOPED_METRICS_PROPERTY_NAME)) {
+        if (metrics == null && params.enableUnscopedMetrics) {
             metrics = Collections.emptySet();
         }
-        if (timers == null && Boolean.getBoolean(ENABLE_UNSCOPED_TIMERS_PROPERTY_NAME)) {
+        if (timers == null && params.enableUnscopedTimers) {
             timers = Collections.emptySet();
         }
         enabledMetrics = metrics;
         enabledTimers = timers;
-        isUnconditionalMemUseTrackingEnabled = Boolean.getBoolean(ENABLE_UNSCOPED_MEM_USE_TRACKERS_PROPERTY_NAME);
+        isUnconditionalMemUseTrackingEnabled = params.enableUnscopedMemUseTrackers;
     }
 
     private static boolean findMatch(Set<String> haystack, Set<String> haystackSubstrings, String needle) {
@@ -1459,7 +1458,7 @@ public class Debug {
 
     /**
      * Creates a {@linkplain DebugTimer timer} that is enabled iff debugging is
-     * {@linkplain #isEnabled() enabled} or the system property whose name is formed by adding to
+     * {@linkplain #isEnabled() enabled} or the system property whose name is formed by adding
      * {@value #ENABLE_TIMER_PROPERTY_NAME_PREFIX} to {@code name} is
      * {@linkplain Boolean#getBoolean(String) true}. If the latter condition is true, then the
      * returned timer is {@linkplain DebugMetric#isConditional() unconditional} otherwise it is
