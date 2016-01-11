@@ -27,7 +27,7 @@ import java.util.ListIterator;
 import com.oracle.graal.java.DefaultSuitesProvider;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.phases.common.ExpandLogicPhase;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.tiers.LowTierContext;
 import com.oracle.graal.phases.tiers.Suites;
@@ -40,7 +40,7 @@ public class SPARCSuitesProvider extends DefaultSuitesProvider {
     @Override
     public Suites createSuites() {
         Suites s = super.createSuites();
-        ListIterator<BasePhase<? super LowTierContext>> l = s.getLowTier().findPhase(SchedulePhase.class);
+        ListIterator<BasePhase<? super LowTierContext>> l = s.getLowTier().findPhase(ExpandLogicPhase.class);
         l.previous();
         l.add(new SPARCSubIntCompareCanonicalizationPhase());
         return s;
