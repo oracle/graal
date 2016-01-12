@@ -24,9 +24,6 @@ package com.oracle.graal.phases.common.inlining;
 
 import java.util.Map;
 
-import jdk.vm.ci.code.BailoutException;
-
-import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
@@ -51,14 +48,13 @@ public class InliningPhase extends AbstractInliningPhase {
          * the inlining call tree exploration can be wide enough to prevent inlining from completing
          * in reasonable time.
          */
-        @Option(help = "Per-compilation method inlining limit before bailing out (use 0 to disable)", type = OptionType.Debug)//
+        @Option(help = "Per-compilation method inlining exploration limit before giving up (use 0 to disable)", type = OptionType.Debug)//
         public static final OptionValue<Integer> MethodInlineBailoutLimit = new OptionValue<>(5000);
     }
 
     private final InliningPolicy inliningPolicy;
     private final CanonicalizerPhase canonicalizer;
 
-    private int inliningCount;
     private int maxMethodPerInlining = Integer.MAX_VALUE;
 
     public InliningPhase(CanonicalizerPhase canonicalizer) {
@@ -76,10 +72,6 @@ public class InliningPhase extends AbstractInliningPhase {
 
     public void setMaxMethodsPerInlining(int max) {
         maxMethodPerInlining = max;
-    }
-
-    public int getInliningCount() {
-        return inliningCount;
     }
 
     /**
@@ -100,16 +92,16 @@ public class InliningPhase extends AbstractInliningPhase {
         while (data.hasUnprocessedGraphs()) {
             boolean wasInlined = data.moveForward();
             assert data.repOK();
-            if (wasInlined) {
-                count++;
+            count++;
+            if (!wasInlined) {
                 if (limit > 0 && count == limit) {
-                    throw new BailoutException("Reached method inline limit %d%nInvocation stack:%n  %s", limit, Util.join(data.getInvocationStackTrace(), "\n  "));
+                    // Limit the amount of exploration which is done
+                    break;
                 }
             }
         }
 
-        inliningCount += count;
-        assert data.inliningDepth() == 0;
-        assert data.graphCount() == 0;
+        assert data.inliningDepth() == 0 || count == limit;
+        assert data.graphCount() == 0 || count == limit;
     }
 }
