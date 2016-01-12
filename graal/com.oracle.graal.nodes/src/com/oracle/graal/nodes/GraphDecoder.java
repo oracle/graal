@@ -1137,7 +1137,11 @@ public class GraphDecoder {
             visited.mark(loopEnd);
         }
 
-        List<ControlSplitNode> controlSplits = new ArrayList<>();
+        /*
+         * All nodes that get added to that list, and that do not get marked as being in our loop,
+         * need to be preceded by a LoopExitNode.
+         */
+        List<Node> possibleExitSuccessors = new ArrayList<>();
 
         while (!stack.isEmpty()) {
             Node current = stack.pop();
@@ -1154,11 +1158,27 @@ public class GraphDecoder {
                         if (!visited.isMarked(innerLoopBegin)) {
                             stack.push(innerLoopBegin);
                             visited.mark(innerLoopBegin);
+
+                            /*
+                             * All loop exits of the inner loop possibly need a LoopExit of our
+                             * loop. Because we are processing inner loops first, we are guaranteed
+                             * to already have all exits of the inner loop.
+                             */
+                            for (LoopExitNode exit : innerLoopBegin.loopExits()) {
+                                if (!visited.isMarked(exit)) {
+                                    possibleExitSuccessors.add(exit);
+                                }
+                            }
                         }
+
                     } else {
                         if (pred instanceof ControlSplitNode) {
                             ControlSplitNode controlSplitNode = (ControlSplitNode) pred;
-                            controlSplits.add(controlSplitNode);
+                            for (Node succ : controlSplitNode.cfgSuccessors()) {
+                                if (!visited.isMarked(succ)) {
+                                    possibleExitSuccessors.add(succ);
+                                }
+                            }
                         }
                         stack.push(pred);
                     }
@@ -1166,14 +1186,16 @@ public class GraphDecoder {
             }
         }
 
-        for (ControlSplitNode controlSplit : controlSplits) {
-            for (Node succ : controlSplit.cfgSuccessors()) {
-                if (!visited.isMarked(succ)) {
-                    LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
-                    FixedNode next = ((FixedWithNextNode) succ).next();
-                    next.replaceAtPredecessor(loopExit);
-                    loopExit.setNext(next);
-                }
+        for (Node succ : possibleExitSuccessors) {
+            /*
+             * Now we have the definitive isMarked information. A node can get marked after the
+             * initial check for isMarked when we added a node to the list.
+             */
+            if (!visited.isMarked(succ)) {
+                LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                FixedNode next = ((FixedWithNextNode) succ).next();
+                next.replaceAtPredecessor(loopExit);
+                loopExit.setNext(next);
             }
         }
     }
