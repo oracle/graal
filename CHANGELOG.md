@@ -2,8 +2,9 @@
 
 This changelog summarizes major changes between Graal versions relevant to developers building technology on top of Graal. The main focus is on APIs exported by Graal but other significant performance/stability changes are mentioned as well.
 
-## `tip`
-...
+## Version 0.12
+* Added initial code for AArch64 port.
+* Moved @ServiceProvider mechanism from JVMCI to Graal.
 
 ## Version 0.11
 23-Dec-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal-compiler/shortlog/graal-0.11)
