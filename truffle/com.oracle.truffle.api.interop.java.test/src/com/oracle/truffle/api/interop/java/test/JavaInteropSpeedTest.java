@@ -101,7 +101,7 @@ public class JavaInteropSpeedTest {
         if (javaTime < 1) {
             javaTime = 1;
         }
-        if (interopTime > 6 * javaTime) {
+        if (interopTime > 10 * javaTime) {
             fail("Interop took too long: " + interopTime + " ms, while java only " + javaTime + " ms");
         }
     }
