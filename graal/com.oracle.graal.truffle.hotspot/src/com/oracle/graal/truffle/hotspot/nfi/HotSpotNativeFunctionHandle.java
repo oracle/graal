@@ -32,6 +32,7 @@ import jdk.vm.ci.meta.JavaKind;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.nfi.api.NativeFunctionHandle;
+import com.oracle.truffle.api.CompilerDirectives;
 
 public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
 
@@ -72,6 +73,7 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
             traceResult(res);
             return res;
         } catch (InvalidInstalledCodeException e) {
+            CompilerDirectives.transferToInterpreter();
             throw JVMCIError.shouldNotReachHere("Execution of GNFI Callstub failed: " + name);
         }
     }
