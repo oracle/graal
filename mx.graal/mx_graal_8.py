@@ -31,7 +31,7 @@ import sanitycheck
 import re
 
 import mx
-from mx_jvmci import JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, VM, relativeVmLibDirInJdk, isJVMCIEnabled
+from mx_jvmci import JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, _JVMCI_JDK_TAG, VM, relativeVmLibDirInJdk, isJVMCIEnabled
 from mx_jvmci import get_vm as _jvmci_get_vm
 from mx_jvmci import run_vm as _jvmci_run_vm
 from mx_gate import Task
@@ -445,6 +445,58 @@ class GraalArchiveParticipant(JVMCIArchiveParticipant):
             provider = arcname[:-len('.class'):].replace('/', '.')
             self.services.setdefault('com.oracle.graal.options.OptionDescriptors', []).append(provider)
         return JVMCIArchiveParticipant.__add__(self, arcname, contents)
+
+"""
+The Graal JDK(s).
+"""
+_graal_jdks = {}
+
+def get_graal_jdk():
+    """
+    Gets a Graal JDK which adds support for handling the -G format of Graal options.
+    """
+    jvmci_jdk = get_jvmci_jdk()
+    if jvmci_jdk.javaCompliance < '9':
+        # jvmci-8
+        from mx_jvmci import check_VM_exists, JVMCIJDKConfig # pylint: disable=no-name-in-module
+        vmbuild = jvmci_jdk.vmbuild
+        check_VM_exists(get_vm(), jvmci_jdk.home, vmbuild)
+        jdk = _graal_jdks.get(vmbuild)
+        if jdk is None:
+            class GraalJDK8Config(JVMCIJDKConfig):
+                def __init__(self, vmbuild):
+                    JVMCIJDKConfig.__init__(self, vmbuild)
+
+                def parseVmArgs(self, args, addDefaultArgs=True):
+                    return JVMCIJDKConfig.parseVmArgs(self, map(_translateGOption, args), addDefaultArgs=addDefaultArgs)
+
+            jdk = GraalJDK8Config(vmbuild)
+            _graal_jdks[vmbuild] = jdk
+    else:
+        # jvmci-9
+        jdk = _graal_jdks.get('default')
+        if jdk is None:
+            from mx_jvmci import JVMCI9JDKConfig # pylint: disable=no-name-in-module
+            class GraalJDK9Config(JVMCI9JDKConfig):
+                def __init__(self, debugLevel):
+                    JVMCI9JDKConfig.__init__(self, debugLevel)
+
+                def parseVmArgs(self, args, addDefaultArgs=True):
+                    return JVMCI9JDKConfig.parseVmArgs(self, map(_translateGOption, args), addDefaultArgs=addDefaultArgs)
+            jdk = GraalJDK9Config(jvmci_jdk.debugLevel)
+            _graal_jdks['default'] = jdk
+    return jdk
+
+class GraalJDKFactory(mx.JDKFactory):
+    def getJDKConfig(self):
+        return get_graal_jdk()
+
+    def description(self):
+        return "Graal JDK"
+
+# This will override the 'generic' JVMCI JDK with a Graal JVMCI JDK that has
+# support for -G style Graal options.
+mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance('9' if isinstance(_jvmci_get_vm(), VM) else '8'), GraalJDKFactory())
 
 def mx_post_parse_cmd_line(opts):
     add_bootclasspath_prepend(mx.distribution('truffle:TRUFFLE_API'))

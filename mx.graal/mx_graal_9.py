@@ -361,12 +361,12 @@ def run_java(jdk, args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeo
     cmd = [jdk.java] + ['-' + get_vm()] + jvmciModeArgs + args
     return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
-_GRAAL_JVMCI_TAG = 'graal'
+_JVMCI_JDK_TAG = 'jvmci'
 
 class GraalJVMCI9JDKConfig(mx.JDKConfig):
     def __init__(self, original):
         self._original = original
-        mx.JDKConfig.__init__(self, original.home, tag=_GRAAL_JVMCI_TAG)
+        mx.JDKConfig.__init__(self, original.home, tag=_JVMCI_JDK_TAG)
 
     def run_java(self, args, **kwArgs):
         run_java(self._original, args, **kwArgs)
@@ -378,7 +378,9 @@ class GraalJDKFactory(mx.JDKFactory):
     def description(self):
         return "JVMCI JDK with Graal"
 
-mx.addJDKFactory(_GRAAL_JVMCI_TAG, mx.JavaCompliance('9'), GraalJDKFactory())
+# This will override the 'generic' JVMCI JDK with a Graal JVMCI JDK that has
+# support for -G style Graal options.
+mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance('9'), GraalJDKFactory())
 
 def run_vm(args, vm=None, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
