@@ -29,6 +29,7 @@ import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.code.CompilationRequestFailure;
 import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -84,7 +85,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
     @Override
     @SuppressWarnings("try")
-    public void compileMethod(CompilationRequest request) {
+    public CompilationRequestFailure compileMethod(CompilationRequest request) {
         // Ensure a debug configuration for this thread is initialized
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
             DebugEnvironment.initialize(TTY.out);
@@ -92,7 +93,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
         CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotCompilationRequest) request, true, true);
         try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig())) {
-            task.runCompilation();
+            return task.runCompilation();
         }
     }
 

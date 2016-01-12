@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationRequestFailure;
 import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
@@ -153,7 +154,7 @@ public class CompilationTask {
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 
     @SuppressWarnings("try")
-    public void runCompilation() {
+    public CompilationRequestFailure runCompilation() {
         HotSpotVMConfig config = jvmciRuntime.getConfig();
         final long threadId = Thread.currentThread().getId();
         long startCompilationTime = System.nanoTime();
@@ -169,7 +170,7 @@ public class CompilationTask {
         // JVMCI compiles are always at the highest compile level, even in non-tiered mode so we
         // only need to check for that value.
         if (method.hasCodeAtLevel(entryBCI, config.compilationLevelFullOptimization)) {
-            return;
+            return null;
         }
 
         CompilationResult result = null;
@@ -224,6 +225,7 @@ public class CompilationTask {
                 }
             }
             stats.finish(method, installedCode);
+            return null;
         } catch (BailoutException bailout) {
             BAILOUTS.increment();
             if (ExitVMOnBailout.getValue()) {
@@ -234,6 +236,10 @@ public class CompilationTask {
                 TTY.out.println(method.format("Bailout in %H.%n(%p)"));
                 bailout.printStackTrace(TTY.out);
             }
+            /*
+             * Treat bailouts as retryable.
+             */
+            return new CompilationRequestFailure(bailout.getMessage(), true);
         } catch (Throwable t) {
             // Log a failure event.
             CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
@@ -244,6 +250,11 @@ public class CompilationTask {
             }
 
             handleException(t);
+            /*
+             * Treat random exceptions from the compiler as indicating a problem compiling this
+             * method.
+             */
+            return new CompilationRequestFailure(t.getMessage(), false);
         } finally {
             try {
                 int compiledBytecodes = 0;
