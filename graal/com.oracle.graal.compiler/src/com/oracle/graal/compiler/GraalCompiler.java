@@ -37,12 +37,10 @@ import jdk.vm.ci.code.CompilationResult.DataPatch;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.meta.VMConstant;
 
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
@@ -183,14 +181,6 @@ public class GraalCompiler {
             throw Debug.handle(e);
         }
         return r.compilationResult;
-    }
-
-    public static ProfilingInfo getProfilingInfo(StructuredGraph graph) {
-        if (graph.method() != null) {
-            return graph.method().getProfilingInfo();
-        } else {
-            return DefaultProfilingInfo.get(TriState.UNKNOWN);
-        }
     }
 
     /**

@@ -23,7 +23,6 @@
 package com.oracle.graal.truffle;
 
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
-import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 
 import java.util.ArrayList;
@@ -185,7 +184,7 @@ public abstract class TruffleCompiler {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, graphBuilderSuite, Optimizations, getProfilingInfo(graph), suites, lirSuites, compilationResult, factory);
+            result = compileGraph(graph, cc, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult, factory);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

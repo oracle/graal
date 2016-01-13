@@ -120,12 +120,12 @@ public class InvokeGraal {
             CallingConvention callingConvention = CodeUtil.getCallingConvention(codeCache, Type.JavaCallee, method, false);
 
             /*
-             * We want Graal to perform all speculative optimisitic optimizations, using the
+             * We want Graal to perform all speculative optimistic optimizations, using the
              * profiling information that comes with the method (collected by the interpreter) for
              * speculation.
              */
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
-            ProfilingInfo profilingInfo = method.getProfilingInfo();
+            ProfilingInfo profilingInfo = graph.getProfilingInfo(method);
 
             /* The default class and configuration for compilation results. */
             CompilationResult compilationResult = new CompilationResult();

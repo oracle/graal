@@ -23,7 +23,6 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
-import static com.oracle.graal.compiler.GraalCompiler.getProfilingInfo;
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static org.junit.Assert.assertNotNull;
@@ -67,7 +66,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         final ResolvedJavaMethod method = getResolvedJavaMethod("testMethod");
         final StructuredGraph graph = parseEager(method, AllowAssumptions.YES);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph),
+        final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, graph.getProfilingInfo(),
                         getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);
@@ -90,7 +89,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         assertTrue(graphLineSPs > 0);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         PhaseSuite<HighTierContext> graphBuilderSuite = getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault(getDefaultGraphBuilderPlugins()));
-        final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), getSuites(),
+        final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), getSuites(),
                         getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
         int lineSPs = 0;
         for (Infopoint sp : cr.getInfopoints()) {

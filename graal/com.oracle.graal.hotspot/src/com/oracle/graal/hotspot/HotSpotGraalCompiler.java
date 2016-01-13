@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
+import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
@@ -120,7 +121,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
-            graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()), speculationLog);
+            graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()), speculationLog, useProfilingInfo);
         }
 
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
@@ -143,11 +144,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         CompilationResult result = new CompilationResult();
         result.setEntryBCI(entryBCI);
         boolean shouldDebugNonSafepoints = providers.getCodeCache().shouldDebugNonSafepoints();
-        PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, isOSR, useProfilingInfo);
+        PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, isOSR);
         GraalCompiler.compileGraph(graph, cc, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, CompilationResultBuilderFactory.Default);
 
         if (!isOSR && useProfilingInfo) {
-            ProfilingInfo profile = method.getProfilingInfo();
+            ProfilingInfo profile = profilingInfo;
             profile.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
         }
 
@@ -166,7 +167,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         ResolvedJavaMethod substMethod = replacements.getSubstitutionMethod(method);
         if (substMethod != null) {
             assert !substMethod.equals(method);
-            StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES);
+            StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES, NO_PROFILING_INFO);
             Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
             GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
             IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, ROOT_COMPILATION);
@@ -197,31 +198,17 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
      * @param shouldDebugNonSafepoints specifies if extra debug info should be generated (default is
      *            false)
      * @param isOSR specifies if extra OSR-specific post-processing is required (default is false)
-     * @param useProfilingInfo specifies if the graph builder should use profiling info (default is
-     *            true)
      * @return a new suite derived from {@code suite} if any of the GBS parameters did not have a
      *         default value otherwise {@code suite}
      */
-    protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean isOSR, boolean useProfilingInfo) {
-        if (shouldDebugNonSafepoints || isOSR || !useProfilingInfo) {
+    protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean isOSR) {
+        if (shouldDebugNonSafepoints || isOSR) {
             PhaseSuite<HighTierContext> newGbs = suite.copy();
 
-            if (shouldDebugNonSafepoints || !useProfilingInfo) {
-                // This complexity below is to ensure exactly one
-                // GraphBuilderConfiguration copy is made.
+            if (shouldDebugNonSafepoints) {
                 GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
                 GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-                if (shouldDebugNonSafepoints) {
-                    graphBuilderConfig = graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple);
-                    if (!useProfilingInfo) {
-                        graphBuilderConfig.setUseProfiling(false);
-                    }
-                } else {
-                    assert !useProfilingInfo;
-                    graphBuilderConfig = graphBuilderConfig.copy();
-                    graphBuilderConfig.setUseProfiling(false);
-                }
-
+                graphBuilderConfig = graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple);
                 GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig);
                 newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
             }

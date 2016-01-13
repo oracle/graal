@@ -87,7 +87,7 @@ public abstract class AbstractInliningPolicy implements InliningPolicy {
         int size = 0;
         for (int i = 0; i < info.numberOfMethods(); i++) {
             ResolvedJavaMethod m = info.methodAt(i);
-            ProfilingInfo profile = m.getProfilingInfo();
+            ProfilingInfo profile = info.graph().getProfilingInfo(m);
             int compiledGraphSize = profile.getCompilerIRSize(StructuredGraph.class);
             if (compiledGraphSize > 0) {
                 size += compiledGraphSize;

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 
 import java.lang.invoke.MethodHandle;
@@ -164,7 +165,7 @@ public class PartialEvaluator {
             throw Debug.handle(e);
         }
 
-        final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod, allowAssumptions, callTarget.getSpeculationLog());
+        final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod, allowAssumptions, callTarget.getSpeculationLog(), NO_PROFILING_INFO);
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
@@ -333,7 +334,6 @@ public class PartialEvaluator {
     protected void doFastPE(OptimizedCallTarget callTarget, StructuredGraph graph) {
         GraphBuilderConfiguration newConfig = configForPartialEvaluation.copy();
 
-        newConfig.setUseProfiling(false);
         Plugins plugins = newConfig.getPlugins();
         plugins.prependParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
@@ -362,7 +362,6 @@ public class PartialEvaluator {
 
         LoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
 
-        newConfig.setUseProfiling(false);
         Plugins plugins = newConfig.getPlugins();
         ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
         plugins.clearInlineInvokePlugins();

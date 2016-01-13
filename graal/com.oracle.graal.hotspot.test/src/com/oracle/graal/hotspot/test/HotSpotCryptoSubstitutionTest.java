@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
@@ -130,7 +131,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
                 StructuredGraph subst = getReplacements().getSubstitution(installedCodeOwner, 0);
                 ResolvedJavaMethod substMethod = subst == null ? null : subst.method();
                 if (substMethod != null) {
-                    StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES);
+                    StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES, NO_PROFILING_INFO);
                     Plugins plugins = new Plugins(((HotSpotProviders) getProviders()).getGraphBuilderPlugins());
                     GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
                     IntrinsicContext initialReplacementContext = new IntrinsicContext(installedCodeOwner, substMethod, ROOT_COMPILATION);

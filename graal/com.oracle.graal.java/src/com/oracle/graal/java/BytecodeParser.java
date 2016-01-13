@@ -607,7 +607,7 @@ public class BytecodeParser implements GraphBuilderContext {
         this.stampProvider = graphBuilderInstance.stampProvider;
         this.constantReflection = graphBuilderInstance.constantReflection;
         this.stream = new BytecodeStream(method.getCode());
-        this.profilingInfo = (graphBuilderConfig.getUseProfiling() ? method.getProfilingInfo() : null);
+        this.profilingInfo = graph.useProfilingInfo() ? method.getProfilingInfo() : null;
         this.constantPool = method.getConstantPool();
         this.method = method;
         this.intrinsicContext = intrinsicContext;
