@@ -68,9 +68,13 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
     public Object call(Object... args) {
         assert checkArgs(args);
         try {
-            traceCall(args);
+            if (CompilerDirectives.inInterpreter()) {
+                traceCall(args);
+            }
             Object res = code.executeVarargs(args, null, null);
-            traceResult(res);
+            if (CompilerDirectives.inInterpreter()) {
+                traceResult(res);
+            }
             return res;
         } catch (InvalidInstalledCodeException e) {
             CompilerDirectives.transferToInterpreter();
