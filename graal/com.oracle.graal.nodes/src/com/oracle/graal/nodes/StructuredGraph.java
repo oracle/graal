@@ -591,7 +591,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * Determines if {@link ProfilingInfo} is used during construction of this graph.
      */
     public boolean useProfilingInfo() {
-        return hasValueProxies;
+        return useProfilingInfo;
     }
 
     /**
