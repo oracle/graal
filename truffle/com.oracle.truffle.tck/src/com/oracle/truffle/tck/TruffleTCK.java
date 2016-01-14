@@ -358,15 +358,15 @@ public abstract class TruffleTCK {
         throw new UnsupportedOperationException("valuesObject() method not implemented");
     }
 
-    /** Assert two double values are the same. Various languages may have different
-     * semantics with respect to double numbers. Some of the language may not
-     * support <b>double</b> or <b>float</b> values at all. Those languages
-     * may override this method and compare the values with as much precision
-     * as they like.
+    /**
+     * Assert two double values are the same. Various languages may have different semantics with
+     * respect to double numbers. Some of the language may not support <b>double</b> or <b>float</b>
+     * values at all. Those languages may override this method and compare the values with as much
+     * precision as they like.
      * <p>
      * Default implementation of this method calls
-     * {@link Assert#assertEquals(java.lang.String, double, double, double)}
-     * with delta <code>0.1</code>.
+     * {@link Assert#assertEquals(java.lang.String, double, double, double)} with delta
+     * <code>0.1</code>.
      * 
      * @param msg assertion message to display in case of error
      * @param expectedValue the value expected by the test
@@ -556,7 +556,7 @@ public abstract class TruffleTCK {
 
         Number n = plus.execute(a, b).as(Number.class);
         assertDouble("Correct value computed: (" + a + " + " + b + ")", a + b, n.floatValue());
-     }
+    }
 
     @Test
     public void testPlusWithDouble() throws Exception {
