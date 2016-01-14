@@ -464,7 +464,7 @@ def get_graal_jdk():
         jdk = _graal_jdks.get(vmbuild)
         if jdk is None:
             class GraalJDK8Config(JVMCIJDKConfig):
-                def __init__(self, vmbuild):
+                def __init__(self, vmbuild): # pylint: disable=super-init-not-called
                     JVMCIJDKConfig.__init__(self, vmbuild)
 
                 def parseVmArgs(self, args, addDefaultArgs=True):
