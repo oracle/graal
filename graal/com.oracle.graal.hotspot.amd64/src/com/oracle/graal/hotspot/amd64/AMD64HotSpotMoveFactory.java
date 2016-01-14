@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,11 @@ import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.amd64.AMD64MoveFactory;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
 
 public class AMD64HotSpotMoveFactory extends AMD64MoveFactory {
 
-    public AMD64HotSpotMoveFactory(BackupSlotProvider backupSlotProvider, FrameMapBuilder frameMapBuilder) {
-        super(backupSlotProvider, frameMapBuilder);
+    public AMD64HotSpotMoveFactory(BackupSlotProvider backupSlotProvider) {
+        super(backupSlotProvider);
     }
 
     @Override

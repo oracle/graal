@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.asm.sparc.SPARCAssembler;
@@ -33,12 +32,6 @@ import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
 
 public class SPARCAddressLowering extends AddressLowering {
-
-    private final CodeCacheProvider codeCache;
-
-    public SPARCAddressLowering(CodeCacheProvider codeCache) {
-        this.codeCache = codeCache;
-    }
 
     @Override
     public AddressNode lower(ValueNode address) {
@@ -82,9 +75,9 @@ public class SPARCAddressLowering extends AddressLowering {
         return base.graph().unique(new SPARCImmediateAddressNode(base, (int) displacement));
     }
 
-    private JavaConstant asImmediate(ValueNode value) {
+    private static JavaConstant asImmediate(ValueNode value) {
         JavaConstant c = value.asJavaConstant();
-        if (c != null && c.getJavaKind().isNumericInteger() && !codeCache.needsDataPatch(c)) {
+        if (c != null && c.getJavaKind().isNumericInteger()) {
             return c;
         } else {
             return null;

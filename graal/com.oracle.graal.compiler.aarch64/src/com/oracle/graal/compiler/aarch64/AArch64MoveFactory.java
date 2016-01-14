@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import com.oracle.graal.lir.aarch64.AArch64AddressValue;
 import com.oracle.graal.lir.aarch64.AArch64Move.LoadAddressOp;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -42,11 +41,9 @@ import jdk.vm.ci.meta.Value;
 
 public class AArch64MoveFactory implements MoveFactory {
 
-    private final CodeCacheProvider codeCache;
     protected final ConstantTableBaseProvider constantTableBaseProvider;
 
-    public AArch64MoveFactory(CodeCacheProvider codeCache, ConstantTableBaseProvider constantTableBaseProvider) {
-        this.codeCache = codeCache;
+    public AArch64MoveFactory(ConstantTableBaseProvider constantTableBaseProvider) {
         this.constantTableBaseProvider = constantTableBaseProvider;
     }
 
@@ -101,12 +98,10 @@ public class AArch64MoveFactory implements MoveFactory {
             case Short:
             case Int:
                 // return SPARCAssembler.isSimm13(c.asInt()) && !codeCache.needsDataPatch(c);
-                boolean x = !codeCache.needsDataPatch(c);
-                throw JVMCIError.unimplemented("needsDataPatch=" + x);
+                throw JVMCIError.unimplemented();
             case Long:
                 // return SPARCAssembler.isSimm13(c.asLong()) && !codeCache.needsDataPatch(c);
-                boolean y = !codeCache.needsDataPatch(c);
-                throw JVMCIError.unimplemented("needsDataPatch=" + y);
+                throw JVMCIError.unimplemented();
             case Object:
                 return c.isNull();
             default:

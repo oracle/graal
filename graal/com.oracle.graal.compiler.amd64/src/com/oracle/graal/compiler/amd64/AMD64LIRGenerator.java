@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,11 +102,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
      * @return True if the constant can be used directly, false if the constant needs to be in a
      *         register.
      */
-    protected final boolean canStoreConstant(JavaConstant c) {
+    protected static final boolean canStoreConstant(JavaConstant c) {
         // there is no immediate move of 64-bit constants on Intel
         switch (c.getJavaKind()) {
             case Long:
-                return Util.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
+                return Util.isInt(c.asLong());
             case Double:
                 return false;
             case Object:

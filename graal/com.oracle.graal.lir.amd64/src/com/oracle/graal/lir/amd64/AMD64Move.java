@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -609,9 +609,6 @@ public class AMD64Move {
          */
         switch (input.getJavaKind().getStackKind()) {
             case Int:
-                if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordInlineDataInCode(input);
-                }
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
@@ -619,32 +616,22 @@ public class AMD64Move {
 
                 break;
             case Long:
-                boolean patch = false;
-                if (crb.codeCache.needsDataPatch(input)) {
-                    patch = true;
-                    crb.recordInlineDataInCode(input);
-                }
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                if (patch) {
-                    masm.movq(result, input.asLong());
+                if (input.asLong() == (int) input.asLong()) {
+                    // Sign extended to long
+                    masm.movslq(result, (int) input.asLong());
+                } else if ((input.asLong() & 0xFFFFFFFFL) == input.asLong()) {
+                    // Zero extended to long
+                    masm.movl(result, (int) input.asLong());
                 } else {
-                    if (input.asLong() == (int) input.asLong()) {
-                        // Sign extended to long
-                        masm.movslq(result, (int) input.asLong());
-                    } else if ((input.asLong() & 0xFFFFFFFFL) == input.asLong()) {
-                        // Zero extended to long
-                        masm.movl(result, (int) input.asLong());
-                    } else {
-                        masm.movq(result, input.asLong());
-                    }
+                    masm.movq(result, input.asLong());
                 }
                 break;
             case Float:
                 // This is *not* the same as 'constant == 0.0f' in the case where constant is -0.0f
                 if (Float.floatToRawIntBits(input.asFloat()) == Float.floatToRawIntBits(0.0f)) {
-                    assert !crb.codeCache.needsDataPatch(input);
                     masm.xorps(result, result);
                 } else {
                     masm.movflt(result, (AMD64Address) crb.asFloatConstRef(input));
@@ -653,7 +640,6 @@ public class AMD64Move {
             case Double:
                 // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
                 if (Double.doubleToRawLongBits(input.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
-                    assert !crb.codeCache.needsDataPatch(input);
                     masm.xorpd(result, result);
                 } else {
                     masm.movdbl(result, (AMD64Address) crb.asDoubleConstRef(input));
@@ -678,7 +664,6 @@ public class AMD64Move {
     }
 
     public static void const2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, JavaConstant input) {
-        assert !crb.codeCache.needsDataPatch(input);
         AMD64Address dest = (AMD64Address) crb.asAddress(result);
         final long imm;
         switch (input.getJavaKind().getStackKind()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -249,7 +249,6 @@ public class CompilationResultBuilder {
     public int asIntConst(Value value) {
         assert isJavaConstant(value) && asJavaConstant(value).getJavaKind().isNumericInteger();
         JavaConstant constant = asJavaConstant(value);
-        assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         long c = constant.asLong();
         if (!NumUtil.isInt(c)) {
             throw JVMCIError.shouldNotReachHere();
@@ -263,7 +262,6 @@ public class CompilationResultBuilder {
     public float asFloatConst(Value value) {
         assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Float;
         JavaConstant constant = asJavaConstant(value);
-        assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asFloat();
     }
 
@@ -273,7 +271,6 @@ public class CompilationResultBuilder {
     public long asLongConst(Value value) {
         assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Long;
         JavaConstant constant = asJavaConstant(value);
-        assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asLong();
     }
 
@@ -283,7 +280,6 @@ public class CompilationResultBuilder {
     public double asDoubleConst(Value value) {
         assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Double;
         JavaConstant constant = asJavaConstant(value);
-        assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asDouble();
     }
 

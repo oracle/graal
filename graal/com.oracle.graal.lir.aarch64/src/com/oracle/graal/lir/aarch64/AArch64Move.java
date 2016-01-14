@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -489,20 +489,10 @@ public class AArch64Move {
         Register dst = asRegister(result);
         switch (input.getJavaKind().getStackKind()) {
             case Int:
-                if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordInlineDataInCode(input);
-                    masm.forceMov(dst, input.asInt());
-                } else {
-                    masm.mov(dst, input.asInt());
-                }
+                masm.mov(dst, input.asInt());
                 break;
             case Long:
-                if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordInlineDataInCode(input);
-                    masm.forceMov(dst, input.asLong());
-                } else {
-                    masm.mov(dst, input.asLong());
-                }
+                masm.mov(dst, input.asLong());
                 break;
             case Float:
                 if (AArch64MacroAssembler.isFloatImmediate(input.asFloat())) {

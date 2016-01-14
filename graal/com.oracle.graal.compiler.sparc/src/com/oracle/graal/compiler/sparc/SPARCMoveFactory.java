@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.graal.compiler.sparc;
 import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -44,11 +43,9 @@ import com.oracle.graal.lir.sparc.SPARCMove.Move;
 
 public class SPARCMoveFactory implements MoveFactory {
 
-    private final CodeCacheProvider codeCache;
     protected final ConstantTableBaseProvider constantTableBaseProvider;
 
-    public SPARCMoveFactory(CodeCacheProvider codeCache, ConstantTableBaseProvider constantTableBaseProvider) {
-        this.codeCache = codeCache;
+    public SPARCMoveFactory(ConstantTableBaseProvider constantTableBaseProvider) {
         this.constantTableBaseProvider = constantTableBaseProvider;
     }
 
@@ -97,9 +94,9 @@ public class SPARCMoveFactory implements MoveFactory {
             case Char:
             case Short:
             case Int:
-                return SPARCAssembler.isSimm13(c.asInt()) && !codeCache.needsDataPatch(c);
+                return SPARCAssembler.isSimm13(c.asInt());
             case Long:
-                return SPARCAssembler.isSimm13(c.asLong()) && !codeCache.needsDataPatch(c);
+                return SPARCAssembler.isSimm13(c.asLong());
             case Object:
                 return c.isNull();
             default:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.vm.ci.meta.LIRKind;
@@ -65,8 +64,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
         }
     }
 
-    public AMD64HotSpotAddressLowering(CodeCacheProvider codeCache, long heapBase, Register heapBaseRegister) {
-        super(codeCache);
+    public AMD64HotSpotAddressLowering(long heapBase, Register heapBaseRegister) {
         this.heapBase = heapBase;
         if (heapBase == 0) {
             this.heapBaseRegister = null;

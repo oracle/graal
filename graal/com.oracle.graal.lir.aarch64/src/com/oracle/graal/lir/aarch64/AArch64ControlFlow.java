@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -209,13 +209,7 @@ public class AArch64ControlFlow {
                     case Int:
                         long lc = jc.asLong();
                         assert NumUtil.isInt(lc);
-                        if (crb.codeCache.needsDataPatch(jc)) {
-                            crb.recordInlineDataInCode(jc);
-                            masm.forceMov(asRegister(scratch), (int) lc);
-                            masm.cmp(32, asRegister(key), asRegister(scratch));
-                        } else {
-                            emitCompare(crb, masm, key, scratch, constVal);
-                        }
+                        emitCompare(crb, masm, key, scratch, constVal);
                         break;
                     case Long:
                         emitCompare(crb, masm, key, scratch, constVal);

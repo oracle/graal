@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,22 +42,18 @@ import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromConstOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
 
 public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
 
-    private final FrameMapBuilder frameMapBuilder;
-
-    public AMD64MoveFactory(BackupSlotProvider backupSlotProvider, FrameMapBuilder frameMapBuilder) {
+    public AMD64MoveFactory(BackupSlotProvider backupSlotProvider) {
         super(backupSlotProvider);
-        this.frameMapBuilder = frameMapBuilder;
     }
 
     @Override
     public boolean canInlineConstant(JavaConstant c) {
         switch (c.getJavaKind()) {
             case Long:
-                return NumUtil.isInt(c.asLong()) && !frameMapBuilder.getCodeCache().needsDataPatch(c);
+                return NumUtil.isInt(c.asLong());
             case Object:
                 return c.isNull();
             default:

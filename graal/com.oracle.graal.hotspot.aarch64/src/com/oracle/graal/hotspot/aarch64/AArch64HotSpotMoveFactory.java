@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import com.oracle.graal.compiler.aarch64.AArch64LIRGenerator.ConstantTableBasePr
 import com.oracle.graal.compiler.aarch64.AArch64MoveFactory;
 import com.oracle.graal.lir.LIRInstruction;
 
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
@@ -41,8 +40,8 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class AArch64HotSpotMoveFactory extends AArch64MoveFactory {
 
-    public AArch64HotSpotMoveFactory(CodeCacheProvider codeCache, ConstantTableBaseProvider constantTableBaseProvider) {
-        super(codeCache, constantTableBaseProvider);
+    public AArch64HotSpotMoveFactory(ConstantTableBaseProvider constantTableBaseProvider) {
+        super(constantTableBaseProvider);
     }
 
     @Override
