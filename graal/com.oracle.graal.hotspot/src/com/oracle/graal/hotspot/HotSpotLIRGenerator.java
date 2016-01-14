@@ -140,14 +140,6 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
         throw JVMCIError.unimplemented();
     }
 
-    default Value emitCardTableShift() {
-        throw JVMCIError.unimplemented();
-    }
-
-    default Value emitCardTableAddress() {
-        throw JVMCIError.unimplemented();
-    }
-
     /**
      * Gets a stack slot for a lock at a given lock nesting depth.
      */

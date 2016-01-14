@@ -47,7 +47,6 @@ import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -975,16 +974,6 @@ public class HotSpotReplacementsUtil {
 
     @NodeIntrinsic(ForeignCallNode.class)
     public static native int identityHashCode(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
-
-    @Fold
-    public static boolean isImmutableCode() {
-        return GraalOptions.ImmutableCode.getValue();
-    }
-
-    @Fold
-    public static boolean generatePIC() {
-        return GraalOptions.GeneratePIC.getValue();
-    }
 
     @Fold
     public static int verifiedEntryPointOffset() {

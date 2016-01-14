@@ -34,8 +34,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1SA
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1SATBQueueIndexOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1SATBQueueMarkingOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1YoungCardValue;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.generatePIC;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.isImmutableCode;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.logOfHeapRegionGrainBytes;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
@@ -115,8 +113,8 @@ public class WriteBarrierSnippets implements Snippets {
 
     private static void serialWriteBarrier(Pointer ptr) {
         serialWriteBarrierCounter.inc();
-        int cardTableShift = (isImmutableCode() && generatePIC()) ? CardTableShiftNode.cardTableShift() : cardTableShift();
-        long cardTableAddress = (isImmutableCode() && generatePIC()) ? CardTableAddressNode.cardTableAddress() : cardTableStart();
+        int cardTableShift = cardTableShift();
+        long cardTableAddress = cardTableStart();
         Word base = (Word) ptr.unsignedShiftRight(cardTableShift);
         long startAddress = cardTableAddress;
         int displacement = 0;
