@@ -439,33 +439,43 @@ def _update_JVMCI_library():
     jvmciLib = suiteDict['libraries']['JVMCI']
     d = join(_suite.get_output_root(), abspath(_jdk.home)[1:])
     path = join(d, 'jvmci.jar')
-    if not exists(path):
-        explodedModule = join(_jdk.home, 'modules', 'jdk.vm.ci')
-        if exists(explodedModule):
+
+    explodedModule = join(_jdk.home, 'modules', 'jdk.vm.ci')
+    if exists(explodedModule):
+        jarInputs = {}
+        newestJarInput = None
+        for root, _, files in os.walk(explodedModule):
+            relpath = root[len(explodedModule) + 1:]
+            for f in files:
+                arcname = join(relpath, f).replace(os.sep, '/')
+                jarInput = join(root, f)
+                jarInputs[arcname] = jarInput
+                t = mx.TimeStampFile(jarInput)
+                if newestJarInput is None or t.isNewerThan(newestJarInput):
+                    newestJarInput = t
+        if not exists(path) or newestJarInput.isNewerThan(path):
             with mx.Archiver(path, kind='zip') as arc:
-                for root, _, files in os.walk(explodedModule):
-                    relpath = root[len(explodedModule) + 1:]
-                    for f in files:
-                        arcname = join(relpath, f).replace(os.sep, '/')
-                        with open(join(root, f), 'rb') as fp:
-                            contents = fp.read()
-                            arc.zf.writestr(arcname, contents)
-        else:
-            # Use the jdk.internal.jimage utility since it's the only way
-            # (currently) to read .jimage files and unfortunately the
-            # JDK9 jimage tool does not support partial extraction.
-            bootmodules = join(_jdk.home, 'lib', 'modules', 'bootmodules.jimage')
-            if not exists(bootmodules):
-                mx.abort('Could not find JVMCI classes at ' + bootmodules + ' or ' + explodedModule)
+                for arcname, jarInput in jarInputs.iteritems():
+                    with open(jarInput, 'rb') as fp:
+                        contents = fp.read()
+                        arc.zf.writestr(arcname, contents)
+    else:
+        # Use the jdk.internal.jimage utility since it's the only way
+        # to partially read .jimage files as the JDK9 jimage tool
+        # does not support partial extraction.
+        bootmodules = join(_jdk.home, 'lib', 'modules', 'bootmodules.jimage')
+        if not exists(bootmodules):
+            mx.abort('Could not find JVMCI classes at ' + bootmodules + ' or ' + explodedModule)
+        if not exists(path) or mx.TimeStampFile(bootmodules).isNewerThan(path):
             mx.ensure_dir_exists(d)
             javaSource = join(d, 'ExtractJVMCI.java')
             with open(javaSource, 'w') as fp:
                 print >> fp, """import java.io.FileOutputStream;
-import java.util.jar.JarEntry;
-import java.util.jar.JarOutputStream;
-import jdk.internal.jimage.BasicImageReader;
+    import java.util.jar.JarEntry;
+    import java.util.jar.JarOutputStream;
+    import jdk.internal.jimage.BasicImageReader;
 
-public class ExtractJVMCI {
+    public class ExtractJVMCI {
     public static void main(String[] args) throws Exception {
         BasicImageReader image = BasicImageReader.open(args[0]);
         String[] names = image.getEntryNames();
@@ -484,8 +494,8 @@ public class ExtractJVMCI {
             }
         }
     }
-}
-"""
+    }
+    """
             mx.run([_jdk.javac, '-d', d, javaSource])
             mx.run([_jdk.java, '-cp', d, 'ExtractJVMCI', bootmodules, path])
             if not exists(path):
