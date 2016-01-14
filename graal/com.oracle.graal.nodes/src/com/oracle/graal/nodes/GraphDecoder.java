@@ -378,7 +378,7 @@ public class GraphDecoder {
         }
 
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            detectLoops(methodScope, methodScope.graph, startNode);
+            detectLoops(methodScope, startNode);
         }
     }
 
@@ -1118,14 +1118,19 @@ public class GraphDecoder {
         return methodScope.encodedGraph.getObjects()[methodScope.reader.getUVInt()];
     }
 
-    /*
-     * The following methods are a literal copy from GraphBuilderPhase.
-     */
+    protected void detectLoops(MethodScope methodScope, FixedNode startInstruction) {
+        Debug.dump(1, methodScope.graph, "Before detectLoops");
+        Set<LoopBeginNode> newLoopBegins = insertLoopBegins(methodScope, startInstruction);
 
-    protected void detectLoops(MethodScope methodScope, StructuredGraph currentGraph, FixedNode startInstruction) {
-        Debug.dump(currentGraph, "Before detectLoops");
-        NodeBitMap visited = currentGraph.createNodeBitMap();
-        NodeBitMap active = currentGraph.createNodeBitMap();
+        Debug.dump(1, methodScope.graph, "Before insertLoopExits");
+
+        insertLoopExits(methodScope, startInstruction, newLoopBegins);
+        Debug.dump(1, methodScope.graph, "After detectLoops");
+    }
+
+    private static Set<LoopBeginNode> insertLoopBegins(MethodScope methodScope, FixedNode startInstruction) {
+        NodeBitMap visited = methodScope.graph.createNodeBitMap();
+        NodeBitMap active = methodScope.graph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
         stack.add(startInstruction);
         visited.mark(startInstruction);
@@ -1143,25 +1148,7 @@ public class GraphDecoder {
                 for (Node n : next.cfgSuccessors()) {
                     if (active.contains(n)) {
                         // Detected cycle.
-                        assert n instanceof MergeNode;
-                        assert next instanceof EndNode;
-                        MergeNode merge = (MergeNode) n;
-                        assert methodScope.loopExplosionMerges.contains(merge) : merge;
-                        EndNode endNode = (EndNode) next;
-                        merge.removeEnd(endNode);
-                        FixedNode afterMerge = merge.next();
-                        if (!(afterMerge instanceof EndNode) || !(((EndNode) afterMerge).merge() instanceof LoopBeginNode)) {
-                            FrameState stateAfter = merge.stateAfter();
-                            merge.setNext(null);
-                            merge.setStateAfter(null);
-                            LoopBeginNode newLoopBegin = appendLoopBegin(currentGraph, merge);
-                            newLoopBegin.setNext(afterMerge);
-                            newLoopBegin.setStateAfter(stateAfter);
-                            newLoopBegins.add(newLoopBegin);
-                        }
-                        LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
-                        LoopEndNode loopEnd = currentGraph.add(new LoopEndNode(loopBegin));
-                        endNode.replaceAndDelete(loopEnd);
+                        insertLoopBegins(methodScope, (MergeNode) n, (EndNode) next, newLoopBegins);
                     } else if (visited.contains(n)) {
                         // Normal merge into a branch we are already exploring.
                     } else {
@@ -1171,23 +1158,34 @@ public class GraphDecoder {
                 }
             }
         }
-
-        Debug.dump(currentGraph, "Before insertLoopEnds");
-        insertLoopEnds(methodScope, currentGraph, startInstruction, newLoopBegins);
-        Debug.dump(currentGraph, "After detectLoops");
+        return newLoopBegins;
     }
 
-    private static LoopBeginNode appendLoopBegin(StructuredGraph currentGraph, FixedWithNextNode fixedWithNext) {
-        EndNode preLoopEnd = currentGraph.add(new EndNode());
-        LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
-        fixedWithNext.setNext(preLoopEnd);
-        // Add the single non-loop predecessor of the loop header.
-        loopBegin.addForwardEnd(preLoopEnd);
-        return loopBegin;
+    private static void insertLoopBegins(MethodScope methodScope, MergeNode merge, EndNode endNode, Set<LoopBeginNode> newLoopBegins) {
+        assert methodScope.loopExplosionMerges.contains(merge) : merge;
+
+        merge.removeEnd(endNode);
+        FixedNode afterMerge = merge.next();
+        if (!(afterMerge instanceof EndNode) || !(((EndNode) afterMerge).merge() instanceof LoopBeginNode)) {
+            FrameState stateAfter = merge.stateAfter();
+            merge.setNext(null);
+            merge.setStateAfter(null);
+            EndNode preLoopEnd = methodScope.graph.add(new EndNode());
+            LoopBeginNode newLoopBegin = methodScope.graph.add(new LoopBeginNode());
+            merge.setNext(preLoopEnd);
+            // Add the single non-loop predecessor of the loop header.
+            newLoopBegin.addForwardEnd(preLoopEnd);
+            newLoopBegin.setNext(afterMerge);
+            newLoopBegin.setStateAfter(stateAfter);
+            newLoopBegins.add(newLoopBegin);
+        }
+        LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
+        LoopEndNode loopEnd = methodScope.graph.add(new LoopEndNode(loopBegin));
+        endNode.replaceAndDelete(loopEnd);
     }
 
-    private static void insertLoopEnds(MethodScope methodScope, StructuredGraph currentGraph, FixedNode startInstruction, Set<LoopBeginNode> newLoopBegins) {
-        NodeBitMap visited = currentGraph.createNodeBitMap();
+    private static void insertLoopExits(MethodScope methodScope, FixedNode startInstruction, Set<LoopBeginNode> newLoopBegins) {
+        NodeBitMap visited = methodScope.graph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
         stack.add(startInstruction);
         visited.mark(startInstruction);
@@ -1210,12 +1208,12 @@ public class GraphDecoder {
 
         for (int i = loopBegins.size() - 1; i >= 0; --i) {
             LoopBeginNode loopBegin = loopBegins.get(i);
-            insertLoopExits(methodScope, currentGraph, loopBegin);
+            insertLoopExits(methodScope, loopBegin);
         }
     }
 
-    private static void insertLoopExits(MethodScope methodScope, StructuredGraph currentGraph, LoopBeginNode loopBegin) {
-        NodeBitMap visited = currentGraph.createNodeBitMap();
+    private static void insertLoopExits(MethodScope methodScope, LoopBeginNode loopBegin) {
+        NodeBitMap visited = methodScope.graph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
         for (LoopEndNode loopEnd : loopBegin.loopEnds()) {
             stack.push(loopEnd);
@@ -1305,7 +1303,7 @@ public class GraphDecoder {
                          */
                         JVMCIError.guarantee(merge.cfgPredecessors().count() == 1, merge.toString());
 
-                        LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                        LoopExitNode loopExit = methodScope.graph.add(new LoopExitNode(loopBegin));
                         next.replaceAtPredecessor(loopExit);
                         loopExit.setNext(next);
                         assignLoopExitState(methodScope, loopExit, merge);
