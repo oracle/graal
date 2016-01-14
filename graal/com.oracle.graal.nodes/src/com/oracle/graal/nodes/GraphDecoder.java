@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.Fields;
@@ -51,6 +52,11 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.NodeList;
 import com.oracle.graal.graph.NodeSuccessorList;
+import com.oracle.graal.graph.spi.Canonicalizable;
+import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.calc.FloatingNode;
 
 /**
  * Decoder for {@link EncodedGraph encoded graphs} produced by {@link GraphEncoder}. Support for
@@ -102,6 +108,9 @@ public class GraphDecoder {
         /** The exception unwind node encountered during decoding, or null. */
         public UnwindNode unwindNode;
 
+        /** All merges created during loop explosion. */
+        public final NodeBitMap loopExplosionMerges;
+
         protected MethodScope(StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
             this.graph = graph;
             this.encodedGraph = encodedGraph;
@@ -120,6 +129,12 @@ public class GraphDecoder {
                 }
             } else {
                 reader = null;
+            }
+
+            if (loopExplosion != LoopExplosionKind.NONE) {
+                loopExplosionMerges = new NodeBitMap(graph);
+            } else {
+                loopExplosionMerges = null;
             }
         }
     }
@@ -202,7 +217,7 @@ public class GraphDecoder {
                 if (value == null) {
                     h = h * 31 + 1234;
                 } else {
-                    h = h * 31 + value.hashCode();
+                    h = h * 31 + ProxyPlaceholder.unwrap(value).hashCode();
                 }
             }
             this.hashCode = h;
@@ -221,8 +236,8 @@ public class GraphDecoder {
             Iterator<ValueNode> thisIter = thisState.values().iterator();
             Iterator<ValueNode> otherIter = otherState.values().iterator();
             while (thisIter.hasNext() && otherIter.hasNext()) {
-                ValueNode thisValue = thisIter.next();
-                ValueNode otherValue = otherIter.next();
+                ValueNode thisValue = ProxyPlaceholder.unwrap(thisIter.next());
+                ValueNode otherValue = ProxyPlaceholder.unwrap(otherIter.next());
                 if (thisValue != otherValue) {
                     return false;
                 }
@@ -265,6 +280,48 @@ public class GraphDecoder {
             this.exceptionOrderId = exceptionOrderId;
             this.exceptionStateOrderId = exceptionStateOrderId;
             this.exceptionNextOrderId = exceptionNextOrderId;
+        }
+    }
+
+    /**
+     * A node that is created during {@link LoopExplosionKind#MERGE_EXPLODE loop explosion} that can
+     * later be replaced by a ProxyNode if {@link GraphDecoder#detectLoops loop detection} finds out
+     * that the value is defined in the loop, but used outside the loop.
+     */
+    @NodeInfo
+    protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable {
+        public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
+
+        @Input ValueNode value;
+        @Input(InputType.Association) Node proxyPoint;
+
+        public ProxyPlaceholder(ValueNode value, MergeNode proxyPoint) {
+            super(TYPE, value.stamp());
+            this.value = value;
+            this.proxyPoint = proxyPoint;
+        }
+
+        void setValue(ValueNode value) {
+            updateUsages(this.value, value);
+            this.value = value;
+        }
+
+        @Override
+        public Node canonical(CanonicalizerTool tool) {
+            if (tool.allUsagesAvailable()) {
+                /* The node is always unnecessary after graph decoding. */
+                return value;
+            } else {
+                return this;
+            }
+        }
+
+        public static ValueNode unwrap(ValueNode value) {
+            ValueNode result = value;
+            while (result instanceof ProxyPlaceholder) {
+                result = ((ProxyPlaceholder) result).value;
+            }
+            return result;
         }
     }
 
@@ -321,7 +378,7 @@ public class GraphDecoder {
         }
 
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            detectLoops(methodScope.graph, startNode);
+            detectLoops(methodScope, methodScope.graph, startNode);
         }
     }
 
@@ -514,6 +571,41 @@ public class GraphDecoder {
         }
 
         MergeNode merge = methodScope.graph.add(new MergeNode());
+        methodScope.loopExplosionMerges.markAndGrow(merge);
+
+        if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
+            List<ValueNode> newFrameStateValues = new ArrayList<>();
+            for (ValueNode frameStateValue : frameState.values) {
+                if (frameStateValue == null || frameStateValue.isConstant()) {
+                    newFrameStateValues.add(frameStateValue);
+
+                } else {
+                    ProxyPlaceholder newFrameStateValue = methodScope.graph.unique(new ProxyPlaceholder(frameStateValue, merge));
+                    newFrameStateValues.add(newFrameStateValue);
+
+                    /*
+                     * We do not have the orderID of the value anymore, so we need to search through
+                     * the complete list of nodes to find a match.
+                     */
+                    for (int i = 0; i < loopScope.createdNodes.length; i++) {
+                        if (loopScope.createdNodes[i] == frameStateValue) {
+                            loopScope.createdNodes[i] = newFrameStateValue;
+                        }
+                        if (loopScope.initialCreatedNodes[i] == frameStateValue) {
+                            loopScope.initialCreatedNodes[i] = newFrameStateValue;
+                        }
+                    }
+                }
+            }
+
+            FrameState newFrameState = methodScope.graph.add(new FrameState(frameState.outerFrameState(), frameState.method(), frameState.bci, newFrameStateValues, frameState.localsSize(),
+                            frameState.stackSize(), frameState.rethrowException(), frameState.duringCall(), frameState.monitorIds(), frameState.virtualObjectMappings()));
+
+            frameState.replaceAtUsages(newFrameState);
+            frameState.safeDelete();
+            frameState = newFrameState;
+        }
+
         loopBegin.replaceAtUsagesAndDelete(merge);
         merge.setStateAfter(frameState);
         merge.setNext(successor);
@@ -1030,7 +1122,7 @@ public class GraphDecoder {
      * The following methods are a literal copy from GraphBuilderPhase.
      */
 
-    protected void detectLoops(StructuredGraph currentGraph, FixedNode startInstruction) {
+    protected void detectLoops(MethodScope methodScope, StructuredGraph currentGraph, FixedNode startInstruction) {
         Debug.dump(currentGraph, "Before detectLoops");
         NodeBitMap visited = currentGraph.createNodeBitMap();
         NodeBitMap active = currentGraph.createNodeBitMap();
@@ -1054,6 +1146,7 @@ public class GraphDecoder {
                         assert n instanceof MergeNode;
                         assert next instanceof EndNode;
                         MergeNode merge = (MergeNode) n;
+                        assert methodScope.loopExplosionMerges.contains(merge) : merge;
                         EndNode endNode = (EndNode) next;
                         merge.removeEnd(endNode);
                         FixedNode afterMerge = merge.next();
@@ -1080,7 +1173,7 @@ public class GraphDecoder {
         }
 
         Debug.dump(currentGraph, "Before insertLoopEnds");
-        insertLoopEnds(currentGraph, startInstruction, newLoopBegins);
+        insertLoopEnds(methodScope, currentGraph, startInstruction, newLoopBegins);
         Debug.dump(currentGraph, "After detectLoops");
     }
 
@@ -1093,7 +1186,7 @@ public class GraphDecoder {
         return loopBegin;
     }
 
-    private static void insertLoopEnds(StructuredGraph currentGraph, FixedNode startInstruction, Set<LoopBeginNode> newLoopBegins) {
+    private static void insertLoopEnds(MethodScope methodScope, StructuredGraph currentGraph, FixedNode startInstruction, Set<LoopBeginNode> newLoopBegins) {
         NodeBitMap visited = currentGraph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
         stack.add(startInstruction);
@@ -1117,19 +1210,11 @@ public class GraphDecoder {
 
         for (int i = loopBegins.size() - 1; i >= 0; --i) {
             LoopBeginNode loopBegin = loopBegins.get(i);
-            insertLoopExits(currentGraph, loopBegin);
-        }
-
-        // Remove degenerated merges with only one predecessor.
-        for (LoopBeginNode loopBegin : loopBegins) {
-            Node pred = loopBegin.forwardEnd().predecessor();
-            if (pred instanceof MergeNode) {
-                MergeNode.removeMergeIfDegenerated((MergeNode) pred);
-            }
+            insertLoopExits(methodScope, currentGraph, loopBegin);
         }
     }
 
-    private static void insertLoopExits(StructuredGraph currentGraph, LoopBeginNode loopBegin) {
+    private static void insertLoopExits(MethodScope methodScope, StructuredGraph currentGraph, LoopBeginNode loopBegin) {
         NodeBitMap visited = currentGraph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
         for (LoopEndNode loopEnd : loopBegin.loopEnds()) {
@@ -1192,12 +1277,82 @@ public class GraphDecoder {
              * initial check for isMarked when we added a node to the list.
              */
             if (!visited.isMarked(succ)) {
-                LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
                 FixedNode next = ((FixedWithNextNode) succ).next();
-                next.replaceAtPredecessor(loopExit);
-                loopExit.setNext(next);
+                /* Skip over unnecessary BeginNodes, which will be deleted only later on. */
+                while (next instanceof BeginNode) {
+                    next = ((BeginNode) next).next();
+                }
+
+                /*
+                 * A LoopExit needs a valid FrameState that captures the state at the point where we
+                 * exit the loop. During graph decoding, we create a FrameState for every exploded
+                 * loop iteration. This is mostly the state that we want, we only need to tweak it a
+                 * little bit: we need to insert the appropriate ProxyNodes for all values that are
+                 * created inside the loop and that flow out of the loop.
+                 *
+                 * In some cases, we did not create a FrameState during graph decoding: when there
+                 * was no LoopExit in the original loop that we exploded. This happens for code
+                 * paths that lead immediately to a DeoptimizeNode. Since the BytecodeParser does
+                 * not insert a LoopExit in such cases, we also do not have to insert a LoopExit.
+                 */
+                if (next instanceof EndNode) {
+                    AbstractMergeNode merge = ((EndNode) next).merge();
+                    if (methodScope.loopExplosionMerges.contains(merge)) {
+                        /*
+                         * If this guarantee fails, we need to handle phi functions of the merge,
+                         * i.e., take the phi function input for our EndNode and put it into the
+                         * LoopExit state.
+                         */
+                        JVMCIError.guarantee(merge.cfgPredecessors().count() == 1, merge.toString());
+
+                        LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                        next.replaceAtPredecessor(loopExit);
+                        loopExit.setNext(next);
+                        assignLoopExitState(methodScope, loopExit, merge);
+                    }
+                }
             }
         }
+    }
+
+    private static void assignLoopExitState(MethodScope methodScope, LoopExitNode loopExit, AbstractMergeNode loopExplosionMerge) {
+        FrameState oldState = loopExplosionMerge.stateAfter();
+        JVMCIError.guarantee(loopExit.loopBegin().stateAfter().outerFrameState() == oldState.outerFrameState(), "LoopBegin and LoopExit must have the same outer frame state");
+
+        /* Collect all nodes that are in the FrameState at the LoopBegin. */
+        NodeBitMap loopBeginValues = new NodeBitMap(methodScope.graph);
+        for (ValueNode value : loopExit.loopBegin().stateAfter().values()) {
+            if (value != null && !value.isConstant() && !loopExit.loopBegin().isPhiAtMerge(value)) {
+                loopBeginValues.mark(ProxyPlaceholder.unwrap(value));
+            }
+        }
+
+        List<ValueNode> newValues = new ArrayList<>(oldState.values().size());
+        for (ValueNode value : oldState.values()) {
+            ValueNode realValue = ProxyPlaceholder.unwrap(value);
+
+            if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue)) {
+                newValues.add(realValue);
+            } else {
+                /*
+                 * The node is not in the FrameState of the LoopBegin, i.e., it is a value computed
+                 * inside the loop.
+                 */
+                JVMCIError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
+                                "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
+
+                ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;
+                ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit, methodScope.graph);
+                proxyPlaceholder.setValue(proxy);
+                newValues.add(proxy);
+            }
+        }
+
+        FrameState newState = new FrameState(oldState.outerFrameState(), oldState.method(), oldState.bci, newValues, oldState.localsSize(), oldState.stackSize(), oldState.rethrowException(),
+                        oldState.duringCall(), oldState.monitorIds(), oldState.virtualObjectMappings());
+
+        assert loopExit.stateAfter() == null;
+        loopExit.setStateAfter(methodScope.graph.add(newState));
     }
 
     /**
