@@ -535,8 +535,8 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value intPlus = findGlobalSymbol(plus(int.class, int.class));
 
         Number floatResult = floatPlus.execute(a, b).as(Number.class);
-        Number doubleResult = doublePlus.execute(a, b).as(Number.class);
-        Number intResult = intPlus.execute(a, b).as(Number.class);
+        Number doubleResult = doublePlus.execute(u, v).as(Number.class);
+        Number intResult = intPlus.execute(x, y).as(Number.class);
 
         assertEquals("Correct value computed via int: (" + a + " + " + b + ")", x + y, intResult.intValue());
         assertEquals("Correct value computed via float: (" + a + " + " + b + ")", intResult.intValue(), floatResult.intValue());
