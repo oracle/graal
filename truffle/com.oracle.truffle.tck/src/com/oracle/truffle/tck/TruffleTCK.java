@@ -581,6 +581,62 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    @Test
+    public void testPlusWithDoubleMaxMinInt() throws Exception {
+        double a = Integer.MAX_VALUE;
+        double b = Integer.MIN_VALUE;
+
+        doPlusWithDouble(a, b);
+    }
+
+    @Test
+    public void testPlusWithDoubleMinIntMinusOne() throws Exception {
+        double a = -1;
+        double b = Integer.MIN_VALUE;
+
+        doPlusWithDouble(a, b);
+    }
+
+    @Test
+    public void testPlusWithDoubleMaxIntPlusOne() throws Exception {
+        double a = 1;
+        double b = Integer.MAX_VALUE;
+
+        doPlusWithDouble(a, b);
+    }
+
+    @Test
+    public void testPlusWithDoubleNaNPlusNegInf() throws Exception {
+        double a = Double.NaN;
+        double b = Double.NEGATIVE_INFINITY;
+
+        doPlusWithDouble(a, b);
+    }
+
+    @Test
+    public void testPlusWithDoubleNaNPlusPosInf() throws Exception {
+        double a = Double.NaN;
+        double b = Double.POSITIVE_INFINITY;
+
+        doPlusWithDouble(a, b);
+    }
+
+    @Test
+    public void testPlusWithDoubleMaxIntPlusPosInf() throws Exception {
+        double a = Integer.MAX_VALUE;
+        double b = Double.POSITIVE_INFINITY;
+
+        doPlusWithDouble(a, b);
+    }
+
+    @Test
+    public void testPlusWithDoubleMaxIntPlusNegInf() throws Exception {
+        double a = Integer.MAX_VALUE;
+        double b = Double.NEGATIVE_INFINITY;
+
+        doPlusWithDouble(a, b);
+    }
+
     private void doPlusWithDouble(double a, double b) throws Exception {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(double.class, double.class));
 
