@@ -140,25 +140,20 @@ public final class SchedulePhase extends Phase {
             // assert GraphOrder.assertNonCyclicGraph(graph);
             cfg = ControlFlowGraph.compute(graph, true, true, true, false);
 
+            NodeMap<Block> currentNodeMap = graph.createNodeMap();
+            NodeBitMap visited = graph.createNodeBitMap();
+            BlockMap<List<Node>> earliestBlockToNodesMap = new BlockMap<>(cfg);
+            this.nodeToBlockMap = currentNodeMap;
+            this.blockToNodesMap = earliestBlockToNodesMap;
+
             if (selectedStrategy == SchedulingStrategy.EARLIEST) {
                 // Assign early so we are getting a context in case of an exception.
-                this.nodeToBlockMap = graph.createNodeMap();
-                this.blockToNodesMap = new BlockMap<>(cfg);
-                NodeBitMap visited = graph.createNodeBitMap();
-                scheduleEarliestIterative(blockToNodesMap, nodeToBlockMap, visited, graph, null, immutableGraph);
+                scheduleEarliestIterative(earliestBlockToNodesMap, currentNodeMap, visited, graph, null, immutableGraph);
             } else {
-                NodeMap<Block> currentNodeMap = graph.createNodeMap();
-                BlockMap<List<Node>> earliestBlockToNodesMap = new BlockMap<>(cfg);
-                NodeBitMap visited = graph.createNodeBitMap();
                 NodeBitMap unreachableNodes = immutableGraph ? graph.createNodeBitMap() : null;
-
-                // Assign early so we are getting a context in case of an exception.
-                this.blockToNodesMap = earliestBlockToNodesMap;
-                this.nodeToBlockMap = currentNodeMap;
-
                 scheduleEarliestIterative(earliestBlockToNodesMap, currentNodeMap, visited, graph, unreachableNodes, immutableGraph);
-                BlockMap<List<Node>> latestBlockToNodesMap = new BlockMap<>(cfg);
 
+                BlockMap<List<Node>> latestBlockToNodesMap = new BlockMap<>(cfg);
                 for (Block b : cfg.getBlocks()) {
                     latestBlockToNodesMap.put(b, new ArrayList<Node>());
                 }
@@ -171,7 +166,6 @@ public final class SchedulePhase extends Phase {
                 assert MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
 
                 this.blockToNodesMap = latestBlockToNodesMap;
-                this.nodeToBlockMap = currentNodeMap;
 
                 cfg.setNodeToBlock(currentNodeMap);
             }
