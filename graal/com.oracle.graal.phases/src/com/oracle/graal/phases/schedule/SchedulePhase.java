@@ -146,20 +146,16 @@ public final class SchedulePhase extends Phase {
             this.nodeToBlockMap = currentNodeMap;
             this.blockToNodesMap = earliestBlockToNodesMap;
 
-            if (selectedStrategy == SchedulingStrategy.EARLIEST) {
-                // Assign early so we are getting a context in case of an exception.
-                scheduleEarliestIterative(earliestBlockToNodesMap, currentNodeMap, visited, graph, null, immutableGraph);
-            } else {
-                NodeBitMap unreachableNodes = immutableGraph ? graph.createNodeBitMap() : null;
-                scheduleEarliestIterative(earliestBlockToNodesMap, currentNodeMap, visited, graph, unreachableNodes, immutableGraph);
+            scheduleEarliestIterative(earliestBlockToNodesMap, currentNodeMap, visited, graph, immutableGraph);
 
+            if (selectedStrategy != SchedulingStrategy.EARLIEST) {
+                // For non-earliest schedules, we need to do a second pass.
                 BlockMap<List<Node>> latestBlockToNodesMap = new BlockMap<>(cfg);
                 for (Block b : cfg.getBlocks()) {
                     latestBlockToNodesMap.put(b, new ArrayList<Node>());
                 }
 
-                BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(selectedStrategy, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap, unreachableNodes,
-                                immutableGraph);
+                BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(selectedStrategy, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap, immutableGraph);
                 sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
 
                 assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
@@ -175,7 +171,7 @@ public final class SchedulePhase extends Phase {
 
         @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "false positive found by findbugs")
         private BlockMap<ArrayList<FloatingReadNode>> calcLatestBlocks(SchedulingStrategy strategy, NodeMap<Block> currentNodeMap, BlockMap<List<Node>> earliestBlockToNodesMap, NodeBitMap visited,
-                        BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap unreachableNodes, boolean immutableGraph) {
+                        BlockMap<List<Node>> latestBlockToNodesMap, boolean immutableGraph) {
             BlockMap<ArrayList<FloatingReadNode>> watchListMap = new BlockMap<>(cfg);
             for (Block currentBlock : cfg.postOrder()) {
                 List<Node> blockToNodes = earliestBlockToNodesMap.get(currentBlock);
@@ -218,7 +214,7 @@ public final class SchedulePhase extends Phase {
                         if (latestBlock == null) {
                             // We are not constraint within earliest block => calculate optimized
                             // schedule.
-                            calcLatestBlock(currentBlock, strategy, currentNode, currentNodeMap, unreachableNodes, constrainingLocation, watchListMap, latestBlockToNodesMap, visited, immutableGraph);
+                            calcLatestBlock(currentBlock, strategy, currentNode, currentNodeMap, constrainingLocation, watchListMap, latestBlockToNodesMap, visited, immutableGraph);
                         } else {
                             selectLatestBlock(currentNode, currentBlock, latestBlock, currentNodeMap, watchListMap, constrainingLocation, latestBlockToNodesMap);
                         }
@@ -467,20 +463,17 @@ public final class SchedulePhase extends Phase {
 
         }
 
-        @SuppressWarnings("unused")
-        protected void calcLatestBlock(Block earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<Block> currentNodeMap, NodeBitMap unreachableNodes,
-                        LocationIdentity constrainingLocation, BlockMap<ArrayList<FloatingReadNode>> watchListMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap visited,
-                        boolean immutableGraph) {
+        protected void calcLatestBlock(Block earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<Block> currentNodeMap, LocationIdentity constrainingLocation,
+                        BlockMap<ArrayList<FloatingReadNode>> watchListMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap visited, boolean immutableGraph) {
             Block latestBlock = null;
             assert currentNode.hasUsages();
             for (Node usage : currentNode.usages()) {
-                if (unreachableNodes != null && unreachableNodes.contains(usage)) {
+                if (immutableGraph && !visited.contains(usage)) {
                     /*
                      * Normally, dead nodes are deleted by the scheduler before we reach this point.
                      * Only when the scheduler is asked to not modify a graph, we can see dead nodes
                      * here.
                      */
-                    assert immutableGraph;
                     continue;
                 }
                 latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap);
@@ -530,8 +523,7 @@ public final class SchedulePhase extends Phase {
             return currentBlock;
         }
 
-        private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph, NodeBitMap unreachableNodes,
-                        boolean immutableGraph) {
+        private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph, boolean immutableGraph) {
 
             BitSet floatingReads = new BitSet(cfg.getBlocks().size());
 
@@ -599,19 +591,11 @@ public final class SchedulePhase extends Phase {
             } while (unmarkedPhi && changed);
 
             // Check for dead nodes.
-            if (visited.getCounter() < graph.getNodeCount()) {
+            if (!immutableGraph && visited.getCounter() < graph.getNodeCount()) {
                 for (Node n : graph.getNodes()) {
                     if (!visited.isMarked(n)) {
-                        if (!immutableGraph) {
-                            n.clearInputs();
-                            n.markDeleted();
-                        } else if (unreachableNodes != null) {
-                            /*
-                             * We are not allowed to modify the graph, so remember that node is
-                             * dead.
-                             */
-                            unreachableNodes.mark(n);
-                        }
+                        n.clearInputs();
+                        n.markDeleted();
                     }
                 }
             }
