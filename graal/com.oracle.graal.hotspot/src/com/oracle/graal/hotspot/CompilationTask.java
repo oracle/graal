@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,14 +31,12 @@ import static com.oracle.graal.compiler.GraalCompilerOptions.PrintFilter;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
 
 import java.lang.reflect.Field;
-import java.util.concurrent.TimeUnit;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationRequestFailure;
+import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -154,10 +152,9 @@ public class CompilationTask {
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 
     @SuppressWarnings("try")
-    public CompilationRequestFailure runCompilation() {
+    public CompilationRequestResult runCompilation() {
         HotSpotVMConfig config = jvmciRuntime.getConfig();
         final long threadId = Thread.currentThread().getId();
-        long startCompilationTime = System.nanoTime();
         HotSpotInstalledCode installedCode = null;
         int entryBCI = getEntryBCI();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
@@ -239,7 +236,7 @@ public class CompilationTask {
             /*
              * Treat bailouts as retryable.
              */
-            return new CompilationRequestFailure(bailout.getMessage(), true);
+            return CompilationRequestResult.failure(bailout.getMessage(), true);
         } catch (Throwable t) {
             // Log a failure event.
             CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
@@ -254,7 +251,7 @@ public class CompilationTask {
              * Treat random exceptions from the compiler as indicating a problem compiling this
              * method.
              */
-            return new CompilationRequestFailure(t.getMessage(), false);
+            return CompilationRequestResult.failure(t.getMessage(), false);
         } finally {
             try {
                 int compiledBytecodes = 0;
@@ -284,12 +281,6 @@ public class CompilationTask {
                     long ctask = UNSAFE.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
                     assert ctask != 0L;
                     UNSAFE.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
-                }
-                long compilationTime = System.nanoTime() - startCompilationTime;
-                if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
-                    long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
-                    final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
-                    codeCache.notifyCompilationStatistics(getId(), method, entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
                 }
             } catch (Throwable t) {
                 handleException(t);
