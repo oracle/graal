@@ -49,7 +49,6 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
-import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -67,9 +66,6 @@ import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
@@ -102,9 +98,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
  */
 public class PartialEvaluator {
 
-    @Option(help = "New partial evaluation on Graal graphs", type = OptionType.Expert)//
-    public static final OptionValue<Boolean> GraphPE = new OptionValue<>(true);
-
     protected final Providers providers;
     protected final Architecture architecture;
     private final CanonicalizerPhase canonicalizer;
@@ -113,7 +106,6 @@ public class PartialEvaluator {
     private final ResolvedJavaMethod callInlinedMethod;
     private final ResolvedJavaMethod callSiteProxyMethod;
     private final ResolvedJavaMethod callRootMethod;
-    private final GraphBuilderConfiguration configForPartialEvaluation;
     private final GraphBuilderConfiguration configForParsing;
     private final InvocationPlugins decodingInvocationPlugins;
 
@@ -132,7 +124,6 @@ public class PartialEvaluator {
             throw new RuntimeException(ex);
         }
 
-        this.configForPartialEvaluation = createGraphBuilderConfig(configForRoot, false);
         this.configForParsing = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins();
     }
@@ -331,31 +322,6 @@ public class PartialEvaluator {
 
     }
 
-    protected void doFastPE(OptimizedCallTarget callTarget, StructuredGraph graph) {
-        GraphBuilderConfiguration newConfig = configForPartialEvaluation.copy();
-
-        Plugins plugins = newConfig.getPlugins();
-        plugins.prependParameterPlugin(new InterceptReceiverPlugin(callTarget));
-        callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
-        plugins.setLoopExplosionPlugin(new PELoopExplosionPlugin());
-
-        ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
-        plugins.clearInlineInvokePlugins();
-        plugins.appendInlineInvokePlugin(replacements);
-        plugins.appendInlineInvokePlugin(new PEInlineInvokePlugin(callTarget.getInlining(), replacements));
-        HistogramInlineInvokePlugin histogramPlugin = null;
-        if (PrintTruffleExpansionHistogram.getValue()) {
-            histogramPlugin = new HistogramInlineInvokePlugin(graph);
-            plugins.appendInlineInvokePlugin(histogramPlugin);
-        }
-
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), newConfig, TruffleCompiler.Optimizations, null).apply(graph);
-
-        if (PrintTruffleExpansionHistogram.getValue()) {
-            histogramPlugin.print(callTarget);
-        }
-    }
-
     protected PEGraphDecoder createGraphDecoder(StructuredGraph graph) {
         GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
@@ -427,11 +393,7 @@ public class PartialEvaluator {
 
     @SuppressWarnings({"try", "unused"})
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
-        if (GraphPE.getValue()) {
-            doGraphPE(callTarget, graph);
-        } else {
-            doFastPE(callTarget, graph);
-        }
+        doGraphPE(callTarget, graph);
         Debug.dump(graph, "After FastPE");
 
         graph.maybeCompress();
