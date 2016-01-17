@@ -1,0 +1,11 @@
+language: java
+jdk:
+  - oraclejdk8
+install:
+  - hg clone https://bitbucket.org/allr/mx
+script:
+  - mx/mx build
+  - $TEST_COMMAND
+env:
+  - TEST_COMMAND='mx/mx unittest'
+  - TEST_COMMAND='mx/mx findbugs'
