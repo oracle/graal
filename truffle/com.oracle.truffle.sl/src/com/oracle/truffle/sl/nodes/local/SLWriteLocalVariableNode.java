@@ -48,6 +48,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.InstrumentationTag;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
@@ -57,6 +59,7 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
  */
 @NodeChild("valueNode")
 @NodeField(name = "slot", type = FrameSlot.class)
+@Instrumentable(tags = {InstrumentationTag.WRITE, InstrumentationTag.EXPRESSION})
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     public SLWriteLocalVariableNode(SourceSection src) {
