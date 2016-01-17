@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -747,7 +748,7 @@ public abstract class Source {
 
         @Override
         public int hashCode() {
-            return description.hashCode() * code.hashCode();
+            return description == null ? 0 : description.hashCode() * (code == null ? 0 : code.hashCode());
         }
 
         @Override
@@ -760,7 +761,7 @@ public abstract class Source {
             }
             if (obj instanceof LiteralSource) {
                 LiteralSource other = (LiteralSource) obj;
-                return description.equals(other.description) && code.equals(other.code) && equalMime(other);
+                return Objects.equals(description, other.description) && code.equals(other.code) && equalMime(other);
             }
             return false;
         }

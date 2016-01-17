@@ -30,17 +30,18 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.util.Map;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -48,7 +49,6 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import java.util.Map;
 
 /**
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
@@ -58,7 +58,9 @@ public abstract class Accessor {
     private static Accessor SPI;
     private static Accessor NODES;
     private static Accessor INSTRUMENT;
+    static Accessor INSTRUMENTHANDLER;
     private static Accessor DEBUG;
+    private static Accessor OPTIMIZEDCALLTARGET;
     private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
 
     static {
@@ -136,11 +138,21 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             INSTRUMENT = this;
+        } else if (this.getClass().getSimpleName().endsWith("InstrumentHandler")) {
+            if (INSTRUMENTHANDLER != null) {
+                throw new IllegalStateException();
+            }
+            INSTRUMENTHANDLER = this;
         } else if (this.getClass().getSimpleName().endsWith("Debug")) {
             if (DEBUG != null) {
                 throw new IllegalStateException();
             }
             DEBUG = this;
+        } else if (this.getClass().getSimpleName().endsWith("OptimizedCallTarget")) {
+            if (OPTIMIZEDCALLTARGET != null) {
+                throw new IllegalStateException();
+            }
+            OPTIMIZEDCALLTARGET = this;
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
@@ -261,6 +273,32 @@ public abstract class Accessor {
         return INSTRUMENT.createInstrumenter(vm);
     }
 
+    protected void addInstrumentation(Object instrumentationHandler, Object key, Class<?> instrumentationClass) {
+        INSTRUMENTHANDLER.addInstrumentation(instrumentationHandler, key, instrumentationClass);
+    }
+
+    protected void disposeInstrumentation(Object instrumentationHandler, Object key, boolean cleanupRequired) {
+        INSTRUMENTHANDLER.disposeInstrumentation(instrumentationHandler, key, cleanupRequired);
+    }
+
+    protected Object getInstrumentationHandler(Object known) {
+        Object vm;
+        if (known == null) {
+            vm = CURRENT_VM.get();
+            if (vm == null) {
+                return null;
+            }
+        } else {
+            vm = known;
+        }
+        return SPI.getInstrumentationHandler(vm);
+    }
+
+    // new instrumentation
+    protected Object createInstrumentationHandler(Object vm, OutputStream out, OutputStream err, InputStream in) {
+        return INSTRUMENTHANDLER.createInstrumentationHandler(vm, out, err, in);
+    }
+
     protected Debugger createDebugger(Object vm, Instrumenter instrumenter) {
         return DEBUG.createDebugger(vm, instrumenter);
     }
@@ -319,13 +357,33 @@ public abstract class Accessor {
         return API.findContext(env);
     }
 
-    /** Applies all registered {@linkplain ASTProber probers} to the AST. */
-    protected void probeAST(RootNode rootNode) {
-        INSTRUMENT.probeAST(rootNode);
+    /** RootNode#isInstrumentable is protected so we need to use accessor. */
+    protected boolean isInstrumentable(RootNode rootNode) {
+        return NODES.isInstrumentable(rootNode);
+    }
+
+    /**
+     * Invoked by OPTIMIZED_CALL_TARGET accessor or DefaultCallTarget and implemented by
+     * instrumentation.
+     */
+    protected void initializeCallTarget(RootCallTarget target) {
+        INSTRUMENTHANDLER.initializeCallTarget(target);
+    }
+
+    protected void attachToInstrumentation(Object vm, TruffleLanguage<?> impl, Env context) {
+        INSTRUMENTHANDLER.attachToInstrumentation(vm, impl, context);
+    }
+
+    protected void detachFromInstrumentation(Object vm, Env context) {
+        INSTRUMENTHANDLER.detachFromInstrumentation(vm, context);
     }
 
     protected void dispose(TruffleLanguage<?> impl, Env env) {
         API.dispose(impl, env);
+    }
+
+    protected void probeAST(RootNode rootNode) {
+        INSTRUMENT.probeAST(rootNode);
     }
 
     @SuppressWarnings("rawtypes")
