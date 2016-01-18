@@ -215,7 +215,7 @@ suite = {
     "com.oracle.truffle.tools" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.vm", "com.oracle.truffle.api.profiles"],
+      "dependencies" : [ "com.oracle.truffle.api.profiles", "com.oracle.truffle.api.instrumentation"],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
@@ -239,7 +239,8 @@ suite = {
     "com.oracle.truffle.tools.debug.shell" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.tools",
+      "dependencies" : ["com.oracle.truffle.tools", 
+                        "com.oracle.truffle.api.vm",
                         "JLINE"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
@@ -303,7 +304,6 @@ suite = {
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",
-        "com.oracle.truffle.tools"
       ],
       "distDependencies" : [
       ],
@@ -323,26 +323,12 @@ suite = {
       "description" : """A collection of tests that can certify language implementation to be compliant
         with most recent requirements of the Truffle infrastructure and tooling.""",
     },
-                     
-    "TRUFFLE_BASE" : {
-      "subDir" : "truffle",
-      "javaCompliance" : "1.7",
-      "dependencies" : [
-        "com.oracle.truffle.api",
-        "com.oracle.truffle.api.dsl", 
-        "com.oracle.truffle.api.instrumentation",
-      ],
-      "distDependencies" : [
-      ],
-      "description" : """Truffle is a multi-language framework for executing dynamic languages
-        that achieves high performance when combined with Graal.""",
-    },
 
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "truffle",
       "javaCompliance" : "1.7",
       "dependencies" : ["com.oracle.truffle.dsl.processor"],
-      "distDependencies" : ["TRUFFLE_BASE"],
+      "distDependencies" : ["TRUFFLE_API"],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
     },
 
@@ -367,6 +353,7 @@ suite = {
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.tools.debug.shell",
+        "com.oracle.truffle.tools"
       ],
       "exclude" : ["JLINE"],
       "distDependencies" : [
