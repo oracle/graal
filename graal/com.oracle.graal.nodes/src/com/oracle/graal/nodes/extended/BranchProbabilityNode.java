@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.ConditionalNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.calc.IntegerEqualsNode;
 import com.oracle.graal.nodes.spi.Lowerable;
@@ -92,6 +93,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                 return;
             }
             boolean couldSet = false;
+            boolean isExcused = false;
             for (IntegerEqualsNode node : this.usages().filter(IntegerEqualsNode.class)) {
                 if (node.condition() == Condition.EQ) {
                     ValueNode other = node.getX();
@@ -107,14 +109,13 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                             couldSet = true;
                             ifNodeUsages.setTrueSuccessorProbability(probabilityToSet);
                         }
-
-                        if (!couldSet && node.usages().filter(FixedGuardNode.class).isNotEmpty()) {
-                            couldSet = true;
+                        if (!couldSet) {
+                            isExcused = node.usages().filter(ConditionalNode.class).isNotEmpty() || node.usages().filter(FixedGuardNode.class).isNotEmpty();
                         }
                     }
                 }
             }
-            if (couldSet) {
+            if (couldSet || isExcused) {
                 ValueNode currentCondition = condition;
                 replaceAndDelete(currentCondition);
                 if (tool != null) {
