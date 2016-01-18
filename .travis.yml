@@ -7,5 +7,4 @@ script:
   - mx/mx build
   - $TEST_COMMAND
 env:
-  - TEST_COMMAND='mx/mx unittest'
-  - TEST_COMMAND='mx/mx findbugs'
+  - TEST_COMMAND='mx/mx gate'
