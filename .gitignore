@@ -1,4 +1,5 @@
 mxbuild/**/*
+javadoc/**/*
 mx.truffle/*.pyc
 mx.truffle/env
 mx.truffle/eclipse-launches/**
