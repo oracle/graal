@@ -29,9 +29,6 @@ import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintFilter;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
-
-import java.lang.reflect.Field;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequestResult;
@@ -49,7 +46,6 @@ import jdk.vm.ci.hotspot.events.EventProvider.CompilationEvent;
 import jdk.vm.ci.hotspot.events.EventProvider.CompilerFailureEvent;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.Services;
-import sun.misc.Unsafe;
 
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.debug.Debug;
@@ -64,22 +60,6 @@ import com.oracle.graal.debug.TTY;
 //JaCoCo Exclude
 
 public class CompilationTask {
-
-    private static final Unsafe UNSAFE = initUnsafe();
-
-    private static Unsafe initUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
-        }
-    }
 
     private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
 
@@ -223,6 +203,9 @@ public class CompilationTask {
                 }
             }
             stats.finish(method, installedCode);
+            if (result != null) {
+                return CompilationRequestResult.success(result.getBytecodeSize() - method.getCodeSize());
+            }
             return null;
         } catch (BailoutException bailout) {
             BAILOUTS.increment();
@@ -275,13 +258,6 @@ public class CompilationTask {
                     compilationEvent.setCodeSize(codeSize);
                     compilationEvent.setInlinedBytes(compiledBytecodes);
                     compilationEvent.commit();
-                }
-
-                long jvmciEnv = request.getJvmciEnv();
-                if (jvmciEnv != 0) {
-                    long ctask = UNSAFE.getAddress(jvmciEnv + config.jvmciEnvTaskOffset);
-                    assert ctask != 0L;
-                    UNSAFE.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
                 }
             } catch (Throwable t) {
                 handleException(t);
