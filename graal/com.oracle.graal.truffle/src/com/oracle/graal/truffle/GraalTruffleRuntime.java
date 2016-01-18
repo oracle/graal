@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -52,6 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.api.runtime.GraalRuntime;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.CompilerThreadFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,15 +30,15 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CodeUtil.DefaultRefMapFormatter;
 import jdk.vm.ci.code.CodeUtil.RefMapFormatter;
-import jdk.vm.ci.code.CompilationResult;
-import jdk.vm.ci.code.CompilationResult.Call;
-import jdk.vm.ci.code.CompilationResult.DataPatch;
-import jdk.vm.ci.code.CompilationResult.Infopoint;
-import jdk.vm.ci.code.CompilationResult.Mark;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.DataPatch;
+import jdk.vm.ci.code.site.ExceptionHandler;
+import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.code.site.Mark;
 
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
@@ -108,7 +108,7 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
         if (!compResult.getExceptionHandlers().isEmpty()) {
             String nl = HexCodeFile.NEW_LINE;
             StringBuilder buf = new StringBuilder("------ Exception Handlers ------").append(nl);
-            for (CompilationResult.ExceptionHandler e : compResult.getExceptionHandlers()) {
+            for (ExceptionHandler e : compResult.getExceptionHandlers()) {
                 buf.append("    ").append(e.pcOffset).append(" -> ").append(e.handlerPos).append(nl);
                 hcf.addComment(e.pcOffset, "[exception -> " + e.handlerPos + "]");
                 hcf.addComment(e.handlerPos, "[exception handler for " + e.pcOffset + "]");
@@ -127,6 +127,7 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
      */
     static class HexCodeFileDisTool {
         static final MethodHandle processMethod;
+
         static {
             MethodHandle toolMethod = null;
             try {

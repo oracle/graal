@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,14 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.FixedNode;
@@ -144,7 +145,8 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
         removeLoopSafepoint(graph);
 
         CompilationResult compilationResult = compile(javaMethod, graph);
-        final InstalledCode installedCode = getProviders().getCodeCache().setDefaultCode(javaMethod, compilationResult);
+        CompiledCode compiledCode = getBackend().createCompiledCode(javaMethod, compilationResult);
+        final InstalledCode installedCode = getProviders().getCodeCache().setDefaultCode(javaMethod, compiledCode);
 
         final Monitor monitor = new Monitor();
 

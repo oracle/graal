@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,23 +31,25 @@ import java.util.Set;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationResult;
-import jdk.vm.ci.code.CompilationResult.Call;
-import jdk.vm.ci.code.CompilationResult.ConstantReference;
-import jdk.vm.ci.code.CompilationResult.DataPatch;
-import jdk.vm.ci.code.CompilationResult.Infopoint;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.code.site.DataPatch;
+import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
 
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubStartNode;
@@ -192,7 +194,8 @@ public abstract class Stub {
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {
-                    code = codeCache.installCode(null, compResult, null, null, false);
+                    HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(null, null, compResult);
+                    code = codeCache.installCode(null, compiledCode, null, null, false);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }

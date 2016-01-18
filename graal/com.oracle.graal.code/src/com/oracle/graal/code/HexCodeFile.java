@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,11 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.graal.code.CompilationResult.CodeAnnotation;
+import com.oracle.graal.code.CompilationResult.CodeComment;
+import com.oracle.graal.code.CompilationResult.JumpTable;
+
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.code.CompilationResult.CodeAnnotation;
-import jdk.vm.ci.code.CompilationResult.CodeComment;
-import jdk.vm.ci.code.CompilationResult.JumpTable;
 
 /**
  * A HexCodeFile is a textual format for representing a chunk of machine code along with extra

@@ -31,7 +31,6 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
-import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -44,6 +43,7 @@ import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;

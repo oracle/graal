@@ -35,9 +35,9 @@ import java.lang.reflect.Field;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequestResult;
-import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
@@ -51,6 +51,7 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
@@ -313,7 +314,8 @@ public class CompilationTask {
         final CodeCacheProvider codeCache = jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(getId()), true), codeCache, getMethod())) {
-            installedCode = codeCache.installCode(request, compResult, null, request.getMethod().getSpeculationLog(), installAsDefault);
+            HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(request.getMethod(), request, compResult);
+            installedCode = codeCache.installCode(request.getMethod(), compiledCode, null, request.getMethod().getSpeculationLog(), installAsDefault);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

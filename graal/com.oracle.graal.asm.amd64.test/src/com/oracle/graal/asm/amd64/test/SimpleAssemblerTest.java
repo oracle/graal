@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,10 @@ import java.nio.ByteOrder;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CompilationResult;
-import jdk.vm.ci.code.CompilationResult.DataSectionReference;
-import jdk.vm.ci.code.DataSection.Data;
-import jdk.vm.ci.code.DataSection.DataBuilder;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -45,6 +42,10 @@ import org.junit.Test;
 import com.oracle.graal.asm.amd64.AMD64Assembler;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.asm.test.AssemblerTest;
+import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.code.DataSection.Data;
+import com.oracle.graal.code.DataSection.RawData;
+import com.oracle.graal.code.DataSection.SerializableData;
 
 public class SimpleAssemblerTest extends AssemblerTest {
 
@@ -77,7 +78,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                 AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
                 Register ret = registerConfig.getReturnRegister(JavaKind.Double);
-                Data data = new Data(8, 8, DataBuilder.serializable(JavaConstant.forDouble(84.72)));
+                Data data = new SerializableData(JavaConstant.forDouble(84.72), 8);
                 DataSectionReference ref = compResult.getDataSection().insertData(data);
                 compResult.recordDataPatch(asm.position(), ref);
                 asm.movdbl(ret, asm.getPlaceholder());
@@ -99,7 +100,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
 
                 byte[] rawBytes = new byte[8];
                 ByteBuffer.wrap(rawBytes).order(ByteOrder.nativeOrder()).putDouble(84.72);
-                Data data = new Data(8, 8, DataBuilder.raw(rawBytes));
+                Data data = new RawData(rawBytes, 8);
                 DataSectionReference ref = compResult.getDataSection().insertData(data);
                 compResult.recordDataPatch(asm.position(), ref);
                 asm.movdbl(ret, asm.getPlaceholder());

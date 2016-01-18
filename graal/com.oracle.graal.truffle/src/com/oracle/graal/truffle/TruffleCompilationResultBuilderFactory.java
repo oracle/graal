@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,14 @@ import java.util.List;
 import java.util.Set;
 
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 
 import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.asm.DataBuilder;
 import com.oracle.graal.lir.asm.FrameContext;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -60,9 +61,9 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
         this.validAssumptions = validAssumptions;
     }
 
-    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
+    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult) {
+        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult) {
             @Override
             protected void closeCompilationResult() {
                 CompilationResult result = this.compilationResult;

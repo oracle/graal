@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ import java.lang.reflect.Method;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.code.RegisterConfig;
@@ -40,15 +40,20 @@ import jdk.vm.ci.services.Services;
 
 import org.junit.Assert;
 
+import com.oracle.graal.api.test.Graal;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.code.DisassemblerProvider;
+import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.test.GraalTest;
 
 public abstract class AssemblerTest extends GraalTest {
 
     private final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
+    private final Backend backend;
 
     public interface CodeGenTest {
         byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc);
@@ -58,6 +63,7 @@ public abstract class AssemblerTest extends GraalTest {
         JVMCIBackend providers = JVMCI.getRuntime().getHostJVMCIBackend();
         this.metaAccess = providers.getMetaAccess();
         this.codeCache = providers.getCodeCache();
+        this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -77,7 +83,8 @@ public abstract class AssemblerTest extends GraalTest {
             compResult.setTotalFrameSize(0);
             compResult.close();
 
-            InstalledCode code = codeCache.addCode(method, compResult, null, null);
+            CompiledCode compiledCode = backend.createCompiledCode(method, compResult);
+            InstalledCode code = codeCache.addCode(method, compiledCode, null, null);
 
             for (DisassemblerProvider dis : Services.load(DisassemblerProvider.class)) {
                 String disasm1 = dis.disassembleCompiledCode(codeCache, compResult);

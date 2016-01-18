@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,13 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
-import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
+
+import com.oracle.graal.code.CompilationResult;
 
 public final class InterfaceMethodHandleTest extends GraalCompilerTest implements Opcodes {
     private static final MethodHandle INTERFACE_HANDLE_M;
@@ -102,7 +104,8 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest implement
     protected InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {
         if (method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(M2Thrower.class))) {
             // Make sure M2Thrower.m2 is invoked from normal code
-            return getCodeCache().setDefaultCode(method, compResult);
+            CompiledCode compiledCode = getBackend().createCompiledCode(method, compResult);
+            return getCodeCache().setDefaultCode(method, compiledCode);
         }
         return super.addMethod(method, compResult);
     }

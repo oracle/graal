@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,10 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import java.util.function.Consumer;
 
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CompilationResult;
-import jdk.vm.ci.code.InfopointReason;
 import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -44,11 +44,13 @@ import jdk.vm.ci.meta.Value;
 
 import org.junit.Test;
 
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
 import com.oracle.graal.lir.FullInfopointOp;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
@@ -134,7 +136,8 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         graph.addAfterFixed(graph.start(), test);
 
         CompilationResult compResult = compile(method, graph);
-        getCodeCache().addCode(method, compResult, null, null);
+        HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(method, null, compResult);
+        getCodeCache().addCode(method, compiledCode, null, null);
     }
 
     @Test(expected = JVMCIError.class)

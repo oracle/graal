@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot.sparc;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
-import jdk.vm.ci.code.InfopointReason;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.AllocatableValue;
 

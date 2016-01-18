@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,9 @@ import static com.oracle.graal.asm.NumUtil.isInt;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rip;
-import jdk.vm.ci.code.InfopointReason;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
@@ -36,8 +37,10 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
@@ -277,5 +280,10 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @Override
     public ReferenceMapBuilder newReferenceMapBuilder(int totalFrameSize) {
         return new HotSpotReferenceMapBuilder(totalFrameSize);
+    }
+
+    @Override
+    public CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationResult compResult) {
+        return HotSpotCompiledCodeBuilder.createCompiledCode(method, null, compResult);
     }
 }

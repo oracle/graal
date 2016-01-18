@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import java.util.Set;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
@@ -50,11 +49,13 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.amd64.AMD64NodeMatchRules;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.gen.BytecodeLIRBuilder;
 import com.oracle.graal.compiler.gen.BytecodeParserTool;
 import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotHostBackend;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
@@ -66,6 +67,7 @@ import com.oracle.graal.lir.amd64.AMD64FrameMap;
 import com.oracle.graal.lir.amd64.AMD64FrameMapBuilder;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.asm.DataBuilder;
 import com.oracle.graal.lir.asm.FrameContext;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
@@ -234,7 +236,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         Stub stub = gen.getStub();
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame);
-        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
+        DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
+        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, compilationResult);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {

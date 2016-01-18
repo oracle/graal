@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package com.oracle.graal.lir.asm;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.meta.Constant;
 
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.code.DataSection.Data;
 
-@Opcode("SIMPLE_INFOPOINT")
-public final class SimpleInfopointOp extends LIRInstruction {
-    public static final LIRInstructionClass<SimpleInfopointOp> TYPE = LIRInstructionClass.create(SimpleInfopointOp.class);
-    private final InfopointReason reason;
-    private final BytecodePosition position;
+public abstract class DataBuilder {
 
-    public SimpleInfopointOp(InfopointReason reason, BytecodePosition position) {
-        super(TYPE);
-        this.reason = reason;
-        this.position = position;
-    }
-
-    @Override
-    public void emitCode(CompilationResultBuilder crb) {
-        crb.recordInfopoint(crb.asm.position(), new DebugInfo(position), reason);
-    }
+    public abstract Data createDataItem(Constant c);
 }

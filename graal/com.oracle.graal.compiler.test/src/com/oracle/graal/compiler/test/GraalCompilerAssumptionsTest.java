@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,13 @@
 package com.oracle.graal.compiler.test;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
@@ -65,7 +66,8 @@ public abstract class GraalCompilerAssumptionsTest extends GraalCompilerTest {
         checkGraph(expectedAssumption, graph);
 
         CompilationResult compilationResult = compile(javaMethod, graph);
-        final InstalledCode installedCode = getProviders().getCodeCache().setDefaultCode(javaMethod, compilationResult);
+        CompiledCode compiledCode = getBackend().createCompiledCode(javaMethod, compilationResult);
+        final InstalledCode installedCode = getProviders().getCodeCache().setDefaultCode(javaMethod, compiledCode);
         assertTrue(installedCode.isValid());
         if (classToLoad != null) {
             String fullName = getClass().getName() + "$" + classToLoad;

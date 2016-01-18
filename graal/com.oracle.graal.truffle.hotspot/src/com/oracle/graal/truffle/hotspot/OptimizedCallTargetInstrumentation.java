@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,16 +27,17 @@ import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
 import java.lang.reflect.Field;
 
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationResult;
-import jdk.vm.ci.code.CompilationResult.Mark;
+import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.asm.DataBuilder;
 import com.oracle.graal.lir.asm.FrameContext;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.truffle.OptimizedCallTarget;
@@ -48,9 +49,9 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
     protected final HotSpotVMConfig config;
     protected final HotSpotRegistersProvider registers;
 
-    public OptimizedCallTargetInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
+    public OptimizedCallTargetInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult, HotSpotVMConfig config, HotSpotRegistersProvider registers) {
-        super(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
+        super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult);
         this.config = config;
         this.registers = registers;
     }

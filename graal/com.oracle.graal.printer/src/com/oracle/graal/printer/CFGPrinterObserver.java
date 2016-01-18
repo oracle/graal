@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,13 +35,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.code.DisassemblerProvider;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;

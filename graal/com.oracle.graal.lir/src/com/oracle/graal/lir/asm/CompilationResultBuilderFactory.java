@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,9 @@
 package com.oracle.graal.lir.asm;
 
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationResult;
 
 import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.lir.framemap.FrameMap;
 
@@ -37,7 +37,7 @@ public interface CompilationResultBuilderFactory {
     /**
      * Creates a new {@link CompilationResultBuilder}.
      */
-    CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
+    CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult);
 
     /**
@@ -45,9 +45,9 @@ public interface CompilationResultBuilderFactory {
      */
     CompilationResultBuilderFactory Default = new CompilationResultBuilderFactory() {
 
-        public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
-                        CompilationResult compilationResult) {
-            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
+        public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
+                        FrameContext frameContext, CompilationResult compilationResult) {
+            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult);
         }
     };
 }

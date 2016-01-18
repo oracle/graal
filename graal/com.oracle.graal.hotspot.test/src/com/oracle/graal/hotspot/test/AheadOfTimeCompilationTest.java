@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
-import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -39,6 +38,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.api.test.Graal;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.iterators.NodeIterable;

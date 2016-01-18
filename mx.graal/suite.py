@@ -39,7 +39,7 @@ suite = {
             {
                "name" : "jvmci",
                "optional" : "true",
-               "version" : "1fbfcc0334d34d574646289ce1c93b05699ee555",
+               "version" : "8a3fd0269d15ae84d31c34df144297df5ba3c773",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -280,7 +280,6 @@ suite = {
         "com.oracle.graal.api.runtime",
         "com.oracle.graal.replacements",
         "com.oracle.graal.runtime",
-        "com.oracle.graal.code",
       ]),
       "checkstyle" : "com.oracle.graal.graph",
       "annotationProcessors" : [
@@ -484,7 +483,9 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.graal.api.test",
         "com.oracle.graal.code",
+        "com.oracle.graal.runtime",
         "com.oracle.graal.test",
         "com.oracle.graal.debug",
       ],
@@ -521,8 +522,9 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.graal.compiler.common",
         "com.oracle.graal.asm",
+        "com.oracle.graal.code",
+        "com.oracle.graal.compiler.common",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
@@ -702,10 +704,9 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.graph",
         "com.oracle.graal.api.replacements",
-        "com.oracle.graal.lir",
         "com.oracle.graal.bytecode",
+        "com.oracle.graal.lir",
       ],
-      "generatedDependencies" : ["com.oracle.graal.serviceprovider"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
@@ -974,9 +975,8 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.graal.code",
-        "com.oracle.graal.java",
         "com.oracle.graal.compiler",
+        "com.oracle.graal.java",
       ],
       "annotationProcessors" : [
         "GRAAL_OPTIONS_PROCESSOR",

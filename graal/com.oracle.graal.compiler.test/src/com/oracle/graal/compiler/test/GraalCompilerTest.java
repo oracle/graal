@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationResult;
+import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
@@ -68,6 +68,7 @@ import org.junit.internal.AssumptionViolatedException;
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.api.test.Graal;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.GraalCompiler.Request;
 import com.oracle.graal.compiler.target.Backend;
@@ -785,7 +786,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
-        return getCodeCache().addCode(method, compResult, null, null);
+        CompiledCode compiledCode = backend.createCompiledCode(method, compResult);
+        return getCodeCache().addCode(method, compiledCode, null, null);
     }
 
     private final Map<ResolvedJavaMethod, Method> methodMap = new HashMap<>();

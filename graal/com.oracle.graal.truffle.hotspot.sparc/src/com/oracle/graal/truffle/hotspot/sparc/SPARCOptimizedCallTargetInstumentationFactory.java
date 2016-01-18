@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
 import static jdk.vm.ci.code.CallingConvention.Type.JavaCall;
 import static jdk.vm.ci.meta.JavaKind.Object;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationResult;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 
@@ -37,8 +36,10 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.asm.DataBuilder;
 import com.oracle.graal.lir.asm.FrameContext;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.serviceprovider.ServiceProvider;
@@ -48,9 +49,9 @@ import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentationFactor
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
 public class SPARCOptimizedCallTargetInstumentationFactory extends OptimizedCallTargetInstrumentationFactory {
 
-    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext,
+    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult, config, registers) {
+        return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, config, registers) {
             @Override
             protected void injectTailCallCode() {
                 @SuppressWarnings("hiding")
