@@ -365,7 +365,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         }
 
         if (wrappedExecuteMethods.isEmpty()) {
-            emitError(sourceType, String.format("No methods starting with name execute found to wrap.", sourceType));
+            emitError(sourceType, String.format("No methods starting with name execute found to wrap."));
             return null;
         }
 

@@ -284,7 +284,7 @@ public final class SourceSectionFilter {
 
             @Override
             public String toString() {
-                return String.format("source is %s", sources.toString());
+                return String.format("source is %s", Arrays.toString(sources));
             }
         }
 

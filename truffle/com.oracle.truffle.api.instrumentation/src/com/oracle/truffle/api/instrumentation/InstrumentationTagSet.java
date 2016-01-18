@@ -35,7 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 /**
  * Immutable instrumentation tag set designed for fast-path operations in Truffle interpreters.
  */
-final class InstrumentationTagSet extends AbstractSet<InstrumentationTag> {
+final class InstrumentationTagSet extends AbstractSet<InstrumentationTag> implements Cloneable {
 
     private final int elements;
 
