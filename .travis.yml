@@ -1,12 +1,14 @@
 language: java
 jdk:
-  - oraclejdk8
   - oraclejdk7
 install:
   - hg clone https://bitbucket.org/allr/mx
   - wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar
   - mv ecj-4.5.1.jar mx/ecj.jar
   - export JDT=mx/ecj.jar
+  - wget https://lafo.ssw.uni-linz.ac.at/slavefiles/gate/eclipse-jdk8-linux-x86_64.tar.gz
+  - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
+  - export ECLIPSE_EXE=eclipse/eclipse
 script:
   - $TEST_COMMAND
 env:
