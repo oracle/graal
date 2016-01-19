@@ -1294,26 +1294,20 @@ public class GraphDecoder {
                  * not insert a LoopExit in such cases, we also do not have to insert a LoopExit.
                  */
                 if (next instanceof EndNode) {
-                    AbstractMergeNode merge = ((EndNode) next).merge();
-                    if (methodScope.loopExplosionMerges.contains(merge)) {
-                        /*
-                         * If this guarantee fails, we need to handle phi functions of the merge,
-                         * i.e., take the phi function input for our EndNode and put it into the
-                         * LoopExit state.
-                         */
-                        JVMCIError.guarantee(merge.cfgPredecessors().count() == 1, merge.toString());
-
+                    EndNode loopExplosionEnd = (EndNode) next;
+                    AbstractMergeNode loopExplosionMerge = loopExplosionEnd.merge();
+                    if (methodScope.loopExplosionMerges.contains(loopExplosionMerge)) {
                         LoopExitNode loopExit = methodScope.graph.add(new LoopExitNode(loopBegin));
                         next.replaceAtPredecessor(loopExit);
                         loopExit.setNext(next);
-                        assignLoopExitState(methodScope, loopExit, merge);
+                        assignLoopExitState(methodScope, loopExit, loopExplosionMerge, loopExplosionEnd);
                     }
                 }
             }
         }
     }
 
-    private static void assignLoopExitState(MethodScope methodScope, LoopExitNode loopExit, AbstractMergeNode loopExplosionMerge) {
+    private static void assignLoopExitState(MethodScope methodScope, LoopExitNode loopExit, AbstractMergeNode loopExplosionMerge, AbstractEndNode loopExplosionEnd) {
         FrameState oldState = loopExplosionMerge.stateAfter();
         JVMCIError.guarantee(loopExit.loopBegin().stateAfter().outerFrameState() == oldState.outerFrameState(), "LoopBegin and LoopExit must have the same outer frame state");
 
@@ -1326,8 +1320,19 @@ public class GraphDecoder {
         }
 
         List<ValueNode> newValues = new ArrayList<>(oldState.values().size());
-        for (ValueNode value : oldState.values()) {
+        for (ValueNode v : oldState.values()) {
+            ValueNode value = v;
             ValueNode realValue = ProxyPlaceholder.unwrap(value);
+
+            /*
+             * The LoopExit is inserted before the existing merge, i.e., separately for every branch
+             * that leads to the merge. So for phi functions of the merge, we need to take the input
+             * that corresponds to our branch.
+             */
+            if (realValue instanceof PhiNode && loopExplosionMerge.isPhiAtMerge(realValue)) {
+                value = ((PhiNode) realValue).valueAt(loopExplosionEnd);
+                realValue = ProxyPlaceholder.unwrap(value);
+            }
 
             if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue)) {
                 newValues.add(realValue);
