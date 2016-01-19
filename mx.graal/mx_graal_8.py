@@ -419,7 +419,7 @@ def _unittest_config_participant(config):
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 mx.update_commands(_suite, {
-    #'vm': [run_vm, '[-options] class [args...]'],
+    'vm': [run_vm, '[-options] class [args...]'],
     'jdkartifactstats' : [jdkartifactstats, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'microbench' : [microbench, '[VM options] [-- [JMH options]]'],
