@@ -458,17 +458,17 @@ def get_graal_jdk():
     jvmci_jdk = get_jvmci_jdk()
     if jvmci_jdk.javaCompliance < '9':
         # jvmci-8
-        from mx_jvmci import check_VM_exists, JVMCIJDKConfig # pylint: disable=no-name-in-module
+        from mx_jvmci import check_VM_exists, JVMCI8JDKConfig # pylint: disable=no-name-in-module
         vmbuild = jvmci_jdk.vmbuild
         check_VM_exists(get_vm(), jvmci_jdk.home, vmbuild)
         jdk = _graal_jdks.get(vmbuild)
         if jdk is None:
-            class GraalJDK8Config(JVMCIJDKConfig):
+            class GraalJDK8Config(JVMCI8JDKConfig):
                 def __init__(self, vmbuild): # pylint: disable=super-init-not-called
-                    JVMCIJDKConfig.__init__(self, vmbuild)
+                    JVMCI8JDKConfig.__init__(self, vmbuild)
 
                 def parseVmArgs(self, args, addDefaultArgs=True):
-                    return JVMCIJDKConfig.parseVmArgs(self, map(_translateGOption, args), addDefaultArgs=addDefaultArgs)
+                    return JVMCI8JDKConfig.parseVmArgs(self, map(_translateGOption, args), addDefaultArgs=addDefaultArgs)
 
             jdk = GraalJDK8Config(vmbuild)
             _graal_jdks[vmbuild] = jdk
