@@ -55,13 +55,28 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
         }
 
         public boolean incomingEdges(int traceNr) {
-            /* TODO (je): not efficient. find better solution. */
-            return getTraces().get(traceNr).stream().flatMap(b -> b.getPredecessors().stream()).anyMatch(s -> getTraceForBlock(s) != traceNr);
+            List<T> trace = getTraces().get(traceNr);
+            return incomingEdges(traceNr, trace);
         }
 
         public boolean incomingSideEdges(int traceNr) {
+            List<T> trace = getTraces().get(traceNr);
+            if (trace.size() <= 1) {
+                return false;
+            }
+            return incomingEdges(traceNr, trace.subList(1, trace.size()));
+        }
+
+        private boolean incomingEdges(int traceNr, List<T> trace) {
             /* TODO (je): not efficient. find better solution. */
-            return getTraces().get(traceNr).stream().skip(1).flatMap(b -> b.getPredecessors().stream()).anyMatch(s -> getTraceForBlock(s) != traceNr);
+            for (T block : trace) {
+                for (T pred : block.getPredecessors()) {
+                    if (getTraceForBlock(pred) != traceNr) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
     }
