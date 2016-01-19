@@ -45,7 +45,7 @@ final class SPARCDeoptimizationStub extends DeoptimizationStub {
 
     private RegisterConfig registerConfig;
 
-    public SPARCDeoptimizationStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage, HotSpotVMConfig config) {
+    SPARCDeoptimizationStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage, HotSpotVMConfig config) {
         super(providers, target, linkage);
         // This is basically the maximum we can spare. All other G and O register are used.
         Register[] allocatable = new Register[]{g1, g3, g4, g5, o0, o1, o2, o3, o4};

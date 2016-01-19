@@ -48,7 +48,7 @@ public class Thread_isInterrupted05 extends JTTTest {
 
         Throwable throwable;
 
-        public WaitInterruptee() {
+        WaitInterruptee() {
             super("WaitInterruptee");
         }
 

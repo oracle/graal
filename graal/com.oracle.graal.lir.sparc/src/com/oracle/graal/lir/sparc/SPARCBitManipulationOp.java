@@ -51,7 +51,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
 
         final SizeEstimate size;
 
-        private IntrinsicOpcode(SizeEstimate size) {
+        IntrinsicOpcode(SizeEstimate size) {
             this.size = size;
         }
     }

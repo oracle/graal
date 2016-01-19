@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 public @interface HotSpotOperation {
 
-    public enum HotspotOpcode {
+    enum HotspotOpcode {
         FROM_POINTER,
         TO_KLASS_POINTER,
         TO_METHOD_POINTER,

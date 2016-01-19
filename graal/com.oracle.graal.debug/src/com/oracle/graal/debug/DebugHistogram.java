@@ -46,7 +46,7 @@ public interface DebugHistogram {
      * A value and a frequency. The ordering imposed by {@link #compareTo(CountedValue)} places
      * values with higher frequencies first.
      */
-    public class CountedValue implements Comparable<CountedValue> {
+    class CountedValue implements Comparable<CountedValue> {
 
         private long count;
         private final Object value;

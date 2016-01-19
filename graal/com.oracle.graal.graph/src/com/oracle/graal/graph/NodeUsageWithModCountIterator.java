@@ -26,7 +26,7 @@ import java.util.ConcurrentModificationException;
 
 class NodeUsageWithModCountIterator extends NodeUsageIterator {
 
-    public NodeUsageWithModCountIterator(Node n) {
+    NodeUsageWithModCountIterator(Node n) {
         super(n);
     }
 

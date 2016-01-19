@@ -80,7 +80,7 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     };
     // @formatter:on
 
-    public AMD64HotSpotRegisterAllocationConfig(RegisterConfig registerConfig) {
+    AMD64HotSpotRegisterAllocationConfig(RegisterConfig registerConfig) {
         super(registerConfig);
     }
 

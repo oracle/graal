@@ -47,11 +47,11 @@ public class ValueAnchorCleanupPhase extends Phase {
 
         private final Set<Node> anchoredValues;
 
-        public State() {
+        State() {
             anchoredValues = Node.newSet();
         }
 
-        public State(State other) {
+        State(State other) {
             anchoredValues = Node.newSet(other.anchoredValues);
         }
 
@@ -71,7 +71,7 @@ public class ValueAnchorCleanupPhase extends Phase {
 
     private static class CleanupValueAnchorsClosure extends SinglePassNodeIterator<State> {
 
-        public CleanupValueAnchorsClosure(StartNode start) {
+        CleanupValueAnchorsClosure(StartNode start) {
             super(start, new State());
         }
 

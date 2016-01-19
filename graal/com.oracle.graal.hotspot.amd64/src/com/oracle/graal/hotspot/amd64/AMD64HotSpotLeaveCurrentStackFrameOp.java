@@ -47,7 +47,7 @@ final class AMD64HotSpotLeaveCurrentStackFrameOp extends AMD64HotSpotEpilogueOp 
 
     private final SaveRegistersOp saveRegisterOp;
 
-    public AMD64HotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp) {
+    AMD64HotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp) {
         super(TYPE);
         this.saveRegisterOp = saveRegisterOp;
     }

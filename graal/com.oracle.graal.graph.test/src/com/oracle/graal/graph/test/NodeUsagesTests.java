@@ -53,7 +53,7 @@ public class NodeUsagesTests {
         @Input Def in1;
         @Input Def in2;
 
-        public Use(Def in0, Def in1, Def in2) {
+        protected Use(Def in0, Def in1, Def in2) {
             super(TYPE);
             this.in0 = in0;
             this.in1 = in1;

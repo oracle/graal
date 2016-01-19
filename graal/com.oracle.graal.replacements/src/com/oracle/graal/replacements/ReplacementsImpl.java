@@ -694,7 +694,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         final Class<?> returnType;
         final Class<?>[] parameters;
 
-        public JavaSignature(Class<?> returnType, Class<?>[] parameters) {
+        JavaSignature(Class<?> returnType, Class<?>[] parameters) {
             this.parameters = parameters;
             this.returnType = returnType;
         }

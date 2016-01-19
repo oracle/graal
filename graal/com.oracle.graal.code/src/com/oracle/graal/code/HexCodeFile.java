@@ -327,7 +327,7 @@ public class HexCodeFile {
             final int line;
             final int col;
 
-            public InputPos(int line, int col) {
+            InputPos(int line, int col) {
                 this.line = line;
                 this.col = col;
             }

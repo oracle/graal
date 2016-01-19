@@ -46,7 +46,7 @@ class NodeUsageIterator implements Iterator<Node> {
         }
     }
 
-    public NodeUsageIterator(Node node) {
+    NodeUsageIterator(Node node) {
         this.node = node;
         advance();
     }

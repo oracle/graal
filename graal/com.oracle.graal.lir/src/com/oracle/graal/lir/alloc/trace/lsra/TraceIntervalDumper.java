@@ -32,7 +32,7 @@ final class TraceIntervalDumper implements IntervalDumper {
     private final FixedInterval[] fixedIntervals;
     private final TraceInterval[] intervals;
 
-    public TraceIntervalDumper(FixedInterval[] fixedIntervals, TraceInterval[] intervals) {
+    TraceIntervalDumper(FixedInterval[] fixedIntervals, TraceInterval[] intervals) {
         this.fixedIntervals = fixedIntervals;
         this.intervals = intervals;
     }

@@ -94,7 +94,7 @@ public class FindUniqueConcreteMethodBugTest extends GraalCompilerTest {
     static class PersonImpl extends AbstractPerson {
         public String name;
 
-        public PersonImpl(String name) {
+        PersonImpl(String name) {
             this.name = name;
         }
 
@@ -106,7 +106,7 @@ public class FindUniqueConcreteMethodBugTest extends GraalCompilerTest {
     static class TenantImpl extends AbstractPerson implements Tenant {
         public int id;
 
-        public TenantImpl(int id) {
+        TenantImpl(int id) {
             this.id = id;
         }
 

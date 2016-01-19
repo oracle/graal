@@ -122,7 +122,7 @@ public class AArch64FloatArithmeticSnippets extends SnippetTemplate.AbstractTemp
         public static final NodeClass<SafeFloatRemNode> TYPE = NodeClass.create(SafeFloatRemNode.class);
 
         @SuppressWarnings("unused")
-        public SafeFloatRemNode(JavaKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+        protected SafeFloatRemNode(JavaKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
             super(TYPE, ArithmeticOpTable::getRem, x, y);
         }
 

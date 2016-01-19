@@ -262,7 +262,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
             current.setLocation(location);
         }
 
-        private static enum SlotSize {
+        private enum SlotSize {
             Size1,
             Size2,
             Size4,

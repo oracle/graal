@@ -332,7 +332,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     static class ExceptionPlaceholderNode extends ValueNode {
         public static final NodeClass<ExceptionPlaceholderNode> TYPE = NodeClass.create(ExceptionPlaceholderNode.class);
 
-        public ExceptionPlaceholderNode() {
+        protected ExceptionPlaceholderNode() {
             super(TYPE, StampFactory.object());
         }
     }
@@ -433,7 +433,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
         FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
 
-        /* Remove invoke from graph so that invocation plugin can append nodes to the predecessor. */
+        /*
+         * Remove invoke from graph so that invocation plugin can append nodes to the predecessor.
+         */
         invoke.asNode().replaceAtPredecessor(null);
 
         PEMethodScope inlineScope = new PEMethodScope(methodScope.graph, methodScope, loopScope, null, targetMethod, invokeData, methodScope.inliningDepth + 1, methodScope.loopExplosionPlugin,

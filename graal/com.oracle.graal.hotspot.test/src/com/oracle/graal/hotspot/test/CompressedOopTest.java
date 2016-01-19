@@ -392,7 +392,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
         public Object[] a = new Object[10];
 
-        public ArrayContainer() {
+        ArrayContainer() {
             for (int i = 0; i < 10; i++) {
                 a[i] = new Object();
             }
@@ -403,7 +403,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
         public HashMap<Object, Object> a = new HashMap<>();
 
-        public HashMapContainer() {
+        HashMapContainer() {
             for (int i = 0; i < 10; i++) {
                 a.put(new Object(), new Object());
             }
@@ -414,7 +414,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
         public char[] value = new char[5];
 
-        public StringContainer1() {
+        StringContainer1() {
             value[0] = 'T';
             value[1] = 'e';
             value[2] = 's';
@@ -428,7 +428,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
         public char[] value = new char[6];
 
-        public StringContainer2() {
+        StringContainer2() {
             value[0] = 'S';
             value[1] = 't';
             value[2] = 'r';
@@ -443,7 +443,7 @@ public class CompressedOopTest extends GraalCompilerTest {
         public final Object a = new Object();
         public final Object b = new Object();
 
-        public ConstantContainer() {
+        ConstantContainer() {
 
         }
     }

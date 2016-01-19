@@ -48,7 +48,7 @@ final class AArch64HotSpotDirectStaticCallOp extends DirectCallOp {
     private final InvokeKind invokeKind;
     private final HotSpotVMConfig config;
 
-    public AArch64HotSpotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
+    AArch64HotSpotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
         super(TYPE, target, result, parameters, temps, state);
         assert invokeKind.isDirect();
         this.invokeKind = invokeKind;

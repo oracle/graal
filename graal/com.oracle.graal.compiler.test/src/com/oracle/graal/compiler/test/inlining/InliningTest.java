@@ -329,7 +329,7 @@ public class InliningTest extends GraalCompilerTest {
 
         protected int value;
 
-        public SuperClass(int value) {
+        SuperClass(int value) {
             this.value = value;
         }
 
@@ -360,7 +360,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private static class SubClassA extends SuperClass implements SingleImplementorInterface {
 
-        public SubClassA(int value) {
+        SubClassA(int value) {
             super(value);
         }
 
@@ -377,7 +377,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private static class SubClassB extends SuperClass {
 
-        public SubClassB(int value) {
+        SubClassB(int value) {
             super(value);
         }
 
@@ -394,7 +394,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private static class SubClassC extends SuperClass {
 
-        public SubClassC(int value) {
+        SubClassC(int value) {
             super(value);
         }
 
@@ -411,7 +411,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private static final class FinalSubClass extends SuperClass {
 
-        public FinalSubClass(int value) {
+        FinalSubClass(int value) {
             super(value);
         }
 

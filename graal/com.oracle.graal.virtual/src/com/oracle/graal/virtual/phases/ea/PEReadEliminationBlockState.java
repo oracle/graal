@@ -45,7 +45,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         public final ValueNode object;
         public final int index;
 
-        public ReadCacheEntry(LocationIdentity identity, ValueNode object, int index) {
+        ReadCacheEntry(LocationIdentity identity, ValueNode object, int index) {
             this.identity = identity;
             this.object = object;
             this.index = index;

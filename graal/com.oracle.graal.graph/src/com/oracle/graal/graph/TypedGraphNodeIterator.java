@@ -35,7 +35,7 @@ class TypedGraphNodeIterator<T extends IterableNodeType> implements Iterator<T> 
     private int currentIdIndex;
     private boolean needsForward;
 
-    public TypedGraphNodeIterator(NodeClass<?> clazz, Graph graph) {
+    TypedGraphNodeIterator(NodeClass<?> clazz, Graph graph) {
         this.graph = graph;
         ids = clazz.iterableIds();
         currentIdIndex = 0;

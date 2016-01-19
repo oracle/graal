@@ -100,7 +100,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
          */
         private FieldsScanner.FieldInfo opcodeField;
 
-        public LIRInstructionFieldsScanner(FieldsScanner.CalcOffset calc) {
+        LIRInstructionFieldsScanner(FieldsScanner.CalcOffset calc) {
             super(calc);
 
             valueAnnotations.put(LIRInstruction.Use.class, new OperandModeAnnotation());

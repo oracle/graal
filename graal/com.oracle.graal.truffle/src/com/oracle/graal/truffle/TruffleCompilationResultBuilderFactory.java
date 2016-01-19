@@ -56,7 +56,7 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
      */
     private final List<AssumptionValidAssumption> validAssumptions;
 
-    public TruffleCompilationResultBuilderFactory(StructuredGraph graph, List<AssumptionValidAssumption> validAssumptions) {
+    TruffleCompilationResultBuilderFactory(StructuredGraph graph, List<AssumptionValidAssumption> validAssumptions) {
         this.graph = graph;
         this.validAssumptions = validAssumptions;
     }

@@ -229,7 +229,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
         protected Integer value;
 
-        public MyException(Integer value) {
+        MyException(Integer value) {
             super((Throwable) null);
             this.value = value;
         }

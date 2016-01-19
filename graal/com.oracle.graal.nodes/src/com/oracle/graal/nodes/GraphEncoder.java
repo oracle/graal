@@ -112,7 +112,9 @@ public class GraphEncoder {
     public static final int NULL_ORDER_ID = 0;
     /** The orderId of the {@link StructuredGraph#start() start node} of the encoded graph. */
     public static final int START_NODE_ORDER_ID = 1;
-    /** The orderId of the first actual node after the {@link StructuredGraph#start() start node}. */
+    /**
+     * The orderId of the first actual node after the {@link StructuredGraph#start() start node}.
+     */
     public static final int FIRST_NODE_ORDER_ID = 2;
 
     /**
@@ -294,7 +296,7 @@ public class GraphEncoder {
         protected final NodeMap<Integer> orderIds;
         protected int nextOrderId;
 
-        public NodeOrder(StructuredGraph graph) {
+        NodeOrder(StructuredGraph graph) {
             this.orderIds = new NodeMap<>(graph);
             this.nextOrderId = START_NODE_ORDER_ID;
 
@@ -537,7 +539,7 @@ class Pair<F, S> {
     public final F first;
     public final S second;
 
-    public Pair(F first, S second) {
+    Pair(F first, S second) {
         this.first = first;
         this.second = second;
     }

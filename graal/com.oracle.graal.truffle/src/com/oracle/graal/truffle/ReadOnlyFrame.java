@@ -34,7 +34,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 class ReadOnlyFrame implements Frame {
     private final Frame delegate;
 
-    public ReadOnlyFrame(Frame delegate) {
+    ReadOnlyFrame(Frame delegate) {
         this.delegate = delegate;
     }
 

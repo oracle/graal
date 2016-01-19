@@ -105,7 +105,7 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
         private final IntSummaryStatistics shallowCount = new IntSummaryStatistics();
         private final IntSummaryStatistics callCount = new IntSummaryStatistics();
 
-        public MethodStatistics(ResolvedJavaMethod method) {
+        MethodStatistics(ResolvedJavaMethod method) {
             this.method = method;
         }
 
@@ -143,7 +143,7 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
         private int deepNodeCount;
         private int callCount;
 
-        public MethodStatistic(MethodStatistic parent, ResolvedJavaMethod method, int nodeCountBefore, int callsBefore) {
+        MethodStatistic(MethodStatistic parent, ResolvedJavaMethod method, int nodeCountBefore, int callsBefore) {
             this.parent = parent;
             this.method = method;
             this.callCount = callsBefore;

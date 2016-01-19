@@ -85,13 +85,13 @@ public class InjectedDependencies implements Iterable<Dependency> {
         private final String type;
         private final Dependency generateMember;
 
-        private WellKnownDependency(String expr, String type) {
+        WellKnownDependency(String expr, String type) {
             this.expr = expr;
             this.type = type;
             this.generateMember = null;
         }
 
-        private WellKnownDependency(Dependency generateMember) {
+        WellKnownDependency(Dependency generateMember) {
             this.expr = generateMember.name;
             this.type = generateMember.type;
             this.generateMember = generateMember;

@@ -199,7 +199,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
             final int toId;
             final int fromId;
 
-            public MyPhiValueVisitor(TraceLocalMoveResolver moveResolver, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock) {
+            MyPhiValueVisitor(TraceLocalMoveResolver moveResolver, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock) {
                 this.moveResolver = moveResolver;
                 toId = allocator.getFirstLirInstructionId(toBlock);
                 fromId = allocator.getLastLirInstructionId(fromBlock);

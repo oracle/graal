@@ -111,7 +111,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         private static final ConcurrentHashMap<String, DebugMetric> metrics = new ConcurrentHashMap<>();
         private final String suffix;
 
-        public SizeEstimateStatistics(String suffix) {
+        SizeEstimateStatistics(String suffix) {
             super();
             this.suffix = suffix;
         }

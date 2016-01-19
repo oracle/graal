@@ -102,7 +102,7 @@ public class AMD64Assembler extends Assembler {
         private final int value;
         private final String operator;
 
-        private ConditionFlag(int value, String operator) {
+        ConditionFlag(int value, String operator) {
             this.value = value;
             this.operator = operator;
         }
@@ -189,7 +189,7 @@ public class AMD64Assembler extends Assembler {
     /**
      * The x86 operand sizes.
      */
-    public static enum OperandSize {
+    public enum OperandSize {
         BYTE(1) {
             @Override
             protected void emitImmediate(AMD64Assembler asm, int imm) {
@@ -233,19 +233,19 @@ public class AMD64Assembler extends Assembler {
         private final int bytes;
         private final boolean xmm;
 
-        private OperandSize(int bytes) {
+        OperandSize(int bytes) {
             this(bytes, 0);
         }
 
-        private OperandSize(int bytes, int sizePrefix) {
+        OperandSize(int bytes, int sizePrefix) {
             this(bytes, sizePrefix, false);
         }
 
-        private OperandSize(int bytes, boolean xmm) {
+        OperandSize(int bytes, boolean xmm) {
             this(bytes, 0, xmm);
         }
 
-        private OperandSize(int bytes, int sizePrefix, boolean xmm) {
+        OperandSize(int bytes, int sizePrefix, boolean xmm) {
             this.sizePrefix = sizePrefix;
             this.bytes = bytes;
             this.xmm = xmm;
@@ -274,7 +274,7 @@ public class AMD64Assembler extends Assembler {
     /**
      * Operand size and register type constraints.
      */
-    private static enum OpAssertion {
+    private enum OpAssertion {
         ByteAssertion(CPU, CPU, BYTE),
         IntegerAssertion(CPU, CPU, WORD, DWORD, QWORD),
         No16BitAssertion(CPU, CPU, DWORD, QWORD),
@@ -291,7 +291,7 @@ public class AMD64Assembler extends Assembler {
         private final RegisterCategory inputCategory;
         private final OperandSize[] allowedSizes;
 
-        private OpAssertion(RegisterCategory resultCategory, RegisterCategory inputCategory, OperandSize... allowedSizes) {
+        OpAssertion(RegisterCategory resultCategory, RegisterCategory inputCategory, OperandSize... allowedSizes) {
             this.resultCategory = resultCategory;
             this.inputCategory = inputCategory;
             this.allowedSizes = allowedSizes;
@@ -353,7 +353,7 @@ public class AMD64Assembler extends Assembler {
     /**
      * Get RXB bits for register-memory instruction. The R bit extends the ModRM.reg field. There
      * are two cases for the memory operand:<br>
-     * ModRM.rm contains the base register: In that case, B extends the ModRM.rm field and X = 0.<br>
+     * ModRM.rm contains the base register: In that case, B extends the ModRM.rm field and X = 0. <br>
      * There is an SIB byte: In that case, X extends SIB.index and B extends SIB.base.
      */
     protected static int getRXB(Register reg, AMD64Address rm) {

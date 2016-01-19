@@ -69,7 +69,7 @@ public class InstructionPrinter {
         final int position;
         final String label;
 
-        private InstructionLineColumn(int position, String label) {
+        InstructionLineColumn(int position, String label) {
             this.position = position;
             this.label = label;
         }

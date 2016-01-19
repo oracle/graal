@@ -80,7 +80,7 @@ public final class CompositeValueClass<T> extends FieldIntrospection<T> {
 
     private static class CompositeValueFieldsScanner extends LIRFieldsScanner {
 
-        public CompositeValueFieldsScanner(FieldsScanner.CalcOffset calc) {
+        CompositeValueFieldsScanner(FieldsScanner.CalcOffset calc) {
             super(calc);
             valueAnnotations.put(CompositeValue.Component.class, new OperandModeAnnotation());
         }

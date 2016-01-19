@@ -36,7 +36,7 @@ import jdk.vm.ci.code.TargetDescription;
  */
 class TestProtectedAssembler extends AArch64Assembler {
 
-    public TestProtectedAssembler(TargetDescription target) {
+    TestProtectedAssembler(TargetDescription target) {
         super(target);
     }
 

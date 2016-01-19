@@ -37,7 +37,7 @@ import com.oracle.graal.lir.util.GenericValueMap;
 
 public class GenericValueMapTest {
 
-    private static enum DummyKind implements PlatformKind {
+    private enum DummyKind implements PlatformKind {
         Long;
 
         private EnumKey<DummyKind> key = new EnumKey<>(this);

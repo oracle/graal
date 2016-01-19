@@ -165,11 +165,11 @@ public class MonitorTest extends GraalCompilerTest {
 
         final char[] data;
 
-        public Chars(int size) {
+        Chars(int size) {
             this.data = new char[size];
         }
 
-        public Chars(char[] data) {
+        Chars(char[] data) {
             this.data = data;
         }
     }

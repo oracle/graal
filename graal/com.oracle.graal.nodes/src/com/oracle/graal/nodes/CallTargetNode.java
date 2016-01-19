@@ -45,7 +45,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
         Static(true),
         Virtual(false);
 
-        private InvokeKind(boolean direct) {
+        InvokeKind(boolean direct) {
             this.direct = direct;
         }
 

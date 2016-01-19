@@ -103,7 +103,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
         private final Stamp stamp;
         private final ValueNode guard;
 
-        public InfoElement(Stamp stamp, ValueNode guard) {
+        InfoElement(Stamp stamp, ValueNode guard) {
             this.stamp = stamp;
             this.guard = guard;
         }
@@ -125,7 +125,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
     private static final class Info {
         private final ArrayList<InfoElement> infos;
 
-        public Info() {
+        Info() {
             infos = new ArrayList<>();
         }
 
@@ -186,7 +186,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
         private final LogicNode condition;
         private final DeoptimizingGuard guard;
 
-        public PendingTest(LogicNode condition, DeoptimizingGuard guard) {
+        PendingTest(LogicNode condition, DeoptimizingGuard guard) {
             this.condition = condition;
             this.guard = guard;
         }
@@ -204,7 +204,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
          */
         private Deque<PendingTest> pendingTests;
 
-        public Instance(StructuredGraph graph, Function<Block, Iterable<? extends Node>> blockToNodes, Function<Node, Block> nodeToBlock) {
+        Instance(StructuredGraph graph, Function<Block, Iterable<? extends Node>> blockToNodes, Function<Node, Block> nodeToBlock) {
             map = graph.createNodeMap();
             loopExits = new ArrayDeque<>();
             this.blockToNodes = blockToNodes;
@@ -219,7 +219,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
         public class InstanceFrame extends LoweringPhase.Frame<InstanceFrame> {
             List<Runnable> undoOperations = new ArrayList<>();
 
-            public InstanceFrame(Block block, InstanceFrame parent) {
+            InstanceFrame(Block block, InstanceFrame parent) {
                 super(block, parent);
             }
 
@@ -379,7 +379,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
             public final F first;
             public final S second;
 
-            public Pair(F first, S second) {
+            Pair(F first, S second) {
                 this.first = first;
                 this.second = second;
             }

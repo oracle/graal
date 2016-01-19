@@ -46,7 +46,7 @@ public class TypedNodeIteratorTest {
         public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
         protected final String name;
 
-        public TestNode(String name) {
+        protected TestNode(String name) {
             super(TYPE);
             this.name = name;
         }

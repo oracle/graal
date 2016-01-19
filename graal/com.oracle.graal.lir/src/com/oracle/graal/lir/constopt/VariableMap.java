@@ -37,7 +37,7 @@ class VariableMap<T> {
 
     private final ArrayList<T> content;
 
-    public VariableMap() {
+    VariableMap() {
         content = new ArrayList<>();
     }
 

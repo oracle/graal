@@ -123,7 +123,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          */
         static final int INIT_VALUE = 0;
 
-        public Optimization(FrameMap frameMap) {
+        Optimization(FrameMap frameMap) {
             this.frameMap = frameMap;
         }
 

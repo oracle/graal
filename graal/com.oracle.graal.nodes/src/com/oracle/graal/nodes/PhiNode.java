@@ -153,7 +153,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
 
         public static final NodeClass<MultipleValuesNode> TYPE = NodeClass.create(MultipleValuesNode.class);
 
-        public MultipleValuesNode() {
+        protected MultipleValuesNode() {
             super(TYPE, null);
         }
 

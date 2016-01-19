@@ -33,7 +33,7 @@ final class Buffer {
 
     protected ByteBuffer data;
 
-    public Buffer(ByteOrder order) {
+    Buffer(ByteOrder order) {
         data = ByteBuffer.allocate(AsmOptions.InitialCodeBufferSize);
         data.order(order);
     }

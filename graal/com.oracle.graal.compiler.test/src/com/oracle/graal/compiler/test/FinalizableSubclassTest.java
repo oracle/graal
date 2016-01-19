@@ -122,7 +122,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         private final String replaceTo;
         private HashMap<String, Class<?>> cache = new HashMap<>();
 
-        public ClassTemplateLoader() {
+        ClassTemplateLoader() {
             loaderInstance++;
             replaceTo = String.format("%04d", loaderInstance);
         }

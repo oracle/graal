@@ -286,7 +286,7 @@ public class OptionProcessor extends AbstractProcessor {
         final String declaringClass;
         final VariableElement field;
 
-        public OptionInfo(String name, String help, String type, String declaringClass, VariableElement field) {
+        OptionInfo(String name, String help, String type, String declaringClass, VariableElement field) {
             this.name = name;
             this.help = help;
             this.type = type;
@@ -311,7 +311,7 @@ public class OptionProcessor extends AbstractProcessor {
         final List<OptionInfo> options = new ArrayList<>();
         final Set<Element> originatingElements = new HashSet<>();
 
-        public OptionsInfo(Element topDeclaringType) {
+        OptionsInfo(Element topDeclaringType) {
             this.topDeclaringType = topDeclaringType;
         }
     }

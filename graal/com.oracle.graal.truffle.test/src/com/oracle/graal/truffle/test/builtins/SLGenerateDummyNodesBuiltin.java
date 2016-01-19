@@ -77,7 +77,7 @@ public abstract class SLGenerateDummyNodesBuiltin extends SLGraalRuntimeBuiltin 
         @Child private SLDummyNode left;
         @Child private SLDummyNode right;
 
-        public SLDummyNode(SLDummyNode left, SLDummyNode right) {
+        SLDummyNode(SLDummyNode left, SLDummyNode right) {
             super(null);
             this.left = left;
             this.right = right;

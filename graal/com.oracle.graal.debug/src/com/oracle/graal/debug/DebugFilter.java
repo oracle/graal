@@ -39,11 +39,11 @@ import com.oracle.graal.debug.internal.DebugScope;
  * {@code level = 0} means disabled and a {@code level > 0} means enabled.
  * <p>
  * A filter is a list of comma-separated terms of the form {@code <pattern>[:<level>]}.
- * {@code <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character.
+ * {@code  <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character.
  * Otherwise, it is interpreted as a substring. If {@code <pattern>} is empty, it matches every
- * scope. If {@code :<level>} is omitted, it defaults to {@link Debug#DEFAULT_LOG_LEVEL}. The term
- * {@code ~<pattern>} is a shorthand for {@code <pattern>:0} to disable a debug facility for a
- * pattern.
+ * scope. If {@code :
+ * <level>} is omitted, it defaults to {@link Debug#DEFAULT_LOG_LEVEL}. The term {@code ~<pattern>}
+ * is a shorthand for {@code <pattern>:0} to disable a debug facility for a pattern.
  * <p>
  * The resulting log level of a scope is determined by the <em>last</em> matching term. If no term
  * matches, the log level is 0 (disabled). A filter with no terms matches every scope with a log
@@ -55,29 +55,29 @@ import com.oracle.graal.debug.internal.DebugScope;
  * <li>(empty string)<br>
  * Matches any scope with log level {@link Debug#DEFAULT_LOG_LEVEL}.
  *
- * <li> {@code :1}<br>
+ * <li>{@code :1}<br>
  * Matches any scope with log level 1.
  *
- * <li> {@code *}<br>
+ * <li>{@code *}<br>
  * Matches any scope with log level {@link Debug#DEFAULT_LOG_LEVEL}.
  *
- * <li> {@code CodeGen,CodeInstall}<br>
+ * <li>{@code CodeGen,CodeInstall}<br>
  * Matches scopes containing "CodeGen" or "CodeInstall", both with log level
  * {@link Debug#DEFAULT_LOG_LEVEL}.
  *
- * <li> {@code CodeGen:2,CodeInstall:1}<br>
+ * <li>{@code CodeGen:2,CodeInstall:1}<br>
  * Matches scopes containing "CodeGen" with log level 2, or "CodeInstall" with log level 1.
  *
- * <li> {@code :1,Dead:2}<br>
+ * <li>{@code :1,Dead:2}<br>
  * Matches scopes containing "Dead" with log level 2, and all other scopes with log level 1.
  *
- * <li> {@code :1,Dead:0}<br>
+ * <li>{@code :1,Dead:0}<br>
  * Matches all scopes with log level 1, except those containing "Dead".
  *
- * <li> {@code Code*}<br>
+ * <li>{@code Code*}<br>
  * Matches scopes starting with "Code" with log level {@link Debug#DEFAULT_LOG_LEVEL}.
  *
- * <li> {@code Code,~Dead}<br>
+ * <li>{@code Code,~Dead}<br>
  * Matches scopes containing "Code" but not "Dead", with log level {@link Debug#DEFAULT_LOG_LEVEL}.
  * </ul>
  */
@@ -158,7 +158,7 @@ final class DebugFilter {
         private final Pattern pattern;
         public final int level;
 
-        public Term(String filter, int level) {
+        Term(String filter, int level) {
             this.level = level;
             if (filter.isEmpty()) {
                 this.pattern = null;

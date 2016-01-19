@@ -85,7 +85,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         public static final NodeClass<DummyGuardHandle> TYPE = NodeClass.create(DummyGuardHandle.class);
         @Input(InputType.Guard) GuardingNode guard;
 
-        public DummyGuardHandle(GuardingNode guard) {
+        protected DummyGuardHandle(GuardingNode guard) {
             super(TYPE, StampFactory.forVoid());
             this.guard = guard;
         }
@@ -112,7 +112,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         private AnchoringNode guardAnchor;
         private FixedWithNextNode lastFixedNode;
 
-        public LoweringToolImpl(PhaseContext context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode) {
+        LoweringToolImpl(PhaseContext context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode) {
             this.context = context;
             this.guardAnchor = guardAnchor;
             this.activeGuards = activeGuards;
@@ -316,7 +316,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             private final NodeBitMap activeGuards;
             private AnchoringNode anchor;
 
-            public ProcessFrame(Block block, NodeBitMap activeGuards, AnchoringNode anchor, ProcessFrame parent) {
+            ProcessFrame(Block block, NodeBitMap activeGuards, AnchoringNode anchor, ProcessFrame parent) {
                 super(block, parent);
                 this.activeGuards = activeGuards;
                 this.anchor = anchor;
@@ -460,7 +460,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     * 
+     *
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {

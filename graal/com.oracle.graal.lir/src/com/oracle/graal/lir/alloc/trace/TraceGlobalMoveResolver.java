@@ -135,7 +135,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
         return frameMapBuilder.getRegisterConfig().getAllocatableRegisters();
     }
 
-    public TraceGlobalMoveResolver(LIRGenerationResult res, MoveFactory spillMoveFactory, Architecture arch) {
+    TraceGlobalMoveResolver(LIRGenerationResult res, MoveFactory spillMoveFactory, Architecture arch) {
 
         this.mappingFrom = new ArrayList<>(8);
         this.mappingFromStack = new ArrayList<>(8);

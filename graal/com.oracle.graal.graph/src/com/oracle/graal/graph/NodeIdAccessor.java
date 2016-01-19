@@ -29,7 +29,7 @@ class NodeIdAccessor {
     final Graph graph;
     final int epoch;
 
-    public NodeIdAccessor(Graph graph) {
+    NodeIdAccessor(Graph graph) {
         this.graph = graph;
         this.epoch = graph.compressions;
     }

@@ -169,7 +169,7 @@ public final class NodeBitMap implements NodeIterable<Node> {
         private Iterator<Node> nodes;
         private Node nextNode;
 
-        public MarkedNodeIterator(NodeBitMap visited, Iterator<Node> nodes) {
+        MarkedNodeIterator(NodeBitMap visited, Iterator<Node> nodes) {
             this.visited = visited;
             this.nodes = nodes;
             forward();

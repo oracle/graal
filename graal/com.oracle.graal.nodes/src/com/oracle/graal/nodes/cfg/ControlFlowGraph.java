@@ -337,7 +337,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             final Loop<Block> loop;
             final Frame parent;
 
-            public Frame(Iterator<Block> blocks, Loop<Block> loop, Frame parent) {
+            Frame(Iterator<Block> blocks, Loop<Block> loop, Frame parent) {
                 this.blocks = blocks;
                 this.loop = loop;
                 this.parent = parent;

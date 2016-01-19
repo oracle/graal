@@ -50,7 +50,7 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
 
     public static final InstrumentationPETestLanguage INSTANCE = new InstrumentationPETestLanguage();
 
-    static enum InstrumentTestTag implements SyntaxTag {
+    enum InstrumentTestTag implements SyntaxTag {
 
         ADD_TAG("addition", "test language addition node"),
 
@@ -59,7 +59,7 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
         private final String name;
         private final String description;
 
-        private InstrumentTestTag(String name, String description) {
+        InstrumentTestTag(String name, String description) {
             this.name = name;
             this.description = description;
         }
@@ -163,7 +163,7 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
         @Child private TestLanguageNode child;
         @Child private EventHandlerNode eventHandlerNode;
 
-        public TestLanguageWrapperNode(TestLanguageNode child) {
+        TestLanguageWrapperNode(TestLanguageNode child) {
             assert !(child instanceof TestLanguageWrapperNode);
             this.child = child;
         }
@@ -211,7 +211,7 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
     static class TestValueNode extends TestLanguageNode {
         private final int value;
 
-        public TestValueNode(int value) {
+        TestValueNode(int value) {
             this.value = value;
         }
 
@@ -228,7 +228,7 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
         @Child private TestLanguageNode leftChild;
         @Child private TestLanguageNode rightChild;
 
-        public TestAdditionNode(TestValueNode leftChild, TestValueNode rightChild) {
+        TestAdditionNode(TestValueNode leftChild, TestValueNode rightChild) {
             this.leftChild = insert(leftChild);
             this.rightChild = insert(rightChild);
         }
@@ -253,7 +253,7 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
          * newly created AST. Global registry is not used, since that would interfere with other
          * tests run in the same environment.
          */
-        public TestRootNode(String name, TestLanguageNode body) {
+        TestRootNode(String name, TestLanguageNode body) {
             super(InstrumentationPETestLanguage.class, null, null);
             this.name = name;
             this.body = body;

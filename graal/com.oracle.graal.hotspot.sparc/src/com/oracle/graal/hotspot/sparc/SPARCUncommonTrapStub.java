@@ -45,7 +45,7 @@ final class SPARCUncommonTrapStub extends UncommonTrapStub {
 
     private RegisterConfig registerConfig;
 
-    public SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage, HotSpotVMConfig config) {
+    SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage, HotSpotVMConfig config) {
         super(providers, target, linkage);
         // This is basically the maximum we can spare. All other G and O register are used.
         Register[] allocatable = new Register[]{g1, g3, g4, g5, o0, o1, o2, o3, o4};

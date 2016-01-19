@@ -244,7 +244,7 @@ public class AArch64Move {
         @Use({COMPOSITE}) protected AArch64AddressValue addressValue;
         @State protected LIRFrameState state;
 
-        public MemOp(LIRInstructionClass<? extends MemOp> c, AArch64Kind kind, AArch64AddressValue address, LIRFrameState state) {
+        MemOp(LIRInstructionClass<? extends MemOp> c, AArch64Kind kind, AArch64AddressValue address, LIRFrameState state) {
             super(c);
             this.kind = kind;
             this.addressValue = address;

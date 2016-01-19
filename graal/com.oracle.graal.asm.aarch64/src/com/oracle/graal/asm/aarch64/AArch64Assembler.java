@@ -55,7 +55,7 @@ public abstract class AArch64Assembler extends Assembler {
          * Specifies whether immediate can be represented in all cases (YES), as a 64bit instruction
          * (SIXTY_FOUR_BIT_ONLY) or not at all (NO).
          */
-        static enum Representable {
+        enum Representable {
             YES,
             SIXTY_FOUR_BIT_ONLY,
             NO
@@ -141,13 +141,13 @@ public abstract class AArch64Assembler extends Assembler {
             public final long imm;
             public final int encoding;
 
-            public Immediate(long imm, boolean is64, int s, int r) {
+            Immediate(long imm, boolean is64, int s, int r) {
                 this.imm = imm;
                 this.encoding = computeEncoding(is64, s, r);
             }
 
             // Used to be able to binary search for an immediate in the table.
-            public Immediate(long imm) {
+            Immediate(long imm) {
                 this(imm, false, 0, 0);
             }
 
@@ -254,7 +254,7 @@ public abstract class AArch64Assembler extends Assembler {
         public final int width;
         public final boolean isGeneral;
 
-        private InstructionType(int encoding, int width, boolean isGeneral) {
+        InstructionType(int encoding, int width, boolean isGeneral) {
             this.encoding = encoding;
             this.width = width;
             this.isGeneral = isGeneral;
@@ -468,7 +468,7 @@ public abstract class AArch64Assembler extends Assembler {
 
         public final int encoding;
 
-        private Instruction(int encoding) {
+        Instruction(int encoding) {
             this.encoding = encoding;
         }
 
@@ -482,7 +482,7 @@ public abstract class AArch64Assembler extends Assembler {
 
         public final int encoding;
 
-        private ShiftType(int encoding) {
+        ShiftType(int encoding) {
             this.encoding = encoding;
         }
     }
@@ -499,7 +499,7 @@ public abstract class AArch64Assembler extends Assembler {
 
         public final int encoding;
 
-        private ExtendType(int encoding) {
+        ExtendType(int encoding) {
             this.encoding = encoding;
         }
     }
@@ -576,7 +576,7 @@ public abstract class AArch64Assembler extends Assembler {
 
         public final int encoding;
 
-        private ConditionFlag(int encoding) {
+        ConditionFlag(int encoding) {
             this.encoding = encoding;
         }
 
@@ -2357,7 +2357,7 @@ public abstract class AArch64Assembler extends Assembler {
 
         private final int encoding;
 
-        private SystemHint(int encoding) {
+        SystemHint(int encoding) {
             this.encoding = encoding;
         }
     }
@@ -2401,7 +2401,7 @@ public abstract class AArch64Assembler extends Assembler {
         public final int encoding;
         public final String optionName;
 
-        private BarrierKind(int encoding, String optionName) {
+        BarrierKind(int encoding, String optionName) {
             this.encoding = encoding;
             this.optionName = optionName;
         }

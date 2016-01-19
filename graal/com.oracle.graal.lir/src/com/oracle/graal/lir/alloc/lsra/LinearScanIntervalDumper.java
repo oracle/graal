@@ -32,7 +32,7 @@ import com.oracle.graal.lir.debug.IntervalDumper;
 class LinearScanIntervalDumper implements IntervalDumper {
     private final Interval[] intervals;
 
-    public LinearScanIntervalDumper(Interval[] intervals) {
+    LinearScanIntervalDumper(Interval[] intervals) {
         this.intervals = intervals;
     }
 

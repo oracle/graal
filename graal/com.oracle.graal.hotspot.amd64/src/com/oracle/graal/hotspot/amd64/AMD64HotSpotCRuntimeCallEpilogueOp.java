@@ -39,7 +39,7 @@ final class AMD64HotSpotCRuntimeCallEpilogueOp extends AMD64LIRInstruction {
     private final int threadLastJavaFpOffset;
     private final Register thread;
 
-    public AMD64HotSpotCRuntimeCallEpilogueOp(int threadLastJavaSpOffset, int threadLastJavaFpOffset, Register thread) {
+    AMD64HotSpotCRuntimeCallEpilogueOp(int threadLastJavaSpOffset, int threadLastJavaFpOffset, Register thread) {
         super(TYPE);
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaFpOffset = threadLastJavaFpOffset;

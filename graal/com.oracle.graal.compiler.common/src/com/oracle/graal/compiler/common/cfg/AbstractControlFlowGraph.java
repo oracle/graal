@@ -81,7 +81,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
             Iterator<T> dominated;
             Frame parent;
 
-            public Frame(int myNumber, T block, Iterator<T> dominated, Frame parent) {
+            Frame(int myNumber, T block, Iterator<T> dominated, Frame parent) {
                 super();
                 this.myNumber = myNumber;
                 this.maxNumber = myNumber;

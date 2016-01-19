@@ -64,7 +64,7 @@ public final class Interval {
         public final Interval first;
         public final Interval second;
 
-        public Pair(Interval first, Interval second) {
+        Pair(Interval first, Interval second) {
             this.first = first;
             this.second = second;
         }
@@ -90,7 +90,7 @@ public final class Interval {
          */
         public Interval stack;
 
-        public RegisterBindingLists(Interval fixed, Interval any, Interval stack) {
+        RegisterBindingLists(Interval fixed, Interval any, Interval stack) {
             this.fixed = fixed;
             this.any = any;
             this.stack = stack;

@@ -84,7 +84,7 @@ public class CompilationResultBuilder {
         public final int codeOffset;
         public final LabelRef exceptionEdge;
 
-        public ExceptionInfo(int pcOffset, LabelRef exceptionEdge) {
+        ExceptionInfo(int pcOffset, LabelRef exceptionEdge) {
             this.codeOffset = pcOffset;
             this.exceptionEdge = exceptionEdge;
         }

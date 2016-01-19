@@ -124,7 +124,7 @@ public final class Block extends AbstractBlockBase<Block> {
 
         private FixedNode cur;
 
-        public NodeIterator() {
+        NodeIterator() {
             cur = getBeginNode();
         }
 

@@ -55,7 +55,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
     private static final Class<StackSlot> STACK_SLOT_CLASS = StackSlot.class;
     private static final Class<Value[]> VALUE_ARRAY_CLASS = Value[].class;
 
-    public LIRIntrospection(Class<T> clazz) {
+    LIRIntrospection(Class<T> clazz) {
         super(clazz);
     }
 

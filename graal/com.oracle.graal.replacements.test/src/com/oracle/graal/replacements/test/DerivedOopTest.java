@@ -74,7 +74,7 @@ public class DerivedOopTest extends GraalCompilerTest implements Snippets {
         public Pointers beforeGC;
         public Pointers afterGC;
 
-        public Result() {
+        Result() {
             beforeGC = new Pointers();
             afterGC = new Pointers();
         }

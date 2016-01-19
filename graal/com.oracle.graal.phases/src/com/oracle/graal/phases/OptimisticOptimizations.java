@@ -38,7 +38,7 @@ public final class OptimisticOptimizations {
     public static final OptimisticOptimizations NONE = new OptimisticOptimizations(EnumSet.noneOf(Optimization.class));
     private static final DebugMetric disabledOptimisticOptsMetric = Debug.metric("DisabledOptimisticOpts");
 
-    public static enum Optimization {
+    public enum Optimization {
         RemoveNeverExecutedCode,
         UseTypeCheckedInlining,
         UseTypeCheckHints,

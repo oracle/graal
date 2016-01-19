@@ -501,7 +501,7 @@ public class GraphUtil {
     static class OriginalValueSearch {
         ValueNode result;
 
-        public OriginalValueSearch(ValueNode proxy) {
+        OriginalValueSearch(ValueNode proxy) {
             NodeWorkList worklist = proxy.graph().createNodeWorkList();
             worklist.add(proxy);
             for (Node node : worklist) {
@@ -585,7 +585,7 @@ public class GraphUtil {
         private final ConstantReflectionProvider constantReflection;
         private final boolean canonicalizeReads;
 
-        public DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
+        DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
             this.metaAccess = metaAccess;
             this.constantReflection = constantReflection;
             this.canonicalizeReads = canonicalizeReads;

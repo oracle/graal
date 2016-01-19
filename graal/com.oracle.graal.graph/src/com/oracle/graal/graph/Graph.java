@@ -127,7 +127,7 @@ public class Graph {
 
         private final Node node;
 
-        public CacheEntry(Node node) {
+        CacheEntry(Node node) {
             assert node.getNodeClass().valueNumberable();
             assert node.getNodeClass().isLeafNode();
             this.node = node;
@@ -747,7 +747,7 @@ public class Graph {
 
         public static final NodeClass<PlaceHolderNode> TYPE = NodeClass.create(PlaceHolderNode.class);
 
-        public PlaceHolderNode() {
+        protected PlaceHolderNode() {
             super(TYPE);
         }
 
@@ -1046,7 +1046,7 @@ public class Graph {
 
         private final Map<Node, Node> map;
 
-        public MapReplacement(Map<Node, Node> map) {
+        MapReplacement(Map<Node, Node> map) {
             this.map = map;
         }
 

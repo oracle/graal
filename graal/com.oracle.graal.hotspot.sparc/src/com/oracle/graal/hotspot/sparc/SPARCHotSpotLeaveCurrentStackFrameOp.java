@@ -46,7 +46,7 @@ import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
 final class SPARCHotSpotLeaveCurrentStackFrameOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCHotSpotLeaveCurrentStackFrameOp> TYPE = LIRInstructionClass.create(SPARCHotSpotLeaveCurrentStackFrameOp.class);
 
-    public SPARCHotSpotLeaveCurrentStackFrameOp() {
+    SPARCHotSpotLeaveCurrentStackFrameOp() {
         super(TYPE);
     }
 

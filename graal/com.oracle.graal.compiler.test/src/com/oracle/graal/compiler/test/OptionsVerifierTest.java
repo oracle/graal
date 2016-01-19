@@ -77,7 +77,7 @@ public class OptionsVerifierTest {
     static class Classpath implements AutoCloseable {
         private final Map<String, Object> entries = new LinkedHashMap<>();
 
-        public Classpath() throws IOException {
+        Classpath() throws IOException {
             String[] names = (System.getProperty("sun.boot.class.path") + File.pathSeparatorChar + System.getProperty("java.class.path")).split(File.pathSeparator);
             for (String n : names) {
                 File path = new File(n);

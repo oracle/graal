@@ -62,6 +62,7 @@ public final class AllocSpy implements AutoCloseable {
     static ThreadLocal<AllocSpy> current = new ThreadLocal<>();
 
     private static final boolean ENABLED;
+
     static {
         boolean enabled = false;
         try {
@@ -296,7 +297,7 @@ public final class AllocSpy implements AutoCloseable {
         private int count;
         private final Object value;
 
-        public CountedValue(int count, Object value) {
+        CountedValue(int count, Object value) {
             this.count = count;
             this.value = value;
         }

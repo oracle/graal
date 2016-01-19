@@ -158,7 +158,7 @@ public abstract class SwitchStrategy {
         private final int[] keyCounts = new int[keyProbabilities.length];
         private final LabelRef[] keyTargets;
 
-        public EffortClosure(LabelRef[] keyTargets) {
+        EffortClosure(LabelRef[] keyTargets) {
             this.keyTargets = keyTargets;
         }
 

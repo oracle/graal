@@ -52,7 +52,7 @@ import com.oracle.graal.lir.sparc.SPARCDelayedControlTransfer;
 final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitchOp {
     public static final LIRInstructionClass<SPARCHotSpotStrategySwitchOp> TYPE = LIRInstructionClass.create(SPARCHotSpotStrategySwitchOp.class);
 
-    public SPARCHotSpotStrategySwitchOp(Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+    SPARCHotSpotStrategySwitchOp(Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
         super(TYPE, constantTableBase, strategy, keyTargets, defaultTarget, key, scratch);
     }
 

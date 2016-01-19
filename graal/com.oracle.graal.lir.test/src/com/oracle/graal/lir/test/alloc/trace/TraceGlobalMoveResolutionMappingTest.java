@@ -133,7 +133,7 @@ public class TraceGlobalMoveResolutionMappingTest {
     private static final Register r0 = new Register(0, 0, "r0", CPU);
     private static final Register r1 = new Register(1, 1, "r1", CPU);
 
-    private static enum DummyPlatformKind implements PlatformKind {
+    private enum DummyPlatformKind implements PlatformKind {
         Long;
 
         private EnumKey<DummyPlatformKind> key = new EnumKey<>(this);

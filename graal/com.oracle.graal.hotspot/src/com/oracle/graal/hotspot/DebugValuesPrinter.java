@@ -153,7 +153,7 @@ public class DebugValuesPrinter {
         final DebugValueMap map;
         private boolean printed;
 
-        public DebugValueScope(DebugValueScope parent, DebugValueMap map) {
+        DebugValueScope(DebugValueScope parent, DebugValueMap map) {
             this.parent = parent;
             this.map = map;
             this.level = parent == null ? 0 : parent.level + 1;

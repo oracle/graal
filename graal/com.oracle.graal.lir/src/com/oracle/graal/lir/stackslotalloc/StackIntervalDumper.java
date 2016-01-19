@@ -30,7 +30,7 @@ import com.oracle.graal.lir.debug.IntervalDumper;
 class StackIntervalDumper implements IntervalDumper {
     private final StackInterval[] intervals;
 
-    public StackIntervalDumper(StackInterval[] intervals) {
+    StackIntervalDumper(StackInterval[] intervals) {
         this.intervals = intervals;
     }
 

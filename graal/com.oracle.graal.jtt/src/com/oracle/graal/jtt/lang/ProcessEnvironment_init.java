@@ -55,7 +55,7 @@ public final class ProcessEnvironment_init extends JTTTest {
     private static final class StringEnvironment extends HashMap<Object, Object> {
 
         @SuppressWarnings("unused")
-        public StringEnvironment(HashMap<Object, Object> theenvironment) {
+        StringEnvironment(HashMap<Object, Object> theenvironment) {
         }
     }
 

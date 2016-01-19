@@ -127,7 +127,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          */
         final StackSlot reservedSlot;
 
-        public SaveRbp(NoOp placeholder) {
+        SaveRbp(NoOp placeholder) {
             this.placeholder = placeholder;
             AMD64FrameMapBuilder frameMapBuilder = (AMD64FrameMapBuilder) getResult().getFrameMapBuilder();
             this.reservedSlot = frameMapBuilder.allocateRBPSpillSlot();
@@ -174,7 +174,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue slot;
 
-        public RescueSlotDummyOp(FrameMapBuilder frameMapBuilder, LIRKind kind) {
+        RescueSlotDummyOp(FrameMapBuilder frameMapBuilder, LIRKind kind) {
             super(TYPE);
             slot = frameMapBuilder.allocateSpillSlot(kind);
         }

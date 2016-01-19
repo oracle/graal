@@ -109,7 +109,7 @@ public class TruffleExpansionLogger {
         private final int parentBci;
         private final List<ExpansionTree> children = new ArrayList<>();
 
-        public ExpansionTree(ExpansionTree parent, ResolvedJavaType targetReceiverType, ResolvedJavaMethod targetMethod, int parentBci) {
+        ExpansionTree(ExpansionTree parent, ResolvedJavaType targetReceiverType, ResolvedJavaMethod targetMethod, int parentBci) {
             this.parent = parent;
             this.targetReceiverType = targetReceiverType;
             this.targetMethod = targetMethod;

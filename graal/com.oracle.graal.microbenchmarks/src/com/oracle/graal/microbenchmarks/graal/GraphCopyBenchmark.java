@@ -86,13 +86,13 @@ public class GraphCopyBenchmark extends GraalBenchmark {
     static class Entry {
         final String name;
 
-        public Entry(String name) {
+        Entry(String name) {
             this.name = name;
         }
     }
 
     static class EntryWithNext extends Entry {
-        public EntryWithNext(String name, Entry next) {
+        EntryWithNext(String name, Entry next) {
             super(name);
             this.next = next;
         }

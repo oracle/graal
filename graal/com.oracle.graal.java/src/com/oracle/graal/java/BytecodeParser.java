@@ -444,7 +444,7 @@ public class BytecodeParser implements GraphBuilderContext {
          *
          * @param parser the parsing context of the intrinsic
          */
-        public IntrinsicScope(BytecodeParser parser) {
+        IntrinsicScope(BytecodeParser parser) {
             this.parser = parser;
             assert parser.parent == null;
             assert parser.bci() == 0;
@@ -457,7 +457,7 @@ public class BytecodeParser implements GraphBuilderContext {
          * @param parser the parsing context of the (non-intrinsic) method calling the intrinsic
          * @param args the arguments to the call
          */
-        public IntrinsicScope(BytecodeParser parser, JavaKind[] argSlotKinds, ValueNode[] args) {
+        IntrinsicScope(BytecodeParser parser, JavaKind[] argSlotKinds, ValueNode[] args) {
             assert !parser.parsingIntrinsic();
             this.parser = parser;
             mark = parser.getGraph().getMark();
@@ -533,7 +533,7 @@ public class BytecodeParser implements GraphBuilderContext {
         FixedNode fixed;
         FrameStateBuilder state;
 
-        public Target(FixedNode fixed, FrameStateBuilder state) {
+        Target(FixedNode fixed, FrameStateBuilder state) {
             this.fixed = fixed;
             this.state = state;
         }
@@ -1409,7 +1409,7 @@ public class BytecodeParser implements GraphBuilderContext {
         final int nodeCount;
         final Mark mark;
 
-        public InvocationPluginAssertions(InvocationPlugin plugin, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
+        InvocationPluginAssertions(InvocationPlugin plugin, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
             guarantee(assertionsEnabled(), "%s should only be loaded and instantiated if assertions are enabled", getClass().getSimpleName());
             this.plugin = plugin;
             this.targetMethod = targetMethod;
@@ -3243,7 +3243,7 @@ public class BytecodeParser implements GraphBuilderContext {
         final int blockIndex;
         int actualIndex;
 
-        public SuccessorInfo(int blockSuccessorIndex) {
+        SuccessorInfo(int blockSuccessorIndex) {
             this.blockIndex = blockSuccessorIndex;
             actualIndex = -1;
         }

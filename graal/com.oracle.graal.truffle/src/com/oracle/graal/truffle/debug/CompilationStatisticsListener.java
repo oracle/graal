@@ -343,7 +343,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         private int callCountDirectNotCloned;
         private int loopCount;
 
-        public CallTargetNodeStatistics(OptimizedCallTarget target) {
+        CallTargetNodeStatistics(OptimizedCallTarget target) {
             target.accept((CallTreeNodeVisitor) this::visitNode, true);
 
         }

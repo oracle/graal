@@ -47,14 +47,14 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
 
         final String name;
 
-        public Entry(String name) {
+        Entry(String name) {
             this.name = name;
         }
     }
 
     static class EntryWithNext extends Entry {
 
-        public EntryWithNext(String name, Entry next) {
+        EntryWithNext(String name, Entry next) {
             super(name);
             this.next = next;
         }

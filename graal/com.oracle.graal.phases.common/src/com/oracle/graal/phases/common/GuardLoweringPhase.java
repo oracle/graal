@@ -206,7 +206,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         private final Block block;
         private boolean useGuardIdAsDebugId;
 
-        public LowerGuards(Block block, boolean useGuardIdAsDebugId) {
+        LowerGuards(Block block, boolean useGuardIdAsDebugId) {
             this.block = block;
             this.useGuardIdAsDebugId = useGuardIdAsDebugId;
         }

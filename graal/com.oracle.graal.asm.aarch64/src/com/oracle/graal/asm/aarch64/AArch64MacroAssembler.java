@@ -1106,7 +1106,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
         public final int encoding;
 
-        private PatchLabelKind(int encoding) {
+        PatchLabelKind(int encoding) {
             this.encoding = encoding;
         }
 
@@ -1242,7 +1242,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
         public final int encoding;
 
-        private AArch64ExceptionCode(int encoding) {
+        AArch64ExceptionCode(int encoding) {
             this.encoding = encoding;
         }
     }

@@ -53,7 +53,7 @@ public class CompositeValueReplacementTest1 {
 
         @Component({REG, OperandFlag.ILLEGAL}) protected Value value;
 
-        public TestCompositeValue(Value value) {
+        TestCompositeValue(Value value) {
             super(LIRKind.Illegal);
             this.value = value;
         }
@@ -123,7 +123,7 @@ public class CompositeValueReplacementTest1 {
 
         @Use({COMPOSITE}) protected TestCompositeValue compValue;
 
-        public TestOp(TestCompositeValue compValue) {
+        TestOp(TestCompositeValue compValue) {
             super(TYPE);
             this.compValue = compValue;
         }

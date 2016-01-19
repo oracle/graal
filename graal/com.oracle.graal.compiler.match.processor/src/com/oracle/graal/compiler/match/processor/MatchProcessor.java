@@ -619,7 +619,7 @@ public class MatchProcessor extends AbstractProcessor {
         private final String matchPattern;
         private final MethodInvokerItem invoker;
 
-        public MatchRuleItem(String matchPattern, MethodInvokerItem invoker) {
+        MatchRuleItem(String matchPattern, MethodInvokerItem invoker) {
             this.matchPattern = matchPattern;
             this.invoker = invoker;
         }
@@ -675,7 +675,7 @@ public class MatchProcessor extends AbstractProcessor {
          */
         Set<String> requiredPackages = new HashSet<>();
 
-        public MatchRuleDescriptor(TypeElement topDeclaringType) {
+        MatchRuleDescriptor(TypeElement topDeclaringType) {
             this.topDeclaringType = topDeclaringType;
         }
     }

@@ -444,7 +444,7 @@ public class TruffleGraphBuilderPlugins {
 
         private final JavaKind returnKind;
 
-        public CustomizedUnsafeLoadPlugin(JavaKind returnKind) {
+        CustomizedUnsafeLoadPlugin(JavaKind returnKind) {
             this.returnKind = returnKind;
         }
 
@@ -469,7 +469,7 @@ public class TruffleGraphBuilderPlugins {
 
         private final JavaKind kind;
 
-        public CustomizedUnsafeStorePlugin(JavaKind kind) {
+        CustomizedUnsafeStorePlugin(JavaKind kind) {
             this.kind = kind;
         }
 

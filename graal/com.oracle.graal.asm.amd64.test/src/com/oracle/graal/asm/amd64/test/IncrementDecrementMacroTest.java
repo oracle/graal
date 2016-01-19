@@ -60,7 +60,7 @@ public class IncrementDecrementMacroTest extends AssemblerTest {
     private static class IncrementCodeGenTest implements CodeGenTest {
         final int value;
 
-        public IncrementCodeGenTest(int value) {
+        IncrementCodeGenTest(int value) {
             this.value = value;
         }
 
@@ -97,7 +97,7 @@ public class IncrementDecrementMacroTest extends AssemblerTest {
     private static class DecrementCodeGenTest implements CodeGenTest {
         final int value;
 
-        public DecrementCodeGenTest(int value) {
+        DecrementCodeGenTest(int value) {
             this.value = value;
         }
 

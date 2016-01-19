@@ -54,7 +54,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
             private final IndexedValueMap variables;
 
-            public BasePointersSet() {
+            BasePointersSet() {
                 variables = new IndexedValueMap();
             }
 

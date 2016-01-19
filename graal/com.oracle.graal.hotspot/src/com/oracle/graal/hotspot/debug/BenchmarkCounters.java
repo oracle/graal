@@ -113,7 +113,7 @@ public class BenchmarkCounters {
         public final String group;
         public final AtomicLong staticCounters;
 
-        public Counter(int index, String group, AtomicLong staticCounters) {
+        Counter(int index, String group, AtomicLong staticCounters) {
             this.index = index;
             this.group = group;
             this.staticCounters = staticCounters;
@@ -288,7 +288,7 @@ public class BenchmarkCounters {
         private final byte[][] patterns;
         private final int[] positions;
 
-        public CallbackOutputStream(PrintStream delegate, String... patterns) {
+        CallbackOutputStream(PrintStream delegate, String... patterns) {
             this.delegate = delegate;
             this.positions = new int[patterns.length];
             this.patterns = new byte[patterns.length][];

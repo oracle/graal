@@ -356,7 +356,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         final String a = "a";
         final String b;
 
-        public MyObject(String b) {
+        MyObject(String b) {
             this.b = b;
             Thread.dumpStack();
         }

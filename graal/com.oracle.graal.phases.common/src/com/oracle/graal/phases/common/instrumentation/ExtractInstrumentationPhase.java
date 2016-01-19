@@ -86,7 +86,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
         protected ValueNode target;
         protected NodeBitMap nodes;
 
-        public Instrumentation(InstrumentationBeginNode begin) {
+        Instrumentation(InstrumentationBeginNode begin) {
             this.begin = begin;
 
             resolveInstrumentationNodes();

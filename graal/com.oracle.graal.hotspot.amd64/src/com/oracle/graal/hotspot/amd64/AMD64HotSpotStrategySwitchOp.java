@@ -39,7 +39,7 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 final class AMD64HotSpotStrategySwitchOp extends AMD64ControlFlow.StrategySwitchOp {
     public static final LIRInstructionClass<AMD64HotSpotStrategySwitchOp> TYPE = LIRInstructionClass.create(AMD64HotSpotStrategySwitchOp.class);
 
-    public AMD64HotSpotStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+    AMD64HotSpotStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
         super(TYPE, strategy, keyTargets, defaultTarget, key, scratch);
     }
 

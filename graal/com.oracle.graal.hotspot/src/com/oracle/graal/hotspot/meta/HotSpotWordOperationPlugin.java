@@ -61,7 +61,7 @@ import com.oracle.graal.word.WordTypes;
  * operations}.
  */
 class HotSpotWordOperationPlugin extends WordOperationPlugin {
-    public HotSpotWordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes) {
+    HotSpotWordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes) {
         super(snippetReflection, wordTypes);
     }
 

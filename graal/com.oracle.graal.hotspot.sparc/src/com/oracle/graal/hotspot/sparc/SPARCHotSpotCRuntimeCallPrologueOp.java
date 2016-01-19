@@ -52,7 +52,7 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction imple
     @Def({REG, STACK}) protected Value threadTemp;
     @Temp({REG}) protected AllocatableValue spScratch;
 
-    public SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer, Value threadTemp, AllocatableValue spScratch) {
+    SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer, Value threadTemp, AllocatableValue spScratch) {
         super(TYPE, SIZE);
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.thread = thread;

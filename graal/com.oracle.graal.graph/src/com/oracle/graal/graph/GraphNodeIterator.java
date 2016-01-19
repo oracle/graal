@@ -32,11 +32,11 @@ class GraphNodeIterator implements Iterator<Node> {
     private final Graph graph;
     private int index;
 
-    public GraphNodeIterator(Graph graph) {
+    GraphNodeIterator(Graph graph) {
         this(graph, 0);
     }
 
-    public GraphNodeIterator(Graph graph, int index) {
+    GraphNodeIterator(Graph graph, int index) {
         this.graph = graph;
         this.index = index - 1;
         forward();

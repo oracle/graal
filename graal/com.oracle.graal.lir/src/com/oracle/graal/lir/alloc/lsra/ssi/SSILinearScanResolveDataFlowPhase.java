@@ -97,7 +97,7 @@ public class SSILinearScanResolveDataFlowPhase extends LinearScanResolveDataFlow
         final int toId;
         final int fromId;
 
-        public MyPhiValueVisitor(MoveResolver moveResolver, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock) {
+        MyPhiValueVisitor(MoveResolver moveResolver, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock) {
             this.moveResolver = moveResolver;
             toId = allocator.getFirstLirInstructionId(toBlock);
             fromId = allocator.getLastLirInstructionId(fromBlock);

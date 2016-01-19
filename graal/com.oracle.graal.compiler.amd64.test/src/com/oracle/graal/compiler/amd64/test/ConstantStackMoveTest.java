@@ -45,7 +45,7 @@ public class ConstantStackMoveTest extends LIRTest {
     private static class LoadConstantStackSpec extends LIRTestSpecification {
         protected final Object primitive;
 
-        public LoadConstantStackSpec(Object primitive) {
+        LoadConstantStackSpec(Object primitive) {
             this.primitive = primitive;
         }
 
@@ -63,7 +63,7 @@ public class ConstantStackMoveTest extends LIRTest {
     }
 
     private static final class LoadConstantStackSpecByte extends LoadConstantStackSpec {
-        public LoadConstantStackSpecByte(byte primitive) {
+        LoadConstantStackSpecByte(byte primitive) {
             super(primitive);
         }
 
@@ -73,7 +73,7 @@ public class ConstantStackMoveTest extends LIRTest {
     }
 
     private static final class LoadConstantStackSpecShort extends LoadConstantStackSpec {
-        public LoadConstantStackSpecShort(short primitive) {
+        LoadConstantStackSpecShort(short primitive) {
             super(primitive);
         }
 
@@ -83,7 +83,7 @@ public class ConstantStackMoveTest extends LIRTest {
     }
 
     private static final class LoadConstantStackSpecInteger extends LoadConstantStackSpec {
-        public LoadConstantStackSpecInteger(int primitive) {
+        LoadConstantStackSpecInteger(int primitive) {
             super(primitive);
         }
 
@@ -93,7 +93,7 @@ public class ConstantStackMoveTest extends LIRTest {
     }
 
     private static final class LoadConstantStackSpecLong extends LoadConstantStackSpec {
-        public LoadConstantStackSpecLong(long primitive) {
+        LoadConstantStackSpecLong(long primitive) {
             super(primitive);
         }
 
@@ -103,7 +103,7 @@ public class ConstantStackMoveTest extends LIRTest {
     }
 
     private static final class LoadConstantStackSpecFloat extends LoadConstantStackSpec {
-        public LoadConstantStackSpecFloat(float primitive) {
+        LoadConstantStackSpecFloat(float primitive) {
             super(primitive);
         }
 
@@ -113,7 +113,7 @@ public class ConstantStackMoveTest extends LIRTest {
     }
 
     private static final class LoadConstantStackSpecDouble extends LoadConstantStackSpec {
-        public LoadConstantStackSpecDouble(double primitive) {
+        LoadConstantStackSpecDouble(double primitive) {
             super(primitive);
         }
 

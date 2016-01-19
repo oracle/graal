@@ -104,7 +104,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         private char nextId;
         private static final long serialVersionUID = -2676889957907285681L;
 
-        public ConstantPool() {
+        ConstantPool() {
             super(50, 0.65f);
             availableIds = new LinkedList<>();
         }

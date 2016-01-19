@@ -79,7 +79,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         class InliningGraphPrintHandler implements GraphPrintHandler {
             private final TruffleInlining inlining;
 
-            public InliningGraphPrintHandler(TruffleInlining inlining) {
+            InliningGraphPrintHandler(TruffleInlining inlining) {
                 this.inlining = inlining;
             }
 

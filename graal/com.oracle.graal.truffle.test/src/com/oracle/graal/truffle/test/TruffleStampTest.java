@@ -163,7 +163,7 @@ public class TruffleStampTest {
 
         private final Object type;
 
-        public TestTypedObject(Object type) {
+        TestTypedObject(Object type) {
             this.type = type;
         }
 

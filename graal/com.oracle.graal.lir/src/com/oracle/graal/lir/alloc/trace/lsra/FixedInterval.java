@@ -38,7 +38,7 @@ final class FixedInterval extends IntervalHint {
 
         public FixedInterval fixed;
 
-        public FixedList(FixedInterval fixed) {
+        FixedList(FixedInterval fixed) {
             this.fixed = fixed;
         }
 

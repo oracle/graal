@@ -145,7 +145,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
             private final SnippetInfo add = snippet(SnippetCounterSnippets.class, "add", SNIPPET_COUNTER_LOCATION);
 
-            public Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+            Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
                 super(providers, snippetReflection, target);
             }
 

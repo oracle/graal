@@ -41,16 +41,16 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
 
     private final LinkedHashMap<Id<K>, V> map;
 
-    public LinkedIdentityHashMap() {
+    LinkedIdentityHashMap() {
         map = new LinkedHashMap<>();
     }
 
-    public LinkedIdentityHashMap(Map<K, V> m) {
+    LinkedIdentityHashMap(Map<K, V> m) {
         map = new LinkedHashMap<>(m.size());
         putAll(m);
     }
 
-    public LinkedIdentityHashMap(int expectedMaxSize) {
+    LinkedIdentityHashMap(int expectedMaxSize) {
         map = new LinkedHashMap<>(expectedMaxSize);
     }
 
@@ -61,7 +61,7 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
     static final class Id<T> {
         final T object;
 
-        public Id(T object) {
+        Id(T object) {
             assert object != null;
             this.object = object;
         }

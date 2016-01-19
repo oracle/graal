@@ -59,7 +59,7 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
         new Analyzer(target, lirGenRes.getLIR(), counterFactory).run();
     }
 
-    private static enum MoveType {
+    private enum MoveType {
         REG2REG("Reg", "Reg"),
         STACK2REG("Reg", "Stack"),
         CONST2REG("Reg", "Const"),
@@ -114,7 +114,7 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
         private final LIRInsertionBuffer buffer;
         private final int[] cnt;
 
-        public Analyzer(TargetDescription target, LIR lir, BenchmarkCounterFactory counterFactory) {
+        Analyzer(TargetDescription target, LIR lir, BenchmarkCounterFactory counterFactory) {
             this.target = target;
             this.lir = lir;
             this.counterFactory = counterFactory;

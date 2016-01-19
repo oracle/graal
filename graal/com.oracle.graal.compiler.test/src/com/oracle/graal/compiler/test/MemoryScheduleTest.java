@@ -72,7 +72,7 @@ import com.oracle.graal.phases.tiers.MidTierContext;
  */
 public class MemoryScheduleTest extends GraphScheduleTest {
 
-    private static enum TestMode {
+    private enum TestMode {
         WITH_FRAMESTATES,
         WITHOUT_FRAMESTATES,
         INLINED_WITHOUT_FRAMESTATES

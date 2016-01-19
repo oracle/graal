@@ -117,7 +117,7 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
         private final Register countersArrayReg;
         private final SPARCMacroAssembler masm;
 
-        public IncrementEmitter(Register countersArrayReg, SPARCMacroAssembler masm) {
+        IncrementEmitter(Register countersArrayReg, SPARCMacroAssembler masm) {
             super();
             this.countersArrayReg = countersArrayReg;
             this.masm = masm;

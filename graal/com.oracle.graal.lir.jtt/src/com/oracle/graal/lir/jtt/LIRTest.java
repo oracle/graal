@@ -65,7 +65,7 @@ public abstract class LIRTest extends JTTTest {
         @Input protected NodeInputList<ValueNode> values;
         public final SnippetReflectionProvider snippetReflection;
 
-        public LIRTestNode(SnippetReflectionProvider snippetReflection, JavaKind kind, ValueNode opsNode, ValueNode[] values) {
+        protected LIRTestNode(SnippetReflectionProvider snippetReflection, JavaKind kind, ValueNode opsNode, ValueNode[] values) {
             super(TYPE, StampFactory.forKind(kind));
             this.opsNode = opsNode;
             this.values = new NodeInputList<>(this, values);
@@ -107,7 +107,7 @@ public abstract class LIRTest extends JTTTest {
         @Input protected ValueNode name;
         public final SnippetReflectionProvider snippetReflection;
 
-        public LIRValueNode(SnippetReflectionProvider snippetReflection, JavaKind kind, ValueNode opsNode, ValueNode name) {
+        protected LIRValueNode(SnippetReflectionProvider snippetReflection, JavaKind kind, ValueNode opsNode, ValueNode name) {
             super(TYPE, StampFactory.forKind(kind));
             this.opsNode = opsNode;
             this.name = name;

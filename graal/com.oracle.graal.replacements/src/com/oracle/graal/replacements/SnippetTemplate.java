@@ -153,7 +153,7 @@ public class SnippetTemplate {
          * Lazily constructed parts of {@link SnippetInfo}.
          */
         static class Lazy {
-            public Lazy(ResolvedJavaMethod method) {
+            Lazy(ResolvedJavaMethod method) {
                 int count = method.getSignature().getParameterCount(false);
                 constantParameters = new boolean[count];
                 varargsParameters = new boolean[count];
@@ -469,7 +469,7 @@ public class SnippetTemplate {
         public static final NodeClass<VarargsPlaceholderNode> TYPE = NodeClass.create(VarargsPlaceholderNode.class);
         protected final Varargs varargs;
 
-        public VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {
+        protected VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {
             super(TYPE, StampFactory.exactNonNull(metaAccess.lookupJavaType(varargs.componentType).getArrayClass()));
             this.varargs = varargs;
         }
@@ -613,7 +613,7 @@ public class SnippetTemplate {
         private static final long serialVersionUID = 1L;
         private final int maxCacheSize;
 
-        public LRUCache(int initialCapacity, int maxCacheSize) {
+        LRUCache(int initialCapacity, int maxCacheSize) {
             super(initialCapacity, 0.75F, true);
             this.maxCacheSize = maxCacheSize;
         }
@@ -1135,7 +1135,7 @@ public class SnippetTemplate {
         private final LocationIdentity locationIdentity;
         private final MemoryNode lastLocationAccess;
 
-        public MemoryInputMap(ValueNode replacee) {
+        MemoryInputMap(ValueNode replacee) {
             if (replacee instanceof MemoryAccess) {
                 MemoryAccess access = (MemoryAccess) replacee;
                 locationIdentity = access.getLocationIdentity();
@@ -1169,7 +1169,7 @@ public class SnippetTemplate {
 
         private final Map<Node, Node> duplicates;
 
-        public MemoryOutputMap(ValueNode replacee, Map<Node, Node> duplicates) {
+        MemoryOutputMap(ValueNode replacee, Map<Node, Node> duplicates) {
             super(replacee);
             this.duplicates = duplicates;
         }

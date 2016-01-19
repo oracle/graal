@@ -30,7 +30,7 @@ public interface HeapAccess {
     /**
      * The types of (write/read) barriers attached to stores.
      */
-    public enum BarrierType {
+    enum BarrierType {
         /**
          * Primitive stores which do not necessitate barriers.
          */

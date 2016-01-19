@@ -39,7 +39,7 @@ public class NodeValidationChecksTest {
         @Input TestNode input;
         @Successor TestNode successor;
 
-        public TestNode(TestNode input, TestNode successor) {
+        protected TestNode(TestNode input, TestNode successor) {
             super(TYPE);
             this.input = input;
             this.successor = successor;

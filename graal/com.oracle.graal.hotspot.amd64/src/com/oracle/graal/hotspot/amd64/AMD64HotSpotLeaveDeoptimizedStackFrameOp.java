@@ -43,7 +43,7 @@ final class AMD64HotSpotLeaveDeoptimizedStackFrameOp extends AMD64HotSpotEpilogu
     @Use(REG) AllocatableValue frameSize;
     @Use(REG) AllocatableValue framePointer;
 
-    public AMD64HotSpotLeaveDeoptimizedStackFrameOp(AllocatableValue frameSize, AllocatableValue initialInfo) {
+    AMD64HotSpotLeaveDeoptimizedStackFrameOp(AllocatableValue frameSize, AllocatableValue initialInfo) {
         super(TYPE);
         this.frameSize = frameSize;
         this.framePointer = initialInfo;

@@ -209,7 +209,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static enum Ops {
+    public enum Ops {
         // @formatter:off
         BranchOp(0b00),
         CallOp(0b01),
@@ -219,7 +219,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         private final int value;
 
-        private Ops(int value) {
+        Ops(int value) {
             this.value = value;
         }
 
@@ -233,7 +233,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static enum Op2s {
+    public enum Op2s {
         // @formatter:off
         Illtrap(0b000),
         Bpr    (0b011),
@@ -247,7 +247,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         private final int value;
 
-        private Op2s(int value) {
+        Op2s(int value) {
             this.value = value;
         }
 
@@ -265,7 +265,7 @@ public abstract class SPARCAssembler extends Assembler {
     private static final int UNARY = 4;
     private static final int VOID_IN = 8;
 
-    public static enum Op3s {
+    public enum Op3s {
         // @formatter:off
         Add(0x00, "add", ArithOp, BINARY | COMMUTATIVE),
         And(0x01, "and", ArithOp, BINARY | COMMUTATIVE),
@@ -380,11 +380,11 @@ public abstract class SPARCAssembler extends Assembler {
         private final Ops op;
         private final int flags;
 
-        private Op3s(int value, String name, Ops op) {
+        Op3s(int value, String name, Ops op) {
             this(value, name, op, 0);
         }
 
-        private Op3s(int value, String name, Ops op, int flags) {
+        Op3s(int value, String name, Ops op, int flags) {
             this.value = value;
             this.operator = name;
             this.op = op;
@@ -429,7 +429,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static enum Opfs {
+    public enum Opfs {
         // @formatter:off
 
         Fmovs(0b0_0000_0001, "fmovs", Fpop1, UNARY),
@@ -495,7 +495,7 @@ public abstract class SPARCAssembler extends Assembler {
         private final Op3s op3;
         private final int flags;
 
-        private Opfs(int value, String op, Op3s op3, int flags) {
+        Opfs(int value, String op, Op3s op3, int flags) {
             this.value = value;
             this.operator = op;
             this.op3 = op3;
@@ -523,7 +523,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static enum OpfLow {
+    public enum OpfLow {
         Fmovscc(0b00_0001, "fmovscc", Fpop2),
         Fmovdcc(0b00_0010, "fmovdcc", Fpop2);
 
@@ -531,7 +531,7 @@ public abstract class SPARCAssembler extends Assembler {
         private final String operator;
         private final Op3s op3;
 
-        private OpfLow(int value, String op, Op3s op3) {
+        OpfLow(int value, String op, Op3s op3) {
             this.value = value;
             this.operator = op;
             this.op3 = op3;
@@ -579,7 +579,7 @@ public abstract class SPARCAssembler extends Assembler {
         private final int value;
         private final String operator;
 
-        private MembarMask(int value, String op) {
+        MembarMask(int value, String op) {
             this.value = value;
             this.operator = op;
         }
@@ -617,7 +617,7 @@ public abstract class SPARCAssembler extends Assembler {
         private final String operator;
         private boolean isFloat;
 
-        private CC(int value, String op, boolean isFloat) {
+        CC(int value, String op, boolean isFloat) {
             this.value = value;
             this.operator = op;
             this.isFloat = isFloat;
@@ -693,11 +693,11 @@ public abstract class SPARCAssembler extends Assembler {
         private final String operator;
         private boolean forCBcond = false;
 
-        private ConditionFlag(int value, String op) {
+        ConditionFlag(int value, String op) {
             this(value, op, false);
         }
 
-        private ConditionFlag(int value, String op, boolean cbcond) {
+        ConditionFlag(int value, String op, boolean cbcond) {
             this.value = value;
             this.operator = op;
             this.forCBcond = cbcond;
@@ -803,7 +803,7 @@ public abstract class SPARCAssembler extends Assembler {
         private final int value;
         private final String operator;
 
-        private RCondition(int value, String op) {
+        RCondition(int value, String op) {
             this.value = value;
             this.operator = op;
         }
@@ -836,7 +836,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         private final int value;
 
-        private Asi(int value) {
+        Asi(int value) {
             this.value = value;
         }
 
@@ -863,7 +863,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         private final int value;
 
-        private Fcn(int value) {
+        Fcn(int value) {
             this.value = value;
         }
 

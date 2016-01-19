@@ -220,7 +220,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
         private final HashMap<Object, ValuePhiNode> materializedPhis = CollectionsFactory.newMap();
 
-        public ReadEliminationMergeProcessor(Block mergeBlock) {
+        ReadEliminationMergeProcessor(Block mergeBlock) {
             super(mergeBlock);
         }
 

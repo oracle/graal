@@ -48,7 +48,7 @@ public class LoopNewInstance extends JTTTest {
 
         private boolean exists;
 
-        public Blop() {
+        Blop() {
             if (!exists) {
                 count++;
             }

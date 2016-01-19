@@ -94,7 +94,7 @@ public class InvocationPlugins {
         private final String name;
         private Class<?> resolved;
 
-        public OptionalLazySymbol(String name) {
+        OptionalLazySymbol(String name) {
             this.name = name;
         }
 

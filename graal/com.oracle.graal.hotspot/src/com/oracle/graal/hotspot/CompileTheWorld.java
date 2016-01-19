@@ -299,7 +299,7 @@ public final class CompileTheWorld {
     abstract static class ClassPathEntry implements Closeable {
         final String name;
 
-        public ClassPathEntry(String name) {
+        ClassPathEntry(String name) {
             this.name = name;
         }
 
@@ -329,7 +329,7 @@ public final class CompileTheWorld {
 
         private final File dir;
 
-        public DirClassPathEntry(String name) {
+        DirClassPathEntry(String name) {
             super(name);
             dir = new File(name);
             assert dir.isDirectory();
@@ -373,7 +373,7 @@ public final class CompileTheWorld {
 
         private final JarFile jarFile;
 
-        public JarClassPathEntry(String name) throws IOException {
+        JarClassPathEntry(String name) throws IOException {
             super(name);
             jarFile = new JarFile(name);
         }
@@ -412,7 +412,7 @@ public final class CompileTheWorld {
 
         private final File jimage;
 
-        public ImageClassPathEntry(String name) {
+        ImageClassPathEntry(String name) {
             super(name);
             jimage = new File(name);
             assert jimage.isFile();

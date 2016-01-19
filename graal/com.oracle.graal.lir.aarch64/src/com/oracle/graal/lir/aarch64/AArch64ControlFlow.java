@@ -190,7 +190,7 @@ public class AArch64ControlFlow {
             private final AArch64MacroAssembler masm;
             private final CompilationResultBuilder crb;
 
-            public SwitchClosure(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            SwitchClosure(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
                 super(crb, masm, keyTargets, defaultTarget);
                 this.masm = masm;
                 this.crb = crb;

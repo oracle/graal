@@ -55,7 +55,7 @@ public class EdgesTest extends GraalCompilerTest {
         @Input ConstantNode i1;
         @Input FloatingNode i2;
 
-        public TestNode() {
+        protected TestNode() {
             super(TYPE);
         }
 

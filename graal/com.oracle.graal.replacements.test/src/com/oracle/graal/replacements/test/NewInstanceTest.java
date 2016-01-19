@@ -144,7 +144,7 @@ public class NewInstanceTest extends GraalCompilerTest {
         String name = "o1";
         HashMap<String, Object> map = new HashMap<>();
 
-        public SomeObject() {
+        SomeObject() {
             map.put(name, this.getClass());
         }
 

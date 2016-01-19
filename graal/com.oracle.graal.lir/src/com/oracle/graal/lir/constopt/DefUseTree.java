@@ -42,7 +42,7 @@ class DefUseTree {
     private final AbstractBlockBase<?> block;
     private final List<UseEntry> uses;
 
-    public DefUseTree(LIRInstruction instruction, AbstractBlockBase<?> block) {
+    DefUseTree(LIRInstruction instruction, AbstractBlockBase<?> block) {
         assert instruction instanceof LoadConstantOp : "Not a LoadConstantOp: " + instruction;
         this.instruction = (LoadConstantOp) instruction;
         this.block = block;

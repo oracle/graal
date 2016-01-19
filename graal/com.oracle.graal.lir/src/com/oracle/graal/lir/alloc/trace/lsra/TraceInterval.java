@@ -62,7 +62,7 @@ final class TraceInterval extends IntervalHint {
          */
         public TraceInterval any;
 
-        public AnyList(TraceInterval any) {
+        AnyList(TraceInterval any) {
             this.any = any;
         }
 

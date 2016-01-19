@@ -37,7 +37,7 @@ class UniqueWorkList<T extends AbstractBlockBase<T>> extends ArrayDeque<T> {
     private static final long serialVersionUID = 8009554570990975712L;
     BitSet valid;
 
-    public UniqueWorkList(int size) {
+    UniqueWorkList(int size) {
         this.valid = new BitSet(size);
     }
 

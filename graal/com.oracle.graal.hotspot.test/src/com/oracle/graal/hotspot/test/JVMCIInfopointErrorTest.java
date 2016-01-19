@@ -71,7 +71,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
 
         @Def({REG, STACK}) AllocatableValue value;
 
-        public ValueDef(AllocatableValue value) {
+        ValueDef(AllocatableValue value) {
             super(TYPE);
             this.value = value;
         }
@@ -86,7 +86,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
 
         @Use({REG, STACK}) AllocatableValue value;
 
-        public ValueUse(AllocatableValue value) {
+        ValueUse(AllocatableValue value) {
             super(TYPE);
             this.value = value;
         }
@@ -102,7 +102,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
 
         private final TestSpec spec;
 
-        public TestNode(TestSpec spec) {
+        protected TestNode(TestSpec spec) {
             super(TYPE, StampFactory.forVoid());
             this.spec = spec;
         }

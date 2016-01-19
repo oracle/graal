@@ -78,7 +78,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
         private final List<List<LIRInstruction>> edgeInstructionSeqences;
         private LIR ir;
 
-        public Optimizer(LIR ir) {
+        Optimizer(LIR ir) {
             this.ir = ir;
             edgeInstructionSeqences = new ArrayList<>(4);
         }

@@ -110,7 +110,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     static class Lazy extends BackgroundCompileQueue {
         private StackIntrospection stackIntrospection;
 
-        public Lazy(HotSpotTruffleRuntime runtime) {
+        Lazy(HotSpotTruffleRuntime runtime) {
             runtime.installDefaultListeners();
         }
 

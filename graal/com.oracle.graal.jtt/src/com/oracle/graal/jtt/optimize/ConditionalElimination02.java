@@ -36,7 +36,7 @@ public class ConditionalElimination02 extends JTTTest {
 
     private static class A {
 
-        public A(int y) {
+        A(int y) {
             this.y = y;
         }
 

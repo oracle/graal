@@ -39,7 +39,7 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
     /**
      * Result of a {@link #shouldInlineInvoke inlining decision}.
      */
-    public static class InlineInfo {
+    class InlineInfo {
 
         /**
          * Denotes a call site that must not be inlined and should be implemented by a node that

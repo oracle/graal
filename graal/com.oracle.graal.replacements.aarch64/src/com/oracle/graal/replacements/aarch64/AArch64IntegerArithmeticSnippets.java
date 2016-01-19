@@ -195,7 +195,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         public static final NodeClass<SafeIntegerDivNode> TYPE = NodeClass.create(SafeIntegerDivNode.class);
 
         @SuppressWarnings("unused")
-        public SafeIntegerDivNode(JavaKind kind, ValueNode x, ValueNode y) {
+        protected SafeIntegerDivNode(JavaKind kind, ValueNode x, ValueNode y) {
             super(x, y);
         }
     }
@@ -205,7 +205,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         public static final NodeClass<SafeIntegerRemNode> TYPE = NodeClass.create(SafeIntegerRemNode.class);
 
         @SuppressWarnings("unused")
-        public SafeIntegerRemNode(JavaKind kind, ValueNode x, ValueNode y) {
+        protected SafeIntegerRemNode(JavaKind kind, ValueNode x, ValueNode y) {
             super(x, y);
         }
     }
@@ -215,7 +215,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         public static final NodeClass<SafeUnsignedDivNode> TYPE = NodeClass.create(SafeUnsignedDivNode.class);
 
         @SuppressWarnings("unused")
-        public SafeUnsignedDivNode(JavaKind kind, ValueNode x, ValueNode y) {
+        protected SafeUnsignedDivNode(JavaKind kind, ValueNode x, ValueNode y) {
             super(x, y);
         }
     }
@@ -225,7 +225,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         public static final NodeClass<SafeUnsignedRemNode> TYPE = NodeClass.create(SafeUnsignedRemNode.class);
 
         @SuppressWarnings("unused")
-        public SafeUnsignedRemNode(JavaKind kind, ValueNode x, ValueNode y) {
+        protected SafeUnsignedRemNode(JavaKind kind, ValueNode x, ValueNode y) {
             super(x, y);
         }
     }

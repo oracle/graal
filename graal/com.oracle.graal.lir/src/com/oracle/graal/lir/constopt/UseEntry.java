@@ -37,7 +37,7 @@ class UseEntry {
     private final LIRInstruction instruction;
     private final Value value;
 
-    public UseEntry(AbstractBlockBase<?> block, LIRInstruction instruction, Value value) {
+    UseEntry(AbstractBlockBase<?> block, LIRInstruction instruction, Value value) {
         this.block = block;
         this.instruction = instruction;
         this.value = value;

@@ -348,7 +348,7 @@ public class OptionValue<T> {
         private final OptionValue<?> option;
         private final Object value;
 
-        public SingleOverrideScope(OptionValue<?> option, Object value) {
+        SingleOverrideScope(OptionValue<?> option, Object value) {
             if (option instanceof StableOptionValue) {
                 throw new IllegalArgumentException("Cannot override stable option " + option);
             }
@@ -388,7 +388,7 @@ public class OptionValue<T> {
         final OverrideScope parent;
         final Map<OptionValue<?>, Object> overrides;
 
-        public MultipleOverridesScope(OverrideScope parent, OptionValue<?> option, Object value) {
+        MultipleOverridesScope(OverrideScope parent, OptionValue<?> option, Object value) {
             this.parent = parent;
             this.overrides = new HashMap<>();
             if (parent != null) {

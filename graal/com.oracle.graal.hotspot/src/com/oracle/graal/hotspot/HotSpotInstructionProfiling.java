@@ -66,7 +66,7 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
         private final LIRInsertionBuffer buffer;
         private final String compilationUnitName;
 
-        public Analyzer(TargetDescription target, String compilationUnitName, LIR lir, BenchmarkCounterFactory counterFactory) {
+        Analyzer(TargetDescription target, String compilationUnitName, LIR lir, BenchmarkCounterFactory counterFactory) {
             this.target = target;
             this.lir = lir;
             this.compilationUnitName = compilationUnitName;

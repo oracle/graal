@@ -219,7 +219,7 @@ public class CountedLoopTest extends GraalCompilerTest {
         private final IVProperty property;
         @Input private ValueNode iv;
 
-        public IVPropertyNode(IVProperty property, ValueNode iv) {
+        protected IVPropertyNode(IVProperty property, ValueNode iv) {
             super(TYPE, iv.stamp().unrestricted());
             this.property = property;
             this.iv = iv;

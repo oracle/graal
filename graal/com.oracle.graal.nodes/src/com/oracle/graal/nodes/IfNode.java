@@ -401,7 +401,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         final ResolvedJavaType type;
         double probability;
 
-        public MutableProfiledType(ResolvedJavaType type, double probability) {
+        MutableProfiledType(ResolvedJavaType type, double probability) {
             this.type = type;
             this.probability = probability;
         }

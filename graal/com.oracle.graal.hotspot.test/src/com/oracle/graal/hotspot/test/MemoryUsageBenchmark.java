@@ -105,7 +105,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         private final long start;
         private final String name;
 
-        public MemoryUsageCloseable(String name) {
+        MemoryUsageCloseable(String name) {
             this.name = name;
             this.start = getCurrentThreadAllocatedBytes();
         }

@@ -44,7 +44,7 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
     static class FlatTimer extends DebugValue implements DebugTimer {
         private TimerImpl accm;
 
-        public FlatTimer(String name, boolean conditional) {
+        FlatTimer(String name, boolean conditional) {
             super(name + "_Flat", conditional);
         }
 
@@ -115,7 +115,7 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
 
     private final class SystemNanosTimer extends AbstractTimer {
 
-        public SystemNanosTimer(TimerImpl timer) {
+        SystemNanosTimer(TimerImpl timer) {
             super(timer);
         }
 
@@ -127,7 +127,7 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
 
     private final class CpuTimeTimer extends AbstractTimer {
 
-        public CpuTimeTimer(TimerImpl timer) {
+        CpuTimeTimer(TimerImpl timer) {
             super(timer);
         }
 

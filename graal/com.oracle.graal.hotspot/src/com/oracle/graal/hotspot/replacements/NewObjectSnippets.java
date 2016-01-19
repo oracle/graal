@@ -126,7 +126,7 @@ public class NewObjectSnippets implements Snippets {
 
     public static final LocationIdentity INIT_LOCATION = NamedLocationIdentity.mutable("Initialization");
 
-    static enum ProfileMode {
+    enum ProfileMode {
         AllocatingMethods,
         InstanceOrArray,
         AllocatedTypes,

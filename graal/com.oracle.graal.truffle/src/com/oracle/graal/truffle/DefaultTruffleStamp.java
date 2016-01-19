@@ -142,7 +142,7 @@ public final class DefaultTruffleStamp {
         private final Class<?> clazz;
         private final Object type;
 
-        public InstanceStamp(Object instance) {
+        InstanceStamp(Object instance) {
             this.instance = instance;
             this.type = instance != null ? getTypeIdentifier(instance) : NO_TYPE;
             this.clazz = instance != null ? instance.getClass() : NO_CLASS;
@@ -218,7 +218,7 @@ public final class DefaultTruffleStamp {
         private final Class<?> clazz;
         private final Object type;
 
-        public TypeStamp(Class<?> clazz, Object type) {
+        TypeStamp(Class<?> clazz, Object type) {
             this.clazz = clazz;
             this.type = type;
             assert type != NO_TYPE;
@@ -281,7 +281,7 @@ public final class DefaultTruffleStamp {
 
         private final Class<?> clazz;
 
-        public ClassStamp(Class<?> clazz) {
+        ClassStamp(Class<?> clazz) {
             this.clazz = clazz;
         }
 
@@ -336,13 +336,13 @@ public final class DefaultTruffleStamp {
         private final TruffleStamp[] stampArray;
         private final int length;
 
-        public ArrayStamp(TruffleStamp stamp) {
+        ArrayStamp(TruffleStamp stamp) {
             this.stampArray = new TruffleStamp[MAX_STAMPED_ARGUMENTS];
             Arrays.fill(this.stampArray, stamp);
             this.length = UNINITIALIZED_LENGTH;
         }
 
-        public ArrayStamp(TruffleStamp[] profiledTypes, int length) {
+        ArrayStamp(TruffleStamp[] profiledTypes, int length) {
             this.stampArray = profiledTypes;
             this.length = length;
         }

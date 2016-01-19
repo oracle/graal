@@ -88,7 +88,7 @@ public class HighTierReconcileInstrumentationPhase extends Phase {
         protected CommitAllocationNode commit;
         protected FixedWithNextNode insertingLocation;
 
-        public InstrumentationAggregation(CommitAllocationNode commit) {
+        InstrumentationAggregation(CommitAllocationNode commit) {
             this.commit = commit;
             this.insertingLocation = commit;
         }

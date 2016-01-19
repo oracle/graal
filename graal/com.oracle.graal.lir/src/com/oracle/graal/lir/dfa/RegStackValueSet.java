@@ -49,7 +49,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
     private final IndexedValueMap stack;
     private Set<Value> extraStack;
 
-    public RegStackValueSet(FrameMap frameMap) {
+    RegStackValueSet(FrameMap frameMap) {
         this.frameMap = frameMap;
         registers = new IndexedValueMap();
         stack = new IndexedValueMap();
