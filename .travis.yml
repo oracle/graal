@@ -1,6 +1,12 @@
 language: java
+python:
+  - "2.7"
 jdk:
   - oraclejdk8
+before_install:
+  - sudo pip install astroid==1.1.0
+  - sudo pip install pylint==1.1.0
+  - pylint --version
 install:
   - hg clone https://bitbucket.org/allr/mx
   - wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar
