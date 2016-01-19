@@ -34,7 +34,7 @@ public final class TraceStatisticsPrinter {
     private static final int TRACE_DUMP_LEVEL = 3;
 
     @SuppressWarnings("try")
-    public static <T extends AbstractBlockBase<T>> void printTraceStatistics(TraceBuilder.TraceBuilderResult<T> result, String compilationUnitName) {
+    public static <T extends AbstractBlockBase<T>> void printTraceStatistics(TraceBuilderResult<T> result, String compilationUnitName) {
         try (Scope s = Debug.scope("DumpTraceStatistics")) {
             if (Debug.isLogEnabled(TRACE_DUMP_LEVEL)) {
                 print(result, compilationUnitName);
@@ -45,7 +45,7 @@ public final class TraceStatisticsPrinter {
     }
 
     @SuppressWarnings("try")
-    protected static <T extends AbstractBlockBase<T>> void print(TraceBuilder.TraceBuilderResult<T> result, String compilationUnitName) {
+    protected static <T extends AbstractBlockBase<T>> void print(TraceBuilderResult<T> result, String compilationUnitName) {
         List<List<T>> traces = result.getTraces();
         int numTraces = traces.size();
 

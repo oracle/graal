@@ -37,50 +37,6 @@ import com.oracle.graal.debug.Indent;
 
 public final class TraceBuilder<T extends AbstractBlockBase<T>> {
 
-    public static final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
-        private final List<List<T>> traces;
-        private final int[] blockToTrace;
-
-        private TraceBuilderResult(List<List<T>> traces, int[] blockToTrace) {
-            this.traces = traces;
-            this.blockToTrace = blockToTrace;
-        }
-
-        public int getTraceForBlock(AbstractBlockBase<?> block) {
-            return blockToTrace[block.getId()];
-        }
-
-        public List<List<T>> getTraces() {
-            return traces;
-        }
-
-        public boolean incomingEdges(int traceNr) {
-            List<T> trace = getTraces().get(traceNr);
-            return incomingEdges(traceNr, trace);
-        }
-
-        public boolean incomingSideEdges(int traceNr) {
-            List<T> trace = getTraces().get(traceNr);
-            if (trace.size() <= 1) {
-                return false;
-            }
-            return incomingEdges(traceNr, trace.subList(1, trace.size()));
-        }
-
-        private boolean incomingEdges(int traceNr, List<T> trace) {
-            /* TODO (je): not efficient. find better solution. */
-            for (T block : trace) {
-                for (T pred : block.getPredecessors()) {
-                    if (getTraceForBlock(pred) != traceNr) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-    }
-
     private static final String PHASE_NAME = "LIRPhaseTime_TraceBuilderPhase";
     private static final DebugTimer timer = Debug.timer(PHASE_NAME);
     private static final DebugMemUseTracker memUseTracker = Debug.memUseTracker(PHASE_NAME);
