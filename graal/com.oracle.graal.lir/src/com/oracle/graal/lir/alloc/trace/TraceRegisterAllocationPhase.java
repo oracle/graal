@@ -154,6 +154,10 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     }
 
     private static void unnumberInstructions(List<? extends AbstractBlockBase<?>> trace, LIR lir) {
-        trace.stream().flatMap(b -> lir.getLIRforBlock(b).stream()).forEach(op -> op.setId(-1));
+        for (AbstractBlockBase<?> block : trace) {
+            for (LIRInstruction op : lir.getLIRforBlock(block)) {
+                op.setId(-1);
+            }
+        }
     }
 }
