@@ -29,28 +29,12 @@ import java.util.PriorityQueue;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMemUseTracker;
-import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Indent;
 
 public final class TraceBuilder<T extends AbstractBlockBase<T>> {
 
-    private static final String PHASE_NAME = "LIRPhaseTime_TraceBuilderPhase";
-    private static final DebugTimer timer = Debug.timer(PHASE_NAME);
-    private static final DebugMemUseTracker memUseTracker = Debug.memUseTracker(PHASE_NAME);
-
-    /**
-     * Build traces of sequentially executed blocks.
-     */
-    @SuppressWarnings("try")
     public static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> computeTraces(T startBlock, List<T> blocks) {
-        try (Scope s = Debug.scope("TraceBuilder")) {
-            try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
-                return new TraceBuilder<>(blocks).build(startBlock);
-            }
-        }
+        return new TraceBuilder<>(blocks).build(startBlock);
     }
 
     private final PriorityQueue<T> worklist;
