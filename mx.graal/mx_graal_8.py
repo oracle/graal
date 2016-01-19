@@ -31,7 +31,7 @@ import sanitycheck
 import re
 
 import mx
-from mx_jvmci import JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, _JVMCI_JDK_TAG, VM, relativeVmLibDirInJdk, isJVMCIEnabled
+from mx_jvmci import JVMCI_VERSION, JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, _JVMCI_JDK_TAG, VM, relativeVmLibDirInJdk, isJVMCIEnabled
 from mx_jvmci import get_vm as _jvmci_get_vm
 from mx_jvmci import run_vm as _jvmci_run_vm
 from mx_gate import Task
@@ -49,11 +49,10 @@ def get_vm():
     Gets the name of the currently selected JVM variant.
     """
     vm = _jvmci_get_vm()
-    if isinstance(vm, VM):
-        # mx_jvmci:9
+    if JVMCI_VERSION >= 9:
+        assert isinstance(vm, VM)
         return vm.jvmVariant
     else:
-        # mx_jvmci:8
         assert isinstance(vm, str)
         return vm
 
@@ -117,7 +116,7 @@ def microbench(args):
     known_args, args = parser.parse_known_args(args)
 
     vmArgs, jmhArgs = mx.extract_VM_args(args, useDoubleDash=True)
-    if get_jvmci_jdk().javaCompliance < '9':
+    if JVMCI_VERSION < 9:
         if isJVMCIEnabled(get_vm()) and '-XX:-UseJVMCIClassLoader' not in vmArgs:
             vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
 
@@ -183,7 +182,7 @@ def ctw(args, extraVMarguments=None):
     if args.cp:
         cp = os.path.abspath(args.cp)
     else:
-        if get_jvmci_jdk().javaCompliance < '9':
+        if JVMCI_VERSION < 9:
             cp = join(get_jvmci_jdk().home, 'jre', 'lib', 'rt.jar')
         else:
             cp = join(get_jvmci_jdk().home, 'modules', 'java.base') + os.pathsep + \
@@ -194,7 +193,7 @@ def ctw(args, extraVMarguments=None):
     vmargs = ['-Djava.awt.headless=true'] + vmargs
 
     vm = get_vm()
-    if get_jvmci_jdk().javaCompliance >= '9':
+    if JVMCI_VERSION >= 9:
         jvmciMode = _jvmci_get_vm().jvmciMode
         if jvmciMode == 'disabled':
             vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp]
@@ -330,7 +329,7 @@ def jdkartifactstats(args):
     artifacts = {}
     jdkDir = get_jvmci_jdk().home
     def _getDeployedJars():
-        if get_jvmci_jdk().javaCompliance < '9':
+        if JVMCI_VERSION < 9:
             for root, _, filenames in os.walk(join(jdkDir, 'jre', 'lib')):
                 for f in filenames:
                     if f.endswith('.jar') and not f.endswith('.stripped.jar'):
@@ -420,7 +419,7 @@ def _unittest_config_participant(config):
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 mx.update_commands(_suite, {
-    'vm': [run_vm, '[-options] class [args...]'],
+    #'vm': [run_vm, '[-options] class [args...]'],
     'jdkartifactstats' : [jdkartifactstats, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'microbench' : [microbench, '[VM options] [-- [JMH options]]'],
@@ -456,8 +455,7 @@ def get_graal_jdk():
     Gets a Graal JDK which adds support for handling the -G format of Graal options.
     """
     jvmci_jdk = get_jvmci_jdk()
-    if jvmci_jdk.javaCompliance < '9':
-        # jvmci-8
+    if JVMCI_VERSION < 9:
         from mx_jvmci import check_VM_exists, JVMCI8JDKConfig # pylint: disable=no-name-in-module
         vmbuild = jvmci_jdk.vmbuild
         check_VM_exists(get_vm(), jvmci_jdk.home, vmbuild)
@@ -473,7 +471,6 @@ def get_graal_jdk():
             jdk = GraalJDK8Config(vmbuild)
             _graal_jdks[vmbuild] = jdk
     else:
-        # jvmci-9
         jdk = _graal_jdks.get('default')
         if jdk is None:
             from mx_jvmci import JVMCI9JDKConfig # pylint: disable=no-name-in-module
@@ -496,7 +493,7 @@ class GraalJDKFactory(mx.JDKFactory):
 
 # This will override the 'generic' JVMCI JDK with a Graal JVMCI JDK that has
 # support for -G style Graal options.
-mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance('9' if isinstance(_jvmci_get_vm(), VM) else '8'), GraalJDKFactory())
+mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance(str(JVMCI_VERSION)), GraalJDKFactory())
 
 def mx_post_parse_cmd_line(opts):
     add_bootclasspath_prepend(mx.distribution('truffle:TRUFFLE_API'))
