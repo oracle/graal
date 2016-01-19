@@ -71,44 +71,12 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
         return processed.get(b.getId());
     }
 
-    private static final int RESULT_LOG_LEVEL = 1;
-
     @SuppressWarnings("try")
     private TraceBuilderResult<T> build(T startBlock) {
         try (Indent indent = Debug.logAndIndent("start trace building: " + startBlock)) {
             ArrayList<List<T>> traces = buildTraces(startBlock);
-
-            assert verify(traces);
-            if (Debug.isLogEnabled(RESULT_LOG_LEVEL)) {
-                for (int i = 0; i < traces.size(); i++) {
-                    List<T> trace = traces.get(i);
-                    Debug.log(RESULT_LOG_LEVEL, "Trace %5d: %s", i, trace);
-                }
-            }
             return new TraceBuilderResult<>(traces, blockToTrace);
         }
-    }
-
-    private boolean verify(ArrayList<List<T>> traces) {
-        assert verifyAllBlocksScheduled(traces, blocked.length) : "Not all blocks assigned to traces!";
-        for (List<T> trace : traces) {
-            T last = null;
-            for (T current : trace) {
-                assert last == null || current.getPredecessors().contains(last);
-                last = current;
-            }
-        }
-        return true;
-    }
-
-    private static <T extends AbstractBlockBase<T>> boolean verifyAllBlocksScheduled(ArrayList<List<T>> traces, int expectedLength) {
-        BitSet handled = new BitSet(expectedLength);
-        for (List<T> trace : traces) {
-            for (T block : trace) {
-                handled.set(block.getId());
-            }
-        }
-        return handled.cardinality() == expectedLength;
     }
 
     protected ArrayList<List<T>> buildTraces(T startBlock) {

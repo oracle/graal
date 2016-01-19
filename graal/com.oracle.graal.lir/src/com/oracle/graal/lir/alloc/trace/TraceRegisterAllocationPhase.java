@@ -74,6 +74,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     private static final TraceBuilderPhase TRACE_BUILDER_PHASE = new TraceBuilderPhase();
 
     public static final int TRACE_DUMP_LEVEL = 3;
+    private static final int TRACE_LOG_LEVEL = 1;
+
     private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
     private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
 
@@ -119,9 +121,20 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> builtTraces(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         TraceBuilderContext traceBuilderContext = new TraceBuilderPhase.TraceBuilderContext();
         TRACE_BUILDER_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceBuilderContext, false);
+
         @SuppressWarnings("unchecked")
         TraceBuilderResult<B> resultTraces = (TraceBuilderResult<B>) traceBuilderContext.traceBuilderResult;
+
+        assert TraceBuilderResult.verify(resultTraces, lirGenRes.getLIR().getControlFlowGraph().getBlocks().size());
+        if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
+            List<List<B>> traces = resultTraces.getTraces();
+            for (int i = 0; i < traces.size(); i++) {
+                List<B> trace = traces.get(i);
+                Debug.log(TRACE_LOG_LEVEL, "Trace %5d: %s", i, trace);
+            }
+        }
         TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
+
         return resultTraces;
     }
 

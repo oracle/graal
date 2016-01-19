@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.common.alloc;
 
+import java.util.BitSet;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -66,6 +67,30 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
             }
         }
         return false;
+    }
+
+    public static <T extends AbstractBlockBase<T>> boolean verify(TraceBuilderResult<T> traceBuilderResult, int expectedLength) {
+        List<List<T>> traces = traceBuilderResult.getTraces();
+        assert verifyAllBlocksScheduled(traceBuilderResult, expectedLength) : "Not all blocks assigned to traces!";
+        for (List<T> trace : traces) {
+            T last = null;
+            for (T current : trace) {
+                assert last == null || current.getPredecessors().contains(last);
+                last = current;
+            }
+        }
+        return true;
+    }
+
+    private static <T extends AbstractBlockBase<T>> boolean verifyAllBlocksScheduled(TraceBuilderResult<T> traceBuilderResult, int expectedLength) {
+        List<List<T>> traces = traceBuilderResult.getTraces();
+        BitSet handled = new BitSet(expectedLength);
+        for (List<T> trace : traces) {
+            for (T block : trace) {
+                handled.set(block.getId());
+            }
+        }
+        return handled.cardinality() == expectedLength;
     }
 
 }
