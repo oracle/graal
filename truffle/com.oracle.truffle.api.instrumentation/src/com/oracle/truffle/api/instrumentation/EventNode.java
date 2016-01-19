@@ -29,6 +29,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
+/**
+ * An event node is created for each source location by a {@link EventNodeFactory factory} to allow
+ * caching using local state. If you event node implementation is stateless consider using a
+ * {@link EventListener listener} instead.
+ */
 @NodeInfo(cost = NodeCost.NONE)
 @SuppressWarnings("unused")
 public abstract class EventNode extends Node {

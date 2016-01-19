@@ -748,7 +748,7 @@ public abstract class Source {
 
         @Override
         public int hashCode() {
-            return description == null ? 0 : description.hashCode() * (code == null ? 0 : code.hashCode());
+            return Objects.hash(description, code);
         }
 
         @Override

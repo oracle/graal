@@ -39,8 +39,8 @@ import com.oracle.truffle.api.source.Source;
  * <p>
  * This instrumentation service provider interface (SPI) provides a way to observe and inject
  * behavior into interpreters written using the Truffle framework. A registered instrumentation can
- * get created and disposed mulitple times by the runtime system. But only one instancei is active
- * per runtime system. In case the instrumentation gets created then
+ * get created and disposed mulitple times by the runtime system. But only one instance is active
+ * per runtime system. When the instrumentation gets created then
  * {@link #onCreate(Env, Instrumenter)} and when it is disposed {@link #onDispose(Env)} gets
  * invoked. Instrumentations can bind listeners to the execution of guest languages by using the
  * {@link Instrumenter instrumenter} class that is passed as parameter
@@ -65,13 +65,13 @@ import com.oracle.truffle.api.source.Source;
  * <pre>
  * &#064;Registration(name = Coverage.NAME, version = Coverage.VERSION, instrumentType = Coverage.TYPE)
  * public final class Coverage extends Instrumentation {
- * 
+ *
  *     public static final String NAME = &quot;sample-coverage&quot;;
  *     public static final String TYPE = &quot;coverage&quot;;
  *     public static final String VERSION = &quot;coverage&quot;;
- * 
+ *
  *     private final Set&lt;SourceSection&gt; coverage = new HashSet&lt;&gt;();
- * 
+ *
  *     &#064;Override
  *     protected void onCreate(Env env, Instrumenter instrumenter) {
  *         instrumenter.attachFactory(SourceSectionFilter.newBuilder() //
@@ -79,7 +79,7 @@ import com.oracle.truffle.api.source.Source;
  *             public EventNode create(final EventContext context) {
  *                 return new EventNode() {
  *                     &#064;CompilationFinal private boolean visited;
- * 
+ *
  *                     &#064;Override
  *                     public void onReturnValue(VirtualFrame vFrame, Object result) {
  *                         if (!visited) {
@@ -92,12 +92,12 @@ import com.oracle.truffle.api.source.Source;
  *             }
  *         });
  *     }
- * 
+ *
  *     &#064;Override
  *     protected void onDispose(Env env) {
  *         // print result
  *     }
- * 
+ *
  * }
  * </pre>
  */
