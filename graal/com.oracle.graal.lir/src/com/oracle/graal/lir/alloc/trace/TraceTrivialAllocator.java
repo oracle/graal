@@ -69,10 +69,7 @@ final class TraceTrivialAllocator extends TraceAllocationPhase {
         ValueProcedure outputConsumer = (value, mode, flags) -> {
             if (isVariable(value)) {
                 Value incomingValue = variableMap.get(asVariable(value));
-                if (TraceUtil.isShadowedRegisterValue(incomingValue) && !flags.contains(OperandFlag.COMPOSITE)) {
-                    /* Can not deal with a composite -> use the register instead. */
-                    return TraceUtil.asShadowedRegisterValue(incomingValue).getRegister();
-                }
+                assert !flags.contains(OperandFlag.COMPOSITE);
                 return incomingValue;
             }
             return value;
