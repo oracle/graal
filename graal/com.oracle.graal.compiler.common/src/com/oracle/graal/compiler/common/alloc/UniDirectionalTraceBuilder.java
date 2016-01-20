@@ -31,10 +31,13 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
 
-public final class TraceBuilder<T extends AbstractBlockBase<T>> {
+/**
+ * Computes traces by starting at a trace head and keep adding predecessors as long as possible.
+ */
+public final class UniDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
 
     public static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> computeTraces(T startBlock, List<T> blocks) {
-        return new TraceBuilder<>(blocks).build(startBlock);
+        return new UniDirectionalTraceBuilder<>(blocks).build(startBlock);
     }
 
     private final PriorityQueue<T> worklist;
@@ -46,7 +49,7 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
     private final int[] blocked;
     private final int[] blockToTrace;
 
-    private TraceBuilder(List<T> blocks) {
+    private UniDirectionalTraceBuilder(List<T> blocks) {
         processed = new BitSet(blocks.size());
         worklist = createQueue();
         assert (worklist != null);
@@ -60,7 +63,7 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
 
     @SuppressWarnings("unchecked")
     private PriorityQueue<T> createQueue() {
-        return (PriorityQueue<T>) new PriorityQueue<AbstractBlockBase<?>>(TraceBuilder::compare);
+        return (PriorityQueue<T>) new PriorityQueue<AbstractBlockBase<?>>(UniDirectionalTraceBuilder::compare);
     }
 
     private static int compare(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {

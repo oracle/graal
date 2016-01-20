@@ -24,8 +24,8 @@ package com.oracle.graal.lir.alloc.trace;
 
 import java.util.List;
 
-import com.oracle.graal.compiler.common.alloc.TraceBuilder;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
+import com.oracle.graal.compiler.common.alloc.UniDirectionalTraceBuilder;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -45,7 +45,7 @@ public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderCo
         B startBlock = linearScanOrder.get(0);
         LIR lir = lirGenRes.getLIR();
         assert startBlock.equals(lir.getControlFlowGraph().getStartBlock());
-        context.traceBuilderResult = TraceBuilder.computeTraces(startBlock, linearScanOrder);
+        context.traceBuilderResult = UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
 
     }
 
