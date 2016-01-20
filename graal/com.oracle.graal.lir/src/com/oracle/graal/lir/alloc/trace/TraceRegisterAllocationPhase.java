@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import java.util.Collection;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.alloc.TraceStatisticsPrinter;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -92,7 +94,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
         Debug.dump(lir, "Before TraceRegisterAllocation");
         int traceNumber = 0;
-        for (List<B> trace : resultTraces.getTraces()) {
+        for (Trace<B> trace : resultTraces.getTraces()) {
             try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", traceNumber, trace); Scope s = Debug.scope("AllocateTrace", trace)) {
                 tracesMetric.increment();
                 if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
@@ -110,7 +112,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
-            unnumberInstructions(trace, lir);
+            unnumberInstructions(trace.getBlocks(), lir);
         }
         Debug.dump(lir, "After trace allocation");
 
@@ -127,9 +129,9 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
         assert TraceBuilderResult.verify(resultTraces, lirGenRes.getLIR().getControlFlowGraph().getBlocks().size());
         if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
-            List<List<B>> traces = resultTraces.getTraces();
+            List<Trace<B>> traces = resultTraces.getTraces();
             for (int i = 0; i < traces.size(); i++) {
-                List<B> trace = traces.get(i);
+                Trace<B> trace = traces.get(i);
                 Debug.log(TRACE_LOG_LEVEL, "Trace %5d: %s", i, trace);
             }
         }
@@ -158,11 +160,11 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         }
     }
 
-    static boolean isTrivialTrace(LIR lir, List<? extends AbstractBlockBase<?>> trace) {
+    static boolean isTrivialTrace(LIR lir, Trace<? extends AbstractBlockBase<?>> trace) {
         if (trace.size() != 1) {
             return false;
         }
-        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.iterator().next());
+        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.getBlocks().iterator().next());
         if (instructions.size() != 2) {
             return false;
         }
@@ -174,7 +176,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         return instructions.get(1) instanceof JumpOp;
     }
 
-    private static void unnumberInstructions(List<? extends AbstractBlockBase<?>> trace, LIR lir) {
+    private static void unnumberInstructions(Collection<? extends AbstractBlockBase<?>> trace, LIR lir) {
         for (AbstractBlockBase<?> block : trace) {
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 op.setId(-1);

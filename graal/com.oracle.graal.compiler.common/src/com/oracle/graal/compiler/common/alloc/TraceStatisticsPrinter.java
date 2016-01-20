@@ -46,7 +46,7 @@ public final class TraceStatisticsPrinter {
 
     @SuppressWarnings("try")
     protected static <T extends AbstractBlockBase<T>> void print(TraceBuilderResult<T> result, String compilationUnitName) {
-        List<List<T>> traces = result.getTraces();
+        List<Trace<T>> traces = result.getTraces();
         int numTraces = traces.size();
 
         try (Indent indent0 = Debug.logAndIndent(TRACE_DUMP_LEVEL, "<tracestatistics>")) {
@@ -54,7 +54,7 @@ public final class TraceStatisticsPrinter {
             try (Indent indent1 = Debug.logAndIndent(TRACE_DUMP_LEVEL, "<traces>")) {
                 printRawLine("tracenumber", "total", "min", "max", "numBlocks");
                 for (int i = 0; i < numTraces; i++) {
-                    List<T> t = traces.get(i);
+                    List<T> t = traces.get(i).getBlocks();
                     double total = 0;
                     double max = Double.NEGATIVE_INFINITY;
                     double min = Double.POSITIVE_INFINITY;

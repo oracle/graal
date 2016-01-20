@@ -74,13 +74,13 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
     @SuppressWarnings("try")
     private TraceBuilderResult<T> build(T startBlock) {
         try (Indent indent = Debug.logAndIndent("start trace building: " + startBlock)) {
-            ArrayList<List<T>> traces = buildTraces(startBlock);
+            ArrayList<Trace<T>> traces = buildTraces(startBlock);
             return new TraceBuilderResult<>(traces, blockToTrace);
         }
     }
 
-    protected ArrayList<List<T>> buildTraces(T startBlock) {
-        ArrayList<List<T>> traces = new ArrayList<>();
+    protected ArrayList<Trace<T>> buildTraces(T startBlock) {
+        ArrayList<Trace<T>> traces = new ArrayList<>();
         // add start block
         worklist.add(startBlock);
         // process worklist
@@ -88,7 +88,7 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
             T block = worklist.poll();
             assert block != null;
             if (!processed(block)) {
-                traces.add(startTrace(block, traces.size()));
+                traces.add(new Trace<>(startTrace(block, traces.size())));
             }
         }
         return traces;
