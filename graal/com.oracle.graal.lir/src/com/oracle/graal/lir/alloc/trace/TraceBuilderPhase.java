@@ -41,8 +41,8 @@ public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderCo
 
     public static class Options {
         // @formatter:off
-        @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAbiDirectionalTraceBuilder = new OptionValue<>(false);
+        @Option(help = "Use bidirectional trace builder.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> TraceRAbiDirectionalTraceBuilder = new OptionValue<>(true);
         // @formatter:on
     }
 
