@@ -116,10 +116,10 @@ public class HotSpotCompiledCodeBuilder {
                 id = hsMethod.allocateCompileId(entryBCI);
                 jvmciEnv = 0L;
             }
-            return new HotSpotCompiledNmethod(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, totalFrameSize,
+            return new HotSpotCompiledNmethod(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, false, totalFrameSize,
                             customStackAreaOffset, hsMethod, entryBCI, id, jvmciEnv, hasUnsafeAccess);
         } else {
-            return new HotSpotCompiledCode(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, totalFrameSize,
+            return new HotSpotCompiledCode(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, false, totalFrameSize,
                             customStackAreaOffset);
         }
     }
