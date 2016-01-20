@@ -65,11 +65,11 @@ public abstract class Layout {
 
     public abstract Class<? extends DynamicObject> getType();
 
-    public abstract Shape createShape(ObjectType operations);
+    public abstract Shape createShape(ObjectType objectType);
 
-    public abstract Shape createShape(ObjectType operations, Object sharedData);
+    public abstract Shape createShape(ObjectType objectType, Object sharedData);
 
-    public abstract Shape createShape(ObjectType operations, Object sharedData, int id);
+    public abstract Shape createShape(ObjectType objectType, Object sharedData, int id);
 
     /**
      * Create an allocator for static property creation. Reserves all array extension slots.
