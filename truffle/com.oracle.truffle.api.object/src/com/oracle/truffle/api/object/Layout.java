@@ -65,10 +65,29 @@ public abstract class Layout {
 
     public abstract Class<? extends DynamicObject> getType();
 
+    /**
+     * Create a root shape.
+     *
+     * @param objectType that describes the object instance with this shape.
+     */
     public abstract Shape createShape(ObjectType objectType);
 
+    /**
+     * Create a root shape.
+     *
+     * @param objectType that describes the object instance with this shape.
+     * @param sharedData for language-specific use
+     */
     public abstract Shape createShape(ObjectType objectType, Object sharedData);
 
+    /**
+     * Create a root shape.
+     *
+     * @param objectType that describes the object instance with this shape.
+     * @param sharedData for language-specific use
+     * @param id for language-specific use
+     * @return
+     */
     public abstract Shape createShape(ObjectType objectType, Object sharedData, int id);
 
     /**
