@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -115,13 +116,19 @@ public class CompilationResultBuilder {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    private final IdentityHashMap<Constant, Data> dataCache;
+    private final Map<Constant, Data> dataCache;
 
     private Consumer<LIRInstruction> beforeOp;
     private Consumer<LIRInstruction> afterOp;
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult) {
+        // constants are already GVNed in the high level graph, so we can use an IdentityHashMap
+        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, new IdentityHashMap<>());
+    }
+
+    public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
+                    CompilationResult compilationResult, Map<Constant, Data> dataCache) {
         this.target = codeCache.getTarget();
         this.codeCache = codeCache;
         this.foreignCalls = foreignCalls;
@@ -131,9 +138,7 @@ public class CompilationResultBuilder {
         this.compilationResult = compilationResult;
         this.frameContext = frameContext;
         assert frameContext != null;
-
-        // constants are already GVNed in the high level graph, so we can use an IdentityHashMap
-        this.dataCache = new IdentityHashMap<>();
+        this.dataCache = dataCache;
     }
 
     public void setTotalFrameSize(int frameSize) {
