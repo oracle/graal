@@ -40,7 +40,6 @@ import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 import jdk.vm.ci.services.Services;
-import sun.misc.VM;
 
 import com.oracle.graal.options.GraalJarsOptionDescriptorsProvider;
 import com.oracle.graal.options.Option;
@@ -105,7 +104,7 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
     }
 
     /**
-     * Parses the options in the file denoted by the {@linkplain VM#getSavedProperty(String) saved}
+     * Parses the options in the file denoted by the {@code VM.getSavedProperty(String) saved}
      * system property named {@value HotSpotGraalCompilerFactory#GRAAL_OPTIONS_FILE_PROPERTY_NAME}
      * if the file exists followed by the options encoded in saved system properties whose names
      * start with {@code "graal.option."}. Key/value pairs are parsed from the file denoted by
@@ -140,7 +139,7 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
                 }
             }
 
-            Properties savedProps = getSavedProperties();
+            Properties savedProps = getSavedProperties(jdk8OrEarlier);
 
             Map<String, String> optionSettings = new HashMap<>();
             for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
@@ -159,9 +158,11 @@ public abstract class HotSpotGraalCompilerFactory implements JVMCICompilerFactor
         }
     }
 
-    private static Properties getSavedProperties() {
+    private static Properties getSavedProperties(boolean jdk8OrEarlier) {
         try {
-            Field savedPropsField = VM.class.getDeclaredField("savedProps");
+            String vmClassName = jdk8OrEarlier ? "sun.misc.VM" : "jdk.internal.misc.VM";
+            Class<?> vmClass = Class.forName(vmClassName);
+            Field savedPropsField = vmClass.getDeclaredField("savedProps");
             savedPropsField.setAccessible(true);
             return (Properties) savedPropsField.get(null);
         } catch (Exception e) {
