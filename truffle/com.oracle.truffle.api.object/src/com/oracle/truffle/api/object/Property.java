@@ -34,6 +34,8 @@ public abstract class Property {
 
     /**
      * Create a new property.
+     *
+     * @param flags, for language-specific use
      */
     public static Property create(Object key, Location location, int flags) {
         return Layout.getFactory().createProperty(key, location, flags);
@@ -45,7 +47,7 @@ public abstract class Property {
     public abstract Object getKey();
 
     /**
-     * Get property flags.
+     * Get property flags, which are free for language-specific use.
      */
     public abstract int getFlags();
 
