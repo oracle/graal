@@ -77,9 +77,12 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         assert verifyAllBlocksScheduled(traceBuilderResult, expectedLength) : "Not all blocks assigned to traces!";
         for (Trace<T> trace : traces) {
             T last = null;
+            int blockNumber = 0;
             for (T current : trace.getBlocks()) {
-                assert last == null || current.getPredecessors().contains(last);
+                assert last == null || current.getPredecessors().contains(last) : "Last block (" + last + ") not a predecessor of " + current;
+                assert current.getLinearScanNumber() == blockNumber : "Blocks not numbered correctly: " + current.getLinearScanNumber() + " vs. " + blockNumber;
                 last = current;
+                blockNumber++;
             }
         }
         return true;
@@ -90,6 +93,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         BitSet handled = new BitSet(expectedLength);
         for (Trace<T> trace : traces) {
             for (T block : trace.getBlocks()) {
+                assert !handled.get(block.getId()) : "Block added twice: " + block;
                 handled.set(block.getId());
             }
         }
