@@ -24,16 +24,27 @@ package com.oracle.graal.lir.alloc.trace;
 
 import java.util.List;
 
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.alloc.UniDirectionalTraceBuilder;
+import com.oracle.graal.compiler.common.alloc.BiDirectionalTraceBuilder;
+import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.LIRPhase;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
 
 public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderContext> {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "", type = OptionType.Debug)
+        public static final OptionValue<Boolean> TraceRAbiDirectionalTraceBuilder = new OptionValue<>(false);
+        // @formatter:on
+    }
 
     public static final class TraceBuilderContext {
         public TraceBuilderResult<?> traceBuilderResult;
@@ -45,7 +56,11 @@ public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderCo
         B startBlock = linearScanOrder.get(0);
         LIR lir = lirGenRes.getLIR();
         assert startBlock.equals(lir.getControlFlowGraph().getStartBlock());
-        context.traceBuilderResult = UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
+        if (Options.TraceRAbiDirectionalTraceBuilder.getValue()) {
+            context.traceBuilderResult = BiDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
+        } else {
+            context.traceBuilderResult = UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
+        }
 
     }
 
