@@ -68,13 +68,13 @@ public abstract class LayoutImpl extends Layout {
     }
 
     @Override
-    public final Shape createShape(ObjectType operations, Object sharedData) {
-        return createShape(operations, sharedData, 0);
+    public final Shape createShape(ObjectType objectType, Object sharedData) {
+        return createShape(objectType, sharedData, 0);
     }
 
     @Override
-    public final Shape createShape(ObjectType operations) {
-        return createShape(operations, null);
+    public final Shape createShape(ObjectType objectType) {
+        return createShape(objectType, null);
     }
 
     public boolean isAllowedIntToDouble() {
