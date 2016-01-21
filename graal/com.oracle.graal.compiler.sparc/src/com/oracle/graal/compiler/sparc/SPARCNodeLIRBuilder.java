@@ -23,17 +23,11 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.lir.sparc.SPARCBreakpointOp;
 import com.oracle.graal.lir.sparc.SPARCJumpOp;
-import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 
@@ -50,18 +44,6 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
     protected boolean peephole(ValueNode valueNode) {
         // No peephole optimizations for now
         return false;
-    }
-
-    @Override
-    public void visitBreakpointNode(BreakpointNode node) {
-        JavaType[] sig = new JavaType[node.arguments().size()];
-        for (int i = 0; i < sig.length; i++) {
-            sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
-        }
-
-        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false),
-                        node.arguments());
-        append(new SPARCBreakpointOp(parameters));
     }
 
     @Override

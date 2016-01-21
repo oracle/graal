@@ -34,6 +34,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotForeignCallTarget;
 import jdk.vm.ci.hotspot.HotSpotProxified;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -110,7 +111,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, descriptor, outgoingCcType);
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, descriptor, incomingCcType);
         HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
-        if (outgoingCcType == Type.NativeCall) {
+        if (outgoingCcType == HotSpotCallingConventionType.NativeCall) {
             linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
         }
         return linkage;
@@ -129,7 +130,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         TargetDescription target = codeCache.getTarget();
         JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess, codeCache);
         RegisterConfig regConfig = codeCache.getRegisterConfig();
-        return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target, false);
+        return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target);
     }
 
     private static JavaType asJavaType(Class<?> type, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {

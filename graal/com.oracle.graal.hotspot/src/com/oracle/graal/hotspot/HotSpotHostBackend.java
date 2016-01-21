@@ -24,11 +24,10 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.BootstrapReplacements;
 import static com.oracle.graal.compiler.common.GraalOptions.Intrinsify;
-import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static jdk.vm.ci.inittimer.InitTimer.timer;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.inittimer.InitTimer;
@@ -117,11 +116,12 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
             return stub.getLinkage().getIncomingCallingConvention();
         }
 
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+        CallingConvention cc = getCallingConvention(getCodeCache(), HotSpotCallingConventionType.JavaCallee, graph.method());
         if (graph.getEntryBCI() != JVMCICompiler.INVOCATION_ENTRY_BCI) {
             // for OSR, only a pointer is passed to the method.
             JavaType[] parameterTypes = new JavaType[]{getMetaAccess().lookupJavaType(long.class)};
-            CallingConvention tmp = getCodeCache().getRegisterConfig().getCallingConvention(JavaCallee, getMetaAccess().lookupJavaType(void.class), parameterTypes, getTarget(), false);
+            CallingConvention tmp = getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCallee, getMetaAccess().lookupJavaType(void.class), parameterTypes,
+                            getTarget());
             cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
         }
         return cc;

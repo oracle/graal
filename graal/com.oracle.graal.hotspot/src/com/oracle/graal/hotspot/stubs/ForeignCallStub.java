@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
-import static jdk.vm.ci.code.CallingConvention.Type.JavaCall;
-import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
-import static jdk.vm.ci.code.CallingConvention.Type.NativeCall;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaKind;

@@ -27,7 +27,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.ZapStackOnMethodEntr
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rsp;
-import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
@@ -38,6 +37,7 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -253,7 +253,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !installedCodeOwner.isStatic()) {
             crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
-            CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
+            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, getTarget());
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
                                              // c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));

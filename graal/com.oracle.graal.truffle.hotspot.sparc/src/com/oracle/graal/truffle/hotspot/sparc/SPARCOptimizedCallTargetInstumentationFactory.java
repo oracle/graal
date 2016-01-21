@@ -25,7 +25,7 @@ package com.oracle.graal.truffle.hotspot.sparc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
-import static jdk.vm.ci.code.CallingConvention.Type.JavaCall;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.meta.JavaKind.Object;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;

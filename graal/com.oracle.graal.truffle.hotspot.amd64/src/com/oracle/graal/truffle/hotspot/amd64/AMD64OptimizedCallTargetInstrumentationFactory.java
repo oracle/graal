@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
@@ -54,7 +54,7 @@ public class AMD64OptimizedCallTargetInstrumentationFactory extends OptimizedCal
             protected void injectTailCallCode() {
                 @SuppressWarnings("hiding")
                 AMD64MacroAssembler asm = (AMD64MacroAssembler) this.asm;
-                Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(Type.JavaCall, JavaKind.Object)[0];
+                Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, JavaKind.Object)[0];
                 Register spillRegister = AMD64.r10; // TODO(mg): fix me
                 Label doProlog = new Label();
 

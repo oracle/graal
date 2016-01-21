@@ -30,9 +30,9 @@ import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT;
-import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_WITH_ORIGINAL_KEY;
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK;
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK_WITH_ORIGINAL_KEY;
+import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_WITH_ORIGINAL_KEY;
 import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT;
 import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
@@ -81,7 +81,7 @@ import static com.oracle.graal.nodes.java.ForeignCallDescriptors.REGISTER_FINALI
 import static com.oracle.graal.replacements.Log.LOG_OBJECT;
 import static com.oracle.graal.replacements.Log.LOG_PRIMITIVE;
 import static com.oracle.graal.replacements.Log.LOG_PRINTF;
-import static jdk.vm.ci.code.CallingConvention.Type.NativeCall;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 
 import java.util.EnumMap;
 import java.util.HashMap;

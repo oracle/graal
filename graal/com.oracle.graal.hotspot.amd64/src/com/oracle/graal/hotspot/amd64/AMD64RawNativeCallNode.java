@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -63,8 +63,8 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
             parameterTypes[i] = args.get(i).stamp().javaType(gen.getLIRGeneratorTool().getMetaAccess());
         }
         ResolvedJavaType returnType = stamp().javaType(gen.getLIRGeneratorTool().getMetaAccess());
-        CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes,
-                        generator.getLIRGeneratorTool().target(), false);
+        CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.NativeCall, returnType, parameterTypes,
+                        generator.getLIRGeneratorTool().target());
         gen.getLIRGeneratorTool().emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
         if (this.getStackKind() != JavaKind.Void) {
             generator.setResult(this, gen.getLIRGeneratorTool().emitMove(cc.getReturn()));

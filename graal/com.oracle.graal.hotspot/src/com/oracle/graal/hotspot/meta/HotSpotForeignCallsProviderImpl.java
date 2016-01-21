@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
-import static jdk.vm.ci.code.CallingConvention.Type.JavaCall;
-import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 
 import java.util.HashMap;
 import java.util.Map;

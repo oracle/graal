@@ -29,16 +29,9 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.LEAF
 import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.UPDATE_BYTES_CRC32;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r3;
-import static jdk.vm.ci.code.CallingConvention.Type.NativeCall;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.meta.LocationIdentity.any;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
-
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterValue;
@@ -50,6 +43,12 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
 
 public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {
 

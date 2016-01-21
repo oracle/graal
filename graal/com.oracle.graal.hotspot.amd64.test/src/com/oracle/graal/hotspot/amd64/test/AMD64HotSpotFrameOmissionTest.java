@@ -26,11 +26,11 @@ import static jdk.vm.ci.amd64.AMD64.rax;
 
 import java.util.Arrays;
 
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -127,7 +127,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
     }
 
     private Register getArgumentRegister(int index, JavaKind kind) {
-        Register[] regs = getCodeCache().getRegisterConfig().getCallingConventionRegisters(CallingConvention.Type.JavaCall, kind);
+        Register[] regs = getCodeCache().getRegisterConfig().getCallingConventionRegisters(HotSpotCallingConventionType.JavaCall, kind);
         return regs[index];
     }
 }

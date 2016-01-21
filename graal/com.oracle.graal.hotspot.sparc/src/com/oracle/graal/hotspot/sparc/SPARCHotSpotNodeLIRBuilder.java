@@ -30,8 +30,10 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.sparc.SPARCKind;
@@ -51,7 +53,9 @@ import com.oracle.graal.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.lir.sparc.SPARCBreakpointOp;
 import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
+import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.FullInfopointNode;
@@ -164,5 +168,17 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
         } else {
             super.visitFullInfopointNode(i);
         }
+    }
+
+    @Override
+    public void visitBreakpointNode(BreakpointNode node) {
+        JavaType[] sig = new JavaType[node.arguments().size()];
+        for (int i = 0; i < sig.length; i++) {
+            sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
+        }
+
+        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen.target()),
+                        node.arguments());
+        append(new SPARCBreakpointOp(parameters));
     }
 }

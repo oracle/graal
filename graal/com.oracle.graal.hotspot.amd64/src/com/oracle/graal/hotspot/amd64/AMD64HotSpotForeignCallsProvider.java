@@ -34,7 +34,7 @@ import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.UPDATE_BYTES_CRC32;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rdx;
-import static jdk.vm.ci.code.CallingConvention.Type.NativeCall;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.meta.LocationIdentity.any;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
 import jdk.vm.ci.code.CallingConvention;

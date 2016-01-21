@@ -26,7 +26,6 @@ import java.lang.reflect.Method;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
@@ -46,6 +45,8 @@ import com.oracle.graal.code.DisassemblerProvider;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.test.GraalTest;
 
@@ -75,7 +76,7 @@ public abstract class AssemblerTest extends GraalTest {
         ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(m);
         try (Scope s = Debug.scope("assembleMethod", method, codeCache)) {
             RegisterConfig registerConfig = codeCache.getRegisterConfig();
-            CallingConvention cc = CodeUtil.getCallingConvention(codeCache, CallingConvention.Type.JavaCallee, method, false);
+            CallingConvention cc = backend.newLIRGenerationResult("", null, null, new StructuredGraph(method, AllowAssumptions.NO), null).getCallingConvention();
 
             CompilationResult compResult = new CompilationResult();
             byte[] targetCode = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);

@@ -39,9 +39,9 @@ import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.lang.ref.Reference;
 
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -389,7 +389,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                     ReadNode compiledEntry = graph.add(new ReadNode(address, any(), StampFactory.forKind(wordKind), BarrierType.NONE));
 
                     loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(),
-                                    CallingConvention.Type.JavaCall, callTarget.invokeKind()));
+                                    HotSpotCallingConventionType.JavaCall, callTarget.invokeKind()));
 
                     graph.addBeforeFixed(invoke.asNode(), metaspaceMethod);
                     graph.addAfterFixed(metaspaceMethod, compiledEntry);
@@ -397,7 +397,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
 
             if (loweredCallTarget == null) {
-                loweredCallTarget = graph.add(new HotSpotDirectCallTargetNode(parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(), CallingConvention.Type.JavaCall,
+                loweredCallTarget = graph.add(new HotSpotDirectCallTargetNode(parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(), HotSpotCallingConventionType.JavaCall,
                                 callTarget.invokeKind()));
             }
             callTarget.replaceAndDelete(loweredCallTarget);

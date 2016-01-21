@@ -612,7 +612,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public void emitInvoke(Invoke x) {
         LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
         CallingConvention invokeCc = gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(gen.getMetaAccess()),
-                        callTarget.signature(), gen.target(), false);
+                        callTarget.signature(), gen.target());
         gen.getResult().getFrameMapBuilder().callsMethod(invokeCc);
 
         Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());

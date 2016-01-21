@@ -38,8 +38,10 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
@@ -57,9 +59,11 @@ import com.oracle.graal.hotspot.nodes.HotSpotDirectCallTargetNode;
 import com.oracle.graal.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.aarch64.AArch64BreakpointOp;
 import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwap;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.IndirectCallTargetNode;
@@ -188,5 +192,17 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
         Variable scratch = gen.newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new CompareAndSwap(result, cmpValue, newValue, getGen().asAddressValue(operand(x.getAddress())), scratch));
         setResult(x, result);
+    }
+
+    @Override
+    public void visitBreakpointNode(BreakpointNode node) {
+        JavaType[] sig = new JavaType[node.arguments().size()];
+        for (int i = 0; i < sig.length; i++) {
+            sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
+        }
+
+        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen.target()),
+                        node.arguments());
+        append(new AArch64BreakpointOp(parameters));
     }
 }

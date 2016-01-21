@@ -24,15 +24,9 @@
 package com.oracle.graal.compiler.aarch64;
 
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
-import com.oracle.graal.lir.aarch64.AArch64BreakpointOp;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
-
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.Value;
 
 /**
  * This class implements the AArch64 specific portion of the LIR generator.
@@ -47,18 +41,6 @@ public abstract class AArch64NodeLIRBuilder extends NodeLIRBuilder {
     protected boolean peephole(ValueNode valueNode) {
         // No peephole optimizations for now
         return false;
-    }
-
-    @Override
-    public void visitBreakpointNode(BreakpointNode node) {
-        JavaType[] sig = new JavaType[node.arguments().size()];
-        for (int i = 0; i < sig.length; i++) {
-            sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
-        }
-
-        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false),
-                        node.arguments());
-        append(new AArch64BreakpointOp(parameters));
     }
 
     @Override
