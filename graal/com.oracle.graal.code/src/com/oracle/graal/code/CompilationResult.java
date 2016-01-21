@@ -178,6 +178,7 @@ public class CompilationResult {
     private final List<Mark> marks = new ArrayList<>();
 
     private int totalFrameSize = -1;
+    private int maxInterpreterFrameSize = -1;
     private int customStackAreaOffset = -1;
 
     private final String name;
@@ -367,6 +368,15 @@ public class CompilationResult {
     public void setTotalFrameSize(int size) {
         checkOpen();
         totalFrameSize = size;
+    }
+
+    public int getMaxInterpreterFrameSize() {
+        return maxInterpreterFrameSize;
+    }
+
+    public void setMaxInterpreterFrameSize(int maxInterpreterFrameSize) {
+        checkOpen();
+        this.maxInterpreterFrameSize = maxInterpreterFrameSize;
     }
 
     /**

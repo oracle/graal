@@ -31,7 +31,6 @@ import static jdk.vm.ci.code.CallingConvention.Type.JavaCallee;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
-import java.lang.reflect.Field;
 import java.util.Set;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -42,7 +41,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
@@ -58,6 +56,7 @@ import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotHostBackend;
+import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -103,7 +102,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
-        return new AMD64HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, stub);
+        return new HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, stub);
     }
 
     @Override
@@ -117,34 +116,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     }
 
-    /**
-     * Emits code to do stack overflow checking.
-     *
-     * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
-     *            the current frame
-     * @param isVerifiedEntryPoint specifies if the code buffer is currently at the verified entry
-     *            point
-     */
-    protected static void emitStackOverflowCheck(CompilationResultBuilder crb, int pagesToBang, boolean afterFrameInit, boolean isVerifiedEntryPoint) {
-        if (pagesToBang > 0) {
-
-            AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
-            int frameSize = crb.frameMap.frameSize();
-            if (frameSize > 0) {
-                int lastFramePage = frameSize / UNSAFE.pageSize();
-                // emit multiple stack bangs for methods with frames larger than a page
-                for (int i = 0; i <= lastFramePage; i++) {
-                    int disp = (i + pagesToBang) * UNSAFE.pageSize();
-                    if (afterFrameInit) {
-                        disp -= frameSize;
-                    }
-                    crb.blockComment("[stack overflow check]");
-                    int pos = asm.position();
-                    asm.movl(new AMD64Address(rsp, -disp), AMD64.rax);
-                    assert i > 0 || !isVerifiedEntryPoint || asm.position() - pos >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
-                }
-            }
-        }
+    @Override
+    protected void bangStackWithOffset(CompilationResultBuilder crb, int bangOffset) {
+        AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
+        int pos = asm.position();
+        asm.movl(new AMD64Address(rsp, -bangOffset), AMD64.rax);
+        assert asm.position() - pos >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
     }
 
     /**
@@ -183,9 +160,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 }
             } else {
                 int verifiedEntryPointOffset = asm.position();
-                if (!isStub && pagesToBang > 0) {
-                    emitStackOverflowCheck(crb, pagesToBang, false, true);
-                    assert asm.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                if (!isStub) {
+                    emitStackOverflowCheck(crb);
+                    // assert asm.position() - verifiedEntryPointOffset >=
+                    // PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
                 if (!isStub && asm.position() == verifiedEntryPointOffset) {
                     asm.subqWide(rsp, frameSize);
@@ -228,7 +206,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         // - has no incoming arguments passed on the stack
         // - has no deoptimization points
         // - makes no foreign calls (which require an aligned stack)
-        AMD64HotSpotLIRGenerationResult gen = (AMD64HotSpotLIRGenerationResult) lirGenRen;
+        HotSpotLIRGenerationResult gen = (HotSpotLIRGenerationResult) lirGenRen;
         LIR lir = gen.getLIR();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
         boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
@@ -239,6 +217,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, compilationResult);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
+        crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
             crb.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
@@ -345,21 +324,5 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new AMD64HotSpotRegisterAllocationConfig(registerConfigNonNull);
-    }
-
-    private static final Unsafe UNSAFE = initUnsafe();
-
-    private static Unsafe initUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
-        }
     }
 }

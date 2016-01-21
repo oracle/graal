@@ -29,6 +29,19 @@ import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.inlineCacheRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.metaspaceMethodRegister;
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.aarch64.AArch64NodeLIRBuilder;
 import com.oracle.graal.compiler.aarch64.AArch64NodeMatchRules;
@@ -36,6 +49,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
+import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotLockStack;
 import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
 import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
@@ -55,20 +69,6 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeValueMap;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 /**
  * LIR generator specialized for AArch64 HotSpot.
  */
@@ -78,13 +78,13 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
         super(graph, gen, nodeMatchRules);
         assert gen instanceof AArch64HotSpotLIRGenerator;
         assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
-        ((AArch64HotSpotLIRGenerator) gen).setLockStack(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
+        ((AArch64HotSpotLIRGenerator) gen).setDebugInfoBuilder(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()));
     }
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
         HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(AArch64Kind.QWORD));
-        return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack);
+        return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack, (HotSpotLIRGenerator) gen);
     }
 
     private AArch64HotSpotLIRGenerator getGen() {

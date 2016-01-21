@@ -145,6 +145,10 @@ public class CompilationResultBuilder {
         compilationResult.setTotalFrameSize(frameSize);
     }
 
+    public void setMaxInterpreterFrameSize(int maxInterpreterFrameSize) {
+        compilationResult.setMaxInterpreterFrameSize(maxInterpreterFrameSize);
+    }
+
     public Mark recordMark(Object id) {
         return compilationResult.recordMark(asm.position(), id);
     }

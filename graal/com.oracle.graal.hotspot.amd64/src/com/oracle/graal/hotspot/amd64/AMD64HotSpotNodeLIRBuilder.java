@@ -45,6 +45,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
+import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotLockStack;
 import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
 import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
@@ -73,7 +74,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         super(graph, gen, nodeMatchRules);
         assert gen instanceof AMD64HotSpotLIRGenerator;
         assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
-        ((AMD64HotSpotLIRGenerator) gen).setLockStack(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
+        ((AMD64HotSpotLIRGenerator) gen).setDebugInfoBuilder(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()));
     }
 
     private AMD64HotSpotLIRGenerator getGen() {
@@ -83,7 +84,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
         HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(AMD64Kind.QWORD));
-        return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack);
+        return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack, (HotSpotLIRGenerator) gen);
     }
 
     @Override

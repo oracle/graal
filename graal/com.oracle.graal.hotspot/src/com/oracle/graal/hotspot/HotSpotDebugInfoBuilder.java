@@ -27,6 +27,7 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.meta.JavaValue;
 
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
@@ -42,13 +43,22 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
 
     private final HotSpotLockStack lockStack;
 
-    public HotSpotDebugInfoBuilder(NodeValueMap nodeValueMap, HotSpotLockStack lockStack) {
+    private int maxInterpreterFrameSize;
+
+    private HotSpotCodeCacheProvider codeCacheProvider;
+
+    public HotSpotDebugInfoBuilder(NodeValueMap nodeValueMap, HotSpotLockStack lockStack, HotSpotLIRGenerator gen) {
         super(nodeValueMap);
         this.lockStack = lockStack;
+        this.codeCacheProvider = gen.getProviders().getCodeCache();
     }
 
     public HotSpotLockStack lockStack() {
         return lockStack;
+    }
+
+    public int maxInterpreterFrameSize() {
+        return maxInterpreterFrameSize;
     }
 
     @Override
@@ -71,6 +81,8 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
             // This is really a hard error since an incorrect state could crash hotspot
             throw JVMCIError.shouldNotReachHere("Invalid state " + BytecodeFrame.getPlaceholderBciName(state.bci) + " " + state);
         }
-        return super.computeFrameForState(state);
+        BytecodeFrame result = super.computeFrameForState(state);
+        maxInterpreterFrameSize = Math.max(maxInterpreterFrameSize, codeCacheProvider.interpreterFrameSize(result));
+        return result;
     }
 }

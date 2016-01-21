@@ -33,7 +33,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 
-import java.lang.reflect.Field;
 import java.util.Set;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -44,7 +43,6 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
@@ -59,6 +57,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotHostBackend;
+import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -104,7 +103,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
-        return new AArch64HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, stub);
+        return new HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, stub);
     }
 
     @Override
@@ -112,32 +111,13 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         return new AArch64HotSpotNodeLIRBuilder(graph, lirGen, new AArch64NodeMatchRules(lirGen));
     }
 
-    /**
-     * Emits code to do stack overflow checking.
-     *
-     * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
-     *            the current frame
-     */
-    protected static void emitStackOverflowCheck(CompilationResultBuilder crb, int pagesToBang, boolean afterFrameInit) {
-        if (pagesToBang > 0) {
-            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
-            int frameSize = crb.frameMap.totalFrameSize();
-            if (frameSize > 0) {
-                int lastFramePage = frameSize / UNSAFE.pageSize();
-                // emit multiple stack bangs for methods with frames larger than a page
-                for (int i = 0; i <= lastFramePage; i++) {
-                    int disp = (i + pagesToBang) * UNSAFE.pageSize();
-                    if (afterFrameInit) {
-                        disp -= frameSize;
-                    }
-                    crb.blockComment("[stack overflow check]");
-                    try (ScratchRegister sc = masm.getScratchRegister()) {
-                        Register scratch = sc.getRegister();
-                        AArch64Address address = masm.makeAddress(sp, -disp, scratch, 8, /* allowOverwrite */false);
-                        masm.str(64, zr, address);
-                    }
-                }
-            }
+    @Override
+    protected void bangStackWithOffset(CompilationResultBuilder crb, int bangOffset) {
+        AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+        try (ScratchRegister sc = masm.getScratchRegister()) {
+            Register scratch = sc.getRegister();
+            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /* allowOverwrite */false);
+            masm.str(64, zr, address);
         }
     }
 
@@ -155,8 +135,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
             final int totalFrameSize = frameMap.totalFrameSize();
             assert frameSize + 2 * crb.target.arch.getWordSize() == totalFrameSize : "total framesize should be framesize + 2 words";
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
-            if (!isStub && pagesToBang > 0) {
-                emitStackOverflowCheck(crb, pagesToBang, false);
+            if (!isStub) {
+                emitStackOverflowCheck(crb);
             }
             crb.blockComment("[method prologue]");
 
@@ -234,7 +214,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRen, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
-        AArch64HotSpotLIRGenerationResult gen = (AArch64HotSpotLIRGenerationResult) lirGenRen;
+        HotSpotLIRGenerationResult gen = (HotSpotLIRGenerationResult) lirGenRen;
         LIR lir = gen.getLIR();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
@@ -245,6 +225,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, compilationResult);
         crb.setTotalFrameSize(frameMap.frameSize());
+        crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
             crb.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
@@ -335,21 +316,5 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new AArch64HotSpotRegisterAllocationConfig(registerConfigNonNull);
-    }
-
-    private static final Unsafe UNSAFE = initUnsafe();
-
-    private static Unsafe initUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
-        }
     }
 }

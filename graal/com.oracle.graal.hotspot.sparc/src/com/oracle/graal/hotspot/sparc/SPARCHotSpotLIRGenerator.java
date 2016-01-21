@@ -94,7 +94,9 @@ import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.sparc.SPARCArithmeticLIRGenerator;
 import com.oracle.graal.compiler.sparc.SPARCLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotLockStack;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
@@ -121,7 +123,7 @@ import com.oracle.graal.lir.sparc.SPARCSaveRegistersOp;
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
     final HotSpotVMConfig config;
-    private HotSpotLockStack lockStack;
+    private HotSpotDebugInfoBuilder debugInfoBuilder;
     private LIRFrameState currentRuntimeCallInfo;
 
     public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
@@ -162,13 +164,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     private HotSpotLockStack getLockStack() {
-        assert lockStack != null;
-        return lockStack;
-    }
-
-    protected void setLockStack(HotSpotLockStack lockStack) {
-        assert this.lockStack == null;
-        this.lockStack = lockStack;
+        assert debugInfoBuilder != null && debugInfoBuilder.lockStack() != null;
+        return debugInfoBuilder.lockStack();
     }
 
     @Override
@@ -178,7 +175,12 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     public Stub getStub() {
-        return ((SPARCHotSpotLIRGenerationResult) getResult()).getStub();
+        return getResult().getStub();
+    }
+
+    @Override
+    public HotSpotLIRGenerationResult getResult() {
+        return ((HotSpotLIRGenerationResult) super.getResult());
     }
 
     @Override
@@ -186,8 +188,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         super.beforeRegisterAllocation();
         boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
         if (hasDebugInfo) {
-            ((SPARCHotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(((SPARCFrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
+            getResult().setDeoptimizationRescueSlot(((SPARCFrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
         }
+
+        getResult().setMaxInterpreterFrameSize(debugInfoBuilder.maxInterpreterFrameSize());
     }
 
     @Override
@@ -449,7 +453,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(target().arch.getWordKind())), trapRequest, mode);
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister, threadTemp));
 
-        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = ((SPARCHotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo();
+        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
         assert currentRuntimeCallInfo != null;
         assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
@@ -469,7 +473,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(target().arch.getWordKind())), mode);
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister, threadTemp));
 
-        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = ((SPARCHotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo();
+        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
         assert currentRuntimeCallInfo != null;
         assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
@@ -515,5 +519,9 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     protected StrategySwitchOp createStrategySwitchOp(AllocatableValue base, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue scratchValue) {
         return new SPARCHotSpotStrategySwitchOp(base, strategy, keyTargets, defaultTarget, key, scratchValue);
+    }
+
+    public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {
+        this.debugInfoBuilder = debugInfoBuilder;
     }
 }

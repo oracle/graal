@@ -23,24 +23,6 @@
 
 package com.oracle.graal.hotspot.aarch64;
 
-import com.oracle.graal.asm.aarch64.AArch64Address;
-import com.oracle.graal.compiler.aarch64.AArch64ArithmeticLIRGenerator;
-import com.oracle.graal.compiler.aarch64.AArch64LIRGenerator;
-import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
-import com.oracle.graal.hotspot.HotSpotLockStack;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.aarch64.AArch64AddressValue;
-import com.oracle.graal.lir.aarch64.AArch64Move;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
@@ -55,13 +37,34 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
+import com.oracle.graal.asm.aarch64.AArch64Address;
+import com.oracle.graal.compiler.aarch64.AArch64ArithmeticLIRGenerator;
+import com.oracle.graal.compiler.aarch64.AArch64LIRGenerator;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
+import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
+import com.oracle.graal.hotspot.HotSpotLIRGenerator;
+import com.oracle.graal.hotspot.HotSpotLockStack;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.VirtualStackSlot;
+import com.oracle.graal.lir.aarch64.AArch64AddressValue;
+import com.oracle.graal.lir.aarch64.AArch64FrameMapBuilder;
+import com.oracle.graal.lir.aarch64.AArch64Move;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+
 /**
  * LIR generator specialized for AArch64 HotSpot.
  */
 public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements HotSpotLIRGenerator {
 
     final HotSpotVMConfig config;
-    private HotSpotLockStack lockStack;
+    private HotSpotDebugInfoBuilder debugInfoBuilder;
 
     protected AArch64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
         this(providers, config, cc, lirGenRes, new ConstantTableBaseProvider());
@@ -81,7 +84,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     public boolean needOnlyOopMaps() {
         // Stubs only need oop maps
-        return ((AArch64HotSpotLIRGenerationResult) getResult()).getStub() != null;
+        return getResult().getStub() != null;
     }
 
     @Override
@@ -105,13 +108,8 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     private HotSpotLockStack getLockStack() {
-        assert lockStack != null;
-        return lockStack;
-    }
-
-    protected void setLockStack(HotSpotLockStack lockStack) {
-        assert this.lockStack == null;
-        this.lockStack = lockStack;
+        assert debugInfoBuilder != null && debugInfoBuilder.lockStack() != null;
+        return debugInfoBuilder.lockStack();
     }
 
     @SuppressWarnings("unused")
@@ -147,6 +145,17 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     public void emitPrefetchAllocate(Value address) {
         // TODO (das) Optimization for later.
+    }
+
+    @Override
+    public void beforeRegisterAllocation() {
+        super.beforeRegisterAllocation();
+        boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
+        if (hasDebugInfo) {
+            getResult().setDeoptimizationRescueSlot(((AArch64FrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
+        }
+
+        getResult().setMaxInterpreterFrameSize(debugInfoBuilder.maxInterpreterFrameSize());
     }
 
     @Override
@@ -200,7 +209,16 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
      * being generated.
      */
     public Stub getStub() {
-        return ((AArch64HotSpotLIRGenerationResult) getResult()).getStub();
+        return getResult().getStub();
+    }
+
+    @Override
+    public HotSpotLIRGenerationResult getResult() {
+        return ((HotSpotLIRGenerationResult) super.getResult());
+    }
+
+    public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {
+        this.debugInfoBuilder = debugInfoBuilder;
     }
 
 }

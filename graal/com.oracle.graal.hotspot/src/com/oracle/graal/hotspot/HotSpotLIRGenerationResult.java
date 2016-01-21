@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,42 +20,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.graal.hotspot.aarch64;
+package com.oracle.graal.hotspot;
 
 import java.util.Map;
+
+import jdk.vm.ci.code.StackSlot;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.StandardOp;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResultBase;
 
-import jdk.vm.ci.code.StackSlot;
+public class HotSpotLIRGenerationResult extends LIRGenerationResultBase {
 
-public class AArch64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
     /**
      * The slot reserved for storing the original return address when a frame is marked for
      * deoptimization. The return address slot in the callee is overwritten with the address of a
      * deoptimization stub.
      */
     private StackSlot deoptimizationRescueSlot;
-    private final Object stub;
+    protected final Object stub;
+
+    private int maxInterpreterFrameSize;
 
     /**
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    private final Map<LIRFrameState, StandardOp.SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap();
+    private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap();
 
-    public AArch64HotSpotLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, Object stub) {
+    public HotSpotLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, Object stub) {
         super(compilationUnitName, lir, frameMapBuilder);
         this.stub = stub;
     }
 
-    StackSlot getDeoptimizationRescueSlot() {
+    public Map<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo() {
+        return calleeSaveInfo;
+    }
+
+    public Stub getStub() {
+        return (Stub) stub;
+    }
+
+    public StackSlot getDeoptimizationRescueSlot() {
         return deoptimizationRescueSlot;
     }
 
@@ -63,11 +73,11 @@ public class AArch64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
         this.deoptimizationRescueSlot = stackSlot;
     }
 
-    Stub getStub() {
-        return (Stub) stub;
+    public void setMaxInterpreterFrameSize(int maxInterpreterFrameSize) {
+        this.maxInterpreterFrameSize = maxInterpreterFrameSize;
     }
 
-    Map<LIRFrameState, StandardOp.SaveRegistersOp> getCalleeSaveInfo() {
-        return calleeSaveInfo;
+    public int getMaxInterpreterFrameSize() {
+        return maxInterpreterFrameSize;
     }
 }

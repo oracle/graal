@@ -58,7 +58,9 @@ import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotLockStack;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
@@ -93,7 +95,7 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
 
     final HotSpotVMConfig config;
-    private HotSpotLockStack lockStack;
+    private HotSpotDebugInfoBuilder debugInfoBuilder;
 
     protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
         this(providers, config, cc, lirGenRes, new BackupSlotProvider(lirGenRes.getFrameMapBuilder()));
@@ -223,13 +225,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     private HotSpotLockStack getLockStack() {
-        assert lockStack != null;
-        return lockStack;
-    }
-
-    protected void setLockStack(HotSpotLockStack lockStack) {
-        assert this.lockStack == null;
-        this.lockStack = lockStack;
+        assert debugInfoBuilder != null && debugInfoBuilder.lockStack() != null;
+        return debugInfoBuilder.lockStack();
     }
 
     private Register findPollOnReturnScratchRegister() {
@@ -260,7 +257,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public boolean needOnlyOopMaps() {
         // Stubs only need oop maps
-        return ((AMD64HotSpotLIRGenerationResult) getResult()).getStub() != null;
+        return getResult().getStub() != null;
     }
 
     private LIRFrameState currentRuntimeCallInfo;
@@ -348,7 +345,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      * being generated.
      */
     public Stub getStub() {
-        return ((AMD64HotSpotLIRGenerationResult) getResult()).getStub();
+        return getResult().getStub();
+    }
+
+    @Override
+    public HotSpotLIRGenerationResult getResult() {
+        return ((HotSpotLIRGenerationResult) super.getResult());
+    }
+
+    public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {
+        this.debugInfoBuilder = debugInfoBuilder;
     }
 
     @Override
@@ -384,7 +390,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (destroysRegisters) {
             if (stub != null) {
                 if (stub.preservesRegisters()) {
-                    AMD64HotSpotLIRGenerationResult generationResult = (AMD64HotSpotLIRGenerationResult) getResult();
+                    HotSpotLIRGenerationResult generationResult = getResult();
                     assert !generationResult.getCalleeSaveInfo().containsKey(currentRuntimeCallInfo);
                     generationResult.getCalleeSaveInfo().put(currentRuntimeCallInfo, save);
                     emitRestoreRegisters(save);
@@ -406,7 +412,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, thread.asValue(LIRKind.value(AMD64Kind.QWORD)), trapRequest, mode);
         append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread));
 
-        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = ((AMD64HotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo();
+        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
         assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
 
@@ -422,7 +428,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, thread.asValue(LIRKind.value(AMD64Kind.QWORD)), mode);
         append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread));
 
-        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = ((AMD64HotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo();
+        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
         assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
 
@@ -442,7 +448,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             PlatformKind kind = target().arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());
             zapValues[i] = zapValueForKind(kind);
         }
-        ((AMD64HotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo().put(currentRuntimeCallInfo, emitZapRegisters(zappedRegisters, zapValues));
+        getResult().getCalleeSaveInfo().put(currentRuntimeCallInfo, emitZapRegisters(zappedRegisters, zapValues));
         return true;
     }
 
@@ -512,8 +518,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
         AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo);
         if (hasDebugInfo) {
-            ((AMD64HotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
+            getResult().setDeoptimizationRescueSlot(((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
         }
+
+        getResult().setMaxInterpreterFrameSize(debugInfoBuilder.maxInterpreterFrameSize());
 
         for (AMD64HotSpotRestoreRbpOp op : epilogueOps) {
             op.setSavedRbp(savedRbp);
