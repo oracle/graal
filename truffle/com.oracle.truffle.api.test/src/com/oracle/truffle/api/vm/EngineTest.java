@@ -31,6 +31,7 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
 
 public class EngineTest {
@@ -116,5 +117,20 @@ public class EngineTest {
         assertEquals(1, arr[0].intValue());
         assertEquals(2, arr[1].intValue());
         assertEquals(3, arr[2].intValue());
+    }
+
+    @Test
+    public void initializePolyglotEngineWithArguments() throws IOException {
+        PolyglotEngine vm = createBuilder().setArguments(new String[]{"1", "2"}).build();
+        PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
+
+        // TODO: remove once initialization issue is solved for
+        // https://github.com/graalvm/truffle/pull/9
+        language1.eval(Source.fromText("return=arr", "get the array")).as(AccessArray.class);
+
+        Env env = language1.getEnv(true);
+        String[] args = env.getArguments();
+        assertEquals("1", args[0]);
+        assertEquals("2", args[1]);
     }
 }

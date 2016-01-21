@@ -361,14 +361,16 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream err;
         private final OutputStream out;
         private final Instrumenter instrumenter;
+        private final String[] arguments;
 
-        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter) {
+        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, String[] arguments) {
             this.vm = vm;
             this.in = in;
             this.err = err;
             this.out = out;
             this.lang = lang;
             this.instrumenter = instrumenter;
+            this.arguments = arguments;
             this.langCtx = new LangCtx<>(lang, this);
         }
 
@@ -437,6 +439,13 @@ public abstract class TruffleLanguage<C> {
         public Instrumenter instrumenter() {
             return instrumenter;
         }
+
+        /**
+         * @return arguments used to create the polyglot engine
+         */
+        public String[] getArguments() {
+            return arguments;
+        }
     }
 
     private static final AccessAPI API = new AccessAPI();
@@ -444,8 +453,8 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter) {
-            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter);
+        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, String[] arguments) {
+            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, arguments);
             return env;
         }
 

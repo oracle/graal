@@ -113,6 +113,7 @@ public class PolyglotEngine {
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter;
+    private final String[] arguments;
     private final Debugger debugger;
     private boolean disposed;
 
@@ -130,12 +131,13 @@ public class PolyglotEngine {
         this.executor = null;
         this.instrumenter = null;
         this.debugger = null;
+        this.arguments = null;
     }
 
     /**
      * Real constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, String[] arguments) {
         this.executor = executor;
         this.out = out;
         this.err = err;
@@ -144,6 +146,7 @@ public class PolyglotEngine {
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
         this.instrumenter = SPI.createInstrumenter(this);
+        this.arguments = arguments;
         this.debugger = SPI.createDebugger(this, this.instrumenter);
         Map<String, Language> map = new HashMap<>();
         /* We want to create a language instance but per LanguageCache and not per mime type. */
@@ -211,6 +214,7 @@ public class PolyglotEngine {
         private final List<EventConsumer<?>> handlers = new ArrayList<>();
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
+        private String[] arguments;
 
         Builder() {
         }
@@ -248,6 +252,18 @@ public class PolyglotEngine {
          */
         public Builder setIn(InputStream is) {
             in = is;
+            return this;
+        }
+
+        /**
+         * Provide a set of simple string-based arguments to initialize the {@link PolyglotEngine}.
+         * These arguments can be used by the language to initialize and configure their initial
+         * execution state correctly.
+         *
+         * @param arguments, an array of strings to parameterize initial state
+         */
+        public Builder setArguments(String[] arguments) {
+            this.arguments = arguments;
             return this;
         }
 
@@ -334,7 +350,7 @@ public class PolyglotEngine {
             if (in == null) {
                 in = System.in;
             }
-            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]));
+            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]), arguments);
         }
     }
 
@@ -815,7 +831,7 @@ public class PolyglotEngine {
 
         TruffleLanguage.Env getEnv(boolean create) {
             if (env == null && create) {
-                env = SPI.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter);
+                env = SPI.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, arguments);
             }
             return env;
         }
@@ -899,9 +915,9 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, String[] arguments) {
             PolyglotEngine vm = (PolyglotEngine) obj;
-            return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter);
+            return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, arguments);
         }
 
         @Override
