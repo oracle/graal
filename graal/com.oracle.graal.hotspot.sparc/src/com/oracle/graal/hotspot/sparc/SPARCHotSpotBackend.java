@@ -134,13 +134,13 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new SPARCHotSpotLIRGenerator(getProviders(), config(), cc, lirGenRes);
+    public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
+        return new SPARCHotSpotLIRGenerator(getProviders(), config(), lirGenRes);
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, stub);
+    public LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph, Object stub) {
+        return new HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, makeCallingConvention(graph, (Stub) stub), stub);
     }
 
     @Override

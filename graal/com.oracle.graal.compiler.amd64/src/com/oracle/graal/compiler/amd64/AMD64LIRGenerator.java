@@ -90,8 +90,8 @@ import com.oracle.graal.phases.util.Providers;
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
-    public AMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes);
+    public AMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
     }
 
     /**

@@ -27,6 +27,17 @@ import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Address;
@@ -59,19 +70,6 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.phases.util.Providers;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-
 public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @SuppressWarnings("unused") private final ConstantTableBaseProvider constantTableBaseProvider;
@@ -87,9 +85,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, CallingConvention cc,
-                    LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes);
+    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes,
+                    ConstantTableBaseProvider constantTableBaseProvider) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
         this.constantTableBaseProvider = constantTableBaseProvider;
     }
 

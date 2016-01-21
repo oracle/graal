@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir.gen;
 
+import jdk.vm.ci.code.CallingConvention;
+
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
@@ -31,6 +33,8 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
     private final LIR lir;
     private final FrameMapBuilder frameMapBuilder;
     private FrameMap frameMap;
+    private final CallingConvention callingConvention;
+
     /**
      * Records whether the code being generated makes at least one foreign call.
      */
@@ -40,10 +44,16 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
      */
     private final String compilationUnitName;
 
-    public LIRGenerationResultBase(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder) {
+    public LIRGenerationResultBase(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention) {
         this.lir = lir;
         this.frameMapBuilder = frameMapBuilder;
         this.compilationUnitName = compilationUnitName;
+        this.callingConvention = callingConvention;
+    }
+
+    @Override
+    public CallingConvention getCallingConvention() {
+        return callingConvention;
     }
 
     public LIR getLIR() {

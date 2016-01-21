@@ -126,17 +126,17 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private HotSpotDebugInfoBuilder debugInfoBuilder;
     private LIRFrameState currentRuntimeCallInfo;
 
-    public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(providers, config, cc, lirGenRes, new ConstantTableBaseProvider());
+    public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes) {
+        this(providers, config, lirGenRes, new ConstantTableBaseProvider());
     }
 
-    private SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
-        this(new SPARCHotSpotLIRKindTool(), new SPARCArithmeticLIRGenerator(), new SPARCHotSpotMoveFactory(constantTableBaseProvider), providers, config, cc, lirGenRes, constantTableBaseProvider);
+    private SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
+        this(new SPARCHotSpotLIRKindTool(), new SPARCArithmeticLIRGenerator(), new SPARCHotSpotMoveFactory(constantTableBaseProvider), providers, config, lirGenRes, constantTableBaseProvider);
     }
 
     public SPARCHotSpotLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, HotSpotProviders providers, HotSpotVMConfig config,
-                    CallingConvention cc, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes, constantTableBaseProvider);
+                    LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes, constantTableBaseProvider);
         assert config.basicLockSize == 8;
         this.config = config;
     }

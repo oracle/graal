@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
-import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -41,8 +40,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
@@ -770,8 +767,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
         try (Scope s = Debug.scope("Compile", graphToCompile)) {
-            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
-            Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+            Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                             graphToCompile.getProfilingInfo(), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
             return GraalCompiler.compile(request);
         } catch (Throwable e) {

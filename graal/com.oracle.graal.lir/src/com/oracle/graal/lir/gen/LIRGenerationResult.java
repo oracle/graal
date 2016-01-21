@@ -22,12 +22,17 @@
  */
 package com.oracle.graal.lir.gen;
 
+import jdk.vm.ci.code.CallingConvention;
+
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.stackslotalloc.StackSlotAllocator;
 
 public interface LIRGenerationResult {
+
+    /** Returns the incoming calling convention for the parameters of the method that is compiled. */
+    CallingConvention getCallingConvention();
 
     /**
      * Returns the {@link FrameMapBuilder} for collecting the information to build a

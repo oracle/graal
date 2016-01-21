@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.withSimpleDebu
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
 import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
-import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.util.Arrays;
@@ -39,8 +38,6 @@ import java.util.WeakHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -255,10 +252,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.ALL, null).apply(graph);
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, suitesProvider);
-        CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
         Backend backend = getHotSpotBackend();
         CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName());
-        return compileGraph(graph, cc, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), suites, lirSuites, new CompilationResult(), factory);
+        return compileGraph(graph, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), suites, lirSuites, new CompilationResult(), factory);
     }
 
     private HotSpotBackend getHotSpotBackend() {

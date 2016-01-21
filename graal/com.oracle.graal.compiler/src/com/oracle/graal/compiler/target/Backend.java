@@ -22,12 +22,10 @@
  */
 package com.oracle.graal.compiler.target;
 
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -37,8 +35,6 @@ import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.compiler.gen.BytecodeLIRBuilder;
-import com.oracle.graal.compiler.gen.BytecodeParserTool;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
@@ -107,19 +103,11 @@ public abstract class Backend implements TargetProvider {
 
     public abstract FrameMap newFrameMap(RegisterConfig registerConfig);
 
-    public abstract LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes);
+    public abstract LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes);
 
-    public abstract LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub);
+    public abstract LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph, Object stub);
 
     public abstract NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen);
-
-    /**
-     * @param gen the LIRGenerator the BytecodeLIRBuilder should use
-     * @param parser the bytecode parser the BytecodeLIRBuilder should use
-     */
-    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
-        throw JVMCIError.unimplemented("Baseline compilation is not available for this Backend!");
-    }
 
     /**
      * Creates the assembler used to emit the machine code.

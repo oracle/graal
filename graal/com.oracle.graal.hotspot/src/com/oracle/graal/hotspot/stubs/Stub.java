@@ -29,7 +29,6 @@ import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 import java.util.ListIterator;
 import java.util.Set;
 
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
@@ -177,8 +176,6 @@ public abstract class Stub {
                 }
 
                 CodeCacheProvider codeCache = providers.getCodeCache();
-                // The stub itself needs the incoming calling convention.
-                CallingConvention incomingCc = linkage.getIncomingCallingConvention();
 
                 compResult = new CompilationResult(toString());
                 try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
@@ -186,7 +183,7 @@ public abstract class Stub {
                     Suites suites = new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
                     emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites);
                     LIRSuites lirSuites = createLIRSuites();
-                    emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, compResult, CompilationResultBuilderFactory.Default, getRegisterConfig(), lirSuites);
+                    emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), backend, compResult, CompilationResultBuilderFactory.Default, getRegisterConfig(), lirSuites);
                     assert checkStubInvariants();
                 } catch (Throwable e) {
                     throw Debug.handle(e);

@@ -23,7 +23,6 @@
 package com.oracle.graal.lir.gen;
 
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
@@ -247,8 +246,6 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
     void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value);
 
     void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
-
-    CallingConvention getCallingConvention();
 
     Variable emitByteSwap(Value operand);
 

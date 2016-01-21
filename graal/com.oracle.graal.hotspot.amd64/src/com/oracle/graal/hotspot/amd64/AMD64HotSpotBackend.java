@@ -50,8 +50,6 @@ import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.amd64.AMD64NodeMatchRules;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.gen.BytecodeLIRBuilder;
-import com.oracle.graal.compiler.gen.BytecodeParserTool;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
@@ -96,24 +94,18 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes) {
-        return new AMD64HotSpotLIRGenerator(getProviders(), config(), cc, lirGenRes);
+    public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
+        return new AMD64HotSpotLIRGenerator(getProviders(), config(), lirGenRes);
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, stub);
+    public LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph, Object stub) {
+        return new HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, makeCallingConvention(graph, (Stub) stub), stub);
     }
 
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new AMD64HotSpotNodeLIRBuilder(graph, lirGen, new AMD64NodeMatchRules(lirGen));
-    }
-
-    @Override
-    public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
-        return new AMD64HotSpotBytecodeLIRBuilder(gen, parser);
-
     }
 
     @Override

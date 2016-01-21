@@ -23,14 +23,11 @@
 package com.oracle.graal.truffle.hotspot.nfi;
 
 import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.getGraph;
-import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static jdk.vm.ci.common.UnsafeUtil.createCString;
 import static jdk.vm.ci.common.UnsafeUtil.writeCString;
 
 import java.lang.reflect.Field;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
@@ -179,8 +176,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         Suites suites = providers.getSuites().getDefaultSuites();
         LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites();
         PhaseSuite<HighTierContext> phaseSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
-        CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, g.method(), false);
-        CompilationResult compResult = GraalCompiler.compileGraph(g, cc, g.method(), providers, backend, phaseSuite, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
+        CompilationResult compResult = GraalCompiler.compileGraph(g, g.method(), providers, backend, phaseSuite, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {

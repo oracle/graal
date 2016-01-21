@@ -93,7 +93,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
     @Override
     protected void emitPrologue(StructuredGraph graph) {
-        CallingConvention incomingArguments = gen.getCallingConvention();
+        CallingConvention incomingArguments = gen.getResult().getCallingConvention();
         Value[] params = new Value[incomingArguments.getArgumentCount() + 2];
         for (int i = 0; i < incomingArguments.getArgumentCount(); i++) {
             params[i] = incomingArguments.getArgument(i);

@@ -90,7 +90,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     @Override
     protected void emitPrologue(StructuredGraph graph) {
 
-        CallingConvention incomingArguments = gen.getCallingConvention();
+        CallingConvention incomingArguments = gen.getResult().getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
         for (int i = 0; i < params.length - 1; i++) {

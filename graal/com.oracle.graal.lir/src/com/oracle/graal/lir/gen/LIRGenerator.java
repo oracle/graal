@@ -92,7 +92,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     private final LIRKindTool lirKindTool;
 
     private final CodeGenProviders providers;
-    private final CallingConvention cc;
 
     private AbstractBlockBase<?> currentBlock;
 
@@ -101,12 +100,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     protected final ArithmeticLIRGenerator arithmeticLIRGen;
     private final MoveFactory moveFactory;
 
-    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, CodeGenProviders providers, CallingConvention cc, LIRGenerationResult res) {
+    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, CodeGenProviders providers, LIRGenerationResult res) {
         this.lirKindTool = lirKindTool;
         this.arithmeticLIRGen = arithmeticLIRGen;
         this.res = res;
         this.providers = providers;
-        this.cc = cc;
 
         assert arithmeticLIRGen.lirGen == null;
         arithmeticLIRGen.lirGen = this;
@@ -428,10 +426,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public abstract void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
 
     protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
-
-    public CallingConvention getCallingConvention() {
-        return cc;
-    }
 
     @Override
     public void beforeRegisterAllocation() {

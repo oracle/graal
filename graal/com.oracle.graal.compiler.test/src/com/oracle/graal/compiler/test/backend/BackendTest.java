@@ -22,10 +22,7 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
-import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
 
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
@@ -53,8 +50,7 @@ public abstract class BackendTest extends GraalCompilerTest {
             throw Debug.handle(e);
         }
 
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), graph, null, cc, null, getLIRSuites());
+        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), graph, null, null, getLIRSuites());
         return lirGen;
     }
 

@@ -66,18 +66,17 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     final HotSpotVMConfig config;
     private HotSpotDebugInfoBuilder debugInfoBuilder;
 
-    protected AArch64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(providers, config, cc, lirGenRes, new ConstantTableBaseProvider());
+    protected AArch64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes) {
+        this(providers, config, lirGenRes, new ConstantTableBaseProvider());
     }
 
-    private AArch64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
-        this(new AArch64HotSpotLIRKindTool(), new AArch64ArithmeticLIRGenerator(), new AArch64HotSpotMoveFactory(constantTableBaseProvider), providers, config, cc, lirGenRes,
-                        constantTableBaseProvider);
+    private AArch64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
+        this(new AArch64HotSpotLIRKindTool(), new AArch64ArithmeticLIRGenerator(), new AArch64HotSpotMoveFactory(constantTableBaseProvider), providers, config, lirGenRes, constantTableBaseProvider);
     }
 
     protected AArch64HotSpotLIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, HotSpotProviders providers, HotSpotVMConfig config,
-                    CallingConvention cc, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes, constantTableBaseProvider);
+                    LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes, constantTableBaseProvider);
         this.config = config;
     }
 

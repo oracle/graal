@@ -25,10 +25,7 @@ package com.oracle.graal.compiler.test.tutorial;
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -114,13 +111,6 @@ public class InvokeGraal {
             LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites();
 
             /*
-             * The calling convention for the machine code. You should have a very good reason
-             * before you switch to a different calling convention than the one that the VM provides
-             * by default.
-             */
-            CallingConvention callingConvention = CodeUtil.getCallingConvention(codeCache, Type.JavaCallee, method, false);
-
-            /*
              * We want Graal to perform all speculative optimistic optimizations, using the
              * profiling information that comes with the method (collected by the interpreter) for
              * speculation.
@@ -133,7 +123,7 @@ public class InvokeGraal {
             CompilationResultBuilderFactory factory = CompilationResultBuilderFactory.Default;
 
             /* Invoke the whole Graal compilation pipeline. */
-            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory);
+            GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory);
 
             /*
              * Install the compilation result into the VM, i.e., copy the byte[] array that contains

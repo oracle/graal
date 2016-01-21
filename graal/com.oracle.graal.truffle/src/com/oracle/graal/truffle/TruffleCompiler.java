@@ -23,14 +23,10 @@
 package com.oracle.graal.truffle;
 
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
-import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -182,10 +178,8 @@ public abstract class TruffleCompiler {
                 speculationLog.collectFailedSpeculations();
             }
 
-            CodeCacheProvider codeCache = providers.getCodeCache();
-            CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult, factory);
+            result = compileGraph(graph, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult, factory);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

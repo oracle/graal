@@ -97,17 +97,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     final HotSpotVMConfig config;
     private HotSpotDebugInfoBuilder debugInfoBuilder;
 
-    protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        this(providers, config, cc, lirGenRes, new BackupSlotProvider(lirGenRes.getFrameMapBuilder()));
+    protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes) {
+        this(providers, config, lirGenRes, new BackupSlotProvider(lirGenRes.getFrameMapBuilder()));
     }
 
-    private AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes, BackupSlotProvider backupSlotProvider) {
-        this(new AMD64HotSpotLIRKindTool(), new AMD64ArithmeticLIRGenerator(), new AMD64HotSpotMoveFactory(backupSlotProvider), providers, config, cc, lirGenRes);
+    private AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes, BackupSlotProvider backupSlotProvider) {
+        this(new AMD64HotSpotLIRKindTool(), new AMD64ArithmeticLIRGenerator(), new AMD64HotSpotMoveFactory(backupSlotProvider), providers, config, lirGenRes);
     }
 
     protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, HotSpotProviders providers, HotSpotVMConfig config,
-                    CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes);
+                    LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
         assert config.basicLockSize == 8;
         this.config = config;
     }

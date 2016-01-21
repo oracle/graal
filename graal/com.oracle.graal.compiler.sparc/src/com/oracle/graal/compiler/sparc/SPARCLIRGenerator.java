@@ -35,7 +35,6 @@ import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -106,9 +105,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    public SPARCLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes,
+    public SPARCLIRGenerator(LIRKindTool lirKindTool, SPARCArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes,
                     ConstantTableBaseProvider constantTableBaseProvider) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, cc, lirGenRes);
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
         this.constantTableBaseProvider = constantTableBaseProvider;
     }
 

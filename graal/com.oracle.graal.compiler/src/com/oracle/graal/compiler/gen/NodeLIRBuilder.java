@@ -74,6 +74,7 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.debug.LIRGenerationDebugContext;
+import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.lir.gen.LIRGenerator.Options;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.BlockScope;
@@ -121,7 +122,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    protected final LIRGeneratorTool gen;
+    protected final LIRGenerator gen;
 
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
@@ -132,7 +133,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     private Map<Class<? extends Node>, List<MatchStatement>> matchRules;
 
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, NodeMatchRules nodeMatchRules) {
-        this.gen = gen;
+        this.gen = (LIRGenerator) gen;
         this.nodeMatchRules = nodeMatchRules;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(graph, this);
@@ -462,7 +463,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     protected void emitPrologue(StructuredGraph graph) {
-        CallingConvention incomingArguments = gen.getCallingConvention();
+        CallingConvention incomingArguments = gen.getResult().getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
