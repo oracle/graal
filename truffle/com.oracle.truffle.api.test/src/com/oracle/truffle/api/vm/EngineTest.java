@@ -31,6 +31,7 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
 
 public class EngineTest {
@@ -95,6 +96,14 @@ public class EngineTest {
         AccessArray dupl();
 
         List<? extends Number> get(int index);
+    }
+
+    @Test
+    public void getEnvBeforeDoingAnyEval() {
+        PolyglotEngine vm = createBuilder().build();
+        PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
+        Env env = language1.getEnv(true);
+        assertNotNull(env);
     }
 
     @Test
