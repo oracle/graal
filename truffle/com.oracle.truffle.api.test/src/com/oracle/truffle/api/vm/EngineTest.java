@@ -33,7 +33,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
 
 public class EngineTest {
     protected PolyglotEngine.Builder createBuilder() {
@@ -122,7 +121,7 @@ public class EngineTest {
 
     @Test
     public void initializePolyglotEngineWithArguments() throws IOException {
-        PolyglotEngine vm = createBuilder().setArguments(ExportImportLanguage1.class, new String[]{"1", "2"}).build();
+        PolyglotEngine vm = createBuilder().setArguments("application/x-test-import-export-1", new String[]{"1", "2"}).build();
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
 
         // TODO: remove once initialization issue is solved for
@@ -130,7 +129,7 @@ public class EngineTest {
         language1.eval(Source.fromText("return=arr", "get the array")).as(AccessArray.class);
 
         Env env = language1.getEnv(true);
-        String[] args = env.getArguments();
+        String[] args = env.getArguments().get("application/x-test-import-export-1");
         assertEquals("1", args[0]);
         assertEquals("2", args[1]);
     }

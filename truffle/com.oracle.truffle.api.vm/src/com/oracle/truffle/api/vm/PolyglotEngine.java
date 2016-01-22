@@ -113,7 +113,7 @@ public class PolyglotEngine {
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter;
-    private final Map<Class<? extends TruffleLanguage>, String[]> arguments;
+    private final Map<String, String[]> arguments;
     private final Debugger debugger;
     private boolean disposed;
 
@@ -137,8 +137,7 @@ public class PolyglotEngine {
     /**
      * Real constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers,
-                    Map<Class<? extends TruffleLanguage>, String[]> arguments) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, Map<String, String[]> arguments) {
         this.executor = executor;
         this.out = out;
         this.err = err;
@@ -215,7 +214,7 @@ public class PolyglotEngine {
         private final List<EventConsumer<?>> handlers = new ArrayList<>();
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
-        private Map<Class<? extends TruffleLanguage>, String[]> arguments;
+        private Map<String, String[]> arguments;
 
         Builder() {
         }
@@ -261,14 +260,14 @@ public class PolyglotEngine {
          * specific language. These arguments can be used by the language to initialize and
          * configure their initial execution state correctly.
          *
-         * @param lang, the language for which the arguments are
+         * @param mimeType of the language for which the arguments are
          * @param arguments, an array of strings to parameterize initial state of a language
          */
-        public Builder setArguments(Class<? extends TruffleLanguage> lang, String[] arguments) {
+        public Builder setArguments(String mimeType, String[] arguments) {
             if (this.arguments == null) {
                 this.arguments = new HashMap<>();
             }
-            this.arguments.put(lang, arguments);
+            this.arguments.put(mimeType, arguments);
             return this;
         }
 
@@ -834,9 +833,28 @@ public class PolyglotEngine {
             return impl;
         }
 
+        private Map<String, String[]> getArgumentsForLanguage() {
+            if (arguments == null) {
+                return null;
+            }
+
+            if (Collections.disjoint(arguments.keySet(), info.getMimeTypes())) {
+                return null;
+            }
+
+            Map<String, String[]> forLanguage = new HashMap<>();
+            for (String mimeType : info.getMimeTypes()) {
+                String[] arg = arguments.get(mimeType);
+                if (arg != null) {
+                    forLanguage.put(mimeType, arg);
+                }
+            }
+            return forLanguage;
+        }
+
         TruffleLanguage.Env getEnv(boolean create) {
             if (env == null && create) {
-                env = SPI.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, arguments);
+                env = SPI.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
             }
             return env;
         }
@@ -920,8 +938,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter,
-                        Map<Class<? extends TruffleLanguage>, String[]> arguments) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, String[]> arguments) {
             PolyglotEngine vm = (PolyglotEngine) obj;
             return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, arguments);
         }

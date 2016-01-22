@@ -150,8 +150,7 @@ public abstract class Accessor {
         }
     }
 
-    protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter,
-                    Map<Class<? extends TruffleLanguage>, String[]> arguments) {
+    protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, String[]> arguments) {
         return API.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, arguments);
     }
 
