@@ -33,6 +33,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
 
 public class EngineTest {
     protected PolyglotEngine.Builder createBuilder() {
@@ -121,7 +122,7 @@ public class EngineTest {
 
     @Test
     public void initializePolyglotEngineWithArguments() throws IOException {
-        PolyglotEngine vm = createBuilder().setArguments(new String[]{"1", "2"}).build();
+        PolyglotEngine vm = createBuilder().setArguments(ExportImportLanguage1.class, new String[]{"1", "2"}).build();
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
 
         // TODO: remove once initialization issue is solved for

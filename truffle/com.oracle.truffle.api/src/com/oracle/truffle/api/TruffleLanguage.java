@@ -453,8 +453,10 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, String[] arguments) {
-            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, arguments);
+        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter,
+                        Map<Class<? extends TruffleLanguage>, String[]> arguments) {
+            String[] args = (arguments != null) ? arguments.get(language.getClass()) : null;
+            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, args);
             return env;
         }
 
