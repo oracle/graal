@@ -54,7 +54,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import java.util.List;
-import static org.junit.Assert.assertNotNull;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
@@ -275,12 +274,18 @@ public class ImplicitExplicitExportTest {
 
         @Override
         protected Ctx createContext(Env env) {
-            Ctx ret = super.createContext(env);
+            // BEGIN: arguments.read
             Object args = env.importSymbol("args");
-            if (args != null) {
-                assertTrue("It is truffle object", args instanceof TruffleObject);
-                List<?> argsList = JavaInterop.asJavaObject(List.class, (TruffleObject) args);
-                assertNotNull(argsList);
+            List<?> argsList = null;
+            if (args instanceof TruffleObject) {
+                // convert arguments to list
+                argsList = JavaInterop.asJavaObject(
+                    List.class, (TruffleObject) args
+                );
+            }
+            // END: arguments.read
+            Ctx ret = super.createContext(env);
+            if (argsList != null) {
                 final String arg0 = (String) argsList.get(0);
                 final String arg1 = (String) argsList.get(1);
                 ret.explicit.put(arg0, arg1);
