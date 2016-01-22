@@ -48,9 +48,12 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.List;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
@@ -267,6 +270,27 @@ public class ImplicitExplicitExportTest {
         public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage1();
 
         public ExportImportLanguage1() {
+        }
+
+        @Override
+        protected Ctx createContext(Env env) {
+            // BEGIN: arguments.read
+            Object args = env.importSymbol("args");
+            List<?> argsList = null;
+            if (args instanceof TruffleObject) {
+                // convert arguments to list
+                argsList = JavaInterop.asJavaObject(
+                    List.class, (TruffleObject) args
+                );
+            }
+            // END: arguments.read
+            Ctx ret = super.createContext(env);
+            if (argsList != null) {
+                final String arg0 = (String) argsList.get(0);
+                final String arg1 = (String) argsList.get(1);
+                ret.explicit.put(arg0, arg1);
+            }
+            return ret;
         }
 
         @Override

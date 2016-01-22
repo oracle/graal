@@ -117,4 +117,23 @@ public class EngineTest {
         assertEquals(2, arr[1].intValue());
         assertEquals(3, arr[2].intValue());
     }
+
+    @Test
+    public void passArgumentsToALanguage() throws Exception {
+        final PolyglotEngine.Builder builder = createBuilder(); /*
+        // BEGIN: arguments.pass
+        PolyglotEngine.Builder builder = PolyglotEngine.newBuilder(); // */
+        // prepare array of arguments
+        String[] args = {"argsKey", "argsValue"};
+        // pass them under language specific name
+        builder.globalSymbol("args", args);
+
+        PolyglotEngine engine = builder.build();
+        // END: arguments.pass
+
+        PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
+        language1.eval(Source.fromText("return=args", "get the array")).as(List.class);
+        assertEquals("argsKey", args[0]);
+        assertEquals("argsValue", args[1]);
+    }
 }
