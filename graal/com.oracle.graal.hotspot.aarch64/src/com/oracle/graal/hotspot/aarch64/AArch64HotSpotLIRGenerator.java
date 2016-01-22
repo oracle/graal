@@ -23,20 +23,6 @@
 
 package com.oracle.graal.hotspot.aarch64;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.compiler.aarch64.AArch64ArithmeticLIRGenerator;
 import com.oracle.graal.compiler.aarch64.AArch64LIRGenerator;
@@ -58,6 +44,19 @@ import com.oracle.graal.lir.aarch64.AArch64FrameMapBuilder;
 import com.oracle.graal.lir.aarch64.AArch64Move;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+
 /**
  * LIR generator specialized for AArch64 HotSpot.
  */
@@ -67,16 +66,12 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     private HotSpotDebugInfoBuilder debugInfoBuilder;
 
     protected AArch64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes) {
-        this(providers, config, lirGenRes, new ConstantTableBaseProvider());
-    }
-
-    private AArch64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
-        this(new AArch64HotSpotLIRKindTool(), new AArch64ArithmeticLIRGenerator(), new AArch64HotSpotMoveFactory(constantTableBaseProvider), providers, config, lirGenRes, constantTableBaseProvider);
+        this(new AArch64HotSpotLIRKindTool(), new AArch64ArithmeticLIRGenerator(), new AArch64HotSpotMoveFactory(), providers, config, lirGenRes);
     }
 
     protected AArch64HotSpotLIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, HotSpotProviders providers, HotSpotVMConfig config,
-                    LIRGenerationResult lirGenRes, ConstantTableBaseProvider constantTableBaseProvider) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes, constantTableBaseProvider);
+                    LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
         this.config = config;
     }
 
@@ -111,39 +106,52 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         return debugInfoBuilder.lockStack();
     }
 
-    @SuppressWarnings("unused")
     @Override
     public Value emitCompress(Value pointer, HotSpotVMConfig.CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getLIRKind();
         assert inputKind.getPlatformKind() == AArch64Kind.QWORD;
-        Variable result = newVariable(LIRKind.reference(AArch64Kind.DWORD));
-        AllocatableValue base = getCompressionBase(encoding, inputKind);
-        // TODO (das) continue here.
-        throw JVMCIError.unimplemented("finish implementation");
-    }
-
-    private AllocatableValue getCompressionBase(HotSpotVMConfig.CompressEncoding encoding, LIRKind inputKind) {
         if (inputKind.isReference(0)) {
             // oop
-            return getProviders().getRegisters().getHeapBaseRegister().asValue();
+            Variable result = newVariable(LIRKind.reference(AArch64Kind.DWORD));
+            append(new AArch64HotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
+            return result;
         } else {
             // metaspace pointer
-            if (encoding.base == 0) {
-                return AArch64.zr.asValue(LIRKind.value(AArch64Kind.QWORD));
-            } else {
-                return emitLoadConstant(LIRKind.value(AArch64Kind.QWORD), JavaConstant.forLong(encoding.base));
+            Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+            AllocatableValue base = Value.ILLEGAL;
+            if (encoding.base != 0) {
+                base = emitLoadConstant(LIRKind.value(AArch64Kind.QWORD), JavaConstant.forLong(encoding.base));
             }
+            append(new AArch64HotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
+            return result;
         }
     }
 
     @Override
     public Value emitUncompress(Value pointer, HotSpotVMConfig.CompressEncoding encoding, boolean nonNull) {
-        return null;
+        LIRKind inputKind = pointer.getLIRKind();
+        assert inputKind.getPlatformKind() == AArch64Kind.DWORD;
+        if (inputKind.isReference(0)) {
+            // oop
+            Variable result = newVariable(LIRKind.reference(AArch64Kind.QWORD));
+            append(new AArch64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
+            return result;
+        } else {
+            // metaspace pointer
+            Variable result = newVariable(LIRKind.value(AArch64Kind.QWORD));
+            AllocatableValue base = Value.ILLEGAL;
+            if (encoding.base != 0) {
+                base = emitLoadConstant(LIRKind.value(AArch64Kind.QWORD), JavaConstant.forLong(encoding.base));
+            }
+            append(new AArch64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
+            return result;
+        }
     }
 
     @Override
     public void emitPrefetchAllocate(Value address) {
         // TODO (das) Optimization for later.
+        throw JVMCIError.unimplemented();
     }
 
     @Override

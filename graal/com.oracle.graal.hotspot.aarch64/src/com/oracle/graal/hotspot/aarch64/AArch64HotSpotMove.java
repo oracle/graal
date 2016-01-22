@@ -25,19 +25,58 @@ package com.oracle.graal.hotspot.aarch64;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.aarch64.AArch64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
 
 public class AArch64HotSpotMove {
+
+    public static class LoadHotSpotObjectConstantInline extends AArch64LIRInstruction implements LoadConstantOp {
+        public static final LIRInstructionClass<LoadHotSpotObjectConstantInline> TYPE = LIRInstructionClass.create(LoadHotSpotObjectConstantInline.class);
+
+        private HotSpotConstant constant;
+        @Def({REG, STACK}) AllocatableValue result;
+
+        public LoadHotSpotObjectConstantInline(HotSpotConstant constant, AllocatableValue result) {
+            super(TYPE);
+            this.constant = constant;
+            this.result = result;
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            crb.recordInlineDataInCode(constant);
+            if (constant.isCompressed()) {
+                // masm.forceMov(asRegister(result), 0);
+                throw JVMCIError.unimplemented();
+            } else {
+                masm.forceMov(asRegister(result), 0);
+            }
+        }
+
+        @Override
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public Constant getConstant() {
+            return constant;
+        }
+    }
 
     /**
      * Compresses a 8-byte pointer as a 4-byte int.
@@ -127,6 +166,7 @@ public class AArch64HotSpotMove {
             } else {
                 // if ptr is null it has to be null after decompression
                 // masm.cmp(64, );
+                throw JVMCIError.unimplemented();
             }
 
         }
@@ -149,8 +189,8 @@ public class AArch64HotSpotMove {
     public static void decodeKlassPointer(AArch64MacroAssembler masm, Register result, Register ptr, Register klassBase, CompressEncoding encoding) {
         // result = klassBase + ptr << shift
         if (encoding.shift != 0 || encoding.base != 0) {
-            // (shift != 0 -> shift == alignment) && (shift == 0 -> base == 0)
-            assert (encoding.shift == 0 || encoding.shift == encoding.alignment) && (encoding.shift != 0 || encoding.base == 0) : "Decode algorithm is wrong.";
+            // (shift != 0 -> shift == alignment)
+            assert (encoding.shift == 0 || encoding.shift == encoding.alignment) : "Decode algorithm is wrong: " + encoding;
             masm.add(64, result, klassBase, ptr, AArch64Assembler.ExtendType.UXTX, encoding.shift);
         }
     }

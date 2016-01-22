@@ -162,7 +162,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
                     }
                     masm.mov(64, sp, scratch);
                 } else {
-                    if (AArch64MacroAssembler.isArithmeticImmediate(totalFrameSize)) {
+                    if (AArch64MacroAssembler.isArithmeticImmediate(frameSize)) {
                         masm.sub(64, sp, scratch, frameSize);
                     } else {
                         try (ScratchRegister sc2 = masm.getScratchRegister()) {
@@ -180,7 +180,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         public void leave(CompilationResultBuilder crb) {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             crb.blockComment("[method epilogue]");
-            final int frameSize = crb.frameMap.totalFrameSize();
+            final int frameSize = crb.frameMap.frameSize();
             if (AArch64MacroAssembler.isArithmeticImmediate(frameSize)) {
                 masm.add(64, sp, sp, frameSize);
             } else {

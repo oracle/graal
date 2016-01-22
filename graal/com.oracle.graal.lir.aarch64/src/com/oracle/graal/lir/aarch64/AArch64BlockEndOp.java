@@ -25,14 +25,14 @@ package com.oracle.graal.lir.aarch64;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.StandardOp;
+import com.oracle.graal.lir.StandardOp.AbstractBlockEndOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
-public abstract class AArch64BlockEndOp extends StandardOp.AbstractBlockEndOp {
+public abstract class AArch64BlockEndOp extends AbstractBlockEndOp {
 
     public static final LIRInstructionClass<AArch64BlockEndOp> TYPE = LIRInstructionClass.create(AArch64BlockEndOp.class);
 
-    protected AArch64BlockEndOp(LIRInstructionClass<? extends StandardOp.AbstractBlockEndOp> c) {
+    protected AArch64BlockEndOp(LIRInstructionClass<? extends AArch64BlockEndOp> c) {
         super(c);
     }
 
@@ -41,5 +41,5 @@ public abstract class AArch64BlockEndOp extends StandardOp.AbstractBlockEndOp {
         emitCode(crb, (AArch64MacroAssembler) crb.asm);
     }
 
-    public abstract void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm);
+    protected abstract void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm);
 }

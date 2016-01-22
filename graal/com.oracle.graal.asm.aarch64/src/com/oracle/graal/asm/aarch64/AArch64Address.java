@@ -203,24 +203,33 @@ public final class AArch64Address extends AbstractAddress {
 
         switch (addressingMode) {
             case IMMEDIATE_SCALED:
-                return !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isUnsignedNbit(12, immediate);
+                assert !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isUnsignedNbit(12, immediate);
+                break;
             case IMMEDIATE_UNSCALED:
-                return !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(9, immediate);
+                assert !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(9, immediate);
+                break;
             case BASE_REGISTER_ONLY:
-                return !base.equals(zr) && offset.equals(zr) && extendType == null && immediate == 0;
+                assert !base.equals(zr) && offset.equals(zr) && extendType == null && immediate == 0;
+                break;
             case REGISTER_OFFSET:
-                return !base.equals(zr) && offset.getRegisterCategory().equals(AArch64.CPU) && extendType == null && immediate == 0;
+                assert !base.equals(zr) && offset.getRegisterCategory().equals(AArch64.CPU) && extendType == null && immediate == 0;
+                break;
             case EXTENDED_REGISTER_OFFSET:
-                return !base.equals(zr) && offset.getRegisterCategory().equals(AArch64.CPU) && (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW) &&
+                assert !base.equals(zr) && offset.getRegisterCategory().equals(AArch64.CPU) && (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW) &&
                                 immediate == 0;
+                break;
             case PC_LITERAL:
-                return base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(21, immediate) && ((immediate & 0x3) == 0);
+                assert base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(21, immediate) && ((immediate & 0x3) == 0);
+                break;
             case IMMEDIATE_POST_INDEXED:
             case IMMEDIATE_PRE_INDEXED:
-                return !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(9, immediate);
+                assert !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(9, immediate);
+                break;
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
+
+        return true;
     }
 
     public Register getBase() {

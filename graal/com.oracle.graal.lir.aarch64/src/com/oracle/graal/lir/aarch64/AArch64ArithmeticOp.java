@@ -205,7 +205,7 @@ public enum AArch64ArithmeticOp {
     }
 
     public static class BinaryOp extends AArch64LIRInstruction {
-        private static final LIRInstructionClass<BinaryConstOp> TYPE = LIRInstructionClass.create(BinaryConstOp.class);
+        private static final LIRInstructionClass<BinaryOp> TYPE = LIRInstructionClass.create(BinaryOp.class);
 
         @Opcode private final AArch64ArithmeticOp op;
         @Def({REG}) protected AllocatableValue result;

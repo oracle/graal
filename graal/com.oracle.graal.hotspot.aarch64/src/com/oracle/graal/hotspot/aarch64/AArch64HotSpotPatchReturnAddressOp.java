@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,41 @@
  */
 package com.oracle.graal.hotspot.aarch64;
 
-import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.AArch64ExceptionCode;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.lir.aarch64.AArch64BlockEndOp;
-import com.oracle.graal.lir.aarch64.AArch64Call;
+import com.oracle.graal.lir.aarch64.AArch64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
-@Opcode("DEOPT")
-public class AArch64HotSpotDeoptimizeOp extends AArch64BlockEndOp implements BlockEndOp {
-    public static final LIRInstructionClass<AArch64HotSpotDeoptimizeOp> TYPE = LIRInstructionClass.create(AArch64HotSpotDeoptimizeOp.class);
+import jdk.vm.ci.meta.AllocatableValue;
 
-    @State private LIRFrameState info;
+/**
+ * Patch the return address of the current frame.
+ */
+@Opcode("PATCH_RETURN")
+final class AArch64HotSpotPatchReturnAddressOp extends AArch64LIRInstruction {
 
-    public AArch64HotSpotDeoptimizeOp(LIRFrameState info) {
+    public static final LIRInstructionClass<AArch64HotSpotPatchReturnAddressOp> TYPE = LIRInstructionClass.create(AArch64HotSpotPatchReturnAddressOp.class);
+
+    @Use(REG) AllocatableValue address;
+
+    AArch64HotSpotPatchReturnAddressOp(AllocatableValue address) {
         super(TYPE);
-        this.info = info;
+        this.address = address;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        AArch64Call.directCall(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER), null, info);
+        final int frameSize = crb.frameMap.frameSize();
+        // XXX where is lr exactly?
+        AArch64Address lrAddress = AArch64Address.createUnscaledImmediateAddress(sp, frameSize);
+        masm.brk(AArch64ExceptionCode.BREAKPOINT); // XXX
+        masm.str(64, asRegister(address), lrAddress);
     }
-
 }

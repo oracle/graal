@@ -333,13 +333,16 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * Generates a move 64-bit immediate code sequence. The immediate may later be updated by
      * HotSpot.
      *
+     * In AArch64 mode the virtual address space is 48 bits in size, so we only need three
+     * instructions to create a patchable instruction sequence that can reach anywhere.
+     *
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
      * @param imm
      */
     public void forceMov(Register dst, long imm, boolean optimize) {
         // We have to move all non zero parts of the immediate in 16-bit chunks
         boolean firstMove = true;
-        for (int offset = 0; offset < 64; offset += 16) {
+        for (int offset = 0; offset < 48; offset += 16) {
             int chunk = (int) (imm >> offset) & NumUtil.getNbitNumberInt(16);
             if (optimize && chunk == 0) {
                 continue;
@@ -356,16 +359,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
     public void forceMov(Register dst, long imm) {
         forceMov(dst, imm, /* optimize */false);
-    }
-
-    /**
-     * Generates a move 64-bit immediate code sequence. The immediate may later be updated by
-     * HotSpot.
-     *
-     * @param dst general purpose register. May not be null, stackpointer or zero-register.
-     */
-    public void forceMov(Register dst, int imm) {
-        forceMov(dst, imm & 0xFFFF_FFFFL);
     }
 
     /**

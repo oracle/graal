@@ -27,9 +27,6 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
-
 public class AArch64AddressLowering extends AddressLowering {
 
     @Override
@@ -39,16 +36,9 @@ public class AArch64AddressLowering extends AddressLowering {
 
     @Override
     public AddressNode lower(ValueNode base, ValueNode offset) {
-        asImmediate(base);
-        throw JVMCIError.unimplemented();
+        AArch64AddressNode ret = new AArch64AddressNode(base, offset);
+        // TODO improve
+        return base.graph().unique(ret);
     }
 
-    private static JavaConstant asImmediate(ValueNode value) {
-        JavaConstant c = value.asJavaConstant();
-        if (c != null && c.getJavaKind().isNumericInteger()) {
-            return c;
-        } else {
-            return null;
-        }
-    }
 }

@@ -32,7 +32,9 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.aarch64.AArch64Address;
+import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
+import com.oracle.graal.asm.aarch64.AArch64Assembler.ExtendType;
 import com.oracle.graal.lir.CompositeValue;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.InstructionValueProcedure;
@@ -45,13 +47,14 @@ public final class AArch64AddressValue extends CompositeValue {
     @Component({OperandFlag.REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
     @Component({OperandFlag.REG, OperandFlag.ILLEGAL}) protected AllocatableValue offset;
     private final int immediate;
+
     /**
      * Whether register offset should be scaled or not.
      */
     private final boolean scaled;
-    private final AArch64Address.AddressingMode addressingMode;
+    private final AddressingMode addressingMode;
 
-    public AArch64AddressValue(LIRKind kind, AllocatableValue base, AllocatableValue offset, int immediate, boolean scaled, AArch64Address.AddressingMode addressingMode) {
+    public AArch64AddressValue(LIRKind kind, AllocatableValue base, AllocatableValue offset, int immediate, boolean scaled, AddressingMode addressingMode) {
         super(kind);
         this.base = base;
         this.offset = offset;
@@ -84,14 +87,14 @@ public final class AArch64AddressValue extends CompositeValue {
         return scaled;
     }
 
-    public AArch64Address.AddressingMode getAddressingMode() {
+    public AddressingMode getAddressingMode() {
         return addressingMode;
     }
 
     public AArch64Address toAddress() {
         Register baseReg = toRegister(base);
         Register offsetReg = toRegister(offset);
-        AArch64Assembler.ExtendType extendType = addressingMode == AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET ? AArch64Assembler.ExtendType.SXTW : null;
+        AArch64Assembler.ExtendType extendType = addressingMode == AddressingMode.EXTENDED_REGISTER_OFFSET ? ExtendType.SXTW : null;
         return AArch64Address.createAddress(addressingMode, baseReg, offsetReg, immediate, scaled, extendType);
     }
 

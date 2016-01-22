@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,18 +25,20 @@ package com.oracle.graal.hotspot.aarch64;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.aarch64.AArch64BlockEndOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
-abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp implements StandardOp.BlockEndOp {
+/**
+ * Superclass for operations that leave a method's frame.
+ */
+abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
 
     private final HotSpotVMConfig config;
 
-    protected AArch64HotSpotEpilogueOp(LIRInstructionClass<? extends StandardOp.AbstractBlockEndOp> c, HotSpotVMConfig config) {
+    protected AArch64HotSpotEpilogueOp(LIRInstructionClass<? extends AArch64HotSpotEpilogueOp> c, HotSpotVMConfig config) {
         super(c);
         this.config = config;
     }

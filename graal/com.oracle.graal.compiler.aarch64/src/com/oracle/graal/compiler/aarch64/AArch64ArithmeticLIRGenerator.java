@@ -209,17 +209,19 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitNarrow(Value inputVal, int bits) {
-        assert inputVal.getPlatformKind() == AArch64Kind.QWORD && bits == 32 : "Can only convert from long to int";
-        LIRKind resultKind = getResultLirKind(bits, inputVal);
-        long mask = NumUtil.getNbitNumberLong(bits);
-        Value maskValue = new ConstantValue(resultKind, JavaConstant.forLong(mask));
-        return emitBinary(resultKind, AArch64ArithmeticOp.AND, true, inputVal, maskValue);
+        if (inputVal.getPlatformKind() == AArch64Kind.QWORD && bits <= 32) {
+            LIRKind resultKind = getResultLirKind(bits, inputVal);
+            long mask = NumUtil.getNbitNumberLong(bits);
+            Value maskValue = new ConstantValue(resultKind, JavaConstant.forLong(mask));
+            return emitBinary(resultKind, AArch64ArithmeticOp.AND, true, inputVal, maskValue);
+        } else {
+            return inputVal;
+        }
     }
 
     @Override
     public Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
         assert fromBits <= toBits && (toBits == 32 || toBits == 64);
-        assert isNumericInteger(inputVal.getPlatformKind());
         if (fromBits == toBits) {
             return inputVal;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,7 @@ package com.oracle.graal.compiler.aarch64;
 
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Address;
@@ -61,7 +48,6 @@ import com.oracle.graal.lir.aarch64.AArch64Compare;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.BranchOp;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.CondMoveOp;
-import com.oracle.graal.lir.aarch64.AArch64LIRInstruction;
 import com.oracle.graal.lir.aarch64.AArch64Move;
 import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwap;
 import com.oracle.graal.lir.aarch64.AArch64Move.MembarOp;
@@ -70,25 +56,20 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.phases.util.Providers;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+
 public abstract class AArch64LIRGenerator extends LIRGenerator {
 
-    @SuppressWarnings("unused") private final ConstantTableBaseProvider constantTableBaseProvider;
-
-    public static final class ConstantTableBaseProvider {
-        // private Variable constantTableBase;
-        @SuppressWarnings("unused") private boolean useConstantTableBase = false;
-
-        public Variable getConstantTableBase() {
-            useConstantTableBase = true;
-            // return constantTableBase;
-            return null;
-        }
-    }
-
-    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes,
-                    ConstantTableBaseProvider constantTableBaseProvider) {
+    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
-        this.constantTableBaseProvider = constantTableBaseProvider;
     }
 
     /**
@@ -114,7 +95,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         switch ((AArch64Kind) kind.getPlatformKind()) {
             case BYTE:
             case WORD:
-                return kind.changeType(AMD64Kind.DWORD);
+                return kind.changeType(AArch64Kind.DWORD);
             default:
                 return kind;
         }
@@ -137,48 +118,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             return (AArch64AddressValue) address;
         } else {
             return new AArch64AddressValue(address.getLIRKind(), asAllocatable(address), Value.ILLEGAL, 0, false, AddressingMode.BASE_REGISTER_ONLY);
-        }
-    }
-
-    @Override
-    public void emitMove(AllocatableValue dst, Value src) {
-        append(createMove(dst, src));
-    }
-
-    @Override
-    public void emitMoveConstant(AllocatableValue dst, Constant src) {
-        append(createMoveConstant(dst, (JavaConstant) src));
-    }
-
-    /**
-     * Moves src to dst.
-     *
-     * If src is AArch64AddressValue the address value is loaded into dst, not the value pointed to
-     * by address. All valid combinations of src and dst values are supported, except StackSlot to
-     * StackSlot.
-     *
-     * @param dst Value stored on stack or in register. Non null.
-     * @param src Arbitrary input value. Non null.
-     * @return AArch64LIRInstruction representing the move. Non null.
-     */
-    protected AArch64LIRInstruction createMove(AllocatableValue dst, Value src) {
-        if (src instanceof AArch64AddressValue) {
-            return new AArch64Move.LoadAddressOp(dst, (AArch64AddressValue) src);
-        } else if (isStackSlot(dst)) {
-            return new AArch64Move.MoveToStackOp(dst, asAllocatable(src));
-        } else {
-            return new AArch64Move.MoveToRegOp(dst, asAllocatable(src));
-        }
-    }
-
-    protected AArch64LIRInstruction createMoveConstant(AllocatableValue dst, JavaConstant src) {
-        if (isStackSlotValue(dst)) {
-            // constant -> stack is not possible so we need a scratch register in between.
-            Variable tmp = newVariable(dst.getLIRKind());
-            append(new AArch64Move.MoveFromConstOp(tmp, src));
-            return new AArch64Move.MoveToStackOp(dst, tmp);
-        } else {
-            return new AArch64Move.MoveFromConstOp(dst, src);
         }
     }
 
@@ -288,8 +227,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      */
     @Override
     public Variable emitConditionalMove(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
-        assert cmpKind == left.getPlatformKind() && cmpKind == right.getPlatformKind();
-        boolean mirrored = emitCompare(left, right, cond, unorderedIsTrue);
+        boolean mirrored = emitCompare(cmpKind, left, right, cond, unorderedIsTrue);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         boolean finalUnorderedIsTrue = mirrored ? !unorderedIsTrue : unorderedIsTrue;
         ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, finalUnorderedIsTrue);
@@ -301,8 +239,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitCompareBranch(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
                     double trueDestinationProbability) {
-        assert cmpKind == left.getPlatformKind() && cmpKind == right.getPlatformKind();
-        boolean mirrored = emitCompare(left, right, cond, unorderedIsTrue);
+        boolean mirrored = emitCompare(cmpKind, left, right, cond, unorderedIsTrue);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         boolean finalUnorderedIsTrue = mirrored ? !unorderedIsTrue : unorderedIsTrue;
         ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, finalUnorderedIsTrue);
@@ -368,17 +305,19 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Emits a gpCompare instruction, possibly reordering the parameters.
+     * This method emits the compare instruction, and may reorder the operands. It returns true if
+     * it did so.
      *
      * @param a the left operand of the comparison. Has to have same type as b. Non null.
      * @param b the right operand of the comparison. Has to have same type as a. Non null.
      * @return true if mirrored (i.e. "b cmp a" instead of "a cmp b" was done).
      */
-    private boolean emitCompare(Value a, Value b, Condition condition, boolean unorderedIsTrue) {
-        boolean mirrored;
+    private boolean emitCompare(PlatformKind cmpKind, Value a, Value b, Condition condition, boolean unorderedIsTrue) {
         AllocatableValue left;
         Value right;
-        if (((AArch64Kind) a.getPlatformKind()).isInteger()) {
+        boolean mirrored;
+        AArch64Kind kind = (AArch64Kind) cmpKind;
+        if (kind.isInteger()) {
             if (LIRValueUtil.isVariable(b) || b instanceof RegisterValue) {
                 left = loadReg(b);
                 right = loadNonConst(a);

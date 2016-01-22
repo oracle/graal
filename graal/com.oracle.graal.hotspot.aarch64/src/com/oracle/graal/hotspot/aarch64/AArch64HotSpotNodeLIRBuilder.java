@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,21 +29,6 @@ import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.inlineCacheRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.metaspaceMethodRegister;
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.aarch64.AArch64NodeLIRBuilder;
 import com.oracle.graal.compiler.aarch64.AArch64NodeMatchRules;
@@ -62,8 +47,8 @@ import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.aarch64.AArch64BreakpointOp;
 import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwap;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.BreakpointNode;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.IndirectCallTargetNode;
@@ -72,6 +57,20 @@ import com.oracle.graal.nodes.SafepointNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeValueMap;
+
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * LIR generator specialized for AArch64 HotSpot.
@@ -108,8 +107,8 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
                 }
             }
         }
-        params[params.length - 2] = fp.asValue(LIRKind.value(AMD64Kind.QWORD));
-        params[params.length - 1] = lr.asValue(LIRKind.value(AMD64Kind.QWORD));
+        params[params.length - 2] = fp.asValue(LIRKind.value(AArch64Kind.QWORD));
+        params[params.length - 1] = lr.asValue(LIRKind.value(AArch64Kind.QWORD));
 
         gen.emitIncomingValues(params);
 
@@ -153,7 +152,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
     @Override
     public void emitPatchReturnAddress(ValueNode address) {
-        throw JVMCIError.unimplemented();
+        append(new AArch64HotSpotPatchReturnAddressOp(gen.load(operand(address))));
     }
 
     @Override
