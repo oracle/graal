@@ -113,7 +113,7 @@ public class PolyglotEngine {
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter;
-    private final Map<String, String[]> arguments;
+    private final Map<String, Object> arguments;
     private final Debugger debugger;
     private boolean disposed;
 
@@ -137,7 +137,7 @@ public class PolyglotEngine {
     /**
      * Real constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, Map<String, String[]> arguments) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, Map<String, Object> arguments) {
         this.executor = executor;
         this.out = out;
         this.err = err;
@@ -214,7 +214,7 @@ public class PolyglotEngine {
         private final List<EventConsumer<?>> handlers = new ArrayList<>();
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
-        private Map<String, String[]> arguments;
+        private Map<String, Object> arguments;
 
         Builder() {
         }
@@ -261,9 +261,9 @@ public class PolyglotEngine {
          * configure their initial execution state correctly.
          *
          * @param mimeType of the language for which the arguments are
-         * @param arguments, an array of strings to parameterize initial state of a language
+         * @param arguments, an object to parameterize initial state of a language
          */
-        public Builder setArguments(String mimeType, String[] arguments) {
+        public Builder setArguments(String mimeType, Object arguments) {
             if (this.arguments == null) {
                 this.arguments = new HashMap<>();
             }
@@ -833,7 +833,7 @@ public class PolyglotEngine {
             return impl;
         }
 
-        private Map<String, String[]> getArgumentsForLanguage() {
+        private Map<String, Object> getArgumentsForLanguage() {
             if (arguments == null) {
                 return null;
             }
@@ -842,9 +842,9 @@ public class PolyglotEngine {
                 return null;
             }
 
-            Map<String, String[]> forLanguage = new HashMap<>();
+            Map<String, Object> forLanguage = new HashMap<>();
             for (String mimeType : info.getMimeTypes()) {
-                String[] arg = arguments.get(mimeType);
+                Object arg = arguments.get(mimeType);
                 if (arg != null) {
                     forLanguage.put(mimeType, arg);
                 }
@@ -938,7 +938,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, String[]> arguments) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> arguments) {
             PolyglotEngine vm = (PolyglotEngine) obj;
             return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, arguments);
         }

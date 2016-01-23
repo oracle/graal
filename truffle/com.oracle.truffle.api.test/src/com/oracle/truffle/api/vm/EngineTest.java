@@ -129,7 +129,7 @@ public class EngineTest {
         language1.eval(Source.fromText("return=arr", "get the array")).as(AccessArray.class);
 
         Env env = language1.getEnv(true);
-        String[] args = env.getArguments().get("application/x-test-import-export-1");
+        String[] args = (String[]) env.getArguments().get("application/x-test-import-export-1");
         assertEquals("1", args[0]);
         assertEquals("2", args[1]);
     }
