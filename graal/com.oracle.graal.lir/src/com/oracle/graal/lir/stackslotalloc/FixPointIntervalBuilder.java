@@ -256,19 +256,19 @@ final class FixPointIntervalBuilder {
                         StackInterval to = getOrCreateInterval(targetValue);
 
                         /* hints always point from def to use */
-                        if (hintAtDef) {
-                            to.setLocationHint(from);
-                        } else {
-                            from.setLocationHint(to);
-                        }
-                        if (Debug.isLogEnabled()) {
-                            Debug.log("operation %s at opId %d: added hint from interval %d to %d", op, op.id(), from, to);
-                        }
+                                if (hintAtDef) {
+                                    to.setLocationHint(from);
+                                } else {
+                                    from.setLocationHint(to);
+                                }
+                                if (Debug.isLogEnabled()) {
+                                    Debug.log("operation %s at opId %d: added hint from interval %d to %d", op, op.id(), from, to);
+                                }
 
-                        return registerHint;
-                    }
-                    return null;
-                });
+                                return registerHint;
+                            }
+                            return null;
+                        });
             }
         }
 

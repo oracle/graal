@@ -64,7 +64,7 @@ public class BigMixedParams04 extends JTTTest {
      */
     @SuppressWarnings("all")
     public static double test2(int i1, float f1, double d2, float f3,
-    // @formatter:off
+// @formatter:off
                     double ad1,
                     double ad2,
                     double ad3,
@@ -98,7 +98,7 @@ public class BigMixedParams04 extends JTTTest {
                     float  af15,
                     float  af16
     // @formatter:on
-    ) {
+                    ) {
 
         // now do something with the locals to make sure the locals don't get optimized away.
         for (int i = 0; i < i1; i++) {
@@ -186,7 +186,7 @@ public class BigMixedParams04 extends JTTTest {
      */
     @SuppressWarnings("all")
     public static double test3(boolean f, int idx,
-    // @formatter:off
+// @formatter:off
                     double ad1,
                     double ad2,
                     double ad3,

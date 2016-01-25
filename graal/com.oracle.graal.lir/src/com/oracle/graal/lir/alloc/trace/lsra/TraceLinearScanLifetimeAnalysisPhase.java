@@ -334,22 +334,22 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                         /*
                          * TODO (je): clean up
                          */
-                        final AllocatableValue fromValue;
-                        final AllocatableValue toValue;
-                        /* hints always point from def to use */
-                        if (hintAtDef) {
-                            fromValue = (AllocatableValue) registerHint;
-                            toValue = (AllocatableValue) targetValue;
-                        } else {
-                            fromValue = (AllocatableValue) targetValue;
-                            toValue = (AllocatableValue) registerHint;
-                        }
-                        Debug.log("addRegisterHint %s to %s", fromValue, toValue);
-                        final TraceInterval to;
-                        final IntervalHint from;
-                        if (isRegister(toValue)) {
-                            if (isRegister(fromValue)) {
-                                // fixed to fixed move
+                                final AllocatableValue fromValue;
+                                final AllocatableValue toValue;
+                                /* hints always point from def to use */
+                                if (hintAtDef) {
+                                    fromValue = (AllocatableValue) registerHint;
+                                    toValue = (AllocatableValue) targetValue;
+                                } else {
+                                    fromValue = (AllocatableValue) targetValue;
+                                    toValue = (AllocatableValue) registerHint;
+                                }
+                                Debug.log("addRegisterHint %s to %s", fromValue, toValue);
+                                final TraceInterval to;
+                                final IntervalHint from;
+                                if (isRegister(toValue)) {
+                                    if (isRegister(fromValue)) {
+                                        // fixed to fixed move
                                 return null;
                             }
                             from = getIntervalHint(toValue);

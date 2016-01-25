@@ -234,194 +234,194 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     @Test
     public void constReturnProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */42,
-        /* 2: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */42,
+                        /* 2: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("constReturnProgram", bytecodes, 0, 2));
     }
 
     @Test
     public void constAddProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */40,
-        /* 2: */Bytecode.CONST,
-        /* 3: */2,
-        /* 4: */Bytecode.ADD,
-        /* 5: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */40,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */2,
+                        /* 4: */Bytecode.ADD,
+                        /* 5: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("constAddProgram", bytecodes, 0, 2));
     }
 
     @Test
     public void simpleIfProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */40,
-        /* 2: */Bytecode.CONST,
-        /* 3: */1,
-        /* 4: */Bytecode.IFZERO,
-        /* 5: */8,
-        /* 6: */Bytecode.CONST,
-        /* 7: */42,
-        /* 8: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */40,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */1,
+                        /* 4: */Bytecode.IFZERO,
+                        /* 5: */8,
+                        /* 6: */Bytecode.CONST,
+                        /* 7: */42,
+                        /* 8: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("simpleIfProgram", bytecodes, 0, 3));
     }
 
     @Test
     public void ifAndPopProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */40,
-        /* 2: */Bytecode.CONST,
-        /* 3: */1,
-        /* 4: */Bytecode.IFZERO,
-        /* 5: */9,
-        /* 6: */Bytecode.POP,
-        /* 7: */Bytecode.CONST,
-        /* 8: */42,
-        /* 9: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */40,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */1,
+                        /* 4: */Bytecode.IFZERO,
+                        /* 5: */9,
+                        /* 6: */Bytecode.POP,
+                        /* 7: */Bytecode.CONST,
+                        /* 8: */42,
+                        /* 9: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("ifAndPopProgram", bytecodes, 0, 3));
     }
 
     @Test
     public void simpleLoopProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */42,
-        /* 2: */Bytecode.CONST,
-        /* 3: */-12,
-        /* 4: */Bytecode.CONST,
-        /* 5: */1,
-        /* 6: */Bytecode.ADD,
-        /* 7: */Bytecode.DUP,
-        /* 8: */Bytecode.IFZERO,
-        /* 9: */12,
-        /* 10: */Bytecode.JMP,
-        /* 11: */4,
-        /* 12: */Bytecode.POP,
-        /* 13: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */42,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */-12,
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.ADD,
+                        /* 7: */Bytecode.DUP,
+                        /* 8: */Bytecode.IFZERO,
+                        /* 9: */12,
+                        /* 10: */Bytecode.JMP,
+                        /* 11: */4,
+                        /* 12: */Bytecode.POP,
+                        /* 13: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("simpleLoopProgram", bytecodes, 0, 3));
     }
 
     @Test
     public void nestedLoopsProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */42,
-        /* 2: */Bytecode.CONST,
-        /* 3: */-2,
-        /* 4: */Bytecode.CONST,
-        /* 5: */1,
-        /* 6: */Bytecode.ADD,
-        /* 7: */Bytecode.DUP,
-        /* 8: */Bytecode.CONST,
-        /* 9: */-2,
-        /* 10: */Bytecode.CONST,
-        /* 11: */1,
-        /* 12: */Bytecode.ADD,
-        /* 13: */Bytecode.DUP,
-        /* 14: */Bytecode.IFZERO,
-        /* 15: */18,
-        /* 16: */Bytecode.JMP,
-        /* 17: */10,
-        /* 18: */Bytecode.POP,
-        /* 19: */Bytecode.IFZERO,
-        /* 20: */23,
-        /* 21: */Bytecode.JMP,
-        /* 22: */4,
-        /* 23: */Bytecode.POP,
-        /* 24: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */42,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */-2,
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.ADD,
+                        /* 7: */Bytecode.DUP,
+                        /* 8: */Bytecode.CONST,
+                        /* 9: */-2,
+                        /* 10: */Bytecode.CONST,
+                        /* 11: */1,
+                        /* 12: */Bytecode.ADD,
+                        /* 13: */Bytecode.DUP,
+                        /* 14: */Bytecode.IFZERO,
+                        /* 15: */18,
+                        /* 16: */Bytecode.JMP,
+                        /* 17: */10,
+                        /* 18: */Bytecode.POP,
+                        /* 19: */Bytecode.IFZERO,
+                        /* 20: */23,
+                        /* 21: */Bytecode.JMP,
+                        /* 22: */4,
+                        /* 23: */Bytecode.POP,
+                        /* 24: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram", bytecodes, 0, 6));
     }
 
     @Test
     public void nestedLoopsProgram2() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */42,
-        /* 2: */Bytecode.CONST,
-        /* 3: */-2,
-        /* 4: */Bytecode.CONST,
-        /* 5: */1,
-        /* 6: */Bytecode.ADD,
-        /* 7: */Bytecode.DUP,
-        /* 8: */Bytecode.CONST,
-        /* 9: */-2,
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */42,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */-2,
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.ADD,
+                        /* 7: */Bytecode.DUP,
+                        /* 8: */Bytecode.CONST,
+                        /* 9: */-2,
 
-        /* 10: */Bytecode.CONST,
-        /* 11: */0,
-        /* 12: */Bytecode.IFZERO,
-        /* 13: */17,
-        /* 14: */Bytecode.POP,
-        /* 15: */Bytecode.JMP,
-        /* 16: */30,
+                        /* 10: */Bytecode.CONST,
+                        /* 11: */0,
+                        /* 12: */Bytecode.IFZERO,
+                        /* 13: */17,
+                        /* 14: */Bytecode.POP,
+                        /* 15: */Bytecode.JMP,
+                        /* 16: */30,
 
-        /* 17: */Bytecode.CONST,
-        /* 18: */1,
-        /* 19: */Bytecode.ADD,
-        /* 10: */Bytecode.DUP,
-        /* 21: */Bytecode.IFZERO,
-        /* 22: */25,
-        /* 23: */Bytecode.JMP,
-        /* 24: */10,
-        /* 25: */Bytecode.POP,
-        /* 26: */Bytecode.IFZERO,
-        /* 27: */30,
-        /* 28: */Bytecode.JMP,
-        /* 29: */4,
-        /* 30: */Bytecode.POP,
-        /* 31: */Bytecode.RETURN};
+                        /* 17: */Bytecode.CONST,
+                        /* 18: */1,
+                        /* 19: */Bytecode.ADD,
+                        /* 10: */Bytecode.DUP,
+                        /* 21: */Bytecode.IFZERO,
+                        /* 22: */25,
+                        /* 23: */Bytecode.JMP,
+                        /* 24: */10,
+                        /* 25: */Bytecode.POP,
+                        /* 26: */Bytecode.IFZERO,
+                        /* 27: */30,
+                        /* 28: */Bytecode.JMP,
+                        /* 29: */4,
+                        /* 30: */Bytecode.POP,
+                        /* 31: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram2", bytecodes, 0, 6));
     }
 
     @Test(timeout = 2000)
     public void manyIfsProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */40,
-        /* 2: */Bytecode.CONST,
-        /* 3: */1,
-        /* 4: */Bytecode.IFZERO,
-        /* 5: */8,
-        /* 6: */Bytecode.CONST,
-        /* 7: */1,
-        /* 8: */Bytecode.IFZERO,
-        /* 9: */12,
-        /* 10: */Bytecode.CONST,
-        /* 11: */1,
-        /* 12: */Bytecode.IFZERO,
-        /* 13: */16,
-        /* 14: */Bytecode.CONST,
-        /* 15: */1,
-        /* 16: */Bytecode.IFZERO,
-        /* 17: */20,
-        /* 18: */Bytecode.CONST,
-        /* 19: */1,
-        /* 20: */Bytecode.IFZERO,
-        /* 21: */24,
-        /* 22: */Bytecode.CONST,
-        /* 23: */1,
-        /* 24: */Bytecode.IFZERO,
-        /* 25: */28,
-        /* 26: */Bytecode.CONST,
-        /* 27: */1,
-        /* 28: */Bytecode.IFZERO,
-        /* 29: */32,
-        /* 30: */Bytecode.CONST,
-        /* 31: */1,
-        /* 32: */Bytecode.IFZERO,
-        /* 33: */36,
-        /* 34: */Bytecode.CONST,
-        /* 35: */1,
-        /* 36: */Bytecode.IFZERO,
-        /* 37: */40,
-        /* 38: */Bytecode.CONST,
-        /* 39: */1,
-        /* 40: */Bytecode.IFZERO,
-        /* 41: */44,
-        /* 42: */Bytecode.CONST,
-        /* 43: */42,
-        /* 44: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */40,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */1,
+                        /* 4: */Bytecode.IFZERO,
+                        /* 5: */8,
+                        /* 6: */Bytecode.CONST,
+                        /* 7: */1,
+                        /* 8: */Bytecode.IFZERO,
+                        /* 9: */12,
+                        /* 10: */Bytecode.CONST,
+                        /* 11: */1,
+                        /* 12: */Bytecode.IFZERO,
+                        /* 13: */16,
+                        /* 14: */Bytecode.CONST,
+                        /* 15: */1,
+                        /* 16: */Bytecode.IFZERO,
+                        /* 17: */20,
+                        /* 18: */Bytecode.CONST,
+                        /* 19: */1,
+                        /* 20: */Bytecode.IFZERO,
+                        /* 21: */24,
+                        /* 22: */Bytecode.CONST,
+                        /* 23: */1,
+                        /* 24: */Bytecode.IFZERO,
+                        /* 25: */28,
+                        /* 26: */Bytecode.CONST,
+                        /* 27: */1,
+                        /* 28: */Bytecode.IFZERO,
+                        /* 29: */32,
+                        /* 30: */Bytecode.CONST,
+                        /* 31: */1,
+                        /* 32: */Bytecode.IFZERO,
+                        /* 33: */36,
+                        /* 34: */Bytecode.CONST,
+                        /* 35: */1,
+                        /* 36: */Bytecode.IFZERO,
+                        /* 37: */40,
+                        /* 38: */Bytecode.CONST,
+                        /* 39: */1,
+                        /* 40: */Bytecode.IFZERO,
+                        /* 41: */44,
+                        /* 42: */Bytecode.CONST,
+                        /* 43: */42,
+                        /* 44: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("manyIfsProgram", bytecodes, 0, 3));
     }
 
@@ -576,12 +576,12 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         FrameSlot valueSlot = fd.addFrameSlot("value", FrameSlotKind.Int);
         FrameSlot returnSlot = fd.addFrameSlot("return", FrameSlotKind.Int);
         Inst[] inst = new Inst[]{
-        /* 0: */new Inst.Const(valueSlot, 1, 1),
-        /* 1: */new Inst.IfZero(valueSlot, 2, 4),
-        /* 2: */new Inst.Const(returnSlot, 41, 3),
-        /* 3: */new Inst.Return(),
-        /* 4: */new Inst.Const(returnSlot, 42, 5),
-        /* 5: */new Inst.Return()};
+                        /* 0: */new Inst.Const(valueSlot, 1, 1),
+                        /* 1: */new Inst.IfZero(valueSlot, 2, 4),
+                        /* 2: */new Inst.Const(returnSlot, 41, 3),
+                        /* 3: */new Inst.Return(),
+                        /* 4: */new Inst.Const(returnSlot, 42, 5),
+                        /* 5: */new Inst.Return()};
         assertPartialEvalEqualsAndRunsCorrect(new InstArrayProgram("instArraySimpleIfProgram", inst, returnSlot, fd));
     }
 
@@ -589,21 +589,21 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     @SuppressWarnings("try")
     public void simpleSwitchProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */1,
-        /* 2: */Bytecode.SWITCH,
-        /* 3: */2,
-        /* 4: */9,
-        /* 5: */12,
-        /* 6: */Bytecode.CONST,
-        /* 7: */40,
-        /* 8: */Bytecode.RETURN,
-        /* 9: */Bytecode.CONST,
-        /* 10: */41,
-        /* 11: */Bytecode.RETURN,
-        /* 12: */Bytecode.CONST,
-        /* 13: */42,
-        /* 14: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */1,
+                        /* 2: */Bytecode.SWITCH,
+                        /* 3: */2,
+                        /* 4: */9,
+                        /* 5: */12,
+                        /* 6: */Bytecode.CONST,
+                        /* 7: */40,
+                        /* 8: */Bytecode.RETURN,
+                        /* 9: */Bytecode.CONST,
+                        /* 10: */41,
+                        /* 11: */Bytecode.RETURN,
+                        /* 12: */Bytecode.CONST,
+                        /* 13: */42,
+                        /* 14: */Bytecode.RETURN};
         Program program = new Program("simpleSwitchProgram", bytecodes, 0, 3);
         assertPartialEvalEqualsAndRunsCorrect(program);
     }
@@ -612,18 +612,18 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     @SuppressWarnings("try")
     public void loopSwitchProgram() {
         byte[] bytecodes = new byte[]{
-        /* 0: */Bytecode.CONST,
-        /* 1: */1,
-        /* 2: */Bytecode.SWITCH,
-        /* 3: */2,
-        /* 4: */0,
-        /* 5: */9,
-        /* 6: */Bytecode.CONST,
-        /* 7: */40,
-        /* 8: */Bytecode.RETURN,
-        /* 9: */Bytecode.CONST,
-        /* 10: */42,
-        /* 11: */Bytecode.RETURN};
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */1,
+                        /* 2: */Bytecode.SWITCH,
+                        /* 3: */2,
+                        /* 4: */0,
+                        /* 5: */9,
+                        /* 6: */Bytecode.CONST,
+                        /* 7: */40,
+                        /* 8: */Bytecode.RETURN,
+                        /* 9: */Bytecode.CONST,
+                        /* 10: */42,
+                        /* 11: */Bytecode.RETURN};
         Program program = new Program("loopSwitchProgram", bytecodes, 0, 3);
         assertPartialEvalEqualsAndRunsCorrect(program);
     }
