@@ -29,7 +29,7 @@ package com.oracle.truffle.api.interop;
  * An exception thrown if a foreign access tries to access a property of a {@link TruffleObject}
  * that is not accessible.
  */
-public class UnknownIdentifierException extends InteropException {
+public final class UnknownIdentifierException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
 
@@ -41,7 +41,7 @@ public class UnknownIdentifierException extends InteropException {
     }
 
     /**
-     * Returns the identifier that could not be accessed
+     * Returns the identifier that could not be accessed.
      *
      * @return the unaccessible identifier
      */

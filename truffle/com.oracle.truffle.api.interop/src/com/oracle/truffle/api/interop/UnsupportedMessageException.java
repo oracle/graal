@@ -27,7 +27,7 @@ package com.oracle.truffle.api.interop;
 /**
  * An exception thrown if a {@link TruffleObject} does not support a {@link Message}.
  */
-public class UnsupportedMessageException extends InteropException {
+public final class UnsupportedMessageException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
 

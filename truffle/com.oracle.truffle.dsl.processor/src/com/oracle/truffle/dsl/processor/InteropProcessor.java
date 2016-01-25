@@ -253,7 +253,7 @@ public final class InteropProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
     }
 
-    private static abstract class MessageGenerator {
+    private abstract static class MessageGenerator {
         protected static final String ACCESS_METHOD_NAME = "access";
 
         protected final Element e;
@@ -396,6 +396,11 @@ public final class InteropProcessor extends AbstractProcessor {
 
         String getRootNodeFactoryInvokation() {
             return ((TypeElement) e).asType().toString() + ".createRoot(" + truffleLanguageFullClazzName + ".class)";
+        }
+
+        @Override
+        public String toString() {
+            return clazzName;
         }
 
     }
@@ -879,6 +884,11 @@ public final class InteropProcessor extends AbstractProcessor {
             }
             w.append("      throw UnsupportedMessageException.raise(unknown);").append("\n");
             w.append("    }").append("\n");
+        }
+
+        @Override
+        public String toString() {
+            return "FactoryGenerator: " + className;
         }
     }
 }

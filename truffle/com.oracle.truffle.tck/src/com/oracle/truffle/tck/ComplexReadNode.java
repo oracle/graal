@@ -30,7 +30,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @AcceptMessage(value = "READ", receiverType = ComplexNumber.class, language = TckLanguage.class)
-public final class ComplexReadNode extends ComplexBaseReadNode {
+final class ComplexReadNode extends ComplexBaseReadNode {
 
     @Override
     public Object access(VirtualFrame frame, ComplexNumber complex, String identifier) {

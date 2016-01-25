@@ -28,7 +28,7 @@ package com.oracle.truffle.api.interop;
  * An exception thrown if a foreign function or method invocation provides the wrong number of
  * arguments.
  */
-public class ArityException extends InteropException {
+public final class ArityException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
 
@@ -42,7 +42,7 @@ public class ArityException extends InteropException {
     }
 
     /**
-     * Returns the number of arguments that the foreign object expects
+     * Returns the number of arguments that the foreign object expects.
      *
      * @return the number of expected arguments
      */
@@ -51,7 +51,7 @@ public class ArityException extends InteropException {
     }
 
     /**
-     * Returns the actual number of arguments provided by the foreign access
+     * Returns the actual number of arguments provided by the foreign access.
      *
      * @return the number of provided arguments
      */

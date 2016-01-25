@@ -31,7 +31,7 @@ import java.util.Arrays;
  * An exception thrown if a {@link TruffleObject} does not support the type of one ore more
  * arguments provided by a foreign access.
  */
-public class UnsupportedTypeException extends InteropException {
+public final class UnsupportedTypeException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
 

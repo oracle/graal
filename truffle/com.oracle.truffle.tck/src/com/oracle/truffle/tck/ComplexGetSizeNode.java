@@ -29,7 +29,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @AcceptMessage(value = "GET_SIZE", receiverType = ComplexNumber.class, language = TckLanguage.class)
-public final class ComplexGetSizeNode extends ComplexBaseGetSizeNode {
+final class ComplexGetSizeNode extends ComplexBaseGetSizeNode {
     @Override
     public Object access(VirtualFrame frame, ComplexNumber complex) {
         return 2;

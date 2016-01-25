@@ -36,7 +36,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @AcceptMessage(value = "WRITE", receiverType = ComplexNumbersA.class, language = TckLanguage.class)
-public final class ComplexNumbersAWriteNode extends ComplexNumbersAWriteBaseNode {
+final class ComplexNumbersAWriteNode extends ComplexNumbersAWriteBaseNode {
     @Child private Node readReal;
     @Child private Node readImag;
 

@@ -29,7 +29,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @AcceptMessage(value = "IS_NULL", receiverType = ComplexNumber.class, language = TckLanguage.class)
-public final class ComplexIsNullNode extends ComplexBaseIsNullNode {
+final class ComplexIsNullNode extends ComplexBaseIsNullNode {
 
     @Override
     public Object access(VirtualFrame frame, ComplexNumber complex) {

@@ -32,7 +32,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @AcceptMessage(value = "INVOKE", receiverType = ComplexNumber.class, language = TckLanguage.class)
-public final class ComplexInvokeNode extends ComplexBaseInvokeNode {
+final class ComplexInvokeNode extends ComplexBaseInvokeNode {
 
     private static final String ADD = "add";
     private static final String SUB = "sub";

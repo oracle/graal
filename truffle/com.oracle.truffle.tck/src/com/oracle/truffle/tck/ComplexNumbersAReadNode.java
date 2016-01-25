@@ -29,7 +29,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @AcceptMessage(value = "READ", receiverType = ComplexNumbersA.class, language = TckLanguage.class)
-public final class ComplexNumbersAReadNode extends ComplexNumbersAReadBaseNode {
+final class ComplexNumbersAReadNode extends ComplexNumbersAReadBaseNode {
 
     @Override
     public Object access(VirtualFrame frame, ComplexNumbersA complexNumbers, Number index) {
