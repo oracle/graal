@@ -428,17 +428,13 @@ public class PolyglotEngine {
         }
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "deprecation"})
     final Object invokeForeign(final Node foreignNode, VirtualFrame frame, final TruffleObject receiver) throws IOException {
         Object res;
         if (executor == null) {
             try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
-                try {
-                    res = ForeignAccess.send(foreignNode, frame, receiver, args);
-                } catch (InteropException e) {
-                    throw new IllegalStateException(e);
-                }
+                res = ForeignAccess.execute(foreignNode, frame, receiver, args);
             }
         } else {
             res = invokeForeignOnExecutor(foreignNode, frame, receiver);
@@ -801,11 +797,15 @@ public class PolyglotEngine {
          * @return the global object or <code>null</code> if the language does not support such
          *         concept
          */
+        @SuppressWarnings("try")
         public Value getGlobalObject() {
             checkThread();
-
-            Object res = SPI.languageGlobal(getEnv(true));
-            return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
+            try (Closeable d = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+                Object res = SPI.languageGlobal(getEnv(true));
+                return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
         }
 
         TruffleLanguage<?> getImpl(boolean create) {

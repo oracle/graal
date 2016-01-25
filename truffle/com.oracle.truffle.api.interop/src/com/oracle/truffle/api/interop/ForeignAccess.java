@@ -91,12 +91,11 @@ public final class ForeignAccess {
      * @throws IllegalStateException if any error occurred while accessing the <code>receiver</code>
      *             object
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public static Object execute(Node foreignNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) {
-        try {
-            return send(foreignNode, frame, receiver, arguments);
-        } catch (InteropException e) {
-            throw new IllegalStateException(e);
-        }
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) foreignNode;
+        return fn.executeForeign(frame, receiver, arguments);
     }
 
     /**
@@ -172,8 +171,8 @@ public final class ForeignAccess {
      *             property for the given <code>identifier</code>
      * @throws UnsupportedTypeException if <code>value</code> has an unsupported type
      */
-    public static Object sendWrite(Node writeNode, VirtualFrame frame, TruffleObject receiver, Object identifier, Object value) throws UnknownIdentifierException, UnsupportedTypeException,
-                    UnsupportedMessageException {
+    public static Object sendWrite(Node writeNode, VirtualFrame frame, TruffleObject receiver, Object identifier, Object value)
+                    throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) writeNode;
         try {
             return fn.executeForeignImpl(frame, receiver, new Object[]{identifier, value});
@@ -280,8 +279,8 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>invokeNode</code>
      */
-    public static Object sendInvoke(Node invokeNode, VirtualFrame frame, TruffleObject receiver, String identifier, Object[] arguments) throws UnsupportedTypeException, ArityException,
-                    UnknownIdentifierException, UnsupportedMessageException {
+    public static Object sendInvoke(Node invokeNode, VirtualFrame frame, TruffleObject receiver, String identifier, Object[] arguments)
+                    throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
         ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) invokeNode;
         try {
             Object[] args = new Object[arguments.length + 1];

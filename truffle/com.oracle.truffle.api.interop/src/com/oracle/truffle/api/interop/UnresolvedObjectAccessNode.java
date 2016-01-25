@@ -52,7 +52,7 @@ final class UnresolvedObjectAccessNode extends ObjectAccessNode {
         ForeignAccess fa = receiver.getForeignAccess();
         final CallTarget ct = fa.access(accessTree);
         if (ct == null) {
-            throw new IllegalArgumentException("Message " + accessTree + " not recognized by " + fa);
+            throw UnsupportedMessageException.raise(accessTree);
         }
         return new CachedObjectAccessNode(Truffle.getRuntime().createDirectCallNode(ct), next, fa);
     }

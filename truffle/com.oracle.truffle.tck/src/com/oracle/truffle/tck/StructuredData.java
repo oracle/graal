@@ -24,15 +24,8 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.tck.impl.TckLanguage;
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
 
 final class StructuredData implements TruffleObject {
 
@@ -45,60 +38,18 @@ final class StructuredData implements TruffleObject {
     }
 
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(new StructuredDataForeignAccessFactory());
+        return StructuredDataForeign.ACCESS;
     }
 
-    private static class StructuredDataForeignAccessFactory implements Factory {
-
-        public boolean canHandle(TruffleObject obj) {
-            return obj instanceof StructuredData;
-        }
-
-        public CallTarget accessMessage(Message tree) {
-            // for simplicity: this StructuredData is read-only
-            if (Message.IS_NULL.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            } else if (Message.IS_EXECUTABLE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            } else if (Message.IS_BOXED.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            } else if (Message.HAS_SIZE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
-            } else if (Message.READ.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new StructuredDataReadNode());
-            } else if (Message.GET_SIZE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(new StructuredDataSizeNode());
-            } else {
-                throw new IllegalArgumentException(tree.toString() + " not supported");
-            }
-        }
+    public static boolean isInstance(TruffleObject obj) {
+        return obj instanceof StructuredData;
     }
 
-    private static class StructuredDataReadNode extends RootNode {
-        protected StructuredDataReadNode() {
-            super(TckLanguage.class, null, null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            StructuredData data = (StructuredData) ForeignAccess.getReceiver(frame);
-            Number index = TckLanguage.expectNumber(ForeignAccess.getArguments(frame).get(0));
-            int idx = TckLanguage.checkBounds(index.intValue(), data.schema.length());
-            return new StructuredDataEntry(data.buffer, data.schema, idx);
-        }
-
+    byte[] getBuffer() {
+        return buffer;
     }
 
-    private static class StructuredDataSizeNode extends RootNode {
-        protected StructuredDataSizeNode() {
-            super(TckLanguage.class, null, null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            StructuredData data = (StructuredData) ForeignAccess.getReceiver(frame);
-            return data.schema.length();
-        }
-
+    Schema getSchema() {
+        return schema;
     }
 }

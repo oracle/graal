@@ -45,7 +45,7 @@ final class ComplexNumber implements TruffleObject {
         return ComplexNumberForeign.ACCESS;
     }
 
-    public void set(String identifier, double value) {
+    void set(String identifier, double value) {
         switch (identifier) {
             case REAL_IDENTIFIER:
                 this.real = value;
@@ -58,7 +58,7 @@ final class ComplexNumber implements TruffleObject {
         }
     }
 
-    public double get(String identifier) {
+    double get(String identifier) {
         switch (identifier) {
             case REAL_IDENTIFIER:
                 return this.real;

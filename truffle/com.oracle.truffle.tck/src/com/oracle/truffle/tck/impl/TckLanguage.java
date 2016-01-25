@@ -36,6 +36,7 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -141,7 +142,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
             } else if (Message.createExecute(2).equals(tree)) {
                 return Truffle.getRuntime().createCallTarget(this);
             } else {
-                throw new IllegalArgumentException("" + tree);
+                throw UnsupportedMessageException.raise(tree);
             }
         }
 

@@ -113,11 +113,7 @@ final class SymbolInvokerImpl {
 
         private Object convert(VirtualFrame frame, TruffleObject obj) {
             Object isBoxedResult;
-            try {
-                isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, frame, obj);
-            } catch (IllegalArgumentException ex) {
-                isBoxedResult = false;
-            }
+            isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, frame, obj);
             if (Boolean.TRUE.equals(isBoxedResult)) {
                 try {
                     return ForeignAccess.sendUnbox(unbox, frame, obj);
@@ -125,13 +121,9 @@ final class SymbolInvokerImpl {
                     return null;
                 }
             } else {
-                try {
-                    Object isNullResult = ForeignAccess.sendIsNull(isNull, frame, obj);
-                    if (Boolean.TRUE.equals(isNullResult)) {
-                        return null;
-                    }
-                } catch (IllegalArgumentException ex) {
-                    // fallthrough
+                Object isNullResult = ForeignAccess.sendIsNull(isNull, frame, obj);
+                if (Boolean.TRUE.equals(isNullResult)) {
+                    return null;
                 }
             }
             return obj;

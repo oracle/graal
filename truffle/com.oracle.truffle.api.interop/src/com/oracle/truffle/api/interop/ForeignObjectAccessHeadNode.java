@@ -47,6 +47,13 @@ final class ForeignObjectAccessHeadNode extends Node {
         return first;
     }
 
+    @Deprecated
+    Object executeForeign(VirtualFrame frame, TruffleObject receiver, Object... arguments) {
+        Object ret = first.executeWith(frame, receiver, arguments);
+        assert assertReturnValue(ret) : "Only primitive values or TruffleObject expected: " + ret;
+        return ret;
+    }
+
     @SuppressWarnings("unused")
     Object executeForeignImpl(VirtualFrame frame, TruffleObject receiver, Object... arguments) throws InteropException {
         Object ret = first.executeWith(frame, receiver, arguments);

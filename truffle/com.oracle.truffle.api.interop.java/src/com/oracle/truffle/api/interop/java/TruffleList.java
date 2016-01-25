@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import java.util.AbstractList;
@@ -44,19 +45,31 @@ final class TruffleList<T> extends AbstractList<T> {
 
     @Override
     public T get(int index) {
-        return type.cast(JavaInterop.message(Message.READ, array, index));
+        try {
+            return type.cast(JavaInterop.message(Message.READ, array, index));
+        } catch (InteropException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Override
     public T set(int index, T element) {
         T prev = get(index);
-        JavaInterop.message(Message.WRITE, array, index, element);
+        try {
+            JavaInterop.message(Message.WRITE, array, index, element);
+        } catch (InteropException e) {
+            throw new IllegalStateException(e);
+        }
         return prev;
     }
 
     @Override
     public int size() {
-        return (Integer) JavaInterop.message(Message.GET_SIZE, array);
+        try {
+            return (Integer) JavaInterop.message(Message.GET_SIZE, array);
+        } catch (InteropException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
 }

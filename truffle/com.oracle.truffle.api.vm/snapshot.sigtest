@@ -61,8 +61,6 @@ meth public java.lang.String toString()
 supr java.lang.Object
 hfds compute,language,target
 
-CLSS abstract interface com.oracle.truffle.api.vm.package-info
-
 CLSS public java.io.IOException
 cons public init()
 cons public init(java.lang.String)

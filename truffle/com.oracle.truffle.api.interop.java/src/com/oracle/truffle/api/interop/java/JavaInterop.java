@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.InvocationHandler;
@@ -71,24 +72,26 @@ import java.util.List;
  * interface method, followed by the
  * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) actual arguments} of the
  * interface method. Your language can either handle the message or throw
- * {@link IllegalArgumentException} to signal additional processing is needed.</li>
+ * {@link UnsupportedMessageException} to signal additional processing is needed.</li>
  * <li>If the {@link Message#createInvoke(int) previous message} isn't handled, a
  * {@link Message#READ} is sent to your {@link TruffleObject object} (e.g.
  * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) with a field name
- * equal to the name of the interface method. If the read returns a primitive type, it is returned.</li>
+ * equal to the name of the interface method. If the read returns a primitive type, it is returned.
+ * </li>
  * <li>If the read value is another {@link TruffleObject}, it is inspected whether it handles
  * {@link Message#IS_EXECUTABLE}. If it does, a message {@link Message#createExecute(int)} with name
  * of the interface method and its parameters is sent to the object. The result is returned to the
  * interface method caller.</li>
  * <li>In case the read value is neither primitive, neither {@link Message#IS_EXECUTABLE executable}
  * , and the interface method has no parameters, it is returned back.</li>
- * <li>All other cases yield an {@link IllegalArgumentException}.</li>
+ * <li>All other cases yield an {@link InteropException}.</li>
  * </ol>
  * <p>
  * Object oriented languages are expected to handle the initial {@link Message#createInvoke(int)}
- * message. Non-OOP languages are expected to ignore it, yield {@link IllegalArgumentException} and
- * handle the subsequent {@link Message#READ read} and {@link Message#createExecute(int) execute}
- * ones. The real semantic however depends on the actual language one is communicating with.
+ * message. Non-OOP languages are expected to ignore it, yield {@link UnsupportedMessageException}
+ * and handle the subsequent {@link Message#READ read} and {@link Message#createExecute(int)
+ * execute} ones. The real semantic however depends on the actual language one is communicating
+ * with.
  * <p>
  */
 public final class JavaInterop {
@@ -154,7 +157,7 @@ public final class JavaInterop {
             if (foreignObject == null) {
                 return null;
             }
-            if (clazz == List.class && Boolean.TRUE.equals(message(Message.HAS_SIZE, foreignObject))) {
+            if (clazz == List.class && Boolean.TRUE.equals(binaryMessage(Message.HAS_SIZE, foreignObject))) {
                 Class<?> elementType = Object.class;
                 if (type instanceof ParameterizedType) {
                     ParameterizedType parametrizedType = (ParameterizedType) type;
@@ -276,7 +279,7 @@ public final class JavaInterop {
             return primitiveRet;
         }
         if (ret instanceof TruffleObject) {
-            if (Boolean.TRUE.equals(message(Message.IS_NULL, ret))) {
+            if (Boolean.TRUE.equals(binaryMessage(Message.IS_NULL, ret))) {
                 return null;
             }
         }
@@ -393,7 +396,7 @@ public final class JavaInterop {
                     callArgs.add(name);
                     callArgs.addAll(Arrays.asList(args));
                     ret = message(Message.createInvoke(args.length), obj, callArgs.toArray());
-                } catch (IllegalArgumentException ex) {
+                } catch (InteropException ex) {
                     val = message(Message.READ, obj, name);
                     Object primitiveVal = toPrimitive(val, method.getReturnType());
                     if (primitiveVal != null) {
@@ -424,10 +427,14 @@ public final class JavaInterop {
     static Object toPrimitive(Object value, Class<?> requestedType) {
         Object attr;
         if (value instanceof TruffleObject) {
-            if (!Boolean.TRUE.equals(message(Message.IS_BOXED, value))) {
+            if (!Boolean.TRUE.equals(binaryMessage(Message.IS_BOXED, value))) {
                 return null;
             }
-            attr = message(Message.UNBOX, value);
+            try {
+                attr = message(Message.UNBOX, value);
+            } catch (InteropException e) {
+                throw new IllegalStateException();
+            }
         } else {
             attr = value;
         }
@@ -476,10 +483,19 @@ public final class JavaInterop {
         return null;
     }
 
-    static Object message(final Message m, Object receiver, Object... arr) {
+    @SuppressWarnings("unused")
+    static Object message(final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver));
         return callTarget.call(arr);
+    }
+
+    static Object binaryMessage(final Message m, Object receiver, Object... arr) {
+        try {
+            return message(m, receiver, arr);
+        } catch (InteropException e) {
+            throw new AssertionError(e);
+        }
     }
 
     private static class TemporaryRoot extends RootNode {
@@ -493,13 +509,10 @@ public final class JavaInterop {
             this.function = function;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public Object execute(VirtualFrame frame) {
-            try {
-                return ForeignAccess.send(foreignAccess, frame, function, frame.getArguments());
-            } catch (InteropException e) {
-                throw new AssertionError(e);
-            }
+            return ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
         }
     } // end of TemporaryRoot
 

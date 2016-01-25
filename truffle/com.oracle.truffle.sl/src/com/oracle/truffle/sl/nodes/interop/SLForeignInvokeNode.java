@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.AcceptMessage;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
@@ -67,7 +68,7 @@ public final class SLForeignInvokeNode extends SLInvokeBaseNode {
             Object result = dispatch.executeDispatch(frame, function, arr);
             return result;
         } else {
-            throw new IllegalArgumentException();
+            throw UnknownIdentifierException.raise(name);
         }
     }
 }

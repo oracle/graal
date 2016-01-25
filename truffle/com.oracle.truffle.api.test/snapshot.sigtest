@@ -316,8 +316,6 @@ hfds runtime
 CLSS public abstract interface com.oracle.truffle.api.TypedObject
 meth public abstract java.lang.Object getTypeIdentifier()
 
-CLSS abstract interface com.oracle.truffle.api.package-info
-
 CLSS public abstract interface java.io.Serializable
 
 CLSS public java.lang.Exception

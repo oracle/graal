@@ -9,7 +9,7 @@ meth public abstract java.lang.Class<? extends com.oracle.truffle.api.TruffleLan
 meth public abstract java.lang.Class<?> receiverType()
 meth public abstract java.lang.String value()
 
-CLSS public com.oracle.truffle.api.interop.ArityException
+CLSS public final com.oracle.truffle.api.interop.ArityException
 meth public int getActualArity()
 meth public int getExpectedArity()
 meth public static java.lang.RuntimeException raise(int,int)
@@ -88,25 +88,23 @@ supr java.lang.Object
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
 meth public abstract com.oracle.truffle.api.interop.ForeignAccess getForeignAccess()
 
-CLSS public com.oracle.truffle.api.interop.UnknownIdentifierException
+CLSS public final com.oracle.truffle.api.interop.UnknownIdentifierException
 meth public java.lang.String getUnknownIdentifier()
 meth public static java.lang.RuntimeException raise(java.lang.String)
 supr com.oracle.truffle.api.interop.InteropException
 hfds serialVersionUID,unknownIdentifier
 
-CLSS public com.oracle.truffle.api.interop.UnsupportedMessageException
+CLSS public final com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public com.oracle.truffle.api.interop.Message getUnsupportedMessage()
 meth public static java.lang.RuntimeException raise(com.oracle.truffle.api.interop.Message)
 supr com.oracle.truffle.api.interop.InteropException
 hfds message,serialVersionUID
 
-CLSS public com.oracle.truffle.api.interop.UnsupportedTypeException
+CLSS public final com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public java.lang.Object[] getSuppliedValues()
 meth public static java.lang.RuntimeException raise(java.lang.Object[])
 supr com.oracle.truffle.api.interop.InteropException
 hfds serialVersionUID,suppliedValues
-
-CLSS abstract interface com.oracle.truffle.api.interop.package-info
 
 CLSS public abstract interface java.io.Serializable
 

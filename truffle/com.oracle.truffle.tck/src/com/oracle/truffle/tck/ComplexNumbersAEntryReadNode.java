@@ -26,6 +26,7 @@ package com.oracle.truffle.tck;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.AcceptMessage;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @AcceptMessage(value = "READ", receiverType = ComplexNumberAEntry.class, language = TckLanguage.class)
@@ -38,7 +39,7 @@ final class ComplexNumbersAEntryReadNode extends ComplexNumbersAEntryReadBaseNod
         } else if (name.equals(ComplexNumber.REAL_IDENTIFIER)) {
             return complexNumber.getNumbers().getData()[complexNumber.getIndex() * 2];
         } else {
-            throw new IllegalArgumentException();
+            throw UnknownIdentifierException.raise(name);
         }
     }
 }
