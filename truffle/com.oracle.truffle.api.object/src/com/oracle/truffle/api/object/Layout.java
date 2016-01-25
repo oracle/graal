@@ -86,6 +86,7 @@ public abstract class Layout {
      * @param objectType that describes the object instance with this shape.
      * @param sharedData for language-specific use
      * @param id for language-specific use
+     * @return new instance of a shape
      */
     public abstract Shape createShape(ObjectType objectType, Object sharedData, int id);
 
