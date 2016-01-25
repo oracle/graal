@@ -853,10 +853,10 @@ public class PolyglotEngine {
             for (String mimeType : info.getMimeTypes()) {
                 Map<String, Object> arg = config.get(mimeType);
                 if (arg != null) {
-                    forLanguage.put(mimeType, arg);
+                    forLanguage.put(mimeType, Collections.unmodifiableMap(arg));
                 }
             }
-            return forLanguage;
+            return Collections.unmodifiableMap(forLanguage);
         }
 
         TruffleLanguage.Env getEnv(boolean create) {
