@@ -242,6 +242,8 @@ meth public void prepareStepOver(int)
 supr java.lang.Object
 hfds OUT,TRACE,TRACE_PREFIX,debugger,haltedFrame,haltedNode,stack,warnings
 
+CLSS abstract interface com.oracle.truffle.api.debug.package-info
+
 CLSS public abstract interface com.oracle.truffle.api.frame.Frame
 meth public abstract boolean getBoolean(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
 meth public abstract boolean isBoolean(com.oracle.truffle.api.frame.FrameSlot)
@@ -295,7 +297,7 @@ meth public static com.oracle.truffle.api.frame.FrameDescriptor create(java.lang
  anno 0 java.lang.Deprecated()
 meth public void removeFrameSlot(java.lang.Object)
 supr java.lang.Object
-hfds defaultValue,identifierToNotInFrameAssumptionMap,identifierToSlotMap,slots,version
+hfds NEVER_PART_OF_COMPILATION_MESSAGE,defaultValue,identifierToNotInFrameAssumptionMap,identifierToSlotMap,slots,version
 
 CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance
 innr public final static !enum FrameAccess
@@ -319,6 +321,7 @@ meth public abstract {com.oracle.truffle.api.frame.FrameInstanceVisitor%0} visit
 
 CLSS public final com.oracle.truffle.api.frame.FrameSlot
 cons public init(com.oracle.truffle.api.frame.FrameDescriptor,java.lang.Object,java.lang.Object,int,com.oracle.truffle.api.frame.FrameSlotKind)
+ anno 0 java.lang.Deprecated()
 intf java.lang.Cloneable
 meth public com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
 meth public com.oracle.truffle.api.frame.FrameSlotKind getKind()
@@ -365,6 +368,8 @@ intf com.oracle.truffle.api.frame.Frame
 
 CLSS public abstract interface com.oracle.truffle.api.frame.VirtualFrame
 intf com.oracle.truffle.api.frame.Frame
+
+CLSS abstract interface com.oracle.truffle.api.frame.package-info
 
 CLSS public abstract interface com.oracle.truffle.api.instrument.ASTPrinter
 meth public abstract java.lang.String printNodeWithInstrumentation(com.oracle.truffle.api.nodes.Node)
@@ -564,6 +569,8 @@ meth public abstract com.oracle.truffle.api.instrument.Probe getProbe()
 meth public abstract com.oracle.truffle.api.nodes.Node getChild()
 meth public abstract void insertEventHandlerNode(com.oracle.truffle.api.instrument.EventHandlerNode)
 
+CLSS abstract interface com.oracle.truffle.api.instrument.package-info
+
 CLSS public com.oracle.truffle.api.nodes.ControlFlowException
 cons public init()
 meth public final java.lang.Throwable fillInStackTrace()
@@ -753,6 +760,7 @@ meth protected static com.oracle.truffle.api.nodes.NodeFieldAccessor create(com.
 meth public abstract java.lang.Object getObject(com.oracle.truffle.api.nodes.Node)
 meth public abstract java.lang.Object loadValue(com.oracle.truffle.api.nodes.Node)
 meth public abstract void putObject(com.oracle.truffle.api.nodes.Node,java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind getKind()
 meth public java.lang.Class<?> getDeclaringClass()
 meth public java.lang.Class<?> getType()
@@ -872,6 +880,10 @@ meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
 
+CLSS abstract interface com.oracle.truffle.api.nodes.package-info
+
+CLSS abstract interface com.oracle.truffle.api.package-info
+
 CLSS public final com.oracle.truffle.api.source.LineLocation
 intf java.lang.Comparable<com.oracle.truffle.api.source.LineLocation>
 meth public boolean equals(java.lang.Object)
@@ -946,6 +958,8 @@ meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.source.SourceSection createUnavailable(java.lang.String,java.lang.String)
 supr java.lang.Object
 hfds charIndex,charLength,identifier,kind,source,startColumn,startLine
+
+CLSS abstract interface com.oracle.truffle.api.source.package-info
 
 CLSS public final com.oracle.truffle.api.utilities.AlwaysValidAssumption
 fld public final static com.oracle.truffle.api.utilities.AlwaysValidAssumption INSTANCE
@@ -1102,6 +1116,8 @@ meth public static com.oracle.truffle.api.utilities.ValueProfile createClassProf
 meth public static com.oracle.truffle.api.utilities.ValueProfile createIdentityProfile()
  anno 0 java.lang.Deprecated()
 supr com.oracle.truffle.api.nodes.NodeCloneable
+
+CLSS abstract interface com.oracle.truffle.api.utilities.package-info
 
 CLSS public abstract interface java.io.Closeable
 intf java.lang.AutoCloseable

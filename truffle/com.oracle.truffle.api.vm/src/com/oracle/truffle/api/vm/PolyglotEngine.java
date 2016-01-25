@@ -56,6 +56,7 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
@@ -433,7 +434,11 @@ public class PolyglotEngine {
         if (executor == null) {
             try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
-                res = ForeignAccess.execute(foreignNode, frame, receiver, args);
+                try {
+                    res = ForeignAccess.send(foreignNode, frame, receiver, args);
+                } catch (InteropException e) {
+                    throw new IllegalStateException(e);
+                }
             }
         } else {
             res = invokeForeignOnExecutor(foreignNode, frame, receiver);
@@ -684,7 +689,7 @@ public class PolyglotEngine {
          *            {@link java.lang.Double}, {@link java.lang.Character},
          *            {@link java.lang.Boolean}, and {@link java.lang.String}) or a
          *            {@link TruffleObject object created} by one of the languages)
-         * 
+         *
          * @return symbol wrapper around the value returned by invoking the symbol, never
          *         <code>null</code>
          * @throws IOException signals problem during execution
@@ -790,20 +795,17 @@ public class PolyglotEngine {
          * Returns value representing global object of the language.
          * <p>
          * The object is expected to be <code>TruffleObject</code> (e.g. a native object from the
-         * other language) but technically it can be one of Java primitive wrappers ({@link Integer}, {@link Double}, {@link Short}, etc.).
+         * other language) but technically it can be one of Java primitive wrappers ({@link Integer}
+         * , {@link Double}, {@link Short}, etc.).
          *
          * @return the global object or <code>null</code> if the language does not support such
          *         concept
          */
-        @SuppressWarnings("try")
         public Value getGlobalObject() {
             checkThread();
-            try (Closeable d = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
-                Object res = SPI.languageGlobal(getEnv(true));
-                return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
-            } catch (IOException ex) {
-                throw new IllegalStateException(ex);
-            }
+
+            Object res = SPI.languageGlobal(getEnv(true));
+            return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
         }
 
         TruffleLanguage<?> getImpl(boolean create) {

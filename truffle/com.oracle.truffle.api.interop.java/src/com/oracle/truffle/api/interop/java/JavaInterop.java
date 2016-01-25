@@ -29,6 +29,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -71,21 +72,18 @@ import java.util.List;
  * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) actual arguments} of the
  * interface method. Your language can either handle the message or throw
  * {@link IllegalArgumentException} to signal additional processing is needed.</li>
- * <li>
- * If the {@link Message#createInvoke(int) previous message} isn't handled, a {@link Message#READ}
- * is sent to your {@link TruffleObject object} (e.g.
+ * <li>If the {@link Message#createInvoke(int) previous message} isn't handled, a
+ * {@link Message#READ} is sent to your {@link TruffleObject object} (e.g.
  * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) with a field name
- * equal to the name of the interface method. If the read returns a primitive type, it is returned.</li>
- * <li>
- * If the read value is another {@link TruffleObject}, it is inspected whether it handles
+ * equal to the name of the interface method. If the read returns a primitive type, it is returned.
+ * </li>
+ * <li>If the read value is another {@link TruffleObject}, it is inspected whether it handles
  * {@link Message#IS_EXECUTABLE}. If it does, a message {@link Message#createExecute(int)} with name
  * of the interface method and its parameters is sent to the object. The result is returned to the
  * interface method caller.</li>
- * <li>
- * In case the read value is neither primitive, neither {@link Message#IS_EXECUTABLE executable},
- * and the interface method has no parameters, it is returned back.</li>
- * <li>
- * All other cases yield an {@link IllegalArgumentException}.</li>
+ * <li>In case the read value is neither primitive, neither {@link Message#IS_EXECUTABLE executable}
+ * , and the interface method has no parameters, it is returned back.</li>
+ * <li>All other cases yield an {@link IllegalArgumentException}.</li>
  * </ol>
  * <p>
  * Object oriented languages are expected to handle the initial {@link Message#createInvoke(int)}
@@ -498,7 +496,11 @@ public final class JavaInterop {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
+            try {
+                return ForeignAccess.send(foreignAccess, frame, function, frame.getArguments());
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
         }
     } // end of TemporaryRoot
 

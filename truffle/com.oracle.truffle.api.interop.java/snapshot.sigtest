@@ -16,6 +16,8 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.interop.java.M
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.String message()
 
+CLSS abstract interface com.oracle.truffle.api.interop.java.package-info
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException

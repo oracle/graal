@@ -45,9 +45,12 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -55,13 +58,14 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * The node for function invocation in SL. Since SL has first class functions, the
- * {@link SLFunction target function} can be computed by an arbitrary expression. This node is
- * responsible for evaluating this expression, as well as evaluating the {@link #argumentNodes
- * arguments}. The actual dispatch is then delegated to a chain of {@link SLDispatchNode} that form
- * a polymorphic inline cache.
+ * The node for function invocation in SL. Since SL has first class functions, the {@link SLFunction
+ * target function} can be computed by an arbitrary expression. This node is responsible for
+ * evaluating this expression, as well as evaluating the {@link #argumentNodes arguments}. The
+ * actual dispatch is then delegated to a chain of {@link SLDispatchNode} that form a polymorphic
+ * inline cache.
  */
 @NodeInfo(shortName = "invoke")
 @NodeChildren({@NodeChild(value = "functionNode", type = SLExpressionNode.class)})
@@ -113,7 +117,11 @@ public abstract class SLInvokeNode extends SLExpressionNode {
         if (crossLanguageCall == null) {
             crossLanguageCall = insert(Message.createExecute(argumentValues.length).createNode());
         }
-        Object res = ForeignAccess.execute(crossLanguageCall, frame, function, argumentValues);
-        return SLContext.fromForeignValue(res);
+        try {
+            Object res = ForeignAccess.sendExecute(crossLanguageCall, frame, function, argumentValues);
+            return SLContext.fromForeignValue(res);
+        } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
+            return SLNull.SINGLETON;
+        }
     }
 }

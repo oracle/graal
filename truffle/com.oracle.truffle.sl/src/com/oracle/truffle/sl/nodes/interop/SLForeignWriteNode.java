@@ -42,59 +42,53 @@ package com.oracle.truffle.sl.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.AcceptMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.access.SLWritePropertyCacheNode;
 import com.oracle.truffle.sl.nodes.access.SLWritePropertyCacheNodeGen;
+import com.oracle.truffle.sl.runtime.SLObjectType;
 
-public class SLForeignWriteNode extends RootNode {
+@AcceptMessage(value = "WRITE", receiverType = SLObjectType.class, language = SLLanguage.class)
+public final class SLForeignWriteNode extends SLWriteBaseNode {
 
     @Child private SLMonomorphicNameWriteNode write;
 
-    public SLForeignWriteNode() {
-        super(SLLanguage.class, null, null);
-    }
-
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object access(VirtualFrame frame, DynamicObject receiver, String name, Object value) {
         if (write == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            String name = (String) ForeignAccess.getArguments(frame).get(0);
             write = insert(new SLMonomorphicNameWriteNode(name));
         }
-        return write.execute(frame);
+        return write.execute(receiver, name, value);
     }
 
     private abstract static class SLWriteNode extends Node {
         @Child protected SLForeignToSLTypeNode toSLType = SLForeignToSLTypeNodeGen.create(getSourceSection(), null);
 
-        abstract Object execute(VirtualFrame frame);
+        abstract Object execute(DynamicObject receiver, String name, Object value);
     }
 
     private static final class SLMonomorphicNameWriteNode extends SLWriteNode {
 
-        private final String name;
+        private final String cachedName;
         @Child private SLWritePropertyCacheNode writePropertyCacheNode;
 
         SLMonomorphicNameWriteNode(String name) {
-            this.name = name;
+            this.cachedName = name;
             this.writePropertyCacheNode = SLWritePropertyCacheNodeGen.create(name);
         }
 
         @Override
-        Object execute(VirtualFrame frame) {
-            if (name.equals(ForeignAccess.getArguments(frame).get(0))) {
-                Object value = toSLType.executeWithTarget(frame, ForeignAccess.getArguments(frame).get(1));
-                DynamicObject receiver = (DynamicObject) ForeignAccess.getReceiver(frame);
+        Object execute(DynamicObject receiver, String name, Object value) {
+            if (this.cachedName.equals(name)) {
                 writePropertyCacheNode.executeObject(receiver, value);
                 return receiver;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                return this.replace(new SLPolymorphicNameWriteNode()).execute(frame);
+                return this.replace(new SLPolymorphicNameWriteNode()).execute(receiver, name, value);
             }
         }
     }
@@ -102,12 +96,9 @@ public class SLForeignWriteNode extends RootNode {
     private static final class SLPolymorphicNameWriteNode extends SLWriteNode {
 
         @Override
-        Object execute(VirtualFrame frame) {
-            String name = (String) ForeignAccess.getArguments(frame).get(0);
-            DynamicObject obj = (DynamicObject) ForeignAccess.getReceiver(frame);
-            Property property = obj.getShape().getProperty(name);
-            Object value = toSLType.executeWithTarget(frame, ForeignAccess.getArguments(frame).get(0));
-            return obj.set(property.getKey(), value);
+        Object execute(DynamicObject receiver, String name, Object value) {
+            Property property = receiver.getShape().getProperty(name);
+            return receiver.set(property.getKey(), value);
         }
     }
 }
