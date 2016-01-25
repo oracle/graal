@@ -213,77 +213,15 @@ public class SLTckTest extends TruffleTCK {
         return "eval";
     }
 
-    //
-    // Ignore tests working on floats and double
-    //
-
-    @Override
-    public void testPlusWithDouble() throws Exception {
-    }
-
-    @Override
-    public void testPlusWithFloat() throws Exception {
-    }
-
-    @Override
-    public void testPrimitiveReturnTypeDouble() throws Exception {
-    }
-
-    @Override
-    public void testPrimitiveReturnTypeFloat() throws Exception {
-    }
-
-    @Override
-    public void testPrimitiveidentityDouble() throws Exception {
-    }
-
-    @Override
-    public void testPrimitiveidentityFloat() throws Exception {
-    }
-
-    @Override
-    public void testSumRealOfComplexNumbersA() throws Exception {
-    }
-
-    @Override
-    public void testSumRealOfComplexNumbersB() throws Exception {
-    }
-
-    @Override
-    public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws Exception {
-    }
-
-    @Override
-    public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws Exception {
-    }
-
-    @Override
-    public void testAddComplexNumbersWithMethod() throws Exception {
-    }
-
-    @Override
-    public void testCopyComplexNumbersA() throws Exception {
-    }
-
-    @Override
-    public void testCopyComplexNumbersB() throws Exception {
-    }
-
-    @Override
-    public void testCopyStructuredComplexToComplexNumbersA() throws Exception {
-    }
-
-    @Override
-    public void readWriteDoubleValue() throws Exception {
-    }
-
-    @Override
-    public void readWriteFloatValue() throws Exception {
-    }
-
     @Override
     protected String complexCopy() {
         // skip these tests; SL doesn't have arrays
+        return null;
+    }
+
+    @Override
+    protected String complexAddWithMethod() {
+        // skip these tests; SL doesn't have methods
         return null;
     }
 

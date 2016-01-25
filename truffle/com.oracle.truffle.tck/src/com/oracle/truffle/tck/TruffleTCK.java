@@ -1098,8 +1098,8 @@ public abstract class TruffleTCK {
 
         apply.execute(a, b);
 
-        assertEquals(42.0, a.get(ComplexNumber.REAL_IDENTIFIER), 0.1);
-        assertEquals(42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER), 0.1);
+        assertDouble("The same value returned", 42.0, a.get(ComplexNumber.REAL_IDENTIFIER));
+        assertDouble("The same value returned", 42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER));
     }
 
     @Test
