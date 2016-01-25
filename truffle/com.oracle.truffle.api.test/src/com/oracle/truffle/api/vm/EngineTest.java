@@ -34,7 +34,6 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
 
