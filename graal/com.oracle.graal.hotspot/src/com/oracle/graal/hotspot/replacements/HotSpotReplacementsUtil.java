@@ -492,9 +492,9 @@ public class HotSpotReplacementsUtil {
             ResolvedJavaType constantType = LoadHubNode.findSynonymType(read.graph(), tool.getMetaAccess(), object);
             if (constantType != null) {
                 if (config().useCompressedClassPointers) {
-                    return ConstantNode.forConstant(read.stamp(), ((HotSpotMetaspaceConstant) constantType.getObjectHub()).compress(), tool.getMetaAccess());
+                    return ConstantNode.forConstant(read.stamp(), ((HotSpotMetaspaceConstant) tool.getConstantReflection().asObjectHub(constantType)).compress(), tool.getMetaAccess());
                 } else {
-                    return ConstantNode.forConstant(read.stamp(), constantType.getObjectHub(), tool.getMetaAccess());
+                    return ConstantNode.forConstant(read.stamp(), tool.getConstantReflection().asObjectHub(constantType), tool.getMetaAccess());
                 }
             }
             return read;
@@ -1007,7 +1007,7 @@ public class HotSpotReplacementsUtil {
                         AssumptionResult<ResolvedJavaType> leafType = element.findLeafConcreteSubtype();
                         if (leafType != null && leafType.canRecordTo(assumptions)) {
                             leafType.recordTo(assumptions);
-                            return ConstantNode.forConstant(read.stamp(), leafType.getResult().getObjectHub(), tool.getMetaAccess());
+                            return ConstantNode.forConstant(read.stamp(), tool.getConstantReflection().asObjectHub(leafType.getResult()), tool.getMetaAccess());
                         }
                     }
                 }

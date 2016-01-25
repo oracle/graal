@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
@@ -53,14 +54,20 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     public static final NodeClass<TypeSwitchNode> TYPE = NodeClass.create(TypeSwitchNode.class);
     protected final ResolvedJavaType[] keys;
+    protected final Constant[] hubs;
 
-    public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
+    public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors, ConstantReflectionProvider constantReflection) {
         super(TYPE, value, successors, keySuccessors, keyProbabilities);
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
         assert value.stamp() instanceof AbstractPointerStamp;
         assert assertKeys();
+
+        hubs = new Constant[keys.length];
+        for (int i = 0; i < hubs.length; i++) {
+            hubs[i] = constantReflection.asObjectHub(keys[i]);
+        }
     }
 
     /**
@@ -90,7 +97,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public Constant keyAt(int index) {
-        return keys[index].getObjectHub();
+        return hubs[index];
     }
 
     @Override
@@ -183,7 +190,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     }
 
                     AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
-                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
+                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors, tool.getConstantReflection()));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);
                 }

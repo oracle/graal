@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.extended;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -67,7 +68,7 @@ public final class GetClassNode extends FloatingNode implements Lowerable, Canon
         tool.getLowerer().lower(this, tool);
     }
 
-    public static ValueNode tryFold(MetaAccessProvider metaAccess, ValueNode object) {
+    public static ValueNode tryFold(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode object) {
         if (metaAccess != null && object != null && object.stamp() instanceof ObjectStamp) {
             ObjectStamp objectStamp = (ObjectStamp) object.stamp();
 
@@ -84,7 +85,7 @@ public final class GetClassNode extends FloatingNode implements Lowerable, Canon
             }
 
             if (exactType != null) {
-                return ConstantNode.forConstant(exactType.getJavaClass(), metaAccess);
+                return ConstantNode.forConstant(constantReflection.asJavaClass(exactType), metaAccess);
             }
         }
         return null;
@@ -92,7 +93,7 @@ public final class GetClassNode extends FloatingNode implements Lowerable, Canon
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        ValueNode folded = tryFold(tool.getMetaAccess(), getObject());
+        ValueNode folded = tryFold(tool.getMetaAccess(), tool.getConstantReflection(), getObject());
         return folded == null ? this : folded;
     }
 
@@ -101,7 +102,7 @@ public final class GetClassNode extends FloatingNode implements Lowerable, Canon
         ValueNode alias = tool.getAlias(getObject());
         if (alias instanceof VirtualObjectNode) {
             VirtualObjectNode virtual = (VirtualObjectNode) alias;
-            Constant javaClass = virtual.type().getJavaClass();
+            Constant javaClass = tool.getConstantReflectionProvider().asJavaClass(virtual.type());
             tool.replaceWithValue(ConstantNode.forConstant(stamp(), javaClass, tool.getMetaAccessProvider(), graph()));
         }
     }

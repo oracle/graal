@@ -2038,7 +2038,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private ValueNode synchronizedObject(FrameStateBuilder state, ResolvedJavaMethod target) {
         if (target.isStatic()) {
-            return appendConstant(target.getDeclaringClass().getJavaClass());
+            return appendConstant(getConstantReflection().asJavaClass(target.getDeclaringClass()));
         } else {
             return state.loadLocal(0, JavaKind.Object);
         }
@@ -2641,7 +2641,7 @@ public class BytecodeParser implements GraphBuilderContext {
             // this is a load of class constant which might be unresolved
             JavaType type = (JavaType) con;
             if (type instanceof ResolvedJavaType) {
-                frameState.push(JavaKind.Object, appendConstant(((ResolvedJavaType) type).getJavaClass()));
+                frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
             } else {
                 handleUnresolvedLoadConstant(type);
             }

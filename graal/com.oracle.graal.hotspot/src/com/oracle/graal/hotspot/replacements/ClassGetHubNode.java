@@ -82,7 +82,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
                     ResolvedJavaType exactType = tool.getConstantReflection().asJavaType(clazz.asJavaConstant());
                     if (exactType instanceof HotSpotResolvedObjectType) {
                         HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) exactType;
-                        ConstantNode cn = ConstantNode.forConstant(stamp(), objectType.getObjectHub(), metaAccess);
+                        ConstantNode cn = ConstantNode.forConstant(stamp(), tool.getConstantReflection().asObjectHub(objectType), metaAccess);
                         return cn;
                     } else if (exactType instanceof HotSpotResolvedPrimitiveType) {
                         return ConstantNode.forConstant(stamp(), JavaConstant.NULL_POINTER, metaAccess);
@@ -121,7 +121,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
         ResolvedJavaType exactType = constantReflection.asJavaType(c);
         if (exactType instanceof HotSpotResolvedObjectType) {
             HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) exactType;
-            return objectType.getObjectHub();
+            return constantReflection.asObjectHub(objectType);
         } else {
             assert exactType instanceof HotSpotResolvedPrimitiveType;
             return JavaConstant.NULL_POINTER;
@@ -132,7 +132,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
     public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
         assert !c.equals(JavaConstant.NULL_POINTER);
         ResolvedJavaType objectType = constantReflection.asJavaType(c);
-        return objectType.getJavaClass();
+        return constantReflection.asJavaClass(objectType);
     }
 
     public boolean isLossless() {

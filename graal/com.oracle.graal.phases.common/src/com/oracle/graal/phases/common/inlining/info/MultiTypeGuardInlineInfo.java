@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -160,7 +161,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     @Override
     public Collection<Node> inline(Providers providers) {
         if (hasSingleMethod()) {
-            return inlineSingleMethod(graph(), providers.getStampProvider());
+            return inlineSingleMethod(graph(), providers.getStampProvider(), providers.getConstantReflection());
         } else {
             return inlineMultipleMethods(graph(), providers);
         }
@@ -238,7 +239,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.asNode().isAlive();
 
         // replace the invoke with a switch on the type of the actual receiver
-        boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, providers.getStampProvider());
+        boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, providers.getStampProvider(), providers.getConstantReflection());
 
         assert invoke.next() == continuation;
         invoke.setNext(null);
@@ -322,21 +323,22 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return result;
     }
 
-    private Collection<Node> inlineSingleMethod(StructuredGraph graph, StampProvider stampProvider) {
+    private Collection<Node> inlineSingleMethod(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection) {
         assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
         AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
 
         AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
         AbstractBeginNode[] successors = new AbstractBeginNode[]{calleeEntryNode, unknownTypeSux};
-        createDispatchOnTypeBeforeInvoke(graph, successors, false, stampProvider);
+        createDispatchOnTypeBeforeInvoke(graph, successors, false, stampProvider, constantReflection);
 
         calleeEntryNode.setNext(invoke.asNode());
 
         return inline(invoke, methodAt(0), inlineableElementAt(0), false);
     }
 
-    private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, AbstractBeginNode[] successors, boolean invokeIsOnlySuccessor, StampProvider stampProvider) {
+    private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, AbstractBeginNode[] successors, boolean invokeIsOnlySuccessor, StampProvider stampProvider,
+                    ConstantReflectionProvider constantReflection) {
         assert ptypes.size() >= 1;
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
         LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, nonNullReceiver));
@@ -362,7 +364,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             keyProbabilities[i] /= totalProbability;
         }
 
-        TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors));
+        TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors, constantReflection));
         FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
         pred.setNext(typeSwitch);
         return false;
@@ -422,13 +424,13 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     @Override
     public void tryToDevirtualizeInvoke(Providers providers) {
         if (hasSingleMethod()) {
-            devirtualizeWithTypeSwitch(graph(), InvokeKind.Special, concretes.get(0), providers.getStampProvider());
+            devirtualizeWithTypeSwitch(graph(), InvokeKind.Special, concretes.get(0), providers.getStampProvider(), providers.getConstantReflection());
         } else {
-            tryToDevirtualizeMultipleMethods(graph(), providers.getStampProvider());
+            tryToDevirtualizeMultipleMethods(graph(), providers.getStampProvider(), providers.getConstantReflection());
         }
     }
 
-    private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, StampProvider stampProvider) {
+    private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection) {
         MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
         if (methodCallTarget.invokeKind() == InvokeKind.Interface) {
             ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
@@ -440,17 +442,17 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
                 ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveConcreteMethod(targetMethod, contextType);
                 if (baseClassTargetMethod != null) {
-                    devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveConcreteMethod(targetMethod, contextType), stampProvider);
+                    devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveConcreteMethod(targetMethod, contextType), stampProvider, constantReflection);
                 }
             }
         }
     }
 
-    private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, StampProvider stampProvider) {
+    private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, StampProvider stampProvider, ConstantReflectionProvider constantReflection) {
         AbstractBeginNode invocationEntry = graph.add(new BeginNode());
         AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
         AbstractBeginNode[] successors = new AbstractBeginNode[]{invocationEntry, unknownTypeSux};
-        createDispatchOnTypeBeforeInvoke(graph, successors, true, stampProvider);
+        createDispatchOnTypeBeforeInvoke(graph, successors, true, stampProvider, constantReflection);
 
         invocationEntry.setNext(invoke.asNode());
         ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();

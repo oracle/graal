@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.replacements;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -54,7 +55,7 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess());
+        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess(), tool.getConstantReflection());
         if (callerClassNode != null) {
             return callerClassNode;
         }
@@ -63,7 +64,7 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
 
     @Override
     public void lower(LoweringTool tool) {
-        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess());
+        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess(), tool.getConstantReflection());
 
         if (callerClassNode != null) {
             graph().replaceFixedWithFloating(this, graph().addOrUniqueWithInputs(callerClassNode));
@@ -81,7 +82,7 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
      * @param metaAccess
      * @return ConstantNode of the caller class, or null
      */
-    private ConstantNode getCallerClassNode(MetaAccessProvider metaAccess) {
+    private ConstantNode getCallerClassNode(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         // Walk back up the frame states to find the caller at the required depth.
         FrameState state = stateAfter();
 
@@ -103,7 +104,7 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
                     if (!method.ignoredBySecurityStackWalk()) {
                         // We have reached the desired frame; return the holder class.
                         HotSpotResolvedObjectType callerClass = method.getDeclaringClass();
-                        return ConstantNode.forConstant(callerClass.getJavaClass(), metaAccess);
+                        return ConstantNode.forConstant(constantReflection.asJavaClass(callerClass), metaAccess);
                     }
                     break;
             }

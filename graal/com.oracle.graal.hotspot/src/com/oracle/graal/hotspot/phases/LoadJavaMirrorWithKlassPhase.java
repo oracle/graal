@@ -98,7 +98,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                      */
                     HotSpotResolvedPrimitiveType primitive = (HotSpotResolvedPrimitiveType) type;
                     ResolvedJavaType boxingClass = metaAccess.lookupJavaType(primitive.getJavaKind().toBoxedJavaClass());
-                    ConstantNode clazz = ConstantNode.forConstant(boxingClass.getJavaClass(), metaAccess, graph);
+                    ConstantNode clazz = ConstantNode.forConstant(context.getConstantReflection().asJavaClass(boxingClass), metaAccess, graph);
                     HotSpotResolvedJavaField[] a = (HotSpotResolvedJavaField[]) boxingClass.getStaticFields();
                     HotSpotResolvedJavaField typeField = null;
                     for (HotSpotResolvedJavaField f : a) {

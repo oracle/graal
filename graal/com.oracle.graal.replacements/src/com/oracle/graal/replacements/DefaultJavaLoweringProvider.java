@@ -194,7 +194,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     private void lowerTypeCheckNode(TypeCheckNode n, LoweringTool tool, StructuredGraph graph) {
         ValueNode hub = createReadHub(graph, n.getValue(), tool);
-        ValueNode clazz = graph.unique(ConstantNode.forConstant(tool.getStampProvider().createHubStamp((ObjectStamp) n.getValue().stamp()), n.type().getObjectHub(), tool.getMetaAccess()));
+        ValueNode clazz = graph.unique(ConstantNode.forConstant(tool.getStampProvider().createHubStamp((ObjectStamp) n.getValue().stamp()), tool.getConstantReflection().asObjectHub(n.type()),
+                        tool.getMetaAccess()));
         LogicNode objectEquals = graph.unique(PointerEqualsNode.create(hub, clazz));
         n.replaceAndDelete(objectEquals);
     }
@@ -394,7 +395,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (nullCheck != null) {
             object = graph.unique(new PiNode(object, ((ObjectStamp) object.stamp()).improveWith(StampFactory.objectNonNull()), (ValueNode) nullCheck));
         }
-        ValueNode hub = graph.addOrUnique(LoadHubNode.create(object, tool.getStampProvider(), tool.getMetaAccess()));
+        ValueNode hub = graph.addOrUnique(LoadHubNode.create(object, tool.getStampProvider(), tool.getMetaAccess(), tool.getConstantReflection()));
         RawMonitorEnterNode rawMonitorEnter = graph.add(new RawMonitorEnterNode(object, hub, monitorEnter.getMonitorId()));
         rawMonitorEnter.setStateBefore(monitorEnter.stateBefore());
         rawMonitorEnter.setStateAfter(monitorEnter.stateAfter());

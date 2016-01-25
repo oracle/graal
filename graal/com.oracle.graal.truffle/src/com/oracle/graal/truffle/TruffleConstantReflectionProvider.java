@@ -129,4 +129,14 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
     public MemoryAccessProvider getMemoryAccessProvider() {
         return graalConstantReflection.getMemoryAccessProvider();
     }
+
+    @Override
+    public JavaConstant asJavaClass(ResolvedJavaType type) {
+        return graalConstantReflection.asJavaClass(type);
+    }
+
+    @Override
+    public Constant asObjectHub(ResolvedJavaType type) {
+        return graalConstantReflection.asObjectHub(type);
+    }
 }

@@ -434,7 +434,7 @@ public class StandardGraphBuilderPlugins {
         r.register1("getClass", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
-                ValueNode folded = GetClassNode.tryFold(b.getMetaAccess(), GraphUtil.originalValue(object));
+                ValueNode folded = GetClassNode.tryFold(b.getMetaAccess(), b.getConstantReflection(), GraphUtil.originalValue(object));
                 if (folded != null) {
                     b.addPush(JavaKind.Object, folded);
                 } else {

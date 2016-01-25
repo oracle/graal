@@ -71,7 +71,7 @@ public final class HubGetClassNode extends FloatingGuardedNode implements Lowera
             if (metaAccess != null && hub.isConstant()) {
                 ResolvedJavaType exactType = tool.getConstantReflection().asJavaType(hub.asConstant());
                 if (exactType != null) {
-                    return ConstantNode.forConstant(exactType.getJavaClass(), metaAccess);
+                    return ConstantNode.forConstant(tool.getConstantReflection().asJavaClass(exactType), metaAccess);
                 }
             }
             return this;
@@ -96,7 +96,7 @@ public final class HubGetClassNode extends FloatingGuardedNode implements Lowera
         if (JavaConstant.NULL_POINTER.equals(c)) {
             return c;
         }
-        return constantReflection.asJavaType(c).getJavaClass();
+        return constantReflection.asJavaClass(constantReflection.asJavaType(c));
     }
 
     @Override
@@ -106,7 +106,7 @@ public final class HubGetClassNode extends FloatingGuardedNode implements Lowera
         }
         ResolvedJavaType type = constantReflection.asJavaType(c);
         if (type instanceof HotSpotResolvedObjectType) {
-            return ((HotSpotResolvedObjectType) type).getObjectHub();
+            return constantReflection.asObjectHub(type);
         } else {
             assert type instanceof HotSpotResolvedPrimitiveType;
             return JavaConstant.NULL_POINTER;

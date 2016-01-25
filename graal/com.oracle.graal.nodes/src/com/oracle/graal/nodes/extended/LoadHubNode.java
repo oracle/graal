@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -61,9 +62,9 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
         return stampProvider.createHubStamp(((ObjectStamp) value.stamp()));
     }
 
-    public static ValueNode create(ValueNode value, StampProvider stampProvider, MetaAccessProvider metaAccess) {
+    public static ValueNode create(ValueNode value, StampProvider stampProvider, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         Stamp stamp = hubStamp(stampProvider, value);
-        ValueNode synonym = findSynonym(value, stamp, null, metaAccess);
+        ValueNode synonym = findSynonym(value, stamp, null, metaAccess, constantReflection);
         if (synonym != null) {
             return synonym;
         }
@@ -88,17 +89,17 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
     public ValueNode canonical(CanonicalizerTool tool) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         ValueNode curValue = getValue();
-        ValueNode newNode = findSynonym(curValue, stamp(), graph(), metaAccess);
+        ValueNode newNode = findSynonym(curValue, stamp(), graph(), metaAccess, tool.getConstantReflection());
         if (newNode != null) {
             return newNode;
         }
         return this;
     }
 
-    public static ValueNode findSynonym(ValueNode curValue, Stamp stamp, StructuredGraph graph, MetaAccessProvider metaAccess) {
+    public static ValueNode findSynonym(ValueNode curValue, Stamp stamp, StructuredGraph graph, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         ResolvedJavaType exactType = findSynonymType(graph, metaAccess, curValue);
         if (exactType != null) {
-            return ConstantNode.forConstant(stamp, exactType.getObjectHub(), metaAccess);
+            return ConstantNode.forConstant(stamp, constantReflection.asObjectHub(exactType), metaAccess);
         }
         return null;
     }
@@ -126,7 +127,7 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
         ValueNode alias = tool.getAlias(getValue());
         ResolvedJavaType type = findSynonymType(graph(), tool.getMetaAccessProvider(), alias);
         if (type != null) {
-            tool.replaceWithValue(ConstantNode.forConstant(stamp(), type.getObjectHub(), tool.getMetaAccessProvider(), graph()));
+            tool.replaceWithValue(ConstantNode.forConstant(stamp(), tool.getConstantReflectionProvider().asObjectHub(type), tool.getMetaAccessProvider(), graph()));
         }
     }
 }
