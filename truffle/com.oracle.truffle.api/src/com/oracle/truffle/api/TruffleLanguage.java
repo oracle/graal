@@ -361,16 +361,16 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream err;
         private final OutputStream out;
         private final Instrumenter instrumenter;
-        private final Map<String, Object> arguments;
+        private final Map<String, Map<String, Object>> config;
 
-        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, Map<String, Object> arguments) {
+        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, Map<String, Map<String, Object>> config) {
             this.vm = vm;
             this.in = in;
             this.err = err;
             this.out = out;
             this.lang = lang;
             this.instrumenter = instrumenter;
-            this.arguments = arguments;
+            this.config = config;
             this.langCtx = new LangCtx<>(lang, this);
         }
 
@@ -443,8 +443,8 @@ public abstract class TruffleLanguage<C> {
         /**
          * @return arguments used to create the polyglot engine
          */
-        public Map<String, Object> getArguments() {
-            return arguments;
+        public Map<String, Map<String, Object>> getConfig() {
+            return config;
         }
     }
 
@@ -453,8 +453,8 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> arguments) {
-            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, arguments);
+        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Map<String, Object>> config) {
+            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
             return env;
         }
 

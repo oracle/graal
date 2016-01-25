@@ -121,7 +121,7 @@ public class EngineTest {
 
     @Test
     public void initializePolyglotEngineWithArguments() throws IOException {
-        PolyglotEngine vm = createBuilder().setArguments("application/x-test-import-export-1", new String[]{"1", "2"}).build();
+        PolyglotEngine vm = createBuilder().config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"}).build();
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
 
         // TODO: remove once initialization issue is solved for
@@ -129,7 +129,7 @@ public class EngineTest {
         language1.eval(Source.fromText("return=arr", "get the array")).as(AccessArray.class);
 
         Env env = language1.getEnv(true);
-        String[] args = (String[]) env.getArguments().get("application/x-test-import-export-1");
+        String[] args = (String[]) env.getConfig().get("application/x-test-import-export-1").get("cmd-line-args");
         assertEquals("1", args[0]);
         assertEquals("2", args[1]);
     }

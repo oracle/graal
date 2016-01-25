@@ -113,7 +113,7 @@ public class PolyglotEngine {
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter;
-    private final Map<String, Object> arguments;
+    private final Map<String, Map<String, Object>> config;
     private final Debugger debugger;
     private boolean disposed;
 
@@ -131,13 +131,13 @@ public class PolyglotEngine {
         this.executor = null;
         this.instrumenter = null;
         this.debugger = null;
-        this.arguments = null;
+        this.config = null;
     }
 
     /**
      * Real constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, Map<String, Object> arguments) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, Map<String, Map<String, Object>> config) {
         this.executor = executor;
         this.out = out;
         this.err = err;
@@ -146,7 +146,7 @@ public class PolyglotEngine {
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
         this.instrumenter = SPI.createInstrumenter(this);
-        this.arguments = arguments;
+        this.config = config;
         this.debugger = SPI.createDebugger(this, this.instrumenter);
         Map<String, Language> map = new HashMap<>();
         /* We want to create a language instance but per LanguageCache and not per mime type. */
@@ -214,7 +214,7 @@ public class PolyglotEngine {
         private final List<EventConsumer<?>> handlers = new ArrayList<>();
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
-        private Map<String, Object> arguments;
+        private Map<String, Map<String, Object>> arguments;
 
         Builder() {
         }
@@ -256,22 +256,6 @@ public class PolyglotEngine {
         }
 
         /**
-         * Provide simple string-based arguments to initialize the {@link PolyglotEngine} for a
-         * specific language. These arguments can be used by the language to initialize and
-         * configure their initial execution state correctly.
-         *
-         * @param mimeType of the language for which the arguments are
-         * @param arguments, an object to parameterize initial state of a language
-         */
-        public Builder setArguments(String mimeType, Object arguments) {
-            if (this.arguments == null) {
-                this.arguments = new HashMap<>();
-            }
-            this.arguments.put(mimeType, arguments);
-            return this;
-        }
-
-        /**
          * Registers another instance of {@link EventConsumer} into the to be created
          * {@link PolyglotEngine}.
          *
@@ -281,6 +265,29 @@ public class PolyglotEngine {
         public Builder onEvent(EventConsumer<?> handler) {
             handler.getClass();
             handlers.add(handler);
+            return this;
+        }
+
+        /**
+         * Provide configuration data to initialize the {@link PolyglotEngine} for a specific
+         * language. These arguments can be used by languages to initialize and configure their
+         * initial execution state.
+         *
+         * @param mimeType of the language for which the arguments are
+         * @param key to identify a language-specific configuration element
+         * @param value an object to parameterize initial state of a language
+         */
+        public Builder config(String mimeType, String key, Object value) {
+            if (arguments == null) {
+                arguments = new HashMap<>();
+            }
+            Map<String, Object> configs = arguments.get(mimeType);
+            if (configs == null) {
+                configs = new HashMap<>();
+                arguments.put(mimeType, configs);
+            }
+
+            configs.put(key, value);
             return this;
         }
 
@@ -833,18 +840,18 @@ public class PolyglotEngine {
             return impl;
         }
 
-        private Map<String, Object> getArgumentsForLanguage() {
-            if (arguments == null) {
+        private Map<String, Map<String, Object>> getArgumentsForLanguage() {
+            if (config == null) {
                 return null;
             }
 
-            if (Collections.disjoint(arguments.keySet(), info.getMimeTypes())) {
+            if (Collections.disjoint(config.keySet(), info.getMimeTypes())) {
                 return null;
             }
 
-            Map<String, Object> forLanguage = new HashMap<>();
+            Map<String, Map<String, Object>> forLanguage = new HashMap<>();
             for (String mimeType : info.getMimeTypes()) {
-                Object arg = arguments.get(mimeType);
+                Map<String, Object> arg = config.get(mimeType);
                 if (arg != null) {
                     forLanguage.put(mimeType, arg);
                 }
@@ -938,9 +945,9 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> arguments) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Map<String, Object>> config) {
             PolyglotEngine vm = (PolyglotEngine) obj;
-            return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, arguments);
+            return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
         }
 
         @Override
