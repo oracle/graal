@@ -388,6 +388,19 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Produces an array of strings for the MIME types supported by this {@link PolyglotEngine}.
+         * There may be multiple MIME types for a single language. Each MIME type will appear only
+         * once, even if multiple language declare it.
+         *
+         * MIME types from this array can be used in methods such as {@link #parse}.
+         *
+         * @return a non-null array of a string for each supported MIME type
+         */
+        public String[] getSupportedMimeTypes() {
+            return API.getSupportedMimeTypes(vm);
+        }
+
+        /**
          * Evaluates source of (potentially different) language. The {@link Source#getMimeType()
          * MIME type} is used to identify the {@link TruffleLanguage} to use to perform the
          * {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
@@ -523,6 +536,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         protected Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
             return env.langCtx.findExportedSymbol(globalName, onlyExplicit);
+        }
+
+        @Override
+        protected String[] getSupportedMimeTypes(Object obj) {
+            return super.getSupportedMimeTypes(obj);
         }
 
         @Override
