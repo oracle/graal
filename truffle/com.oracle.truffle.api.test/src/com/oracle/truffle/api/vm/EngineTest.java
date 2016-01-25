@@ -25,14 +25,18 @@ package com.oracle.truffle.api.vm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
 
 public class EngineTest {
     protected PolyglotEngine.Builder createBuilder() {
@@ -120,17 +124,41 @@ public class EngineTest {
     }
 
     @Test
-    public void initializePolyglotEngineWithArguments() throws IOException {
-        PolyglotEngine vm = createBuilder().config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"}).build();
+    public void initializePolyglotEngineWithConfiguration() throws IOException {
+        PolyglotEngine vm = createBuilder().config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"}).config("application/x-test-import-export-2", "hello", "world").build();
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
 
-        // TODO: remove once initialization issue is solved for
-        // https://github.com/graalvm/truffle/pull/9
-        language1.eval(Source.fromText("return=arr", "get the array")).as(AccessArray.class);
+        assertNotNull("Lang1 found", language1);
 
-        Env env = language1.getEnv(true);
-        String[] args = (String[]) env.getConfig().get("application/x-test-import-export-1").get("cmd-line-args");
+        Ctx ctx1 = language1.getGlobalObject().as(Ctx.class);
+        String[] args = (String[]) ctx1.env.getConfig().get("application/x-test-import-export-1").get("cmd-line-args");
+        assertNotNull("Founds args", args);
+
         assertEquals("1", args[0]);
         assertEquals("2", args[1]);
+
+        assertNull("Can't see settings for other language", ctx1.env.getConfig().get("application/x-test-import-export-2"));
+
+        // make sure configuration is read-only
+        try {
+            ctx1.env.getConfig().get("application/x-test-import-export-1").put("hi", "there!");
+            fail("The map should be readonly");
+        } catch (UnsupportedOperationException ex) {
+            // OK
+        }
+
+        try {
+            ctx1.env.getConfig().put("new-mime-type", new HashMap<String, Object>());
+            fail("The map should be readonly");
+        } catch (UnsupportedOperationException ex) {
+            // OK
+        }
+
+        PolyglotEngine.Language language2 = vm.getLanguages().get("application/x-test-import-export-2");
+        assertNotNull("Lang2 found", language2);
+
+        Ctx ctx2 = language2.getGlobalObject().as(Ctx.class);
+        assertEquals("world", ctx2.env.getConfig().get("application/x-test-import-export-2").get("hello"));
+        assertNull("Cannot find args", ctx2.env.getConfig().get("cmd-line-args"));
     }
 }

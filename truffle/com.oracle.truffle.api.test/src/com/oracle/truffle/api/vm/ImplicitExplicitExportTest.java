@@ -48,6 +48,8 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -128,7 +130,7 @@ public class ImplicitExplicitExportTest {
         assertEquals("Global symbol is also 43", "43", vm.findGlobalSymbol("ahoj").execute().get());
     }
 
-    static final class Ctx {
+    static final class Ctx implements TruffleObject {
         static final Set<Ctx> disposed = new HashSet<>();
 
         final Map<String, String> explicit = new HashMap<>();
@@ -141,6 +143,11 @@ public class ImplicitExplicitExportTest {
 
         void dispose() {
             disposed.add(this);
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            throw new UnsupportedOperationException();
         }
     }
 
@@ -180,7 +187,7 @@ public class ImplicitExplicitExportTest {
 
         @Override
         protected Object getLanguageGlobal(Ctx context) {
-            return null;
+            return context;
         }
 
         @Override
