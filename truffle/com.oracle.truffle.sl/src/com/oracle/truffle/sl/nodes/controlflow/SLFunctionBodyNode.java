@@ -41,11 +41,9 @@
 package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentationTag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -59,7 +57,6 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * {@link SLNull#SINGLETON default null value}.
  */
 @NodeInfo(shortName = "body")
-@Instrumentable(tags = {InstrumentationTag.ROOT, InstrumentationTag.BLOCK})
 public final class SLFunctionBodyNode extends SLExpressionNode {
 
     /** The body of the function. */

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes.local;
 
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentationTag;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -56,7 +54,6 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * specialized and can, e.g., be accessed without unboxing, all arguments are loaded into local
  * variables {@link SLNodeFactory#addFormalParameter in the method prologue}.
  */
-@Instrumentable(tags = {InstrumentationTag.READ, InstrumentationTag.EXPRESSION})
 public class SLReadArgumentNode extends SLExpressionNode {
 
     /** The argument number, i.e., the index into the array of arguments. */

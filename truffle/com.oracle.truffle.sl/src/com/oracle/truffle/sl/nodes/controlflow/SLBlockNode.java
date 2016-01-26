@@ -42,8 +42,6 @@ package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentationTag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
@@ -53,7 +51,6 @@ import com.oracle.truffle.sl.nodes.SLStatementNode;
  * A statement node that just executes a list of other statements.
  */
 @NodeInfo(shortName = "block", description = "The node implementing a source code block")
-@Instrumentable(tags = {InstrumentationTag.BLOCK})
 public final class SLBlockNode extends SLStatementNode {
 
     /**

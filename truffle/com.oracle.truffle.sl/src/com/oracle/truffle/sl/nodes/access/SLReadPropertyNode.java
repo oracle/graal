@@ -44,8 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentationTag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -64,7 +62,6 @@ import com.oracle.truffle.sl.runtime.SLContext;
  */
 @NodeInfo(shortName = ".")
 @NodeChild(value = "receiver", type = SLExpressionNode.class)
-@Instrumentable(tags = {InstrumentationTag.READ, InstrumentationTag.EXPRESSION})
 public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Child private SLReadPropertyCacheNode cacheNode;
