@@ -49,7 +49,7 @@ public final class EventContext {
     @CompilationFinal private InstrumentationTagSet cachedTagSet;
     private final SourceSection sourceSection;
 
-    public EventContext(ProbeNode probeNode, SourceSection sourceSection, int tags) {
+    EventContext(ProbeNode probeNode, SourceSection sourceSection, int tags) {
         this.sourceSection = sourceSection;
         this.probeNode = probeNode;
         this.cachedTags = tags;
