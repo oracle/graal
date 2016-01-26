@@ -232,8 +232,8 @@ public abstract class TruffleLanguage<C> {
     protected abstract Visualizer getVisualizer();
 
     /**
-     * Returns {@code true} for a node can be "instrumented" by
-     * {@linkplain Instrumenter#probe(Node) probing}.
+     * Returns {@code true} for a node can be "instrumented" by {@linkplain Instrumenter#probe(Node)
+     * probing}.
      * <p>
      * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
      *
@@ -388,16 +388,16 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Produces an array of strings for the MIME types supported by this {@link PolyglotEngine}.
-         * There may be multiple MIME types for a single language. Each MIME type will appear only
-         * once, even if multiple language declare it.
+         * Allows it to be determined if this {@link PolyglotEngine} can execute code written in a
+         * language with a given MIME type.
          *
-         * MIME types from this array can be used in methods such as {@link #parse}.
+         * @see Source#withMimeType()
+         * @see #parse()
          *
-         * @return a non-null array of a string for each supported MIME type
+         * @return a boolean that indicates if the MIME type is supported
          */
-        public String[] getSupportedMimeTypes() {
-            return API.getSupportedMimeTypes(vm);
+        public boolean isMimeTypeSupported(String mimeType) {
+            return API.isMimeTypeSupported(vm, mimeType);
         }
 
         /**
@@ -539,8 +539,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        protected String[] getSupportedMimeTypes(Object obj) {
-            return super.getSupportedMimeTypes(obj);
+        protected boolean isMimeTypeSupported(Object vm, String mimeType) {
+            return super.isMimeTypeSupported(vm, mimeType);
         }
 
         @Override

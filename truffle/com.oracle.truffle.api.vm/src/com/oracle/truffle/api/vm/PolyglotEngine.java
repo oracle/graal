@@ -989,14 +989,14 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected String[] getSupportedMimeTypes(Object obj) {
-            final PolyglotEngine vm = (PolyglotEngine) obj;
-            return vm.getSupportedMimeTypes();
+        protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
+            return super.findLanguage(probe);
         }
 
         @Override
-        protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
-            return super.findLanguage(probe);
+        protected boolean isMimeTypeSupported(Object obj, String mimeType) {
+            final PolyglotEngine vm = (PolyglotEngine) obj;
+            return vm.findLanguage(mimeType) != null;
         }
 
         @Override
