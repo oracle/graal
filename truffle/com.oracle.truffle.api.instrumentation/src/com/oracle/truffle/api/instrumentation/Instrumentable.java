@@ -49,23 +49,13 @@ import com.oracle.truffle.api.source.SourceSection;
  * Example for a minimal implementation of an {@link Instrumentable instrumentable} node with a
  * generated wrapper.
  *
- * <pre>
- * &#064;Instrumentable(factory = BaseNodeWrapper.class)
- * public abstract class BaseNode extends Node {
+ * {@codesnippet Instrumentable.BaseNode}
  *
- *     public abstract Object execute(VirtualFrame frame);
+ * <p>
+ * Example of a subclass not defining a wrapper factory but just tags:
+ * </p>
  *
- * }
- * </pre>
- *
- * Example for a subclass not defining a wrapper factory but just tags:
- *
- * <pre>
- * &#064;Instrumentable(tags = {InstrumentableTag.EXPRESSION})
- * public abstract class ExpressionNode extends BaseNode {
- *
- * }
- * </pre>
+ * {@codesnippet Instrumentable.ExpressionNode}
  *
  * @see InstrumentationTag
  * @see WrapperNode

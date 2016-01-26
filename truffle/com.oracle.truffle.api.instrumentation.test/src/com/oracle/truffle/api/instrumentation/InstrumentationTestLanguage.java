@@ -286,6 +286,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
+    // BEGIN: Instrumentable.ExpressionNode
+    @Instrumentable(tags = InstrumentationTag.EXPRESSION)
+    private static final class ExpressionNode extends InstrumentedNode {
+
+        ExpressionNode(BaseNode[] children) {
+            super(children);
+        }
+    }
+
     private abstract static class InstrumentedNode extends BaseNode {
 
         @Children private final BaseNode[] children;
@@ -293,6 +302,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         InstrumentedNode(BaseNode[] children) {
             this.children = children;
         }
+
+        // FINISH: Instrumentable.ExpressionNode
 
         @Override
         @ExplodeLoop
@@ -321,14 +332,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     private static final class BlockNode extends InstrumentedNode {
 
         BlockNode(BaseNode[] children) {
-            super(children);
-        }
-    }
-
-    @Instrumentable(tags = {InstrumentationTag.EXPRESSION})
-    private static final class ExpressionNode extends InstrumentedNode {
-
-        ExpressionNode(BaseNode[] children) {
             super(children);
         }
     }
@@ -447,12 +450,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     }
 
+    // BEGIN: Instrumentable.BaseNode
     @Instrumentable(factory = BaseNodeWrapper.class)
     public abstract static class BaseNode extends Node {
 
         public abstract Object execute(VirtualFrame frame);
 
     }
+
+    // END: Instrumentable.BaseNode
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
