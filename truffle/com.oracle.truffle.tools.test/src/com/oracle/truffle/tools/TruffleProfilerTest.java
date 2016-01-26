@@ -44,13 +44,13 @@ public class TruffleProfilerTest extends AbstractInstrumentationTest {
     private TruffleProfiler profiler;
 
     @Before
-    public void setupDebugger() throws IOException {
+    public void setupProfiler() throws IOException {
         TruffleProfiler.setTestHook(new TestHook() {
             public void onCreate(TruffleProfiler p) {
                 profiler = p;
             }
         });
-        assertEvalOut("", ""); // ensure debugger gets loaded
+        assertEvalOut("", ""); // ensure profiler gets loaded
         Assert.assertNotNull(profiler);
     }
 
