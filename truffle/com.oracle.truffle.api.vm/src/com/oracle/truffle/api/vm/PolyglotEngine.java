@@ -886,14 +886,6 @@ public class PolyglotEngine {
         return null;
     }
 
-    String[] getSupportedMimeTypes() {
-        final Set<String> mimeTypes = new HashSet<>();
-        for (PolyglotEngine.Language language : langs.values()) {
-            mimeTypes.addAll(language.getMimeTypes());
-        }
-        return mimeTypes.toArray(new String[mimeTypes.size()]);
-    }
-
     TruffleLanguage<?> findLanguage(String mimeType) {
         Language languageDescription = this.langs.get(mimeType);
         if (languageDescription != null) {
