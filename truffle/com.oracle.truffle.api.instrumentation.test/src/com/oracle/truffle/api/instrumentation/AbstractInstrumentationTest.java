@@ -63,6 +63,15 @@ public abstract class AbstractInstrumentationTest {
         return outText;
     }
 
+    protected static boolean containsTag(String[] tags, String tag) {
+        for (int i = 0; i < tags.length; i++) {
+            if (tags[i] == tag) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected String run(String source) throws IOException {
         return run(lines(source));
     }

@@ -544,7 +544,16 @@ public abstract class Source {
      */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
         checkRange(charIndex, length);
-        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, SourceSection.EMTPY_TAGS);
+    }
+
+    public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length, String... tags) {
+        checkRange(charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
+    }
+
+    private SourceSection createSectionImpl(String identifier, int startLine, int startColumn, int charIndex, int length, String[] tags) {
+        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length, tags);
     }
 
     /**
@@ -570,7 +579,7 @@ public abstract class Source {
             throw new IllegalArgumentException("column out of range");
         }
         final int startOffset = lineStartOffset + startColumn - 1;
-        return new SourceSection(null, this, identifier, startLine, startColumn, startOffset, length);
+        return createSectionImpl(identifier, startLine, startColumn, startOffset, length, SourceSection.EMTPY_TAGS);
     }
 
     /**
@@ -593,10 +602,14 @@ public abstract class Source {
      * @throws IllegalStateException if the source is one of the "null" instances
      */
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
+        return createSection(identifier, charIndex, length, SourceSection.EMTPY_TAGS);
+    }
+
+    public final SourceSection createSection(String identifier, int charIndex, int length, String... tags) throws IllegalArgumentException {
         checkRange(charIndex, length);
         final int startLine = getLineNumber(charIndex);
         final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
-        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
     }
 
     void checkRange(int charIndex, int length) {

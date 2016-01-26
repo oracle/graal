@@ -99,20 +99,18 @@ public final class SourceSectionFilter {
         }
 
         /**
-         * Add a filter for all source sections that are tagged with one of the given
-         * {@link InstrumentationTag tags}.
+         * Add a filter for all source sections that are tagged with one of the given String tags.
          */
-        public Builder tagIs(InstrumentationTag... tags) {
+        public Builder tagIs(String... tags) {
             verifyNotNull(tags);
             nodeExpressions.add(new EventFilterExpression.TagIs(tags));
             return this;
         }
 
         /**
-         * Add a filter for all sources sections that declare not one of the given
-         * {@link InstrumentationTag tags}.
+         * Add a filter for all sources sections that declare not one of the given String tags.
          */
-        public Builder tagIsNot(InstrumentationTag... tags) {
+        public Builder tagIsNot(String... tags) {
             verifyNotNull(tags);
             nodeExpressions.add(new EventFilterExpression.TagIsNot(tags));
             return this;
@@ -224,17 +222,17 @@ public final class SourceSectionFilter {
         return true;
     }
 
-    boolean isInstrumentedNode(SourceSection sourceSection, int tags) {
+    boolean isInstrumentedNode(SourceSection sourceSection) {
         for (EventFilterExpression exp : nodeExpressions) {
-            if (!exp.isIncluded(sourceSection, tags)) {
+            if (!exp.isIncluded(sourceSection)) {
                 return false;
             }
         }
         return true;
     }
 
-    boolean isInstrumented(SourceSection sourceSection, int tags) {
-        return isInstrumentedRoot(sourceSection) && isInstrumentedNode(sourceSection, tags);
+    boolean isInstrumented(SourceSection sourceSection) {
+        return isInstrumentedRoot(sourceSection) && isInstrumentedNode(sourceSection);
     }
 
     private abstract static class EventFilterExpression implements Comparable<EventFilterExpression> {
@@ -242,7 +240,7 @@ public final class SourceSectionFilter {
         protected abstract int getOrder();
 
         @SuppressWarnings("unused")
-        boolean isIncluded(SourceSection sourceSection, int tags) {
+        boolean isIncluded(SourceSection sourceSection) {
             return true;
         }
 
@@ -323,17 +321,39 @@ public final class SourceSectionFilter {
             }
         }
 
+        private static String[] checkAndInternTags(String[] tags) {
+            for (int i = 0; i < tags.length; i++) {
+                String tag = tags[i];
+                if (tag == null) {
+                    throw new IllegalArgumentException("Tags must not be null.");
+                }
+                // ensure interned
+                tags[i] = tag.intern();
+            }
+            return tags;
+        }
+
         private static final class TagIs extends EventFilterExpression {
 
-            private final int elements;
+            private final String[] tags;
 
-            TagIs(InstrumentationTag... tags) {
-                this.elements = InstrumentationTagSet.createTags(tags);
+            TagIs(String... tags) {
+                this.tags = checkAndInternTags(tags);
             }
 
             @Override
-            boolean isIncluded(SourceSection sourceSection, int t) {
-                return InstrumentationTagSet.containsAny(t, elements);
+            boolean isIncluded(SourceSection sourceSection) {
+                String[] filterTags = this.tags;
+                String[] sectionTags = sourceSection.getTags();
+                for (int i = 0; i < filterTags.length; i++) {
+                    String tag = filterTags[i];
+                    for (int j = 0; j < sectionTags.length; j++) {
+                        if (tag == sectionTags[j]) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             }
 
             @Override
@@ -343,21 +363,31 @@ public final class SourceSectionFilter {
 
             @Override
             public String toString() {
-                return String.format("tag is one of %s", new InstrumentationTagSet(elements));
+                return String.format("tag is one of %s", Arrays.toString(tags));
             }
         }
 
         private static final class TagIsNot extends EventFilterExpression {
 
-            private final int elements;
+            private final String[] tags;
 
-            TagIsNot(InstrumentationTag... tags) {
-                this.elements = InstrumentationTagSet.createTags(tags);
+            TagIsNot(String... tags) {
+                this.tags = tags;
             }
 
             @Override
-            boolean isIncluded(SourceSection sourceSection, int t) {
-                return !InstrumentationTagSet.containsAny(t, elements);
+            boolean isIncluded(SourceSection sourceSection) {
+                String[] filterTags = this.tags;
+                String[] sectionTags = sourceSection.getTags();
+                for (int i = 0; i < filterTags.length; i++) {
+                    String tag = filterTags[i];
+                    for (int j = 0; j < sectionTags.length; j++) {
+                        if (tag == sectionTags[j]) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
             }
 
             @Override
@@ -367,7 +397,7 @@ public final class SourceSectionFilter {
 
             @Override
             public String toString() {
-                return String.format("tag is not one of %s", new InstrumentationTagSet(elements));
+                return String.format("tag is not one of %s", Arrays.toString(tags));
             }
         }
 
@@ -380,7 +410,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isIncluded(SourceSection s, int tags) {
+            boolean isIncluded(SourceSection s) {
                 if (s == null) {
                     return false;
                 }
@@ -435,11 +465,11 @@ public final class SourceSectionFilter {
                 if (rootSourceSection == null) {
                     return true;
                 }
-                return isIncluded(rootSourceSection, 0);
+                return isIncluded(rootSourceSection);
             }
 
             @Override
-            boolean isIncluded(SourceSection sourceSection, int tags) {
+            boolean isIncluded(SourceSection sourceSection) {
                 if (sourceSection == null) {
                     return false;
                 }
@@ -474,11 +504,11 @@ public final class SourceSectionFilter {
                 if (rootSourceSection == null) {
                     return true;
                 }
-                return isIncluded(rootSourceSection, 0);
+                return isIncluded(rootSourceSection);
             }
 
             @Override
-            boolean isIncluded(SourceSection sourceSection, int tags) {
+            boolean isIncluded(SourceSection sourceSection) {
                 if (sourceSection == null) {
                     return false;
                 }

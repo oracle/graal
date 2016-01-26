@@ -41,12 +41,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.EventNode;
 import com.oracle.truffle.api.instrumentation.EventNodeFactory;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.instrumentation.InstrumentationTag;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -56,6 +55,8 @@ import com.oracle.truffle.tools.TruffleProfiler.Counter.TimeKind;
 public class TruffleProfiler extends TruffleInstrument {
 
     public static final String ID = "truffle_profiler";
+    public static final String ROOT_TAG = "ROOT";
+
     private static final int MAX_CODE_LENGTH = 30;
 
     private final Map<SourceSection, Counter> counters = new HashMap<>();
@@ -87,7 +88,7 @@ public class TruffleProfiler extends TruffleInstrument {
             filterBuilder.mimeTypeIs(mimeTypes);
         }
 
-        instrumenter.attachFactory(filterBuilder.tagIs(InstrumentationTag.ROOT).build(), new EventNodeFactory() {
+        instrumenter.attachFactory(filterBuilder.tagIs(ROOT_TAG).build(), new EventNodeFactory() {
             public EventNode create(EventContext context) {
                 return createCountingNode(context);
             }

@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -177,14 +178,13 @@ final class InstrumentationHandler {
         EventContext context = probeNodeImpl.getContext();
         SourceSection sourceSection = context.getInstrumentedSourceSection();
         if (TRACE) {
-            trace("Lazy update for %s, tags %s%n", sourceSection, probeNodeImpl.getContext().getInstrumentedTags());
+            trace("Lazy update for %s, tags %s%n", sourceSection, Arrays.toString(probeNodeImpl.getContext().getInstrumentedSourceSection().getTags()));
         }
-        int tags = context.getCachedTags();
         EventChainNode root = null;
         EventChainNode parent = null;
         for (int i = 0; i < bindings.size(); i++) {
             EventBinding<?> binding = bindings.get(i);
-            if (isInstrumented(probeNodeImpl, binding, sourceSection, tags)) {
+            if (isInstrumented(probeNodeImpl, binding, sourceSection)) {
                 if (TRACE) {
                     trace("Found binding %s, %s%n", binding.getFilter(), binding.getElement());
                 }
@@ -204,7 +204,7 @@ final class InstrumentationHandler {
         }
 
         if (TRACE) {
-            trace("Lazy updated for %s, tags %s%n", sourceSection, probeNodeImpl.getContext().getInstrumentedTags());
+            trace("Lazy updated for %s, tags %s%n", sourceSection, Arrays.toString(probeNodeImpl.getContext().getInstrumentedSourceSection().getTags()));
         }
         return root;
     }
@@ -249,7 +249,7 @@ final class InstrumentationHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private void insertWrapper(Node instrumentableNode, Instrumentable instrumentable, SourceSection sourceSection, int tags) {
+    private void insertWrapper(Node instrumentableNode, SourceSection sourceSection) {
         Node node = instrumentableNode;
         Node parent = node.getParent();
         if (parent instanceof WrapperNode) {
@@ -258,24 +258,22 @@ final class InstrumentationHandler {
             return;
         }
         if (TRACE) {
-            trace("Insert wrapper for %s, section %s tags %s%n", node, sourceSection, tags);
+            trace("Insert wrapper for %s, section %s%n", node, sourceSection);
         }
-        ProbeNode probe = new ProbeNode(InstrumentationHandler.this, sourceSection, tags);
+        ProbeNode probe = new ProbeNode(InstrumentationHandler.this, sourceSection);
         WrapperNode wrapper;
         try {
-            Class<? extends InstrumentableFactory<? extends Node>> factory = instrumentable.factory();
-            if (factory == InheritFactory.class) {
-                Class<?> currentClass = instrumentableNode.getClass().getSuperclass();
-                while (currentClass != null) {
-                    Instrumentable superInstrumentable = currentClass.getAnnotation(Instrumentable.class);
-                    if (superInstrumentable != null) {
-                        factory = superInstrumentable.factory();
-                        if (factory != InheritFactory.class) {
-                            break;
-                        }
+            Class<?> factory = InheritFactory.class;
+            Class<?> currentClass = instrumentableNode.getClass();
+            while (currentClass != null) {
+                Instrumentable superInstrumentable = currentClass.getAnnotation(Instrumentable.class);
+                if (superInstrumentable != null) {
+                    factory = superInstrumentable.factory();
+                    if (factory != InheritFactory.class) {
+                        break;
                     }
-                    currentClass = currentClass.getSuperclass();
                 }
+                currentClass = currentClass.getSuperclass();
             }
             if (factory == InheritFactory.class) {
                 throw new IllegalStateException(String.format("No instrumentable factory found for class %s", instrumentableNode.getClass().getName()));
@@ -316,17 +314,17 @@ final class InstrumentationHandler {
         return addBinding(new EventBinding<>(instrumenter, filter, listener));
     }
 
-    private static boolean isInstrumented(Node node, EventBinding<?> binding, SourceSection section, int tags) {
-        return binding.getInstrumenter().isInstrumentable(node) && binding.getFilter().isInstrumented(section, tags);
+    private static boolean isInstrumented(Node node, EventBinding<?> binding, SourceSection section) {
+        return binding.getInstrumenter().isInstrumentable(node) && binding.getFilter().isInstrumented(section);
     }
 
     private static boolean isInstrumentedRoot(RootNode node, EventBinding<?> binding, SourceSection section) {
         return binding.getInstrumenter().isInstrumentable(node) && binding.getFilter().isInstrumentedRoot(section);
     }
 
-    private static boolean isInstrumentedLeaf(Node node, EventBinding<?> binding, SourceSection section, int tags) {
-        if (binding.getFilter().isInstrumentedNode(section, tags)) {
-            assert isInstrumented(node, binding, section, tags);
+    private static boolean isInstrumentedLeaf(Node node, EventBinding<?> binding, SourceSection section) {
+        if (binding.getFilter().isInstrumentedNode(section)) {
+            assert isInstrumented(node, binding, section);
             return true;
         }
         return false;
@@ -363,10 +361,6 @@ final class InstrumentationHandler {
         ((Node) wrapperNode).replace(wrapperNode.getDelegateNode());
     }
 
-    static int getTags(Instrumentable instrumentable) {
-        return InstrumentationTagSet.createTags(instrumentable.tags());
-    }
-
     private static void invalidateWrapper(Node node) {
         Node parent = node.getParent();
         if (!(parent instanceof WrapperNode)) {
@@ -379,7 +373,8 @@ final class InstrumentationHandler {
     private static void invalidateWrapperImpl(WrapperNode parent, Node node) {
         ProbeNode probeNode = parent.getProbeNode();
         if (TRACE) {
-            trace("Invalidate wrapper for %s, section %s tags %s%n", node, probeNode.getContext().getInstrumentedSourceSection(), probeNode.getContext().getInstrumentedTags());
+            SourceSection section = probeNode.getContext().getInstrumentedSourceSection();
+            trace("Invalidate wrapper for %s, section %s tags %s%n", node, section, Arrays.toString(section.getTags()));
         }
         if (probeNode != null) {
             probeNode.invalidate();
@@ -414,21 +409,19 @@ final class InstrumentationHandler {
         }
 
         public final boolean visit(Node node) {
-            Instrumentable instrumentable = getInstrumentable(node);
-            if (instrumentable != null) {
-                SourceSection sourceSection = node.getSourceSection();
-                int tags = getTags(instrumentable);
-                if (isInstrumentedLeaf(node, binding, sourceSection, tags)) {
+            SourceSection sourceSection = node.getSourceSection();
+            if (sourceSection != null) {
+                if (isInstrumentedLeaf(node, binding, sourceSection)) {
                     if (TRACE) {
-                        trace("Filter hit section:%s tags:%s%n", sourceSection, new InstrumentationTagSet(tags));
+                        trace("Filter hit section:%s tags:%s%n", sourceSection, Arrays.toString(sourceSection.getTags()));
                     }
-                    visitInstrumented(node, instrumentable, sourceSection, tags);
+                    visitInstrumented(node, sourceSection);
                 }
             }
             return true;
         }
 
-        protected abstract void visitInstrumented(Node node, Instrumentable instrumentable, SourceSection section, int tags);
+        protected abstract void visitInstrumented(Node node, SourceSection section);
 
     }
 
@@ -453,19 +446,16 @@ final class InstrumentationHandler {
         }
 
         public final boolean visit(Node node) {
-            Instrumentable instrumentable = getInstrumentable(node);
-            if (instrumentable != null) {
-                SourceSection sourceSection = node.getSourceSection();
-                int tags = getTags(instrumentable);
-
+            SourceSection sourceSection = node.getSourceSection();
+            if (sourceSection != null) {
                 List<EventBinding<?>> b = bindings;
                 for (int i = 0; i < b.size(); i++) {
                     EventBinding<?> binding = b.get(i);
-                    if (isInstrumented(node, binding, sourceSection, tags)) {
+                    if (isInstrumented(node, binding, sourceSection)) {
                         if (TRACE) {
-                            trace("Filter hit section:%s tags:%s", sourceSection, new InstrumentationTagSet(tags));
+                            trace("Filter hit section:%s", sourceSection);
                         }
-                        visitInstrumented(node, instrumentable, sourceSection, tags);
+                        visitInstrumented(node, sourceSection);
                         break;
                     }
                 }
@@ -473,7 +463,7 @@ final class InstrumentationHandler {
             return true;
         }
 
-        protected abstract void visitInstrumented(Node node, Instrumentable instrumentable, SourceSection section, int tags);
+        protected abstract void visitInstrumented(Node node, SourceSection section);
 
     }
 
@@ -485,8 +475,8 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void visitInstrumented(Node node, Instrumentable instrumentable, SourceSection section, int tags) {
-            insertWrapper(node, instrumentable, section, tags);
+        protected void visitInstrumented(Node node, SourceSection section) {
+            insertWrapper(node, section);
         }
 
     }
@@ -498,7 +488,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void visitInstrumented(Node node, Instrumentable instrumentable, SourceSection section, int tags) {
+        protected void visitInstrumented(Node node, SourceSection section) {
             invalidateWrapper(node);
         }
     }
@@ -510,8 +500,8 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void visitInstrumented(Node node, Instrumentable instrumentable, SourceSection section, int tags) {
-            insertWrapper(node, instrumentable, section, tags);
+        protected void visitInstrumented(Node node, SourceSection section) {
+            insertWrapper(node, section);
         }
     }
 
@@ -522,7 +512,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void visitInstrumented(Node node, Instrumentable instrumentable, SourceSection section, int tags) {
+        protected void visitInstrumented(Node node, SourceSection section) {
             invalidateWrapper(node);
         }
 

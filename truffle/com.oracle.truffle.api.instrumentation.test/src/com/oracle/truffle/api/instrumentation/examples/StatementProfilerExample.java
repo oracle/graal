@@ -35,11 +35,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.EventNode;
 import com.oracle.truffle.api.instrumentation.EventNodeFactory;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.instrumentation.InstrumentationTag;
+import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.source.SourceSection;
 
 @Registration(id = StatementProfilerExample.ID)
@@ -58,7 +58,7 @@ public class StatementProfilerExample extends TruffleInstrument {
                 throw new RuntimeException(e);
             }
         }
-        instrumenter.attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTag.STATEMENT).build(), new EventNodeFactory() {
+        instrumenter.attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new EventNodeFactory() {
             public EventNode create(final EventContext context) {
                 return new EventNode() {
                     private final Counter counter = createCounter(context.getInstrumentedSourceSection());

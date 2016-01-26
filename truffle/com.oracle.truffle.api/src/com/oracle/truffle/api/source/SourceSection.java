@@ -37,6 +37,9 @@ package com.oracle.truffle.api.source;
  * @see #createUnavailable
  */
 public final class SourceSection {
+
+    static final String[] EMTPY_TAGS = new String[0];
+
     private final Source source;
     private final String identifier;
     private final int startLine;
@@ -44,6 +47,7 @@ public final class SourceSection {
     private final int charIndex;
     private final int charLength;
     private final String kind;
+    private final String[] tags;
 
     /**
      * Creates a new object representing a contiguous text section within the source code of a guest
@@ -68,7 +72,7 @@ public final class SourceSection {
      * @param charIndex the 0-based index of the first character of the section
      * @param charLength the length of the section in number of characters
      */
-    SourceSection(String kind, Source source, String identifier, int startLine, int startColumn, int charIndex, int charLength) {
+    SourceSection(String kind, Source source, String identifier, int startLine, int startColumn, int charIndex, int charLength, String[] tags) {
         this.kind = kind;
         this.source = source;
         this.identifier = identifier;
@@ -76,6 +80,24 @@ public final class SourceSection {
         this.startColumn = startColumn;
         this.charIndex = charIndex;
         this.charLength = charLength;
+        this.tags = tags;
+        assert tagsAreNonNullAndInterned(tags) : "All tags set for a source section must be interned and non-null.";
+    }
+
+    private static boolean tagsAreNonNullAndInterned(String[] tags) {
+        for (int i = 0; i < tags.length; i++) {
+            if (tags[i] == null) {
+                return false;
+            }
+            if (tags[i].intern() != tags[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public String[] getTags() {
+        return tags;
     }
 
     /**
@@ -275,6 +297,6 @@ public final class SourceSection {
      * @return source section which is mostly <em>empty</em>
      */
     public static SourceSection createUnavailable(String kind, String name) {
-        return new SourceSection(kind, null, name == null ? "<unknown>" : name, -1, -1, -1, -1);
+        return new SourceSection(kind, null, name == null ? "<unknown>" : name, -1, -1, -1, -1, EMTPY_TAGS);
     }
 }

@@ -66,12 +66,6 @@ import com.oracle.truffle.api.source.SourceSection;
 public @interface Instrumentable {
 
     /**
-     * The set of tags that the annotated node represents. Might remain empty if instrumentation
-     * should be possible based on the {@link SourceSection} of the node.
-     */
-    InstrumentationTag[] tags() default {};
-
-    /**
      * Assigns a wrapper factory to a {@link Node node} class annotated as {@link Instrumentable
      * instrumentable}. To use the generated wrapper factory use the is generated with the original
      * class name and the "Wrapper" suffix. So if the class was called <code>StatementNode</code>
@@ -80,9 +74,9 @@ public @interface Instrumentable {
      * <pre>
      * &#064;Instrumentable(factory = BaseNodeWrapper.class)
      * public abstract class BaseNode extends Node {
-     *
+     * 
      *     public abstract Object execute(VirtualFrame frame);
-     *
+     * 
      * }
      * </pre>
      */

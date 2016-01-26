@@ -26,7 +26,6 @@ package com.oracle.truffle.api.instrumentation;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +83,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     public static final String MIME_TYPE = "instrumentation-test-language";
     public static final InstrumentationTestLanguage INSTANCE = new InstrumentationTestLanguage();
 
+    public static final String EXPRESSION = "EXPRESSION";
+    public static final String DEFINE = "DEFINE";
+    public static final String LOOP = "LOOP";
+    public static final String STATEMENT = "STATEMENT";
+    public static final String CALL = "CALL";
+    public static final String ROOT = "ROOT";
+    public static final String BLOCK = "BLOCK";
+
+    public static final String[] TAGS = new String[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
+
     @Override
     protected Map<String, CallTarget> createContext(TruffleLanguage.Env env) {
         return new HashMap<>();
@@ -138,18 +147,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             }
 
             skipWhiteSpace();
-            String ident = ident();
-            InstrumentationTag tag;
-            try {
-                tag = InstrumentationTag.valueOf(ident);
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException(String.format("Illegal statement tag %s.", ident));
+            String tag = ident().trim().intern();
+            if (!isValidTag(tag)) {
+                throw new RuntimeException(String.format("Illegal tag %s.", tag));
             }
 
             skipWhiteSpace();
 
             boolean isFirstParameterIdent = false;
-            if (tag == InstrumentationTag.DEFINE || tag == InstrumentationTag.CALL || tag == InstrumentationTag.LOOP) {
+            if (tag == DEFINE || tag == CALL || tag == LOOP) {
                 isFirstParameterIdent = true;
             }
 
@@ -183,15 +189,24 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
                 throw new RuntimeException("parameter required for " + tag);
             }
 
-            SourceSection sourceSection = source.createSection(null, startIndex, current - startIndex);
+            SourceSection sourceSection = source.createSection(null, startIndex, current - startIndex, tag);
             BaseNode[] childArray = children.toArray(new BaseNode[children.size()]);
-
             BaseNode node = createNode(tag, firstParameterIdent, sourceSection, childArray);
             node.assignSourceSection(sourceSection);
             return node;
         }
 
-        private static BaseNode createNode(InstrumentationTag tag, String firstParameterIdent, SourceSection sourceSection, BaseNode[] childArray) throws AssertionError {
+        private static boolean isValidTag(String tag) {
+            for (int i = 0; i < TAGS.length; i++) {
+                String allowedTag = TAGS[i];
+                if (tag == allowedTag) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static BaseNode createNode(String tag, String firstParameterIdent, SourceSection sourceSection, BaseNode[] childArray) throws AssertionError {
             switch (tag) {
                 case DEFINE:
                     return new DefineNode(firstParameterIdent, sourceSection, childArray);
@@ -201,18 +216,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
                     return new LoopNode(Integer.parseInt(firstParameterIdent), childArray);
                 case BLOCK:
                     return new BlockNode(childArray);
-                case CATCH:
-                    return new CatchNode(childArray);
                 case EXPRESSION:
                     return new ExpressionNode(childArray);
-                case READ:
-                    return new ReadNode(childArray);
                 case ROOT:
                     return new InstrumentableRootNode(childArray);
                 case STATEMENT:
                     return new StatementNode(childArray);
-                case WRITE:
-                    return new WriteNode(childArray);
                 default:
                     throw new AssertionError();
             }
@@ -287,7 +296,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     }
 
     // BEGIN: Instrumentable.ExpressionNode
-    @Instrumentable(tags = InstrumentationTag.EXPRESSION)
+    @Instrumentable
     private static final class ExpressionNode extends InstrumentedNode {
 
         ExpressionNode(BaseNode[] children) {
@@ -314,21 +323,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             return null;
         }
 
-        @Override
-        public String toString() {
-            return String.format("TaggedNode[%s]", Arrays.asList(this.getClass().getAnnotation(Instrumentable.class).tags()));
-        }
     }
 
-    @Instrumentable(tags = {InstrumentationTag.CATCH})
-    private static final class CatchNode extends InstrumentedNode {
-
-        CatchNode(BaseNode[] children) {
-            super(children);
-        }
-    }
-
-    @Instrumentable(tags = {InstrumentationTag.BLOCK})
     private static final class BlockNode extends InstrumentedNode {
 
         BlockNode(BaseNode[] children) {
@@ -336,15 +332,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
-    @Instrumentable(tags = {InstrumentationTag.READ})
-    private static final class ReadNode extends InstrumentedNode {
-
-        ReadNode(BaseNode[] children) {
-            super(children);
-        }
-    }
-
-    @Instrumentable(tags = {InstrumentationTag.ROOT})
     private static final class InstrumentableRootNode extends InstrumentedNode {
 
         InstrumentableRootNode(BaseNode[] children) {
@@ -352,7 +339,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
-    @Instrumentable(tags = {InstrumentationTag.STATEMENT})
     private static final class StatementNode extends InstrumentedNode {
 
         StatementNode(BaseNode[] children) {
@@ -360,15 +346,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
-    @Instrumentable(tags = {InstrumentationTag.WRITE})
-    private static final class WriteNode extends InstrumentedNode {
-
-        WriteNode(BaseNode[] children) {
-            super(children);
-        }
-    }
-
-    @Instrumentable(tags = InstrumentationTag.DEFINE)
     private static class DefineNode extends BaseNode {
 
         private final String identifier;
@@ -402,7 +379,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     }
 
-    @Instrumentable(tags = InstrumentationTag.CALL)
     private static class CallNode extends InstrumentedNode {
 
         @Child private DirectCallNode callNode;
@@ -429,7 +405,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     }
 
-    @Instrumentable(tags = InstrumentationTag.LOOP)
     private static class LoopNode extends InstrumentedNode {
 
         private final int loopCount;

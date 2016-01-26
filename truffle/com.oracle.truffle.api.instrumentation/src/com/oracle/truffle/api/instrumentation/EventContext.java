@@ -25,11 +25,8 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.IOException;
-import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -45,14 +42,11 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class EventContext {
 
     private final ProbeNode probeNode;
-    @CompilationFinal private int cachedTags;
-    @CompilationFinal private InstrumentationTagSet cachedTagSet;
     private final SourceSection sourceSection;
 
-    EventContext(ProbeNode probeNode, SourceSection sourceSection, int tags) {
+    EventContext(ProbeNode probeNode, SourceSection sourceSection) {
         this.sourceSection = sourceSection;
         this.probeNode = probeNode;
-        this.cachedTags = tags;
     }
 
     /**
@@ -66,31 +60,6 @@ public final class EventContext {
      */
     public SourceSection getInstrumentedSourceSection() {
         return sourceSection;
-    }
-
-    /**
-     * <p>
-     * Returns a set of {@link InstrumentationTag} instances that were defined by the guest language
-     * implementation for the instrumented source section. The returned set of tags is final for
-     * each {@link EventContext} instance.
-     * </p>
-     *
-     * <p>
-     * <b>Performance note:</b> this is method may be invoked in compiled code and is guaranteed to
-     * always return a compilation constant .
-     * </p>
-     *
-     * @see #getInstrumentedSourceSection()
-     */
-    public Set<InstrumentationTag> getInstrumentedTags() {
-        InstrumentationTagSet set = cachedTagSet;
-        if (set == null) {
-            // we consider it rare if the tag set is actually used
-            // but if it is used its fast
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            cachedTagSet = set = new InstrumentationTagSet(cachedTags);
-        }
-        return set;
     }
 
     /**
@@ -124,10 +93,6 @@ public final class EventContext {
         return InstrumentationHandler.ACCESSOR.parse(null, source, getInstrumentedNode(), argumentNames);
     }
 
-    int getCachedTags() {
-        return cachedTags;
-    }
-
     /*
      * TODO (chumer) a way to parse code in the current language and return something like a node
      * that is directly embeddable into the AST as a @Child.
@@ -135,7 +100,7 @@ public final class EventContext {
 
     @Override
     public String toString() {
-        return "EventContext[source=" + getInstrumentedSourceSection() + ", tags=" + getInstrumentedTags() + "]";
+        return "EventContext[source=" + getInstrumentedSourceSection() + "]";
     }
 
 }

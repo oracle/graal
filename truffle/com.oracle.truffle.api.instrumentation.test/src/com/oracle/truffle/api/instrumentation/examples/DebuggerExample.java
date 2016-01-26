@@ -36,11 +36,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.EventListener;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.instrumentation.InstrumentationTag;
+import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
 /**
  * This is an example how debugging can be implemented using the instrumentation framework. Debugger
@@ -85,7 +85,7 @@ public final class DebuggerExample extends TruffleInstrument {
     }
 
     public void installBreakpoint(int line, final Callback callback) {
-        instrumenter.attachListener(SourceSectionFilter.newBuilder().lineIs(line).tagIs(InstrumentationTag.STATEMENT).build(), new Breakpoint(callback));
+        instrumenter.attachListener(SourceSectionFilter.newBuilder().lineIs(line).tagIs(InstrumentationTestLanguage.STATEMENT).build(), new Breakpoint(callback));
     }
 
     public void stepInto(Callback next) {
@@ -126,7 +126,7 @@ public final class DebuggerExample extends TruffleInstrument {
         EventBinding<?> step = this.stepping;
         if (stepping) {
             if (step == null) {
-                this.stepping = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTag.STATEMENT).build(), new Stepping());
+                this.stepping = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new Stepping());
             }
         } else {
             if (step != null && !step.isDisposed()) {

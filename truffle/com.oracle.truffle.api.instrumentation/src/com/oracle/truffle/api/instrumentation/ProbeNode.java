@@ -75,9 +75,9 @@ public final class ProbeNode extends Node {
     @CompilationFinal private Assumption version;
 
     /** Is instantiated by the instrumentation framework. */
-    ProbeNode(InstrumentationHandler impl, SourceSection sourceSection, int tags) {
+    ProbeNode(InstrumentationHandler impl, SourceSection sourceSection) {
         this.instrumenter = impl;
-        this.context = new EventContext(this, sourceSection, tags);
+        this.context = new EventContext(this, sourceSection);
     }
 
     /**
