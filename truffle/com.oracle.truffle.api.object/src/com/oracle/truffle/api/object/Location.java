@@ -125,7 +125,7 @@ public abstract class Location {
     protected abstract void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException;
 
     /**
-     * Returns {@code true} if the location can be set to the value.
+     * Returns {@code true} if the location can be set to the given value.
      *
      * @param store the receiver object
      * @param value the value in question
@@ -144,9 +144,10 @@ public abstract class Location {
     }
 
     /**
-     * Returns {@code true} if the location is compatible with the value.
+     * Returns {@code true} if the location is compatible with the type of the value.
      *
-     * The value may still be rejected if {@link #canSet(DynamicObject, Object)} returns false.
+     * The actual value may still be rejected if {@link #canSet(DynamicObject, Object)} returns
+     * false.
      *
      * @param value the value in question
      */
