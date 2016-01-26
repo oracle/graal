@@ -88,15 +88,5 @@ public @interface Instrumentable {
      */
     Class<? extends InstrumentableFactory<? extends Node>> factory() default InheritFactory.class;
 
-    /**
-     * Class declaration for the default value of {@link Instrumentable#factory()} necessary because
-     * null values are not allowed for classes in annotations.
-     */
-    final class InheritFactory implements InstrumentableFactory<Node> {
-        @Override
-        public WrapperNode createWrapper(Node node, ProbeNode probe) {
-            throw new UnsupportedOperationException();
-        }
-    }
 
 }

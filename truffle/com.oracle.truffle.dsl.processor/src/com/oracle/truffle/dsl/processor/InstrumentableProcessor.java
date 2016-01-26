@@ -112,7 +112,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     }
 
                     TypeMirror factoryType = ElementUtils.getAnnotationValue(TypeMirror.class, instrumentable, "factory");
-                    TypeMirror inheritFactory = context.getType(Instrumentable.InheritFactory.class);
+                    TypeMirror inheritFactory = findInheritFactory(context);
 
                     final boolean generateWrapper;
                     if (factoryType == null || factoryType.getKind() == TypeKind.ERROR) {
@@ -154,9 +154,17 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         }
     }
 
+    private static TypeMirror findInheritFactory(ProcessorContext context) {
+        try {
+            return context.getType(Class.forName("com.oracle.truffle.api.instrumentation.InheritFactory"));
+        } catch (ClassNotFoundException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
     private static boolean hasWrapperInSuperclass(ProcessorContext context, Element element) {
         TypeMirror instrumentableType = context.getType(Instrumentable.class);
-        TypeMirror inheritFactory = context.getType(Instrumentable.InheritFactory.class);
+        TypeMirror inheritFactory = findInheritFactory(context);
         for (TypeElement supertype : ElementUtils.getDirectSuperTypes((TypeElement) element)) {
             AnnotationMirror superInstrumentable = ElementUtils.findAnnotationMirror(supertype.getAnnotationMirrors(), instrumentableType);
             if (superInstrumentable == null) {
