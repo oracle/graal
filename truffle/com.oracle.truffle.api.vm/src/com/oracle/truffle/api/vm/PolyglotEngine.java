@@ -918,11 +918,15 @@ public class PolyglotEngine {
          * @return the global object or <code>null</code> if the language does not support such
          *         concept
          */
+        @SuppressWarnings("try")
         public Value getGlobalObject() {
             checkThread();
-
-            Object res = SPI.languageGlobal(getEnv(true));
-            return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
+            try (Closeable d = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+                Object res = SPI.languageGlobal(getEnv(true));
+                return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
         }
 
         TruffleLanguage<?> getImpl(boolean create) {

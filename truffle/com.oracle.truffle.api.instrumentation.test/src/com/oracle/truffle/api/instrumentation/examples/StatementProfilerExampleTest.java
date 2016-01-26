@@ -54,7 +54,7 @@ public final class StatementProfilerExampleTest extends AbstractInstrumentationT
     }
 
     @Before
-    public void setupDebugger() throws IOException {
+    public void setupProfiler() throws IOException {
         engine.getInstruments().get(StatementProfilerExample.ID).setEnabled(true);
         // force profiler frontend attachement
         run(lines(""));

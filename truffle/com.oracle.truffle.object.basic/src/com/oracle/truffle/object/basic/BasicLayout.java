@@ -62,8 +62,8 @@ public class BasicLayout extends LayoutImpl {
     }
 
     @Override
-    public Shape createShape(ObjectType operations, Object sharedData, int id) {
-        return new ShapeBasic(this, sharedData, operations, id);
+    public Shape createShape(ObjectType objectType, Object sharedData, int id) {
+        return new ShapeBasic(this, sharedData, objectType, id);
     }
 
     @Override
