@@ -146,7 +146,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
     }
 
     private static boolean checkEntryTypes(int srcPos, int length, VirtualObjectNode src, ResolvedJavaType destComponentType, VirtualizerTool tool) {
-        if (destComponentType.getJavaKind() == JavaKind.Object && !tool.getMetaAccessProvider().lookupJavaType(Object.class).equals(destComponentType)) {
+        if (destComponentType.getJavaKind() == JavaKind.Object && !destComponentType.isJavaLangObject()) {
             for (int i = 0; i < length; i++) {
                 ValueNode entry = tool.getEntry(src, srcPos + i);
                 ResolvedJavaType type = StampTool.typeOrNull(entry);
