@@ -38,6 +38,9 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 @SuppressWarnings("unused")
 public abstract class EventNode extends Node {
 
+    protected EventNode() {
+    }
+
     /**
      * Invoked before an instrumented node is executed. The provided frame is the frame of
      * instrumented node.

@@ -50,11 +50,11 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * <p>
  * Minimal test language for instrumentation that enables to define a hierarchy of nodes with one or
- * multiple tags ({@link InstrumentationTag}). If the {@link InstrumentationTag#DEFINE} tag is used
- * then the first argument is an identifier and all following arguments are contents of a function.
- * If {@link InstrumentationTag#CALL} is used then the first argument is used as identifier for a
- * previously defined target. For the tag {@link InstrumentationTag#LOOP} the first argument is used
- * for the number of iterations all body nodes should get executed.
+ * multiple {@link SourceSection#getTags() source section tags}. If the DEFINE tag is used then the
+ * first argument is an identifier and all following arguments are contents of a function. If CALL
+ * is used then the first argument is used as identifier for a previously defined target. For the
+ * tag LOOP the first argument is used for the number of iterations all body nodes should get
+ * executed.
  * </p>
  *
  * <p>
@@ -295,8 +295,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
-    // BEGIN: Instrumentable.ExpressionNode
-    @Instrumentable
     private static final class ExpressionNode extends InstrumentedNode {
 
         ExpressionNode(BaseNode[] children) {
@@ -304,15 +302,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
-    private abstract static class InstrumentedNode extends BaseNode {
+    @Instrumentable(factory = InstrumentedNodeWrapper.class)
+    public abstract static class InstrumentedNode extends BaseNode {
 
         @Children private final BaseNode[] children;
 
-        InstrumentedNode(BaseNode[] children) {
+        public InstrumentedNode(BaseNode[] children) {
             this.children = children;
         }
 
-        // FINISH: Instrumentable.ExpressionNode
+        public InstrumentedNode(@SuppressWarnings("unused") InstrumentedNode delegate) {
+            this.children = null;
+        }
 
         @Override
         @ExplodeLoop
@@ -346,7 +347,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
-    private static class DefineNode extends BaseNode {
+    static class DefineNode extends BaseNode {
 
         private final String identifier;
 
@@ -425,15 +426,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     }
 
-    // BEGIN: Instrumentable.BaseNode
-    @Instrumentable(factory = BaseNodeWrapper.class)
     public abstract static class BaseNode extends Node {
 
         public abstract Object execute(VirtualFrame frame);
 
     }
-
-    // END: Instrumentable.BaseNode
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {

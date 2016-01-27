@@ -42,8 +42,8 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -56,7 +56,7 @@ import com.oracle.truffle.api.source.SourceSection;
 final class InstrumentationHandler {
 
     /* Enable trace output to stdout. */
-    private static final boolean TRACE = false;
+    private static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
 
     /* All roots that were initialized (executed at least once) */
     private final Map<RootNode, Void> roots = Collections.synchronizedMap(new WeakHashMap<RootNode, Void>());
@@ -257,26 +257,30 @@ final class InstrumentationHandler {
             invalidateWrapperImpl((WrapperNode) parent, node);
             return;
         }
-        if (TRACE) {
-            trace("Insert wrapper for %s, section %s%n", node, sourceSection);
-        }
         ProbeNode probe = new ProbeNode(InstrumentationHandler.this, sourceSection);
         WrapperNode wrapper;
         try {
-            Class<?> factory = InheritFactory.class;
+            Class<?> factory = null;
             Class<?> currentClass = instrumentableNode.getClass();
             while (currentClass != null) {
-                Instrumentable superInstrumentable = currentClass.getAnnotation(Instrumentable.class);
-                if (superInstrumentable != null) {
-                    factory = superInstrumentable.factory();
-                    if (factory != InheritFactory.class) {
-                        break;
-                    }
+                Instrumentable instrumentable = currentClass.getAnnotation(Instrumentable.class);
+                if (instrumentable != null) {
+                    factory = instrumentable.factory();
+                    break;
                 }
                 currentClass = currentClass.getSuperclass();
             }
-            if (factory == InheritFactory.class) {
-                throw new IllegalStateException(String.format("No instrumentable factory found for class %s", instrumentableNode.getClass().getName()));
+
+            if (factory == null) {
+                if (TRACE) {
+                    trace("No wrapper inserted for %s, section %s. Not annotated with @Instrumentable.%n", node, sourceSection);
+                }
+                // node or superclass is not annotated with @Instrumentable
+                return;
+            }
+
+            if (TRACE) {
+                trace("Insert wrapper for %s, section %s%n", node, sourceSection);
             }
 
             wrapper = ((InstrumentableFactory<Node>) factory.newInstance()).createWrapper(instrumentableNode, probe);
@@ -312,6 +316,10 @@ final class InstrumentationHandler {
 
     private <T extends EventListener> EventBinding<T> attachListener(AbstractInstrumenter instrumenter, SourceSectionFilter filter, T listener) {
         return addBinding(new EventBinding<>(instrumenter, filter, listener));
+    }
+
+    private static boolean isInstrumentableNode(Node node) {
+        return !(node instanceof WrapperNode) && !(node instanceof RootNode);
     }
 
     private static boolean isInstrumented(Node node, EventBinding<?> binding, SourceSection section) {
@@ -411,7 +419,7 @@ final class InstrumentationHandler {
         public final boolean visit(Node node) {
             SourceSection sourceSection = node.getSourceSection();
             if (sourceSection != null) {
-                if (isInstrumentedLeaf(node, binding, sourceSection)) {
+                if (isInstrumentedLeaf(node, binding, sourceSection) && isInstrumentableNode(node)) {
                     if (TRACE) {
                         trace("Filter hit section:%s tags:%s%n", sourceSection, Arrays.toString(sourceSection.getTags()));
                     }
@@ -451,7 +459,7 @@ final class InstrumentationHandler {
                 List<EventBinding<?>> b = bindings;
                 for (int i = 0; i < b.size(); i++) {
                     EventBinding<?> binding = b.get(i);
-                    if (isInstrumented(node, binding, sourceSection)) {
+                    if (isInstrumented(node, binding, sourceSection) && isInstrumentableNode(node)) {
                         if (TRACE) {
                             trace("Filter hit section:%s", sourceSection);
                         }

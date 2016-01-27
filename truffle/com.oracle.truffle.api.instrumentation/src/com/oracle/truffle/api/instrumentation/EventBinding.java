@@ -68,18 +68,34 @@ public final class EventBinding<T> {
         return instrumenter;
     }
 
+    /**
+     * Returns the bound element, either a {@link EventNodeFactory factory} or a
+     * {@link EventListener listener} implementation.
+     */
     public T getElement() {
         return element;
     }
 
+    /**
+     * Returns the bound filter for this binding.
+     *
+     * @return the filter never null
+     */
     public SourceSectionFilter getFilter() {
         return filter;
     }
 
+    /**
+     * Returns <code>true</code> if the binding was already disposed, otherwise <code>false</code>.
+     */
     public boolean isDisposed() {
         return disposed;
     }
 
+    /**
+     * Disposes this binding. If a binding of a listener or factory is disposed then their methods
+     * are not invoked again by the instrumentation framework.
+     */
     public void dispose() throws IllegalStateException {
         CompilerAsserts.neverPartOfCompilation();
         if (disposed) {

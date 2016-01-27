@@ -202,7 +202,7 @@ public final class ProbeNode extends Node {
         return eventNode;
     }
 
-    private static void failEventForInstrumentation(EventBinding<?> b, String eventName, Throwable t) {
+    static void failEventForInstrumentation(EventBinding<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
         InstrumentationInstrumenter instrumentationInstrumenter = (InstrumentationInstrumenter) b.getInstrumenter();
         Class<?> instrumentationClass = instrumentationInstrumenter.getInstrumentationClass();

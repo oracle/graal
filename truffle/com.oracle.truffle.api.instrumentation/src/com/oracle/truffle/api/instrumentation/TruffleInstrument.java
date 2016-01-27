@@ -75,7 +75,7 @@ import com.oracle.truffle.api.source.Source;
  *     &#064;Override
  *     protected void onCreate(Env env, Instrumenter instrumenter) {
  *         instrumenter.attachFactory(SourceSectionFilter.newBuilder() //
- *         .tagIs(InstrumentationTag.EXPRESSION).build(), new EventNodeFactory() {
+ *         .tagIs(&quot;EXPRESSION&quot;).build(), new EventNodeFactory() {
  *             public EventNode create(final EventContext context) {
  *                 return new EventNode() {
  *                     &#064;CompilationFinal private boolean visited;
@@ -214,7 +214,10 @@ public abstract class TruffleInstrument {
         String version() default "";
 
         /**
-         * Whether or not the annotated instrumentation should be enabled by default.
+         * Whether or not the annotated instrumentation should be enabled by default. If autostart
+         * is <code>true</code> then {@link TruffleInstrument#onCreate(Env, Instrumenter)} is
+         * invoked for this instrument just before the first guest language code is executed. If
+         * autostart is <code>false</code> then the instrument needs to be enabled using the engine.
          */
         boolean autostart() default false;
 

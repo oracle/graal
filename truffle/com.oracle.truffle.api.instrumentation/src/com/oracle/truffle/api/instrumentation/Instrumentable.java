@@ -36,9 +36,8 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * <p>
  * Marks a guest language AST node class as instrumentable. An instrumentable node must provide a
- * {@link SourceSection}, a set of instrumentation {@link #tags() tags} and a {@link #factory()
- * wrapper factory} to create a wrapper for the instrumentable node. If a super-class is already
- * instrumentable and declares a wrapper factory then {@link #factory()} can be left default.
+ * {@link SourceSection} and a {@link #factory() wrapper factory} to create a wrapper for the
+ * instrumentable node. Wrapper factories can be inherited by subclasses.
  * </p>
  * <p>
  * {@link Instrumentable} nodes must extend {@link Node}. The instrumentation framework will
@@ -49,15 +48,13 @@ import com.oracle.truffle.api.source.SourceSection;
  * Example for a minimal implementation of an {@link Instrumentable instrumentable} node with a
  * generated wrapper.
  *
- * {@codesnippet Instrumentable.BaseNode}
+ * <pre>
+ * &#064;Instrumentable(factory = BaseNodeWrapper.class)
+ * public abstract class BaseNode extends Node {
+ *     public abstract Object execute(VirtualFrame frame);
+ * }
+ * </pre>
  *
- * <p>
- * Example of a subclass not defining a wrapper factory but just tags:
- * </p>
- *
- * {@codesnippet Instrumentable.ExpressionNode}
- *
- * @see InstrumentationTag
  * @see WrapperNode
  * @see ProbeNode
  */
@@ -78,6 +75,6 @@ public @interface Instrumentable {
      * }
      * </pre>
      */
-    Class<? extends InstrumentableFactory<? extends Node>> factory() default InheritFactory.class;
+    Class<? extends InstrumentableFactory<? extends Node>> factory();
 
 }

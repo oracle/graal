@@ -24,17 +24,18 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.nodes.Node;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
- * Class declaration for the default value of {@link Instrumentable#factory()} necessary because
- * null values are not allowed for classes in annotations.
+ * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
  */
-final class InheritFactory implements InstrumentableFactory<Node> {
-
-    @Override
-    public WrapperNode createWrapper(Node node, ProbeNode probe) {
-        throw new UnsupportedOperationException();
-    }
-
+@Retention(RetentionPolicy.CLASS)
+@interface SuppressFBWarnings {
+    /**
+     * The set of FindBugs <a
+     * href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
+     * suppressed in annotated element. The value can be a bug category, kind or pattern.
+     */
+    java.lang.String[] value();
 }

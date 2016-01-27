@@ -112,19 +112,12 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     }
 
                     TypeMirror factoryType = ElementUtils.getAnnotationValue(TypeMirror.class, instrumentable, "factory");
-                    TypeMirror inheritFactory = findInheritFactory(context);
 
                     final boolean generateWrapper;
                     if (factoryType == null || factoryType.getKind() == TypeKind.ERROR) {
                         // factory type is erroneous or null (can mean error in javac)
                         // generate it
                         generateWrapper = true;
-                    } else if (ElementUtils.typeEquals(factoryType, inheritFactory)) {
-                        if (!hasWrapperInSuperclass(context, element)) {
-                            emitError(element, String.format("No wrapper factory defined. To use the automatically generated wrapper add @%s(factory=%s.class).", Instrumentable.class.getSimpleName(),
-                                            createWrapperClassName((TypeElement) element)));
-                        }
-                        generateWrapper = false;
                     } else {
                         // factory is user defined or already generated
                         generateWrapper = false;
@@ -152,30 +145,6 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         } finally {
             ProcessorContext.setThreadLocalInstance(null);
         }
-    }
-
-    private static TypeMirror findInheritFactory(ProcessorContext context) {
-        try {
-            return context.getType(Class.forName("com.oracle.truffle.api.instrumentation.InheritFactory"));
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    private static boolean hasWrapperInSuperclass(ProcessorContext context, Element element) {
-        TypeMirror instrumentableType = context.getType(Instrumentable.class);
-        TypeMirror inheritFactory = findInheritFactory(context);
-        for (TypeElement supertype : ElementUtils.getDirectSuperTypes((TypeElement) element)) {
-            AnnotationMirror superInstrumentable = ElementUtils.findAnnotationMirror(supertype.getAnnotationMirrors(), instrumentableType);
-            if (superInstrumentable == null) {
-                continue;
-            }
-            TypeMirror superFactoryType = ElementUtils.getAnnotationValue(TypeMirror.class, superInstrumentable, "factory");
-            if (!ElementUtils.typeEquals(superFactoryType, inheritFactory)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private void handleThrowable(Throwable t, Element e) {

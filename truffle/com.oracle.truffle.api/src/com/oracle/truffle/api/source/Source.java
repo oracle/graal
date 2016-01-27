@@ -547,6 +547,23 @@ public abstract class Source {
         return createSectionImpl(identifier, startLine, startColumn, charIndex, length, SourceSection.EMTPY_TAGS);
     }
 
+    /**
+     * Creates a representation of a contiguous region of text in the source.
+     * <p>
+     * This method performs no checks on the validity of the arguments.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     * @param identifier terse description of the region
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param charIndex the 0-based index of the first character of the section
+     * @param length the number of characters in the section
+     * @param tags the tags associated with this section. Tags must be non-null and
+     *            {@link String#intern() interned}.
+     * @return newly created object representing the specified region
+     */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length, String... tags) {
         checkRange(charIndex, length);
         return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
@@ -605,6 +622,27 @@ public abstract class Source {
         return createSection(identifier, charIndex, length, SourceSection.EMTPY_TAGS);
     }
 
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
+     * source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     *
+     * @param identifier terse description of the region
+     * @param charIndex 0-based position of the first character in the section
+     * @param length the number of characters in the section
+     * @param tags the tags associated with this section. Tags must be non-null and
+     *            {@link String#intern() interned}.
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if either of the arguments are outside the text of the
+     *             source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     */
     public final SourceSection createSection(String identifier, int charIndex, int length, String... tags) throws IllegalArgumentException {
         checkRange(charIndex, length);
         final int startLine = getLineNumber(charIndex);

@@ -84,6 +84,7 @@ public final class SourceSection {
         assert tagsAreNonNullAndInterned(tags) : "All tags set for a source section must be interned and non-null.";
     }
 
+    @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
     private static boolean tagsAreNonNullAndInterned(String[] tags) {
         for (int i = 0; i < tags.length; i++) {
             if (tags[i] == null) {
@@ -96,6 +97,11 @@ public final class SourceSection {
         return true;
     }
 
+    /**
+     * Returns a set of tags that are associated with this source section as array. The returned
+     * array must be considered read-only. All elements of the array were asserted to be non-null
+     * and interned for faster comparison.
+     */
     public String[] getTags() {
         return tags;
     }

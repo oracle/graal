@@ -162,11 +162,4 @@ public class InstrumentableTest {
         }
     }
 
-    @ExpectError("No wrapper factory defined. To use the automatically generated wrapper add @Instrumentable(factory=ErrorNode7Wrapper.class).")
-    @Instrumentable
-    public abstract static class ErrorNode7 extends Node {
-        public void execute2() {
-        }
-    }
-
 }

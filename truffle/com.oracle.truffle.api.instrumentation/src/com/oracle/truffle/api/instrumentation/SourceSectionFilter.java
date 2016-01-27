@@ -61,8 +61,8 @@ public final class SourceSectionFilter {
      *
      * @see Builder#sourceIs(Source...)
      * @see Builder#mimeTypeIs(String...)
-     * @see Builder#tagIs(InstrumentationTag...)
-     * @see Builder#tagIsNot(InstrumentationTag...)
+     * @see Builder#tagIs(String...)
+     * @see Builder#tagIsNot(String...)
      * @see Builder#sourceSectionEquals(SourceSection...)
      * @see Builder#indexIn(int, int)
      * @see Builder#lineIn(int, int)
@@ -342,6 +342,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
+            @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
             boolean isIncluded(SourceSection sourceSection) {
                 String[] filterTags = this.tags;
                 String[] sectionTags = sourceSection.getTags();
@@ -376,6 +377,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
+            @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
             boolean isIncluded(SourceSection sourceSection) {
                 String[] filterTags = this.tags;
                 String[] sectionTags = sourceSection.getTags();

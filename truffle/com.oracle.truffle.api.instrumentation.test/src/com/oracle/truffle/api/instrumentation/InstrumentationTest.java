@@ -36,8 +36,8 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.BaseNode;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -619,6 +619,74 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 }
             });
 
+        }
+    }
+
+    /*
+     * Test instrument all with any filter. Ensure that root nodes are not tried to be instrumented.
+     */
+    @Test
+    public void testInstrumentAll() throws IOException {
+        TestInstrumentAll1.onStatement = 0;
+
+        engine.getInstruments().get("testInstrumentAll").setEnabled(true);
+        run("STATEMENT");
+
+        Assert.assertEquals(1, TestInstrumentAll1.onStatement);
+    }
+
+    @Registration(id = "testInstrumentAll")
+    public static class TestInstrumentAll1 extends TruffleInstrument {
+
+        static int onStatement = 0;
+
+        @Override
+        protected void onCreate(final Env env, Instrumenter instrumenter) {
+            instrumenter.attachListener(SourceSectionFilter.newBuilder().build(), new EventListener() {
+                public void onEnter(EventContext context, VirtualFrame frame) {
+                    onStatement++;
+                }
+
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                }
+
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                }
+            });
+        }
+    }
+
+    /*
+     * Define is not instrumentable but has a source section.
+     */
+    @Test
+    public void testInstrumentNonInstrumentable() throws IOException {
+        TestInstrumentNonInstrumentable1.onStatement = 0;
+
+        engine.getInstruments().get("testInstrumentNonInstrumentable").setEnabled(true);
+        run("DEFINE(foo, ROOT())");
+
+        Assert.assertEquals(0, TestInstrumentNonInstrumentable1.onStatement);
+    }
+
+    @Registration(id = "testInstrumentNonInstrumentable")
+    public static class TestInstrumentNonInstrumentable1 extends TruffleInstrument {
+
+        static int onStatement = 0;
+
+        @Override
+        protected void onCreate(final Env env, Instrumenter instrumenter) {
+            instrumenter.attachListener(SourceSectionFilter.newBuilder().build(), new EventListener() {
+                public void onEnter(EventContext context, VirtualFrame frame) {
+                    onStatement++;
+                }
+
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                }
+
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                }
+            });
         }
     }
 
