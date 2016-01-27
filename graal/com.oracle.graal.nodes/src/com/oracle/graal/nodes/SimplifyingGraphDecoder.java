@@ -138,6 +138,17 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
+    protected void handleMergeNode(MergeNode merge) {
+        /*
+         * All inputs of non-loop phi nodes are known by now. We can infer the stamp for the phi, so
+         * that parsing continues with more precise type information.
+         */
+        for (ValuePhiNode phi : merge.valuePhis()) {
+            phi.inferStamp();
+        }
+    }
+
+    @Override
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         if (node instanceof IfNode) {
             IfNode ifNode = (IfNode) node;

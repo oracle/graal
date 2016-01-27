@@ -462,6 +462,9 @@ public class GraphDecoder {
                 handleProxyNodes(methodScope, loopScope, (LoopExitNode) node);
             }
 
+        } else if (node instanceof MergeNode) {
+            handleMergeNode(((MergeNode) node));
+
         } else if (node instanceof AbstractEndNode) {
             LoopScope phiInputScope = loopScope;
             LoopScope phiNodeScope = loopScope;
@@ -548,6 +551,14 @@ public class GraphDecoder {
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
             ((InvokeWithExceptionNode) invokeData.invoke).setExceptionEdge((AbstractBeginNode) makeStubNode(methodScope, loopScope, invokeData.exceptionOrderId));
         }
+    }
+
+    /**
+     * Hook for subclasses to perform simplifications for a non-loop-header control flow merge.
+     *
+     * @param merge The control flow merge.
+     */
+    protected void handleMergeNode(MergeNode merge) {
     }
 
     protected void handleLoopExplosionBegin(MethodScope methodScope, LoopScope loopScope, LoopBeginNode loopBegin) {
@@ -1286,7 +1297,7 @@ public class GraphDecoder {
                  * loop iteration. This is mostly the state that we want, we only need to tweak it a
                  * little bit: we need to insert the appropriate ProxyNodes for all values that are
                  * created inside the loop and that flow out of the loop.
-                 *
+                 * 
                  * In some cases, we did not create a FrameState during graph decoding: when there
                  * was no LoopExit in the original loop that we exploded. This happens for code
                  * paths that lead immediately to a DeoptimizeNode. Since the BytecodeParser does

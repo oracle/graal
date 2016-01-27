@@ -24,7 +24,6 @@ package com.oracle.graal.truffle.test;
 
 import java.util.function.Supplier;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
@@ -38,7 +37,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class PhiStampInferencePartialEvaluationTest extends PartialEvaluationTest {
 
-    @Ignore("currently failing")
     @Test
     public void ifPhiStamp() {
         /*
