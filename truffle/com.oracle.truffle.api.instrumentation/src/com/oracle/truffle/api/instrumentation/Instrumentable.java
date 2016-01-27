@@ -74,13 +74,10 @@ public @interface Instrumentable {
      * <pre>
      * &#064;Instrumentable(factory = BaseNodeWrapper.class)
      * public abstract class BaseNode extends Node {
-     * 
      *     public abstract Object execute(VirtualFrame frame);
-     * 
      * }
      * </pre>
      */
     Class<? extends InstrumentableFactory<? extends Node>> factory() default InheritFactory.class;
-
 
 }
