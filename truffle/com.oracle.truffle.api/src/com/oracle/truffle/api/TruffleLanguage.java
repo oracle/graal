@@ -361,9 +361,9 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream err;
         private final OutputStream out;
         private final Instrumenter instrumenter;
-        private final Map<String, Map<String, Object>> config;
+        private final Map<String, Object> config;
 
-        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, Map<String, Map<String, Object>> config) {
+        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, Map<String, Object> config) {
             this.vm = vm;
             this.in = in;
             this.err = err;
@@ -447,7 +447,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @return read-only view of configuration options for this language
          */
-        public Map<String, Map<String, Object>> getConfig() {
+        public Map<String, Object> getConfig() {
             return config;
         }
     }
@@ -457,7 +457,7 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Map<String, Object>> config) {
+        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> config) {
             Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
             return env;
         }

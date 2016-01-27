@@ -275,6 +275,9 @@ public class PolyglotEngine {
          * {@link com.oracle.truffle.api.TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)
          * initial execution state} correctly.
          *
+         * Language implementations that have multiple mimeTypes associated with them will see only
+         * a merged set of configuration values. The merge is done based on the key.
+         *
          * @param mimeType of the language for which the arguments are
          * @param key to identify a language-specific configuration element
          * @param value to parameterize initial state of a language
@@ -843,20 +846,16 @@ public class PolyglotEngine {
             return impl;
         }
 
-        private Map<String, Map<String, Object>> getArgumentsForLanguage() {
-            if (config == null) {
+        private Map<String, Object> getArgumentsForLanguage() {
+            if (config == null || Collections.disjoint(config.keySet(), info.getMimeTypes())) {
                 return null;
             }
 
-            if (Collections.disjoint(config.keySet(), info.getMimeTypes())) {
-                return null;
-            }
-
-            Map<String, Map<String, Object>> forLanguage = new HashMap<>();
+            Map<String, Object> forLanguage = new HashMap<>();
             for (String mimeType : info.getMimeTypes()) {
-                Map<String, Object> arg = config.get(mimeType);
-                if (arg != null) {
-                    forLanguage.put(mimeType, Collections.unmodifiableMap(arg));
+                Map<String, Object> args = config.get(mimeType);
+                if (args != null) {
+                    forLanguage.putAll(args);
                 }
             }
             return Collections.unmodifiableMap(forLanguage);
@@ -948,7 +947,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Map<String, Object>> config) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> config) {
             PolyglotEngine vm = (PolyglotEngine) obj;
             return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
         }
