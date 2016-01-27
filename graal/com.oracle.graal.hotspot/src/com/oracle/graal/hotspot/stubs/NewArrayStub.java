@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayPrototypeMarkWord;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.inlineContiguousAllocationSupported;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperElementTypeMask;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperElementTypeShift;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeMask;
@@ -113,7 +114,7 @@ public class NewArrayStub extends SnippetStub {
 
         // check that array length is small enough for fast path.
         Word thread = registerAsWord(threadRegister);
-        if (length >= 0 && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
+        if (inlineContiguousAllocationSupported() && length >= 0 && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
             Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
             if (memory.notEqual(0)) {
                 if (logging()) {
