@@ -30,8 +30,10 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -81,8 +83,12 @@ final class SymbolInvokerImpl {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new ArgumentsMishmashException();
             }
-            Object tmp = ForeignAccess.execute(foreignAccess, frame, function, args);
-            return convert.convert(frame, tmp);
+            try {
+                Object tmp = ForeignAccess.send(foreignAccess, frame, function, args);
+                return convert.convert(frame, tmp);
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
         }
     }
 
@@ -107,21 +113,17 @@ final class SymbolInvokerImpl {
 
         private Object convert(VirtualFrame frame, TruffleObject obj) {
             Object isBoxedResult;
-            try {
-                isBoxedResult = ForeignAccess.execute(isBoxed, frame, obj);
-            } catch (IllegalArgumentException ex) {
-                isBoxedResult = false;
-            }
+            isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, frame, obj);
             if (Boolean.TRUE.equals(isBoxedResult)) {
-                return ForeignAccess.execute(unbox, frame, obj);
-            } else {
                 try {
-                    Object isNullResult = ForeignAccess.execute(isNull, frame, obj);
-                    if (Boolean.TRUE.equals(isNullResult)) {
-                        return null;
-                    }
-                } catch (IllegalArgumentException ex) {
-                    // fallthrough
+                    return ForeignAccess.sendUnbox(unbox, frame, obj);
+                } catch (UnsupportedMessageException e) {
+                    return null;
+                }
+            } else {
+                Object isNullResult = ForeignAccess.sendIsNull(isNull, frame, obj);
+                if (Boolean.TRUE.equals(isNullResult)) {
+                    return null;
                 }
             }
             return obj;

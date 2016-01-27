@@ -47,11 +47,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLTargetableNode;
 import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 @NodeChild(type = SLExpressionNode.class)
 public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
@@ -98,13 +100,16 @@ public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             isBoxed = insert(Message.IS_BOXED.createNode());
         }
-        return (boolean) ForeignAccess.execute(isBoxed, frame, object);
+        return ForeignAccess.sendIsBoxed(isBoxed, frame, object);
     }
 
     protected final Object doUnbox(VirtualFrame frame, TruffleObject value) {
         initializeUnbox();
-        Object object = ForeignAccess.execute(unbox, frame, value);
-        return object;
+        try {
+            return ForeignAccess.sendUnbox(unbox, frame, value);
+        } catch (UnsupportedMessageException e) {
+            return SLNull.SINGLETON;
+        }
     }
 
     @Child private Node unbox;

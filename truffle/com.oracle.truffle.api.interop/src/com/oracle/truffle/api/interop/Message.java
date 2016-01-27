@@ -53,13 +53,13 @@ public abstract class Message {
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) argument} identifying a
      * field to read - e.g. either {@link String} or an {@link Integer} - if access to an array at
      * particular index is requested. The code that wants to send this message should use:
-     * 
+     *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
      *   {@link Message#READ}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver, nameOfTheField
      * );
      * </pre>
-     * 
+     *
      * Where <code>receiver</code> is the {@link TruffleObject foreign object} to access and
      * <code>nameOfTheField</code> is the name (or index) of its field.
      * <p>
@@ -73,13 +73,13 @@ public abstract class Message {
      * subclasses of {@link Number}, {@link Boolean}, {@link Character} and {@link String}. Before
      * sending the {@link #UNBOX} message, it is desirable to send the {@link #IS_BOXED} one and
      * verify that the object can really be unboxed. To unbox an object, use:
-     * 
+     *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
      *   {@link Message#UNBOX}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToUnbox
      * );
      * </pre>
-     * 
+     *
      * The returned value should be subclass of {@link Number}, {@link Boolean}, {@link Character}
      * or {@link String}.
      * <p>
@@ -96,13 +96,13 @@ public abstract class Message {
      * one identifies a field to read - e.g. either {@link String} or an {@link Integer} - if access
      * to an array at particular index is requested. The second one is the value to assign to such
      * field. Use following style to construct field modification message:
-     * 
+     *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
      *   {@link Message#WRITE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver, nameOfTheField, newValue
      * );
      * </pre>
-     * 
+     *
      * Where <code>receiver</code> is the {@link TruffleObject foreign object} to access,
      * <code>nameOfTheField</code> is the name (or index) of its field and <code>newValue</code> is
      * the value to assign to the receiver's field.
@@ -120,13 +120,13 @@ public abstract class Message {
      * <p>
      * To inter-operate with a non-OOP language like <em>C</em> - for example to execute its
      * function:
-     * 
+     *
      * <pre>
      * <b>double</b> add(<b>double</b> a, <b>double</b> b) {
      *   <b>return</b> a + b;
      * }
      * </pre>
-     * 
+     *
      * One can obtain reference to the <em>add</em> function (for example by
      * {@link Env#importSymbol(java.lang.String) importing it as a global symbol}) and store it into
      * variable <code>addFunction</code>. Then it's time to check the object is executable by
@@ -172,7 +172,7 @@ public abstract class Message {
      * should yield value of {@link Boolean}. Either {@link Boolean#TRUE} if the receiver can be
      * executed (e.g. accepts {@link #createExecute(int)} message, or {@link Boolean#FALSE}
      * otherwise. This is the way to send the <code>IS_EXECUTABLE</code> message:
-     * 
+     *
      * <pre>
      * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.execute(
      *   {@link Message#IS_EXECUTABLE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver
@@ -214,7 +214,7 @@ public abstract class Message {
      * the {@link #createInvoke(int)} message first. Only when that fails, fallback to non-object
      * oriented workflow with {@link #createExecute(int)}. Imagine there is a <em>Java</em> class
      * with <code>add</code> method and its instance:
-     * 
+     *
      * <pre>
      * <b>public class</b> Arith {
      *    <b>public double</b> add(double a, double b) {
@@ -223,7 +223,7 @@ public abstract class Message {
      * }
      * Arith obj = <b>new</b> Arith();
      * </pre>
-     * 
+     *
      * To access <code>obj</code>'s <code>add</code> method one should use:
      *
      * <pre>
@@ -235,7 +235,7 @@ public abstract class Message {
      *   // access the language via {@link #createExecute(int)}
      * }
      * </pre>
-     * 
+     *
      * The <code>valueOfA</code> and <code>valueOfB</code> should be <code>double</code> or
      * {@link Double} or at least be {@link #UNBOX unboxable} to such type.
      * <p>
@@ -271,7 +271,7 @@ public abstract class Message {
      * object representing <code>null</code> like values in their languages. For purposes of
      * inter-operability it is essential to canonicalize such values from time to time - sending
      * this message is a way to recognize such <code>null</code> representing values:
-     * 
+     *
      * <pre>
      * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.execute(
      *   {@link Message#IS_NULL}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheckForNull
@@ -310,13 +310,13 @@ public abstract class Message {
      * string, etc. To ensure inter-operability, these types should support unboxing - if they do,
      * they should handle this message and return {@link Boolean#TRUE}. The way to check whether an
      * object is boxed is:
-     * 
+     *
      * <pre>
      * {@link Boolean} isBoxed = ({@link Boolean}) {@link ForeignAccess}.execute(
      *   {@link Message#IS_BOXED}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheck
      * );
      * </pre>
-     * 
+     *
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
      * created for this message should yield value of {@link Boolean}. If the object responds with
      * {@link Boolean#TRUE}, it is safe to continue by sending it {@link #UNBOX} message.
@@ -338,7 +338,7 @@ public abstract class Message {
     /**
      * When re-implementing {@link #equals(java.lang.Object)}, it is generally recommended to also
      * implement <code>hashCode()</code>.
-     * 
+     *
      * @return hash code
      */
     @Override
@@ -360,7 +360,7 @@ public abstract class Message {
      * Converts the message into canonical string representation. The converted string can be
      * stored, persisted, transfered and later passed to {@link #valueOf(java.lang.String)} to
      * construct the message again.
-     * 
+     *
      * @param message the message to convert
      * @return canonical string representation
      */
@@ -399,17 +399,17 @@ public abstract class Message {
      * Converts string representation into real message. If the string was obtained by
      * {@link #toString(com.oracle.truffle.api.interop.Message)} method, it is guaranteed to be
      * successfully recognized (if the classpath of the system remains the same).
-     * 
+     *
      * @param message canonical string representation of a message
      * @return the message
      * @throws IllegalArgumentException if the string does not represent known message
      */
     public static Message valueOf(String message) {
         try {
-            return (Message) Message.class.getField(message).get(null);
+            return (Message) Message.class.getField(message.toUpperCase()).get(null);
         } catch (Exception ex) {
             try {
-                String factory = "create" + message.charAt(0) + message.substring(1).toLowerCase();
+                String factory = "create" + Character.toUpperCase(message.charAt(0)) + message.substring(1).toLowerCase();
                 return (Message) Message.class.getMethod(factory, int.class).invoke(null, 0);
             } catch (Exception ex2) {
                 try {

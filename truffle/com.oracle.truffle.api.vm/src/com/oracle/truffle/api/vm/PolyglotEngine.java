@@ -37,7 +37,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
@@ -61,8 +63,6 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import java.util.WeakHashMap;
-import java.util.logging.Level;
 
 /**
  * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #buildNew()
@@ -427,7 +427,7 @@ public class PolyglotEngine {
         }
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "deprecation"})
     final Object invokeForeign(final Node foreignNode, VirtualFrame frame, final TruffleObject receiver) throws IOException {
         Object res;
         if (executor == null) {
@@ -684,7 +684,7 @@ public class PolyglotEngine {
          *            {@link java.lang.Double}, {@link java.lang.Character},
          *            {@link java.lang.Boolean}, and {@link java.lang.String}) or a
          *            {@link TruffleObject object created} by one of the languages)
-         * 
+         *
          * @return symbol wrapper around the value returned by invoking the symbol, never
          *         <code>null</code>
          * @throws IOException signals problem during execution
@@ -790,7 +790,8 @@ public class PolyglotEngine {
          * Returns value representing global object of the language.
          * <p>
          * The object is expected to be <code>TruffleObject</code> (e.g. a native object from the
-         * other language) but technically it can be one of Java primitive wrappers ({@link Integer}, {@link Double}, {@link Short}, etc.).
+         * other language) but technically it can be one of Java primitive wrappers ({@link Integer}
+         * , {@link Double}, {@link Short}, etc.).
          *
          * @return the global object or <code>null</code> if the language does not support such
          *         concept

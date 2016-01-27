@@ -99,7 +99,10 @@ suite = {
     "com.oracle.truffle.dsl.processor" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.dsl"],
+      "dependencies" : [
+        "com.oracle.truffle.api.dsl",
+        "com.oracle.truffle.api.interop"
+      ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,Codegen",

@@ -40,6 +40,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -187,7 +188,11 @@ public class JavaInteropTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return ForeignAccess.execute(foreignAccess, frame, function, args);
+            try {
+                return ForeignAccess.send(foreignAccess, frame, function, args);
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
         }
     } // end of TemporaryRoot
 
