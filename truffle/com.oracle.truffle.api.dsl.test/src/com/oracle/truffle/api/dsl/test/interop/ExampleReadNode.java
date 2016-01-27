@@ -26,12 +26,17 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.AcceptMessage;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 
+//@formatter:off
 // BEGIN: AcceptMessageExample
-@AcceptMessage(value = "READ", receiverType = ExampleTruffleObject.class, language = TestTruffleLanguage.class)
+@AcceptMessage(value = "READ",
+receiverType = ExampleTruffleObject.class,
+language = TestTruffleLanguage.class)
 public final class ExampleReadNode extends ExampleReadBaseNode {
 
     @Override
-    protected Object access(VirtualFrame vf, ExampleTruffleObject receiver, String name) {
+    protected Object access(VirtualFrame vf,
+                    ExampleTruffleObject receiver,
+                    String name) {
         if (ExampleTruffleObject.MEMBER_NAME.equals(name)) {
             return receiver.getValue();
         }
@@ -39,3 +44,4 @@ public final class ExampleReadNode extends ExampleReadBaseNode {
     }
 }
 // END: AcceptMessageExample
+//@formatter:on
