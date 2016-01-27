@@ -29,11 +29,11 @@ import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.Transition;
 
 public final class ShapeBasic extends ShapeImpl {
-    public ShapeBasic(Layout layout, Object sharedData, ObjectType objectType, int id) {
+    ShapeBasic(Layout layout, Object sharedData, ObjectType objectType, int id) {
         super(layout, objectType, sharedData, id);
     }
 
-    public ShapeBasic(Layout layout, Object sharedData, ShapeImpl parent, ObjectType objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int id) {
+    ShapeBasic(Layout layout, Object sharedData, ShapeImpl parent, ObjectType objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int id) {
         super(layout, parent, objectType, sharedData, propertyMap, transition, allocator, id);
     }
 

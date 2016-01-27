@@ -56,6 +56,8 @@ def sldebug(args):
     mx.run_java(vmArgs + ['-cp', mx.classpath("com.oracle.truffle.sl.tools"), "com.oracle.truffle.sl.tools.debug.SLREPL"] + slArgs)
 
 def _truffle_gate_runner(args, tasks):
+    with Task('Truffle Javadoc', tasks) as t:
+        if t: mx.javadoc(['--unified'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Truffle Signature Tests', tasks) as t:

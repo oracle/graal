@@ -87,8 +87,8 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
  * <p>
  * <li><strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
  * {@link Source}.<br>
- * See @link {@link Source#subSource(Source, int, int)}<br>
- * See @link {@link Source#subSource(Source, int)}</li>
+ * See {@link Source#subSource(Source, int, int)}<br>
+ * See {@link Source#subSource(Source, int)}</li>
  * <p>
  * <li><strong>AppendableSource:</strong> Literal contents are provided by the client,
  * incrementally, after the instance is created.<br>
@@ -112,7 +112,7 @@ public abstract class Source {
     private static final Logger LOG = Logger.getLogger(Source.class.getName());
 
     // TODO (mlvdv) consider canonicalizing and reusing SourceSection instances
-    // TOOD (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
+    // TODO (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
 
     /**
      * Index of all named sources.
@@ -411,8 +411,8 @@ public abstract class Source {
 
     /**
      * Returns a short version of the name of the resource holding a guest language program (as
-     * described in @getName). For example, this could be just the name of the file, rather than a
-     * full path.
+     * described in {@link #getName()}). For example, this could be just the name of the file,
+     * rather than a full path.
      *
      * @return the short name of the guest language program
      */

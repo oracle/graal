@@ -85,7 +85,7 @@ class DefaultStrategy extends LayoutStrategy {
         return new DefaultAllocatorImpl(layout);
     }
 
-    public static class DefaultAllocatorImpl extends BasicAllocator {
+    static class DefaultAllocatorImpl extends BasicAllocator {
         protected DefaultAllocatorImpl(LayoutImpl layout) {
             super(layout);
         }
