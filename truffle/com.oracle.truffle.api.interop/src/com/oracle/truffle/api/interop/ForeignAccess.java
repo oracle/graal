@@ -123,7 +123,7 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends a READ {@link Message} to the foreign receiver object by executing the
+     * Sends a {@link Message#READ READ message} to the foreign receiver object by executing the
      * <code> readNode </code>.
      *
      * @param readNode the createNode created by {@link Message#createNode()}
@@ -153,7 +153,7 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends a WRITE {@link Message} to the foreign receiver object by executing the
+     * Sends a {@link Message#WRITE WRITE message} to the foreign receiver object by executing the
      * <code> writeNode </code>.
      *
      * @param writeNode the createNode created by {@link Message#createNode()}
@@ -184,7 +184,7 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends a UNBOX {@link Message} to the foreign receiver object by executing the
+     * Sends an {@link Message#UNBOX UNBOX message} to the foreign receiver object by executing the
      * <code> unboxNode </code>.
      *
      * @param unboxNode the createNode created by {@link Message#createNode()}
@@ -239,8 +239,8 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends an IS_EXECUTABLE {@link Message} to the foreign receiver object by executing the
-     * <code> isExecutableNode </code>.
+     * Sends an {@link Message#IS_EXECUTABLE IS_EXECUTABLE message} to the foreign receiver object
+     * by executing the <code> isExecutableNode </code>.
      *
      * @param isExecutableNode the createNode created by {@link Message#createNode()}
      * @param frame the call frame
@@ -325,8 +325,8 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends an IS_NULL {@link Message} to the foreign receiver object by executing the
-     * <code> isNullNode </code>.
+     * Sends an {@link Message#IS_NULL IS_NULL message} to the foreign receiver object by executing
+     * the <code> isNullNode </code>.
      *
      * @param isNullNode the createNode created by {@link Message#createNode()}
      * @param frame the call frame
@@ -345,8 +345,8 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends an HAS_SIZE {@link Message} to the foreign receiver object by executing the
-     * <code> hasSizeNode </code>.
+     * Sends an {@link Message#HAS_SIZE HAS_SIZE message} to the foreign receiver object by
+     * executing the <code> hasSizeNode </code>.
      *
      * @param hasSizeNode the createNode created by {@link Message#createNode()}
      * @param frame the call frame
@@ -365,8 +365,8 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends a GET_SIZE {@link Message} to the foreign receiver object by executing the
-     * <code> getSizeNode </code>.
+     * Sends a {@link Message#GET_SIZE GET_SIZE message} to the foreign receiver object by executing
+     * the <code> getSizeNode </code>.
      *
      * @param getSizeNode the createNode created by {@link Message#createNode()}
      * @param frame the call frame
@@ -390,8 +390,8 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends an IS_BOXED {@link Message} to the foreign receiver object by executing the
-     * <code> isNullNode </code>.
+     * Sends an {@link Message#IS_BOXED IS_BOXED message} to the foreign receiver object by
+     * executing the <code> isNullNode </code>.
      *
      * @param isBoxedNode the createNode created by {@link Message#createNode()}
      * @param frame the call frame
