@@ -388,11 +388,11 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Allows it to be determined if this {@link PolyglotEngine} can execute code written in a
-         * language with a given MIME type.
+         * Allows it to be determined if this {@link com.oracle.truffle.api.vm.PolyglotEngine} can
+         * execute code written in a language with a given MIME type.
          *
-         * @see Source#withMimeType()
-         * @see #parse()
+         * @see Source#withMimeType(String)
+         * @see #parse(Source, String...)
          *
          * @return a boolean that indicates if the MIME type is supported
          */
