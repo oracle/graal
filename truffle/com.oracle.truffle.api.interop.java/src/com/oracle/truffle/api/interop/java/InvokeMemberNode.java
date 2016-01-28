@@ -26,6 +26,7 @@ package com.oracle.truffle.api.interop.java;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -43,7 +44,7 @@ final class InvokeMemberNode extends RootNode {
         final Object nameOrIndex = args.get(0);
         final int argsLength = args.size() - 1;
         if (nameOrIndex instanceof Integer) {
-            throw new IllegalStateException();
+            throw UnknownIdentifierException.raise(String.valueOf(nameOrIndex));
         } else {
             String name = (String) nameOrIndex;
             for (Method m : receiver.clazz.getMethods()) {
@@ -56,7 +57,7 @@ final class InvokeMemberNode extends RootNode {
                     return JavaFunctionNode.execute(m, receiver.obj, arr);
                 }
             }
-            throw new IllegalArgumentException(name);
+            throw UnknownIdentifierException.raise(name);
         }
     }
 

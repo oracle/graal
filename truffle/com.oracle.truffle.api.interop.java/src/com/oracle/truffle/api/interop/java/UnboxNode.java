@@ -32,6 +32,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 @NodeChildren(value = {@NodeChild(value = "valueNode", type = ReadArgNode.class)})
@@ -62,7 +63,11 @@ abstract class UnboxNode extends Node {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             unbox = insert(Message.UNBOX.createNode());
         }
-        return ForeignAccess.execute(unbox, frame, foreignValue);
+        try {
+            return ForeignAccess.sendUnbox(unbox, frame, foreignValue);
+        } catch (UnsupportedMessageException e) {
+            return null;
+        }
     }
 
     protected final boolean isBoxedPrimitive(VirtualFrame frame, TruffleObject object) {
@@ -70,7 +75,7 @@ abstract class UnboxNode extends Node {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             isBoxed = insert(Message.IS_BOXED.createNode());
         }
-        return (boolean) ForeignAccess.execute(isBoxed, frame, object);
+        return ForeignAccess.sendIsBoxed(isBoxed, frame, object);
     }
 
 }

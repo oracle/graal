@@ -40,127 +40,19 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import static com.oracle.truffle.sl.runtime.SLContext.fromForeignValue;
-
-import java.util.List;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
-import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
-import com.oracle.truffle.sl.nodes.interop.SLForeignReadNode;
-import com.oracle.truffle.sl.nodes.interop.SLForeignWriteNode;
 
-final class SLObjectType extends ObjectType implements ForeignAccess.Factory10, ForeignAccess.Factory {
-    private final ForeignAccess access;
+public final class SLObjectType extends ObjectType {
 
-    public SLObjectType() {
-        this.access = ForeignAccess.create(null, this);
+    public static boolean isInstance(TruffleObject obj) {
+        return SLContext.isSLObject(obj);
     }
 
     @Override
     public ForeignAccess getForeignAccessFactory(DynamicObject obj) {
-        return access;
+        return SLObjectTypeForeign.ACCESS;
     }
-
-    @Override
-    public CallTarget accessIsNull() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-    }
-
-    @Override
-    public CallTarget accessIsExecutable() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-    }
-
-    @Override
-    public CallTarget accessIsBoxed() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-    }
-
-    @Override
-    public CallTarget accessHasSize() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public CallTarget accessGetSize() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public CallTarget accessUnbox() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public CallTarget accessRead() {
-        return Truffle.getRuntime().createCallTarget(new SLForeignReadNode());
-    }
-
-    @Override
-    public CallTarget accessWrite() {
-        return Truffle.getRuntime().createCallTarget(new SLForeignWriteNode());
-    }
-
-    @Override
-    public CallTarget accessExecute(int argumentsLength) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public CallTarget accessInvoke(int argumentsLength) {
-        return Truffle.getRuntime().createCallTarget(new SLForeignInvokeRootNode());
-    }
-
-    @Override
-    public CallTarget accessNew(int argumentsLength) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public CallTarget accessMessage(Message unknown) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean canHandle(TruffleObject obj) {
-        return SLContext.isSLObject(obj);
-    }
-
-    private static class SLForeignInvokeRootNode extends RootNode {
-        @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
-
-        public SLForeignInvokeRootNode() {
-            super(SLLanguage.class, null, null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            DynamicObject receiver = (DynamicObject) ForeignAccess.getReceiver(frame);
-            String name = (String) ForeignAccess.getArguments(frame).get(0);
-            Object property = receiver.get(name);
-            if (property instanceof SLFunction) {
-                SLFunction function = (SLFunction) property;
-                List<Object> args = ForeignAccess.getArguments(frame);
-                Object[] arr = new Object[args.size() - 1];
-                for (int i = 1; i < args.size(); i++) {
-                    arr[i - 1] = fromForeignValue(args.get(i));
-                }
-                Object result = dispatch.executeDispatch(frame, function, arr);
-                return result;
-            } else {
-                throw new IllegalArgumentException();
-            }
-        }
-    }
-
 }

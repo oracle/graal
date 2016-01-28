@@ -47,9 +47,10 @@ import com.oracle.truffle.tck.TruffleTCK;
 
 import org.junit.After;
 
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.assertTrue;
 
 /**
  * This is the way to verify your language implementation is compatible.
@@ -215,6 +216,12 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected String complexCopy() {
         // skip these tests; SL doesn't have arrays
+        return null;
+    }
+
+    @Override
+    protected String complexAddWithMethod() {
+        // skip these tests; SL doesn't have methods
         return null;
     }
 

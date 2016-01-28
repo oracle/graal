@@ -51,7 +51,7 @@ public class ForeignAccessSingleThreadedTest implements ForeignAccess.Factory, T
     @Test(expected = AssertionError.class)
     public void accessNodeFromWrongThread() {
         Node n = Message.IS_EXECUTABLE.createNode();
-        Object ret = ForeignAccess.execute(n, null, this);
+        Object ret = ForeignAccess.sendIsExecutable(n, null, this);
         fail("Should throw an exception: " + ret);
     }
 

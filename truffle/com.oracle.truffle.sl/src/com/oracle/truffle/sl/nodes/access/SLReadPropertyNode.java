@@ -47,6 +47,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -55,6 +57,7 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * The node for accessing a property of an object. When executed, this node first evaluates the
@@ -88,8 +91,12 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
             this.foreignRead = insert(Message.READ.createNode());
             this.toSLType = insert(SLForeignToSLTypeNodeGen.create(getSourceSection(), null));
         }
-        Object result = ForeignAccess.execute(foreignRead, frame, object, new Object[]{propertyName});
-        Object slValue = toSLType.executeWithTarget(frame, result);
-        return slValue;
+        try {
+            Object result = ForeignAccess.sendRead(foreignRead, frame, object, propertyName);
+            Object slValue = toSLType.executeWithTarget(frame, result);
+            return slValue;
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            return SLNull.SINGLETON;
+        }
     }
 }

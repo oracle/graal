@@ -68,12 +68,12 @@ import static org.junit.Assert.fail;
  *     <em>// create the engine</em>
  *     <em>// execute necessary scripts</em>
  *   }
- * 
+ *
  *   {@link Override @Override}
  *   <b>protected</b> {@link String} fourtyTwo() {
  *     <b>return</b> <em>// name of function that returns 42</em>
  *   }
- * 
+ *
  *   <em>// and so on...</em>
  * }
  * </pre>
@@ -174,7 +174,7 @@ public abstract class TruffleTCK {
 
     /**
      * Name of function to add two numbers together. The symbol will be invoked with two parameters
-     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number} 
+     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number}
      * which's {@link Number#intValue()} is equivalent of <code>param1 + param2</code>. As some
      * languages may have different operations for different types of numbers, the actual types are
      * passed to the method and the implementation can decide to return different symbol based on
@@ -218,6 +218,18 @@ public abstract class TruffleTCK {
      */
     protected String complexAdd() {
         throw new UnsupportedOperationException("complexAdd() method not implemented");
+    }
+
+    /**
+     * Name of a function that adds up two complex numbers using an add method of the first complex
+     * number. The function accepts two arguments and provides no return value. The arguments are
+     * complex numbers with members called real and imaginary. The first argument contains the
+     * result of the addition.
+     *
+     * @return name of globally exported symbol
+     */
+    protected String complexAddWithMethod() {
+        throw new UnsupportedOperationException("complexAddWithMethod() method not implemented");
     }
 
     /**
@@ -270,7 +282,7 @@ public abstract class TruffleTCK {
 
     /**
      * Code snippet to multiplyCode two two variables. The test uses the snippet as a parameter to
-     * your language's
+     * your language' s
      * {@link TruffleLanguage#parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
      * method.
      *
@@ -367,7 +379,7 @@ public abstract class TruffleTCK {
      * Default implementation of this method calls
      * {@link Assert#assertEquals(java.lang.String, double, double, double)} with delta
      * <code>0.1</code>.
-     * 
+     *
      * @param msg assertion message to display in case of error
      * @param expectedValue the value expected by the test
      * @param actualValue the real value produced by the language
@@ -1074,6 +1086,23 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testAddComplexNumbersWithMethod() throws Exception {
+        String id = complexAddWithMethod();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ComplexNumber a = new ComplexNumber(32, 10);
+        ComplexNumber b = new ComplexNumber(10, 32);
+
+        apply.execute(a, b);
+
+        assertDouble("The same value returned", 42.0, a.get(ComplexNumber.REAL_IDENTIFIER));
+        assertDouble("The same value returned", 42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER));
+    }
+
+    @Test
     public void testSumRealOfComplexNumbersA() throws Exception {
         String id = complexSumReal();
         if (id == null) {
@@ -1081,7 +1110,7 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersRowBased numbers = new ComplexNumbersRowBased(new double[]{2, -1, 30, -1, 10, -1});
+        ComplexNumbersA numbers = new ComplexNumbersA(new double[]{2, -1, 30, -1, 10, -1});
 
         Number n = (Number) apply.execute(numbers).get();
         assertDouble("The same value returned", 42.0, n.doubleValue());
@@ -1095,7 +1124,7 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersColumnBased numbers = new ComplexNumbersColumnBased(new double[]{2, 30, 10}, new double[]{-1, -1, -1});
+        ComplexNumbersB numbers = new ComplexNumbersB(new double[]{2, 30, 10}, new double[]{-1, -1, -1});
 
         Number n = (Number) apply.execute(numbers).get();
         assertDouble("The same value returned", 42.0, n.doubleValue());
@@ -1144,8 +1173,8 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersRowBased a = new ComplexNumbersRowBased(new double[]{-1, -1, -1, -1, -1, -1});
-        ComplexNumbersRowBased b = new ComplexNumbersRowBased(new double[]{41, 42, 43, 44, 45, 46});
+        ComplexNumbersA a = new ComplexNumbersA(new double[]{-1, -1, -1, -1, -1, -1});
+        ComplexNumbersA b = new ComplexNumbersA(new double[]{41, 42, 43, 44, 45, 46});
 
         apply.execute(a, b);
 
@@ -1160,8 +1189,8 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersColumnBased a = new ComplexNumbersColumnBased(new double[]{-1, -1, -1}, new double[]{-1, -1, -1});
-        ComplexNumbersColumnBased b = new ComplexNumbersColumnBased(new double[]{41, 43, 45}, new double[]{42, 44, 46});
+        ComplexNumbersB a = new ComplexNumbersB(new double[]{-1, -1, -1}, new double[]{-1, -1, -1});
+        ComplexNumbersB b = new ComplexNumbersB(new double[]{41, 43, 45}, new double[]{42, 44, 46});
 
         apply.execute(a, b);
 
@@ -1176,7 +1205,7 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        ComplexNumbersRowBased a = new ComplexNumbersRowBased(new double[]{-1, -1, -1, -1, -1, -1});
+        ComplexNumbersA a = new ComplexNumbersA(new double[]{-1, -1, -1, -1, -1, -1});
 
         Schema schema = new Schema(3, true, Arrays.asList(ComplexNumber.REAL_IDENTIFIER, ComplexNumber.IMAGINARY_IDENTIFIER), Arrays.asList(Type.DOUBLE, Type.DOUBLE));
         byte[] buffer = new byte[6 * Double.SIZE / Byte.SIZE];

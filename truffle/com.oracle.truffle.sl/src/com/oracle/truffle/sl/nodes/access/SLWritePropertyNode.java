@@ -48,12 +48,16 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * The node for setting a property of an object. When executed, this node first evaluates the value
@@ -90,6 +94,10 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.foreignWrite = insert(Message.WRITE.createNode());
         }
-        return ForeignAccess.execute(foreignWrite, frame, object, new Object[]{propertyName, value});
+        try {
+            return ForeignAccess.sendWrite(foreignWrite, frame, object, propertyName, value);
+        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+            return SLNull.SINGLETON;
+        }
     }
 }

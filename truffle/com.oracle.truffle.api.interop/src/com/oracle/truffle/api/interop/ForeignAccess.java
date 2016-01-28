@@ -24,13 +24,14 @@
  */
 package com.oracle.truffle.api.interop;
 
+import java.util.List;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 import com.oracle.truffle.api.nodes.Node;
-import java.util.List;
 
 /**
  * Encapsulates types of access to {@link TruffleObject}. If you want to expose your own objects to
@@ -87,12 +88,325 @@ public final class ForeignAccess {
      * @return return value, if any
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
-     * @throws IllegalAccessError if the <code>receiver</code> does not support the
-     *             {@link Message#createNode() message represented} by <code>foreignNode</code>
+     * @throws IllegalStateException if any error occurred while accessing the <code>receiver</code>
+     *             object
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public static Object execute(Node foreignNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) {
         ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) foreignNode;
         return fn.executeForeign(frame, receiver, arguments);
+    }
+
+    /**
+     * Sends a {@link Message} to the foreign receiver object by executing the
+     * {@link Message#createNode() foreign node}.
+     *
+     * @param foreignNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @param arguments parameters for the receiver
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws InteropException if any error occurred while accessing the <code>receiver</code>
+     *             object
+     */
+    public static Object send(Node foreignNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) throws InteropException {
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) foreignNode;
+        try {
+            return fn.executeForeignImpl(frame, receiver, arguments);
+        } catch (InteropException e) {
+            throw e;
+        }
+    }
+
+    /**
+     * Sends a {@link Message#READ READ message} to the foreign receiver object by executing the
+     * <code> readNode </code>.
+     *
+     * @param readNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @param identifier name of the property to be read
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>readNode</code>
+     * @throws UnknownIdentifierException if the <code>receiver</code> does not allow reading a
+     *             property for the given <code>identifier</code>
+     */
+    public static Object sendRead(Node readNode, VirtualFrame frame, TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) readNode;
+        try {
+            return fn.executeForeignImpl(frame, receiver, new Object[]{identifier});
+        } catch (UnsupportedMessageException e) {
+            throw e;
+        } catch (UnknownIdentifierException e) {
+            throw e;
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends a {@link Message#WRITE WRITE message} to the foreign receiver object by executing the
+     * <code> writeNode </code>.
+     *
+     * @param writeNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @param identifier name of the property to be written
+     * @param value value to be written
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>writeNode</code>
+     * @throws UnknownIdentifierException if the <code>receiver</code> does not allow writing a
+     *             property for the given <code>identifier</code>
+     * @throws UnsupportedTypeException if <code>value</code> has an unsupported type
+     */
+    public static Object sendWrite(Node writeNode, VirtualFrame frame, TruffleObject receiver, Object identifier, Object value)
+                    throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) writeNode;
+        try {
+            return fn.executeForeignImpl(frame, receiver, new Object[]{identifier, value});
+        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+            throw e;
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends an {@link Message#UNBOX UNBOX message} to the foreign receiver object by executing the
+     * <code> unboxNode </code>.
+     *
+     * @param unboxNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>unboxNode</code>
+     */
+    public static Object sendUnbox(Node unboxNode, VirtualFrame frame, TruffleObject receiver) throws UnsupportedMessageException {
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) unboxNode;
+        try {
+            return fn.executeForeignImpl(frame, receiver);
+        } catch (UnsupportedMessageException e) {
+            throw e;
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends an EXECUTE {@link Message} to the foreign receiver object by executing the
+     * <code> executeNode </code>.
+     *
+     * @param executeNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign function object to receive the message passed to
+     *            {@link Message#createNode()} method
+     * @param arguments arguments passed to the foreign function
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedTypeException if one of element of the <code>arguments</code> has an
+     *             unsupported type
+     * @throws ArityException if the <code>arguments</code> array does not contain the right number
+     *             of arguments for the foreign function
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>executeNode</code>
+     */
+    public static Object sendExecute(Node executeNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) executeNode;
+        try {
+            return fn.executeForeignImpl(frame, receiver, arguments);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw e;
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends an {@link Message#IS_EXECUTABLE IS_EXECUTABLE message} to the foreign receiver object
+     * by executing the <code> isExecutableNode </code>.
+     *
+     * @param isExecutableNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     */
+    public static boolean sendIsExecutable(Node isExecutableNode, VirtualFrame frame, TruffleObject receiver) {
+        try {
+            return (boolean) send(isExecutableNode, frame, receiver);
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends an INVOKE {@link Message} to the foreign receiver object by executing the
+     * <code> invokeNode </code>.
+     *
+     * @param invokeNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign function object to receive the message passed to
+     *            {@link Message#createNode()} method
+     * @param arguments arguments passed to the foreign function
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedTypeException if one of element of the <code>arguments</code> has an
+     *             unsupported type
+     * @throws UnknownIdentifierException if the <code>receiver</code> does not have a property for
+     *             the given <code>identifier</code> that can be invoked
+     * @throws ArityException if the <code>arguments</code> array does not contain the right number
+     *             of arguments for the foreign function
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>invokeNode</code>
+     */
+    public static Object sendInvoke(Node invokeNode, VirtualFrame frame, TruffleObject receiver, String identifier, Object... arguments)
+                    throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) invokeNode;
+        try {
+            Object[] args = new Object[arguments.length + 1];
+            System.arraycopy(arguments, 0, args, 1, arguments.length);
+            args[0] = identifier;
+            return fn.executeForeignImpl(frame, receiver, args);
+        } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
+            throw e;
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends an NEW {@link Message} to the foreign receiver object by executing the
+     * <code> newNode </code>.
+     *
+     * @param newNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign function object to receive the message passed to
+     *            {@link Message#createNode()} method
+     * @param arguments arguments passed to the foreign function
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedTypeException if one of element of the <code>arguments</code> has an
+     *             unsupported type
+     * @throws ArityException if the <code>arguments</code> array does not contain the right number
+     *             of arguments for the foreign function
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>newNode</code>
+     */
+    public static Object sendNew(Node newNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) newNode;
+        try {
+            return fn.executeForeignImpl(frame, receiver, arguments);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw e;
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends an {@link Message#IS_NULL IS_NULL message} to the foreign receiver object by executing
+     * the <code> isNullNode </code>.
+     *
+     * @param isNullNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     */
+    public static boolean sendIsNull(Node isNullNode, VirtualFrame frame, TruffleObject receiver) {
+        try {
+            return (boolean) send(isNullNode, frame, receiver);
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends an {@link Message#HAS_SIZE HAS_SIZE message} to the foreign receiver object by
+     * executing the <code> hasSizeNode </code>.
+     *
+     * @param hasSizeNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     */
+    public static boolean sendHasSize(Node hasSizeNode, VirtualFrame frame, TruffleObject receiver) {
+        try {
+            return (boolean) send(hasSizeNode, frame, receiver);
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends a {@link Message#GET_SIZE GET_SIZE message} to the foreign receiver object by executing
+     * the <code> getSizeNode </code>.
+     *
+     * @param getSizeNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>getSizeNode</code>
+     */
+    public static Object sendGetSize(Node getSizeNode, VirtualFrame frame, TruffleObject receiver) throws UnsupportedMessageException {
+        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) getSizeNode;
+        try {
+            return fn.executeForeignImpl(frame, receiver);
+        } catch (UnsupportedMessageException e) {
+            throw e;
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
+     * Sends an {@link Message#IS_BOXED IS_BOXED message} to the foreign receiver object by
+     * executing the <code> isNullNode </code>.
+     *
+     * @param isBoxedNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     */
+    public static boolean sendIsBoxed(Node isBoxedNode, VirtualFrame frame, TruffleObject receiver) {
+        try {
+            return (boolean) send(isBoxedNode, frame, receiver);
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
     }
 
     /**

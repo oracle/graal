@@ -3,3 +3,4 @@ com.oracle.truffle.dsl.processor.verify.VerifyTruffleProcessor
 com.oracle.truffle.dsl.processor.LanguageRegistrationProcessor
 com.oracle.truffle.dsl.processor.InstrumentationRegistrationProcessor
 com.oracle.truffle.dsl.processor.InstrumentableProcessor
+com.oracle.truffle.dsl.processor.InteropProcessor

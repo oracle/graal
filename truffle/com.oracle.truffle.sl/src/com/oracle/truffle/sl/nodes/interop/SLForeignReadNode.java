@@ -42,35 +42,31 @@ package com.oracle.truffle.sl.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.AcceptMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNode;
 import com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNodeGen;
+import com.oracle.truffle.sl.runtime.SLObjectType;
 
-public class SLForeignReadNode extends RootNode {
+@AcceptMessage(value = "READ", receiverType = SLObjectType.class, language = SLLanguage.class)
+public final class SLForeignReadNode extends SLReadBaseNode {
 
     @Child private SLMonomorphicNameReadNode read;
 
-    public SLForeignReadNode() {
-        super(SLLanguage.class, null, null);
-    }
-
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object access(VirtualFrame frame, DynamicObject receiver, String name) {
         if (read == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            String name = (String) ForeignAccess.getArguments(frame).get(0);
             read = insert(new SLMonomorphicNameReadNode(name));
         }
-        return read.execute(frame);
+        return read.execute(receiver, name);
     }
 
     private abstract static class SLReadNode extends Node {
-        abstract Object execute(VirtualFrame frame);
+        abstract Object execute(DynamicObject receiver, String name);
     }
 
     private static final class SLMonomorphicNameReadNode extends SLReadNode {
@@ -84,22 +80,19 @@ public class SLForeignReadNode extends RootNode {
         }
 
         @Override
-        Object execute(VirtualFrame frame) {
-            if (name.equals(ForeignAccess.getArguments(frame).get(0))) {
-                return readPropertyCacheNode.executeObject((DynamicObject) ForeignAccess.getReceiver(frame));
+        Object execute(DynamicObject receiver, String n) {
+            if (this.name.equals(n)) {
+                return readPropertyCacheNode.executeObject(receiver);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                return this.replace(new SLPolymorphicNameReadNode()).execute(frame);
+                return this.replace(new SLPolymorphicNameReadNode()).execute(receiver, n);
             }
         }
     }
 
     private static final class SLPolymorphicNameReadNode extends SLReadNode {
-
         @Override
-        Object execute(VirtualFrame frame) {
-            String name = (String) ForeignAccess.getArguments(frame).get(0);
-            DynamicObject obj = (DynamicObject) ForeignAccess.getReceiver(frame);
+        Object execute(DynamicObject obj, String name) {
             Property property = obj.getShape().getProperty(name);
             return obj.get(property.getKey());
         }

@@ -48,6 +48,8 @@ import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -60,8 +62,11 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.GraphPrintVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -114,8 +119,6 @@ import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
-import java.util.Map;
-import java.util.WeakHashMap;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -453,7 +456,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 Object[] arguments = frame.getArguments();
                 if (oneAndCnt == 1 && (arguments.length > 0 || node != null)) {
                     Node callNode = Message.createExecute(arguments.length).createNode();
-                    return ForeignAccess.execute(callNode, frame, oneAndOnly, arguments);
+                    try {
+                        return ForeignAccess.sendExecute(callNode, frame, oneAndOnly, arguments);
+                    } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                        return null;
+                    }
                 }
                 return null;
             }
