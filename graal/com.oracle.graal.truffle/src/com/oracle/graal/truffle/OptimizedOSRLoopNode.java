@@ -168,7 +168,7 @@ public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObser
             return null;
         } else {
             Node parent = getParent();
-            OptimizedCallTarget osrTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new OSRRootNode(this));
+            OptimizedCallTarget osrTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new OSRRootNode(this, frame.getClass()));
             // to avoid a deopt on first call we provide some profiling information
             osrTarget.profileReturnType(Boolean.TRUE);
             osrTarget.profileReturnType(Boolean.FALSE);
@@ -210,16 +210,19 @@ public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObser
 
     private static class OSRRootNode extends RootNode {
 
+        private final Class<? extends VirtualFrame> clazz;
+
         @Child private OptimizedOSRLoopNode loopNode;
 
-        OSRRootNode(OptimizedOSRLoopNode loop) {
+        OSRRootNode(OptimizedOSRLoopNode loop, Class<? extends VirtualFrame> clazz) {
             super(TruffleLanguage.class, loop.getSourceSection(), loop.getRootNode().getFrameDescriptor());
             this.loopNode = loop;
+            this.clazz = clazz;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            VirtualFrame parentFrame = (VirtualFrame) frame.getArguments()[0];
+            VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
             while (loopNode.getRepeatingNode().executeRepeating(parentFrame)) {
                 if (CompilerDirectives.inInterpreter()) {
                     return Boolean.FALSE;
