@@ -275,10 +275,12 @@ public class PolyglotEngine {
          * {@link com.oracle.truffle.api.TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)
          * initial execution state} correctly.
          *
-         * Language implementations that have multiple mimeTypes associated with them will see only
-         * a merged set of configuration values. The merge is done based on the key.
+         * If the same key is specified multiple times for the same language, the previous values
+         * are replaced and just the last one remains.
          *
-         * @param mimeType of the language for which the arguments are
+         * @param mimeType identification of the language for which the arguments are - if the
+         *            language declares multiple MIME types, any of them can be used
+         *
          * @param key to identify a language-specific configuration element
          * @param value to parameterize initial state of a language
          * @return instance of this builder
