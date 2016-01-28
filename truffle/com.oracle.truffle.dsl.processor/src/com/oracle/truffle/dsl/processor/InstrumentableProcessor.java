@@ -154,12 +154,13 @@ public final class InstrumentableProcessor extends AbstractProcessor {
 
     private CodeTypeElement generateWrapperAndFactory(ProcessorContext context, Element e) {
         CodeTypeElement wrapper = generateWrapper(context, e);
-        CodeTypeElement factory = generateFactory(context, e, wrapper);
-        if (wrapper != null) {
-            wrapper.getModifiers().add(Modifier.STATIC);
-            factory.add(wrapper);
-            assertNoErrorExpected(e);
+        if (wrapper == null) {
+            return null;
         }
+        CodeTypeElement factory = generateFactory(context, e, wrapper);
+        wrapper.getModifiers().add(Modifier.STATIC);
+        factory.add(wrapper);
+        assertNoErrorExpected(e);
         return factory;
     }
 
@@ -183,28 +184,24 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         createMethod.addParameter(new CodeVariableElement(context.getType(ProbeNode.class), FIELD_PROBE));
 
         CodeTreeBuilder builder = createMethod.createBuilder();
-        if (wrapper != null) {
-            ExecutableElement constructor = ElementFilter.constructorsIn(wrapper.getEnclosedElements()).iterator().next();
+        ExecutableElement constructor = ElementFilter.constructorsIn(wrapper.getEnclosedElements()).iterator().next();
 
-            String firstParameterReference = null;
-            if (constructor.getParameters().size() > 2) {
-                TypeMirror firstParameter = constructor.getParameters().get(0).asType();
-                if (ElementUtils.typeEquals(firstParameter, sourceType.asType())) {
-                    firstParameterReference = FIELD_DELEGATE;
-                } else if (ElementUtils.typeEquals(firstParameter, context.getType(SourceSection.class))) {
-                    firstParameterReference = FIELD_DELEGATE + ".getSourceSection()";
-                }
+        String firstParameterReference = null;
+        if (constructor.getParameters().size() > 2) {
+            TypeMirror firstParameter = constructor.getParameters().get(0).asType();
+            if (ElementUtils.typeEquals(firstParameter, sourceType.asType())) {
+                firstParameterReference = FIELD_DELEGATE;
+            } else if (ElementUtils.typeEquals(firstParameter, context.getType(SourceSection.class))) {
+                firstParameterReference = FIELD_DELEGATE + ".getSourceSection()";
             }
-
-            builder.startReturn().startNew(wrapper.asType());
-            if (firstParameterReference != null) {
-                builder.string(firstParameterReference);
-            }
-            builder.string(FIELD_DELEGATE).string(FIELD_PROBE);
-            builder.end().end();
-        } else {
-            builder.startThrow().startNew(context.getType(AssertionError.class)).end().end();
         }
+
+        builder.startReturn().startNew(wrapper.asType());
+        if (firstParameterReference != null) {
+            builder.string(firstParameterReference);
+        }
+        builder.string(FIELD_DELEGATE).string(FIELD_PROBE);
+        builder.end().end();
 
         factory.add(createMethod);
 
