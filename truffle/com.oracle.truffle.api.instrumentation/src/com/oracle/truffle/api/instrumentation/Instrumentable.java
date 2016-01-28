@@ -42,7 +42,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * {@link Instrumentable} nodes must extend {@link Node}. The instrumentation framework will
  * {@link Node#replace(Node) replace} the instrumentable node with a {@link WrapperNode} and
- * delegate to the original node.
+ * delegate to the original node. For that at least one method starting with execute must be
+ * non-private and non-final.
  * </p>
  * <p>
  * Example for a minimal implementation of an {@link Instrumentable instrumentable} node with a
@@ -51,6 +52,26 @@ import com.oracle.truffle.api.source.SourceSection;
  * <pre>
  * &#064;Instrumentable(factory = BaseNodeWrapper.class)
  * public abstract class BaseNode extends Node {
+ *     public abstract Object execute(VirtualFrame frame);
+ * }
+ * </pre>
+ *
+ * If the instrumentable node requires more than one parameter it the constructor it can either
+ * provide a default constructor or it can also provide a copy constructor. For example:
+ *
+ * <pre>
+ * &#064;Instrumentable(factory = BaseNodeWrapper.class)
+ * public abstract class BaseNode extends Node {
+ *     private final String addtionalData;
+ *
+ *     public BaseNode(String additonalData) {
+ *         this.additionalData = additionalData;
+ *     }
+ *
+ *     public BaseNode(BaseNode delegate) {
+ *         this.additionalData = delegate.additionalData;
+ *     }
+ *
  *     public abstract Object execute(VirtualFrame frame);
  * }
  * </pre>
