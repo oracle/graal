@@ -232,8 +232,8 @@ public abstract class TruffleLanguage<C> {
     protected abstract Visualizer getVisualizer();
 
     /**
-     * Returns {@code true} for a node can be "instrumented" by {@linkplain Instrumenter#probe(Node)
-     * probing}.
+     * Returns {@code true} for a node can be "instrumented" by
+     * {@linkplain Instrumenter#probe(Node) probing}.
      * <p>
      * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
      *
