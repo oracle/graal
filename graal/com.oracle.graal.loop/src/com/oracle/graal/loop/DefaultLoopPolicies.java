@@ -87,9 +87,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
         CountedLoopInfo counted = loop.counted();
         long maxTrips = counted.constantMaxTripCount();
         int maxNodes = (counted.isExactTripCount() && counted.isConstantExactTripCount()) ? ExactFullUnrollMaxNodes.getValue() : FullUnrollMaxNodes.getValue();
-        maxNodes = Math.min(maxNodes, MaximumDesiredSize.getValue() - loop.loopBegin().graph().getNodeCount());
+        maxNodes = Math.min(maxNodes, Math.max(0, MaximumDesiredSize.getValue() - loop.loopBegin().graph().getNodeCount()));
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
-        if (maxTrips <= FullUnrollMaxIterations.getValue() && size * maxTrips <= maxNodes) {
+        if (maxTrips <= FullUnrollMaxIterations.getValue() && size * (maxTrips - 1) <= maxNodes) {
             // check whether we're allowed to unroll this loop
             for (Node node : loop.inside().nodes()) {
                 if (node instanceof ControlFlowAnchorNode) {
