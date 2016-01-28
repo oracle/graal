@@ -33,6 +33,8 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
+import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1;
+import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1_ALT;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
@@ -129,7 +131,7 @@ public class EngineTest {
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
         PolyglotEngine vm = builder.build();
-        
+
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
 
         assertNotNull("Lang1 found", language1);
@@ -168,4 +170,53 @@ public class EngineTest {
             // OK
         }
     }
+
+    @Test
+    public void secondValueWins() throws IOException {
+        Builder builder = createBuilder();
+        builder.config("application/x-test-import-export-2", "hello", "truffle");
+        builder.config("application/x-test-import-export-2", "hello", "world");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language2 = vm.getLanguages().get("application/x-test-import-export-2");
+        Ctx ctx2 = language2.getGlobalObject().as(Ctx.class);
+        assertEquals("world", ctx2.env.getConfig().get("hello"));
+    }
+
+    @Test
+    public void secondValueWins2() throws IOException {
+        Builder builder = createBuilder();
+        builder.config("application/x-test-import-export-2", "hello", "world");
+        builder.config("application/x-test-import-export-2", "hello", "truffle");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language2 = vm.getLanguages().get("application/x-test-import-export-2");
+        Ctx ctx2 = language2.getGlobalObject().as(Ctx.class);
+        assertEquals("truffle", ctx2.env.getConfig().get("hello"));
+    }
+
+    @Test
+    public void altValueWins() throws IOException {
+        Builder builder = createBuilder();
+        builder.config(L1, "hello", "truffle");
+        builder.config(L1_ALT, "hello", "world");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+        assertEquals("world", ctx2.env.getConfig().get("hello"));
+    }
+
+    @Test
+    public void altValueWins2() throws IOException {
+        Builder builder = createBuilder();
+        builder.config(L1_ALT, "hello", "truffle");
+        builder.config(L1, "hello", "world");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+        assertEquals("world", ctx2.env.getConfig().get("hello"));
+    }
+
 }

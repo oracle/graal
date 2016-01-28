@@ -266,10 +266,11 @@ public class ImplicitExplicitExportTest {
     }
 
     public static final String L1 = "application/x-test-import-export-1";
+    public static final String L1_ALT = "application/alt-test-import-export-1";
     static final String L2 = "application/x-test-import-export-2";
     static final String L3 = "application/x-test-import-export-3";
 
-    @TruffleLanguage.Registration(mimeType = L1, name = "ImportExport1", version = "0")
+    @TruffleLanguage.Registration(mimeType = { L1, L1_ALT }, name = "ImportExport1", version = "0")
     public static final class ExportImportLanguage1 extends AbstractExportImportLanguage {
         public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage1();
 
