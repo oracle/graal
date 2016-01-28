@@ -124,7 +124,6 @@ public class EngineTest {
         assertEquals(3, arr[2].intValue());
     }
 
-
     @Test
     public void engineConfigBasicAccess() throws IOException {
         Builder builder = createBuilder();
@@ -228,6 +227,5 @@ public class EngineTest {
         Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
         assertNull(ctx2.env.getConfig().get("hello"));
     }
-
 
 }
