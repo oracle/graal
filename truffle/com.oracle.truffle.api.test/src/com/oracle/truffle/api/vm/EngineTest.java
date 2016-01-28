@@ -219,4 +219,15 @@ public class EngineTest {
         assertEquals("world", ctx2.env.getConfig().get("hello"));
     }
 
+    @Test
+    public void configIsNeverNull() throws IOException {
+        Builder builder = createBuilder();
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+        assertNull(ctx2.env.getConfig().get("hello"));
+    }
+
+
 }

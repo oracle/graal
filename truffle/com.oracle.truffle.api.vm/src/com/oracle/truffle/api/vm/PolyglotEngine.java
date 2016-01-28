@@ -842,7 +842,7 @@ public class PolyglotEngine {
 
         private Map<String, Object> getArgumentsForLanguage() {
             if (config == null) {
-                return null;
+                return Collections.emptyMap();
             }
 
             Map<String, Object> forLanguage = new HashMap<>();
