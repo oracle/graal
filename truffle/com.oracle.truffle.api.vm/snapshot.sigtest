@@ -24,12 +24,13 @@ meth public static com.oracle.truffle.api.vm.PolyglotEngine$Builder buildNew()
 meth public static com.oracle.truffle.api.vm.PolyglotEngine$Builder newBuilder()
 meth public void dispose()
 supr java.lang.Object
-hfds JAVA_INTEROP_ENABLED,LOG,SPI,debugger,disposed,err,executor,globals,handlers,in,initThread,instrumenter,langs,out
+hfds JAVA_INTEROP_ENABLED,LOG,SPI,config,debugger,disposed,err,executor,globals,handlers,in,initThread,instrumenter,langs,out
 hcls SPIAccessor
 
 CLSS public com.oracle.truffle.api.vm.PolyglotEngine$Builder
  outer com.oracle.truffle.api.vm.PolyglotEngine
 meth public com.oracle.truffle.api.vm.PolyglotEngine build()
+meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder config(java.lang.String,java.lang.String,java.lang.Object)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder executor(java.util.concurrent.Executor)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder globalSymbol(java.lang.String,java.lang.Object)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder onEvent(com.oracle.truffle.api.vm.EventConsumer<?>)
@@ -37,7 +38,7 @@ meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setErr(java.io.Outp
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setIn(java.io.InputStream)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setOut(java.io.OutputStream)
 supr java.lang.Object
-hfds err,executor,globals,handlers,in,out
+hfds arguments,err,executor,globals,handlers,in,out
 
 CLSS public com.oracle.truffle.api.vm.PolyglotEngine$Language
  outer com.oracle.truffle.api.vm.PolyglotEngine

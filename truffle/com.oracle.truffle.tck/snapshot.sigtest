@@ -1,0 +1,113 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract com.oracle.truffle.tck.TruffleTCK
+cons protected init()
+meth protected abstract com.oracle.truffle.api.vm.PolyglotEngine prepareVM() throws java.lang.Exception
+meth protected abstract java.lang.String applyNumbers()
+meth protected abstract java.lang.String countInvocations()
+meth protected abstract java.lang.String fourtyTwo()
+meth protected abstract java.lang.String invalidCode()
+meth protected abstract java.lang.String mimeType()
+meth protected abstract java.lang.String returnsNull()
+meth protected java.lang.String complexAdd()
+meth protected java.lang.String complexAddWithMethod()
+meth protected java.lang.String complexCopy()
+meth protected java.lang.String complexSumReal()
+meth protected java.lang.String compoundObject()
+meth protected java.lang.String evaluateSource()
+meth protected java.lang.String globalObject()
+meth protected java.lang.String identity()
+meth protected java.lang.String multiplyCode(java.lang.String,java.lang.String)
+meth protected java.lang.String plus(java.lang.Class<?>,java.lang.Class<?>)
+meth protected java.lang.String plusInt()
+meth protected java.lang.String valuesObject()
+meth protected void assertDouble(java.lang.String,double,double)
+meth public void multiplyTwoVariables() throws java.lang.Exception
+meth public void readWriteBooleanValue() throws java.lang.Exception
+meth public void readWriteByteValue() throws java.lang.Exception
+meth public void readWriteCharValue() throws java.lang.Exception
+meth public void readWriteDoubleValue() throws java.lang.Exception
+meth public void readWriteFloatValue() throws java.lang.Exception
+meth public void readWriteIntValue() throws java.lang.Exception
+meth public void readWriteShortValue() throws java.lang.Exception
+meth public void testAddComplexNumbers() throws java.lang.Exception
+meth public void testAddComplexNumbersWithMethod() throws java.lang.Exception
+meth public void testCoExistanceOfMultipleLanguageInstances() throws java.lang.Exception
+meth public void testCopyComplexNumbersA() throws java.lang.Exception
+meth public void testCopyComplexNumbersB() throws java.lang.Exception
+meth public void testCopyStructuredComplexToComplexNumbersA() throws java.lang.Exception
+meth public void testEvaluateSource() throws java.lang.Exception
+meth public void testFortyTwo() throws java.lang.Exception
+meth public void testFortyTwoWithCompoundObject() throws java.lang.Exception
+meth public void testGlobalObjectIsAccessible() throws java.lang.Exception
+meth public void testInvalidTestMethod() throws java.lang.Exception
+meth public void testMaxOrMinValue() throws java.lang.Exception
+meth public void testMaxOrMinValue2() throws java.lang.Exception
+meth public void testNull() throws java.lang.Exception
+meth public void testNullCanBeCastToAnything() throws java.lang.Exception
+meth public void testNullInCompoundObject() throws java.lang.Exception
+meth public void testPlusWithBytes() throws java.lang.Exception
+meth public void testPlusWithDouble() throws java.lang.Exception
+meth public void testPlusWithDoubleFloatSameAsInt() throws java.lang.Exception
+meth public void testPlusWithDoubleMaxInt() throws java.lang.Exception
+meth public void testPlusWithDoubleMaxIntPlusNegInf() throws java.lang.Exception
+meth public void testPlusWithDoubleMaxIntPlusOne() throws java.lang.Exception
+meth public void testPlusWithDoubleMaxIntPlusPosInf() throws java.lang.Exception
+meth public void testPlusWithDoubleMaxMinInt() throws java.lang.Exception
+meth public void testPlusWithDoubleMinIntMinusOne() throws java.lang.Exception
+meth public void testPlusWithDoubleNaNPlusNegInf() throws java.lang.Exception
+meth public void testPlusWithDoubleNaNPlusPosInf() throws java.lang.Exception
+meth public void testPlusWithDoubleRound() throws java.lang.Exception
+meth public void testPlusWithFloat() throws java.lang.Exception
+meth public void testPlusWithInts() throws java.lang.Exception
+meth public void testPlusWithIntsOnCompoundObject() throws java.lang.Exception
+meth public void testPlusWithLong() throws java.lang.Exception
+meth public void testPlusWithLongMaxIntMinInt() throws java.lang.Exception
+meth public void testPlusWithOneNegativeByte() throws java.lang.Exception
+meth public void testPlusWithOneNegativeInt() throws java.lang.Exception
+meth public void testPlusWithOneNegativeShort() throws java.lang.Exception
+meth public void testPlusWithShort() throws java.lang.Exception
+meth public void testPrimitiveIdentityForeignObject() throws java.lang.Exception
+meth public void testPrimitiveReturnTypeByte() throws java.lang.Exception
+meth public void testPrimitiveReturnTypeDouble() throws java.lang.Exception
+meth public void testPrimitiveReturnTypeFloat() throws java.lang.Exception
+meth public void testPrimitiveReturnTypeInt() throws java.lang.Exception
+meth public void testPrimitiveReturnTypeLong() throws java.lang.Exception
+meth public void testPrimitiveReturnTypeShort() throws java.lang.Exception
+meth public void testPrimitiveidentityBoxedByte() throws java.lang.Exception
+meth public void testPrimitiveidentityBoxedDouble() throws java.lang.Exception
+meth public void testPrimitiveidentityBoxedFloat() throws java.lang.Exception
+meth public void testPrimitiveidentityBoxedInt() throws java.lang.Exception
+meth public void testPrimitiveidentityBoxedLong() throws java.lang.Exception
+meth public void testPrimitiveidentityBoxedShort() throws java.lang.Exception
+meth public void testPrimitiveidentityBoxedString() throws java.lang.Exception
+meth public void testPrimitiveidentityByte() throws java.lang.Exception
+meth public void testPrimitiveidentityDouble() throws java.lang.Exception
+meth public void testPrimitiveidentityFloat() throws java.lang.Exception
+meth public void testPrimitiveidentityInt() throws java.lang.Exception
+meth public void testPrimitiveidentityLong() throws java.lang.Exception
+meth public void testPrimitiveidentityShort() throws java.lang.Exception
+meth public void testPrimitiveidentityString() throws java.lang.Exception
+meth public void testSumRealOfComplexNumbersA() throws java.lang.Exception
+meth public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws java.lang.Exception
+meth public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws java.lang.Exception
+meth public void testSumRealOfComplexNumbersB() throws java.lang.Exception
+supr java.lang.Object
+hfds RANDOM,tckVM
+hcls CompoundObject,ValuesObject
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
