@@ -25,8 +25,6 @@ package com.oracle.truffle.api.vm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.List;
@@ -35,6 +33,8 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 
 public class EngineTest {
@@ -122,17 +122,14 @@ public class EngineTest {
         assertEquals(3, arr[2].intValue());
     }
 
-    private PolyglotEngine createEngineWithConfig() {
+
+    @Test
+    public void engineConfigBasicAccess() throws IOException {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
         PolyglotEngine vm = builder.build();
-        return vm;
-    }
-
-    @Test
-    public void engineConfigBasicAccess() throws IOException {
-        PolyglotEngine vm = createEngineWithConfig();
+        
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
 
         assertNotNull("Lang1 found", language1);
@@ -156,7 +153,10 @@ public class EngineTest {
 
     @Test
     public void engineConfigShouldBeReadOnly() throws IOException {
-        PolyglotEngine vm = createEngineWithConfig();
+        Builder builder = createBuilder();
+        builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
+        builder.config("application/x-test-import-export-2", "hello", "world");
+        PolyglotEngine vm = builder.build();
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
         Ctx ctx1 = language1.getGlobalObject().as(Ctx.class);
 
