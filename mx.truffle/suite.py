@@ -104,6 +104,7 @@ suite = {
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.instrumentation"
+        "com.oracle.truffle.api.interop"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
