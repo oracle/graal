@@ -119,12 +119,14 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest implement
         A goodInstance = new A();
         I badInstance = new M2Thrower();
         getCode(getMetaAccess().lookupJavaMethod(getMethod(M2Thrower.class, "m2")));
-        final int limit = 20000;
-        for (int i = 0; i <= limit; i++) {
-            try {
-                invokeInterfaceHandle2(i < limit - 1 ? goodInstance : badInstance, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-            } catch (InternalError e) {
+        for (int x = 0; x < 1000; x++) {
+            final int limit = 20000;
+            for (int i = 0; i <= limit; i++) {
+                try {
+                    invokeInterfaceHandle2(i < limit - 1 ? goodInstance : badInstance, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+                } catch (InternalError e) {
 
+                }
             }
         }
     }
