@@ -277,6 +277,7 @@ public class ImplicitExplicitExportTest {
         public ExportImportLanguage1() {
         }
 
+        @SuppressWarnings("unused")
         // BEGIN: config.read
         @Override
         protected Ctx createContext(Env env) {
