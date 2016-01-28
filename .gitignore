@@ -18,3 +18,4 @@ workingsets.xml
 \.idea
 *.swp
 findbugs.results
+.metadata/
