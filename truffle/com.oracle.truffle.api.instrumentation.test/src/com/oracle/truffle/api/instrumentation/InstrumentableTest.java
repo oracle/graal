@@ -105,22 +105,22 @@ public class InstrumentableTest {
     }
 
     @ExpectError("Class must not be final to generate a wrapper.")
-    @Instrumentable(factory = ErrorNode0Wrapper.class)
+    @Instrumentable(factory = TestErrorFactory.class)
     public static final class ErrorNode0 extends Node {
     }
 
     @ExpectError("Class must be public to generate a wrapper.")
-    @Instrumentable(factory = ErrorNode2Wrapper.class)
+    @Instrumentable(factory = TestErrorFactory.class)
     static class ErrorNode2 extends Node {
     }
 
     @ExpectError("Inner class must be static to generate a wrapper.")
-    @Instrumentable(factory = ErrorNode3Wrapper.class)
+    @Instrumentable(factory = TestErrorFactory.class)
     public class ErrorNode3 extends Node {
     }
 
     @ExpectError("No methods starting with name execute found to wrap.")
-    @Instrumentable(factory = ErrorNode4Wrapper.class)
+    @Instrumentable(factory = TestErrorFactory.class)
     public static class ErrorNode4 extends Node {
 
         @SuppressWarnings("unused")
@@ -135,14 +135,14 @@ public class InstrumentableTest {
     }
 
     @ExpectError("Unable to implement unknown abstract method foobar() in generated wrapper node.")
-    @Instrumentable(factory = ErrorNode5Wrapper.class)
+    @Instrumentable(factory = TestErrorFactory.class)
     public abstract static class ErrorNode5 extends Node {
 
         public abstract void foobar();
     }
 
     @ExpectError("No suiteable constructor found for wrapper factory generation. At least one default or copy constructor must be visible.")
-    @Instrumentable(factory = ErrorNode6Wrapper.class)
+    @Instrumentable(factory = TestErrorFactory.class)
     @SuppressWarnings("unused")
     public abstract static class ErrorNode6 extends Node {
 
