@@ -51,6 +51,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
+import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -181,11 +182,16 @@ public class SnippetTemplate {
             private boolean initNames(ResolvedJavaMethod method, int parameterCount) {
                 names = new String[parameterCount];
                 int slotIdx = 0;
-                for (int i = 0; i < names.length; i++) {
-                    names[i] = method.getLocalVariableTable().getLocal(slotIdx, 0).getName();
-
-                    JavaKind kind = method.getSignature().getParameterKind(i);
-                    slotIdx += kind.getSlotCount();
+                LocalVariableTable localVariableTable = method.getLocalVariableTable();
+                if (localVariableTable != null) {
+                    for (int i = 0; i < names.length; i++) {
+                        Local local = localVariableTable.getLocal(slotIdx, 0);
+                        if (local != null) {
+                            names[i] = local.getName();
+                        }
+                        JavaKind kind = method.getSignature().getParameterKind(i);
+                        slotIdx += kind.getSlotCount();
+                    }
                 }
                 return true;
             }
