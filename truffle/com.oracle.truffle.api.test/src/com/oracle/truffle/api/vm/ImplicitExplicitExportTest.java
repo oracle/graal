@@ -277,6 +277,15 @@ public class ImplicitExplicitExportTest {
         public ExportImportLanguage1() {
         }
 
+        // BEGIN: config.read
+        @Override
+        protected Ctx createContext(Env env) {
+            String[] args = (String[]) env.getConfig().get("CMD_ARGS");
+            // FINISH: config.read
+
+            return super.createContext(env);
+        }
+
         @Override
         protected String toString(Ctx ctx, Object value) {
             if (value instanceof String) {

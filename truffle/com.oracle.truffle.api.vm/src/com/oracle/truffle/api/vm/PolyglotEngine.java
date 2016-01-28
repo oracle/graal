@@ -275,6 +275,8 @@ public class PolyglotEngine {
          * {@link com.oracle.truffle.api.TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)
          * initial execution state} correctly.
          *
+         * {@codesnippet config.specify}
+         *
          * If the same key is specified multiple times for the same language, the previous values
          * are replaced and just the last one remains.
          *

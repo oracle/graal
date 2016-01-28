@@ -445,6 +445,25 @@ public abstract class TruffleLanguage<C> {
          * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#config when constructing the
          * engine} are accessible via this map.
          *
+         * This method (in combination with
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#config}) provides a
+         * straight-forward way to pass implementation-level arguments, as typically specified on a
+         * command line, to the languages.
+         *
+         * {@codesnippet config.specify}
+         *
+         * In contrast to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol
+         * global symbols} the provided values are passed in exactly as specified, because these
+         * configuration arguments are strictly at the implementation level and not language-level
+         * objects.
+         *
+         * These configuration arguments are available when
+         * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) creating the language
+         * context} to make it possible to take them into account before the language gets ready for
+         * execution. This is the most common way to access them:
+         *
+         * {@codesnippet config.read}
+         *
          * @return read-only view of configuration options for this language
          */
         public Map<String, Object> getConfig() {

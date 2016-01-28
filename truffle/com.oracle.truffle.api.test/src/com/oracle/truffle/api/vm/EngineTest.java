@@ -38,6 +38,7 @@ import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1_ALT;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import static org.junit.Assert.assertSame;
 
 public class EngineTest {
     protected PolyglotEngine.Builder createBuilder() {
@@ -228,4 +229,25 @@ public class EngineTest {
         assertNull(ctx2.env.getConfig().get("hello"));
     }
 
+    static class YourLang {
+        public static final String MIME_TYPE = L1;
+    }
+
+    @Test
+    public void exampleOfConfiguration() throws IOException {
+        // @formatter:off
+        // BEGIN: config.specify
+        String[] args = {"--kernel", "Kernel.som", "--instrument", "dyn-metrics"};
+        Builder builder = PolyglotEngine.newBuilder();
+        builder.config(YourLang.MIME_TYPE, "CMD_ARGS", args);
+        PolyglotEngine vm = builder.build();
+        // END: config.specify
+        // @formatter:on
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+        String[] read = (String[]) ctx2.env.getConfig().get("CMD_ARGS");
+
+        assertSame("The same array as specified is returned", args, read);
+    }
 }
