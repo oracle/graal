@@ -986,6 +986,12 @@ public class PolyglotEngine {
         }
 
         @Override
+        protected boolean isMimeTypeSupported(Object obj, String mimeType) {
+            final PolyglotEngine vm = (PolyglotEngine) obj;
+            return vm.findLanguage(mimeType) != null;
+        }
+
+        @Override
         protected Env findLanguage(Object obj, Class<? extends TruffleLanguage> languageClass) {
             PolyglotEngine vm = (PolyglotEngine) obj;
             return vm.findEnv(languageClass);

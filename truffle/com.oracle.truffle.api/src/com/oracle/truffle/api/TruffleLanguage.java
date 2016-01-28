@@ -388,6 +388,19 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Allows it to be determined if this {@link com.oracle.truffle.api.vm.PolyglotEngine} can
+         * execute code written in a language with a given MIME type.
+         *
+         * @see Source#withMimeType(String)
+         * @see #parse(Source, String...)
+         *
+         * @return a boolean that indicates if the MIME type is supported
+         */
+        public boolean isMimeTypeSupported(String mimeType) {
+            return API.isMimeTypeSupported(vm, mimeType);
+        }
+
+        /**
          * Evaluates source of (potentially different) language. The {@link Source#getMimeType()
          * MIME type} is used to identify the {@link TruffleLanguage} to use to perform the
          * {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
@@ -523,6 +536,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         protected Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
             return env.langCtx.findExportedSymbol(globalName, onlyExplicit);
+        }
+
+        @Override
+        protected boolean isMimeTypeSupported(Object vm, String mimeType) {
+            return super.isMimeTypeSupported(vm, mimeType);
         }
 
         @Override

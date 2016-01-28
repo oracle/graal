@@ -204,6 +204,10 @@ public abstract class Accessor {
         return API.createWrapperNode(node, language);
     }
 
+    protected boolean isMimeTypeSupported(Object vm, String mimeType) {
+        return SPI.isMimeTypeSupported(vm, mimeType);
+    }
+
     @SuppressWarnings("rawtypes")
     protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
         return NODES.findLanguage(n);
