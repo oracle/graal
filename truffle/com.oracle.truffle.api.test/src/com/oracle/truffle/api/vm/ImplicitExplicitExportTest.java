@@ -137,7 +137,7 @@ public class ImplicitExplicitExportTest {
         final Map<String, String> implicit = new HashMap<>();
         final Env env;
 
-        public Ctx(Env env) {
+        Ctx(Env env) {
             this.env = env;
         }
 

@@ -126,7 +126,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10
     }
 
     private final class IndexNode extends RootNode {
-        public IndexNode() {
+        IndexNode() {
             super(TruffleLanguage.class, null, null);
         }
 
@@ -142,7 +142,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10
     }
 
     private final class InvokeNode extends RootNode {
-        public InvokeNode() {
+        InvokeNode() {
             super(TruffleLanguage.class, null, null);
         }
 
@@ -162,7 +162,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10
     }
 
     private final class DuplNode extends RootNode {
-        public DuplNode() {
+        DuplNode() {
             super(TruffleLanguage.class, null, null);
         }
 
