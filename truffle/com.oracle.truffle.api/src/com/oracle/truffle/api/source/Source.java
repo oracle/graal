@@ -399,6 +399,11 @@ public abstract class Source {
     private String mimeType;
     private TextMap textMap;
 
+    /**
+     * Reloads a source by creating a new instance. The original source instance remains unchanged.
+     */
+    public abstract Source reload() throws IOException;
+
     abstract void reset();
 
     /**
@@ -712,6 +717,11 @@ public abstract class Source {
         }
 
         @Override
+        public Source reload() {
+            return new LiteralSource(description, code);
+        }
+
+        @Override
         public String getName() {
             return description;
         }
@@ -772,6 +782,13 @@ public abstract class Source {
 
         public AppendableLiteralSource(String description) {
             this.description = description;
+        }
+
+        @Override
+        public Source reload() {
+            AppendableLiteralSource literals = new AppendableLiteralSource(description);
+            literals.codeList.addAll(codeList);
+            return literals;
         }
 
         @Override
@@ -837,6 +854,11 @@ public abstract class Source {
             this.file = file.getAbsoluteFile();
             this.name = name;
             this.path = path;
+        }
+
+        @Override
+        public Source reload() {
+            return new FileSource(file, name, path);
         }
 
         @Override
@@ -945,6 +967,11 @@ public abstract class Source {
             setCode(chars);
         }
 
+        @Override
+        public Source reload() {
+            return new ClientManagedFileSource(file, name, path, code);
+        }
+
         void setCode(CharSequence chars) {
             this.code = chars.toString();
         }
@@ -1019,9 +1046,9 @@ public abstract class Source {
 
     private static final class URLSource extends Source implements Cloneable {
 
-        private static final Map<URL, WeakReference<URLSource>> urlToSource = new HashMap<>();
+        public static final Map<URL, WeakReference<URLSource>> urlToSource = new HashMap<>();
 
-        public static URLSource get(URL url, String name) throws IOException {
+        private static URLSource get(URL url, String name) throws IOException {
             WeakReference<URLSource> sourceRef = urlToSource.get(url);
             URLSource source = sourceRef == null ? null : sourceRef.get();
             if (source == null) {
@@ -1043,6 +1070,12 @@ public abstract class Source {
                 super.mimeType = c.getContentType();
             }
             code = read(new InputStreamReader(c.getInputStream()));
+        }
+
+        @Override
+        public Source reload() throws IOException {
+            urlToSource.remove(url);
+            return get(url, name);
         }
 
         @Override
@@ -1099,6 +1132,11 @@ public abstract class Source {
         }
 
         @Override
+        public Source reload() throws IOException {
+            return create(base.reload(), baseIndex, subLength);
+        }
+
+        @Override
         void reset() {
             assert false;
         }
@@ -1143,12 +1181,17 @@ public abstract class Source {
         private final int length;
         private final CharsetDecoder decoder;
 
-        public BytesSource(String name, byte[] bytes, int byteIndex, int length, Charset decoder) {
+        public BytesSource(String name, byte[] bytes, int byteIndex, int length, Charset charset) {
             this.name = name;
             this.bytes = bytes;
             this.byteIndex = byteIndex;
             this.length = length;
-            this.decoder = decoder.newDecoder();
+            this.decoder = charset.newDecoder();
+        }
+
+        @Override
+        public Source reload() throws IOException {
+            return new BytesSource(name, bytes, byteIndex, length, decoder.charset());
         }
 
         @Override
