@@ -113,6 +113,7 @@ public class PolyglotEngine {
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter;
+    private final List<Object[]> config;
     private final Debugger debugger;
     private boolean disposed;
 
@@ -130,12 +131,13 @@ public class PolyglotEngine {
         this.executor = null;
         this.instrumenter = null;
         this.debugger = null;
+        this.config = null;
     }
 
     /**
      * Real constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config) {
         this.executor = executor;
         this.out = out;
         this.err = err;
@@ -144,6 +146,7 @@ public class PolyglotEngine {
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
         this.instrumenter = SPI.createInstrumenter(this);
+        this.config = config;
         this.debugger = SPI.createDebugger(this, this.instrumenter);
         Map<String, Language> map = new HashMap<>();
         /* We want to create a language instance but per LanguageCache and not per mime type. */
@@ -211,6 +214,7 @@ public class PolyglotEngine {
         private final List<EventConsumer<?>> handlers = new ArrayList<>();
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
+        private List<Object[]> arguments;
 
         Builder() {
         }
@@ -261,6 +265,33 @@ public class PolyglotEngine {
         public Builder onEvent(EventConsumer<?> handler) {
             handler.getClass();
             handlers.add(handler);
+            return this;
+        }
+
+        /**
+         * Provide configuration data to initialize the {@link PolyglotEngine} for a specific
+         * language. These arguments {@link com.oracle.truffle.api.TruffleLanguage.Env#getConfig()
+         * can be used by the language} to initialize and configure their
+         * {@link com.oracle.truffle.api.TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)
+         * initial execution state} correctly.
+         *
+         * {@codesnippet config.specify}
+         *
+         * If the same key is specified multiple times for the same language, the previous values
+         * are replaced and just the last one remains.
+         *
+         * @param mimeType identification of the language for which the arguments are - if the
+         *            language declares multiple MIME types, any of them can be used
+         *
+         * @param key to identify a language-specific configuration element
+         * @param value to parameterize initial state of a language
+         * @return instance of this builder
+         */
+        public Builder config(String mimeType, String key, Object value) {
+            if (this.arguments == null) {
+                this.arguments = new ArrayList<>();
+            }
+            this.arguments.add(new Object[]{mimeType, key, value});
             return this;
         }
 
@@ -334,7 +365,7 @@ public class PolyglotEngine {
             if (in == null) {
                 in = System.in;
             }
-            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]));
+            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]), arguments);
         }
     }
 
@@ -813,9 +844,23 @@ public class PolyglotEngine {
             return impl;
         }
 
+        private Map<String, Object> getArgumentsForLanguage() {
+            if (config == null) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, Object> forLanguage = new HashMap<>();
+            for (Object[] mimeKeyValue : config) {
+                if (getMimeTypes().contains(mimeKeyValue[0])) {
+                    forLanguage.put((String) mimeKeyValue[1], mimeKeyValue[2]);
+                }
+            }
+            return Collections.unmodifiableMap(forLanguage);
+        }
+
         TruffleLanguage.Env getEnv(boolean create) {
             if (env == null && create) {
-                env = SPI.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter);
+                env = SPI.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
             }
             return env;
         }
@@ -899,9 +944,9 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> config) {
             PolyglotEngine vm = (PolyglotEngine) obj;
-            return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter);
+            return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
         }
 
         @Override
@@ -938,6 +983,12 @@ public class PolyglotEngine {
         @Override
         protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
             return super.findLanguage(probe);
+        }
+
+        @Override
+        protected boolean isMimeTypeSupported(Object obj, String mimeType) {
+            final PolyglotEngine vm = (PolyglotEngine) obj;
+            return vm.findLanguage(mimeType) != null;
         }
 
         @Override

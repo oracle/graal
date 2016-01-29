@@ -129,13 +129,15 @@ hcls AccessAPI,LangCtx
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$Env
  outer com.oracle.truffle.api.TruffleLanguage
 meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
+meth public boolean isMimeTypeSupported(java.lang.String)
 meth public com.oracle.truffle.api.instrument.Instrumenter instrumenter()
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
 meth public java.lang.Object importSymbol(java.lang.String)
+meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 supr java.lang.Object
-hfds err,in,instrumenter,lang,langCtx,out,vm
+hfds config,err,in,instrumenter,lang,langCtx,out,vm
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
  outer com.oracle.truffle.api.TruffleLanguage
@@ -295,7 +297,7 @@ meth public static com.oracle.truffle.api.frame.FrameDescriptor create(java.lang
  anno 0 java.lang.Deprecated()
 meth public void removeFrameSlot(java.lang.Object)
 supr java.lang.Object
-hfds defaultValue,identifierToNotInFrameAssumptionMap,identifierToSlotMap,slots,version
+hfds NEVER_PART_OF_COMPILATION_MESSAGE,defaultValue,identifierToNotInFrameAssumptionMap,identifierToSlotMap,slots,version
 
 CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance
 innr public final static !enum FrameAccess
@@ -319,6 +321,7 @@ meth public abstract {com.oracle.truffle.api.frame.FrameInstanceVisitor%0} visit
 
 CLSS public final com.oracle.truffle.api.frame.FrameSlot
 cons public init(com.oracle.truffle.api.frame.FrameDescriptor,java.lang.Object,java.lang.Object,int,com.oracle.truffle.api.frame.FrameSlotKind)
+ anno 0 java.lang.Deprecated()
 intf java.lang.Cloneable
 meth public com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
 meth public com.oracle.truffle.api.frame.FrameSlotKind getKind()
@@ -753,6 +756,7 @@ meth protected static com.oracle.truffle.api.nodes.NodeFieldAccessor create(com.
 meth public abstract java.lang.Object getObject(com.oracle.truffle.api.nodes.Node)
 meth public abstract java.lang.Object loadValue(com.oracle.truffle.api.nodes.Node)
 meth public abstract void putObject(com.oracle.truffle.api.nodes.Node,java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind getKind()
 meth public java.lang.Class<?> getDeclaringClass()
 meth public java.lang.Class<?> getType()

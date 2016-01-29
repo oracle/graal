@@ -80,7 +80,6 @@ hcls Disabled,Enabled
 
 CLSS public abstract com.oracle.truffle.api.profiles.Profile
 supr com.oracle.truffle.api.nodes.NodeCloneable
-hfds ENABLED
 
 CLSS public abstract com.oracle.truffle.api.profiles.ValueProfile
 meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
