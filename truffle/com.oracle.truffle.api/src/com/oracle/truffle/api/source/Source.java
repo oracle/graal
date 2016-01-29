@@ -718,9 +718,7 @@ public abstract class Source {
 
         @Override
         public Source reload() {
-            AppendableLiteralSource literals = new AppendableLiteralSource(description);
-            literals.codeList.addAll(codeList);
-            return literals;
+            return new LiteralSource(description, code);
         }
 
         @Override
@@ -788,7 +786,9 @@ public abstract class Source {
 
         @Override
         public Source reload() {
-            return new LiteralSource(description, code);
+            AppendableLiteralSource literals = new AppendableLiteralSource(description);
+            literals.codeList.addAll(codeList);
+            return literals;
         }
 
         @Override
