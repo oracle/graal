@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.util.Arrays;
+
 /**
  * Description of contiguous section of text within a {@link Source} of program code; supports
  * multiple modes of access to the text and its location. A special
@@ -229,12 +231,17 @@ public final class SourceSection {
      */
     @Override
     public String toString() {
+        String result;
         if (source == null) {
-            return kind + ": " + identifier;
+            result = kind + ": " + identifier;
         } else {
-            return "source=" + source.getShortName() + " pos=" + charIndex + " len=" + charLength + " line=" + startLine + " col=" + startColumn +
+            result = "source=" + source.getShortName() + " pos=" + charIndex + " len=" + charLength + " line=" + startLine + " col=" + startColumn +
                             (identifier != null ? " identifier=" + identifier : "") + " code=" + getCode();
         }
+        if (tags != null && tags.length > 0) {
+            result += " tags: " + Arrays.toString(tags);
+        }
+        return result;
     }
 
     @Override
