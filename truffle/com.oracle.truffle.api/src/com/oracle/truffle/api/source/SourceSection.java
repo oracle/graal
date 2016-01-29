@@ -292,6 +292,16 @@ public final class SourceSection {
     }
 
     /**
+     * @param newTags is a new set of tags
+     * @return copy with the provided tags set
+     */
+    public SourceSection cloneWithTags(String... newTags) {
+        assert tagsAreNonNullAndInterned(newTags);
+        return new SourceSection(kind, source, identifier, startLine,
+                        startColumn, charIndex, charLength, newTags);
+    }
+
+    /**
      * Placeholder for source that is unavailable, e.g. for language <em>builtins</em>. The
      * <code>SourceSection</code> created by this method returns <code>null</code> when queried for
      * a {@link #getSource()} - regular source sections created via one of
