@@ -57,7 +57,7 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
         return Source.fromText(CONSTANT_SOURCE_TEXT, testName).withMimeType("text/x-instTest");
     }
 
-    static enum InstrumentTestTag implements SyntaxTag {
+    enum InstrumentTestTag implements SyntaxTag {
 
         ADD_TAG("addition", "test language addition node"),
 
