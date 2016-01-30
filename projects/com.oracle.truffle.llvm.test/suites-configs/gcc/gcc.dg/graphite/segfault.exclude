@@ -1,0 +1,2 @@
+gcc.dg/graphite/isl-ast-gen-if-1.c
+gcc.dg/graphite/id-pr45230.c
