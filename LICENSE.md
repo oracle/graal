@@ -1,4 +1,4 @@
-Copyright (c) 2015, Sulong project authors (see AUTHORS.md).
+Copyright (c) 2016, Oracle and/or its affiliates.
 
 All rights reserved.
 
