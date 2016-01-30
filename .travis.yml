@@ -18,7 +18,7 @@ install:
 script:
   - $TEST_COMMAND
 env:
-  - TEST_COMMAND='mx/mx --vm server gate --strict-mode'
+  - TEST_COMMAND='mx/mx --vm server gate'
   - TEST_COMMAND='mx/mx --vm server checkoverlap'
   - TEST_COMMAND='mx/mx --vm server canonicalizeprojects'
   - TEST_COMMAND='mx/mx --vm server checkstyle'
