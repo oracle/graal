@@ -66,7 +66,7 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
         private final String name;
         private final String description;
 
-        private InstrumentTestTag(String name, String description) {
+        InstrumentTestTag(String name, String description) {
             this.name = name;
             this.description = description;
         }
