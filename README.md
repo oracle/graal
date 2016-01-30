@@ -30,9 +30,9 @@ configuration. For now, just select server. You can read the differences
 between the configurations on
 https://wiki.openjdk.java.net/display/Graal/Instructions. The first
 build will take some time because mx has not only to build Sulong,
-but also its dependencies and the Graal LLVM.
+but also its dependencies and the Graal VM.
 
-Now, Sulong is ready to start. You can, e.g., compile a C file named
+Now, Sulong is ready to start. You can for example compile a C file named
 `test.c` (see further below) with mx and then use Sulong to execute it:
 
     mx su-clang -S -emit-llvm -o test.ll test.c
@@ -79,7 +79,7 @@ Consider the following C program:
 #include <stdio.h>
 
 int main() {
- printf("Hello World \n");
+    printf("Hello World \n");
 }
 ```
 
@@ -109,7 +109,7 @@ declare i32 @puts(i8* nocapture) nounwind
 The file contains a `datalayout` and `triple` that specifies how data
 should be laid out in memory, and which architecture should be targeted
 in the backend. One can also see global the global variables `@.str` and
-`@str`, the ``@main` function as an entry to the program, and the
+`@str`, the `@main` function as an entry to the program, and the
 `@puts` function declaration that refers to the C standard library
 `puts` function.
 
@@ -118,7 +118,7 @@ What is Truffle?
 ----------------
 [Truffle](https://github.com/graalvm/truffle) is a language 
 implementation framework written in Java. It allows language designers
-to implement a (host) language as an Abstract Syntax Tree (AST)
+to implement a (guest) language as an Abstract Syntax Tree (AST)
 interpreter. Additionally, Truffle provides many language independent
 facilities to the host language such as profiling, debugging, and 
 language interoperability. When a Truffle AST is executed often and then
