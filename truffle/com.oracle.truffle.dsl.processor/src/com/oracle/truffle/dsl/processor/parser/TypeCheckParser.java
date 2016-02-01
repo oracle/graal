@@ -36,7 +36,7 @@ import javax.lang.model.type.TypeMirror;
 
 class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
 
-    public TypeCheckParser(ProcessorContext context, TypeSystemData typeSystem) {
+    TypeCheckParser(ProcessorContext context, TypeSystemData typeSystem) {
         super(context, typeSystem);
     }
 

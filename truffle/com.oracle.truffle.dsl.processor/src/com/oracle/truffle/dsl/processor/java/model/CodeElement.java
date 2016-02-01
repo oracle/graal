@@ -174,7 +174,7 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
 
     private static class StringBuilderCodeWriter extends AbstractCodeWriter {
 
-        public StringBuilderCodeWriter() {
+        StringBuilderCodeWriter() {
             this.writer = new CharArrayWriter();
         }
 
@@ -194,7 +194,7 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
         private final Element parent;
         private final List<T> delegate;
 
-        public ParentableList(Element parent, List<T> delegate) {
+        ParentableList(Element parent, List<T> delegate) {
             this.parent = parent;
             this.delegate = delegate;
         }

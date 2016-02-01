@@ -3110,7 +3110,7 @@ public class NodeGenFactory {
         private final boolean fastPath;
         private final boolean needsCastedValues;
 
-        public SpecializationBody(boolean fastPath, boolean needsCastedValues) {
+        SpecializationBody(boolean fastPath, boolean needsCastedValues) {
             this.fastPath = fastPath;
             this.needsCastedValues = needsCastedValues;
         }

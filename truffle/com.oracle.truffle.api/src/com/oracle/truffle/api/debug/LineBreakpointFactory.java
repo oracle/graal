@@ -288,7 +288,7 @@ final class LineBreakpointFactory {
          */
         private List<ProbeInstrument> instruments = new ArrayList<>();
 
-        public LineBreakpointImpl(int ignoreCount, LineLocation lineLocation, boolean oneShot) {
+        LineBreakpointImpl(int ignoreCount, LineLocation lineLocation, boolean oneShot) {
             super(ENABLED_UNRESOLVED, ignoreCount, oneShot);
             this.lineLocation = lineLocation;
 
