@@ -36,7 +36,7 @@ import com.oracle.truffle.api.nodes.Node.Children;
  */
 public abstract class NodeFieldAccessor {
 
-    public static enum NodeFieldKind {
+    public enum NodeFieldKind {
         /** The reference to the {@link NodeClass}. */
         NODE_CLASS,
         /** The single {@link Node#getParent() parent} field. */

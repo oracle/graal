@@ -128,7 +128,7 @@ public class InitializationTest {
     private static class ANode extends Node {
         private final int constant;
 
-        public ANode(int constant) {
+        ANode(int constant) {
             this.constant = constant;
         }
 

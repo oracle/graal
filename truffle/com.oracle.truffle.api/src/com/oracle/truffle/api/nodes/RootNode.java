@@ -140,7 +140,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     * 
+     *
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();
@@ -195,7 +195,7 @@ public abstract class RootNode extends Node {
 
         private final Object value;
 
-        public Constant(Object value) {
+        Constant(Object value) {
             super(TruffleLanguage.class, null, null);
             this.value = value;
         }

@@ -322,7 +322,7 @@ public abstract class TruffleLanguage<C> {
         final TruffleLanguage<C> lang;
         final C ctx;
 
-        public LangCtx(TruffleLanguage<C> lang, Env env) {
+        LangCtx(TruffleLanguage<C> lang, Env env) {
             this.lang = lang;
             // following call verifies that Accessor.CURRENT_VM is provided
             assert API.findLanguage(null, null) == null;

@@ -51,7 +51,7 @@ public @interface DSLOptions {
     /** Not yet implemented. */
     boolean useDisjunctiveMethodGuardOptimization() default true;
 
-    public enum ImplicitCastOptimization {
+    enum ImplicitCastOptimization {
 
         /** Perform no informed optimization for implicit casts. */
         NONE,
@@ -78,7 +78,7 @@ public @interface DSLOptions {
         }
     }
 
-    public enum TypeBoxingOptimization {
+    enum TypeBoxingOptimization {
         /** Perform the optimization for all types. */
         ALWAYS,
         /** Perform the optimization just for primitive types. */
@@ -117,7 +117,7 @@ public @interface DSLOptions {
      */
     TypeBoxingOptimization voidBoxingOptimization() default TypeBoxingOptimization.PRIMITIVE;
 
-    public enum FallbackOptimization {
+    enum FallbackOptimization {
         /** Always generate an optimized fallback specialization. */
         ALWAYS,
 

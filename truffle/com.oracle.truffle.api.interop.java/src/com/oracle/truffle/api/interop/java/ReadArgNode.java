@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.Node;
 class ReadArgNode extends Node {
     private final int argIndex;
 
-    public ReadArgNode(int argIndex) {
+    ReadArgNode(int argIndex) {
         this.argIndex = argIndex;
     }
 

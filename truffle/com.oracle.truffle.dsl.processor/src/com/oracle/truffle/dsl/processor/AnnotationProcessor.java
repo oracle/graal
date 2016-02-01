@@ -45,7 +45,7 @@ class AnnotationProcessor<M extends Template> {
 
     private final Set<String> processedElements = new HashSet<>();
 
-    public AnnotationProcessor(AbstractParser<M> parser, CodeTypeElementFactory<M> factory) {
+    AnnotationProcessor(AbstractParser<M> parser, CodeTypeElementFactory<M> factory) {
         this.parser = parser;
         this.factory = factory;
     }

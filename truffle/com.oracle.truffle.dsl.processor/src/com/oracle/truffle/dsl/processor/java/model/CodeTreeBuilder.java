@@ -738,7 +738,7 @@ public class CodeTreeBuilder {
         private EndCallback atEndListener;
         private CodeTreeKind removeLast;
 
-        public BuilderCodeTree(CodeTree parent, CodeTreeKind kind, TypeMirror type, String string) {
+        BuilderCodeTree(CodeTree parent, CodeTreeKind kind, TypeMirror type, String string) {
             super(parent, kind, type, string);
         }
 
@@ -766,7 +766,7 @@ public class CodeTreeBuilder {
             private final EndCallback callback1;
             private final EndCallback callback2;
 
-            public CompoundCallback(EndCallback callback1, EndCallback callback2) {
+            CompoundCallback(EndCallback callback1, EndCallback callback2) {
                 this.callback1 = callback1;
                 this.callback2 = callback2;
             }
