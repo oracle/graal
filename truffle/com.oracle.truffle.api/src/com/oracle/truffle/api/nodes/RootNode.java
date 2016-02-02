@@ -66,6 +66,7 @@ public abstract class RootNode extends Node {
         this(language, sourceSection, frameDescriptor, true);
     }
 
+    @SuppressWarnings("deprecation")
     private RootNode(Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor, boolean checkLanguage) {
         super(sourceSection);
         if (checkLanguage) {

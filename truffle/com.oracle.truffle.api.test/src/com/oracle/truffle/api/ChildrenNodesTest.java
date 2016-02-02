@@ -102,7 +102,6 @@ public class ChildrenNodesTest {
     class TestChildNode extends Node {
 
         public TestChildNode() {
-            super(null);
         }
 
         public int execute() {

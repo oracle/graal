@@ -97,7 +97,6 @@ public class FinalFieldTest {
         private final int value;
 
         public TestChildNode(int value) {
-            super(null);
             this.value = value;
         }
 

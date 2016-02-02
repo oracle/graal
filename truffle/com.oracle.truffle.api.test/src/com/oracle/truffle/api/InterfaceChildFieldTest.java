@@ -113,7 +113,6 @@ public class InterfaceChildFieldTest {
 
     class TestLeafNode extends Node implements TestChildInterface {
         public TestLeafNode() {
-            super(null);
         }
 
         public int executeIntf() {
@@ -123,7 +122,6 @@ public class InterfaceChildFieldTest {
 
     class TestLeaf2Node extends Node implements TestChildInterface {
         public TestLeaf2Node() {
-            super(null);
         }
 
         public int executeIntf() {
@@ -137,7 +135,6 @@ public class InterfaceChildFieldTest {
         @Child private TestChildInterface right;
 
         public TestChildNode(TestChildInterface left, TestChildInterface right) {
-            super(null);
             this.left = left;
             this.right = right;
         }
@@ -153,7 +150,6 @@ public class InterfaceChildFieldTest {
         @Children private final TestChildInterface[] children;
 
         public TestChildrenNode(TestChildInterface[] children) {
-            super(null);
             this.children = children;
         }
 
