@@ -29,7 +29,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 public final class New1 extends BaseNew1 {
 
     @Override
-    protected int access(VirtualFrame vf, ValidTruffleObject receiver, Object[] args) {
+    protected int access(VirtualFrame frame, ValidTruffleObject receiver, Object[] args) {
         return 0;
     }
 }

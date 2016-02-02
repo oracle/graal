@@ -30,7 +30,7 @@ public final class ReadNode5 extends BaseReadNode5 {
 
     @SuppressWarnings({"static-method", "unused"})
     @ExpectError({"The first argument must be a com.oracle.truffle.api.frame.VirtualFrame- but is java.lang.String"})
-    protected int access(String vf, Object receiver, Object name) {
+    protected int access(String frame, Object receiver, Object name) {
         return 0;
     }
 }
