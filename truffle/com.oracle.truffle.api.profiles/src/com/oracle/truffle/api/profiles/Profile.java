@@ -95,7 +95,7 @@ public abstract class Profile extends NodeCloneable {
         boolean enabled;
         try {
             enabled = Truffle.getRuntime().isProfilingEnabled();
-        } catch (NoSuchMethodError ex) {
+        } catch (LinkageError ex) {
             // running on old version of Graal
             enabled = true;
         }
