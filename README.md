@@ -159,7 +159,7 @@ mx su-run <file> -Dgraal.TraceTruffleCompilation=true
 To visualize Graal's graphs you can use the Ideal Graph Visualizer:
 ```
 mx igv
-mx su-run <file> -Dgraal.Dump=
+mx su-run <file> -Dgraal.Dump=Truffle
 ```
 
 
