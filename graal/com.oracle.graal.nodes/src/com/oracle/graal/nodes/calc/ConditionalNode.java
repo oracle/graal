@@ -129,14 +129,23 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
             return synonym;
         }
 
+        ValueNode result = canonicalizeConditional(condition, trueValue(), falseValue(), stamp);
+        if (result != null) {
+            return result;
+        }
+
+        return this;
+    }
+
+    public static ValueNode canonicalizeConditional(LogicNode condition, ValueNode trueValue, ValueNode falseValue, Stamp stamp) {
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
-        if (trueValue().isConstant() && falseValue().isConstant() && condition instanceof IntegerEqualsNode) {
+        if (trueValue.isConstant() && falseValue.isConstant() && condition instanceof IntegerEqualsNode) {
             IntegerEqualsNode equals = (IntegerEqualsNode) condition;
             if (equals.getY().isConstant() && equals.getY().asConstant().equals(JavaConstant.INT_0) && equals.getX().stamp() instanceof IntegerStamp) {
                 IntegerStamp equalsXStamp = (IntegerStamp) equals.getX().stamp();
                 if (equalsXStamp.upMask() == 1) {
-                    if (trueValue().asConstant().equals(JavaConstant.INT_0) && falseValue().asConstant().equals(JavaConstant.INT_1)) {
-                        return IntegerConvertNode.convertUnsigned(equals.getX(), stamp());
+                    if (trueValue.asConstant().equals(JavaConstant.INT_0) && falseValue.asConstant().equals(JavaConstant.INT_1)) {
+                        return IntegerConvertNode.convertUnsigned(equals.getX(), stamp);
                     }
                 }
             }
@@ -144,26 +153,26 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         if (condition instanceof CompareNode && ((CompareNode) condition).condition() == Condition.EQ) {
             // optimize the pattern (x == y) ? x : y
             CompareNode compare = (CompareNode) condition;
-            if ((compare.getX() == trueValue() && compare.getY() == falseValue()) || (compare.getX() == falseValue() && compare.getY() == trueValue())) {
-                return falseValue();
+            if ((compare.getX() == trueValue && compare.getY() == falseValue) || (compare.getX() == falseValue && compare.getY() == trueValue)) {
+                return falseValue;
             }
         }
-        if (trueValue() == falseValue()) {
-            return trueValue();
+        if (trueValue == falseValue) {
+            return trueValue;
         }
 
-        if (condition instanceof IntegerLessThanNode && trueValue().stamp() instanceof IntegerStamp) {
+        if (condition instanceof IntegerLessThanNode && trueValue.stamp() instanceof IntegerStamp) {
             /*
              * Convert a conditional add ((x < 0) ? (x + y) : x) into (x + (y & (x >> (bits - 1))))
              * to avoid the test.
              */
             IntegerLessThanNode lt = (IntegerLessThanNode) condition;
             if (lt.getY().isConstant() && lt.getY().asConstant().isDefaultForKind()) {
-                if (falseValue() == lt.getX()) {
-                    if (trueValue() instanceof AddNode) {
-                        AddNode add = (AddNode) trueValue();
-                        if (add.getX() == falseValue()) {
-                            int bits = ((IntegerStamp) trueValue().stamp()).getBits();
+                if (falseValue == lt.getX()) {
+                    if (trueValue instanceof AddNode) {
+                        AddNode add = (AddNode) trueValue;
+                        if (add.getX() == falseValue) {
+                            int bits = ((IntegerStamp) trueValue.stamp()).getBits();
                             ValueNode shift = new RightShiftNode(lt.getX(), ConstantNode.forIntegerBits(32, bits - 1));
                             ValueNode and = new AndNode(shift, add.getY());
                             return new AddNode(add.getX(), and);
@@ -173,7 +182,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
             }
         }
 
-        return this;
+        return null;
     }
 
     private static ValueNode findSynonym(ValueNode condition, ValueNode trueValue, ValueNode falseValue) {

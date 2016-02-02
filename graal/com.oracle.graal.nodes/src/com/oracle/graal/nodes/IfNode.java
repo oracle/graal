@@ -221,6 +221,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return;
         }
 
+        if (conditionalNodeOptimization(tool)) {
+            return;
+        }
+
         if (falseSuccessor().hasNoUsages() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
             AbstractBeginNode intermediateBegin = falseSuccessor();
             IfNode nextIf = (IfNode) intermediateBegin.next();
@@ -251,6 +255,48 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
             }
         }
+    }
+
+    /**
+     * Try to optimize this as if it were a {@link ConditionalNode}.
+     */
+    private boolean conditionalNodeOptimization(SimplifierTool tool) {
+        if (trueSuccessor().next() instanceof AbstractEndNode && falseSuccessor().next() instanceof AbstractEndNode) {
+            AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
+            AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
+            if (trueEnd.merge() != falseEnd.merge()) {
+                return false;
+            }
+            if (!(trueEnd.merge() instanceof MergeNode)) {
+                return false;
+            }
+            MergeNode merge = (MergeNode) trueEnd.merge();
+            if (merge.usages().count() != 1 || merge.phis().count() != 1) {
+                return false;
+            }
+            PhiNode phi = merge.phis().first();
+            ValueNode falseValue = phi.valueAt(falseEnd);
+            ValueNode trueValue = phi.valueAt(trueEnd);
+
+            ValueNode result = ConditionalNode.canonicalizeConditional(condition, trueValue, falseValue, phi.stamp());
+            if (result != null) {
+                /*
+                 * canonicalizeConditional returns possibly new nodes so add them to the graph.
+                 */
+                if (result.graph() == null) {
+                    result = graph().addOrUniqueWithInputs(result);
+                }
+                /*
+                 * This optimization can be performed even if multiple values merge at this phi
+                 * since the two inputs get simplified into one.
+                 */
+                phi.setValueAt(trueEnd, result);
+                removeThroughFalseBranch(tool);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void pushNodesThroughIf(SimplifierTool tool) {
