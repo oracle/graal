@@ -27,36 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.intrinsics.c;
 
-public final class LLVMOptimizations {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
-    private LLVMOptimizations() {
+public class LLVMMalloc extends LLVMIntrinsic {
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return LLVMHeap.allocateMemory((long) frame.getArguments()[0]);
     }
 
-    /**
-     * Speculation based on the <code>llvm.expect</code> intrinsic.
-     */
-    public static final boolean VALUE_SPECIALIZATION_EXPECT_INTRINSIC = true;
-
-    /**
-     * Speculates that memory reads always return the same result.
-     */
-    public static final boolean VALUE_PROFILING_MEMORY_READS = true;
-
-    /**
-     * Record branch probabilities for the LLVM <code>select</code> instruction.
-     */
-    public static final boolean BRANCH_INJECTION_SELECT_INSTRUCTION = true;
-
-    /**
-     * Record branch probabilities for the LLVM <code>br</code> instruction.
-     */
-    public static final boolean BRANCH_INJECTION_CONDITIONAL_BRANCH = true;
-
-    /**
-     * Substitute common C library functions by Java implementations. Note that some functions such
-     * as exit or abort are substituted in each case, to allow the VM to terminate gracefully.
-     */
-    public static final boolean INTRINSIFY_C_LIBRARY_FUNCTIONS = true;
 }

@@ -40,6 +40,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMExit;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMFree;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMMalloc;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMSqrt;
 import com.oracle.truffle.llvm.intrinsics.cpp.LLVMCxaThrow;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 
@@ -57,6 +60,12 @@ public class LLVMFunctionRegistry {
         // C
         INTRINSICS.put("@abort", LLVMAbort.class);
         INTRINSICS.put("@exit", LLVMExit.class);
+
+        if (LLVMOptimizations.INTRINSIFY_C_LIBRARY_FUNCTIONS) {
+            INTRINSICS.put("@sqrt", LLVMSqrt.class);
+            INTRINSICS.put("@malloc", LLVMMalloc.class);
+            INTRINSICS.put("@free", LLVMFree.class);
+        }
 
         // C++
         INTRINSICS.put("@__cxa_throw", LLVMCxaThrow.class);
