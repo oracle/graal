@@ -37,8 +37,6 @@ add_gate_runner(_suite, _graal_llvm_gate_runner)
 def executeGate():
     """executes the TruffleLLVM gate tasks"""
     tasks = []
-    with Task('MD File Check', tasks) as t:
-        if t: mdCheck()
     with Task('BuildHotSpotGraalServer: product', tasks) as t:
         if t: buildvms(['--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
@@ -370,20 +368,6 @@ def compileWithClangPP(args=None):
     clangPath = _toolDir + 'tools/llvm/bin/clang++'
     mx.run([clangPath] + args)
 
-def mdCheck(args=None):
-    """checks all .md files"""
-    os.chdir(_suite.dir)
-    for currentFile in glob.glob("*.md"):
-        print "checking", currentFile
-        f = open(currentFile)
-        contents = f.readlines()
-        f.close()
-        lineNumber = 0
-        for line in contents:
-            lineNumber += 1
-            if len(line) > 80:
-                raise Exception('line ' + str(lineNumber) + ' exceeds line length in ' + currentFile)
-
 def printOptions(args=None):
     """prints the Sulong Java property options"""
     mx.run_java(['-cp', mx.classpath(['com.oracle.truffle.llvm.runtime']), "com.oracle.truffle.llvm.runtime.LLVMOptions"])
@@ -451,7 +435,6 @@ mx.update_commands(_suite, {
     'su-pullllvmsuite' : [pullLLVMSuite, ''],
     'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
-    'su-mdcheck' : [mdCheck, ''],
     'su-run' : [runLLVM, ''],
     'su-debug' : [runDebugLLVM, ''],
     'su-tests' : [runTests, ''],
