@@ -5,6 +5,16 @@ Sulong (Graal LLVM) is an interpreter for LLVM IR written in
 Java using the Truffle language implementation framework and Graal as a
 just-in-time (JIT) compiler.
 
+With Sulong you can execute C/C++, Fortran, and other programs written 
+in a LLVM language on the JVM. To execute a program by Sulong, you have
+to compile the program to LLVM IR by a LLVM front end such as Clang. By
+using Truffle and Java the interpreter implementation is simple and is 
+thus a great platform for experimentation. On the other hand, dynamic
+optimizations and JIT compilation with Graal still provide a decent
+execution speed. Through Truffle's language interoperability
+capabilities, you will soon be able to call functions from/to other
+languages on Truffle such as Ruby, JavaScript, or R.
+
 The project bases on the LLVM IR parser of the
 [llvm-ir-editor project](https://github.com/amishne/llvm-ir-editor)
 by Alon Mishne.
