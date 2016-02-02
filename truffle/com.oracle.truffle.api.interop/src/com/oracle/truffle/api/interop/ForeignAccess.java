@@ -80,6 +80,8 @@ public final class ForeignAccess {
     /**
      * Executes {@link Message#createNode() foreign node}.
      *
+     * @deprecated replaced by {@link #send(Node, VirtualFrame, TruffleObject, Object...)}
+     *
      * @param foreignNode the createNode created by {@link Message#createNode()}
      * @param frame the call frame
      * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
