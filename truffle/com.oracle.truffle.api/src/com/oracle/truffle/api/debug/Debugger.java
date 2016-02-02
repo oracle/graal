@@ -404,13 +404,13 @@ public final class Debugger {
             beforeTagInstrument = instrumenter.attach(STEPPING_TAG, new StandardBeforeInstrumentListener() {
                 @TruffleBoundary
                 @Override
-                public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
+                public void onEnter(Probe probe, Node node, VirtualFrame frame) {
                     // HALT: just before statement
                     --unfinishedStepCount;
                     strategyTrace("HALT BEFORE", "unfinished steps=%d", unfinishedStepCount);
                     // Should run in fast path
                     if (unfinishedStepCount <= 0) {
-                        halt(node, vFrame.materialize(), true);
+                        halt(node, frame.materialize(), true);
                     }
                     strategyTrace("RESUME BEFORE", "");
                 }
@@ -418,16 +418,16 @@ public final class Debugger {
 
             afterTagInstrument = instrumenter.attach(CALL_TAG, new StandardAfterInstrumentListener() {
 
-                public void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnVoid(Probe probe, Node node, VirtualFrame frame) {
+                    doHalt(node, frame.materialize());
                 }
 
-                public void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnValue(Probe probe, Node node, VirtualFrame frame, Object result) {
+                    doHalt(node, frame.materialize());
                 }
 
-                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame frame, Throwable exception) {
+                    doHalt(node, frame.materialize());
                 }
 
                 @TruffleBoundary
@@ -476,16 +476,16 @@ public final class Debugger {
 
             afterTagInstrument = instrumenter.attach(CALL_TAG, new StandardAfterInstrumentListener() {
 
-                public void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnVoid(Probe probe, Node node, VirtualFrame frame) {
+                    doHalt(node, frame.materialize());
                 }
 
-                public void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnValue(Probe probe, Node node, VirtualFrame frame, Object result) {
+                    doHalt(node, frame.materialize());
                 }
 
-                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame frame, Throwable exception) {
+                    doHalt(node, frame.materialize());
                 }
 
                 @TruffleBoundary
@@ -535,7 +535,7 @@ public final class Debugger {
 
                 @TruffleBoundary
                 @Override
-                public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
+                public void onEnter(Probe probe, Node node, VirtualFrame frame) {
                     final int currentStackDepth = currentStackDepth();
                     if (currentStackDepth <= stackDepth) {
                         // HALT: stack depth unchanged or smaller; treat like StepInto
@@ -545,7 +545,7 @@ public final class Debugger {
                         }
                         // Test should run in fast path
                         if (unfinishedStepCount <= 0) {
-                            halt(node, vFrame.materialize(), true);
+                            halt(node, frame.materialize(), true);
                         }
                     } else {
                         // CONTINUE: Stack depth increased; don't count as a step
@@ -559,16 +559,16 @@ public final class Debugger {
 
             afterTagInstrument = instrumenter.attach(CALL_TAG, new StandardAfterInstrumentListener() {
 
-                public void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnVoid(Probe probe, Node node, VirtualFrame frame) {
+                    doHalt(node, frame.materialize());
                 }
 
-                public void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnValue(Probe probe, Node node, VirtualFrame frame, Object result) {
+                    doHalt(node, frame.materialize());
                 }
 
-                public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception) {
-                    doHalt(node, vFrame.materialize());
+                public void onReturnExceptional(Probe probe, Node node, VirtualFrame frame, Throwable exception) {
+                    doHalt(node, frame.materialize());
                 }
 
                 @TruffleBoundary
@@ -623,14 +623,14 @@ public final class Debugger {
             beforeTagInstrument = instrumenter.attach(STEPPING_TAG, new StandardBeforeInstrumentListener() {
                 @TruffleBoundary
                 @Override
-                public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
+                public void onEnter(Probe probe, Node node, VirtualFrame frame) {
                     final int currentStackDepth = currentStackDepth();
                     if (currentStackDepth <= startStackDepth) {
                         // At original step depth (or smaller) after being nested
                         --unfinishedStepCount;
                         strategyTrace("HALT AFTER", "unfinished steps=%d stackDepth start=%d current=%d", unfinishedStepCount, stackDepth, currentStackDepth);
                         if (unfinishedStepCount <= 0) {
-                            halt(node, vFrame.materialize(), false);
+                            halt(node, frame.materialize(), false);
                         }
                         // TODO (mlvdv) fixme for multiple steps
                         strategyTrace("RESUME BEFORE", "");

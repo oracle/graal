@@ -51,10 +51,10 @@ public interface EvalInstrumentListener {
      * evaluation; annotate with {@link TruffleBoundary} if this should not be permitted.
      *
      * @param node the guest language AST node at which the expression was evaluated
-     * @param vFrame execution frame at the guest-language AST node
+     * @param frame execution frame at the guest-language AST node
      * @param result expression evaluation
      */
-    void onExecution(Node node, VirtualFrame vFrame, Object result);
+    void onExecution(Node node, VirtualFrame frame, Object result);
 
     /**
      * Notifies listener that a client-provided Guest Language expression
@@ -68,9 +68,9 @@ public interface EvalInstrumentListener {
      *
      * @param node the guest-language AST node to which the host Instrument's {@link Probe} is
      *            attached
-     * @param vFrame execution frame at the guest-language AST node
+     * @param frame execution frame at the guest-language AST node
      * @param ex the exception
      */
-    void onFailure(Node node, VirtualFrame vFrame, Exception ex);
+    void onFailure(Node node, VirtualFrame frame, Exception ex);
 
 }
