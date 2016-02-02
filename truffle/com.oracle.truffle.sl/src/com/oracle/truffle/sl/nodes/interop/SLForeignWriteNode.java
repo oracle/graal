@@ -62,13 +62,13 @@ public final class SLForeignWriteNode extends SLWriteBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             write = insert(new SLMonomorphicNameWriteNode(name));
         }
-        return write.execute(receiver, name, value);
+        return write.execute(frame, receiver, name, value);
     }
 
     private abstract static class SLWriteNode extends Node {
         @Child protected SLForeignToSLTypeNode toSLType = SLForeignToSLTypeNodeGen.create(getSourceSection(), null);
 
-        abstract Object execute(DynamicObject receiver, String name, Object value);
+        abstract Object execute(VirtualFrame frame, DynamicObject receiver, String name, Object value);
     }
 
     private static final class SLMonomorphicNameWriteNode extends SLWriteNode {
@@ -82,13 +82,14 @@ public final class SLForeignWriteNode extends SLWriteBaseNode {
         }
 
         @Override
-        Object execute(DynamicObject receiver, String name, Object value) {
+        Object execute(VirtualFrame frame, DynamicObject receiver, String name, Object value) {
             if (this.cachedName.equals(name)) {
-                writePropertyCacheNode.executeObject(receiver, value);
+                Object convertedValue = toSLType.executeWithTarget(frame, value);
+                writePropertyCacheNode.executeObject(receiver, convertedValue);
                 return receiver;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                return this.replace(new SLPolymorphicNameWriteNode()).execute(receiver, name, value);
+                return this.replace(new SLPolymorphicNameWriteNode()).execute(frame, receiver, name, value);
             }
         }
     }
@@ -96,9 +97,10 @@ public final class SLForeignWriteNode extends SLWriteBaseNode {
     private static final class SLPolymorphicNameWriteNode extends SLWriteNode {
 
         @Override
-        Object execute(DynamicObject receiver, String name, Object value) {
+        Object execute(VirtualFrame frame, DynamicObject receiver, String name, Object value) {
+            Object convertedValue = toSLType.executeWithTarget(frame, value);
             Property property = receiver.getShape().getProperty(name);
-            return receiver.set(property.getKey(), value);
+            return receiver.set(property.getKey(), convertedValue);
         }
     }
 }
