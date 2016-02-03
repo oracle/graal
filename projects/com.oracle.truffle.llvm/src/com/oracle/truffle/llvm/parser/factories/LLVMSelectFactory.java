@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.llvm.LLVMOptimizations;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
@@ -62,11 +61,12 @@ import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI32SelectN
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI64SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI8SelectNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 
 public class LLVMSelectFactory {
 
-    public static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMI1Node condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
-        if (LLVMOptimizations.BRANCH_INJECTION_SELECT_INSTRUCTION) {
+    public static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMI1Node condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue, LLVMParserRuntime runtime) {
+        if (runtime.getOptimizationConfiguration().injectBranchProbabilitiesForSelect()) {
             switch (llvmType) {
                 case I1:
                     return LLVMI1ProfilingSelectNodeGen.create(condition, (LLVMI1Node) trueValue, (LLVMI1Node) falseValue);

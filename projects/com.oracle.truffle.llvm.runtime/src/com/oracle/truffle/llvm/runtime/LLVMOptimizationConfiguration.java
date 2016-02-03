@@ -27,49 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.runtime;
 
-import org.eclipse.emf.ecore.EObject;
-
-import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
-import com.intel.llvm.ireditor.types.ResolvedType;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.LLVMContext;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMAddress;
-
-public interface LLVMParserRuntime {
-
-    ResolvedType resolve(EObject e);
+/**
+ * This class specifies which optimizations are used for a Sulong instance.
+ */
+public interface LLVMOptimizationConfiguration {
 
     /**
-     * Performs an <code>alloc</code> style allocation. At the begin of a function (or the global
-     * scope) the memory is allocated and again released when leaving the function (or the global
-     * scope). The intrinsic <code>@llvm.stacksave</code> might also cause the allocation to be
-     * released earlier.
-     *
-     * @see <a href="http://llvm.org/docs/LangRef.html#llvm-stacksave-intrinsic">llvm.stacksave
-     *      intrinsic</a>
-     * @param size the bytes to be allocated
-     * @return a node that allocates the requested memory.
+     * Speculation based on the <code>llvm.expect</code> intrinsic.
      */
-    LLVMAddressNode allocateFunctionLifetime(int size, int alignment);
+    boolean specializeForExpectIntrinsic();
 
     /**
-     * Gets the return slot where the function return value is stored.
-     *
-     * @return the return slot.
+     * Speculates that memory reads always return the same result.
      */
-    FrameSlot getReturnSlot();
+    boolean valueProfileMemoryReads();
 
-    LLVMAddressNode allocateVectorResult(EObject type);
+    /**
+     * Record branch probabilities for the LLVM <code>select</code> instruction.
+     */
+    boolean injectBranchProbabilitiesForSelect();
 
-    LLVMContext getContext();
+    /**
+     * Substitute common C library functions by Java implementations. Note that some functions such
+     * as exit or abort are substituted in each case, to allow the VM to terminate gracefully.
+     */
+    boolean intrinsifyCLibraryFunctions();
 
-    LLVMAddress getGlobalAddress(GlobalVariable var);
+    /**
+     * Record branch probabilities for the LLVM <code>br</code> instruction.
+     */
+    boolean injectBranchProbabilitiesForConditionalBranch();
 
-    FrameSlot getStackPointerSlot();
-
-    LLVMOptimizationConfiguration getOptimizationConfiguration();
 }

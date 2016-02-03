@@ -127,9 +127,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.llvm.LLVMCallNode;
 import com.oracle.truffle.llvm.LLVMContext;
-import com.oracle.truffle.llvm.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.LLVMFunctionStartNode;
-import com.oracle.truffle.llvm.LLVMOptimizations;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
@@ -231,6 +229,7 @@ import com.oracle.truffle.llvm.parser.layout.DataLayoutConverter.DataSpecConvert
 import com.oracle.truffle.llvm.parser.layout.DataLayoutParser;
 import com.oracle.truffle.llvm.parser.layout.DataLayoutParser.DataTypeSpecification;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.LLVMParserException.ParserErrorCause;
@@ -260,9 +259,11 @@ public class LLVMVisitor implements LLVMParserRuntime {
     private FrameSlot stackPointerSlot;
     private FunctionDef containingFunctionDef;
     private NodeFactoryFacade factoryFacade;
+    private final LLVMOptimizationConfiguration optimizationConfiguration;
 
-    public LLVMVisitor(LLVMContext context) {
+    public LLVMVisitor(LLVMContext context, LLVMOptimizationConfiguration optimizationConfiguration) {
         currentContext = context;
+        this.optimizationConfiguration = optimizationConfiguration;
     }
 
     public List<LLVMFunction> visit(Model model, NodeFactoryFacade facade) {
@@ -308,7 +309,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 throw new AssertionError(object);
             }
         }
-        LLVMFunctionRegistry.register(functionCallTargets);
+        currentContext.getFunctionRegistry().register(functionCallTargets);
         List<LLVMNode> globalVarNodes = addGlobalVars(this, staticVars);
         globalNodes.addAll(globalVarNodes);
         LLVMAddress[] deallocations = globalDeallocations.toArray(new LLVMAddress[globalDeallocations.size()]);
@@ -1531,7 +1532,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             int trueIndex = getIndexFromBasicBlock(trueBasicBlock);
             BasicBlock falseBasicBlock = brInstruction.getFalse().getRef();
             int falseIndex = getIndexFromBasicBlock(falseBasicBlock);
-            if (LLVMOptimizations.BRANCH_INJECTION_CONDITIONAL_BRANCH) {
+            if (getOptimizationConfiguration().injectBranchProbabilitiesForConditionalBranch()) {
                 return LLVMBrConditionalInjectionNodeGen.create(trueIndex, falseIndex, (LLVMI1Node) conditionNode);
             } else {
                 return LLVMConditionalBranchNodeFactory.LLVMBrConditionalNodeGen.create(trueIndex, falseIndex, (LLVMI1Node) conditionNode);
@@ -1610,5 +1611,9 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     public FrameSlot getStackPointerSlot() {
         return stackPointerSlot;
+    }
+
+    public LLVMOptimizationConfiguration getOptimizationConfiguration() {
+        return optimizationConfiguration;
     }
 }

@@ -90,7 +90,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createLoad(ResolvedType resolvedResultType, LLVMAddressNode loadTarget) {
-        return LLVMMemoryReadWriteFactory.createLoad(resolvedResultType, loadTarget);
+        return LLVMMemoryReadWriteFactory.createLoad(resolvedResultType, loadTarget, runtime);
     }
 
     @Override
@@ -252,7 +252,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     public LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMI1Node condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
-        return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue);
+        return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue, runtime);
     }
 
 }

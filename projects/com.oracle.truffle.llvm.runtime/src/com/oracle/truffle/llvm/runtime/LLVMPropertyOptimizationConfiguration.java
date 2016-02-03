@@ -27,36 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.runtime;
 
-public final class LLVMOptimizations {
+/**
+ * Provides a optimization configuration based on Java properties.
+ */
+public class LLVMPropertyOptimizationConfiguration implements LLVMOptimizationConfiguration {
 
-    private LLVMOptimizations() {
+    public boolean specializeForExpectIntrinsic() {
+        return LLVMOptions.specializeForExpectIntrinsic();
     }
 
-    /**
-     * Speculation based on the <code>llvm.expect</code> intrinsic.
-     */
-    public static final boolean VALUE_SPECIALIZATION_EXPECT_INTRINSIC = true;
+    public boolean valueProfileMemoryReads() {
+        return LLVMOptions.valueProfileMemoryReads();
+    }
 
-    /**
-     * Speculates that memory reads always return the same result.
-     */
-    public static final boolean VALUE_PROFILING_MEMORY_READS = true;
+    public boolean injectBranchProbabilitiesForSelect() {
+        return LLVMOptions.injectBranchProbabilitiesForSelect();
+    }
 
-    /**
-     * Record branch probabilities for the LLVM <code>select</code> instruction.
-     */
-    public static final boolean BRANCH_INJECTION_SELECT_INSTRUCTION = true;
+    public boolean intrinsifyCLibraryFunctions() {
+        return LLVMOptions.intrinsifyCLibraryFunctions();
+    }
 
-    /**
-     * Record branch probabilities for the LLVM <code>br</code> instruction.
-     */
-    public static final boolean BRANCH_INJECTION_CONDITIONAL_BRANCH = true;
+    public boolean injectBranchProbabilitiesForConditionalBranch() {
+        return LLVMOptions.injectBranchProbabilitiesForConditionalBranch();
+    }
 
-    /**
-     * Substitute common C library functions by Java implementations. Note that some functions such
-     * as exit or abort are substituted in each case, to allow the VM to terminate gracefully.
-     */
-    public static final boolean INTRINSIFY_C_LIBRARY_FUNCTIONS = true;
 }
