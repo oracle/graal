@@ -19,7 +19,8 @@ install:
 script:
   - $TEST_COMMAND
 env:
-  - TEST_COMMAND='mx/mx findbugs'
-  - TEST_COMMAND='mx/mx checkstyle'
+  - TEST_COMMAND='mx/mx --vm server pylint'
+  - TEST_COMMAND='mx/mx --vm server findbugs'
+  - TEST_COMMAND='mx/mx --vm server checkstyle'
   - TEST_COMMAND='mx/mx --vm server checkoverlap'
   - TEST_COMMAND='mx/mx --vm server canonicalizeprojects'
