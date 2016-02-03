@@ -32,6 +32,7 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -236,18 +237,22 @@ public class GraalCompiler {
 
     @SuppressWarnings("try")
     public static LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites) {
-        try {
-            return emitLIR0(backend, graph, stub, registerConfig, lirSuites);
-        } catch (BailoutAndRestartBackendException e) {
-            if (BailoutAndRestartBackendException.Options.LIRUnlockBackendRestart.getValue() && e.shouldRestart()) {
-                try (OverrideScope scope = e.getOverrideScope()) {
-                    LIRSuites lirSuites0 = e.updateLIRSuites(lirSuites);
+        OverrideScope overrideScope = null;
+        LIRSuites lirSuites0 = lirSuites;
+        while (true) {
+            try (OverrideScope scope = overrideScope) {
+                return emitLIR0(backend, graph, stub, registerConfig, lirSuites0);
+            } catch (BailoutAndRestartBackendException e) {
+                if (BailoutAndRestartBackendException.Options.LIRUnlockBackendRestart.getValue() && e.shouldRestart()) {
+                    overrideScope = e.getOverrideScope();
+                    lirSuites0 = e.updateLIRSuites(lirSuites);
                     if (lirSuites0 != null) {
-                        return emitLIR0(backend, graph, stub, registerConfig, lirSuites0);
+                        continue;
                     }
                 }
+                /* If the restart fails we convert the exception into a "hard" failure */
+                throw new JVMCIError(e);
             }
-            throw e;
         }
     }
 
