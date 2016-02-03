@@ -201,7 +201,7 @@ public abstract class RootNode extends Node {
         }
 
         @Override
-        public Object execute(VirtualFrame vf) {
+        public Object execute(VirtualFrame frame) {
             return value;
         }
     }

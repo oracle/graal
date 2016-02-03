@@ -29,7 +29,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 public final class ReadNode6 extends BaseReadNode6 {
 
     @Override
-    protected Object access(VirtualFrame vf, Object receiver, Object name) {
+    protected Object access(VirtualFrame frame, Object receiver, Object name) {
         return 0;
     }
 }

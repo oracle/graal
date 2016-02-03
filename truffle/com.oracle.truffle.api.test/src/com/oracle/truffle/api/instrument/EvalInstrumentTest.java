@@ -96,14 +96,14 @@ public class EvalInstrumentTest {
         final int[] evalCount = {0};
         final Instrument instrument = instrumenter.attach(addNodeProbe[0], source42, new EvalInstrumentListener() {
 
-            public void onExecution(Node node, VirtualFrame vFrame, Object result) {
+            public void onExecution(Node node, VirtualFrame frame, Object result) {
                 evalCount[0] = evalCount[0] + 1;
                 if (result instanceof Integer) {
                     evalResult[0] = (Integer) result;
                 }
             }
 
-            public void onFailure(Node node, VirtualFrame vFrame, Exception ex) {
+            public void onFailure(Node node, VirtualFrame frame, Exception ex) {
                 fail("Eval test evaluates without exception");
 
             }

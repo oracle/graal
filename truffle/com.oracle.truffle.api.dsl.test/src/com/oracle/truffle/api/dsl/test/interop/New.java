@@ -28,12 +28,12 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 @AcceptMessage(value = "NEW", receiverType = ValidTruffleObject.class, language = TestTruffleLanguage.class)
 public final class New extends BaseNew {
     @Override
-    protected int access(VirtualFrame vf, ValidTruffleObjectB receiver, Object[] args) {
+    protected int access(VirtualFrame frame, ValidTruffleObjectB receiver, Object[] args) {
         return 0;
     }
 
     @Override
-    protected int access(VirtualFrame vf, ValidTruffleObject receiver, Object[] args) {
+    protected int access(VirtualFrame frame, ValidTruffleObject receiver, Object[] args) {
         return 0;
     }
 }
