@@ -437,6 +437,21 @@ public abstract class TruffleLanguage<C> {
         public Instrumenter instrumenter() {
             return instrumenter;
         }
+
+        /** Looks additional service up. An environment for a particular
+         * {@link TruffleLanguage language} and a {@link com.oracle.truffle.api.vm.PolyglotEngine}
+         * may also be associated with additional services. One can request
+         * implementations of such services by calling this method with the
+         * type identifying the requested service and its API.
+         *
+         * @param <T> type of requested service
+         * @param type class of requested service
+         * @return instance of T or <code>null</code> if there is no such
+         *    service available
+         */
+        public <T> T lookup(Class<T> type) {
+            return null;
+        }
     }
 
     private static final AccessAPI API = new AccessAPI();
