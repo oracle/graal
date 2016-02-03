@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc;
 
 import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
 import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.ALL_REGISTERS;
@@ -30,6 +30,9 @@ import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 
+/**
+ * Thrown if the register allocator runs out of registers. This should never happen in normal mode.
+ */
 public class OutOfRegistersException extends BailoutAndRestartBackendException {
 
     private static final long serialVersionUID = -3479786650143432195L;

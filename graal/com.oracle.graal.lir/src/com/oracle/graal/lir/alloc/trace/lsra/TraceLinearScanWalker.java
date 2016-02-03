@@ -47,7 +47,7 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.lir.alloc.lsra.OutOfRegistersException;
+import com.oracle.graal.lir.alloc.OutOfRegistersException;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.State;
