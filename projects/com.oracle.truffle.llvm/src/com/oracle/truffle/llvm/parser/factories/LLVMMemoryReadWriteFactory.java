@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.intel.llvm.ireditor.types.ResolvedType;
-import com.oracle.truffle.llvm.LLVMOptimizations;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
@@ -80,6 +79,7 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMIVarBitStor
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMStructStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreVectorNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 
 public final class LLVMMemoryReadWriteFactory {
@@ -87,7 +87,7 @@ public final class LLVMMemoryReadWriteFactory {
     private LLVMMemoryReadWriteFactory() {
     }
 
-    public static LLVMExpressionNode createLoad(ResolvedType resolvedResultType, LLVMAddressNode loadTarget) throws AssertionError {
+    public static LLVMExpressionNode createLoad(ResolvedType resolvedResultType, LLVMAddressNode loadTarget, LLVMParserRuntime runtime) {
         LLVMBaseType resultType = LLVMTypeHelper.getLLVMType(resolvedResultType);
         switch (resultType) {
             case I1:
@@ -97,13 +97,13 @@ public final class LLVMMemoryReadWriteFactory {
             case I16:
                 return LLVMLoadI16NodeGen.create(loadTarget);
             case I32:
-                if (LLVMOptimizations.VALUE_PROFILING_MEMORY_READS) {
+                if (runtime.getOptimizationConfiguration().valueProfileMemoryReads()) {
                     return new LLVMUninitializedLoadI32Node(loadTarget);
                 } else {
                     return LLVMLoadI32NodeGen.create(loadTarget);
                 }
             case I64:
-                if (LLVMOptimizations.VALUE_PROFILING_MEMORY_READS) {
+                if (runtime.getOptimizationConfiguration().valueProfileMemoryReads()) {
                     return new LLVMUninitializedLoadI64Node(loadTarget);
                 } else {
                     return LLVMLoadI64NodeGen.create(loadTarget);

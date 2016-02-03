@@ -51,7 +51,7 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        return new LLVMContext(LLVM.provider.getFacade(null));
+        return new LLVMContext(LLVM.provider.getFacade(null), LLVM.OPTIMIZATION_CONFIGURATION);
     }
 
     @Override

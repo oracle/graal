@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.parser.LLVMVisitor;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacadeImpl;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
@@ -66,6 +67,8 @@ import com.oracle.truffle.llvm.types.memory.LLVMMemory;
  * This is the main LLVM execution class.
  */
 public class LLVM {
+
+    static final LLVMPropertyOptimizationConfiguration OPTIMIZATION_CONFIGURATION = new LLVMPropertyOptimizationConfiguration();
 
     private static final int THREE_ARGS = 3;
 
@@ -116,7 +119,7 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(context);
+        LLVMVisitor llvmVisitor = new LLVMVisitor(context, OPTIMIZATION_CONFIGURATION);
         NodeFactoryFacade facade = provider.getFacade(llvmVisitor);
         List<LLVMFunction> llvmFunctions = llvmVisitor.visit(model, facade);
         return llvmFunctions;

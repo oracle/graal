@@ -44,6 +44,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacade;
+import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -53,11 +54,18 @@ import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
 
 public class LLVMContext extends ExecutionContext {
 
-    private final LLVMFunctionRegistry registry = new LLVMFunctionRegistry();
+    private final LLVMFunctionRegistry registry;
+
+    private final NodeFactoryFacade facade;
 
     private LLVMNode[] staticInits;
 
     private LLVMAddress[] deallocations;
+
+    public LLVMContext(NodeFactoryFacade facade, LLVMOptimizationConfiguration optimizationConfig) {
+        this.facade = facade;
+        this.registry = new LLVMFunctionRegistry(optimizationConfig);
+    }
 
     public RootCallTarget getFunction(LLVMFunction function) {
         return LLVMFunctionRegistry.lookup(function);
@@ -134,12 +142,6 @@ public class LLVMContext extends ExecutionContext {
             types[i] = facade.getJavaClass(args[i]);
         }
         return types;
-    }
-
-    private final NodeFactoryFacade facade;
-
-    public LLVMContext(NodeFactoryFacade facade) {
-        this.facade = facade;
     }
 
     private static Class<?> getJavaClass(LLVMRuntimeType type) {

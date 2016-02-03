@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class LLVMOptions {
 
     public static void main(String[] args) {
@@ -42,34 +45,58 @@ public class LLVMOptions {
 
     private static final String PATH_DELIMITER = ":";
 
+    @FunctionalInterface
+    interface OptionParser {
+        Object parse(Property property);
+    }
+
+    static boolean parseBoolean(Property prop) {
+        return Boolean.parseBoolean(System.getProperty(prop.getKey(), prop.getDefaultValue()));
+    }
+
+    static String parseString(Property prop) {
+        return System.getProperty(prop.getKey(), prop.getDefaultValue());
+    }
+
+    static String[] parseDynamicLibraryPath(Property prop) {
+        return System.getProperty(prop.getKey(), prop.getDefaultValue()).split(PATH_DELIMITER);
+    }
+
     public enum Property {
 
-        DEBUG("llvm-debug", "Turns debugging on/off", "false"),
-        PRINT_FUNCTION_ASTS("llvm-print-asts", "Prints the Truffle ASTs for the parsed functions", "false"),
+        DEBUG("llvm-debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean),
+        PRINT_FUNCTION_ASTS("llvm-print-asts", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean),
         /*
          * The boot classpath that should be used to execute the remote JVM when executing the LLVM
          * test suite (and other tests). These rely on comparing output sent to stdout that cannot
          * becaptured inside Java, since, e.g., a printf is executed by native code. To determine
          * the right value just copy the boot class path that you use to launch the main LLVM class"
          */
-        REMOTE_TEST_BOOT_CLASSPATH_KEY("llvm-test-boot", "The boot classpath for the remote JVM used to capture native printf and other output ", null),
-        GCC_TEST_DISCOVERY_PATH_KEY("llvm-test-gcc-discovery", "Looks for newly supported GCC test cases in the specified path.", null),
-        LLVM_TEST_DISCOVER_PATH("llvm-test-llvm-discovery", "Looks for newly supported LLVM test cases in the specified path.", null),
-        NWCC_TEST_DISCOVER_PATH("llvm-test-nwcc-discovery", "Looks for newly supported NWCC test cases in the specified path.", null),
-        DYN_LIBRARY_PATHS("llvm-dyn-libs", "The native library search paths delimited by " + PATH_DELIMITER, null),
-        PROJECT_ROOT_KEY("llvm-root", "Overrides the root of the LLVM project. This option exists to set the project root from mx", "."),
-        IS_GATE("llvm-gate", "Tell Sulong that the gate is executing", "false"),
-        PRINT_RET_VAL("llvm-print-retval", "Prints the return value of an execution", "true");
+        REMOTE_TEST_BOOT_CLASSPATH_KEY("llvm-test-boot", "The boot classpath for the remote JVM used to capture native printf and other output ", null, LLVMOptions::parseString),
+        GCC_TEST_DISCOVERY_PATH_KEY("llvm-test-gcc-discovery", "Looks for newly supported GCC test cases in the specified path.", null, LLVMOptions::parseString),
+        LLVM_TEST_DISCOVER_PATH("llvm-test-llvm-discovery", "Looks for newly supported LLVM test cases in the specified path.", null, LLVMOptions::parseString),
+        NWCC_TEST_DISCOVER_PATH("llvm-test-nwcc-discovery", "Looks for newly supported NWCC test cases in the specified path.", null, LLVMOptions::parseString),
+        DYN_LIBRARY_PATHS("llvm-dyn-libs", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath),
+        PROJECT_ROOT("llvm-root", "Overrides the root of the LLVM project. This option exists to set the project root from mx", ".", LLVMOptions::parseString),
+        IS_GATE("llvm-gate", "Tell Sulong that the gate is executing", "false", LLVMOptions::parseBoolean),
+        PRINT_RET_VAL("llvm-print-retval", "Prints the return value of an execution", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("llvm-opt-expect", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("llvm-opt-valueprofiling", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_INJECT_PROBS_SELECT("llvm-opt-select", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("llvm-opt-cintrinsics", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_INJECT_PROBS_COND_BRANCH("llvm-opt-br", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean);
 
-        Property(String key, String description, String defaultValue) {
+        Property(String key, String description, String defaultValue, OptionParser parser) {
             this.key = key;
             this.description = description;
             this.defaultValue = defaultValue;
+            this.parser = parser;
         }
 
         private final String key;
         private final String description;
         private final String defaultValue;
+        private final OptionParser parser;
 
         public String getKey() {
             return key;
@@ -83,65 +110,49 @@ public class LLVMOptions {
             return defaultValue;
         }
 
+        public Object parse() {
+            return parser.parse(this);
+        }
+
         private static final String FORMAT_STRING = "%25s (default = %5s) %s";
 
         @Override
         public String toString() {
             return String.format(FORMAT_STRING, getKey(), getDefaultValue(), getDescription());
         }
-
     }
 
-    private static final boolean LLVM_DEBUG;
-    private static final boolean LLVM_PRINT_FUNCTION_ASTS;
-    private static final String LLVM_REMOTE_TEST_BOOT_CLASSPATH;
-    private static final String LLVM_GCC_TEST_DISCOVERY_PATH;
-    private static final String NWCC_TEST_DISCOVER_PATH;
-    private static final String LLVM_TEST_DISCOVERY_PATH;
-    private static final String[] DYN_LIBRARY_PATHS;
-    private static final String LLVM_PROJECT_ROOT;
-    private static final boolean LLVM_IS_GATE;
-    private static final boolean IS_PRINT_RET_VAL;
-
-    static boolean parseBoolean(Property prop) {
-        return Boolean.parseBoolean(System.getProperty(prop.getKey(), prop.getDefaultValue()));
-    }
-
-    static String parseString(Property prop) {
-        return System.getProperty(prop.getKey(), prop.getDefaultValue());
-    }
+    private static Map<Property, Object> parsedProperties = new HashMap<>();
 
     static {
-        LLVM_DEBUG = parseBoolean(Property.DEBUG);
-        LLVM_PRINT_FUNCTION_ASTS = parseBoolean(Property.PRINT_FUNCTION_ASTS);
-        LLVM_REMOTE_TEST_BOOT_CLASSPATH = parseString(Property.REMOTE_TEST_BOOT_CLASSPATH_KEY);
-        LLVM_GCC_TEST_DISCOVERY_PATH = parseString(Property.GCC_TEST_DISCOVERY_PATH_KEY);
-        NWCC_TEST_DISCOVER_PATH = parseString(Property.NWCC_TEST_DISCOVER_PATH);
-        LLVM_TEST_DISCOVERY_PATH = parseString(Property.LLVM_TEST_DISCOVER_PATH);
-        String dynamicLibraries = parseString(Property.DYN_LIBRARY_PATHS);
-        DYN_LIBRARY_PATHS = dynamicLibraries == null ? null : dynamicLibraries.split(PATH_DELIMITER);
-        LLVM_PROJECT_ROOT = parseString(Property.PROJECT_ROOT_KEY);
-        LLVM_IS_GATE = parseBoolean(Property.IS_GATE);
-        IS_PRINT_RET_VAL = parseBoolean(Property.PRINT_RET_VAL);
+        Property[] properties = Property.values();
+        for (Property prop : properties) {
+            parsedProperties.put(prop, prop.parse());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T getParsedProperty(Property property) {
+        return (T) parsedProperties.get(property);
     }
 
     public static boolean isDebug() {
-        return LLVM_DEBUG;
+        return getParsedProperty(Property.DEBUG);
     }
 
     public static boolean isPrintFunctionAsts() {
-        return LLVM_PRINT_FUNCTION_ASTS;
+        return getParsedProperty(Property.PRINT_FUNCTION_ASTS);
     }
 
     public static String getRemoteTestBootClassPath() {
-        if (LLVM_REMOTE_TEST_BOOT_CLASSPATH == null) {
+        if (getParsedProperty(Property.REMOTE_TEST_BOOT_CLASSPATH_KEY) == null) {
             throw new AssertionError();
         }
-        return LLVM_REMOTE_TEST_BOOT_CLASSPATH;
+        return getParsedProperty(Property.REMOTE_TEST_BOOT_CLASSPATH_KEY);
     }
 
     public static String getGCCTestDiscoveryPath() {
-        return LLVM_GCC_TEST_DISCOVERY_PATH;
+        return getParsedProperty(Property.GCC_TEST_DISCOVERY_PATH_KEY);
     }
 
     public static boolean isDiscoveryTestMode() {
@@ -149,27 +160,47 @@ public class LLVMOptions {
     }
 
     public static String getLLVMTestDiscoveryPath() {
-        return LLVM_TEST_DISCOVERY_PATH;
+        return getParsedProperty(Property.LLVM_TEST_DISCOVER_PATH);
     }
 
     public static String getNWCCDiscoveryPath() {
-        return NWCC_TEST_DISCOVER_PATH;
+        return getParsedProperty(Property.NWCC_TEST_DISCOVER_PATH);
     }
 
     public static String[] getDynamicLibraryPaths() {
-        return DYN_LIBRARY_PATHS;
+        return ((String) getParsedProperty(Property.DYN_LIBRARY_PATHS)).split(PATH_DELIMITER);
     }
 
     public static String getProjectRoot() {
-        return LLVM_PROJECT_ROOT;
+        return getParsedProperty(Property.PROJECT_ROOT);
     }
 
     public static boolean isGate() {
-        return LLVM_IS_GATE;
+        return getParsedProperty(Property.IS_GATE);
     }
 
     public static boolean isPrintRetVal() {
-        return IS_PRINT_RET_VAL;
+        return getParsedProperty(Property.PRINT_RET_VAL);
+    }
+
+    public static boolean specializeForExpectIntrinsic() {
+        return getParsedProperty(Property.OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC);
+    }
+
+    public static boolean valueProfileMemoryReads() {
+        return getParsedProperty(Property.OPTIMIZATION_VALUE_PROFILE_MEMORY_READS);
+    }
+
+    public static boolean injectBranchProbabilitiesForSelect() {
+        return getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_SELECT);
+    }
+
+    public static boolean intrinsifyCLibraryFunctions() {
+        return getParsedProperty(Property.OPTIMIZATION_INTRINSIFY_C_FUNCTIONS);
+    }
+
+    public static boolean injectBranchProbabilitiesForConditionalBranch() {
+        return getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_COND_BRANCH);
     }
 
 }

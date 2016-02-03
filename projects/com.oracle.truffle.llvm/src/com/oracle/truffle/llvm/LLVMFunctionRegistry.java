@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.intrinsics.c.LLVMFree;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMMalloc;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMSqrt;
 import com.oracle.truffle.llvm.intrinsics.cpp.LLVMCxaThrow;
+import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 
 /**
@@ -51,24 +52,28 @@ import com.oracle.truffle.llvm.types.LLVMFunction;
  */
 public class LLVMFunctionRegistry {
 
-    private static final Map<String, Class<?>> INTRINSICS = new HashMap<>();
+    private final Map<String, Class<?>> intrinsics = new HashMap<>();
 
-    static {
+    public LLVMFunctionRegistry(LLVMOptimizationConfiguration optimizationConfig) {
+        initializeIntrinsics(optimizationConfig);
+    }
+
+    private void initializeIntrinsics(LLVMOptimizationConfiguration optimizationConfig) {
         // Fortran
-        INTRINSICS.put("@_gfortran_abort", LLVMAbort.class);
+        intrinsics.put("@_gfortran_abort", LLVMAbort.class);
 
         // C
-        INTRINSICS.put("@abort", LLVMAbort.class);
-        INTRINSICS.put("@exit", LLVMExit.class);
+        intrinsics.put("@abort", LLVMAbort.class);
+        intrinsics.put("@exit", LLVMExit.class);
 
-        if (LLVMOptimizations.INTRINSIFY_C_LIBRARY_FUNCTIONS) {
-            INTRINSICS.put("@sqrt", LLVMSqrt.class);
-            INTRINSICS.put("@malloc", LLVMMalloc.class);
-            INTRINSICS.put("@free", LLVMFree.class);
+        if (optimizationConfig.intrinsifyCLibraryFunctions()) {
+            intrinsics.put("@sqrt", LLVMSqrt.class);
+            intrinsics.put("@malloc", LLVMMalloc.class);
+            intrinsics.put("@free", LLVMFree.class);
         }
 
         // C++
-        INTRINSICS.put("@__cxa_throw", LLVMCxaThrow.class);
+        intrinsics.put("@__cxa_throw", LLVMCxaThrow.class);
     }
 
     /**
@@ -88,9 +93,8 @@ public class LLVMFunctionRegistry {
         return result;
     }
 
-    // FIXME should not be static
-    public static void register(Map<LLVMFunction, RootCallTarget> functionCallTargets) {
-        functionPtrCallTargetMap = new RootCallTarget[LLVMFunction.getNumberRegisteredFunctions() + INTRINSICS.size()];
+    public void register(Map<LLVMFunction, RootCallTarget> functionCallTargets) {
+        functionPtrCallTargetMap = new RootCallTarget[LLVMFunction.getNumberRegisteredFunctions() + intrinsics.size()];
         try {
             registerIntrinsics();
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
@@ -101,10 +105,10 @@ public class LLVMFunctionRegistry {
         }
     }
 
-    private static void registerIntrinsics() throws NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
-        for (String intrinsicFunction : INTRINSICS.keySet()) {
+    private void registerIntrinsics() throws NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+        for (String intrinsicFunction : intrinsics.keySet()) {
             LLVMFunction function = LLVMFunction.createFromName(intrinsicFunction);
-            Constructor<?> ctor = INTRINSICS.get(intrinsicFunction).getConstructor();
+            Constructor<?> ctor = intrinsics.get(intrinsicFunction).getConstructor();
             RootCallTarget callTarget = Truffle.getRuntime().createCallTarget((RootNode) ctor.newInstance());
             addToFunctionMap(function, callTarget);
         }
