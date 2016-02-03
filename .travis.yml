@@ -5,9 +5,6 @@ jdk:
   - oraclejdk8
 before_install:
   - sudo apt-get install gcc-4.6
-  - sudo apt-get install gfortran-4.6
-  - sudo apt-get install gobjc++-4.6
-  - sudo apt-get install g++-4.6
   - sudo pip install astroid==1.1.0
   - sudo pip install pylint==1.1.0
   - pylint --version
@@ -22,8 +19,7 @@ install:
 script:
   - $TEST_COMMAND
 env:
-  - TEST_COMMAND='mx/mx --vm server unittest com.oracle.truffle.llvm.test'
-  - TEST_COMMAND='mx/mx --vm server gate'
+  - TEST_COMMAND='mx/mx --vm server pylint'
+  - TEST_COMMAND='mx/mx --vm server checkstyle'
   - TEST_COMMAND='mx/mx --vm server checkoverlap'
   - TEST_COMMAND='mx/mx --vm server canonicalizeprojects'
-  - TEST_COMMAND='mx/mx --vm server checkstyle'
