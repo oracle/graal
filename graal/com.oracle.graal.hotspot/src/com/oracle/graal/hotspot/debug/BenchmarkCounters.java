@@ -166,7 +166,9 @@ public class BenchmarkCounters {
 
     private static synchronized void dump(PrintStream out, double seconds, long[] counters, int maxRows) {
         if (!counterMap.isEmpty()) {
-            out.println("====== dynamic counters (" + counterMap.size() + " in total) ======");
+            if (Options.DynamicCountersHumanReadable.getValue()) {
+                out.println("====== dynamic counters (" + counterMap.size() + " in total) ======");
+            }
             TreeSet<String> set = new TreeSet<>();
             counterMap.forEach((nameGroup, counter) -> set.add(counter.group));
             for (String group : set) {
@@ -179,7 +181,9 @@ public class BenchmarkCounters {
                     }
                 }
             }
-            out.println("============================");
+            if (Options.DynamicCountersHumanReadable.getValue()) {
+                out.println("============================");
+            }
 
             clear(counters);
         }
