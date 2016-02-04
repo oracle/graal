@@ -81,7 +81,7 @@ public abstract class LLVMLoadDoubleNode extends LLVMDoubleNode {
         @Override
         public double executeDouble(VirtualFrame frame) {
             double value = LLVMMemory.getDouble(addressNode.executePointee(frame));
-            if (value == profiledValue) {
+            if (Double.doubleToRawLongBits(value) == Double.doubleToRawLongBits(profiledValue)) {
                 return profiledValue;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

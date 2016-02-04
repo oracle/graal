@@ -81,7 +81,7 @@ public abstract class LLVMLoadFloatNode extends LLVMFloatNode {
         @Override
         public float executeFloat(VirtualFrame frame) {
             float value = LLVMMemory.getFloat(addressNode.executePointee(frame));
-            if (value == profiledValue) {
+            if (Float.floatToRawIntBits(value) == Float.floatToRawIntBits(profiledValue)) {
                 return profiledValue;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
