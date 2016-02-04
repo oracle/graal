@@ -83,7 +83,11 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
      * @return the type from which this invoke is executed.
      */
     default ResolvedJavaType getContextType() {
-        return getContextMethod().getDeclaringClass();
+        ResolvedJavaMethod contextMethod = getContextMethod();
+        if (contextMethod == null) {
+            return null;
+        }
+        return contextMethod.getDeclaringClass();
     }
 
     @Override
