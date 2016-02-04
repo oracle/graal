@@ -43,6 +43,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -461,6 +462,7 @@ public class PolyglotEngine {
     @SuppressWarnings({"try", "deprecation"})
     final Object invokeForeign(final Node foreignNode, VirtualFrame frame, final TruffleObject receiver) throws IOException {
         Object res;
+        CompilerAsserts.neverPartOfCompilation();
         if (executor == null) {
             try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
