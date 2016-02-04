@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
@@ -61,7 +62,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
         super(TYPE);
         this.base = base;
         this.index = index;
-        this.addressingMode = AddressingMode.IMMEDIATE_UNSCALED;
+        this.addressingMode = AddressingMode.REGISTER_OFFSET;
     }
 
     public void generate(NodeLIRBuilderTool gen) {
@@ -74,6 +75,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
         AllocatableValue indexReference;
         if (addressingMode.equals(AddressingMode.IMMEDIATE_UNSCALED)) {
             indexReference = LIRKind.derivedBaseFromValue(indexValue);
+            throw JVMCIError.unimplemented();
         } else {
             if (indexValue.getLIRKind().isValue()) {
                 indexReference = null;
@@ -83,7 +85,8 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
         }
 
         LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp()), baseReference, indexReference);
-        gen.setResult(this, new AArch64AddressValue(kind, baseValue, indexValue, displacement, false, addressingMode));
+        final boolean scaled = false;
+        gen.setResult(this, new AArch64AddressValue(kind, baseValue, indexValue, displacement, scaled, addressingMode));
     }
 
     public ValueNode getBase() {

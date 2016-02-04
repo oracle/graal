@@ -27,10 +27,10 @@ import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 
 import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
+import com.oracle.graal.asm.aarch64.AArch64Assembler.ExtendType;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
@@ -156,10 +156,10 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                 base = asAllocatable(getArithmetic().emitAdd(base, constValue, false));
                 break;
             case REGISTER_OFFSET:
-                append(new AArch64ArithmeticOp.ExtendedAddShiftOp(base, base, index, AArch64Assembler.ExtendType.UXTX, shiftAmt));
+                append(new AArch64ArithmeticOp.ExtendedAddShiftOp(base, base, index, ExtendType.UXTX, shiftAmt));
                 break;
             case EXTENDED_REGISTER_OFFSET:
-                append(new AArch64ArithmeticOp.ExtendedAddShiftOp(base, base, index, AArch64Assembler.ExtendType.SXTW, shiftAmt));
+                append(new AArch64ArithmeticOp.ExtendedAddShiftOp(base, base, index, ExtendType.SXTW, shiftAmt));
                 break;
             case BASE_REGISTER_ONLY:
                 // nothing to do.
@@ -167,7 +167,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
-        return new AArch64AddressValue(address.getLIRKind(), base, Value.ILLEGAL, 0, false, AArch64Address.AddressingMode.BASE_REGISTER_ONLY);
+        return new AArch64AddressValue(address.getLIRKind(), base, Value.ILLEGAL, 0, false, AddressingMode.BASE_REGISTER_ONLY);
     }
 
     @Override
@@ -325,7 +325,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             } else {
                 left = loadReg(a);
                 right = loadNonConst(b);
-                mirrored = true;
+                mirrored = false;
             }
             append(new AArch64Compare.CompareOp(left, asAllocatable(right)));
         } else {
