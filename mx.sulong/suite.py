@@ -1,12 +1,12 @@
 suite = {
-  "mxversion" : "5.6.13",
+  "mxversion" : "5.6.16",
   "name" : "sulong",
 
   "imports" : {
     "suites" : [
         {
            "name" : "graal",
-           "version" : "02bb6d11986c4839c8b5399bc4a1b46cddda8a9e",
+           "version" : "d7e25fa8bc3eeb6f445a4d0b7e598f0118c72f09",
            "urls" : [
                 {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-compiler", "kind" : "hg"},
             ]
