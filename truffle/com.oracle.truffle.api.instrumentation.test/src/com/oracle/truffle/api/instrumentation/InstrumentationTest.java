@@ -209,7 +209,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         static int installInstrumentationsCounter = 0;
         static int createContextCounter = 0;
 
-        private void installInstrumentations(Instrumenter instrumenter) {
+        private static void installInstrumentations(Instrumenter instrumenter) {
             installInstrumentationsCounter++;
             instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new EventListener() {
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {

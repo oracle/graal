@@ -940,7 +940,6 @@ public class PolyglotEngine {
             if (env == null && create) {
                 TruffleLanguage<?> impl = info.getImpl(true);
                 env = SPI.attachEnv(PolyglotEngine.this, impl, out, err, in, instrumenter);
-                SPI.attachToInstrumentation(PolyglotEngine.this, impl, env);
             }
             return env;
         }
@@ -1069,11 +1068,6 @@ public class PolyglotEngine {
         protected Object getInstrumentationHandler(Object obj) {
             final PolyglotEngine vm = (PolyglotEngine) obj;
             return vm.instrumentationHandler;
-        }
-
-        @Override
-        protected void attachToInstrumentation(Object vm, TruffleLanguage<?> impl, Env env) {
-            super.attachToInstrumentation(vm, impl, env);
         }
 
         @Override
