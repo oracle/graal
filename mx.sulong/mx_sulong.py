@@ -403,10 +403,18 @@ def ensureLLVMBinariesExist():
         pullLLVMBinaries()
 
 def suBench(args=None):
-    """runs a given benchmark"""
+    """runs a given benchmark with Sulong"""
     ensureLLVMBinariesExist()
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
+    runLLVM(['-Dllvm-print-retval=false', 'test.ll'] + vmArgs)
+
+def suOptBench(args=None):
+    """runs a given benchmark with Sulong after optimizing it with opt"""
+    ensureLLVMBinariesExist()
+    vmArgs, sulongArgs = truffle_extract_VM_args(args)
+    compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
+    opt(['-S', '-mem2reg', '-instcombine', '-o', 'test.ll', 'test.ll'])
     runLLVM(['-Dllvm-print-retval=false', 'test.ll'] + vmArgs)
 
 def clangBench(args=None):
@@ -423,6 +431,7 @@ def standardLinkerCommands(args=None):
     return ['-lm']
 
 mx.update_commands(_suite, {
+    'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
     'clangbench' : [clangBench, ''],
     'gccbench' : [gccBench, ''],
