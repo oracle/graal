@@ -35,9 +35,10 @@
  * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument} interface. Please refer to
  * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument} for further details.
  *
- * Guest languages that want to use the capabilities of the instrumentation framework can implement
- * {@link com.oracle.truffle.api.instrumentation.InstrumentationLanguage} for their
- * {@link com.oracle.truffle.api.TruffleLanguage language} subclass.
+ * Guest languages that want to use the capabilities of the instrumentation framework can access
+ * {@link com.oracle.truffle.api.instrumentation.Instrumenter} for their
+ * {@link com.oracle.truffle.api.TruffleLanguage language} by calling
+ * {@link com.oracle.truffle.api.TruffleLanguage.Env#lookup lookup(Instrumenter.class)}.
  * {@link com.oracle.truffle.api.instrumentation.SourceSectionFilter Filters} created using guest
  * languages may be used to implement guest language features that require meta-programming
  * capabilities.
@@ -45,7 +46,6 @@
  * Instrumentations can get enabled/disabled using PolyglotEngine.
  *
  * @see com.oracle.truffle.api.instrumentation.TruffleInstrument
- * @see com.oracle.truffle.api.instrumentation.InstrumentationLanguage
  * @see com.oracle.truffle.api.instrumentation.Instrumentable
  */
 package com.oracle.truffle.api.instrumentation;

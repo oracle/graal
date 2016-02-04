@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.Set;
 
 /**
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
@@ -370,8 +371,8 @@ public abstract class Accessor {
         INSTRUMENTHANDLER.initializeCallTarget(target);
     }
 
-    protected void attachToInstrumentation(Object vm, TruffleLanguage<?> impl, Env context) {
-        INSTRUMENTHANDLER.attachToInstrumentation(vm, impl, context);
+    protected void collectEnvServices(Set<Object> collectTo, Object vm, TruffleLanguage<?> impl, Env context) {
+        INSTRUMENTHANDLER.collectEnvServices(collectTo, vm, impl, context);
     }
 
     protected void detachFromInstrumentation(Object vm, Env context) {

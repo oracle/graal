@@ -202,15 +202,14 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @TruffleLanguage.Registration(name = "", version = "", mimeType = "testLanguageInstrumentation")
-    public static class TestLanguageInstrumentationLanguage extends TruffleLanguage<Void> implements InstrumentationLanguage<Void> {
+    public static class TestLanguageInstrumentationLanguage extends TruffleLanguage<Void> {
 
         public static final TestLanguageInstrumentationLanguage INSTANCE = new TestLanguageInstrumentationLanguage();
 
         static int installInstrumentationsCounter = 0;
         static int createContextCounter = 0;
 
-        @Override
-        public void installInstrumentations(Void env, Instrumenter instrumenter) {
+        private static void installInstrumentations(Instrumenter instrumenter) {
             installInstrumentationsCounter++;
             instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new EventListener() {
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
@@ -244,6 +243,9 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @Override
         protected Void createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
             createContextCounter++;
+            Instrumenter instrumenter = env.lookup(Instrumenter.class);
+            Assert.assertNotNull("Instrumenter found", instrumenter);
+            installInstrumentations(instrumenter);
             return null;
         }
 
