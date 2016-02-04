@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.debug;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -102,6 +103,8 @@ public class BenchmarkCounters {
         public static final OptionValue<Boolean> DynamicCountersPrintGroupSeparator = new OptionValue<>(true);
         @Option(help = "Print in human readable format", type = OptionType.Debug)
         public static final OptionValue<Boolean> DynamicCountersHumanReadable = new OptionValue<>(true);
+        @Option(help = "Benchmark counters log file (default is stdout)", type = OptionType.Debug)
+        public static final OptionValue<String> BenchmarkCountersFile = new OptionValue<>(null);
         @Option(help = "Dump dynamic counters", type = OptionType.Debug)
         public static final StableOptionValue<Boolean> BenchmarkCountersDumpDynamic = new StableOptionValue<>(true);
         @Option(help = "Dump static counters", type = OptionType.Debug)
@@ -364,7 +367,7 @@ public class BenchmarkCounters {
                         if (waitingForEnd) {
                             waitingForEnd = false;
                             running = false;
-                            BenchmarkCounters.dump(delegate, (System.nanoTime() - startTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
+                            BenchmarkCounters.dump(getPrintStream(), (System.nanoTime() - startTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
                         }
                         break;
                 }
@@ -393,7 +396,7 @@ public class BenchmarkCounters {
         if (Options.TimedDynamicCounters.getValue() > 0) {
             Thread thread = new Thread() {
                 long lastTime = System.nanoTime();
-                PrintStream out = TTY.out;
+                PrintStream out = getPrintStream();
 
                 @Override
                 public void run() {
@@ -420,7 +423,19 @@ public class BenchmarkCounters {
 
     public static void shutdown(HotSpotJVMCIRuntime jvmciRuntime, long compilerStartTime) {
         if (Options.GenericDynamicCounters.getValue()) {
-            dump(TTY.out, (System.nanoTime() - compilerStartTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
+            dump(getPrintStream(), (System.nanoTime() - compilerStartTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
         }
+    }
+
+    private static PrintStream getPrintStream() {
+        if (Options.BenchmarkCountersFile.getValue() != null) {
+            try {
+                return new PrintStream(Options.BenchmarkCountersFile.getValue());
+            } catch (FileNotFoundException e) {
+                TTY.out().println(e.getMessage());
+                TTY.out().println("Fallback to default");
+            }
+        }
+        return TTY.out;
     }
 }
