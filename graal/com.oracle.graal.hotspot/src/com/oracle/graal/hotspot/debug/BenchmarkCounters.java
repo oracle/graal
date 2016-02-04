@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.debug.DynamicCounterNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.StableOptionValue;
 
 //JaCoCo Exclude
 
@@ -101,10 +102,12 @@ public class BenchmarkCounters {
         public static final OptionValue<Boolean> DynamicCountersPrintGroupSeparator = new OptionValue<>(true);
         @Option(help = "Print in human readable format", type = OptionType.Debug)
         public static final OptionValue<Boolean> DynamicCountersHumanReadable = new OptionValue<>(true);
+        @Option(help = "Dump dynamic counters", type = OptionType.Debug)
+        public static final StableOptionValue<Boolean> BenchmarkCountersDumpDynamic = new StableOptionValue<>(true);
+        @Option(help = "Dump static counters", type = OptionType.Debug)
+        public static final StableOptionValue<Boolean> BenchmarkCountersDumpStatic = new StableOptionValue<>(false);
         //@formatter:on
     }
-
-    private static final boolean DUMP_STATIC = false;
 
     public static boolean enabled = false;
 
@@ -165,10 +168,12 @@ public class BenchmarkCounters {
             counterMap.forEach((nameGroup, counter) -> set.add(counter.group));
             for (String group : set) {
                 if (group != null) {
-                    if (DUMP_STATIC) {
+                    if (Options.BenchmarkCountersDumpStatic.getValue()) {
                         dumpCounters(out, seconds, counters, true, group, maxRows);
                     }
-                    dumpCounters(out, seconds, counters, false, group, maxRows);
+                    if (Options.BenchmarkCountersDumpDynamic.getValue()) {
+                        dumpCounters(out, seconds, counters, false, group, maxRows);
+                    }
                 }
             }
             out.println("============================");
