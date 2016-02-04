@@ -59,7 +59,12 @@ public class LLVMOptions {
     }
 
     static String[] parseDynamicLibraryPath(Property prop) {
-        return System.getProperty(prop.getKey(), prop.getDefaultValue()).split(PATH_DELIMITER);
+        String property = System.getProperty(prop.getKey(), prop.getDefaultValue());
+        if (property == null) {
+            return new String[0];
+        } else {
+            return property.split(PATH_DELIMITER);
+        }
     }
 
     public enum Property {
@@ -72,8 +77,8 @@ public class LLVMOptions {
          * becaptured inside Java, since, e.g., a printf is executed by native code. To determine
          * the right value just copy the boot class path that you use to launch the main LLVM class"
          */
-        REMOTE_TEST_BOOT_CLASSPATH_KEY("llvm-test-boot", "The boot classpath for the remote JVM used to capture native printf and other output ", null, LLVMOptions::parseString),
-        GCC_TEST_DISCOVERY_PATH_KEY("llvm-test-gcc-discovery", "Looks for newly supported GCC test cases in the specified path.", null, LLVMOptions::parseString),
+        REMOTE_TEST_BOOT_CLASSPATH("llvm-test-boot", "The boot classpath for the remote JVM used to capture native printf and other output.", null, LLVMOptions::parseString),
+        GCC_TEST_DISCOVERY_PATH("llvm-test-gcc-discovery", "Looks for newly supported GCC test cases in the specified path.", null, LLVMOptions::parseString),
         LLVM_TEST_DISCOVER_PATH("llvm-test-llvm-discovery", "Looks for newly supported LLVM test cases in the specified path.", null, LLVMOptions::parseString),
         NWCC_TEST_DISCOVER_PATH("llvm-test-nwcc-discovery", "Looks for newly supported NWCC test cases in the specified path.", null, LLVMOptions::parseString),
         DYN_LIBRARY_PATHS("llvm-dyn-libs", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath),
@@ -145,14 +150,14 @@ public class LLVMOptions {
     }
 
     public static String getRemoteTestBootClassPath() {
-        if (getParsedProperty(Property.REMOTE_TEST_BOOT_CLASSPATH_KEY) == null) {
+        if (getParsedProperty(Property.REMOTE_TEST_BOOT_CLASSPATH) == null) {
             throw new AssertionError();
         }
-        return getParsedProperty(Property.REMOTE_TEST_BOOT_CLASSPATH_KEY);
+        return getParsedProperty(Property.REMOTE_TEST_BOOT_CLASSPATH);
     }
 
     public static String getGCCTestDiscoveryPath() {
-        return getParsedProperty(Property.GCC_TEST_DISCOVERY_PATH_KEY);
+        return getParsedProperty(Property.GCC_TEST_DISCOVERY_PATH);
     }
 
     public static boolean isDiscoveryTestMode() {
@@ -168,7 +173,7 @@ public class LLVMOptions {
     }
 
     public static String[] getDynamicLibraryPaths() {
-        return ((String) getParsedProperty(Property.DYN_LIBRARY_PATHS)).split(PATH_DELIMITER);
+        return getParsedProperty(Property.DYN_LIBRARY_PATHS);
     }
 
     public static String getProjectRoot() {

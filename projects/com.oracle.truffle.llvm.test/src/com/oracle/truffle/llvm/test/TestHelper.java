@@ -40,12 +40,12 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.tools.Clang;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
-import com.oracle.truffle.llvm.tools.util.PathUtil;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 import com.oracle.truffle.llvm.tools.GCC;
 import com.oracle.truffle.llvm.tools.LLC;
 import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
+import com.oracle.truffle.llvm.tools.util.PathUtil;
+import com.oracle.truffle.llvm.tools.util.ProcessUtil;
+import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
 public class TestHelper {
 
@@ -157,7 +157,7 @@ public class TestHelper {
             String className = RemoteLLVMTester.class.getCanonicalName();
             String bootClassPath = LLVMOptions.getRemoteTestBootClassPath();
             String debugOption = asOption(LLVMOptions.Property.DEBUG.getKey(), "false");
-            String projectRootOption = asOption(LLVMOptions.Property.PROJECT_ROOT_KEY.getKey(), LLVMOptions.getProjectRoot());
+            String projectRootOption = asOption(LLVMOptions.Property.PROJECT_ROOT.getKey(), LLVMOptions.getProjectRoot());
             String options = debugOption + " " + projectRootOption;
             String command = javaBin + " -cp " + classpath + " " + bootClassPath + " " + options + " " + className;
             Process process = Runtime.getRuntime().exec(command);
