@@ -29,68 +29,65 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI64NodeFactory.LLVMLoadDirectI64NodeGen;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
-import com.oracle.truffle.llvm.types.LLVMIVarBit;
-import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public abstract class LLVMLoadDirectNode {
+public abstract class LLVMLoadI64Node extends LLVMI64Node {
 
     @NodeChild(type = LLVMAddressNode.class)
-    @NodeField(name = "bitWidth", type = int.class)
-    public abstract static class LLVMLoadDirectIVarBitNode extends LLVMIVarBitNode {
-
-        public abstract int getBitWidth();
+    public abstract static class LLVMLoadDirectI64Node extends LLVMLoadI64Node {
 
         @Specialization
-        public LLVMIVarBit executeI64(LLVMAddress addr) {
-            return LLVMMemory.getIVarBit(addr, getBitWidth());
+        public long executeI64(LLVMAddress addr) {
+            return LLVMMemory.getI64(addr);
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirect80BitFloatNode extends LLVM80BitFloatNode {
+    public static class LLVMUninitializedLoadI64Node extends LLVMLoadI64Node {
 
-        @Specialization
-        public LLVM80BitFloat executeDouble(LLVMAddress addr) {
-            return LLVMMemory.get80BitFloat(addr);
+        @Child private LLVMAddressNode addressNode;
+
+        public LLVMUninitializedLoadI64Node(LLVMAddressNode addressNode) {
+            this.addressNode = addressNode;
         }
+
+        @Override
+        public long executeI64(VirtualFrame frame) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            long val = LLVMMemory.getI64(addressNode.executePointee(frame));
+            replace(new LLVMLoadValueProfiledI64Node(addressNode, val));
+            return val;
+        }
+
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectFunctionNode extends LLVMFunctionNode {
+    public static class LLVMLoadValueProfiledI64Node extends LLVMLoadI64Node {
 
-        @Specialization
-        public LLVMFunction executeAddress(LLVMAddress addr) {
-            return LLVMHeap.getFunction(addr);
+        private final long profiledValue;
+        @Child private LLVMAddressNode addressNode;
+
+        public LLVMLoadValueProfiledI64Node(LLVMAddressNode addressNode, long profiledValue) {
+            this.addressNode = addressNode;
+            this.profiledValue = profiledValue;
+        }
+
+        @Override
+        public long executeI64(VirtualFrame frame) {
+            long value = LLVMMemory.getI64(addressNode.executePointee(frame));
+            if (value == profiledValue) {
+                return profiledValue;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                replace(LLVMLoadDirectI64NodeGen.create(addressNode));
+                return value;
+            }
         }
     }
-
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectAddressNode extends LLVMAddressNode {
-
-        @Specialization
-        public LLVMAddress executeAddress(LLVMAddress addr) {
-            return LLVMMemory.getAddress(addr);
-        }
-    }
-
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectStructNode extends LLVMAddressNode {
-
-        @Specialization
-        public LLVMAddress executeAddress(LLVMAddress addr) {
-            return addr; // we do not actually load the struct into a virtual register
-        }
-    }
-
 }

@@ -29,67 +29,65 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadFloatNodeFactory.LLVMLoadDirectFloatNodeGen;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
-import com.oracle.truffle.llvm.types.LLVMIVarBit;
-import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public abstract class LLVMLoadDirectNode {
+public abstract class LLVMLoadFloatNode extends LLVMFloatNode {
 
     @NodeChild(type = LLVMAddressNode.class)
-    @NodeField(name = "bitWidth", type = int.class)
-    public abstract static class LLVMLoadDirectIVarBitNode extends LLVMIVarBitNode {
-
-        public abstract int getBitWidth();
+    public abstract static class LLVMLoadDirectFloatNode extends LLVMLoadFloatNode {
 
         @Specialization
-        public LLVMIVarBit executeI64(LLVMAddress addr) {
-            return LLVMMemory.getIVarBit(addr, getBitWidth());
+        public float executeFloat(LLVMAddress addr) {
+            return LLVMMemory.getFloat(addr);
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirect80BitFloatNode extends LLVM80BitFloatNode {
+    public static class LLVMUninitializedLoadFloatNode extends LLVMLoadFloatNode {
 
-        @Specialization
-        public LLVM80BitFloat executeDouble(LLVMAddress addr) {
-            return LLVMMemory.get80BitFloat(addr);
+        @Child private LLVMAddressNode addressNode;
+
+        public LLVMUninitializedLoadFloatNode(LLVMAddressNode addressNode) {
+            this.addressNode = addressNode;
         }
+
+        @Override
+        public float executeFloat(VirtualFrame frame) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            float val = LLVMMemory.getFloat(addressNode.executePointee(frame));
+            replace(new LLVMLoadValueProfiledFloatNode(addressNode, val));
+            return val;
+        }
+
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectFunctionNode extends LLVMFunctionNode {
+    public static class LLVMLoadValueProfiledFloatNode extends LLVMLoadFloatNode {
 
-        @Specialization
-        public LLVMFunction executeAddress(LLVMAddress addr) {
-            return LLVMHeap.getFunction(addr);
+        private final float profiledValue;
+        @Child private LLVMAddressNode addressNode;
+
+        public LLVMLoadValueProfiledFloatNode(LLVMAddressNode addressNode, float profiledValue) {
+            this.addressNode = addressNode;
+            this.profiledValue = profiledValue;
         }
-    }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectAddressNode extends LLVMAddressNode {
-
-        @Specialization
-        public LLVMAddress executeAddress(LLVMAddress addr) {
-            return LLVMMemory.getAddress(addr);
-        }
-    }
-
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectStructNode extends LLVMAddressNode {
-
-        @Specialization
-        public LLVMAddress executeAddress(LLVMAddress addr) {
-            return addr; // we do not actually load the struct into a virtual register
+        @Override
+        public float executeFloat(VirtualFrame frame) {
+            float value = LLVMMemory.getFloat(addressNode.executePointee(frame));
+            if (Float.floatToRawIntBits(value) == Float.floatToRawIntBits(profiledValue)) {
+                return profiledValue;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                replace(LLVMLoadDirectFloatNodeGen.create(addressNode));
+                return value;
+            }
         }
     }
 

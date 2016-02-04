@@ -44,20 +44,6 @@ import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNode.LLVMUninitializedLoadI32Node;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNode.LLVMUninitializedLoadI64Node;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoad80BitFloatNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadAddressNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadDoubleNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadFloatNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadFunctionNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadI16NodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadI1NodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadI32NodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadI64NodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadI8NodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadIVarBitNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMLoadNodeFactory.LLVMLoadStructNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadFloatVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadI16VectorNodeGen;
@@ -78,6 +64,25 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI8StoreNode
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMIVarBitStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMStructStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreVectorNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadDirectNodeFactory.LLVMLoadDirect80BitFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadDirectNodeFactory.LLVMLoadDirectAddressNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadDirectNodeFactory.LLVMLoadDirectFunctionNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadDirectNodeFactory.LLVMLoadDirectIVarBitNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadDirectNodeFactory.LLVMLoadDirectStructNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadDoubleNode.LLVMUninitializedLoadDoubleNode;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadDoubleNodeFactory.LLVMLoadDirectDoubleNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadFloatNode.LLVMUninitializedLoadFloatNode;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadFloatNodeFactory.LLVMLoadDirectFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI16Node.LLVMUninitializedLoadI16Node;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI16NodeFactory.LLVMLoadDirectI16NodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI1Node.LLVMUninitializedLoadI1Node;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI1NodeFactory.LLVMLoadDirectI1NodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI32Node.LLVMUninitializedLoadI32Node;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI32NodeFactory.LLVMLoadDirectI32NodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI64Node.LLVMUninitializedLoadI64Node;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI64NodeFactory.LLVMLoadDirectI64NodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI8Node.LLVMUninitializedLoadI8Node;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI8NodeFactory.LLVMLoadDirectI8NodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
@@ -89,41 +94,53 @@ public final class LLVMMemoryReadWriteFactory {
 
     public static LLVMExpressionNode createLoad(ResolvedType resolvedResultType, LLVMAddressNode loadTarget, LLVMParserRuntime runtime) {
         LLVMBaseType resultType = LLVMTypeHelper.getLLVMType(resolvedResultType);
+        if (runtime.getOptimizationConfiguration().valueProfileMemoryReads()) {
+            switch (resultType) {
+                case I1:
+                    return new LLVMUninitializedLoadI1Node(loadTarget);
+                case I8:
+                    return new LLVMUninitializedLoadI8Node(loadTarget);
+                case I16:
+                    return new LLVMUninitializedLoadI16Node(loadTarget);
+                case I32:
+                    return new LLVMUninitializedLoadI32Node(loadTarget);
+                case I64:
+                    return new LLVMUninitializedLoadI64Node(loadTarget);
+                case FLOAT:
+                    return new LLVMUninitializedLoadFloatNode(loadTarget);
+                case DOUBLE:
+                    return new LLVMUninitializedLoadDoubleNode(loadTarget);
+                default:
+                    // fall through and instantiate a direct load node
+            }
+        }
         switch (resultType) {
             case I1:
-                return LLVMLoadI1NodeGen.create(loadTarget);
+                return LLVMLoadDirectI1NodeGen.create(loadTarget);
             case I8:
-                return LLVMLoadI8NodeGen.create(loadTarget);
+                return LLVMLoadDirectI8NodeGen.create(loadTarget);
             case I16:
-                return LLVMLoadI16NodeGen.create(loadTarget);
+                return LLVMLoadDirectI16NodeGen.create(loadTarget);
             case I32:
-                if (runtime.getOptimizationConfiguration().valueProfileMemoryReads()) {
-                    return new LLVMUninitializedLoadI32Node(loadTarget);
-                } else {
-                    return LLVMLoadI32NodeGen.create(loadTarget);
-                }
+                return LLVMLoadDirectI32NodeGen.create(loadTarget);
             case I64:
-                if (runtime.getOptimizationConfiguration().valueProfileMemoryReads()) {
-                    return new LLVMUninitializedLoadI64Node(loadTarget);
-                } else {
-                    return LLVMLoadI64NodeGen.create(loadTarget);
-                }
+                return LLVMLoadDirectI64NodeGen.create(loadTarget);
             case I_VAR_BITWIDTH:
                 int bitWidth = resolvedResultType.getBits().intValue();
-                return LLVMLoadIVarBitNodeGen.create(loadTarget, bitWidth);
+                return LLVMLoadDirectIVarBitNodeGen.create(loadTarget, bitWidth);
             case FLOAT:
-                return LLVMLoadFloatNodeGen.create(loadTarget);
+                return LLVMLoadDirectFloatNodeGen.create(loadTarget);
             case DOUBLE:
-                return LLVMLoadDoubleNodeGen.create(loadTarget);
+                return LLVMLoadDirectDoubleNodeGen.create(loadTarget);
             case X86_FP80:
-                return LLVMLoad80BitFloatNodeGen.create(loadTarget);
+                return LLVMLoadDirect80BitFloatNodeGen.create(loadTarget);
             case ADDRESS:
-                return LLVMLoadAddressNodeGen.create(loadTarget);
+                return LLVMLoadDirectAddressNodeGen.create(loadTarget);
             case FUNCTION_ADDRESS:
-                return LLVMLoadFunctionNodeGen.create(loadTarget);
+                return LLVMLoadDirectFunctionNodeGen.create(loadTarget);
             case STRUCT:
             case ARRAY:
-                return LLVMLoadStructNodeGen.create(loadTarget);
+                return LLVMLoadDirectStructNodeGen.create(loadTarget);
             default:
                 break;
         }
