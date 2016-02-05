@@ -29,7 +29,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 public final class IsBoxed2 extends BaseIsBoxed2 {
     @SuppressWarnings({"static-method", "unused"})
     @ExpectError({"The first argument of access must be of type com.oracle.truffle.api.frame.VirtualFrame- but is java.lang.String"})
-    public Object access(String frame, ValidTruffleObject object) {
+    public Object access(String string, ValidTruffleObject object) {
         return true;
     }
 }

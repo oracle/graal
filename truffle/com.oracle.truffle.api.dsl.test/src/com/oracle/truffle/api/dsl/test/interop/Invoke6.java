@@ -28,12 +28,12 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 @AcceptMessage(value = "INVOKE", receiverType = ValidTruffleObject.class, language = TestTruffleLanguage.class)
 public final class Invoke6 extends BaseInvoke6 {
     @Override
-    protected int access(VirtualFrame vf, ValidTruffleObjectB receiver, String name, Object[] args) {
+    protected int access(VirtualFrame frame, ValidTruffleObjectB receiver, String name, Object[] args) {
         return 0;
     }
 
     @Override
-    protected int access(VirtualFrame vf, ValidTruffleObject receiver, String name, Object[] args) {
+    protected int access(VirtualFrame frame, ValidTruffleObject receiver, String name, Object[] args) {
         return 0;
     }
 }

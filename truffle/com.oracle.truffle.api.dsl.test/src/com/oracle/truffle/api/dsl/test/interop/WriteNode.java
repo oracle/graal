@@ -30,7 +30,7 @@ public final class WriteNode extends BaseWriteNode {
 
     @SuppressWarnings({"static-method", "unused"})
     @ExpectError({"The first argument must be a com.oracle.truffle.api.frame.VirtualFrame- but is java.lang.String"})
-    protected int access(String vf, Object receiver, Object name, Object value) {
+    protected int access(String string, Object receiver, Object name, Object value) {
         return 0;
     }
 }

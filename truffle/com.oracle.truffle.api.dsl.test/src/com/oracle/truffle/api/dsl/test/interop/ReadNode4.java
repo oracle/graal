@@ -31,7 +31,7 @@ public final class ReadNode4 extends BaseReadNode4 {
 
     @SuppressWarnings({"static-method", "unused"})
     @ExpectError({"access method has to have 3 arguments"})
-    protected int access(VirtualFrame vf, Object receiver, Object name, int i) {
+    protected int access(VirtualFrame frame, Object receiver, Object name, int i) {
         return 0;
     }
 }

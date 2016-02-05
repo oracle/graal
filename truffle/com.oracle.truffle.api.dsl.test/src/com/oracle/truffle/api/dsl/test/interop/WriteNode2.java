@@ -31,7 +31,7 @@ public final class WriteNode2 extends BaseWriteNode2 {
 
     @SuppressWarnings({"static-method", "unused"})
     @ExpectError({"access method has to have 4 arguments"})
-    protected int access(VirtualFrame vf, Object receiver, Object name) {
+    protected int access(VirtualFrame frame, Object receiver, Object name) {
         return 0;
     }
 }

@@ -29,17 +29,17 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 public final class WriteNode4 extends BaseWriteNode4 {
 
     @Override
-    protected int access(VirtualFrame vf, ValidTruffleObject receiver, Object name, String value) {
+    protected int access(VirtualFrame frame, ValidTruffleObject receiver, Object name, String value) {
         return 0;
     }
 
     @Override
-    protected int access(VirtualFrame vf, ValidTruffleObject receiver, Object name, Object value) {
+    protected int access(VirtualFrame frame, ValidTruffleObject receiver, Object name, Object value) {
         return 0;
     }
 
     @Override
-    protected int access(VirtualFrame vf, Object receiver, Object name, Object value) {
+    protected int access(VirtualFrame frame, Object receiver, Object name, Object value) {
         return 0;
     }
 }
