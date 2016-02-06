@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.test;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -34,6 +35,7 @@ import java.util.List;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.CompilerThreadFactory;
@@ -89,10 +91,8 @@ public class LazyInitializationTest {
             }
         }
 
-        int jvmciArg = args.indexOf("-jvmci");
-        if (jvmciArg >= 0) {
-            args.set(jvmciArg, "-server");
-        }
+        boolean usesJvmciCompiler = args.contains("-jvmci") || args.contains("-XX:+UseJVMCICompiler");
+        Assume.assumeFalse("This test can only run if JVMCI is not one of the default compilers", usesJvmciCompiler);
 
         args.add("-XX:+TraceClassLoading");
         args.add("com.oracle.mxtool.junit.MxJUnitWrapper");
@@ -100,12 +100,17 @@ public class LazyInitializationTest {
 
         ArrayList<Class<?>> loadedGraalClasses = new ArrayList<>();
 
-        Process process = new ProcessBuilder(args).start();
+        ProcessBuilder processBuilder = new ProcessBuilder(args);
+        if (VERBOSE) {
+            processBuilder.redirectError(Redirect.INHERIT);
+        }
 
         if (VERBOSE) {
-            System.out.println("-----------------------------------------------------------------------------");
+            System.out.println("\n=============================================================================");
             System.out.println(Util.join(args, " "));
+            System.out.println("-----------------------------------------------------------------------------");
         }
+        Process process = processBuilder.start();
         int testCount = 0;
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         String line;
@@ -133,12 +138,12 @@ public class LazyInitializationTest {
             }
         }
         if (VERBOSE) {
-            System.out.println("-----------------------------------------------------------------------------");
+            System.out.println("=============================================================================");
         }
 
         String suffix = VERBOSE ? "" : " (use -D" + VERBOSE_PROPERTY + "=true to debug)";
-        Assert.assertNotEquals("test count" + suffix, 0, testCount);
         Assert.assertEquals("exit code" + suffix, 0, process.waitFor());
+        Assert.assertNotEquals("test count" + suffix, 0, testCount);
 
         checkAllowedGraalClasses(loadedGraalClasses, suffix);
     }
