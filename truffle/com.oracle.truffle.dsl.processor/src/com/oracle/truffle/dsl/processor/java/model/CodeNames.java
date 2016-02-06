@@ -28,7 +28,7 @@ import javax.lang.model.element.Name;
 
 public abstract class CodeNames {
 
-    private static Map<String, Name> names = new HashMap<>();
+    private static final Map<String, Name> names = new HashMap<>();
 
     public static Name of(String value) {
         Name name = names.get(value);
