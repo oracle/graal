@@ -96,7 +96,7 @@ public class AArch64FrameMap extends FrameMap {
 
     @Override
     public int currentFrameSize() {
-        return alignFrameSize(spillSize + outgoingSize - frameSetupSize());
+        return alignFrameSize(outgoingSize + spillSize);
     }
 
     @Override
