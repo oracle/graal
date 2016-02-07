@@ -65,7 +65,7 @@ public class OMProcessor extends AbstractProcessor {
 
             final LayoutGenerator generator = new LayoutGenerator(layout);
 
-            JavaFileObject output = processingEnv.getFiler().createSourceFile(layout.getInterfaceFullName() + "Impl", layoutElement);
+            JavaFileObject output = processingEnv.getFiler().createSourceFile(layout.getPackageName() + "." + layout.getName() + "LayoutImpl", layoutElement);
 
             try (PrintStream stream = new PrintStream(output.openOutputStream(), false, "US-ASCII")) {
                 generator.generate(stream);

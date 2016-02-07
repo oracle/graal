@@ -27,10 +27,22 @@ package com.oracle.truffle.api.object.dsl.test;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.dsl.Layout;
 
 import org.junit.Assert;
 
 public class BasicTest {
+
+    @Layout
+    public interface BasicLayout {
+
+        DynamicObject createBasic(int value);
+
+        int getValue(DynamicObject object);
+
+        void setValue(DynamicObject object, int value);
+
+    }
 
     private static final BasicLayout BASIC_LAYOUT = BasicLayoutImpl.INSTANCE;
 
