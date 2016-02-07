@@ -165,6 +165,22 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
+    "com.oracle.truffle.api.object.dsl.test" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.object",
+        "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.object.dsl.processor",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "com.oracle.truffle.object.dsl.processor",
+      "javaCompliance" : "1.7",
+      "annotationProcessors" : ["TRUFFLE_OBJECT_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Codegen,Test",
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.object.dsl.processor" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],

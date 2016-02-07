@@ -327,19 +327,25 @@ public class LayoutGenerator {
             stream.println("    @Override");
             stream.print("    public");
         } else {
-            stream.print("    private");
+            stream.print("    private static");
         }
 
-        stream.printf(" DynamicObjectFactory create%sShape(%n", layout.getName());
+        stream.printf(" DynamicObjectFactory create%sShape(", layout.getName());
 
-        for (PropertyModel property : layout.getAllShapeProperties()) {
-            stream.printf("            %s %s", property.getType().toString(), property.getName());
+        if (layout.hasShapeProperties()) {
+            stream.println();
 
-            if (property == layout.getAllShapeProperties().get(layout.getAllShapeProperties().size() - 1)) {
-                stream.println(") {");
-            } else {
-                stream.println(",");
+            for (PropertyModel property : layout.getAllShapeProperties()) {
+                stream.printf("            %s %s", property.getType().toString(), property.getName());
+
+                if (property == layout.getAllShapeProperties().get(layout.getAllShapeProperties().size() - 1)) {
+                    stream.println(") {");
+                } else {
+                    stream.println(",");
+                }
             }
+        } else {
+            stream.println(") {");
         }
 
         for (PropertyModel property : layout.getAllShapeProperties()) {
@@ -350,20 +356,24 @@ public class LayoutGenerator {
 
         stream.printf("        return LAYOUT.createShape(new %sType(%n", layout.getName());
 
-        iterateProperties(layout.getAllShapeProperties(), new PropertyIteratorAction() {
+        if (layout.hasShapeProperties()) {
+            iterateProperties(layout.getAllShapeProperties(), new PropertyIteratorAction() {
 
-            @Override
-            public void run(PropertyModel property, boolean last) {
-                stream.printf("                %s", property.getName());
+                @Override
+                public void run(PropertyModel property, boolean last) {
+                    stream.printf("                %s", property.getName());
 
-                if (last) {
-                    stream.println("))");
-                } else {
-                    stream.println(",");
+                    if (last) {
+                        stream.println("))");
+                    } else {
+                        stream.println(",");
+                    }
                 }
-            }
 
-        });
+            });
+        } else {
+            stream.println("))");
+        }
 
         iterateProperties(layout.getAllNonShapeProperties(), new PropertyIteratorAction() {
 
