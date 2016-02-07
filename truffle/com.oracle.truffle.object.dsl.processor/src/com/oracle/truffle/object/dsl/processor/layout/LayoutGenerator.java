@@ -393,27 +393,39 @@ public class LayoutGenerator {
 
         if (!layout.hasShapeProperties()) {
             stream.println("    @Override");
-            stream.printf("    public DynamicObject create%s(%n", layout.getName());
+            stream.printf("    public DynamicObject create%s(", layout.getName());
 
-            for (PropertyModel property : layout.getAllProperties()) {
-                stream.printf("            %s %s", property.getType().toString(), property.getName());
+            if (layout.getAllProperties().isEmpty()) {
+                stream.println(") {");
+            } else {
+                stream.println();
 
-                if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
-                    stream.println(") {");
-                } else {
-                    stream.println(",");
+                for (PropertyModel property : layout.getAllProperties()) {
+                    stream.printf("            %s %s", property.getType().toString(), property.getName());
+
+                    if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
+                        stream.println(") {");
+                    } else {
+                        stream.println(",");
+                    }
                 }
             }
 
-            stream.printf("        return create%s(%s_FACTORY,%n", layout.getName(), NameUtils.identifierToConstant(layout.getName()));
+            stream.printf("        return create%s(%s_FACTORY", layout.getName(), NameUtils.identifierToConstant(layout.getName()));
 
-            for (PropertyModel property : layout.getAllProperties()) {
-                stream.printf("            %s", property.getName());
+            if (layout.getAllProperties().isEmpty()) {
+                stream.println(");");
+            } else {
+                stream.println(",");
 
-                if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
-                    stream.println(");");
-                } else {
-                    stream.println(",");
+                for (PropertyModel property : layout.getAllProperties()) {
+                    stream.printf("            %s", property.getName());
+
+                    if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
+                        stream.println(");");
+                    } else {
+                        stream.println(",");
+                    }
                 }
             }
 
@@ -431,6 +443,8 @@ public class LayoutGenerator {
         if (layout.hasNonShapeProperties()) {
             stream.printf(" DynamicObject create%s(%n", layout.getName());
             stream.println("            DynamicObjectFactory factory,");
+
+            stream.println();
 
             for (PropertyModel property : layout.getAllNonShapeProperties()) {
                 stream.printf("            %s %s", property.getType().toString(), property.getName());
