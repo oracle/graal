@@ -50,7 +50,6 @@ public class LayoutGenerator {
         stream.println();
         stream.println("import java.util.EnumSet;");
         stream.println("import com.oracle.truffle.api.object.*;");
-        stream.println("import com.oracle.truffle.api.object.dsl.UnexpectedLayoutRefusalException;");
         stream.println("import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;");
         stream.println("import com.oracle.truffle.api.CompilerAsserts;");
         stream.println("import java.util.concurrent.atomic.*;");
@@ -727,7 +726,7 @@ public class LayoutGenerator {
                         stream.printf("        try {%n");
                         stream.printf("            %s_PROPERTY.set(object, value, object.getShape());%n", NameUtils.identifierToConstant(property.getName()));
                         stream.printf("        } catch (IncompatibleLocationException | FinalLocationException e) {%n");
-                        stream.printf("            throw new UnexpectedLayoutRefusalException(e);%n");
+                        stream.printf("            throw new UnsupportedOperationException(e);%n");
                         stream.printf("        }%n");
                     }
                 }
