@@ -156,6 +156,26 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
+    "com.oracle.truffle.api.object.dsl" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["com.oracle.truffle.api.object"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.object.dsl.processor" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.object.dsl"
+      ],
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "1.7",
+      "workingSets" : "Truffle,Codegen",
+    },
+
     "com.oracle.truffle.api.profiles" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
@@ -285,6 +305,7 @@ suite = {
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.api.object.dsl",
       ],
       "distDependencies" : [
       ],
@@ -311,6 +332,14 @@ suite = {
       "dependencies" : ["com.oracle.truffle.dsl.processor"],
       "distDependencies" : ["TRUFFLE_API"],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
+    },
+
+    "TRUFFLE_OBJECT_DSL_PROCESSOR" : {
+      "subDir" : "truffle",
+      "javaCompliance" : "1.7",
+      "dependencies" : ["com.oracle.truffle.object.dsl.processor"],
+      "distDependencies" : ["TRUFFLE_API"],
+      "description" : "The Truffle DSL Processor generates source code for object model layouts.",
     },
 
     "TRUFFLE_SL" : {
