@@ -181,7 +181,9 @@ public abstract class FrameMap {
      * @param size the initial frame size to be aligned
      * @return the aligned frame size
      */
-    protected abstract int alignFrameSize(int size);
+    protected int alignFrameSize(int size) {
+        return NumUtil.roundUp(size, getTarget().stackAlignment);
+    }
 
     /**
      * Computes the final size of this frame. After this method has been called, methods that change
@@ -238,7 +240,9 @@ public abstract class FrameMap {
      * @param additionalOffset
      * @return A spill slot denoting the reserved memory area.
      */
-    protected abstract StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset);
+    protected StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset) {
+        return StackSlot.get(kind, -spillSize + additionalOffset, true);
+    }
 
     /**
      * Returns the spill slot size for the given {@link LIRKind}. The default value is the size in
