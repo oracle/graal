@@ -30,6 +30,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Apply to the constructor parameter that corresponds to an object-model DSL property to mark it as
+ * volatile, in the sense of the Java Language Specification § 8.3.1.4. By default, properties are
+ * not volatile.
+ *
+ * Marking a property as volatile also allows you to add atomic operation methods to your layout
+ * interface.
+ *
+ * <pre>
+ * boolean compareAndSetNAME(DynamicObject object, TYPE expected, TYPE newValue);
+ *
+ * TYPE getAndSet(DynamicObject object, TYPE value);
+ * </pre>
+ *
  * @see Layout
  */
 @Target(ElementType.PARAMETER)
