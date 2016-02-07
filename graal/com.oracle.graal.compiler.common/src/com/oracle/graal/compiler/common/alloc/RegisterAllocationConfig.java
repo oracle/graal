@@ -32,6 +32,7 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.PlatformKind;
 
 import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.AllocatableRegisters;
 
 /**
  * Configuration for register allocation. This is different to {@link RegisterConfig} as it only
@@ -118,7 +119,20 @@ public class RegisterAllocationConfig {
     }
 
     protected AllocatableRegisters createAllocatableRegisters(Register[] registers) {
-        return new AllocatableRegisters(registers, registers[0].number, registers[registers.length - 1].number);
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        for (Register reg : registers) {
+            int number = reg.number;
+            if (number < min) {
+                min = number;
+            }
+            if (number > max) {
+                max = number;
+            }
+        }
+        assert min < max;
+        return new AllocatableRegisters(registers, min, max);
+
     }
 
     /**
