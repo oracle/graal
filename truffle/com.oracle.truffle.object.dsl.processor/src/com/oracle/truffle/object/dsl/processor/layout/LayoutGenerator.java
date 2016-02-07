@@ -354,9 +354,11 @@ public class LayoutGenerator {
             }
         }
 
-        stream.printf("        return LAYOUT.createShape(new %sType(%n", layout.getName());
+        stream.printf("        return LAYOUT.createShape(new %sType(", layout.getName());
 
         if (layout.hasShapeProperties()) {
+            stream.println();
+
             iterateProperties(layout.getAllShapeProperties(), new PropertyIteratorAction() {
 
                 @Override
