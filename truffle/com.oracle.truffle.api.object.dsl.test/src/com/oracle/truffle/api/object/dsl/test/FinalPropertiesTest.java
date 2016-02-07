@@ -31,44 +31,34 @@ import com.oracle.truffle.api.object.dsl.Layout;
 
 import org.junit.Assert;
 
-public class BasicTest {
+public class FinalPropertiesTest {
 
     @Layout
-    public interface BasicTestLayout {
+    public interface FinalPropertiesTestLayout {
 
-        DynamicObject createBasicTest(int value);
+        DynamicObject createFinalPropertiesTest(int value);
 
         int getValue(DynamicObject object);
 
-        void setValue(DynamicObject object, int value);
-
     }
 
-    private static final BasicTestLayout LAYOUT = BasicTestLayoutImpl.INSTANCE;
+    private static final FinalPropertiesTestLayout LAYOUT = FinalPropertiesTestLayoutImpl.INSTANCE;
 
     @Test
     public void testCreate() {
-        final DynamicObject object = LAYOUT.createBasicTest(14);
+        final DynamicObject object = LAYOUT.createFinalPropertiesTest(14);
         Assert.assertNotNull(object);
     }
 
     @Test
     public void testGetDefault() {
-        final DynamicObject object = LAYOUT.createBasicTest(14);
+        final DynamicObject object = LAYOUT.createFinalPropertiesTest(14);
         Assert.assertEquals(14, LAYOUT.getValue(object));
     }
 
-    @Test
-    public void testSet() {
-        final DynamicObject object = LAYOUT.createBasicTest(14);
-        LAYOUT.setValue(object, 22);
-    }
-
-    @Test
-    public void testSetGet() {
-        final DynamicObject object = LAYOUT.createBasicTest(14);
-        LAYOUT.setValue(object, 22);
-        Assert.assertEquals(22, LAYOUT.getValue(object));
+    @Test(expected = NoSuchMethodException.class)
+    public void testNoSetMethod() throws NoSuchMethodException {
+        LAYOUT.getClass().getMethod("setValue", DynamicObject.class, int.class);
     }
 
 }
