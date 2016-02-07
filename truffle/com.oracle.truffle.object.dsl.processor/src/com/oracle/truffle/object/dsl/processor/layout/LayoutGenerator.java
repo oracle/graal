@@ -634,7 +634,7 @@ public class LayoutGenerator {
             if (property.hasFactoryGetter()) {
                 stream.println("    @Override");
                 stream.printf("    public %s %s(DynamicObjectFactory factory) {%n", property.getType(), NameUtils.asGetter(property.getName()));
-                stream.printf("        assert creates%s(object);%n", layout.getName());
+                stream.printf("        assert creates%s(factory);%n", layout.getName());
                 stream.printf("        return ((%sType) factory.getShape().getObjectType()).%s();%n", layout.getName(), NameUtils.asGetter(property.getName()));
                 stream.println("    }");
                 stream.println("    ");
