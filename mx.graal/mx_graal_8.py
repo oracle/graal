@@ -30,10 +30,9 @@ from argparse import ArgumentParser
 import re
 
 import mx
-from mx_jvmci import JVMCI_VERSION, JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, get_jvmci_jdk, _JVMCI_JDK_TAG, VM, relativeVmLibDirInJdk, isJVMCIEnabled
+from mx_jvmci import JVMCI_VERSION, JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, _JVMCI_JDK_TAG, VM, relativeVmLibDirInJdk, isJVMCIEnabled
 from mx_jvmci import get_vm as _jvmci_get_vm
 from mx_jvmci import run_vm as _jvmci_run_vm
-from mx_jvmci import build as _jvmci_build
 from mx_gate import Task
 from sanitycheck import _noneAsEmptyList
 
@@ -249,7 +248,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with VM('jvmci', 'fastdebug'):
         # Build
         with Task('BuildHotSpotJVMCI: fastdebug', tasks) as t:
-            if t: _jvmci_build([])
+            if t: buildvms(['--vms', 'jvmci', '--builds', 'fastdebug'])
 
         for r in unit_test_runs:
             r.run(suites, tasks, extraVMarguments)
