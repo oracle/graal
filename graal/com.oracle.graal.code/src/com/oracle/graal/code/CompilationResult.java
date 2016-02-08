@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Objects;
 
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
@@ -179,7 +180,8 @@ public class CompilationResult {
 
     private int totalFrameSize = -1;
     private int maxInterpreterFrameSize = -1;
-    private int customStackAreaOffset = -1;
+
+    private StackSlot customStackArea = null;
 
     private final String name;
 
@@ -239,7 +241,7 @@ public class CompilationResult {
             CompilationResult that = (CompilationResult) obj;
             // @formatter:off
             if (this.entryBCI == that.entryBCI &&
-                this.customStackAreaOffset == that.customStackAreaOffset &&
+                Objects.equals(this.customStackArea, that.customStackArea) &&
                 this.totalFrameSize == that.totalFrameSize &&
                 this.targetCodeSize == that.targetCodeSize &&
                 Objects.equals(this.name, that.name) &&
@@ -496,21 +498,21 @@ public class CompilationResult {
     }
 
     /**
-     * Offset in bytes for the custom stack area (relative to sp).
+     * Start of the custom stack area.
      *
-     * @return the offset in bytes
+     * @return the first stack slot of the custom stack area
      */
-    public int getCustomStackAreaOffset() {
-        return customStackAreaOffset;
+    public StackSlot getCustomStackArea() {
+        return customStackArea;
     }
 
     /**
-     * @see #getCustomStackAreaOffset()
-     * @param offset
+     * @see #getCustomStackArea()
+     * @param slot
      */
-    public void setCustomStackAreaOffset(int offset) {
+    public void setCustomStackAreaOffset(StackSlot slot) {
         checkOpen();
-        customStackAreaOffset = offset;
+        customStackArea = slot;
     }
 
     /**

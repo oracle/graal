@@ -41,7 +41,7 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
@@ -547,10 +547,10 @@ public final class Interval {
      * The value with which a spilled child interval can be re-materialized. Currently this must be
      * a Constant.
      */
-    private JavaConstant materializedValue;
+    private Constant materializedValue;
 
     /**
-     * The number of times {@link #addMaterializationValue(JavaConstant)} is called.
+     * The number of times {@link #addMaterializationValue(Constant)} is called.
      */
     private int numMaterializationValuesAdded;
 
@@ -755,7 +755,7 @@ public final class Interval {
     /**
      * Sets the value which is used for re-materialization.
      */
-    public void addMaterializationValue(JavaConstant value) {
+    public void addMaterializationValue(Constant value) {
         if (numMaterializationValuesAdded == 0) {
             materializedValue = value;
         } else {
@@ -776,7 +776,7 @@ public final class Interval {
     /**
      * Returns a value which can be moved to a register instead of a restore-move from stack.
      */
-    public JavaConstant getMaterializedValue() {
+    public Constant getMaterializedValue() {
         return splitParent().materializedValue;
     }
 

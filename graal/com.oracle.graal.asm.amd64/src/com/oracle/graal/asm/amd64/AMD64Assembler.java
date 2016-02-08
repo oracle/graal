@@ -386,19 +386,32 @@ public class AMD64Assembler extends Assembler {
         emitModRM(reg.encoding & 0x07, rm);
     }
 
-    /**
-     * Emits the ModR/M byte and optionally the SIB byte for one register and one memory operand.
-     */
     protected void emitOperandHelper(Register reg, AMD64Address addr) {
         assert !reg.equals(Register.None);
-        emitOperandHelper(encode(reg), addr);
+        emitOperandHelper(encode(reg), addr, false);
+    }
+
+    /**
+     * Emits the ModR/M byte and optionally the SIB byte for one register and one memory operand.
+     *
+     * @param force4Byte use 4 byte encoding for displacements that would normally fit in a byte
+     */
+    protected void emitOperandHelper(Register reg, AMD64Address addr, boolean force4Byte) {
+        assert !reg.equals(Register.None);
+        emitOperandHelper(encode(reg), addr, force4Byte);
+    }
+
+    protected void emitOperandHelper(int reg, AMD64Address addr) {
+        emitOperandHelper(reg, addr, false);
     }
 
     /**
      * Emits the ModR/M byte and optionally the SIB byte for one memory operand and an opcode
      * extension in the R field.
+     *
+     * @param force4Byte use 4 byte encoding for displacements that would normally fit in a byte
      */
-    protected void emitOperandHelper(int reg, AMD64Address addr) {
+    protected void emitOperandHelper(int reg, AMD64Address addr, boolean force4Byte) {
         assert (reg & 0x07) == reg;
         int regenc = reg << 3;
 
@@ -429,7 +442,7 @@ public class AMD64Assembler extends Assembler {
                     assert !index.equals(rsp) : "illegal addressing mode";
                     emitByte(0x04 | regenc);
                     emitByte(scale.log2 << 6 | indexenc | baseenc);
-                } else if (isByte(disp)) {
+                } else if (isByte(disp) && !force4Byte) {
                     // [base + indexscale + imm8]
                     // [01 reg 100][ss index base] imm8
                     assert !index.equals(rsp) : "illegal addressing mode";
@@ -451,7 +464,7 @@ public class AMD64Assembler extends Assembler {
                     // [00 reg 100][00 100 100]
                     emitByte(0x04 | regenc);
                     emitByte(0x24);
-                } else if (isByte(disp)) {
+                } else if (isByte(disp) && !force4Byte) {
                     // [rsp + imm8]
                     // [01 reg 100][00 100 100] disp8
                     emitByte(0x44 | regenc);
@@ -471,7 +484,7 @@ public class AMD64Assembler extends Assembler {
                     // [base]
                     // [00 reg base]
                     emitByte(0x00 | regenc | baseenc);
-                } else if (isByte(disp)) {
+                } else if (isByte(disp) && !force4Byte) {
                     // [base + disp8]
                     // [01 reg base] disp8
                     emitByte(0x40 | regenc | baseenc);
@@ -1334,16 +1347,20 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void movq(Register dst, AMD64Address src) {
+        movq(dst, src, false);
+    }
+
+    public final void movq(Register dst, AMD64Address src, boolean wide) {
         if (dst.getRegisterCategory().equals(AMD64.XMM)) {
             emitByte(0xF3);
             prefixq(src, dst);
             emitByte(0x0F);
             emitByte(0x7E);
-            emitOperandHelper(dst, src);
+            emitOperandHelper(dst, src, wide);
         } else {
             prefixq(src, dst);
             emitByte(0x8B);
-            emitOperandHelper(dst, src);
+            emitOperandHelper(dst, src, wide);
         }
     }
 

@@ -56,7 +56,7 @@ import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.profiling.MoveProfiling;
+import com.oracle.graal.lir.profiling.MoveProfilingPhase;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
@@ -242,7 +242,7 @@ public abstract class Stub {
 
     private LIRSuites createLIRSuites() {
         LIRSuites lirSuites = new LIRSuites(providers.getSuites().getDefaultLIRSuites());
-        ListIterator<LIRPhase<PostAllocationOptimizationContext>> moveProfiling = lirSuites.getPostAllocationOptimizationStage().findPhase(MoveProfiling.class);
+        ListIterator<LIRPhase<PostAllocationOptimizationContext>> moveProfiling = lirSuites.getPostAllocationOptimizationStage().findPhase(MoveProfilingPhase.class);
         if (moveProfiling != null) {
             moveProfiling.remove();
         }

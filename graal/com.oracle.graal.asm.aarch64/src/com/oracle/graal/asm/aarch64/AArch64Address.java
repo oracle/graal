@@ -199,31 +199,53 @@ public final class AArch64Address extends AbstractAddress {
 
     private boolean verify() {
         assert addressingMode != null;
-        assert base.getRegisterCategory().equals(AArch64.CPU) && offset.getRegisterCategory().equals(AArch64.CPU);
+        assert base.getRegisterCategory().equals(AArch64.CPU);
+        assert offset.getRegisterCategory().equals(AArch64.CPU);
 
         switch (addressingMode) {
             case IMMEDIATE_SCALED:
-                assert !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isUnsignedNbit(12, immediate);
+                assert !base.equals(zr);
+                assert offset.equals(zr);
+                assert extendType == null;
+                assert NumUtil.isUnsignedNbit(12, immediate);
                 break;
             case IMMEDIATE_UNSCALED:
-                assert !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(9, immediate);
+                assert !base.equals(zr);
+                assert offset.equals(zr);
+                assert extendType == null;
+                assert NumUtil.isSignedNbit(9, immediate);
                 break;
             case BASE_REGISTER_ONLY:
-                assert !base.equals(zr) && offset.equals(zr) && extendType == null && immediate == 0;
+                assert !base.equals(zr);
+                assert offset.equals(zr);
+                assert extendType == null;
+                assert immediate == 0;
                 break;
             case REGISTER_OFFSET:
-                assert !base.equals(zr) && offset.getRegisterCategory().equals(AArch64.CPU) && extendType == null && immediate == 0;
+                assert !base.equals(zr);
+                assert offset.getRegisterCategory().equals(AArch64.CPU);
+                assert extendType == null;
+                assert immediate == 0;
                 break;
             case EXTENDED_REGISTER_OFFSET:
-                assert !base.equals(zr) && offset.getRegisterCategory().equals(AArch64.CPU) && (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW) &&
-                                immediate == 0;
+                assert !base.equals(zr);
+                assert offset.getRegisterCategory().equals(AArch64.CPU);
+                assert (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW);
+                assert immediate == 0;
                 break;
             case PC_LITERAL:
-                assert base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(21, immediate) && ((immediate & 0x3) == 0);
+                assert base.equals(zr);
+                assert offset.equals(zr);
+                assert extendType == null;
+                assert NumUtil.isSignedNbit(21, immediate);
+                assert ((immediate & 0x3) == 0);
                 break;
             case IMMEDIATE_POST_INDEXED:
             case IMMEDIATE_PRE_INDEXED:
-                assert !base.equals(zr) && offset.equals(zr) && extendType == null && NumUtil.isSignedNbit(9, immediate);
+                assert !base.equals(zr);
+                assert offset.equals(zr);
+                assert extendType == null;
+                assert NumUtil.isSignedNbit(9, immediate);
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();

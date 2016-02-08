@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,36 +21,31 @@
  * questions.
  */
 
-package com.oracle.graal.lir.aarch64;
+package com.oracle.graal.hotspot.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.aarch64.AArch64AddressValue;
+import com.oracle.graal.lir.aarch64.AArch64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
-@Opcode("SIGNEXTEND")
-public class AArch64SignExtendOp extends AArch64LIRInstruction {
-    private static final LIRInstructionClass<AArch64SignExtendOp> TYPE = LIRInstructionClass.create(AArch64SignExtendOp.class);
+public final class AArch64PrefetchOp extends AArch64LIRInstruction {
+    public static final LIRInstructionClass<AArch64PrefetchOp> TYPE = LIRInstructionClass.create(AArch64PrefetchOp.class);
 
-    @Def protected AllocatableValue resultValue;
-    @Use protected AllocatableValue inputValue;
+    @SuppressWarnings("unused") private final int instr;  // AllocatePrefetchInstr
+    @Alive({COMPOSITE}) protected AArch64AddressValue address;
 
-    public AArch64SignExtendOp(AllocatableValue resultValue, AllocatableValue inputValue) {
+    public AArch64PrefetchOp(AArch64AddressValue address, int instr) {
         super(TYPE);
-        this.resultValue = resultValue;
-        this.inputValue = inputValue;
+        this.address = address;
+        this.instr = instr;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        Register result = asRegister(resultValue);
-        Register input = asRegister(inputValue);
-        int to = resultValue.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        int from = inputValue.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        masm.sxt(to, from, result, input);
+        // TODO implement prefetch
+        masm.nop();
     }
 }

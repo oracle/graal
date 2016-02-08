@@ -44,6 +44,7 @@ import jdk.vm.ci.services.Services;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.code.DisassemblerProvider;
 import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.debug.Debug;
@@ -214,6 +215,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
         } else if (isBlockList(object)) {
             cfgPrinter.printCFG(message, getBlockList(object), false);
+        } else if (object instanceof Trace) {
+            cfgPrinter.printCFG(message, ((Trace<?>) object).getBlocks(), false);
         }
 
         cfgPrinter.target = null;

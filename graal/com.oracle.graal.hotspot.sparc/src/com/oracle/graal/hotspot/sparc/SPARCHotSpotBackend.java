@@ -232,7 +232,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
-            crb.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
+            crb.compilationResult.setCustomStackAreaOffset(deoptimizationRescueSlot);
         }
 
         if (stub != null) {

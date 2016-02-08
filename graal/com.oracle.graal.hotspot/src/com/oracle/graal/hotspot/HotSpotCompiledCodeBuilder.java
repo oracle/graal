@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import java.util.stream.Stream.Builder;
 
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
@@ -100,7 +101,7 @@ public class HotSpotCompiledCodeBuilder {
         DataPatch[] dataSectionPatches = patchBuilder.build().toArray(len -> new DataPatch[len]);
 
         int totalFrameSize = compResult.getTotalFrameSize();
-        int customStackAreaOffset = compResult.getCustomStackAreaOffset();
+        StackSlot customStackArea = compResult.getCustomStackArea();
 
         if (method instanceof HotSpotResolvedJavaMethod) {
             HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
@@ -117,10 +118,10 @@ public class HotSpotCompiledCodeBuilder {
                 jvmciEnv = 0L;
             }
             return new HotSpotCompiledNmethod(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, false, totalFrameSize,
-                            customStackAreaOffset, hsMethod, entryBCI, id, jvmciEnv, hasUnsafeAccess);
+                            customStackArea, hsMethod, entryBCI, id, jvmciEnv, hasUnsafeAccess);
         } else {
             return new HotSpotCompiledCode(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, false, totalFrameSize,
-                            customStackAreaOffset);
+                            customStackArea);
         }
     }
 

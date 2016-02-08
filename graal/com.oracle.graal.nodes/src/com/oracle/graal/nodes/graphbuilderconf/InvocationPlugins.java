@@ -594,6 +594,28 @@ public class InvocationPlugins {
         this(parent, parent.getMetaAccess());
     }
 
+    public InvocationPlugins(Map<ResolvedJavaMethod, InvocationPlugin> plugins, InvocationPlugins parent, MetaAccessProvider metaAccess) {
+        this.metaAccess = metaAccess;
+        this.parent = parent;
+
+        this.deferredRegistrations = null;
+
+        for (Map.Entry<ResolvedJavaMethod, InvocationPlugin> entry : plugins.entrySet()) {
+            ResolvedJavaMethod method = entry.getKey();
+            InvocationPlugin plugin = entry.getValue();
+
+            String internalName = method.getDeclaringClass().getName();
+            ClassPlugins classPlugins = registrations.get(internalName);
+            if (classPlugins == null) {
+                classPlugins = new ClassPlugins(null);
+                registrations.put(internalName, classPlugins);
+                classPlugins.entries = new HashMap<>();
+            }
+
+            classPlugins.entries.put(method, plugin);
+        }
+    }
+
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
     }
