@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.frame;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
@@ -117,6 +118,7 @@ public final class FrameSlot implements Cloneable {
 
     @Override
     public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
         return "[" + index + "," + identifier + "," + kind + "]";
     }
 
