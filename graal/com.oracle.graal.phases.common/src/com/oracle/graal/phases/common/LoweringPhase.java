@@ -522,8 +522,69 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
     }
 
+    public static void processBlockBounded(final Frame<?> rootFrame) {
+        ProcessBlockState state = ST_PROCESS;
+        Frame<?> f = rootFrame;
+        while (f != null) {
+            ProcessBlockState nextState;
+            if (state == ST_PROCESS || state == ST_PROCESS_ALWAYS_REACHED) {
+                f.preprocess();
+                nextState = state == ST_PROCESS_ALWAYS_REACHED ? ST_ENTER : ST_ENTER_ALWAYS_REACHED;
+            } else if (state == ST_ENTER_ALWAYS_REACHED) {
+                if (f.alwaysReachedBlock != null && f.alwaysReachedBlock.getDominator() == f.block) {
+                    Frame<?> continueRecur = f.enterAlwaysReached(f.alwaysReachedBlock);
+                    if (continueRecur == null) {
+                        // stop recursion here
+                        f.postprocess();
+                        f = f.parent;
+                        state = ST_ENTER;
+                        continue;
+                    }
+                    f = continueRecur;
+                    nextState = ST_PROCESS;
+                } else {
+                    nextState = ST_ENTER;
+                }
+            } else if (state == ST_ENTER) {
+                if (f.dominated.hasNext()) {
+                    Block n = f.dominated.next();
+                    if (n == f.alwaysReachedBlock) {
+                        if (f.dominated.hasNext()) {
+                            n = f.dominated.next();
+                        } else {
+                            n = null;
+                        }
+                    }
+                    if (n == null) {
+                        nextState = ST_LEAVE;
+                    } else {
+                        Frame<?> continueRecur = f.enter(n);
+                        if (continueRecur == null) {
+                            // stop recursion here
+                            f.postprocess();
+                            f = f.parent;
+                            state = ST_ENTER;
+                            continue;
+                        }
+                        f = continueRecur;
+                        nextState = ST_PROCESS;
+                    }
+                } else {
+                    nextState = ST_LEAVE;
+                }
+            } else if (state == ST_LEAVE) {
+                f.postprocess();
+                f = f.parent;
+                nextState = ST_ENTER;
+            } else {
+                throw JVMCIError.shouldNotReachHere();
+            }
+            state = nextState;
+        }
+    }
+
     public abstract static class Frame<T extends Frame<?>> {
-        final Block block;
+        protected final Block block;
         final T parent;
         Iterator<Block> dominated;
         final Block alwaysReachedBlock;
