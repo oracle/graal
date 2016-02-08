@@ -40,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Spliterators;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -99,7 +100,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     private TruffleInlining inlining;
     private int cachedNonTrivialNodeCount = -1;
-    private boolean compiling;
     private int cloneIndex;
 
     /**
@@ -108,6 +108,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
      * compiled methods that have this call target inlined are properly invalidated.
      */
     private final CyclicAssumption nodeRewritingAssumption;
+
+    private volatile Future<?> compilationTask;
 
     public final RootNode getRootNode() {
         return rootNode;
@@ -135,7 +137,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public final boolean isCompiling() {
-        return compiling;
+        return getCompilationTask() != null;
     }
 
     private static RootNode cloneRootNode(RootNode root) {
@@ -385,7 +387,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     public final void compile() {
         if (!isCompiling()) {
-            compiling = true;
             ensureCloned();
             runtime.compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
         }
@@ -423,7 +424,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (successful && inlining != null) {
             dequeueInlinedCallSites(inlining);
         }
-        compiling = false;
+        setCompilationTask(null);
     }
 
     private void dequeueInlinedCallSites(TruffleInlining parentDecision) {
@@ -622,5 +623,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     @Override
     public final int hashCode() {
         return System.identityHashCode(this);
+    }
+
+    Future<?> getCompilationTask() {
+        return compilationTask;
+    }
+
+    void setCompilationTask(Future<?> compilationTask) {
+        this.compilationTask = compilationTask;
     }
 }

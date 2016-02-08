@@ -36,6 +36,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.hotspot.amd64.AMD64HotSpotBackend;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.DataBuilder;
 import com.oracle.graal.lir.asm.FrameContext;
@@ -57,9 +58,15 @@ public class AMD64OptimizedCallTargetInstrumentationFactory extends OptimizedCal
                 Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, JavaKind.Object)[0];
                 Register spillRegister = AMD64.r10; // TODO(mg): fix me
                 Label doProlog = new Label();
+                int pos = asm.position();
 
                 AMD64Address codeBlobAddress = new AMD64Address(thisRegister, getFieldOffset("entryPoint", InstalledCode.class));
-                asm.movq(spillRegister, codeBlobAddress);
+                /*
+                 * The first instruction must be at least 5 bytes long to be safe for not entrant
+                 * patching, so force a wider encoding of the movq instruction.
+                 */
+                asm.movq(spillRegister, codeBlobAddress, true);
+                assert asm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 asm.testq(spillRegister, spillRegister);
                 asm.jcc(ConditionFlag.Equal, doProlog);
                 asm.jmp(spillRegister);

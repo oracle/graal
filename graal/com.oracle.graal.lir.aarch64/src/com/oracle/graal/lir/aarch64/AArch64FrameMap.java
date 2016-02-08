@@ -96,7 +96,7 @@ public class AArch64FrameMap extends FrameMap {
 
     @Override
     public int currentFrameSize() {
-        return alignFrameSize(spillSize + outgoingSize - frameSetupSize());
+        return alignFrameSize(outgoingSize + spillSize);
     }
 
     @Override
@@ -110,7 +110,6 @@ public class AArch64FrameMap extends FrameMap {
     }
 
     public StackSlot allocateDeoptimizationRescueSlot() {
-        // XXX This is very likely not correct.
         assert spillSize == initialSpillSize : "Deoptimization rescue slot must be the first stack slot";
         return allocateSpillSlot(LIRKind.value(AArch64Kind.QWORD));
     }

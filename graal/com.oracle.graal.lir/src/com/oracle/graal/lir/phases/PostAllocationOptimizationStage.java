@@ -29,7 +29,7 @@ import com.oracle.graal.lir.EdgeMoveOptimizer;
 import com.oracle.graal.lir.NullCheckOptimizer;
 import com.oracle.graal.lir.RedundantMoveElimination;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.profiling.MoveProfiling;
+import com.oracle.graal.lir.profiling.MoveProfilingPhase;
 import com.oracle.graal.options.NestedBooleanOptionValue;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -67,7 +67,7 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
             appendPhase(new NullCheckOptimizer());
         }
         if (Options.LIRProfileMoves.getValue()) {
-            appendPhase(new MoveProfiling());
+            appendPhase(new MoveProfilingPhase());
         }
     }
 }

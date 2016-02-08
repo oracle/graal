@@ -44,6 +44,7 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
@@ -823,29 +824,27 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      *         reload-locations in case the interval of this instruction is spilled. Currently this
      *         can only be a {@link JavaConstant}.
      */
-    protected JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
+    protected Constant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
         if (op instanceof LoadConstantOp) {
             LoadConstantOp move = (LoadConstantOp) op;
-            if (move.getConstant() instanceof JavaConstant) {
 
-                if (!allocator.neverSpillConstants()) {
-                    /*
-                     * Check if the interval has any uses which would accept an stack location
-                     * (priority == ShouldHaveRegister). Rematerialization of such intervals can
-                     * result in a degradation, because rematerialization always inserts a constant
-                     * load, even if the value is not needed in a register.
-                     */
-                    Interval.UsePosList usePosList = interval.usePosList();
-                    int numUsePos = usePosList.size();
-                    for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
-                        Interval.RegisterPriority priority = usePosList.registerPriority(useIdx);
-                        if (priority == Interval.RegisterPriority.ShouldHaveRegister) {
-                            return null;
-                        }
+            if (!allocator.neverSpillConstants()) {
+                /*
+                 * Check if the interval has any uses which would accept an stack location (priority
+                 * == ShouldHaveRegister). Rematerialization of such intervals can result in a
+                 * degradation, because rematerialization always inserts a constant load, even if
+                 * the value is not needed in a register.
+                 */
+                Interval.UsePosList usePosList = interval.usePosList();
+                int numUsePos = usePosList.size();
+                for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
+                    Interval.RegisterPriority priority = usePosList.registerPriority(useIdx);
+                    if (priority == Interval.RegisterPriority.ShouldHaveRegister) {
+                        return null;
                     }
                 }
-                return (JavaConstant) move.getConstant();
             }
+            return move.getConstant();
         }
         return null;
     }

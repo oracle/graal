@@ -236,7 +236,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         printStatistic(rt, "Compilation Accuracy", 1.0 - invalidations / (double) compilations);
         printStatistic(rt, "Queue Accuracy", 1.0 - dequeues / (double) queues);
         printStatistic(rt, "Compilation Utilization", compilationTime.getSum() / (double) (endTime - firstCompilation));
-        printStatistic(rt, "Remaining Compilation Queue", rt.getQueuedCallTargets().size());
+        printStatistic(rt, "Remaining Compilation Queue", rt.getCompilationQueueSize());
         printStatistic(rt, "Times defered until compilation", deferCompilations);
 
         printStatisticTime(rt, "Time to queue", timeToQueue);

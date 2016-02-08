@@ -54,7 +54,10 @@ public final class LoadSnippetVarargParameterNode extends FixedWithNextNode impl
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (index.isConstant()) {
-            return parameters.get(index.asJavaConstant().asInt());
+            int indexValue = index.asJavaConstant().asInt();
+            if (indexValue < parameters.size()) {
+                return parameters.get(indexValue);
+            }
         }
         return this;
     }

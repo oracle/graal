@@ -65,6 +65,7 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -687,6 +688,12 @@ public final class CompileTheWorld {
             boolean installAsDefault = false;
             CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
             task.runCompilation();
+
+            // Invalidate the generated code so the code cache doesn't fill up
+            HotSpotInstalledCode installedCode = task.getInstalledCode();
+            if (installedCode != null) {
+                installedCode.invalidate();
+            }
 
             memoryUsed.getAndAdd(MemUseTrackerImpl.getCurrentThreadAllocatedBytes() - allocatedAtStart);
             compileTime.getAndAdd(System.currentTimeMillis() - start);
