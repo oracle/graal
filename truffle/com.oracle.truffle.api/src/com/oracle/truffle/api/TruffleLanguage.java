@@ -234,8 +234,8 @@ public abstract class TruffleLanguage<C> {
     protected abstract Visualizer getVisualizer();
 
     /**
-     * Returns {@code true} for a node can be "instrumented" by
-     * {@linkplain Instrumenter#probe(Node) probing}.
+     * Returns {@code true} for a node can be "instrumented" by {@linkplain Instrumenter#probe(Node)
+     * probing}.
      * <p>
      * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
      *
@@ -270,8 +270,7 @@ public abstract class TruffleLanguage<C> {
     /**
      * Generates language specific textual representation of a value. Each language may have special
      * formating conventions - even primitive values may not follow the traditional Java formating
-     * rules. As such when
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class)
+     * rules. As such when {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class)
      * value.as(String.class)} is requested, it consults the language that produced the value by
      * calling this method. By default this method calls {@link Objects#toString(java.lang.Object)}.
      *
@@ -365,7 +364,6 @@ public abstract class TruffleLanguage<C> {
         private final Instrumenter instrumenter;
         private final Object[] services;
         private final Map<String, Object> config;
-
 
         Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, Map<String, Object> config) {
             this.vm = vm;
@@ -480,6 +478,7 @@ public abstract class TruffleLanguage<C> {
                 }
             }
             return null;
+        }
 
         /**
          * Configuration arguments for this language. Arguments set
