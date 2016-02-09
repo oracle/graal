@@ -39,7 +39,7 @@ import com.oracle.graal.lir.framemap.FrameMap;
  *
  * <pre>
  *   Base       Contents
- * 
+ *
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
@@ -97,11 +97,6 @@ public class AMD64FrameMap extends FrameMap {
     @Override
     protected int alignFrameSize(int size) {
         return NumUtil.roundUp(size + returnAddressSize(), getTarget().stackAlignment) - returnAddressSize();
-    }
-
-    @Override
-    protected StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset) {
-        return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 
     @Override

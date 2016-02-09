@@ -118,7 +118,20 @@ public class RegisterAllocationConfig {
     }
 
     protected AllocatableRegisters createAllocatableRegisters(Register[] registers) {
-        return new AllocatableRegisters(registers, registers[0].number, registers[registers.length - 1].number);
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        for (Register reg : registers) {
+            int number = reg.number;
+            if (number < min) {
+                min = number;
+            }
+            if (number > max) {
+                max = number;
+            }
+        }
+        assert min < max;
+        return new AllocatableRegisters(registers, min, max);
+
     }
 
     /**
