@@ -29,16 +29,18 @@
  */
 package com.oracle.truffle.llvm.intrinsics.c;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.LLVMCallNode;
-import com.oracle.truffle.llvm.LLVMIntrinsic;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 
-public class LLVMExit extends LLVMIntrinsic {
+@NodeChild(type = LLVMI32Node.class)
+public abstract class LLVMExit extends LLVMVoidIntrinsic {
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        throw new LLVMExitException((int) frame.getArguments()[LLVMCallNode.ARG_START_INDEX]);
+    @Specialization
+    public void execute(int value) {
+        throw new LLVMExitException(value);
     }
 
 }

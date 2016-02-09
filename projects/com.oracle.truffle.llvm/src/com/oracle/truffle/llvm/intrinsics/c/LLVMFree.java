@@ -29,17 +29,19 @@
  */
 package com.oracle.truffle.llvm.intrinsics.c;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.LLVMIntrinsic;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
+import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
-public class LLVMFree extends LLVMIntrinsic {
+@NodeChild(type = LLVMAddressNode.class)
+public abstract class LLVMFree extends LLVMVoidIntrinsic {
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        LLVMHeap.freeMemory((LLVMAddress) frame.getArguments()[0]);
-        return null;
+    @Specialization
+    public void executeIntrinsic(LLVMAddress address) {
+        LLVMHeap.freeMemory(address);
     }
 
 }

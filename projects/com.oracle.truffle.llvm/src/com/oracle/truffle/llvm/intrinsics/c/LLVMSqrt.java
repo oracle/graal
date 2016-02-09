@@ -29,14 +29,17 @@
  */
 package com.oracle.truffle.llvm.intrinsics.c;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.LLVMIntrinsic;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.LLVMIntrinsic.LLVMDoubleIntrinsic;
+import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
 
-public class LLVMSqrt extends LLVMIntrinsic {
+@NodeChild(type = LLVMDoubleNode.class)
+public abstract class LLVMSqrt extends LLVMDoubleIntrinsic {
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return Math.sqrt((double) frame.getArguments()[0]);
+    @Specialization
+    public double executeIntrinsic(double value) {
+        return Math.sqrt(value);
     }
 
 }

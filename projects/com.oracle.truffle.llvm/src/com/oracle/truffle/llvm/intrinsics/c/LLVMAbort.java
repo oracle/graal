@@ -29,16 +29,16 @@
  */
 package com.oracle.truffle.llvm.intrinsics.c;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.LLVMIntrinsic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 
-public class LLVMAbort extends LLVMIntrinsic {
+public abstract class LLVMAbort extends LLVMVoidIntrinsic {
 
     private static final int UNIX_SIGABORT = 134;
 
-    @Override
-    public Object execute(VirtualFrame frame) {
+    @Specialization
+    public void execute() {
         throw new LLVMExitException(UNIX_SIGABORT);
     }
 
