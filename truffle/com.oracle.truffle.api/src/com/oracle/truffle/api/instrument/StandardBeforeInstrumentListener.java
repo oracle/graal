@@ -53,6 +53,6 @@ public interface StandardBeforeInstrumentListener {
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void onEnter(Probe probe, Node node, VirtualFrame vFrame);
+    void onEnter(Probe probe, Node node, VirtualFrame frame);
 
 }

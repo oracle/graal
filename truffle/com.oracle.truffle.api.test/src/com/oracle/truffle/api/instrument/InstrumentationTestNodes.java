@@ -35,7 +35,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 class InstrumentationTestNodes {
 
     abstract static class TestLanguageNode extends Node {
-        public abstract Object execute(VirtualFrame vFrame);
+        public abstract Object execute(VirtualFrame frame);
 
     }
 
@@ -44,7 +44,7 @@ class InstrumentationTestNodes {
         @Child private TestLanguageNode child;
         @Child private EventHandlerNode eventHandlerNode;
 
-        public TestLanguageWrapperNode(TestLanguageNode child) {
+        TestLanguageWrapperNode(TestLanguageNode child) {
             assert !(child instanceof TestLanguageWrapperNode);
             this.child = child;
         }
@@ -70,14 +70,14 @@ class InstrumentationTestNodes {
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
-            eventHandlerNode.enter(child, vFrame);
+        public Object execute(VirtualFrame frame) {
+            eventHandlerNode.enter(child, frame);
             Object result;
             try {
-                result = child.execute(vFrame);
-                eventHandlerNode.returnValue(child, vFrame, result);
+                result = child.execute(frame);
+                eventHandlerNode.returnValue(child, frame, result);
             } catch (Exception e) {
-                eventHandlerNode.returnExceptional(child, vFrame, e);
+                eventHandlerNode.returnExceptional(child, frame, e);
                 throw (e);
             }
             return result;
@@ -90,12 +90,12 @@ class InstrumentationTestNodes {
     static class TestValueNode extends TestLanguageNode {
         private final int value;
 
-        public TestValueNode(int value) {
+        TestValueNode(int value) {
             this.value = value;
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
+        public Object execute(VirtualFrame frame) {
             return new Integer(this.value);
         }
     }
@@ -107,14 +107,14 @@ class InstrumentationTestNodes {
         @Child private TestLanguageNode leftChild;
         @Child private TestLanguageNode rightChild;
 
-        public TestAdditionNode(TestValueNode leftChild, TestValueNode rightChild) {
+        TestAdditionNode(TestValueNode leftChild, TestValueNode rightChild) {
             this.leftChild = insert(leftChild);
             this.rightChild = insert(rightChild);
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
-            return new Integer(((Integer) leftChild.execute(vFrame)).intValue() + ((Integer) rightChild.execute(vFrame)).intValue());
+        public Object execute(VirtualFrame frame) {
+            return new Integer(((Integer) leftChild.execute(frame)).intValue() + ((Integer) rightChild.execute(frame)).intValue());
         }
     }
 
@@ -131,14 +131,14 @@ class InstrumentationTestNodes {
          * newly created AST. Global registry is not used, since that would interfere with other
          * tests run in the same environment.
          */
-        public InstrumentationTestRootNode(TestLanguageNode body) {
+        InstrumentationTestRootNode(TestLanguageNode body) {
             super(InstrumentationTestingLanguage.class, null, null);
             this.body = body;
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
-            return body.execute(vFrame);
+        public Object execute(VirtualFrame frame) {
+            return body.execute(frame);
         }
 
         @Override
@@ -162,15 +162,15 @@ class InstrumentationTestNodes {
          * newly created AST. Global registry is not used, since that would interfere with other
          * tests run in the same environment.
          */
-        public TestRootNode(TestLanguageNode body, Instrumenter instrumenter) {
+        TestRootNode(TestLanguageNode body, Instrumenter instrumenter) {
             super(InstrumentationTestingLanguage.class, null, null);
             this.instrumenter = instrumenter;
             this.body = body;
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
-            return body.execute(vFrame);
+        public Object execute(VirtualFrame frame) {
+            return body.execute(frame);
         }
 
         @Override

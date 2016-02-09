@@ -30,7 +30,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 public final class ExampleWriteNode extends ExampleWriteBaseNode {
 
     @Override
-    protected int access(VirtualFrame vf, ExampleTruffleObject receiver, String name, int value) {
+    protected int access(VirtualFrame frame, ExampleTruffleObject receiver, String name, int value) {
         if (ExampleTruffleObject.MEMBER_NAME.equals(name)) {
             receiver.setValue(value);
             return value;

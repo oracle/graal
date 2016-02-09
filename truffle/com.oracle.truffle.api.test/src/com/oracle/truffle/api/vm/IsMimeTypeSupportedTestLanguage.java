@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,54 +25,60 @@ package com.oracle.truffle.api.vm;
 import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
-@TruffleLanguage.Registration(name = "Hash", mimeType = "application/x-test-hash", version = "1.0")
-public class HashLanguage extends TruffleLanguage<Env> {
-    public static final HashLanguage INSTANCE = new HashLanguage();
+@TruffleLanguage.Registration(name = "Hash", mimeType = "application/x-test-mime-type-supported", version = "1.0")
+public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
+
+    public static final IsMimeTypeSupportedTestLanguage INSTANCE = new IsMimeTypeSupportedTestLanguage();
 
     @Override
-    protected Env createContext(Env env) {
+    protected Env createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         return env;
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-        return Truffle.getRuntime().createCallTarget(new HashNode(this, code));
+    protected CallTarget parse(final Source code, Node context, String... argumentNames) throws IOException {
+        final String mimeType = code.getCode();
+
+        return new CallTarget() {
+
+            public Object call(Object... arguments) {
+                return findContext(createFindContextNode()).isMimeTypeSupported(mimeType);
+            }
+
+        };
     }
 
     @Override
     protected Object findExportedSymbol(Env context, String globalName, boolean onlyExplicit) {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     protected Object getLanguageGlobal(Env context) {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     protected Visualizer getVisualizer() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     protected boolean isInstrumentable(Node node) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -82,30 +88,7 @@ public class HashLanguage extends TruffleLanguage<Env> {
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        throw new UnsupportedOperationException("Not supported yet."); // To change body of
-                                                                       // generated methods, choose
-                                                                       // Tools | Templates.
+        throw new UnsupportedOperationException();
     }
 
-    private static class HashNode extends RootNode {
-        private static int counter;
-        private final Source code;
-        private final int id;
-
-        HashNode(HashLanguage hash, Source code) {
-            super(hash.getClass(), null, null);
-            this.code = code;
-            id = ++counter;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return System.identityHashCode(this) + "@" + code.getCode() + " @ " + id;
-        }
-    }
-
-    @TruffleLanguage.Registration(name = "AltHash", mimeType = "application/x-test-hash-alt", version = "1.0")
-    public static final class SubLang extends HashLanguage {
-        public static final SubLang INSTANCE = new SubLang();
-    }
 }

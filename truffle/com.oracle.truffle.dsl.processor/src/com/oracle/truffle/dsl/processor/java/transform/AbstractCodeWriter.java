@@ -372,7 +372,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
         private final Element enclosedElement;
 
-        public AnnotationValueWriterVisitor(Element enclosedElement) {
+        AnnotationValueWriterVisitor(Element enclosedElement) {
             this.enclosedElement = enclosedElement;
         }
 
@@ -741,7 +741,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         private final Writer delegate;
         private final StringBuilder buffer = new StringBuilder();
 
-        public TrimTrailingSpaceWriter(Writer delegate) {
+        TrimTrailingSpaceWriter(Writer delegate) {
             this.delegate = delegate;
         }
 

@@ -75,7 +75,7 @@ public class GraphPrintVisitor implements Closeable {
         private final int id;
         private final Map<String, Object> properties;
 
-        public NodeElement(int id) {
+        NodeElement(int id) {
             super();
             this.id = id;
             this.properties = new LinkedHashMap<>();
@@ -96,7 +96,7 @@ public class GraphPrintVisitor implements Closeable {
         private final int index;
         private final String label;
 
-        public EdgeElement(NodeElement from, NodeElement to, int index, String label) {
+        EdgeElement(NodeElement from, NodeElement to, int index, String label) {
             this.from = from;
             this.to = to;
             this.index = index;

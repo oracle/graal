@@ -167,7 +167,7 @@ public class ToolTestUtil {
     }
 
     abstract static class ToolTestLangNode extends Node {
-        public abstract Object execute(VirtualFrame vFrame);
+        public abstract Object execute(VirtualFrame frame);
 
         protected ToolTestLangNode(SourceSection ss) {
             super(ss);
@@ -205,14 +205,14 @@ public class ToolTestUtil {
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
-            eventHandlerNode.enter(child, vFrame);
+        public Object execute(VirtualFrame frame) {
+            eventHandlerNode.enter(child, frame);
             Object result;
             try {
-                result = child.execute(vFrame);
-                eventHandlerNode.returnValue(child, vFrame, result);
+                result = child.execute(frame);
+                eventHandlerNode.returnValue(child, frame, result);
             } catch (Exception e) {
-                eventHandlerNode.returnExceptional(child, vFrame, e);
+                eventHandlerNode.returnExceptional(child, frame, e);
                 throw (e);
             }
             return result;
@@ -231,7 +231,7 @@ public class ToolTestUtil {
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
+        public Object execute(VirtualFrame frame) {
             return new Integer(this.value);
         }
     }
@@ -250,8 +250,8 @@ public class ToolTestUtil {
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
-            return new Integer(((Integer) leftChild.execute(vFrame)).intValue() + ((Integer) rightChild.execute(vFrame)).intValue());
+        public Object execute(VirtualFrame frame) {
+            return new Integer(((Integer) leftChild.execute(frame)).intValue() + ((Integer) rightChild.execute(frame)).intValue());
         }
     }
 
@@ -274,8 +274,8 @@ public class ToolTestUtil {
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
-            return body.execute(vFrame);
+        public Object execute(VirtualFrame frame) {
+            return body.execute(frame);
         }
 
         @Override
@@ -307,8 +307,8 @@ public class ToolTestUtil {
         }
 
         @Override
-        public Object execute(VirtualFrame vFrame) {
-            return body.execute(vFrame);
+        public Object execute(VirtualFrame frame) {
+            return body.execute(frame);
         }
 
         @Override

@@ -324,7 +324,7 @@ public abstract class TruffleLanguage<C> {
         final TruffleLanguage<C> lang;
         final C ctx;
 
-        public LangCtx(TruffleLanguage<C> lang, Env env) {
+        LangCtx(TruffleLanguage<C> lang, Env env) {
             this.lang = lang;
             // following call verifies that Accessor.CURRENT_VM is provided
             assert API.findLanguage(null, null) == null;
@@ -364,8 +364,10 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream out;
         private final Instrumenter instrumenter;
         private final Object[] services;
+        private final Map<String, Object> config;
 
-        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter) {
+
+        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, Map<String, Object> config) {
             this.vm = vm;
             this.in = in;
             this.err = err;
@@ -375,6 +377,7 @@ public abstract class TruffleLanguage<C> {
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             API.collectEnvServices(collectedServices, vm, lang, this);
             this.services = collectedServices.toArray();
+            this.config = config;
             this.langCtx = new LangCtx<>(lang, this);
         }
 
@@ -389,6 +392,19 @@ public abstract class TruffleLanguage<C> {
          */
         public Object importSymbol(String globalName) {
             return API.importSymbol(vm, lang, globalName);
+        }
+
+        /**
+         * Allows it to be determined if this {@link com.oracle.truffle.api.vm.PolyglotEngine} can
+         * execute code written in a language with a given MIME type.
+         *
+         * @see Source#withMimeType(String)
+         * @see #parse(Source, String...)
+         *
+         * @return a boolean that indicates if the MIME type is supported
+         */
+        public boolean isMimeTypeSupported(String mimeType) {
+            return API.isMimeTypeSupported(vm, mimeType);
         }
 
         /**
@@ -464,6 +480,35 @@ public abstract class TruffleLanguage<C> {
                 }
             }
             return null;
+
+        /**
+         * Configuration arguments for this language. Arguments set
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#config when constructing the
+         * engine} are accessible via this map.
+         *
+         * This method (in combination with
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#config}) provides a
+         * straight-forward way to pass implementation-level arguments, as typically specified on a
+         * command line, to the languages.
+         *
+         * {@codesnippet config.specify}
+         *
+         * In contrast to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol
+         * global symbols} the provided values are passed in exactly as specified, because these
+         * configuration arguments are strictly at the implementation level and not language-level
+         * objects.
+         *
+         * These configuration arguments are available when
+         * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) creating the language
+         * context} to make it possible to take them into account before the language gets ready for
+         * execution. This is the most common way to access them:
+         *
+         * {@codesnippet config.read}
+         *
+         * @return read-only view of configuration options for this language
+         */
+        public Map<String, Object> getConfig() {
+            return config;
         }
     }
 
@@ -472,8 +517,8 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter) {
-            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter);
+        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> config) {
+            Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
             return env;
         }
 
@@ -524,6 +569,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         protected Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
             return env.langCtx.findExportedSymbol(globalName, onlyExplicit);
+        }
+
+        @Override
+        protected boolean isMimeTypeSupported(Object vm, String mimeType) {
+            return super.isMimeTypeSupported(vm, mimeType);
         }
 
         @Override

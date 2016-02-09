@@ -32,6 +32,13 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
+import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1;
+import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1_ALT;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import static org.junit.Assert.assertSame;
 
 public class EngineTest {
     protected PolyglotEngine.Builder createBuilder() {
@@ -116,5 +123,131 @@ public class EngineTest {
         assertEquals(1, arr[0].intValue());
         assertEquals(2, arr[1].intValue());
         assertEquals(3, arr[2].intValue());
+    }
+
+    @Test
+    public void engineConfigBasicAccess() throws IOException {
+        Builder builder = createBuilder();
+        builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
+        builder.config("application/x-test-import-export-2", "hello", "world");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
+
+        assertNotNull("Lang1 found", language1);
+
+        Ctx ctx1 = language1.getGlobalObject().as(Ctx.class);
+        String[] args = (String[]) ctx1.env.getConfig().get("cmd-line-args");
+        assertNotNull("Founds args", args);
+
+        assertEquals("1", args[0]);
+        assertEquals("2", args[1]);
+
+        assertNull("Can't see settings for other language", ctx1.env.getConfig().get("hello"));
+
+        PolyglotEngine.Language language2 = vm.getLanguages().get("application/x-test-import-export-2");
+        assertNotNull("Lang2 found", language2);
+
+        Ctx ctx2 = language2.getGlobalObject().as(Ctx.class);
+        assertEquals("world", ctx2.env.getConfig().get("hello"));
+        assertNull("Cannot find args", ctx2.env.getConfig().get("cmd-line-args"));
+    }
+
+    @Test
+    public void engineConfigShouldBeReadOnly() throws IOException {
+        Builder builder = createBuilder();
+        builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
+        builder.config("application/x-test-import-export-2", "hello", "world");
+        PolyglotEngine vm = builder.build();
+        PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
+        Ctx ctx1 = language1.getGlobalObject().as(Ctx.class);
+
+        // make sure configuration is read-only
+        try {
+            ctx1.env.getConfig().put("hi", "there!");
+            fail("The map should be readonly");
+        } catch (UnsupportedOperationException ex) {
+            // OK
+        }
+    }
+
+    @Test
+    public void secondValueWins() throws IOException {
+        Builder builder = createBuilder();
+        builder.config("application/x-test-import-export-2", "hello", "truffle");
+        builder.config("application/x-test-import-export-2", "hello", "world");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language2 = vm.getLanguages().get("application/x-test-import-export-2");
+        Ctx ctx2 = language2.getGlobalObject().as(Ctx.class);
+        assertEquals("world", ctx2.env.getConfig().get("hello"));
+    }
+
+    @Test
+    public void secondValueWins2() throws IOException {
+        Builder builder = createBuilder();
+        builder.config("application/x-test-import-export-2", "hello", "world");
+        builder.config("application/x-test-import-export-2", "hello", "truffle");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language2 = vm.getLanguages().get("application/x-test-import-export-2");
+        Ctx ctx2 = language2.getGlobalObject().as(Ctx.class);
+        assertEquals("truffle", ctx2.env.getConfig().get("hello"));
+    }
+
+    @Test
+    public void altValueWins() throws IOException {
+        Builder builder = createBuilder();
+        builder.config(L1, "hello", "truffle");
+        builder.config(L1_ALT, "hello", "world");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+        assertEquals("world", ctx2.env.getConfig().get("hello"));
+    }
+
+    @Test
+    public void altValueWins2() throws IOException {
+        Builder builder = createBuilder();
+        builder.config(L1_ALT, "hello", "truffle");
+        builder.config(L1, "hello", "world");
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+        assertEquals("world", ctx2.env.getConfig().get("hello"));
+    }
+
+    @Test
+    public void configIsNeverNull() throws IOException {
+        Builder builder = createBuilder();
+        PolyglotEngine vm = builder.build();
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+        assertNull(ctx2.env.getConfig().get("hello"));
+    }
+
+    static class YourLang {
+        public static final String MIME_TYPE = L1;
+    }
+
+    @Test
+    public void exampleOfConfiguration() throws IOException {
+        // @formatter:off
+        // BEGIN: config.specify
+        String[] args = {"--kernel", "Kernel.som", "--instrument", "dyn-metrics"};
+        Builder builder = PolyglotEngine.newBuilder();
+        builder.config(YourLang.MIME_TYPE, "CMD_ARGS", args);
+        PolyglotEngine vm = builder.build();
+        // END: config.specify
+        // @formatter:on
+
+        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+        String[] read = (String[]) ctx2.env.getConfig().get("CMD_ARGS");
+
+        assertSame("The same array as specified is returned", args, read);
     }
 }

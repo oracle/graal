@@ -24,9 +24,8 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.instrument.Instrument;
 import java.io.IOException;
-
-import javax.sound.midi.Instrument;
 
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;

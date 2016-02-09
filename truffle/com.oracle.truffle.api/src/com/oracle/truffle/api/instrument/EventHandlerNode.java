@@ -39,22 +39,22 @@ public abstract class EventHandlerNode extends Node implements InstrumentationNo
     /**
      * An AST node's execute method is about to be called.
      */
-    public abstract void enter(Node node, VirtualFrame vFrame);
+    public abstract void enter(Node node, VirtualFrame frame);
 
     /**
      * An AST Node's {@code void}-valued execute method has just returned.
      */
-    public abstract void returnVoid(Node node, VirtualFrame vFrame);
+    public abstract void returnVoid(Node node, VirtualFrame frame);
 
     /**
      * An AST Node's execute method has just returned a value (boxed if primitive).
      */
-    public abstract void returnValue(Node node, VirtualFrame vFrame, Object result);
+    public abstract void returnValue(Node node, VirtualFrame frame, Object result);
 
     /**
      * An AST Node's execute method has just thrown an exception.
      */
-    public abstract void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception);
+    public abstract void returnExceptional(Node node, VirtualFrame frame, Throwable exception);
 
     /**
      * Gets the {@link Probe} that manages this chain of event handling.

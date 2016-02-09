@@ -32,7 +32,7 @@ import javax.lang.model.type.TypeMirror;
 
 abstract class TypeSystemMethodParser<E extends TemplateMethod> extends TemplateMethodParser<TypeSystemData, E> {
 
-    public TypeSystemMethodParser(ProcessorContext context, TypeSystemData typeSystem) {
+    TypeSystemMethodParser(ProcessorContext context, TypeSystemData typeSystem) {
         super(context, typeSystem);
     }
 

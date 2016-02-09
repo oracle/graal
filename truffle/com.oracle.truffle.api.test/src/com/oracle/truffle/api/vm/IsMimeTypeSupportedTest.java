@@ -20,17 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl.test.interop;
+package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.dsl.test.ExpectError;
-import com.oracle.truffle.api.interop.AcceptMessage;
+import static org.junit.Assert.assertEquals;
 
-@AcceptMessage(value = "READ", receiverType = ValidTruffleObject.class, language = TestTruffleLanguage.class)
-public final class ReadNode5 extends BaseReadNode5 {
+import java.io.IOException;
 
-    @SuppressWarnings({"static-method", "unused"})
-    @ExpectError({"The first argument must be a com.oracle.truffle.api.frame.VirtualFrame- but is java.lang.String"})
-    protected int access(String string, Object receiver, Object name) {
-        return 0;
+import org.junit.Test;
+
+import com.oracle.truffle.api.source.Source;
+
+public class IsMimeTypeSupportedTest {
+
+    private static final String MIME_TYPE = "application/x-test-mime-type-supported";
+
+    @Test
+    public void isMimeSupported() throws IOException {
+        PolyglotEngine vm = PolyglotEngine.newBuilder().build();
+        assertEquals(true, vm.eval(Source.fromText(MIME_TYPE, "supported").withMimeType(MIME_TYPE)).as(Boolean.class));
+        assertEquals(false, vm.eval(Source.fromText("application/x-this-language-does-not-exist", "unsupported").withMimeType(MIME_TYPE)).as(Boolean.class));
     }
+
 }

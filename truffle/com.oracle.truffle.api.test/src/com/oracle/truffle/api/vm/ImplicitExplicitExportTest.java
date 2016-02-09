@@ -48,6 +48,8 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -128,19 +130,24 @@ public class ImplicitExplicitExportTest {
         assertEquals("Global symbol is also 43", "43", vm.findGlobalSymbol("ahoj").execute().get());
     }
 
-    static final class Ctx {
+    static final class Ctx implements TruffleObject {
         static final Set<Ctx> disposed = new HashSet<>();
 
         final Map<String, String> explicit = new HashMap<>();
         final Map<String, String> implicit = new HashMap<>();
         final Env env;
 
-        public Ctx(Env env) {
+        Ctx(Env env) {
             this.env = env;
         }
 
         void dispose() {
             disposed.add(this);
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            throw new UnsupportedOperationException();
         }
     }
 
@@ -180,7 +187,7 @@ public class ImplicitExplicitExportTest {
 
         @Override
         protected Object getLanguageGlobal(Ctx context) {
-            return null;
+            return context;
         }
 
         @Override
@@ -259,14 +266,25 @@ public class ImplicitExplicitExportTest {
     }
 
     public static final String L1 = "application/x-test-import-export-1";
+    public static final String L1_ALT = "application/alt-test-import-export-1";
     static final String L2 = "application/x-test-import-export-2";
     static final String L3 = "application/x-test-import-export-3";
 
-    @TruffleLanguage.Registration(mimeType = L1, name = "ImportExport1", version = "0")
+    @TruffleLanguage.Registration(mimeType = {L1, L1_ALT}, name = "ImportExport1", version = "0")
     public static final class ExportImportLanguage1 extends AbstractExportImportLanguage {
         public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage1();
 
         public ExportImportLanguage1() {
+        }
+
+        @SuppressWarnings("unused")
+        // BEGIN: config.read
+        @Override
+        protected Ctx createContext(Env env) {
+            String[] args = (String[]) env.getConfig().get("CMD_ARGS");
+            // FINISH: config.read
+
+            return super.createContext(env);
         }
 
         @Override

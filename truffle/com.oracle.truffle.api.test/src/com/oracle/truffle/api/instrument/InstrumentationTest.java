@@ -205,7 +205,7 @@ public class InstrumentationTest {
         public Instrumenter instrumenter;
         private ProbeInstrument instrument;
 
-        public TestSimpleInstrumentCounter(Instrumenter instrumenter) {
+        TestSimpleInstrumentCounter(Instrumenter instrumenter) {
             this.instrumenter = instrumenter;
         }
 
@@ -257,7 +257,7 @@ public class InstrumentationTest {
         public final Instrumenter instrumenter;
         public ProbeInstrument instrument;
 
-        public TestStandardInstrumentCounter(Instrumenter instrumenter) {
+        TestStandardInstrumentCounter(Instrumenter instrumenter) {
             this.instrumenter = instrumenter;
         }
 
@@ -275,19 +275,19 @@ public class InstrumentationTest {
         public void attach(Probe probe) {
             instrument = instrumenter.attach(probe, new StandardInstrumentListener() {
 
-                public void onEnter(Probe p, Node node, VirtualFrame vFrame) {
+                public void onEnter(Probe p, Node node, VirtualFrame frame) {
                     enterCount++;
                 }
 
-                public void onReturnVoid(Probe p, Node node, VirtualFrame vFrame) {
+                public void onReturnVoid(Probe p, Node node, VirtualFrame frame) {
                     leaveCount++;
                 }
 
-                public void onReturnValue(Probe p, Node node, VirtualFrame vFrame, Object result) {
+                public void onReturnValue(Probe p, Node node, VirtualFrame frame, Object result) {
                     leaveCount++;
                 }
 
-                public void onReturnExceptional(Probe p, Node node, VirtualFrame vFrame, Throwable exception) {
+                public void onReturnExceptional(Probe p, Node node, VirtualFrame frame, Throwable exception) {
                     leaveCount++;
                 }
             }, "Instrumentation Test Counter");
@@ -354,7 +354,7 @@ public class InstrumentationTest {
         public int counter = 0;
 
         @Override
-        public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
+        public void onEnter(Probe probe, Node node, VirtualFrame frame) {
             counter++;
         }
     }

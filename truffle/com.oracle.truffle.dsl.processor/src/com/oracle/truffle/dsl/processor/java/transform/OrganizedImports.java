@@ -303,7 +303,7 @@ public final class OrganizedImports {
 
             private final Element enclosingElement;
 
-            public AnnotationValueReferenceVisitor(Element enclosedElement) {
+            AnnotationValueReferenceVisitor(Element enclosedElement) {
                 this.enclosingElement = enclosedElement;
             }
 

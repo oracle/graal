@@ -31,7 +31,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 public final class ReadNode2 extends BaseReadNode2 {
 
     @SuppressWarnings({"static-method", "unused"})
-    protected int access(VirtualFrame vf, Object receiver, Object name) {
+    protected int access(VirtualFrame frame, Object receiver, Object name) {
         return 0;
     }
 }

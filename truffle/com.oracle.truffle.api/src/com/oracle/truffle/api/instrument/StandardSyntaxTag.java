@@ -75,7 +75,7 @@ public enum StandardSyntaxTag implements SyntaxTag {
     private final String name;
     private final String description;
 
-    private StandardSyntaxTag(String name, String description) {
+    StandardSyntaxTag(String name, String description) {
         this.name = name;
         this.description = description;
     }

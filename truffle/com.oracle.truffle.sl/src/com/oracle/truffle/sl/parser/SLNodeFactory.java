@@ -111,7 +111,7 @@ public class SLNodeFactory {
         protected final LexicalScope outer;
         protected final Map<String, FrameSlot> locals;
 
-        public LexicalScope(LexicalScope outer) {
+        LexicalScope(LexicalScope outer) {
             this.outer = outer;
             this.locals = new HashMap<>();
             if (outer != null) {
