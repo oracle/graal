@@ -1,7 +1,7 @@
 *.pyc
 *.orig
-/mx.graal/env
-/mx.graal/eclipse-launches/
+/mx.graal-core/env
+/mx.graal-core/eclipse-launches/
 /workingsets.xml
 /.idea
 /mxbuild

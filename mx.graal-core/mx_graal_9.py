@@ -37,7 +37,7 @@ from mx_unittest import unittest
 import mx_gate
 import mx_unittest
 
-_suite = mx.suite('graal')
+_suite = mx.suite('graal-core')
 
 _jdk = mx.get_jdk(tag='default')
 assert _jdk.javaCompliance >= "1.9"
@@ -260,7 +260,7 @@ graal_bootstrap_tests = [
 ]
 
 def _graal_gate_runner(args, tasks):
-    compiler_gate_runner(['graal', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 mx_gate.add_gate_argument('--extra-vm-argument', action='append', help='add extra vm argument to gate tasks if applicable (multiple occurrences allowed)')
