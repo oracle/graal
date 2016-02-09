@@ -29,7 +29,7 @@ import itertools
 import json
 
 import mx
-import mx_graal
+import mx_graal_core
 
 def _run_benchmark(args, availableBenchmarks, runBenchmark):
 
@@ -70,7 +70,7 @@ def deoptalot(args):
         del args[0]
 
     for _ in range(count):
-        if not mx_graal.run_vm(['-XX:-TieredCompilation', '-XX:+DeoptimizeALot', '-XX:+VerifyOops'] + args + ['-version']) == 0:
+        if not mx_graal_core.run_vm(['-XX:-TieredCompilation', '-XX:+DeoptimizeALot', '-XX:+VerifyOops'] + args + ['-version']) == 0:
             mx.abort("Failed")
 
 def longtests(args):
@@ -83,7 +83,7 @@ def dacapo(args):
     """run one or more DaCapo benchmarks"""
 
     def launcher(bm, harnessArgs, extraVmOpts):
-        return sanitycheck.getDacapo(bm, harnessArgs).test(mx_graal.get_vm(), extraVmOpts=extraVmOpts)
+        return sanitycheck.getDacapo(bm, harnessArgs).test(mx_graal_core.get_vm(), extraVmOpts=extraVmOpts)
 
     _run_benchmark(args, sanitycheck.dacapoSanityWarmup.keys(), launcher)
 
@@ -91,7 +91,7 @@ def scaladacapo(args):
     """run one or more Scala DaCapo benchmarks"""
 
     def launcher(bm, harnessArgs, extraVmOpts):
-        return sanitycheck.getScalaDacapo(bm, harnessArgs).test(mx_graal.get_vm(), extraVmOpts=extraVmOpts)
+        return sanitycheck.getScalaDacapo(bm, harnessArgs).test(mx_graal_core.get_vm(), extraVmOpts=extraVmOpts)
 
     _run_benchmark(args, sanitycheck.dacapoScalaSanityWarmup.keys(), launcher)
 
@@ -123,7 +123,7 @@ def bench(args):
             del args[index]
         else:
             mx.abort('-resultfilecsv must be followed by a file name')
-    vm = mx_graal.get_vm()
+    vm = mx_graal_core.get_vm()
     if len(args) is 0:
         args = ['all']
 
@@ -202,7 +202,7 @@ def specjvm2008(args):
     """run one or more SPECjvm2008 benchmarks"""
 
     def launcher(bm, harnessArgs, extraVmOpts):
-        return sanitycheck.getSPECjvm2008(harnessArgs + [bm]).bench(mx_graal.get_vm(), extraVmOpts=extraVmOpts)
+        return sanitycheck.getSPECjvm2008(harnessArgs + [bm]).bench(mx_graal_core.get_vm(), extraVmOpts=extraVmOpts)
 
     availableBenchmarks = set(sanitycheck.specjvm2008Names)
     if "all" not in args:
@@ -221,7 +221,7 @@ def specjbb2013(args):
 
     def launcher(bm, harnessArgs, extraVmOpts):
         assert bm is None
-        return sanitycheck.getSPECjbb2013(harnessArgs).bench(mx_graal.get_vm(), extraVmOpts=extraVmOpts)
+        return sanitycheck.getSPECjbb2013(harnessArgs).bench(mx_graal_core.get_vm(), extraVmOpts=extraVmOpts)
 
     _run_benchmark(args, None, launcher)
 
@@ -230,7 +230,7 @@ def specjbb2015(args):
 
     def launcher(bm, harnessArgs, extraVmOpts):
         assert bm is None
-        return sanitycheck.getSPECjbb2015(harnessArgs).bench(mx_graal.get_vm(), extraVmOpts=extraVmOpts)
+        return sanitycheck.getSPECjbb2015(harnessArgs).bench(mx_graal_core.get_vm(), extraVmOpts=extraVmOpts)
 
     _run_benchmark(args, None, launcher)
 
@@ -239,11 +239,11 @@ def specjbb2005(args):
 
     def launcher(bm, harnessArgs, extraVmOpts):
         assert bm is None
-        return sanitycheck.getSPECjbb2005(harnessArgs).bench(mx_graal.get_vm(), extraVmOpts=extraVmOpts)
+        return sanitycheck.getSPECjbb2005(harnessArgs).bench(mx_graal_core.get_vm(), extraVmOpts=extraVmOpts)
 
     _run_benchmark(args, None, launcher)
 
-mx.update_commands(mx.suite('graal'), {
+mx.update_commands(mx.suite('graal-core'), {
     'dacapo': [dacapo, '[VM options] benchmarks...|"all" [DaCapo options]'],
     'scaladacapo': [scaladacapo, '[VM options] benchmarks...|"all" [Scala DaCapo options]'],
     'specjvm2008': [specjvm2008, '[VM options] benchmarks...|"all" [SPECjvm2008 options]'],

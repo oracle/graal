@@ -32,7 +32,7 @@ def suites(l):
 
 suite = {
   "mxversion" : "5.6.10",
-  "name" : "graal",
+  "name" : "graal-core",
 
   "imports" : {
     "suites": suites([

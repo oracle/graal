@@ -24,7 +24,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 from outputparser import OutputParser, ValuesMatcher
-import re, mx, mx_graal, os, sys, StringIO, subprocess
+import re, mx, mx_graal_core, os, sys, StringIO, subprocess
 from os.path import isfile, join, exists
 
 gc = 'UseSerialGC'
@@ -299,7 +299,7 @@ def getCTW(vm, mode):
     if vm == 'jvmci':
         args += ['-XX:+BootstrapGraal']
     if mode >= CTWMode.NoInline:
-        if not mx_graal.isJVMCIEnabled(vm):
+        if not mx_graal_core.isJVMCIEnabled(vm):
             args.append('-XX:-Inline')
         else:
             args.append('-G:CompileTheWordConfig=-Inline')
@@ -353,7 +353,7 @@ class Test:
             parser.addMatcher(ValuesMatcher(failureRE, {'failed' : '1'}))
 
         tee = Tee()
-        retcode = mx_graal.run_vm(self.vmOpts + _noneAsEmptyList(extraVmOpts) + self.cmd, vm, nonZeroIsFatal=False, out=tee.eat, err=subprocess.STDOUT, cwd=cwd, vmbuild=vmbuild)
+        retcode = mx_graal_core.run_vm(self.vmOpts + _noneAsEmptyList(extraVmOpts) + self.cmd, vm, nonZeroIsFatal=False, out=tee.eat, err=subprocess.STDOUT, cwd=cwd, vmbuild=vmbuild)
         output = tee.output.getvalue()
         valueMaps = parser.parse(output)
 
@@ -426,7 +426,7 @@ class Test:
         else:
             tee = Tee()
             mx.log(startDelim)
-            if mx_graal.run_vm(self.vmOpts + _noneAsEmptyList(extraVmOpts) + self.cmd, vm, nonZeroIsFatal=False, out=tee.eat, err=subprocess.STDOUT, cwd=cwd, vmbuild=vmbuild) != 0:
+            if mx_graal_core.run_vm(self.vmOpts + _noneAsEmptyList(extraVmOpts) + self.cmd, vm, nonZeroIsFatal=False, out=tee.eat, err=subprocess.STDOUT, cwd=cwd, vmbuild=vmbuild) != 0:
                 mx.abort("Benchmark failed (non-zero retcode)")
             mx.log(endDelim)
             output = tee.output.getvalue()
