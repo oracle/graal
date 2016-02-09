@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.aarch64;
 
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
@@ -383,7 +382,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         assert ((AArch64Kind) trueValue.getPlatformKind()).isInteger() && ((AArch64Kind) falseValue.getPlatformKind()).isInteger();
         ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(trueValue.getLIRKind(), AArch64ArithmeticOp.ANDS, true, left, right);
         Variable result = newVariable(trueValue.getLIRKind());
-        append(new AArch64ControlFlow.CondMoveOp(result, AArch64Assembler.ConditionFlag.EQ, asAllocatableValue(trueValue), asAllocatableValue(falseValue)));
+        append(new CondMoveOp(result, AArch64Assembler.ConditionFlag.EQ, load(trueValue), load(falseValue)));
         return result;
     }
 
