@@ -29,13 +29,26 @@
  */
 package com.oracle.truffle.llvm;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
 
-public abstract class LLVMIntrinsic extends RootNode {
+public interface LLVMIntrinsic {
 
-    public LLVMIntrinsic() {
-        super(LLVMLanguage.class, null, new FrameDescriptor());
+    @GenerateNodeFactory
+    abstract class LLVMAddressIntrinsic extends LLVMAddressNode implements LLVMIntrinsic {
+
+    }
+
+    @GenerateNodeFactory
+    abstract class LLVMDoubleIntrinsic extends LLVMDoubleNode implements LLVMIntrinsic {
+
+    }
+
+    @GenerateNodeFactory
+    abstract class LLVMVoidIntrinsic extends LLVMNode implements LLVMIntrinsic {
+
     }
 
 }
