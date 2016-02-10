@@ -46,6 +46,7 @@ import com.oracle.graal.api.replacements.MethodSubstitutionRegistry;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 
 /**
  * Manages a set of {@link InvocationPlugin}s.
@@ -132,6 +133,10 @@ public class InvocationPlugins {
         private final InvocationPlugins plugins;
         private final Type declaringType;
         private boolean allowOverwrite;
+
+        public Class<?> getReceiverType() {
+            return Receiver.class;
+        }
 
         /**
          * Creates an object for registering {@link InvocationPlugin}s for methods declared by a

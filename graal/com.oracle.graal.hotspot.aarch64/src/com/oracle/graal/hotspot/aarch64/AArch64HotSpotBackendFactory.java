@@ -117,7 +117,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
                 snippetReflection = createSnippetReflection(graalRuntime, constantReflection, wordTypes);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
-                replacements = createReplacements(config, p, snippetReflection);
+                replacements = createReplacements(p, snippetReflection);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
                 plugins = createGraphBuilderPlugins(config, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, stampProvider);
@@ -149,8 +149,8 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotRegisters(AArch64HotSpotRegisterConfig.threadRegister, AArch64HotSpotRegisterConfig.heapBaseRegister, sp);
     }
 
-    protected HotSpotReplacementsImpl createReplacements(HotSpotVMConfig config, Providers p, SnippetReflectionProvider snippetReflection) {
-        return new HotSpotReplacementsImpl(p, snippetReflection, config, p.getCodeCache().getTarget());
+    protected HotSpotReplacementsImpl createReplacements(Providers p, SnippetReflectionProvider snippetReflection) {
+        return new HotSpotReplacementsImpl(p, snippetReflection, p.getCodeCache().getTarget());
     }
 
     protected HotSpotHostForeignCallsProvider createForeignCalls(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess,

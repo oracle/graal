@@ -31,35 +31,19 @@ import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 import static java.lang.String.format;
-import static jdk.vm.ci.meta.MetaUtil.toInternalName;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-import sun.misc.Launcher;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
@@ -182,132 +166,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
     }
 
-    /**
-     * Encapsulates method and macro substitutions for a single class.
-     */
-    protected class ClassReplacements {
-        public final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions = CollectionsFactory.newMap();
-
-        public ClassReplacements(Class<?>[] substitutionClasses, AtomicReference<ClassReplacements> ref) {
-            for (Class<?> substitutionClass : substitutionClasses) {
-                ClassSubstitution classSubstitution = substitutionClass.getAnnotation(ClassSubstitution.class);
-                assert !Snippets.class.isAssignableFrom(substitutionClass);
-                for (Method substituteMethod : substitutionClass.getDeclaredMethods()) {
-                    if (ref.get() != null) {
-                        // Bail if another thread beat us creating the substitutions
-                        return;
-                    }
-                    MethodSubstitution methodSubstitution = substituteMethod.getAnnotation(MethodSubstitution.class);
-                    if (methodSubstitution == null) {
-                        continue;
-                    }
-
-                    int modifiers = substituteMethod.getModifiers();
-                    if (!Modifier.isStatic(modifiers)) {
-                        throw new JVMCIError("Substitution methods must be static: " + substituteMethod);
-                    }
-
-                    if (methodSubstitution != null) {
-
-                        if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                            throw new JVMCIError("Substitution method must not be abstract or native: " + substituteMethod);
-                        }
-                        String originalName = originalName(substituteMethod, methodSubstitution.value());
-                        JavaSignature originalSignature = originalSignature(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
-                        Executable[] originalMethods = originalMethods(classSubstitution, classSubstitution.optional(), originalName, originalSignature);
-                        if (originalMethods != null) {
-                            for (Executable originalMethod : originalMethods) {
-                                if (originalMethod != null) {
-                                    registerMethodSubstitution(this, originalMethod, substituteMethod);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private JavaSignature originalSignature(Method substituteMethod, String methodSubstitution, boolean isStatic) {
-            Class<?>[] parameters;
-            Class<?> returnType;
-            if (methodSubstitution.isEmpty()) {
-                parameters = substituteMethod.getParameterTypes();
-                if (!isStatic) {
-                    assert parameters.length > 0 : "must be a static method with the 'this' object as its first parameter";
-                    parameters = Arrays.copyOfRange(parameters, 1, parameters.length);
-                }
-                returnType = substituteMethod.getReturnType();
-            } else {
-                Signature signature = providers.getMetaAccess().parseMethodDescriptor(methodSubstitution);
-                parameters = new Class<?>[signature.getParameterCount(false)];
-                for (int i = 0; i < parameters.length; i++) {
-                    parameters[i] = resolveClass(signature.getParameterType(i, null));
-                }
-                returnType = resolveClass(signature.getReturnType(null));
-            }
-            return new JavaSignature(returnType, parameters);
-        }
-
-        private Executable[] originalMethods(ClassSubstitution classSubstitution, boolean optional, String name, JavaSignature signature) {
-            Class<?> originalClass = classSubstitution.value();
-            if (originalClass == ClassSubstitution.class) {
-                ArrayList<Executable> result = new ArrayList<>();
-                for (String className : classSubstitution.className()) {
-                    originalClass = resolveClass(className, classSubstitution.optional());
-                    if (originalClass != null) {
-                        result.add(lookupOriginalMethod(originalClass, name, signature, optional));
-                    }
-                }
-                if (result.size() == 0) {
-                    // optional class was not found
-                    return null;
-                }
-                return result.toArray(new Executable[result.size()]);
-            }
-            Executable original = lookupOriginalMethod(originalClass, name, signature, optional);
-            if (original != null) {
-                return new Executable[]{original};
-            }
-            return null;
-        }
-
-        private Executable lookupOriginalMethod(Class<?> originalClass, String name, JavaSignature signature, boolean optional) throws JVMCIError {
-            try {
-                if (name.equals("<init>")) {
-                    assert signature.returnType.equals(void.class) : signature;
-                    Constructor<?> original = originalClass.getDeclaredConstructor(signature.parameters);
-                    return original;
-                } else {
-                    Method original = originalClass.getDeclaredMethod(name, signature.parameters);
-                    if (!original.getReturnType().equals(signature.returnType)) {
-                        throw new NoSuchMethodException(originalClass.getName() + "." + name + signature);
-                    }
-                    return original;
-                }
-            } catch (NoSuchMethodException | SecurityException e) {
-                if (optional) {
-                    return null;
-                }
-                throw new JVMCIError(e);
-            }
-        }
-    }
-
-    /**
-     * Per-class replacements. The entries in these maps are all fully initialized during
-     * single-threaded compiler startup and so do not need to be concurrent.
-     */
-    private final Map<String, AtomicReference<ClassReplacements>> classReplacements;
-    private final Map<String, Class<?>[]> internalNameToSubstitutionClasses;
-
     // This map is key'ed by a class name instead of a Class object so that
     // it is stable across VM executions (in support of replay compilation).
     private final Map<String, SnippetTemplateCache> snippetTemplateCache;
 
     public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
         this.providers = providers.copyWith(this);
-        this.classReplacements = CollectionsFactory.newMap();
-        this.internalNameToSubstitutionClasses = CollectionsFactory.newMap();
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.graphs = new ConcurrentHashMap<>();
@@ -315,23 +179,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     private static final DebugTimer SnippetPreparationTime = Debug.timer("SnippetPreparationTime");
-
-    /**
-     * Gets the method and macro replacements for a given class. This method will parse the
-     * replacements in the substitution classes associated with {@code internalName} the first time
-     * this method is called for {@code internalName}.
-     */
-    protected ClassReplacements getClassReplacements(String internalName) {
-        Class<?>[] substitutionClasses = internalNameToSubstitutionClasses.get(internalName);
-        if (substitutionClasses != null) {
-            AtomicReference<ClassReplacements> crRef = classReplacements.get(internalName);
-            if (crRef.get() == null) {
-                crRef.compareAndSet(null, new ClassReplacements(substitutionClasses, crRef));
-            }
-            return crRef.get();
-        }
-        return null;
-    }
 
     public StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args) {
         return getSnippet(method, null, args);
@@ -364,29 +211,20 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod original, boolean fromBytecodeOnly, int invokeBci) {
+    public StructuredGraph getSubstitution(ResolvedJavaMethod original, int invokeBci) {
         ResolvedJavaMethod substitute = null;
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
-        if (!fromBytecodeOnly) {
-            if (plugin != null) {
-                if (!plugin.inlineOnly() || invokeBci >= 0) {
-                    if (plugin instanceof MethodSubstitutionPlugin) {
-                        MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
-                        substitute = msPlugin.getSubstitute(providers.getMetaAccess());
-                    } else {
-                        StructuredGraph graph = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), original, invokeBci).buildGraph(plugin);
-                        if (graph != null) {
-                            return graph;
-                        }
+        if (plugin != null) {
+            if (!plugin.inlineOnly() || invokeBci >= 0) {
+                if (plugin instanceof MethodSubstitutionPlugin) {
+                    MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
+                    substitute = msPlugin.getSubstitute(providers.getMetaAccess());
+                } else {
+                    StructuredGraph graph = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), original, invokeBci).buildGraph(plugin);
+                    if (graph != null) {
+                        return graph;
                     }
                 }
-            }
-        }
-        if (substitute == null) {
-            ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
-            substitute = cr == null ? null : cr.methodSubstitutions.get(original);
-            if (substitute != null) {
-                new Exception(substitute.toString()).printStackTrace();
             }
         }
         if (substitute == null) {
@@ -402,58 +240,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         assert graph.isFrozen();
         return graph;
 
-    }
-
-    private static boolean checkSubstitutionInternalName(Class<?> substitutions, String internalName) {
-        ClassSubstitution cs = substitutions.getAnnotation(ClassSubstitution.class);
-        assert cs != null : substitutions + " must be annotated by " + ClassSubstitution.class.getSimpleName();
-        if (cs.value() == ClassSubstitution.class) {
-            for (String className : cs.className()) {
-                if (toInternalName(className).equals(internalName)) {
-                    return true;
-                }
-            }
-            assert false : internalName + " not found in " + Arrays.toString(cs.className());
-        } else {
-            String originalInternalName = toInternalName(cs.value().getName());
-            assert originalInternalName.equals(internalName) : originalInternalName + " != " + internalName;
-        }
-        return true;
-    }
-
-    public void registerSubstitutions(Type original, Class<?> substitutionClass) {
-        String internalName = toInternalName(original.getTypeName());
-        assert checkSubstitutionInternalName(substitutionClass, internalName);
-        Class<?>[] classes = internalNameToSubstitutionClasses.get(internalName);
-        if (classes == null) {
-            classes = new Class<?>[]{substitutionClass};
-        } else {
-            assert !Arrays.asList(classes).contains(substitutionClass);
-            classes = Arrays.copyOf(classes, classes.length + 1);
-            classes[classes.length - 1] = substitutionClass;
-        }
-        internalNameToSubstitutionClasses.put(internalName, classes);
-        AtomicReference<ClassReplacements> existing = classReplacements.put(internalName, new AtomicReference<>());
-        assert existing == null || existing.get() == null;
-    }
-
-    /**
-     * Registers a method substitution.
-     *
-     * @param originalMember a method or constructor being substituted
-     * @param substituteMethod the substitute method
-     * @return the original method
-     */
-    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Executable originalMember, Method substituteMethod) {
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        ResolvedJavaMethod substitute = metaAccess.lookupJavaMethod(substituteMethod);
-        ResolvedJavaMethod original = metaAccess.lookupJavaMethod(originalMember);
-        if (Debug.isLogEnabled()) {
-            Debug.log("substitution: %s --> %s", original.format("%H.%n(%p) %r"), substitute.format("%H.%n(%p) %r"));
-        }
-
-        cr.methodSubstitutions.put(original, substitute);
-        return original;
     }
 
     /**
@@ -616,79 +402,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
     }
 
-    private static String originalName(Method substituteMethod, String methodSubstitution) {
-        if (methodSubstitution.isEmpty()) {
-            return substituteMethod.getName();
-        } else {
-            return methodSubstitution;
-        }
-    }
-
-    /**
-     * Resolves a name to a class.
-     *
-     * @param className the name of the class to resolve
-     * @param optional if true, resolution failure returns null
-     * @return the resolved class or null if resolution fails and {@code optional} is true
-     */
-    public static Class<?> resolveClass(String className, boolean optional) {
-        try {
-            // Need to use launcher class path to handle classes
-            // that are not on the boot class path
-            ClassLoader cl = Launcher.getLauncher().getClassLoader();
-            return Class.forName(className, false, cl);
-        } catch (ClassNotFoundException e) {
-            if (optional) {
-                return null;
-            }
-            throw new JVMCIError("Could not resolve type " + className);
-        }
-    }
-
-    private static Class<?> resolveClass(JavaType type) {
-        JavaType base = type;
-        int dimensions = 0;
-        while (base.getComponentType() != null) {
-            base = base.getComponentType();
-            dimensions++;
-        }
-
-        Class<?> baseClass = base.getJavaKind() != JavaKind.Object ? base.getJavaKind().toJavaClass() : resolveClass(base.toJavaName(), false);
-        return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
-    }
-
-    static class JavaSignature {
-        final Class<?> returnType;
-        final Class<?>[] parameters;
-
-        JavaSignature(Class<?> returnType, Class<?>[] parameters) {
-            this.parameters = parameters;
-            this.returnType = returnType;
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder("(");
-            for (int i = 0; i < parameters.length; i++) {
-                if (i != 0) {
-                    sb.append(", ");
-                }
-                sb.append(parameters[i].getName());
-            }
-            return sb.append(") ").append(returnType.getName()).toString();
-        }
-    }
-
-    @Override
-    public Collection<ResolvedJavaMethod> getAllReplacements() {
-        HashSet<ResolvedJavaMethod> result = new HashSet<>();
-        for (String internalName : classReplacements.keySet()) {
-            ClassReplacements cr = getClassReplacements(internalName);
-            result.addAll(cr.methodSubstitutions.keySet());
-        }
-        return result;
-    }
-
     public boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int callerBci) {
         if (!fromBytecodeOnly) {
             InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
@@ -707,15 +420,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
             return msPlugin.getSubstitute(providers.getMetaAccess());
         }
-        ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
-        if (cr == null || cr.methodSubstitutions.get(original) == null) {
-            return null;
-        }
-        ResolvedJavaMethod substitute = cr.methodSubstitutions.get(original);
-        if (substitute != null) {
-            new Exception(substitute.toString()).printStackTrace();
-        }
-        return substitute;
+        return null;
     }
 
     @Override

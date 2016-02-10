@@ -22,18 +22,12 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
-
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.hotspot.word.HotSpotOperation;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.IntegerSubstitutions;
-import com.oracle.graal.replacements.LongSubstitutions;
 import com.oracle.graal.replacements.ReplacementsImpl;
 
 /**
@@ -42,32 +36,12 @@ import com.oracle.graal.replacements.ReplacementsImpl;
  */
 public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
-    private final HotSpotVMConfig config;
-
-    public HotSpotReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, HotSpotVMConfig config, TargetDescription target) {
+    public HotSpotReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
         super(providers, snippetReflection, target);
-        this.config = config;
     }
 
     @Override
     protected boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
         return method.getAnnotation(HotSpotOperation.class) != null || super.hasGenericInvocationPluginAnnotation(method);
-    }
-
-    @Override
-    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Executable originalMethod, Method substituteMethod) {
-        final Class<?> substituteClass = substituteMethod.getDeclaringClass();
-        if (substituteClass == IntegerSubstitutions.class || substituteClass == LongSubstitutions.class) {
-            if (substituteMethod.getName().equals("numberOfLeadingZeros")) {
-                if (config.useCountLeadingZerosInstruction) {
-                    return null;
-                }
-            } else if (substituteMethod.getName().equals("numberOfTrailingZeros")) {
-                if (config.useCountTrailingZerosInstruction) {
-                    return null;
-                }
-            }
-        }
-        return super.registerMethodSubstitution(cr, originalMethod, substituteMethod);
     }
 }

@@ -46,7 +46,10 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.memory.MemoryNode;
 
 public class SubstitutionsTest extends GraalCompilerTest {
@@ -111,13 +114,12 @@ public class SubstitutionsTest extends GraalCompilerTest {
         }
     }
 
-    private static boolean substitutionsInstalled;
-
-    public SubstitutionsTest() {
-        if (!substitutionsInstalled) {
-            getProviders().getReplacements().registerSubstitutions(TestMethod.class, TestMethodSubstitution.class);
-            substitutionsInstalled = true;
-        }
+    @Override
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
+        Registration r = new Registration(invocationPlugins, TestMethod.class);
+        r.registerMethodSubstitution(TestMethodSubstitution.class, "test");
+        return super.editGraphBuilderConfiguration(conf);
     }
 
     public static int callTest() {
