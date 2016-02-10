@@ -37,6 +37,6 @@ install:
   - export ECLIPSE_EXE=$TRAVIS_BUILD_DIR/../eclipse/eclipse
   - export MX_BINARY_SUITES=jvmci,truffle
 script:
-  - mx --strict-compliance gate --strict-mode --simple
+  - mx --strict-compliance gate --strict-mode --tags build,style,test
 after_failure:
   - cat hs_err*

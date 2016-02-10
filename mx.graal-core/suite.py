@@ -31,7 +31,7 @@ def suites(l):
     return [s for s in l if not JDK9 or not s.get('name') == "jvmci"]
 
 suite = {
-  "mxversion" : "5.6.16",
+  "mxversion" : "5.7.0",
   "name" : "graal-core",
 
   "imports" : {
