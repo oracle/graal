@@ -90,7 +90,7 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
     private static class SLForeignCallerRootNode extends RootNode {
         @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
 
-        public SLForeignCallerRootNode() {
+        SLForeignCallerRootNode() {
             super(SLLanguage.class, null, null);
         }
 
@@ -108,7 +108,7 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
     }
 
     private static class SLForeignNullCheckNode extends RootNode {
-        public SLForeignNullCheckNode() {
+        SLForeignNullCheckNode() {
             super(SLLanguage.class, null, null);
         }
 
@@ -120,7 +120,7 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
     }
 
     private static class SLForeignExecutableCheckNode extends RootNode {
-        public SLForeignExecutableCheckNode() {
+        SLForeignExecutableCheckNode() {
             super(SLLanguage.class, null, null);
         }
 

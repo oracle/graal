@@ -52,14 +52,14 @@ public interface StandardInstrumentListener {
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void onEnter(Probe probe, Node node, VirtualFrame vFrame);
+    void onEnter(Probe probe, Node node, VirtualFrame frame);
 
     /**
      * Receive notification that an AST Node's {@code void}-valued execute method has just returned.
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame);
+    void onReturnVoid(Probe probe, Node node, VirtualFrame frame);
 
     /**
      * Receive notification that an AST Node's execute method has just returned a value (boxed if
@@ -67,12 +67,12 @@ public interface StandardInstrumentListener {
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result);
+    void onReturnValue(Probe probe, Node node, VirtualFrame frame, Object result);
 
     /**
      * Receive notification that an AST Node's execute method has just thrown an exception.
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
-    void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable exception);
+    void onReturnExceptional(Probe probe, Node node, VirtualFrame frame, Throwable exception);
 }

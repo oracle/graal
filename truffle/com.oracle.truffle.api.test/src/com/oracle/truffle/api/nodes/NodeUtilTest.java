@@ -73,7 +73,7 @@ public class NodeUtilTest {
 
         private int visited;
 
-        public TestNode() {
+        TestNode() {
         }
 
     }
@@ -84,7 +84,7 @@ public class NodeUtilTest {
 
         private int visited;
 
-        public TestRootNode() {
+        TestRootNode() {
             super(TestingLanguage.class, null, null);
         }
 

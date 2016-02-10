@@ -115,7 +115,7 @@ public final class NodeExecCounter extends Instrumenter.Tool {
      */
     private final StandardInstrumentListener instrumentListener = new DefaultStandardInstrumentListener() {
         @Override
-        public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
+        public void onEnter(Probe probe, Node node, VirtualFrame frame) {
             if (isEnabled()) {
                 final Class<?> nodeClass = node.getClass();
                 /*

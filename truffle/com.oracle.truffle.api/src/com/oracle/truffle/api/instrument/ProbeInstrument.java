@@ -196,34 +196,34 @@ public abstract class ProbeInstrument extends Instrument {
             }
 
             @Override
-            public void enter(Node node, VirtualFrame vFrame) {
+            public void enter(Node node, VirtualFrame frame) {
                 SimpleInstrument.this.simpleListener.onEnter(SimpleInstrument.this.probe);
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.enter(node, vFrame);
+                    nextInstrumentNode.enter(node, frame);
                 }
             }
 
             @Override
-            public void returnVoid(Node node, VirtualFrame vFrame) {
+            public void returnVoid(Node node, VirtualFrame frame) {
                 SimpleInstrument.this.simpleListener.onReturnVoid(SimpleInstrument.this.probe);
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnVoid(node, vFrame);
+                    nextInstrumentNode.returnVoid(node, frame);
                 }
             }
 
             @Override
-            public void returnValue(Node node, VirtualFrame vFrame, Object result) {
+            public void returnValue(Node node, VirtualFrame frame, Object result) {
                 SimpleInstrument.this.simpleListener.onReturnValue(SimpleInstrument.this.probe, result);
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnValue(node, vFrame, result);
+                    nextInstrumentNode.returnValue(node, frame, result);
                 }
             }
 
             @Override
-            public void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception) {
+            public void returnExceptional(Node node, VirtualFrame frame, Throwable exception) {
                 SimpleInstrument.this.simpleListener.onReturnExceptional(SimpleInstrument.this.probe, exception);
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnExceptional(node, vFrame, exception);
+                    nextInstrumentNode.returnExceptional(node, frame, exception);
                 }
             }
 
@@ -288,34 +288,34 @@ public abstract class ProbeInstrument extends Instrument {
             }
 
             @Override
-            public void enter(Node node, VirtualFrame vFrame) {
-                standardListener.onEnter(StandardInstrument.this.probe, node, vFrame);
+            public void enter(Node node, VirtualFrame frame) {
+                standardListener.onEnter(StandardInstrument.this.probe, node, frame);
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.enter(node, vFrame);
+                    nextInstrumentNode.enter(node, frame);
                 }
             }
 
             @Override
-            public void returnVoid(Node node, VirtualFrame vFrame) {
-                standardListener.onReturnVoid(StandardInstrument.this.probe, node, vFrame);
+            public void returnVoid(Node node, VirtualFrame frame) {
+                standardListener.onReturnVoid(StandardInstrument.this.probe, node, frame);
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnVoid(node, vFrame);
+                    nextInstrumentNode.returnVoid(node, frame);
                 }
             }
 
             @Override
-            public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-                standardListener.onReturnValue(StandardInstrument.this.probe, node, vFrame, result);
+            public void returnValue(Node node, VirtualFrame frame, Object result) {
+                standardListener.onReturnValue(StandardInstrument.this.probe, node, frame, result);
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnValue(node, vFrame, result);
+                    nextInstrumentNode.returnValue(node, frame, result);
                 }
             }
 
             @Override
-            public void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception) {
-                standardListener.onReturnExceptional(StandardInstrument.this.probe, node, vFrame, exception);
+            public void returnExceptional(Node node, VirtualFrame frame, Throwable exception) {
+                standardListener.onReturnExceptional(StandardInstrument.this.probe, node, frame, exception);
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnExceptional(node, vFrame, exception);
+                    nextInstrumentNode.returnExceptional(node, frame, exception);
                 }
             }
 
@@ -390,7 +390,7 @@ public abstract class ProbeInstrument extends Instrument {
             }
 
             @Override
-            public void enter(Node node, VirtualFrame vFrame) {
+            public void enter(Node node, VirtualFrame frame) {
                 if (callNode == null) {
                     try {
                         final CallTarget callTarget = Instrumenter.ACCESSOR.parse(languageClass, source, node, names);
@@ -402,45 +402,45 @@ public abstract class ProbeInstrument extends Instrument {
                         }
                     } catch (RuntimeException | IOException ex) {
                         if (evalListener != null) {
-                            evalListener.onFailure(node, vFrame, ex);
+                            evalListener.onFailure(node, frame, ex);
                         }
                     }
                 }
                 if (callNode != null) {
                     try {
-                        final Object result = callNode.call(vFrame, params);
+                        final Object result = callNode.call(frame, params);
                         if (evalListener != null) {
-                            evalListener.onExecution(node, vFrame, result);
+                            evalListener.onExecution(node, frame, result);
                         }
                     } catch (RuntimeException ex) {
                         if (evalListener != null) {
-                            evalListener.onFailure(node, vFrame, ex);
+                            evalListener.onFailure(node, frame, ex);
                         }
                     }
                 }
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.enter(node, vFrame);
+                    nextInstrumentNode.enter(node, frame);
                 }
             }
 
             @Override
-            public void returnVoid(Node node, VirtualFrame vFrame) {
+            public void returnVoid(Node node, VirtualFrame frame) {
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnVoid(node, vFrame);
+                    nextInstrumentNode.returnVoid(node, frame);
                 }
             }
 
             @Override
-            public void returnValue(Node node, VirtualFrame vFrame, Object result) {
+            public void returnValue(Node node, VirtualFrame frame, Object result) {
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnValue(node, vFrame, result);
+                    nextInstrumentNode.returnValue(node, frame, result);
                 }
             }
 
             @Override
-            public void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception) {
+            public void returnExceptional(Node node, VirtualFrame frame, Throwable exception) {
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnExceptional(node, vFrame, exception);
+                    nextInstrumentNode.returnExceptional(node, frame, exception);
                 }
             }
 
@@ -500,34 +500,34 @@ public abstract class ProbeInstrument extends Instrument {
             }
 
             @Override
-            public void enter(Node node, VirtualFrame vFrame) {
+            public void enter(Node node, VirtualFrame frame) {
                 if (this.isCompiled != CompilerDirectives.inCompiledCode()) {
                     this.isCompiled = CompilerDirectives.inCompiledCode();
                     TruffleOptInstrument.this.toolOptListener.notifyIsCompiled(this.isCompiled);
                 }
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.enter(node, vFrame);
+                    nextInstrumentNode.enter(node, frame);
                 }
             }
 
             @Override
-            public void returnVoid(Node node, VirtualFrame vFrame) {
+            public void returnVoid(Node node, VirtualFrame frame) {
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnVoid(node, vFrame);
+                    nextInstrumentNode.returnVoid(node, frame);
                 }
             }
 
             @Override
-            public void returnValue(Node node, VirtualFrame vFrame, Object result) {
+            public void returnValue(Node node, VirtualFrame frame, Object result) {
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnValue(node, vFrame, result);
+                    nextInstrumentNode.returnValue(node, frame, result);
                 }
             }
 
             @Override
-            public void returnExceptional(Node node, VirtualFrame vFrame, Throwable exception) {
+            public void returnExceptional(Node node, VirtualFrame frame, Throwable exception) {
                 if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnExceptional(node, vFrame, exception);
+                    nextInstrumentNode.returnExceptional(node, frame, exception);
                 }
             }
 

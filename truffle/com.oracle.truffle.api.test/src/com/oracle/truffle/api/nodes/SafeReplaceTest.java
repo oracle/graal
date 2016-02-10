@@ -83,7 +83,7 @@ public class SafeReplaceTest {
 
         private int executed;
 
-        public TestRootNode() {
+        TestRootNode() {
             super(TestingLanguage.class, null, null);
         }
 

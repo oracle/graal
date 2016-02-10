@@ -71,7 +71,7 @@ public class RootNodeTest {
 
     class TestRootNode extends RootNode {
 
-        public TestRootNode() {
+        TestRootNode() {
             super(TestingLanguage.class, null, null);
         }
 

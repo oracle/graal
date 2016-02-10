@@ -32,7 +32,7 @@ import java.lang.reflect.Array;
 
 class WriteFieldNode extends RootNode {
 
-    public WriteFieldNode() {
+    WriteFieldNode() {
         super(JavaInteropLanguage.class, null, null);
     }
 

@@ -62,7 +62,7 @@ public final class ProbeFailure {
 
         final String message;
 
-        private Reason(String message) {
+        Reason(String message) {
             this.message = message;
         }
 

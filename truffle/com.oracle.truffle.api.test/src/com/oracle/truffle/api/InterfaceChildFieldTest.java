@@ -96,7 +96,7 @@ public class InterfaceChildFieldTest {
 
         @Child private TestChildInterface child;
 
-        public TestRootNode(TestChildInterface child) {
+        TestRootNode(TestChildInterface child) {
             super(TestingLanguage.class, null, null);
             this.child = child;
         }
@@ -112,7 +112,7 @@ public class InterfaceChildFieldTest {
     }
 
     class TestLeafNode extends Node implements TestChildInterface {
-        public TestLeafNode() {
+        TestLeafNode() {
         }
 
         public int executeIntf() {
@@ -121,7 +121,7 @@ public class InterfaceChildFieldTest {
     }
 
     class TestLeaf2Node extends Node implements TestChildInterface {
-        public TestLeaf2Node() {
+        TestLeaf2Node() {
         }
 
         public int executeIntf() {
@@ -134,7 +134,7 @@ public class InterfaceChildFieldTest {
         @Child private TestChildInterface left;
         @Child private TestChildInterface right;
 
-        public TestChildNode(TestChildInterface left, TestChildInterface right) {
+        TestChildNode(TestChildInterface left, TestChildInterface right) {
             this.left = left;
             this.right = right;
         }
@@ -149,7 +149,7 @@ public class InterfaceChildFieldTest {
 
         @Children private final TestChildInterface[] children;
 
-        public TestChildrenNode(TestChildInterface[] children) {
+        TestChildrenNode(TestChildInterface[] children) {
             this.children = children;
         }
 

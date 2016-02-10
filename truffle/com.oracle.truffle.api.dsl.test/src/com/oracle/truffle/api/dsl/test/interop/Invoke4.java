@@ -30,7 +30,7 @@ public final class Invoke4 extends BaseInvoke4 {
 
     @SuppressWarnings({"static-method", "unused"})
     @ExpectError({"The first argument must be a com.oracle.truffle.api.frame.VirtualFrame- but is java.lang.String"})
-    protected int access(String vf, ValidTruffleObject receiver, Object name, Object[] args) {
+    protected int access(String string, ValidTruffleObject receiver, Object name, Object[] args) {
         return 0;
     }
 }

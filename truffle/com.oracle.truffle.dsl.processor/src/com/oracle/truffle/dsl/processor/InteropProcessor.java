@@ -718,7 +718,7 @@ public final class InteropProcessor extends AbstractProcessor {
 
         private final Map<Message, String> messageHandlers;
 
-        public FactoryGenerator(String packageName, String className, String receiverTypeClass, JavaFileObject factoryFile) {
+        FactoryGenerator(String packageName, String className, String receiverTypeClass, JavaFileObject factoryFile) {
             this.receiverTypeClass = receiverTypeClass;
             this.className = className;
             this.packageName = packageName;
