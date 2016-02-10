@@ -64,7 +64,6 @@ import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.api.replacements.SnippetTemplateCache;
-import com.oracle.graal.api.replacements.SubstitutionGuard;
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.debug.Debug;
@@ -83,12 +82,12 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.MethodSubstitutionPlugin;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.StampProvider;
@@ -193,7 +192,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             for (Class<?> substitutionClass : substitutionClasses) {
                 ClassSubstitution classSubstitution = substitutionClass.getAnnotation(ClassSubstitution.class);
                 assert !Snippets.class.isAssignableFrom(substitutionClass);
-                SubstitutionGuard defaultGuard = getGuard(classSubstitution.defaultGuard());
                 for (Method substituteMethod : substitutionClass.getDeclaredMethods()) {
                     if (ref.get() != null) {
                         // Bail if another thread beat us creating the substitutions
@@ -210,10 +208,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                     }
 
                     if (methodSubstitution != null) {
-                        SubstitutionGuard guard = getGuard(methodSubstitution.guard());
-                        if (guard == null) {
-                            guard = defaultGuard;
-                        }
 
                         if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
                             throw new JVMCIError("Substitution method must not be abstract or native: " + substituteMethod);
@@ -223,7 +217,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                         Executable[] originalMethods = originalMethods(classSubstitution, classSubstitution.optional(), originalName, originalSignature);
                         if (originalMethods != null) {
                             for (Executable originalMethod : originalMethods) {
-                                if (originalMethod != null && (guard == null || guard.execute())) {
+                                if (originalMethod != null) {
                                     registerMethodSubstitution(this, originalMethod, substituteMethod);
                                 }
                             }
@@ -372,8 +366,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     @Override
     public StructuredGraph getSubstitution(ResolvedJavaMethod original, boolean fromBytecodeOnly, int invokeBci) {
         ResolvedJavaMethod substitute = null;
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
         if (!fromBytecodeOnly) {
-            InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
             if (plugin != null) {
                 if (!plugin.inlineOnly() || invokeBci >= 0) {
                     if (plugin instanceof MethodSubstitutionPlugin) {
@@ -391,6 +385,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (substitute == null) {
             ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
             substitute = cr == null ? null : cr.methodSubstitutions.get(original);
+            if (substitute != null) {
+                new Exception(substitute.toString()).printStackTrace();
+            }
         }
         if (substitute == null) {
             return null;
@@ -405,36 +402,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         assert graph.isFrozen();
         return graph;
 
-    }
-
-    private SubstitutionGuard getGuard(Class<? extends SubstitutionGuard> guardClass) {
-        if (guardClass != SubstitutionGuard.class) {
-            Constructor<?>[] constructors = guardClass.getConstructors();
-            if (constructors.length != 1) {
-                throw new JVMCIError("Substitution guard " + guardClass.getSimpleName() + " must have a single public constructor");
-            }
-            Constructor<?> constructor = constructors[0];
-            Class<?>[] paramTypes = constructor.getParameterTypes();
-            // Check for supported constructor signatures
-            try {
-                Object[] args = new Object[constructor.getParameterCount()];
-                for (int i = 0; i < args.length; i++) {
-                    Object arg = snippetReflection.getSubstitutionGuardParameter(paramTypes[i]);
-                    if (arg != null) {
-                        args[i] = arg;
-                    } else if (paramTypes[i].isInstance(target.arch)) {
-                        args[i] = target.arch;
-                    } else {
-                        throw new JVMCIError("Unsupported type %s in substitution guard constructor: %s", paramTypes[i].getName(), constructor);
-                    }
-                }
-
-                return (SubstitutionGuard) constructor.newInstance(args);
-            } catch (Exception e) {
-                throw new JVMCIError(e);
-            }
-        }
-        return null;
     }
 
     private static boolean checkSubstitutionInternalName(Class<?> substitutions, String internalName) {
@@ -741,7 +708,14 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             return msPlugin.getSubstitute(providers.getMetaAccess());
         }
         ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
-        return cr == null ? null : cr.methodSubstitutions.get(original);
+        if (cr == null || cr.methodSubstitutions.get(original) == null) {
+            return null;
+        }
+        ResolvedJavaMethod substitute = cr.methodSubstitutions.get(original);
+        if (substitute != null) {
+            new Exception(substitute.toString()).printStackTrace();
+        }
+        return substitute;
     }
 
     @Override

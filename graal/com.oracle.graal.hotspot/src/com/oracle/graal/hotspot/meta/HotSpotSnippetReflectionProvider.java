@@ -78,17 +78,6 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         }
     }
 
-    public Object getSubstitutionGuardParameter(Class<?> type) {
-        if (type.isInstance(runtime)) {
-            return runtime;
-        }
-        HotSpotVMConfig config = config();
-        if (type.isInstance(config)) {
-            return config;
-        }
-        return null;
-    }
-
     // Lazily initialized
     private Class<?> wordTypesType;
     private Class<?> runtimeType;

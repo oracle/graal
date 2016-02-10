@@ -768,13 +768,6 @@ public class HotSpotReplacementsUtil {
         return config().instanceKlassStateFullyInitialized;
     }
 
-    public static final LocationIdentity INSTANCE_KLASS_CONSTANTS = NamedLocationIdentity.immutable("InstanceKlass::_constants");
-
-    @Fold
-    public static int instanceKlassConstantsOffset() {
-        return config().instanceKlassConstantsOffset;
-    }
-
     /**
      *
      * @param hub the hub of an InstanceKlass
@@ -820,26 +813,6 @@ public class HotSpotReplacementsUtil {
     }
 
     public static final LocationIdentity CLASS_MIRROR_LOCATION = NamedLocationIdentity.immutable("Klass::_java_mirror");
-
-    @Fold
-    public static int classMirrorOffset() {
-        return config().classMirrorOffset;
-    }
-
-    @Fold
-    public static int constantPoolSize() {
-        return config().constantPoolSize;
-    }
-
-    @Fold
-    public static int constantPoolHolderOffset() {
-        return config().constantPoolHolderOffset;
-    }
-
-    @Fold
-    public static int constantPoolLengthOffset() {
-        return config().constantPoolLengthOffset;
-    }
 
     public static final LocationIdentity HEAP_TOP_LOCATION = NamedLocationIdentity.mutable("HeapTop");
 

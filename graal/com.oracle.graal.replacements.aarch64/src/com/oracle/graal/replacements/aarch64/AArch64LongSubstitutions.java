@@ -22,23 +22,12 @@
  */
 package com.oracle.graal.replacements.aarch64;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.replacements.nodes.BitScanForwardNode;
-
 /**
  * Aarch64 ISA offers a count leading zeros instruction which can be used to implement
  * numberOfLeadingZeros more efficiently than using BitScanReverse.
  */
-@ClassSubstitution(Long.class)
 public class AArch64LongSubstitutions {
 
-    @MethodSubstitution
-    public static int numberOfTrailingZeros(long i) {
-        return BitScanForwardNode.scan(i);
-    }
-
-    @MethodSubstitution
     public static int bitCount(long value) {
         // Based on Warren, Hacker's Delight, slightly adapted to profit from Aarch64 add + shift
         // instruction.

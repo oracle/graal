@@ -30,8 +30,11 @@ import java.lang.annotation.Target;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * Denotes a substitute method. A substitute method can call the original/substituted method by
- * making a recursive call to itself.
+ * Denotes a method whose body is used by a compiler as the substitute (or intrinsification) of
+ * another method. The exact method used to do the substitution is compiler dependent by every
+ * compiler should require substitute methods to be annotated with {@link MethodSubstitution}. In
+ * addition, a compiler is recommended to implement {@link MethodSubstitutionRegistry} to advertise
+ * the mechanism by which it supports registration of method substitutes.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
@@ -64,10 +67,4 @@ public @interface MethodSubstitution {
      * omitted if the original method cannot be found.
      */
     boolean optional() default false;
-
-    /**
-     * Determines if the substitution is globally enabled.
-     */
-
-    Class<? extends SubstitutionGuard> guard() default SubstitutionGuard.class;
 }

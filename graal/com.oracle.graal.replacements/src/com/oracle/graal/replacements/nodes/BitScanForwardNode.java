@@ -74,15 +74,20 @@ public final class BitScanForwardNode extends UnaryNode implements ArithmeticLIR
         return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 
-    @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (forValue.isConstant()) {
-            JavaConstant c = forValue.asJavaConstant();
+    public static ValueNode tryFold(ValueNode value) {
+        if (value.isConstant()) {
+            JavaConstant c = value.asJavaConstant();
             if (c.asLong() != 0) {
-                return ConstantNode.forInt(forValue.getStackKind() == JavaKind.Int ? scan(c.asInt()) : scan(c.asLong()));
+                return ConstantNode.forInt(value.getStackKind() == JavaKind.Int ? scan(c.asInt()) : scan(c.asLong()));
             }
         }
-        return this;
+        return null;
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        ValueNode folded = tryFold(forValue);
+        return folded != null ? folded : this;
     }
 
     /**

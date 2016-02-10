@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.compiler.common.GraalOptions.BootstrapReplacements;
-import static com.oracle.graal.compiler.common.GraalOptions.Intrinsify;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static jdk.vm.ci.inittimer.InitTimer.timer;
 import jdk.vm.ci.code.CallingConvention;
@@ -32,14 +30,9 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugDumpScope;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotLoweringProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -48,7 +41,6 @@ import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.ReplacementsProvider;
 
 /**
  * Common functionality of HotSpot host backends.
@@ -82,32 +74,12 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
         final HotSpotProviders providers = getProviders();
         HotSpotHostForeignCallsProvider foreignCalls = (HotSpotHostForeignCallsProvider) providers.getForeignCalls();
         final HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-        HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
 
         try (InitTimer st = timer("foreignCalls.initialize")) {
             foreignCalls.initialize(providers);
         }
         try (InitTimer st = timer("lowerer.initialize")) {
             lowerer.initialize(providers, config);
-        }
-
-        // Install intrinsics.
-        if (Intrinsify.getValue()) {
-            try (Scope s = Debug.scope("RegisterReplacements", new DebugDumpScope("RegisterReplacements"))) {
-                try (InitTimer st = timer("replacementsProviders.registerReplacements")) {
-                    Iterable<ReplacementsProvider> sl = Services.load(ReplacementsProvider.class);
-                    for (ReplacementsProvider replacementsProvider : sl) {
-                        replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, providers.getSnippetReflection(), replacements, providers.getCodeCache().getTarget());
-                    }
-                }
-                if (BootstrapReplacements.getValue()) {
-                    for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
-                        replacements.getSubstitution(method, -1);
-                    }
-                }
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
         }
     }
 

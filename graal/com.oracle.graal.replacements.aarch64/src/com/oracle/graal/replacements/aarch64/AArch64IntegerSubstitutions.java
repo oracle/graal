@@ -24,7 +24,6 @@ package com.oracle.graal.replacements.aarch64;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.replacements.nodes.BitScanForwardNode;
 
 /**
  * AArch64 ISA offers a count leading zeros instruction which can be used to implement
@@ -32,11 +31,6 @@ import com.oracle.graal.replacements.nodes.BitScanForwardNode;
  */
 @ClassSubstitution(Integer.class)
 public class AArch64IntegerSubstitutions {
-
-    @MethodSubstitution
-    public static int numberOfTrailingZeros(int i) {
-        return BitScanForwardNode.scan(i);
-    }
 
     @MethodSubstitution
     public static int bitCount(int value) {

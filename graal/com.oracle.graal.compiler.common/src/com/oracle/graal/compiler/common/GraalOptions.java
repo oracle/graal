@@ -133,9 +133,6 @@ public final class GraalOptions {
 
     // Debug settings:
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> BootstrapReplacements = new OptionValue<>(false);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Integer> GCDebugStartCycle = new OptionValue<>(-1);
 
     @Option(help = "Perform platform dependent validation of the Java heap at returns", type = OptionType.Debug)
