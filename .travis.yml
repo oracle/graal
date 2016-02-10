@@ -36,7 +36,7 @@ install:
   - tar -C $TRAVIS_BUILD_DIR/.. -xf $ECLIPSE_TAR
   - export ECLIPSE_EXE=$TRAVIS_BUILD_DIR/../eclipse/eclipse
 script:
-  - mx --strict-compliance gate --strict-mode
+  - mx --strict-compliance gate --strict-mode --simple
 after_failure:
   - cat $TRAVIS_BUILD_DIR/jvmci/client-product.log
   - cat $TRAVIS_BUILD_DIR/jvmci/server-fastdebug.log
