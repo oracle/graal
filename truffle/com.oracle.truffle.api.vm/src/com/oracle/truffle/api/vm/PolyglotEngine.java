@@ -843,6 +843,10 @@ public class PolyglotEngine {
             return enabled;
         }
 
+        public <T> T lookup(Class<T> type) {
+            return SPI.getInstrumentationHandlerService(instrumentationHandler, this, type);
+        }
+
         public void setEnabled(final boolean enabled) {
             checkThread();
             if (this.enabled != enabled) {
@@ -877,7 +881,6 @@ public class PolyglotEngine {
         public String toString() {
             return "Instrument [id=" + getId() + ", name=" + getName() + ", version=" + getVersion() + ", enabled=" + enabled + "]";
         }
-
     }
 
     /**
@@ -1112,6 +1115,11 @@ public class PolyglotEngine {
         protected Object getInstrumentationHandler(Object obj) {
             final PolyglotEngine vm = (PolyglotEngine) obj;
             return vm.instrumentationHandler;
+        }
+
+        @Override
+        protected <T> T getInstrumentationHandlerService(Object vm, Object key, Class<T> type) {
+            return super.getInstrumentationHandlerService(vm, key, type);
         }
 
         @Override

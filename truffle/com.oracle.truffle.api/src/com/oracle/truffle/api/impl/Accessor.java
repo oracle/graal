@@ -299,6 +299,10 @@ public abstract class Accessor {
         return SPI.getInstrumentationHandler(vm);
     }
 
+    protected <T> T getInstrumentationHandlerService(Object handler, Object key, Class<T> type) {
+        return INSTRUMENTHANDLER.getInstrumentationHandlerService(handler, key, type);
+    }
+
     // new instrumentation
     protected Object createInstrumentationHandler(Object vm, OutputStream out, OutputStream err, InputStream in) {
         return INSTRUMENTHANDLER.createInstrumentationHandler(vm, out, err, in);

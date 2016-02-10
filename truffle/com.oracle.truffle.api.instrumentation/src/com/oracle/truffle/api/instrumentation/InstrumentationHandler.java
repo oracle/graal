@@ -398,6 +398,11 @@ final class InstrumentationHandler {
         return null;
     }
 
+    private <T> T lookup(Object key, Class<T> type) {
+        AbstractInstrumenter value = instrumentations.get(key);
+        return value == null ? null : value.lookup(this, type);
+    }
+
     private abstract class AbstractNodeVisitor implements NodeVisitor {
 
         abstract boolean shouldVisit(RootNode root);
@@ -533,6 +538,7 @@ final class InstrumentationHandler {
     final class InstrumentationInstrumenter extends AbstractInstrumenter {
 
         private final Class<?> instrumentationClass;
+        private Object[] services;
         private TruffleInstrument instrumentation;
 
         InstrumentationInstrumenter(Class<?> instrumentationClass) {
@@ -565,7 +571,7 @@ final class InstrumentationHandler {
                 return;
             }
             try {
-                this.instrumentation.onCreate(env, this);
+                services = env.onCreate(instrumentation, this);
             } catch (Throwable e) {
                 failInstrumentationInitialization(String.format("Failed calling onCreate of instrumentation class %s", instrumentationClass.getName()), e);
                 return;
@@ -594,6 +600,21 @@ final class InstrumentationHandler {
             if (isInitialized()) {
                 instrumentation.onDispose(env);
             }
+        }
+
+        @Override
+        <T> T lookup(InstrumentationHandler handler, Class<T> type) {
+            if (instrumentation == null) {
+                handler.initialize();
+            }
+            if (services != null) {
+                for (Object service : services) {
+                    if (type.isInstance(service)) {
+                        return type.cast(service);
+                    }
+                }
+            }
+            return null;
         }
 
     }
@@ -628,6 +649,11 @@ final class InstrumentationHandler {
         void dispose() {
             // nothing todo
         }
+
+        @Override
+        <S> S lookup(InstrumentationHandler handler, Class<S> type) {
+            return null;
+        }
     }
 
     /**
@@ -640,6 +666,8 @@ final class InstrumentationHandler {
         abstract void initialize();
 
         abstract void dispose();
+
+        abstract <T> T lookup(InstrumentationHandler handler, Class<T> type);
 
         void disposeBinding(EventBinding<?> binding) {
             InstrumentationHandler.this.disposeBinding(binding);
@@ -700,6 +728,12 @@ final class InstrumentationHandler {
             InstrumentationHandler instrumentationHandler = (InstrumentationHandler) ACCESSOR.getInstrumentationHandler(vm);
             Instrumenter instrumenter = instrumentationHandler.forLanguage(env, impl);
             collectTo.add(instrumenter);
+        }
+
+        @Override
+        protected <T> T getInstrumentationHandlerService(Object vm, Object key, Class<T> type) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) vm;
+            return instrumentationHandler.lookup(key, type);
         }
 
         @Override

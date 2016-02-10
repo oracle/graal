@@ -34,6 +34,8 @@ import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * <p>
@@ -65,13 +67,13 @@ import com.oracle.truffle.api.source.Source;
  * <pre>
  * &#064;Registration(name = Coverage.NAME, version = Coverage.VERSION, instrumentType = Coverage.TYPE)
  * public final class Coverage extends Instrumentation {
- *
+ * 
  *     public static final String NAME = &quot;sample-coverage&quot;;
  *     public static final String TYPE = &quot;coverage&quot;;
  *     public static final String VERSION = &quot;coverage&quot;;
- *
+ * 
  *     private final Set&lt;SourceSection&gt; coverage = new HashSet&lt;&gt;();
- *
+ * 
  *     &#064;Override
  *     protected void onCreate(Env env, Instrumenter instrumenter) {
  *         instrumenter.attachFactory(SourceSectionFilter.newBuilder() //
@@ -79,7 +81,7 @@ import com.oracle.truffle.api.source.Source;
  *             public EventNode create(final EventContext context) {
  *                 return new EventNode() {
  *                     &#064;CompilationFinal private boolean visited;
- *
+ * 
  *                     &#064;Override
  *                     public void onReturnValue(VirtualFrame vFrame, Object result) {
  *                         if (!visited) {
@@ -92,12 +94,12 @@ import com.oracle.truffle.api.source.Source;
  *             }
  *         });
  *     }
- *
+ * 
  *     &#064;Override
  *     protected void onDispose(Env env) {
  *         // print result
  *     }
- *
+ * 
  * }
  * </pre>
  */
@@ -105,7 +107,19 @@ public abstract class TruffleInstrument {
 
     /**
      * Method invoked if the instrumentation is allocated and used by the runtime system. Invoked
-     * exactly once per {@link TruffleInstrument} instance.
+     * exactly once per {@link TruffleInstrument} instance. The method may
+     * {@link Env#registerService(java.lang.Object) register} additional <em>services</em> - e.g.
+     * objects to be exposes via {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup}
+     * query. For example to expose a debugger one could define an abstract debugger controller:
+     * 
+     * {@codesnippet DebuggerController}
+     * 
+     * and then implement it, instantiate and @link Env#registerService(java.lang.Object) register}
+     * in own's instrument
+     * {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env, com.oracle.truffle.api.instrumentation.Instrumenter)
+     * onCreate} method:
+     * 
+     * {@codesnippet DebuggerExample}
      *
      * @param env environment information for the instrumentation
      * @param instrumenter to attach event bindings to the runtime system
@@ -133,6 +147,7 @@ public abstract class TruffleInstrument {
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
+        private List<Object> services;
 
         Env(OutputStream out, OutputStream err, InputStream in) {
             this.in = in;
@@ -168,6 +183,43 @@ public abstract class TruffleInstrument {
          */
         public OutputStream err() {
             return err;
+        }
+
+        /**
+         * Registers additional service. This method can be called multiple time, but only during
+         * {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env, com.oracle.truffle.api.instrumentation.Instrumenter)
+         * initialization of the instrument}. These services are made available to users via
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup} query method.
+         * 
+         * This method can only be called from
+         * {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env, com.oracle.truffle.api.instrumentation.Instrumenter)}
+         * method - then the services are collected and cannot be changed anymore.
+         * 
+         * @param <T> the type of service being registered and returned
+         * @param service a service to be returned from associated
+         *            {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup}
+         * @return the service that just has been registered
+         * @throws IllegalStateException if the method is called later than from
+         *             {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env, com.oracle.truffle.api.instrumentation.Instrumenter) }
+         *             method
+         */
+        public <T> T registerService(T service) {
+            if (services == null) {
+                throw new IllegalStateException();
+            }
+            services.add(service);
+            return service;
+        }
+
+        Object[] onCreate(TruffleInstrument instrumentation, Instrumenter instrumenter) {
+            List<Object> arr = new ArrayList<>();
+            services = arr;
+            try {
+                instrumentation.onCreate(this, instrumenter);
+            } finally {
+                services = null;
+            }
+            return arr.toArray();
         }
 
         /**
