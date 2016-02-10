@@ -293,11 +293,43 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-G:+ImmutableCode', '-G:+VerifyPhases', '-G:+ExitVMOnException']),
 ]
 
+
+def compiler_simple_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
+
+    # Run unit tests in hosted mode
+    with JVMCIMode('hosted'):
+        for r in unit_test_runs:
+            r.run(suites, tasks, extraVMarguments)
+
+    # Run microbench in hosted mode (only for testing the JMH setup)
+    with JVMCIMode('hosted'):
+        for r in [MicrobenchRun('Microbench', ['TestJMH'])]:
+            r.run(tasks, extraVMarguments)
+
+    # bootstrap tests
+    for b in bootstrap_tests:
+        b.run(tasks, extraVMarguments)
+
+    # ensure -Xcomp still works
+    with JVMCIMode('jit'):
+        with Task('XCompMode:product', tasks) as t:
+            if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-Xcomp', '-version'])
+
+
+graal_simple_bootstrap_tests = [
+    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', []),
+]
+
+
 def _graal_gate_runner(args, tasks):
-    compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    if args.simple:
+        compiler_simple_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_simple_bootstrap_tests, tasks, args.extra_vm_argument)
+    else:
+        compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 mx_gate.add_gate_argument('--extra-vm-argument', action='append', help='add extra vm argument to gate tasks if applicable (multiple occurrences allowed)')
+mx_gate.add_gate_argument('--simple', action='store_true', help='only run simple task set')
 
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
     run_vm(vmArgs + [mainClass] + mainClassArgs)
