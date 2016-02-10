@@ -5,6 +5,7 @@
 /workingsets.xml
 /.idea
 /mxbuild
+/mx.imports
 ecj.jar
 /javadoc
 /graal/*/nbproject/
