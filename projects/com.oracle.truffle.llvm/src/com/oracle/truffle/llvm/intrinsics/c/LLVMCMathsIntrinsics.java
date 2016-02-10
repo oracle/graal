@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
  */
 public abstract class LLVMCMathsIntrinsics {
 
-    // acos
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMACos extends LLVMDoubleIntrinsic {
 
@@ -49,7 +48,6 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    // asin
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMASin extends LLVMDoubleIntrinsic {
 
@@ -59,7 +57,6 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    // atan
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMATan extends LLVMDoubleIntrinsic {
 
@@ -69,7 +66,6 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    // cos
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMCos extends LLVMDoubleIntrinsic {
 
@@ -80,7 +76,6 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    // exp
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMExp extends LLVMDoubleIntrinsic {
 
@@ -90,7 +85,6 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    // log
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMLog extends LLVMDoubleIntrinsic {
 
@@ -100,7 +94,6 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    // sqrt
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMSqrt extends LLVMDoubleIntrinsic {
 
@@ -111,7 +104,6 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    // sin
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMSin extends LLVMDoubleIntrinsic {
 
@@ -122,7 +114,6 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    // tan
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMTan extends LLVMDoubleIntrinsic {
 
@@ -133,7 +124,6 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    // tanh
     @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMTanh extends LLVMDoubleIntrinsic {
 
