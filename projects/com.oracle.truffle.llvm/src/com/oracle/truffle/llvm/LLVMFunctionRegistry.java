@@ -47,10 +47,20 @@ import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicFloatNo
 import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI32NodeGen;
 import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI64NodeGen;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMAbortFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMACosFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMASinFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMATanFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCosFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMExpFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSinFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMTanFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMTanhFactory;
+import com.oracle.truffle.llvm.intrinsics.c.LLVMCallocFactory;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMExitFactory;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMMallocFactory;
-import com.oracle.truffle.llvm.intrinsics.c.LLVMSqrtFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
@@ -81,9 +91,22 @@ public class LLVMFunctionRegistry {
         intrinsics.put("@exit", LLVMExitFactory.getInstance());
 
         if (optimizationConfig.intrinsifyCLibraryFunctions()) {
+            // math.h
+            intrinsics.put("@acos", LLVMACosFactory.getInstance());
+            intrinsics.put("@asin", LLVMASinFactory.getInstance());
+            intrinsics.put("@atan", LLVMATanFactory.getInstance());
+            intrinsics.put("@cos", LLVMCosFactory.getInstance());
+            intrinsics.put("@exp", LLVMExpFactory.getInstance());
+            intrinsics.put("@log", LLVMLogFactory.getInstance());
             intrinsics.put("@sqrt", LLVMSqrtFactory.getInstance());
+            intrinsics.put("@sin", LLVMSinFactory.getInstance());
+            intrinsics.put("@tan", LLVMTanFactory.getInstance());
+            intrinsics.put("@tanh", LLVMTanhFactory.getInstance());
+
+            // other libraries
             intrinsics.put("@malloc", LLVMMallocFactory.getInstance());
             intrinsics.put("@free", LLVMFreeFactory.getInstance());
+            intrinsics.put("@calloc", LLVMCallocFactory.getInstance());
         }
     }
 

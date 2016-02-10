@@ -51,6 +51,12 @@ public class LLVMHeap extends LLVMMemory {
         return LLVMAddress.fromLong(allocateMemory);
     }
 
+    public static LLVMAddress allocateZeroedMemory(long l) {
+        long allocateMemory = UNSAFE.allocateMemory(l);
+        UNSAFE.setMemory(allocateMemory, l, (byte) 0);
+        return LLVMAddress.fromLong(allocateMemory);
+    }
+
     public static void freeMemory(LLVMAddress addr) {
         UNSAFE.freeMemory(extractAddrNullPointerAllowed(addr));
     }

@@ -30,16 +30,19 @@
 package com.oracle.truffle.llvm.intrinsics.c;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.LLVMIntrinsic.LLVMDoubleIntrinsic;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
+import com.oracle.truffle.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
-@NodeChild(type = LLVMDoubleNode.class)
-public abstract class LLVMSqrt extends LLVMDoubleIntrinsic {
+@NodeChildren({@NodeChild(type = LLVMI64Node.class), @NodeChild(type = LLVMI64Node.class)})
+public abstract class LLVMCalloc extends LLVMAddressIntrinsic {
 
     @Specialization
-    public double executeIntrinsic(double value) {
-        return Math.sqrt(value);
+    public LLVMAddress executeIntrinsic(long numberItems, long size) {
+        return LLVMHeap.allocateZeroedMemory(numberItems * size);
     }
 
 }
