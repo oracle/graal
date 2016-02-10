@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.LLVMIntrinsic.LLVMDoubleIntrinsic;
 import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
 
 /**
- * C functions from math.h
+ * Implements the C functions from math.h.
  */
 public abstract class LLVMCMathsIntrinsics {
 
