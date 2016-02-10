@@ -204,7 +204,7 @@ class UnitTestRun:
     def run(self, suites, tasks, extraVMarguments=None):
         for suite in suites:
             with Task(self.name + ': hosted-product ' + suite, tasks) as t:
-                if t: unittest(['--suite', suite, '--enable-timing', '--verbose', '--fail-fast'] + self.args + _noneAsEmptyList(extraVMarguments))
+                if t: unittest(['--suite', suite, '--fail-fast'] + self.args + _noneAsEmptyList(extraVMarguments))
 
 class BootstrapTest:
     def __init__(self, name, vmbuild, args, suppress=None):
