@@ -1068,13 +1068,15 @@ public class LLVMVisitor implements LLVMParserRuntime {
             } else if (constant.getRef() instanceof GlobalVariable) {
                 GlobalVariable globalVariable = (GlobalVariable) constant.getRef();
                 String globalVarName = globalVariable.getName();
-                if (globalVarName.equals("@stdout") || globalVarName.equals("@stdin") || globalVarName.equals("@stderr")) {
+                String linkage = globalVariable.getLinkage();
+                if ("external".equals(linkage)) {
                     long getNativeSymbol = getContext().getNativeHandle(globalVarName);
                     return new LLVMAddressLiteralNode(LLVMAddress.fromLong(getNativeSymbol));
+                } else {
+                    LLVMAddress findOrAllocateGlobal = findOrAllocateGlobal(globalVariable);
+                    assert findOrAllocateGlobal != null;
+                    return new LLVMAddressLiteralNode(findOrAllocateGlobal);
                 }
-                LLVMAddress findOrAllocateGlobal = findOrAllocateGlobal(globalVariable);
-                assert findOrAllocateGlobal != null;
-                return new LLVMAddressLiteralNode(findOrAllocateGlobal);
             } else if (constant instanceof ZeroInitializer) {
                 return visitZeroInitializer(type);
             } else if (constant instanceof ConstantExpression_convert) {

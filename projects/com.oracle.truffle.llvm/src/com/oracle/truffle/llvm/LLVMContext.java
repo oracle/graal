@@ -101,10 +101,16 @@ public class LLVMContext extends ExecutionContext {
             HotSpotNativeFunctionPointer result = (HotSpotNativeFunctionPointer) method.invoke(face, name, new HotSpotNativeLibraryHandle("", 0), false);
             return result.getRawValue();
         } catch (Exception e) {
-            throw new AssertionError(e);
+            return 0;
         }
     }
 
+    /**
+     * Looks the symbol address up. Returns 0 if no address is found.
+     *
+     * @param name the name of the symbol to look up.
+     * @return the address or 0, if the symbol is not found
+     */
     public long getNativeHandle(String name) {
         return lookupSymbol(name.substring(1));
     }
