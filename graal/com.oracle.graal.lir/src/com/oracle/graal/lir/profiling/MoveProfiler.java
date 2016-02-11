@@ -44,7 +44,7 @@ public final class MoveProfiler {
 
         private final int[] cnt;
 
-        public MoveStatistics() {
+        MoveStatistics() {
             cnt = new int[MoveType.values().length];
 
         }

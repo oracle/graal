@@ -234,6 +234,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public enum Op2s {
+        // Checkstyle: stop
         // @formatter:off
         Illtrap(0b000),
         Bpr    (0b011),
@@ -244,6 +245,7 @@ public abstract class SPARCAssembler extends Assembler {
         Cb     (0b111),
         Sethi  (0b100);
         // @formatter:on
+        // Checkstyle: resume
 
         private final int value;
 
@@ -266,6 +268,7 @@ public abstract class SPARCAssembler extends Assembler {
     private static final int VOID_IN = 8;
 
     public enum Op3s {
+        // Checkstyle: stop
         // @formatter:off
         Add(0x00, "add", ArithOp, BINARY | COMMUTATIVE),
         And(0x01, "and", ArithOp, BINARY | COMMUTATIVE),
@@ -374,6 +377,7 @@ public abstract class SPARCAssembler extends Assembler {
         Tcc(0b11_1010, "tcc", ArithOp);
 
         // @formatter:on
+        // Checkstyle: resume
 
         private final int value;
         private final String operator;
