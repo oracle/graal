@@ -5,10 +5,10 @@ suite = {
   "imports" : {
     "suites" : [
         {
-           "name" : "graal",
-           "version" : "d7e25fa8bc3eeb6f445a4d0b7e598f0118c72f09",
+           "name" : "graal-core",
+           "version" : "d8c144406f5d27aa82b00149c750891603e4d4b7",
            "urls" : [
-                {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-compiler", "kind" : "hg"},
+                {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
             ]
         },
     ],
@@ -256,7 +256,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "graal:GRAAL_TRUFFLE_HOTSPOT",
+        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
         "com.oracle.truffle.llvm.runtime",
         "com.oracle.truffle.llvm.types",
       ],
@@ -318,10 +318,10 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
-        "graal:GRAAL_API",
-        "graal:GRAAL_COMPILER",
-        "graal:GRAAL_HOTSPOT",
-        "graal:GRAAL_TRUFFLE_HOTSPOT",
+        "graal-core:GRAAL_API",
+        "graal-core:GRAAL_COMPILER",
+        "graal-core:GRAAL_HOTSPOT",
+        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
       ]
   },
  }
