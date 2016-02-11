@@ -36,6 +36,10 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 @NodeInfo(shortName = "getOption")
 public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
 
+    SLGetOptionBuiltin() {
+        super(SLGetOptionBuiltin.class);
+    }
+
     @Specialization
     @TruffleBoundary
     public Object getOption(String name) {

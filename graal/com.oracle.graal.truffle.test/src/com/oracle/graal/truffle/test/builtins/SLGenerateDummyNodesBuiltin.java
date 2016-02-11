@@ -40,6 +40,10 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @NodeInfo(shortName = "generateDummyNodes")
 public abstract class SLGenerateDummyNodesBuiltin extends SLGraalRuntimeBuiltin {
 
+    SLGenerateDummyNodesBuiltin() {
+        super(SLGenerateDummyNodesBuiltin.class);
+    }
+
     @Specialization
     public Object generateNodes(long count) {
         CompilerAsserts.neverPartOfCompilation("generateNodes should never get optimized.");

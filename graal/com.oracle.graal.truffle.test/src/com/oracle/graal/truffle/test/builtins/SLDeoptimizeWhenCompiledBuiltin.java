@@ -34,6 +34,10 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @NodeInfo(shortName = "deoptimizeWhenCompiled")
 public abstract class SLDeoptimizeWhenCompiledBuiltin extends SLGraalRuntimeBuiltin {
 
+    SLDeoptimizeWhenCompiledBuiltin() {
+        super(SLDeoptimizeWhenCompiledBuiltin.class);
+    }
+
     @Specialization
     public SLNull deoptimzeWhenCompiled(boolean condition) {
         if (CompilerDirectives.inCompiledCode()) {
