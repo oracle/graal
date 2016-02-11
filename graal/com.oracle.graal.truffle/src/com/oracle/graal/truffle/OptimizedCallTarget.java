@@ -215,16 +215,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             }
             return result;
         } catch (Throwable t) {
-            t = exceptionProfile.profile(t);
-            if (t instanceof RuntimeException) {
-                throw (RuntimeException) t;
-            } else if (t instanceof Error) {
-                throw (Error) t;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(t);
-            }
+            throw rethrow(exceptionProfile.profile(t));
         }
+    }
+
+    @SuppressWarnings({"unchecked"})
+    private static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
     }
 
     public final Object callInlined(Object... arguments) {
