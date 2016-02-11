@@ -234,7 +234,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     @ExplodeLoop
-    void profileArguments(Object[] args) {
+    public void profileArguments(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -329,7 +329,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return result;
     }
 
-    void profileReturnType(Object result) {
+    public void profileReturnType(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
         if (returnTypeAssumption == null) {
             if (TruffleReturnTypeSpeculation.getValue()) {
