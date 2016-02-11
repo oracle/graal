@@ -40,6 +40,12 @@ import com.oracle.graal.nodes.ValueNode;
  * An {@link InvocationPlugin} for a method where the implementation of the method is provided by a
  * {@linkplain #getSubstitute(MetaAccessProvider) substitute} method. A substitute method must be
  * static even if the substituted method is not.
+ *
+ * While performing intrinsification with method substitutions is simpler than writing an
+ * {@link InvocationPlugin} that doing manual graph weaving, it has a higher compile time cost than
+ * the latter; parsing bytecodes to create nodes is slower than simply creating nodes. As such, the
+ * recommended practice is to use {@link MethodSubstitutionPlugin} only for complex
+ * intrinsifications which is typically those using non-straight-line control flow.
  */
 public final class MethodSubstitutionPlugin implements InvocationPlugin {
 
