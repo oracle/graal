@@ -43,6 +43,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -121,6 +122,7 @@ public class PolyglotEngine {
      * Private & temporary only constructor.
      */
     PolyglotEngine() {
+        assertNoTruffle();
         this.initThread = null;
         this.in = null;
         this.err = null;
@@ -138,6 +140,7 @@ public class PolyglotEngine {
      * Real constructor used from the builder.
      */
     PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config) {
+        assertNoTruffle();
         this.executor = executor;
         this.out = out;
         this.err = err;
@@ -356,6 +359,7 @@ public class PolyglotEngine {
          * @return new, isolated virtual machine with pre-registered languages
          */
         public PolyglotEngine build() {
+            assertNoTruffle();
             if (out == null) {
                 out = System.out;
             }
@@ -389,6 +393,7 @@ public class PolyglotEngine {
      * @throws IOException thrown to signal errors while processing the code
      */
     public Value eval(Source source) throws IOException {
+        assertNoTruffle();
         String mimeType = source.getMimeType();
         checkThread();
         Language l = langs.get(mimeType);
@@ -409,6 +414,7 @@ public class PolyglotEngine {
      */
     public void dispose() {
         checkThread();
+        assertNoTruffle();
         disposed = true;
         ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
             @Override
@@ -460,6 +466,7 @@ public class PolyglotEngine {
 
     @SuppressWarnings({"try", "deprecation"})
     final Object invokeForeign(final Node foreignNode, VirtualFrame frame, final TruffleObject receiver) throws IOException {
+        assertNoTruffle();
         Object res;
         if (executor == null) {
             try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
@@ -474,6 +481,10 @@ public class PolyglotEngine {
         } else {
             return res;
         }
+    }
+
+    static void assertNoTruffle() {
+        CompilerAsserts.neverPartOfCompilation("Methods of PolyglotEngine must not be compiled by Truffle. Use Truffle interoperability or a @TruffleBoundary instead.");
     }
 
     @TruffleBoundary
@@ -513,6 +524,7 @@ public class PolyglotEngine {
      */
     public Value findGlobalSymbol(final String globalName) {
         checkThread();
+        assertNoTruffle();
         final TruffleLanguage<?>[] lang = {null};
         ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
             @Override
@@ -637,6 +649,7 @@ public class PolyglotEngine {
          * @throws IOException in case it is not possible to obtain the value of the object
          */
         public Object get() throws IOException {
+            assertNoTruffle();
             Object result = waitForSymbol();
             if (result instanceof TruffleObject) {
                 return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
@@ -661,6 +674,7 @@ public class PolyglotEngine {
          * @throws ClassCastException if the value cannot be converted to desired view
          */
         public <T> T as(final Class<T> representation) throws IOException {
+            assertNoTruffle();
             final Object obj = get();
             if (obj instanceof EngineTruffleObject) {
                 EngineTruffleObject eto = (EngineTruffleObject) obj;
@@ -721,6 +735,7 @@ public class PolyglotEngine {
          * @throws IOException signals problem during execution
          */
         public Value execute(final Object... args) throws IOException {
+            assertNoTruffle();
             get();
             ComputeInExecutor<Object> invokeCompute = new ComputeInExecutor<Object>(executor) {
                 @SuppressWarnings("try")
@@ -747,6 +762,7 @@ public class PolyglotEngine {
         }
 
         private Object waitForSymbol() throws IOException {
+            assertNoTruffle();
             checkThread();
             return compute.get();
         }
@@ -813,6 +829,7 @@ public class PolyglotEngine {
          * @throws IOException thrown to signal errors while processing the code
          */
         public Value eval(Source source) throws IOException {
+            assertNoTruffle();
             checkThread();
             return PolyglotEngine.this.eval(this, source);
         }
