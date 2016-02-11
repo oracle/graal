@@ -31,7 +31,7 @@ import jdk.vm.ci.meta.Signature;
 
 /**
  * Denotes a method whose body is used by a compiler as the substitute (or intrinsification) of
- * another method. The exact method used to do the substitution is compiler dependent by every
+ * another method. The exact method used to do the substitution is compiler dependent but every
  * compiler should require substitute methods to be annotated with {@link MethodSubstitution}. In
  * addition, a compiler is recommended to implement {@link MethodSubstitutionRegistry} to advertise
  * the mechanism by which it supports registration of method substitutes.
