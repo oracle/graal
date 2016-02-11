@@ -57,7 +57,7 @@ public class PhiStampInferencePartialEvaluationTest extends PartialEvaluationTes
         @Child private ANode b;
         @Child private ANode c;
 
-        public IfPhiStampTestNode() {
+        IfPhiStampTestNode() {
             this.b = new ANode(() -> new B(42));
             this.c = new ANode(() -> new C(666));
         }
