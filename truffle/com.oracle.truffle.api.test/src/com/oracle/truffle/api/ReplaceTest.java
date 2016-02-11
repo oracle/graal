@@ -115,7 +115,6 @@ public class ReplaceTest {
     abstract class ValueNode extends Node {
 
         ValueNode() {
-            super(null);
         }
 
         abstract int execute();

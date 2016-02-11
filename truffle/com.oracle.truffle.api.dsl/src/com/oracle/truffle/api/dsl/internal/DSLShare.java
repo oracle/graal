@@ -146,7 +146,8 @@ public class DSLShare {
 
     private static void updateSourceSection(Node oldNode, Node newNode) {
         if (newNode.getSourceSection() == null) {
-            newNode.assignSourceSection(oldNode.getSourceSection());
+            throw new IllegalArgumentException("Can't update source: " + oldNode);
+            // newNode.assignSourceSection(oldNode.getSourceSection());
         }
     }
 

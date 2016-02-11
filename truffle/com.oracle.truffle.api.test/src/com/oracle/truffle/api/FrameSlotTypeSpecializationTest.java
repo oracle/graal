@@ -96,7 +96,6 @@ public class FrameSlotTypeSpecializationTest {
     abstract class TestChildNode extends Node {
 
         protected TestChildNode() {
-            super(null);
         }
 
         abstract Object execute(VirtualFrame frame);

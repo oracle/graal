@@ -96,7 +96,6 @@ public class ReturnTypeSpecializationTest {
     abstract class TestChildNode extends Node {
 
         TestChildNode() {
-            super(null);
         }
 
         abstract Object execute(VirtualFrame frame);
