@@ -167,10 +167,17 @@ public class ToolTestUtil {
     }
 
     abstract static class ToolTestLangNode extends Node {
+        private final SourceSection section;
+
         public abstract Object execute(VirtualFrame frame);
 
         protected ToolTestLangNode(SourceSection ss) {
-            super(ss);
+            this.section = ss;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return section;
         }
     }
 

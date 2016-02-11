@@ -97,7 +97,6 @@ public class ArgumentsTest {
         private final int index;
 
         TestArgumentNode(int index) {
-            super(null);
             this.index = index;
         }
 

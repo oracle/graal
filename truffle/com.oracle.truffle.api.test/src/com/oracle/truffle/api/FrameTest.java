@@ -125,7 +125,6 @@ public class FrameTest {
     abstract class TestChildNode extends Node {
 
         TestChildNode() {
-            super(null);
         }
 
         abstract int execute(VirtualFrame frame);

@@ -103,7 +103,6 @@ public class ThreadSafetyTest {
     abstract static class ValueNode extends Node {
 
         ValueNode() {
-            super(null);
         }
 
         abstract int execute(VirtualFrame frame);
