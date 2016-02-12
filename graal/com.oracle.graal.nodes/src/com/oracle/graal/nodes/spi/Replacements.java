@@ -81,21 +81,7 @@ public interface Replacements {
      *            otherwise {@code -1}
      * @return true iff there is a substitution graph available for {@code method}
      */
-    default boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci) {
-        return hasSubstitution(method, false, invokeBci);
-    }
-
-    /**
-     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod, int) substitution
-     * graph} for a given method.
-     *
-     * @param fromBytecodeOnly only consider graphs created by parsing the bytecode of another
-     *            method
-     * @param invokeBci the call site BCI if this request is made for inlining a substitute
-     *            otherwise {@code -1}
-     * @return true iff there is a substitution graph available for {@code method}
-     */
-    boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int invokeBci);
+    boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci);
 
     /**
      * Register snippet templates.

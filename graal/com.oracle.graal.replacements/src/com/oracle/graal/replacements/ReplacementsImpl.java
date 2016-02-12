@@ -210,36 +210,47 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         // No initialization needed as snippet graphs are created on demand in getSnippet
     }
 
-    @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod original, int invokeBci) {
-        ResolvedJavaMethod substitute = null;
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
-        if (plugin != null) {
-            if (!plugin.inlineOnly() || invokeBci >= 0) {
-                if (plugin instanceof MethodSubstitutionPlugin) {
-                    MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
-                    substitute = msPlugin.getSubstitute(providers.getMetaAccess());
-                } else {
-                    StructuredGraph graph = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), original, invokeBci).buildGraph(plugin);
-                    if (graph != null) {
-                        return graph;
-                    }
-                }
-            }
-        }
-        if (substitute == null) {
-            return null;
-        }
-        StructuredGraph graph = graphs.get(substitute);
-        if (graph == null) {
-            graph = makeGraph(substitute, null, original);
-            graph.freeze();
-            graphs.putIfAbsent(substitute, graph);
-            graph = graphs.get(substitute);
-        }
-        assert graph.isFrozen();
-        return graph;
+    public boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci) {
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
+        return plugin != null && (!plugin.inlineOnly() || invokeBci >= 0);
+    }
 
+    public ResolvedJavaMethod getSubstitutionMethod(ResolvedJavaMethod method) {
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
+        if (plugin instanceof MethodSubstitutionPlugin) {
+            MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
+            return msPlugin.getSubstitute(providers.getMetaAccess());
+        }
+        return null;
+    }
+
+    @Override
+    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci) {
+        StructuredGraph result;
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
+        if (plugin != null && (!plugin.inlineOnly() || invokeBci >= 0)) {
+            if (plugin instanceof MethodSubstitutionPlugin) {
+                MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
+                ResolvedJavaMethod substitute = msPlugin.getSubstitute(providers.getMetaAccess());
+                StructuredGraph graph = graphs.get(substitute);
+                if (graph == null) {
+                    graph = makeGraph(substitute, null, method);
+                    graph.freeze();
+                    graphs.putIfAbsent(substitute, graph);
+                    graph = graphs.get(substitute);
+                }
+                assert graph.isFrozen();
+                result = graph;
+            } else {
+                result = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), method, invokeBci).buildGraph(plugin);
+            }
+        } else {
+            result = null;
+        }
+        // Testing existence of a substitution and retrieving
+        // the substitution should be consistent
+        assert (result != null) == hasSubstitution(method, invokeBci) : method + "@" + invokeBci;
+        return result;
     }
 
     /**
@@ -400,27 +411,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                         OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
             return new GraphBuilderPhase.Instance(metaAccess, stampProvider, constantReflection, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         }
-    }
-
-    public boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int callerBci) {
-        if (!fromBytecodeOnly) {
-            InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
-            if (plugin != null) {
-                if (!plugin.inlineOnly() || callerBci >= 0) {
-                    return true;
-                }
-            }
-        }
-        return getSubstitutionMethod(method) != null;
-    }
-
-    public ResolvedJavaMethod getSubstitutionMethod(ResolvedJavaMethod original) {
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
-        if (plugin instanceof MethodSubstitutionPlugin) {
-            MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
-            return msPlugin.getSubstitute(providers.getMetaAccess());
-        }
-        return null;
     }
 
     @Override
