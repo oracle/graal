@@ -29,8 +29,8 @@ import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.meta.DefaultHotSpotLoweringProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
-import com.oracle.graal.nodes.calc.ConvertNode;
 import com.oracle.graal.nodes.calc.FixedBinaryNode;
+import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.calc.RemNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.aarch64.AArch64FloatArithmeticSnippets;
@@ -64,7 +64,7 @@ public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
             integerArithmeticSnippets.lower((FixedBinaryNode) n, tool);
         } else if (n instanceof RemNode) {
             floatArithmeticSnippets.lower((RemNode) n, tool);
-        } else if (n instanceof ConvertNode) {
+        } else if (n instanceof FloatConvertNode) {
             // AMD64 has custom lowerings for ConvertNodes, HotSpotLoweringProvider does not expect
             // to see a ConvertNode and throws an error, just do nothing here.
         } else {

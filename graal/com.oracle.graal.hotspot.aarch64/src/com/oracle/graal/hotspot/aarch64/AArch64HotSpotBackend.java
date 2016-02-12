@@ -140,19 +140,11 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
             }
             crb.blockComment("[method prologue]");
 
-            try (ScratchRegister sc = masm.getScratchRegister()) {
-                Register scratch = sc.getRegister();
-                // save link register and framepointer
-                masm.mov(64, scratch, sp);
-                AArch64Address address = AArch64Address.createPreIndexedImmediateAddress(scratch, -crb.target.arch.getWordSize());
-                masm.str(64, lr, address);
-                masm.str(64, fp, address);
-                // Update framepointer
-                masm.mov(64, fp, scratch);
-
-                if (ZapStackOnMethodEntry.getValue()) {
+            if (ZapStackOnMethodEntry.getValue()) {
+                try (ScratchRegister sc = masm.getScratchRegister()) {
+                    Register scratch = sc.getRegister();
                     int intSize = 4;
-                    address = AArch64Address.createPreIndexedImmediateAddress(scratch, -intSize);
+                    AArch64Address address = AArch64Address.createPreIndexedImmediateAddress(scratch, -intSize);
                     try (ScratchRegister sc2 = masm.getScratchRegister()) {
                         Register value = sc2.getRegister();
                         masm.mov(value, 0xC1C1C1C1);
@@ -161,43 +153,45 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
                         }
                     }
                     masm.mov(64, sp, scratch);
+                }
+            } else {
+                if (AArch64MacroAssembler.isArithmeticImmediate(totalFrameSize)) {
+                    masm.sub(64, sp, sp, totalFrameSize);
                 } else {
-                    if (AArch64MacroAssembler.isArithmeticImmediate(frameSize)) {
-                        masm.sub(64, sp, scratch, frameSize);
-                    } else {
-                        try (ScratchRegister sc2 = masm.getScratchRegister()) {
-                            Register scratch2 = sc2.getRegister();
-                            masm.mov(scratch2, frameSize);
-                            masm.sub(64, sp, scratch, scratch2);
-                        }
+                    try (ScratchRegister sc2 = masm.getScratchRegister()) {
+                        Register scratch2 = sc2.getRegister();
+                        masm.mov(scratch2, totalFrameSize);
+                        masm.sub(64, sp, sp, scratch2);
                     }
                 }
             }
+
+            AArch64Address address2 = AArch64Address.createPairUnscaledImmediateAddress(sp, frameSize / 8); // XXX
+            masm.stp(64, fp, lr, address2);
+
             crb.blockComment("[code body]");
         }
 
         @Override
         public void leave(CompilationResultBuilder crb) {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            FrameMap frameMap = crb.frameMap;
+            final int frameSize = frameMap.frameSize();
+            final int totalFrameSize = frameMap.totalFrameSize();
+
             crb.blockComment("[method epilogue]");
-            final int frameSize = crb.frameMap.frameSize();
-            if (AArch64MacroAssembler.isArithmeticImmediate(frameSize)) {
-                masm.add(64, sp, sp, frameSize);
+
+            AArch64Address address2 = AArch64Address.createPairUnscaledImmediateAddress(sp, frameSize / 8); // XXX
+            masm.ldp(64, fp, lr, address2);
+
+            if (AArch64MacroAssembler.isArithmeticImmediate(totalFrameSize)) {
+                masm.add(64, sp, sp, totalFrameSize);
             } else {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
-                    masm.mov(scratch, frameSize);
+                    masm.mov(scratch, totalFrameSize);
                     masm.add(64, sp, sp, scratch);
                 }
-            }
-            try (ScratchRegister sc = masm.getScratchRegister()) {
-                Register scratch = sc.getRegister();
-                // restore link register and framepointer
-                masm.mov(64, scratch, sp);
-                AArch64Address address = AArch64Address.createPostIndexedImmediateAddress(scratch, crb.target.arch.getWordSize());
-                masm.ldr(64, fp, address);
-                masm.ldr(64, lr, address);
-                masm.mov(64, sp, scratch);
             }
         }
 
@@ -205,6 +199,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         public boolean hasFrame() {
             return true;
         }
+
     }
 
     @Override
@@ -224,7 +219,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, compilationResult);
-        crb.setTotalFrameSize(frameMap.frameSize());
+        crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {

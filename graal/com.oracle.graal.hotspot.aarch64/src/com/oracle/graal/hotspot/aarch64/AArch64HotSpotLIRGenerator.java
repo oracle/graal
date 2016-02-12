@@ -23,6 +23,7 @@
 
 package com.oracle.graal.hotspot.aarch64;
 
+import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
 import com.oracle.graal.compiler.aarch64.AArch64ArithmeticLIRGenerator;
@@ -31,10 +32,12 @@ import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotLockStack;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
@@ -47,6 +50,7 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
@@ -163,6 +167,31 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         }
 
         getResult().setMaxInterpreterFrameSize(debugInfoBuilder.maxInterpreterFrameSize());
+    }
+
+    @Override
+    public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args) {
+        HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
+        Variable result;
+        LIRFrameState debugInfo = null;
+        if (hotspotLinkage.needsDebugInfo()) {
+            debugInfo = state;
+            assert debugInfo != null || getStub() != null;
+        }
+
+        if (linkage.destroysRegisters() || hotspotLinkage.needsJavaFrameAnchor()) {
+            HotSpotRegistersProvider registers = getProviders().getRegisters();
+            Register thread = registers.getThreadRegister();
+            Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
+            Label label = new Label();
+            append(new AArch64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadLastJavaFpOffset(), thread, scratch, label));
+            result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
+            append(new AArch64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread, label));
+        } else {
+            result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
+        }
+
+        return result;
     }
 
     @Override
