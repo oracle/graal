@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
@@ -174,9 +175,12 @@ public class LLVM {
                     throw new AssertionError(argParamCount);
                 }
             }
-            // TODO: specialize instead
             RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(globalFunction);
             Object result = callTarget.call(args);
+            if (LLVMOptions.isNativeCallStats()) {
+                printNativeCallStats(module);
+            }
+            // TODO: specialize instead
             if (result instanceof Number) {
                 return ((Number) result).intValue();
             } else if (result instanceof LLVMIVarBit) {
@@ -186,11 +190,26 @@ public class LLVM {
             } else {
                 throw new AssertionError(result);
             }
+
         } catch (IOException e) {
             throw new AssertionError(e);
         } finally {
             // FIXME w
             LLVMFunction.reset();
+        }
+    }
+
+    private static void printNativeCallStats(LLVMModule module) {
+        Map<LLVMFunction, Integer> nativeFunctionCallSites = module.getContext().getNativeFunctionLookupStats();
+        if (!nativeFunctionCallSites.isEmpty()) {
+            System.out.println("==========================");
+            System.out.println("native function sites:");
+            System.out.println("==========================");
+            for (LLVMFunction function : nativeFunctionCallSites.keySet()) {
+                String output = String.format("%15s: %3d", function.getName(), nativeFunctionCallSites.get(function));
+                System.out.println(output);
+            }
+            System.out.println("==========================");
         }
     }
 
@@ -221,12 +240,14 @@ public class LLVM {
         private final LLVMNode[] staticInits;
         private final LLVMAddress[] allocatedAddresses;
         private final LLVMFunction mainSignature;
+        private final LLVMContext context;
 
-        LLVMModule(RootCallTarget mainFunction, LLVMFunction mainSignature, LLVMNode[] staticInits, LLVMAddress[] allocatedAddresses) {
+        LLVMModule(RootCallTarget mainFunction, LLVMFunction mainSignature, LLVMNode[] staticInits, LLVMAddress[] allocatedAddresses, LLVMContext context) {
             this.mainFunction = mainFunction;
             this.mainSignature = mainSignature;
             this.staticInits = staticInits;
             this.allocatedAddresses = allocatedAddresses;
+            this.context = context;
         }
 
         public RootCallTarget getMainFunction() {
@@ -248,6 +269,10 @@ public class LLVM {
         public LLVMAddress[] getAllocatedAddresses() {
             return allocatedAddresses;
         }
+
+        public LLVMContext getContext() {
+            return context;
+        }
     }
 
     public static CallTarget getLLVMModuleCall(File file, LLVMContext context) {
@@ -259,7 +284,7 @@ public class LLVM {
         return new CallTarget() {
 
             public Object call(Object... arguments) {
-                return new LLVMModule(mainFunction, mainSignature, staticInits, allocatedAddresses);
+                return new LLVMModule(mainFunction, mainSignature, staticInits, allocatedAddresses, context);
             }
         };
     }
