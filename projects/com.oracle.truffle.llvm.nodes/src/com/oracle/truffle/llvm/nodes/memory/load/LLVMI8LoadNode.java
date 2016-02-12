@@ -29,65 +29,35 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI64NodeFactory.LLVMLoadDirectI64NodeGen;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public abstract class LLVMLoadI64Node extends LLVMI64Node {
+@NodeChild(type = LLVMAddressNode.class)
+public abstract class LLVMI8LoadNode extends LLVMI8Node {
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectI64Node extends LLVMLoadI64Node {
+    public abstract static class LLVMI8DirectLoadNode extends LLVMI8LoadNode {
 
         @Specialization
-        public long executeI64(LLVMAddress addr) {
-            return LLVMMemory.getI64(addr);
+        public byte executeI8(LLVMAddress addr) {
+            return LLVMMemory.getI8(addr);
         }
     }
 
-    public static class LLVMUninitializedLoadI64Node extends LLVMLoadI64Node {
+    public abstract static class LLVMI8ProfilingLoadNode extends LLVMI8LoadNode {
 
-        @Child private LLVMAddressNode addressNode;
+        private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
-        public LLVMUninitializedLoadI64Node(LLVMAddressNode addressNode) {
-            this.addressNode = addressNode;
-        }
-
-        @Override
-        public long executeI64(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            long val = LLVMMemory.getI64(addressNode.executePointee(frame));
-            replace(new LLVMLoadValueProfiledI64Node(addressNode, val));
-            return val;
+        @Specialization
+        public byte executeI8(LLVMAddress addr) {
+            byte val = LLVMMemory.getI8(addr);
+            return profile.profile(val);
         }
 
     }
 
-    public static class LLVMLoadValueProfiledI64Node extends LLVMLoadI64Node {
-
-        private final long profiledValue;
-        @Child private LLVMAddressNode addressNode;
-
-        public LLVMLoadValueProfiledI64Node(LLVMAddressNode addressNode, long profiledValue) {
-            this.addressNode = addressNode;
-            this.profiledValue = profiledValue;
-        }
-
-        @Override
-        public long executeI64(VirtualFrame frame) {
-            long value = LLVMMemory.getI64(addressNode.executePointee(frame));
-            if (value == profiledValue) {
-                return profiledValue;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                replace(LLVMLoadDirectI64NodeGen.create(addressNode));
-                return value;
-            }
-        }
-    }
 }

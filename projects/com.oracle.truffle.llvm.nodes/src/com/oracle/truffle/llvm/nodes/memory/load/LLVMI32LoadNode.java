@@ -29,66 +29,33 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI8NodeFactory.LLVMLoadDirectI8NodeGen;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public abstract class LLVMLoadI8Node extends LLVMI8Node {
+@NodeChild(type = LLVMAddressNode.class)
+public abstract class LLVMI32LoadNode extends LLVMI32Node {
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectI8Node extends LLVMLoadI8Node {
+    public abstract static class LLVMI32DirectLoadNode extends LLVMI32LoadNode {
 
         @Specialization
-        public byte executeI8(LLVMAddress addr) {
-            return LLVMMemory.getI8(addr);
+        public int executeI32(LLVMAddress addr) {
+            return LLVMMemory.getI32(addr);
         }
-
     }
 
-    public static class LLVMUninitializedLoadI8Node extends LLVMLoadI8Node {
+    public abstract static class LLVMI32ProfilingLoadNode extends LLVMI32LoadNode {
 
-        @Child private LLVMAddressNode addressNode;
+        private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
-        public LLVMUninitializedLoadI8Node(LLVMAddressNode addressNode) {
-            this.addressNode = addressNode;
-        }
-
-        @Override
-        public byte executeI8(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            byte val = LLVMMemory.getI8(addressNode.executePointee(frame));
-            replace(new LLVMLoadValueProfiledI8Node(addressNode, val));
-            return val;
-        }
-
-    }
-
-    public static class LLVMLoadValueProfiledI8Node extends LLVMLoadI8Node {
-
-        private final byte profiledValue;
-        @Child private LLVMAddressNode addressNode;
-
-        public LLVMLoadValueProfiledI8Node(LLVMAddressNode addressNode, byte profiledValue) {
-            this.addressNode = addressNode;
-            this.profiledValue = profiledValue;
-        }
-
-        @Override
-        public byte executeI8(VirtualFrame frame) {
-            byte value = LLVMMemory.getI8(addressNode.executePointee(frame));
-            if (value == profiledValue) {
-                return profiledValue;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                replace(LLVMLoadDirectI8NodeGen.create(addressNode));
-                return value;
-            }
+        @Specialization
+        public int executeI32(LLVMAddress addr) {
+            int val = LLVMMemory.getI32(addr);
+            return profile.profile(val);
         }
 
     }
