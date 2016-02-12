@@ -1399,10 +1399,15 @@ public class BytecodeParser implements GraphBuilderContext {
      * @param callTarget The call target.
      */
     protected boolean omitInvokeExceptionEdge(MethodCallTargetNode callTarget) {
-        // be conservative if information was not recorded (could result in endless
-        // recompiles otherwise)
-        return lastInlineInfo == InlineInfo.DO_NOT_INLINE_NO_EXCEPTION || graphBuilderConfig.omitAllExceptionEdges() ||
-                        (!StressInvokeWithExceptionNode.getValue() && optimisticOpts.useExceptionProbability() && profilingInfo != null && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE);
+        if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION) {
+            return false;
+        } else if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_NO_EXCEPTION || graphBuilderConfig.omitAllExceptionEdges()) {
+            return true;
+        } else {
+            // be conservative if information was not recorded (could result in endless
+            // recompiles otherwise)
+            return (!StressInvokeWithExceptionNode.getValue() && optimisticOpts.useExceptionProbability() && profilingInfo != null && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE);
+        }
     }
 
     /**
