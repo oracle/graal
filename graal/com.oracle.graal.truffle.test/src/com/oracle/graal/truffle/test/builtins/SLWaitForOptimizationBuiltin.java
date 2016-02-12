@@ -40,6 +40,10 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @NodeInfo(shortName = "waitForOptimization")
 public abstract class SLWaitForOptimizationBuiltin extends SLGraalRuntimeBuiltin {
 
+    SLWaitForOptimizationBuiltin() {
+        super(SLWaitForOptimizationBuiltin.class);
+    }
+
     @Specialization
     public SLFunction waitForOptimization(SLFunction function, long timeout) {
         OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();

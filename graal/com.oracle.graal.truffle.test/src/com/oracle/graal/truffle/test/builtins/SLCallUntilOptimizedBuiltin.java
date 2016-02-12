@@ -50,6 +50,10 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     private static final int MAX_CALLS = 10000;
     private static final Object[] EMPTY_ARGS = new Object[0];
 
+    SLCallUntilOptimizedBuiltin() {
+        super(SLCallUntilOptimizedBuiltin.class);
+    }
+
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
