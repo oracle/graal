@@ -26,7 +26,7 @@ package com.oracle.truffle.api.interop;
 
 final class Read extends KnownMessage {
     public static final int HASH = 423438;
-    static Message INSTANCE = new Read();
+    static final Message INSTANCE = new Read();
 
     private Read() {
     }

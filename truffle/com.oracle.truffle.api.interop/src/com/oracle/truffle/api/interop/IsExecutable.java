@@ -26,7 +26,7 @@ package com.oracle.truffle.api.interop;
 
 final class IsExecutable extends UnaryMessage {
     public static final int HASH = 423435;
-    static Message INSTANCE = new IsExecutable();
+    static final Message INSTANCE = new IsExecutable();
 
     @Override
     public int hashCode() {

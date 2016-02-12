@@ -26,7 +26,7 @@ package com.oracle.truffle.api.interop;
 
 final class HasSize extends UnaryMessage {
     public static final int HASH = 423433;
-    static Message INSTANCE = new HasSize();
+    static final Message INSTANCE = new HasSize();
 
     @Override
     public int hashCode() {

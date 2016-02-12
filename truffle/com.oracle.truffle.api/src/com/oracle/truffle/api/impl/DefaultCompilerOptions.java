@@ -28,7 +28,7 @@ import com.oracle.truffle.api.CompilerOptions;
 
 public class DefaultCompilerOptions implements CompilerOptions {
 
-    public static DefaultCompilerOptions INSTANCE = new DefaultCompilerOptions();
+    public static final DefaultCompilerOptions INSTANCE = new DefaultCompilerOptions();
 
     public boolean supportsOption(String name) {
         return false;

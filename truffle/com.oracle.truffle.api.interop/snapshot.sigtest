@@ -75,7 +75,7 @@ fld public final static com.oracle.truffle.api.interop.Message IS_EXECUTABLE
 fld public final static com.oracle.truffle.api.interop.Message IS_NULL
 fld public final static com.oracle.truffle.api.interop.Message READ
 fld public final static com.oracle.truffle.api.interop.Message UNBOX
-fld public static com.oracle.truffle.api.interop.Message WRITE
+fld public final static com.oracle.truffle.api.interop.Message WRITE
 meth public abstract boolean equals(java.lang.Object)
 meth public abstract int hashCode()
 meth public final com.oracle.truffle.api.nodes.Node createNode()

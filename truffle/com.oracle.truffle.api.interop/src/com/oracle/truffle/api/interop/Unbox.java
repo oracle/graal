@@ -26,7 +26,7 @@ package com.oracle.truffle.api.interop;
 
 final class Unbox extends UnaryMessage {
     public static final int HASH = 423437;
-    static Message INSTANCE = new Unbox();
+    static final Message INSTANCE = new Unbox();
 
     @Override
     public int hashCode() {

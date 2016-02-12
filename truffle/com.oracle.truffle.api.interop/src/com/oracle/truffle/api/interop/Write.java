@@ -26,8 +26,7 @@ package com.oracle.truffle.api.interop;
 
 final class Write extends KnownMessage {
     public static final int HASH = 423431;
-
-    static Message INSTANCE = new Write();
+    static final Message INSTANCE = new Write();
 
     @Override
     public boolean equals(Object message) {

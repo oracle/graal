@@ -26,7 +26,7 @@ package com.oracle.truffle.api.interop;
 
 final class IsNull extends UnaryMessage {
     public static final int HASH = 423436;
-    static Message INSTANCE = new IsNull();
+    static final Message INSTANCE = new IsNull();
 
     @Override
     public int hashCode() {

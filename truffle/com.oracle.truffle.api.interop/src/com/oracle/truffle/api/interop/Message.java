@@ -110,7 +110,7 @@ public abstract class Message {
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
      */
-    public static Message WRITE = Write.INSTANCE;
+    public static final Message WRITE = Write.INSTANCE;
 
     /**
      * Creates a non-object oriented execution message. In contrast to {@link #createInvoke(int)}

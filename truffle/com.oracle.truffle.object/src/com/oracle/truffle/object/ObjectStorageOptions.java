@@ -30,15 +30,15 @@ public final class ObjectStorageOptions {
 
     // Shape configuration
     /** Primitive location switch. */
-    public static boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
-    public static boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
-    public static boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
-    public static boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
-    public static boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
-    public static boolean TypedObjectLocations = booleanOption(OPTION_PREFIX + "TypedObjectLocations", true);
+    public static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
+    public static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
+    public static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
+    public static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
+    public static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
+    public static final boolean TypedObjectLocations = booleanOption(OPTION_PREFIX + "TypedObjectLocations", true);
 
     /** Allocation of in-object fields. */
-    public static boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
+    public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
 
     // Debug options (should be final)
     public static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", true);
