@@ -45,6 +45,10 @@ public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
     @Child private Node findContextNode = SLLanguage.INSTANCE.createFindContextNode0();
 
+    SLCallFunctionsWithBuiltin() {
+        super(SLCallFunctionsWithBuiltin.class);
+    }
+
     @Specialization
     public SLNull runTests(VirtualFrame frame, String startsWith, SLFunction harness) {
         SLContext context = SLLanguage.INSTANCE.findContext0(findContextNode);

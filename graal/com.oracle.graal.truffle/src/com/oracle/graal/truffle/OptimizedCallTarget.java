@@ -215,16 +215,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             }
             return result;
         } catch (Throwable t) {
-            t = exceptionProfile.profile(t);
-            if (t instanceof RuntimeException) {
-                throw (RuntimeException) t;
-            } else if (t instanceof Error) {
-                throw (Error) t;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(t);
-            }
+            throw rethrow(exceptionProfile.profile(t));
         }
+    }
+
+    @SuppressWarnings({"unchecked"})
+    private static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
     }
 
     public final Object callInlined(Object... arguments) {
@@ -234,7 +231,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     @ExplodeLoop
-    void profileArguments(Object[] args) {
+    public void profileArguments(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -329,7 +326,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return result;
     }
 
-    void profileReturnType(Object result) {
+    public void profileReturnType(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
         if (returnTypeAssumption == null) {
             if (TruffleReturnTypeSpeculation.getValue()) {

@@ -39,6 +39,10 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @NodeInfo(shortName = "disableSplitting")
 public abstract class SLDisableSplittingBuiltin extends SLGraalRuntimeBuiltin {
 
+    SLDisableSplittingBuiltin() {
+        super(SLDisableSplittingBuiltin.class);
+    }
+
     @Specialization
     @TruffleBoundary
     public SLFunction disableSplitting(SLFunction function) {
