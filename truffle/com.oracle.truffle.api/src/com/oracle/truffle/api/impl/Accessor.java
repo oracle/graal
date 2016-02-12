@@ -51,6 +51,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
@@ -277,8 +278,8 @@ public abstract class Accessor {
     @TruffleBoundary
     @SuppressWarnings("unused")
     protected Closeable executionStart(Object vm, int currentDepth, Debugger debugger, Source s) {
-        vm.getClass();
         CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(vm);
         final Object prev = CURRENT_VM.get();
         final Closeable debugClose = DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
         if (!(vm == previousVM.get())) {

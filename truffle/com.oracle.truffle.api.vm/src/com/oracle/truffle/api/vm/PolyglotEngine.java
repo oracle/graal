@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
@@ -266,7 +267,7 @@ public class PolyglotEngine {
          * @return instance of this builder
          */
         public Builder onEvent(EventConsumer<?> handler) {
-            handler.getClass();
+            Objects.requireNonNull(handler);
             handlers.add(handler);
             return this;
         }
