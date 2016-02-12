@@ -26,20 +26,16 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.comp
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 
 /**
  * Substitutions for {@link java.lang.System} methods.
  */
-@ClassSubstitution(java.lang.System.class)
 public class SystemSubstitutions {
 
     public static final ForeignCallDescriptor JAVA_TIME_MILLIS = new ForeignCallDescriptor("javaTimeMillis", long.class);
     public static final ForeignCallDescriptor JAVA_TIME_NANOS = new ForeignCallDescriptor("javaTimeNanos", long.class);
 
-    @MethodSubstitution
     public static int identityHashCode(Object x) {
         if (probability(NOT_FREQUENT_PROBABILITY, x == null)) {
             return 0;

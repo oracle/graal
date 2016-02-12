@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.replacements;
 
+import java.lang.reflect.Array;
+
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
 
@@ -33,8 +37,10 @@ import com.oracle.graal.nodes.java.ArrayLengthNode;
 /**
  * Substitutions for {@link java.lang.reflect.Array} methods.
  */
+@ClassSubstitution(Array.class)
 public class ArraySubstitutions {
 
+    @MethodSubstitution
     public static int getLength(Object array) {
         if (!array.getClass().isArray()) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);

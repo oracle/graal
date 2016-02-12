@@ -41,7 +41,7 @@ import com.oracle.graal.word.Word;
 /**
  * Substitutions for {@link java.lang.Thread} methods.
  */
-@ClassSubstitution(java.lang.Thread.class)
+@ClassSubstitution(Thread.class)
 public class ThreadSubstitutions {
 
     @MethodSubstitution(isStatic = false)

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.java.LoadFieldNode;
@@ -32,8 +34,10 @@ import com.oracle.graal.replacements.nodes.ArrayEqualsNode;
 /**
  * Substitutions for {@link java.lang.String} methods.
  */
+@ClassSubstitution(String.class)
 public class StringSubstitutions {
 
+    @MethodSubstitution(isStatic = false)
     @SuppressFBWarnings(value = "ES_COMPARING_PARAMETER_STRING_WITH_EQ", justification = "reference equality on the receiver is what we want")
     public static boolean equals(final String thisString, Object obj) {
         if (thisString == obj) {

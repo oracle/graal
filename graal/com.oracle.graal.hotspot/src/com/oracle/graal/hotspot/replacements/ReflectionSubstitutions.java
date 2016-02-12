@@ -28,6 +28,8 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klas
 
 import java.lang.reflect.Modifier;
 
+import sun.reflect.Reflection;
+
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
@@ -36,7 +38,7 @@ import com.oracle.graal.hotspot.word.KlassPointer;
 /**
  * Substitutions for {@link sun.reflect.Reflection} methods.
  */
-@ClassSubstitution(sun.reflect.Reflection.class)
+@ClassSubstitution(Reflection.class)
 public class ReflectionSubstitutions {
 
     @MethodSubstitution

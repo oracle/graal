@@ -29,7 +29,9 @@ import java.util.zip.CRC32;
 
 import jdk.vm.ci.meta.JavaKind;
 
+import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -42,6 +44,7 @@ import com.oracle.graal.word.Word;
 /**
  * Substitutions for {@link CRC32}.
  */
+@ClassSubstitution(CRC32.class)
 public class CRC32Substitutions {
 
     /**
@@ -52,6 +55,7 @@ public class CRC32Substitutions {
         return config().crcTableAddress;
     }
 
+    @MethodSubstitution
     static int update(int crc, int b) {
         int c = ~crc;
         int index = (b ^ c) & 0xFF;
@@ -61,21 +65,31 @@ public class CRC32Substitutions {
         return ~result;
     }
 
+    @MethodSubstitution
     static int updateBytes(int crc, byte[] buf, int off, int len) {
         Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, arrayBaseOffset(JavaKind.Byte) + off));
         return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 
+    /**
+     * @since 9
+     */
+    @MethodSubstitution(optional = true)
     static int updateBytes0(int crc, byte[] buf, int off, int len) {
         Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, arrayBaseOffset(JavaKind.Byte) + off));
         return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 
+    @MethodSubstitution
     static int updateByteBuffer(int crc, long addr, int off, int len) {
         Word bufAddr = Word.unsigned(addr).add(off);
         return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 
+    /**
+     * @since 9
+     */
+    @MethodSubstitution(optional = true)
     static int updateByteBuffer0(int crc, long addr, int off, int len) {
         Word bufAddr = Word.unsigned(addr).add(off);
         return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);

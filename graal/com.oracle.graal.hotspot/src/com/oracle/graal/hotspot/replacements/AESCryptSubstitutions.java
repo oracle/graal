@@ -38,6 +38,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
 import sun.misc.Launcher;
 
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -54,6 +56,7 @@ import com.oracle.graal.word.Word;
 /**
  * Substitutions for {@code com.sun.crypto.provider.AESCrypt} methods.
  */
+@ClassSubstitution(className = "com.sun.crypto.provider.AESCrypt", optional = true)
 public class AESCryptSubstitutions {
 
     static final long kOffset;
@@ -77,18 +80,22 @@ public class AESCryptSubstitutions {
         }
     }
 
+    @MethodSubstitution(isStatic = false)
     static void encryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, true, false);
     }
 
+    @MethodSubstitution(isStatic = false)
     static void implEncryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, true, false);
     }
 
+    @MethodSubstitution(isStatic = false)
     static void decryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, false, false);
     }
 
+    @MethodSubstitution(isStatic = false)
     static void implDecryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, false, false);
     }
@@ -97,6 +104,7 @@ public class AESCryptSubstitutions {
      * Variation for platforms (e.g. SPARC) that need do key expansion in stubs due to compatibility
      * issues between Java key expansion and hardware crypto instructions.
      */
+    @MethodSubstitution(value = "decryptBlock", isStatic = false)
     static void decryptBlockWithOriginalKey(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, false, true);
     }
@@ -104,6 +112,7 @@ public class AESCryptSubstitutions {
     /**
      * @see #decryptBlockWithOriginalKey(Object, byte[], int, byte[], int)
      */
+    @MethodSubstitution(value = "implDecryptBlock", isStatic = false)
     static void implDecryptBlockWithOriginalKey(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, false, true);
     }
