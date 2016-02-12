@@ -1377,11 +1377,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType, profile));
 
-        // be conservative if information was not recorded (could result in endless
-        // recompiles otherwise)
         Invoke invoke;
-        if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_NO_EXCEPTION || graphBuilderConfig.omitAllExceptionEdges() ||
-                        (!StressInvokeWithExceptionNode.getValue() && optimisticOpts.useExceptionProbability() && profilingInfo != null && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
+        if (omitInvokeExceptionEdge(callTarget)) {
             invoke = createInvoke(callTarget, resultType);
         } else {
             invoke = createInvokeWithException(callTarget, resultType);
@@ -1393,6 +1390,19 @@ public class BytecodeParser implements GraphBuilderContext {
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
             plugin.notifyNotInlined(this, targetMethod, invoke);
         }
+    }
+
+    /**
+     * If the method returns true, the invocation of the given {@link MethodCallTargetNode call
+     * target} does not need an exception edge.
+     *
+     * @param callTarget The call target.
+     */
+    protected boolean omitInvokeExceptionEdge(MethodCallTargetNode callTarget) {
+        // be conservative if information was not recorded (could result in endless
+        // recompiles otherwise)
+        return lastInlineInfo == InlineInfo.DO_NOT_INLINE_NO_EXCEPTION || graphBuilderConfig.omitAllExceptionEdges() ||
+                        (!StressInvokeWithExceptionNode.getValue() && optimisticOpts.useExceptionProbability() && profilingInfo != null && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE);
     }
 
     /**
