@@ -44,9 +44,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.instrument.ASTPrinter;
-import com.oracle.truffle.api.instrument.impl.DefaultVisualizer;
+import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -54,7 +55,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * SLDefaultVisualizer provides methods to get the names of SL's internal Truffle AST nodes.
  *
  */
-public class SLDefaultVisualizer extends DefaultVisualizer {
+public class SLDefaultVisualizer implements Visualizer {
 
     private final SLASTPrinter astPrinter;
 
@@ -109,4 +110,45 @@ public class SLDefaultVisualizer extends DefaultVisualizer {
         final Object id = slot.getIdentifier();
         return id.toString();
     }
+
+    @Override
+    public String displaySourceLocation(Node node) {
+        if (node == null) {
+            return "<unknown>";
+        }
+        SourceSection section = node.getSourceSection();
+        boolean estimated = false;
+        if (section == null) {
+            section = node.getEncapsulatingSourceSection();
+            estimated = true;
+        }
+        if (section == null) {
+            return "<error: source location>";
+        }
+        return section.getShortDescription() + (estimated ? "~" : "");
+    }
+
+    /**
+     * Trims text if {@code trim > 0} to the shorter of {@code trim} or the length of the first line
+     * of test. Identity if {@code trim <= 0}.
+     */
+    private static String trim(String text, int trim) {
+        if (trim == 0) {
+            return text;
+        }
+        final String[] lines = text.split("\n");
+        String result = lines[0];
+        if (lines.length == 1) {
+            if (result.length() <= trim) {
+                return result;
+            }
+            if (trim <= 3) {
+                return result.substring(0, Math.min(result.length() - 1, trim - 1));
+            } else {
+                return result.substring(0, trim - 4) + "...";
+            }
+        }
+        return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
+    }
+
 }

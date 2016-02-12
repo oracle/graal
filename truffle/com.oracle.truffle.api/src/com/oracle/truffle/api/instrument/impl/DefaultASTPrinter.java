@@ -45,22 +45,26 @@ public class DefaultASTPrinter implements ASTPrinter {
     public DefaultASTPrinter() {
     }
 
+    @Override
     public void printTree(PrintWriter p, Node node, int maxDepth, Node markNode) {
         printTree(p, node, maxDepth, markNode, 1);
         p.println();
         p.flush();
     }
 
+    @Override
     public String printTreeToString(Node node, int maxDepth, Node markNode) {
         StringWriter out = new StringWriter();
         printTree(new PrintWriter(out), node, maxDepth, markNode);
         return out.toString();
     }
 
+    @Override
     public String printTreeToString(Node node, int maxDepth) {
         return printTreeToString(node, maxDepth, null);
     }
 
+    @Override
     public String printNodeWithInstrumentation(Node node) {
         if (node == null) {
             return "null";
