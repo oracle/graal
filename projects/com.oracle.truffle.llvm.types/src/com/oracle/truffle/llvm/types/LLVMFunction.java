@@ -37,7 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-public final class LLVMFunction implements TruffleObject {
+public final class LLVMFunction implements TruffleObject, Comparable<LLVMFunction> {
 
     public static final int FRAME_START_INDEX = 2;
 
@@ -181,6 +181,10 @@ public final class LLVMFunction implements TruffleObject {
 
     public static int getNumberRegisteredFunctions() {
         return functionCounter;
+    }
+
+    public int compareTo(LLVMFunction o) {
+        return getName().compareTo(o.getName());
     }
 
 }
