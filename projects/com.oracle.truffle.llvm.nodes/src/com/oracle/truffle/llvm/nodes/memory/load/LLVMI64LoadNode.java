@@ -27,8 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.nodes.memory.load;
 
-public class LLVMStringToTypeHelper {
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.LongValueProfile;
+import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.memory.LLVMMemory;
+
+@NodeChild(type = LLVMAddressNode.class)
+public abstract class LLVMI64LoadNode extends LLVMI64Node {
+
+    public abstract static class LLVMI64DirectLoadNode extends LLVMI64LoadNode {
+
+        @Specialization
+        public long executeI64(LLVMAddress addr) {
+            return LLVMMemory.getI64(addr);
+        }
+    }
+
+    public abstract static class LLVMI64ProfilingLoadNode extends LLVMI64LoadNode {
+
+        private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
+
+        @Specialization
+        public long executeI64(LLVMAddress addr) {
+            long val = LLVMMemory.getI64(addr);
+            return profile.profile(val);
+        }
+
+    }
 
 }

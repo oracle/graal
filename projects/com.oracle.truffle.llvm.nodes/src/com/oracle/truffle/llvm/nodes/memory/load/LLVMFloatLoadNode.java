@@ -29,66 +29,33 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadI16NodeFactory.LLVMLoadDirectI16NodeGen;
+import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public abstract class LLVMLoadI16Node extends LLVMI16Node {
+@NodeChild(type = LLVMAddressNode.class)
+public abstract class LLVMFloatLoadNode extends LLVMFloatNode {
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectI16Node extends LLVMLoadI16Node {
+    public abstract static class LLVMFloatDirectLoadNode extends LLVMFloatLoadNode {
 
         @Specialization
-        public short executeI16(LLVMAddress addr) {
-            return LLVMMemory.getI16(addr);
+        public float executeFloat(LLVMAddress addr) {
+            return LLVMMemory.getFloat(addr);
         }
-
     }
 
-    public static class LLVMUninitializedLoadI16Node extends LLVMLoadI16Node {
+    public abstract static class LLVMFloatProfilingLoadNode extends LLVMFloatLoadNode {
 
-        @Child private LLVMAddressNode addressNode;
+        private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
 
-        public LLVMUninitializedLoadI16Node(LLVMAddressNode addressNode) {
-            this.addressNode = addressNode;
-        }
-
-        @Override
-        public short executeI16(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            short val = LLVMMemory.getI16(addressNode.executePointee(frame));
-            replace(new LLVMLoadValueProfiledI16Node(addressNode, val));
-            return val;
-        }
-
-    }
-
-    public static class LLVMLoadValueProfiledI16Node extends LLVMLoadI16Node {
-
-        private final short profiledValue;
-        @Child private LLVMAddressNode addressNode;
-
-        public LLVMLoadValueProfiledI16Node(LLVMAddressNode addressNode, short profiledValue) {
-            this.addressNode = addressNode;
-            this.profiledValue = profiledValue;
-        }
-
-        @Override
-        public short executeI16(VirtualFrame frame) {
-            short value = LLVMMemory.getI16(addressNode.executePointee(frame));
-            if (value == profiledValue) {
-                return profiledValue;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                replace(LLVMLoadDirectI16NodeGen.create(addressNode));
-                return value;
-            }
+        @Specialization
+        public float executeFloat(LLVMAddress addr) {
+            float val = LLVMMemory.getFloat(addr);
+            return profile.profile(val);
         }
 
     }

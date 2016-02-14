@@ -29,20 +29,18 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.DoubleValueProfile;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadDoubleNodeFactory.LLVMLoadDirectDoubleNodeGen;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public abstract class LLVMLoadDoubleNode extends LLVMDoubleNode {
+@NodeChild(type = LLVMAddressNode.class)
+public abstract class LLVMDoubleLoadNode extends LLVMDoubleNode {
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMLoadDirectDoubleNode extends LLVMLoadDoubleNode {
+    public abstract static class LLVMDoubleDirectLoadNode extends LLVMDoubleLoadNode {
 
         @Specialization
         public double executeDouble(LLVMAddress addr) {
@@ -50,44 +48,14 @@ public abstract class LLVMLoadDoubleNode extends LLVMDoubleNode {
         }
     }
 
-    public static class LLVMUninitializedLoadDoubleNode extends LLVMLoadDoubleNode {
+    public abstract static class LLVMDoubleProfilingLoadNode extends LLVMDoubleLoadNode {
 
-        @Child private LLVMAddressNode addressNode;
+        private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
 
-        public LLVMUninitializedLoadDoubleNode(LLVMAddressNode addressNode) {
-            this.addressNode = addressNode;
-        }
-
-        @Override
-        public double executeDouble(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            double val = LLVMMemory.getDouble(addressNode.executePointee(frame));
-            replace(new LLVMLoadValueProfiledDoubleNode(addressNode, val));
-            return val;
-        }
-
-    }
-
-    public static class LLVMLoadValueProfiledDoubleNode extends LLVMLoadDoubleNode {
-
-        private final double profiledValue;
-        @Child private LLVMAddressNode addressNode;
-
-        public LLVMLoadValueProfiledDoubleNode(LLVMAddressNode addressNode, double profiledValue) {
-            this.addressNode = addressNode;
-            this.profiledValue = profiledValue;
-        }
-
-        @Override
-        public double executeDouble(VirtualFrame frame) {
-            double value = LLVMMemory.getDouble(addressNode.executePointee(frame));
-            if (Double.doubleToRawLongBits(value) == Double.doubleToRawLongBits(profiledValue)) {
-                return profiledValue;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                replace(LLVMLoadDirectDoubleNodeGen.create(addressNode));
-                return value;
-            }
+        @Specialization
+        public double executeDouble(LLVMAddress addr) {
+            double value = LLVMMemory.getDouble(addr);
+            return profile.profile(value);
         }
     }
 
