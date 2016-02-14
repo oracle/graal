@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm;
 
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.TreeMap;
 
 import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
 import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionPointer;
@@ -62,9 +64,16 @@ public class LLVMContext extends ExecutionContext {
 
     private LLVMAddress[] deallocations;
 
+    private final Map<LLVMFunction, Integer> nativeFunctionLookupStats;
+
     public LLVMContext(NodeFactoryFacade facade, LLVMOptimizationConfiguration optimizationConfig) {
         this.facade = facade;
         this.registry = new LLVMFunctionRegistry(optimizationConfig);
+        if (LLVMOptions.isNativeCallStats()) {
+            nativeFunctionLookupStats = new TreeMap<>();
+        } else {
+            nativeFunctionLookupStats = null;
+        }
     }
 
     public RootCallTarget getFunction(LLVMFunction function) {
@@ -138,7 +147,22 @@ public class LLVMContext extends ExecutionContext {
             }
             functionHandle = nfi.getFunctionHandle(handles, functionName, retType, paramTypes);
         }
+        if (LLVMOptions.isNativeCallStats() && functionHandle != null) {
+            recordNativeFunctionCallSite(function);
+        }
         return functionHandle;
+    }
+
+    private void recordNativeFunctionCallSite(LLVMFunction function) {
+        CompilerAsserts.neverPartOfCompilation();
+        Integer val = nativeFunctionLookupStats.get(function);
+        int newVal;
+        if (val == null) {
+            newVal = 1;
+        } else {
+            newVal = val + 1;
+        }
+        nativeFunctionLookupStats.put(function, newVal);
     }
 
     // TODO: are there cases where the nodes alone are not sufficient, and we also need the types??
@@ -178,6 +202,10 @@ public class LLVMContext extends ExecutionContext {
             default:
                 throw new AssertionError(type);
         }
+    }
+
+    public Map<LLVMFunction, Integer> getNativeFunctionLookupStats() {
+        return nativeFunctionLookupStats;
     }
 
 }
