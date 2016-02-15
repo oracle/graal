@@ -413,7 +413,8 @@ public final class InteropProcessor extends AbstractProcessor {
         private final String targetableUnaryNode;
         private final String unaryRootNode;
 
-        UnaryGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName, String truffleLanguageFullClazzName) {
+        UnaryGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName,
+                        String truffleLanguageFullClazzName) {
             super(processingEnv, e, pkg, clazzName, fullClazzName, methodName, userClassName, truffleLanguageFullClazzName);
             this.targetableUnaryNode = (new StringBuilder(methodName)).replace(0, 1, methodName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
             this.unaryRootNode = (new StringBuilder(methodName)).replace(0, 1, methodName.substring(0, 1).toUpperCase()).append("RootNode").toString();
@@ -587,7 +588,8 @@ public final class InteropProcessor extends AbstractProcessor {
         private static final String TARGETABLE_READ_NODE = "TargetableReadNode";
         private static final String READ_ROOT_NODE = "ReadRootNode";
 
-        ReadGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName, String truffleLanguageFullClazzName) {
+        ReadGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName,
+                        String truffleLanguageFullClazzName) {
             super(processingEnv, e, pkg, clazzName, fullClazzName, methodName, userClassName, truffleLanguageFullClazzName);
         }
 
@@ -651,7 +653,8 @@ public final class InteropProcessor extends AbstractProcessor {
         private static final String TARGETABLE_WRITE_NODE = "TargetableWriteNode";
         private static final String WRITE_ROOT_NODE = "WriteRootNode";
 
-        WriteGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName, String truffleLanguageFullClazzName) {
+        WriteGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName,
+                        String truffleLanguageFullClazzName) {
             super(processingEnv, e, pkg, clazzName, fullClazzName, methodName, userClassName, truffleLanguageFullClazzName);
         }
 
@@ -875,7 +878,7 @@ public final class InteropProcessor extends AbstractProcessor {
         private void appendFactoryAccessMessage(Writer w) throws IOException {
             w.append("    public CallTarget accessMessage(Message unknown) {").append("\n");
             for (Message m : messageHandlers.keySet()) {
-                w.append("      if (Message.valueOf(\"").append(m.toString()).append("\").getClass().isInstance(unknown)) {").append("\n");
+                w.append("      if (unknown.hashCode() == ").append(String.valueOf(m.hashCode())).append(") {").append("\n");
                 w.append("        return Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(m)).append(");").append("\n");
                 w.append("      }").append("\n");
             }
