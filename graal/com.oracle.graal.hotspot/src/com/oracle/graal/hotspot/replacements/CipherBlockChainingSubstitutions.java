@@ -32,7 +32,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
 import sun.misc.Launcher;
 
+import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -48,6 +50,7 @@ import com.oracle.graal.word.Word;
 /**
  * Substitutions for {@code com.sun.crypto.provider.CipherBlockChaining} methods.
  */
+@ClassSubstitution(className = "com.sun.crypto.provider.CipherBlockChaining", optional = true)
 public class CipherBlockChainingSubstitutions {
 
     private static final long embeddedCipherOffset;
@@ -75,6 +78,7 @@ public class CipherBlockChainingSubstitutions {
         return AESCryptSubstitutions.AESCryptClass;
     }
 
+    @MethodSubstitution(isStatic = false)
     static int encrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());
@@ -87,6 +91,7 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
+    @MethodSubstitution(isStatic = false, value = "implEncrypt")
     static int implEncrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());
@@ -99,6 +104,7 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
+    @MethodSubstitution(isStatic = false)
     static int decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());
@@ -111,6 +117,7 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
+    @MethodSubstitution(isStatic = false)
     static int implDecrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());
@@ -127,6 +134,7 @@ public class CipherBlockChainingSubstitutions {
      * Variation for platforms (e.g. SPARC) that need do key expansion in stubs due to compatibility
      * issues between Java key expansion and hardware crypto instructions.
      */
+    @MethodSubstitution(isStatic = false, value = "decrypt")
     static int decryptWithOriginalKey(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());
@@ -142,6 +150,7 @@ public class CipherBlockChainingSubstitutions {
     /**
      * @see #decryptWithOriginalKey(Object, byte[], int, int, byte[], int)
      */
+    @MethodSubstitution(isStatic = false, value = "implDecrypt")
     static int implDecryptWithOriginalKey(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, JavaKind.Object, LocationIdentity.any());

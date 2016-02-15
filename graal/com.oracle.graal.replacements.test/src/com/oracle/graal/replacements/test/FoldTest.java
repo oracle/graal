@@ -32,7 +32,10 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.graphbuilderconf.NodeIntrinsicPluginFactory.InjectionProvider;
 import com.oracle.graal.replacements.NodeIntrinsificationProvider;
 
@@ -77,13 +80,12 @@ public class FoldTest extends GraalCompilerTest {
         }
     }
 
-    private static boolean substitutionsInstalled;
-
-    public FoldTest() {
-        if (!substitutionsInstalled) {
-            getProviders().getReplacements().registerSubstitutions(TestMethod.class, TestMethodSubstitution.class);
-            substitutionsInstalled = true;
-        }
+    @Override
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
+        Registration r = new Registration(invocationPlugins, TestMethod.class);
+        r.registerMethodSubstitution(TestMethodSubstitution.class, "test");
+        return super.editGraphBuilderConfiguration(conf);
     }
 
     public static int callTest() {

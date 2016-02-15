@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.aarch64;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -29,11 +32,7 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.replacements.IntegerSubstitutions;
-import com.oracle.graal.replacements.LongSubstitutions;
-
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import com.oracle.graal.replacements.nodes.BitScanForwardNode;
 
 public class AArch64GraphBuilderPlugins {
 
@@ -41,8 +40,8 @@ public class AArch64GraphBuilderPlugins {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             public void run() {
-                registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int);
-                registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long);
+                registerIntegerLongPlugins(invocationPlugins, AArch64IntegerSubstitutions.class, JavaKind.Int);
+                registerIntegerLongPlugins(invocationPlugins, AArch64LongSubstitutions.class, JavaKind.Long);
                 registerMathPlugins(invocationPlugins, foreignCalls);
             }
         });
@@ -63,7 +62,18 @@ public class AArch64GraphBuilderPlugins {
                 return true;
             }
         });
-        r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
+        r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                ValueNode folded = BitScanForwardNode.tryFold(value);
+                if (folded != null) {
+                    b.addPush(JavaKind.Int, folded);
+                } else {
+                    b.addPush(JavaKind.Int, new BitScanForwardNode(value));
+                }
+                return true;
+            }
+        });
+        r.registerMethodSubstitution(substituteDeclaringClass, "bitCount", type);
     }
 
     @SuppressWarnings("unused")

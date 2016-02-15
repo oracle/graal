@@ -197,24 +197,26 @@ def ctw(args, extraVMarguments=None):
     run_vm(vmargs + _noneAsEmptyList(extraVMarguments))
 
 class UnitTestRun:
-    def __init__(self, name, args):
+    def __init__(self, name, args, tags):
         self.name = name
         self.args = args
+        self.tags = tags
 
     def run(self, suites, tasks, extraVMarguments=None):
         for suite in suites:
-            with Task(self.name + ': hosted-product ' + suite, tasks) as t:
+            with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
                 if t: unittest(['--suite', suite, '--fail-fast'] + self.args + _noneAsEmptyList(extraVMarguments))
 
 class BootstrapTest:
-    def __init__(self, name, vmbuild, args, suppress=None):
+    def __init__(self, name, vmbuild, args, tags, suppress=None):
         self.name = name
         self.args = args
         self.suppress = suppress
+        self.tags = tags
 
     def run(self, tasks, extraVMarguments=None):
         with JVMCIMode('jit'):
-            with Task(self.name, tasks) as t:
+            with Task(self.name, tasks, tags=self.tags) as t:
                 if t:
                     if self.suppress:
                         out = mx.DuplicateSuppressingStream(self.suppress).write
@@ -223,13 +225,18 @@ class BootstrapTest:
                     run_vm(self.args + _noneAsEmptyList(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
 
 class MicrobenchRun:
-    def __init__(self, name, args):
+    def __init__(self, name, args, tags):
         self.name = name
         self.args = args
+        self.tags = tags
 
     def run(self, tasks, extraVMarguments=None):
-        with Task(self.name + ': hosted-product ', tasks) as t:
+        with Task(self.name + ': hosted-product ', tasks, tags=self.tags) as t:
             if t: microbench(_noneAsEmptyList(extraVMarguments) + ['--'] + self.args)
+
+class GraalTags:
+    test = 'test'
+    fulltest = 'fulltest'
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
@@ -240,12 +247,12 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # Run microbench in hosted mode (only for testing the JMH setup)
     with JVMCIMode('hosted'):
-        for r in [MicrobenchRun('Microbench', ['TestJMH'])]:
+        for r in [MicrobenchRun('Microbench', ['TestJMH'], tags=[GraalTags.fulltest])]:
             r.run(tasks, extraVMarguments)
 
     # Run ctw against rt.jar on server-hosted-jvmci
     with JVMCIMode('hosted'):
-        with Task('CTW:hosted', tasks) as t:
+        with Task('CTW:hosted', tasks, tags=[GraalTags.fulltest]) as t:
             if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
 
     # bootstrap tests
@@ -255,81 +262,50 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     # run dacapo sanitychecks
     for test in sanitycheck.getDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel='release', extraVmArguments=extraVMarguments) \
             + sanitycheck.getScalaDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel='release', extraVmArguments=extraVMarguments):
-        with Task(str(test) + ':' + 'release', tasks) as t:
+        with Task(str(test) + ':' + 'release', tasks, tags=[GraalTags.fulltest]) as t:
             if t and not test.test('jvmci'):
                 t.abort(test.name + ' Failed')
 
     # ensure -Xbatch still works
     with JVMCIMode('jit'):
-        with Task('DaCapo_pmd:BatchMode', tasks) as t:
+        with Task('DaCapo_pmd:BatchMode', tasks, tags=[GraalTags.fulltest]) as t:
             if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-Xbatch', 'pmd'])
 
     # ensure benchmark counters still work
     with JVMCIMode('jit'):
-        with Task('DaCapo_pmd:BenchmarkCounters:product', tasks) as t:
+        with Task('DaCapo_pmd:BenchmarkCounters:product', tasks, tags=[GraalTags.fulltest]) as t:
             if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-G:+LIRProfileMoves', '-G:+GenericDynamicCounters', '-XX:JVMCICounterSize=10', 'pmd'])
 
     # ensure -Xcomp still works
     with JVMCIMode('jit'):
-        with Task('XCompMode:product', tasks) as t:
+        with Task('XCompMode:product', tasks, tags=[GraalTags.fulltest]) as t:
             if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-Xcomp', '-version'])
 
 
 graal_unit_test_runs = [
-    UnitTestRun('UnitTests', []),
+    UnitTestRun('UnitTests', [], tags=[GraalTags.test]),
 ]
 
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa']),
-    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-G:+ExitVMOnException']),
-    BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-G:+ExitVMOnException'], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-G:+ExitVMOnException'], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Djvmci.compiler=graal-economy', '-G:+ExitVMOnException']),
-    BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-G:+StressInvokeWithExceptionNode', '-G:+ExitVMOnException']),
-    BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-G:RegisterPressure=' + _registers, '-G:+ExitVMOnException', '-G:+LIRUnlockBackendRestart']),
-    BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-G:+TraceRA', '-G:RegisterPressure=' + _registers, '-G:+ExitVMOnException', '-G:+LIRUnlockBackendRestart']),
-    BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-G:+ImmutableCode', '-G:+VerifyPhases', '-G:+ExitVMOnException']),
-]
-
-
-def compiler_simple_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
-
-    # Run unit tests in hosted mode
-    with JVMCIMode('hosted'):
-        for r in unit_test_runs:
-            r.run(suites, tasks, extraVMarguments)
-
-    # Run microbench in hosted mode (only for testing the JMH setup)
-    with JVMCIMode('hosted'):
-        for r in [MicrobenchRun('Microbench', ['TestJMH'])]:
-            r.run(tasks, extraVMarguments)
-
-    # bootstrap tests
-    for b in bootstrap_tests:
-        b.run(tasks, extraVMarguments)
-
-    # ensure -Xcomp still works
-    with JVMCIMode('jit'):
-        with Task('XCompMode:product', tasks) as t:
-            if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-Xcomp', '-version'])
-
-
-graal_simple_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', []),
+    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa'], tags=[GraalTags.test]),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Djvmci.compiler=graal-economy', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-G:+StressInvokeWithExceptionNode', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-G:RegisterPressure=' + _registers, '-G:+ExitVMOnException', '-G:+LIRUnlockBackendRestart'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-G:+TraceRA', '-G:RegisterPressure=' + _registers, '-G:+ExitVMOnException', '-G:+LIRUnlockBackendRestart'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-G:+ImmutableCode', '-G:+VerifyPhases', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
 ]
 
 
 def _graal_gate_runner(args, tasks):
-    if args.simple:
-        compiler_simple_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_simple_bootstrap_tests, tasks, args.extra_vm_argument)
-    else:
-        compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 mx_gate.add_gate_argument('--extra-vm-argument', action='append', help='add extra vm argument to gate tasks if applicable (multiple occurrences allowed)')
-mx_gate.add_gate_argument('--simple', action='store_true', help='only run simple task set')
 
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
     run_vm(vmArgs + [mainClass] + mainClassArgs)

@@ -122,19 +122,16 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> DeoptALot = new OptionValue<>(false);
 
-    @Option(help = "Stressed the code emitting explicit exception throwing code.", type = OptionType.Debug)
-    public static final StableOptionValue<Boolean> StressExplicitExceptionCode = new StableOptionValue<>(false);
+    @Option(help = "Stress the code emitting explicit exception throwing code.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> StressExplicitExceptionCode = new OptionValue<>(false);
 
-    @Option(help = "Stressed the code emitting explicit exception throwing code.", type = OptionType.Debug)
-    public static final StableOptionValue<Boolean> StressInvokeWithExceptionNode = new StableOptionValue<>(false);
+    @Option(help = "Stress the code emitting invokes with explicit exception edges.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> StressInvokeWithExceptionNode = new OptionValue<>(false);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> VerifyPhases = new OptionValue<>(false);
 
     // Debug settings:
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> BootstrapReplacements = new OptionValue<>(false);
-
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Integer> GCDebugStartCycle = new OptionValue<>(-1);
 

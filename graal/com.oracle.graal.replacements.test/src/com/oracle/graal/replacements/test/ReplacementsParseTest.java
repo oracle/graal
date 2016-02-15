@@ -30,14 +30,14 @@ import org.junit.Test;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.PiNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.runtime.RuntimeProvider;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 
 /**
  * Tests for expected behavior when parsing snippets and intrinsics.
@@ -130,14 +130,14 @@ public class ReplacementsParseTest extends GraalCompilerTest {
         }
     }
 
-    private static boolean substitutionsInstalled;
-
-    public ReplacementsParseTest() {
-        if (!substitutionsInstalled) {
-            Replacements replacements = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getReplacements();
-            replacements.registerSubstitutions(TestMethods.class, TestMethodsSubstitutions.class);
-            substitutionsInstalled = true;
-        }
+    @Override
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
+        Registration r = new Registration(invocationPlugins, TestMethods.class);
+        r.registerMethodSubstitution(TestMethodsSubstitutions.class, "nextAfter", double.class, double.class);
+        r.registerMethodSubstitution(TestMethodsSubstitutions.class, "stringize", Object.class);
+        r.registerMethodSubstitution(TestMethodsSubstitutions.class, "identity", String.class);
+        return super.editGraphBuilderConfiguration(conf);
     }
 
     /**

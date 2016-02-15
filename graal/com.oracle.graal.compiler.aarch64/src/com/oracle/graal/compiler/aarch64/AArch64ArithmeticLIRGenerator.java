@@ -356,7 +356,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitBitCount(Value operand) {
-        throw JVMCIError.unimplemented("AArch64 ISA does not offer way to implement this more efficiently " + "than a simple Java algorithm.");
+        throw JVMCIError.unimplemented("AArch64 ISA does not offer way to implement this more efficiently than a simple Java algorithm.");
     }
 
     @Override

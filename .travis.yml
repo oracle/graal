@@ -35,15 +35,8 @@ install:
   - wget https://lafo.ssw.uni-linz.ac.at/slavefiles/gate/eclipse-jdk8-linux-x86_64.tar.gz -O $ECLIPSE_TAR
   - tar -C $TRAVIS_BUILD_DIR/.. -xf $ECLIPSE_TAR
   - export ECLIPSE_EXE=$TRAVIS_BUILD_DIR/../eclipse/eclipse
+  - export MX_BINARY_SUITES=jvmci,truffle
 script:
-  - mx --strict-compliance gate --strict-mode --simple
+  - mx --strict-compliance gate --strict-mode --tags build,style,test
 after_failure:
-  - cat $TRAVIS_BUILD_DIR/jvmci/client-product.log
-  - cat $TRAVIS_BUILD_DIR/jvmci/server-fastdebug.log
-  - cat $TRAVIS_BUILD_DIR/jvmci/server-nojvmci-product.log
-  - cat $TRAVIS_BUILD_DIR/jvmci/jvmci-fastdebug.log
-  - cat $TRAVIS_BUILD_DIR/jvmci/client-fastdebug.log
-  - cat $TRAVIS_BUILD_DIR/jvmci/jvmci-product.log
-  - cat $TRAVIS_BUILD_DIR/jvmci/server-nojvmci-optimized.log
-  - cat $TRAVIS_BUILD_DIR/jvmci/server-product.log
   - cat hs_err*

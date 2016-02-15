@@ -27,6 +27,8 @@ import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
 
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -39,6 +41,7 @@ import com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation;
  * Substitutions for some {@link java.lang.Math} methods that leverage AMD64 instructions for
  * selected input values.
  */
+@ClassSubstitution(Math.class)
 public class AMD64MathSubstitutions {
 
     private static final double PI_4 = Math.PI / 4;
@@ -46,6 +49,7 @@ public class AMD64MathSubstitutions {
     /**
      * Special cases from {@link Math#pow} and __ieee754_pow (in sharedRuntimeTrans.cpp).
      */
+    @MethodSubstitution
     public static double pow(double x, double y) {
         // If the second argument is positive or negative zero, then the result is 1.0.
         if (y == 0.0D) {
@@ -90,6 +94,7 @@ public class AMD64MathSubstitutions {
     // accurate within [-pi/4, pi/4]. Examine the passed value and provide
     // a slow path for inputs outside of that interval.
 
+    @MethodSubstitution
     public static double sin(double x) {
         if (Math.abs(x) < PI_4) {
             return AMD64MathIntrinsicNode.compute(x, Operation.SIN);
@@ -98,6 +103,7 @@ public class AMD64MathSubstitutions {
         }
     }
 
+    @MethodSubstitution
     public static double cos(double x) {
         if (Math.abs(x) < PI_4) {
             return AMD64MathIntrinsicNode.compute(x, Operation.COS);
@@ -106,6 +112,7 @@ public class AMD64MathSubstitutions {
         }
     }
 
+    @MethodSubstitution
     public static double tan(double x) {
         if (Math.abs(x) < PI_4) {
             return AMD64MathIntrinsicNode.compute(x, Operation.TAN);

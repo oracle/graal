@@ -127,21 +127,6 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     }
 
     /**
-     * Gets a normal method substitution to be used for lowering this macro node. This is only
-     * called if {@link #getLoweredSnippetGraph(LoweringTool)} returns null. The returned graph (if
-     * non-null) must have been {@linkplain #lowerReplacement(StructuredGraph, LoweringTool)
-     * lowered}.
-     */
-    protected StructuredGraph getLoweredSubstitutionGraph(LoweringTool tool) {
-        StructuredGraph methodSubstitution = tool.getReplacements().getSubstitution(getTargetMethod(), true, bci);
-        if (methodSubstitution != null) {
-            methodSubstitution = (StructuredGraph) methodSubstitution.copy();
-            return lowerReplacement(methodSubstitution, tool);
-        }
-        return null;
-    }
-
-    /**
      * Applies {@linkplain LoweringPhase lowering} to a replacement graph.
      *
      * @param replacementGraph a replacement (i.e., snippet or method substitution) graph
@@ -170,9 +155,6 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     @Override
     public void lower(LoweringTool tool) {
         StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
-        if (replacementGraph == null) {
-            replacementGraph = getLoweredSubstitutionGraph(tool);
-        }
 
         InvokeNode invoke = replaceWithInvoke();
         assert invoke.verify();

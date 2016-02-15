@@ -22,12 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import java.lang.reflect.Type;
-import java.util.Collection;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.SnippetTemplateCache;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -68,19 +64,7 @@ public interface Replacements {
      *            otherwise {@code -1}
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    default StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci) {
-        return getSubstitution(method, false, invokeBci);
-    }
-
-    /**
-     * Gets a graph that is a substitution for a given method.
-     *
-     * @param fromBytecodeOnly only return a graph created by parsing the bytecode of another method
-     * @param invokeBci the call site BCI if this request is made for inlining a substitute
-     *            otherwise {@code -1}
-     * @return the graph, if any, that is a substitution for {@code method}
-     */
-    StructuredGraph getSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int invokeBci);
+    StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci);
 
     /**
      * Gets a method that is a substitution for a given method.
@@ -97,40 +81,7 @@ public interface Replacements {
      *            otherwise {@code -1}
      * @return true iff there is a substitution graph available for {@code method}
      */
-    default boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci) {
-        return hasSubstitution(method, false, invokeBci);
-    }
-
-    /**
-     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod, int) substitution
-     * graph} for a given method.
-     *
-     * @param fromBytecodeOnly only consider graphs created by parsing the bytecode of another
-     *            method
-     * @param invokeBci the call site BCI if this request is made for inlining a substitute
-     *            otherwise {@code -1}
-     * @return true iff there is a substitution graph available for {@code method}
-     */
-    boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int invokeBci);
-
-    /**
-     * Registers all the {@linkplain MethodSubstitution method} substitutions defined by a given
-     * class.
-     *
-     * @param original the original class for which substitutions are being registered. This must be
-     *            the same type denoted by the {@link ClassSubstitution} annotation on
-     *            {@code substitutions}. It is required here so that an implementation is not forced
-     *            to read annotations during registration.
-     * @param substitutions the class defining substitutions for {@code original}. This class must
-     *            be annotated with {@link ClassSubstitution}.
-     */
-    void registerSubstitutions(Type original, Class<?> substitutions);
-
-    /**
-     * Returns all methods that are currently registered as method/macro substitution or as a
-     * snippet.
-     */
-    Collection<ResolvedJavaMethod> getAllReplacements();
+    boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci);
 
     /**
      * Register snippet templates.

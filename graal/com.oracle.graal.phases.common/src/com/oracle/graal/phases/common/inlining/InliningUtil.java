@@ -740,7 +740,7 @@ public class InliningUtil {
     }
 
     public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target, int invokeBci) {
-        return replacements.hasSubstitution(target, false, invokeBci);
+        return replacements.hasSubstitution(target, invokeBci);
     }
 
     public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target, int invokeBci) {

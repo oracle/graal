@@ -24,13 +24,18 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.computeHashCode;
 
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+
 // JaCoCo Exclude
 
 /**
  * Substitutions for {@link java.lang.Object} methods.
  */
+@ClassSubstitution(Object.class)
 public class ObjectSubstitutions {
 
+    @MethodSubstitution(isStatic = false)
     public static int hashCode(final Object thisObj) {
         return computeHashCode(thisObj);
     }
