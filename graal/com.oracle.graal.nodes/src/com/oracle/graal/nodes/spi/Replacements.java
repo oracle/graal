@@ -27,6 +27,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.SnippetTemplateCache;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 
 /**
  * Interface for managing replacements.
@@ -74,12 +75,17 @@ public interface Replacements {
     ResolvedJavaMethod getSubstitutionMethod(ResolvedJavaMethod method);
 
     /**
-     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod, int) substitution
-     * graph} for a given method.
+     * Determines if there may be a {@linkplain #getSubstitution(ResolvedJavaMethod, int)
+     * substitution graph} for a given method.
+     *
+     * A call to {@link #getSubstitution} may still return {@code null} for {@code method} and
+     * {@code invokeBci}. A substitution may be based on an {@link InvocationPlugin} that returns
+     * {@code false} for {@link InvocationPlugin#execute} making it impossible to create a
+     * substitute graph.
      *
      * @param invokeBci the call site BCI if this request is made for inlining a substitute
      *            otherwise {@code -1}
-     * @return true iff there is a substitution graph available for {@code method}
+     * @return true iff there may be a substitution graph available for {@code method}
      */
     boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci);
 
