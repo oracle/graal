@@ -36,6 +36,6 @@ import java.lang.annotation.Target;
  * @see Layout
  */
 @Target(ElementType.PARAMETER)
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.SOURCE)
 public @interface Nullable {
 }
