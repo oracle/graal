@@ -29,9 +29,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import javax.lang.model.type.TypeMirror;
+
 public class LayoutModel {
 
-    private final String objectTypeSuperclass;
+    private final TypeMirror objectTypeSuperclass;
     private final LayoutModel superLayout;
     private final String name;
     private final String packageName;
@@ -42,7 +44,7 @@ public class LayoutModel {
     private final List<PropertyModel> properties;
     private final boolean hasShapeProperties;
 
-    public LayoutModel(String objectTypeSuperclass, LayoutModel superLayout, String name, String packageName,
+    public LayoutModel(TypeMirror objectTypeSuperclass, LayoutModel superLayout, String name, String packageName,
                     boolean hasObjectTypeGuard, boolean hasObjectGuard, boolean hasDynamicObjectGuard,
                     Collection<PropertyModel> properties, String interfaceFullName,
                     boolean hasShapeProperties) {
@@ -64,7 +66,7 @@ public class LayoutModel {
         this.hasShapeProperties = hasShapeProperties;
     }
 
-    public String getObjectTypeSuperclass() {
+    public TypeMirror getObjectTypeSuperclass() {
         return objectTypeSuperclass;
     }
 

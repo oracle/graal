@@ -75,7 +75,7 @@ public class LayoutGenerator {
         final String typeSuperclass;
 
         if (layout.getSuperLayout() == null) {
-            typeSuperclass = layout.getObjectTypeSuperclass();
+            typeSuperclass = layout.getObjectTypeSuperclass().toString();
         } else {
             typeSuperclass = layout.getSuperLayout().getName() + "LayoutImpl." + layout.getSuperLayout().getName() + "Type";
         }

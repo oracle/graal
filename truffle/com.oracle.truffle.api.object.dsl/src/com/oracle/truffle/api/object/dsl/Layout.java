@@ -275,6 +275,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 public @interface Layout {
 
-    String objectTypeSuperclass() default "ObjectType";
+    Class<? extends ObjectType> objectTypeSuperclass() default ObjectType.class;
 
 }

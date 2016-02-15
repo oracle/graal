@@ -38,7 +38,7 @@ public class ObjectTypeSuperclassTest {
 
     }
 
-    @Layout(objectTypeSuperclass = "com.oracle.truffle.api.object.dsl.test.ObjectTypeSuperclassTest.ObjectTypeSuperclass")
+    @Layout(objectTypeSuperclass = ObjectTypeSuperclass.class)
     public interface ObjectTypeSuperclassTestLayout {
 
         DynamicObject createObjectTypeSuperclassTest(int value);

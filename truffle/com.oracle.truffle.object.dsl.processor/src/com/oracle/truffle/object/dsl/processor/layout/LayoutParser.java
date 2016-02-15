@@ -30,6 +30,7 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.dsl.Layout;
 import com.oracle.truffle.api.object.dsl.Nullable;
 import com.oracle.truffle.api.object.dsl.Volatile;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.object.dsl.processor.layout.model.LayoutModel;
 import com.oracle.truffle.object.dsl.processor.layout.model.NameUtils;
 import com.oracle.truffle.object.dsl.processor.layout.model.PropertyBuilder;
@@ -45,7 +46,7 @@ import java.util.Map;
 
 public class LayoutParser {
 
-    private String objectTypeSuperclass;
+    private TypeMirror objectTypeSuperclass;
     private LayoutModel superLayout;
     private String name;
     private String packageName;
@@ -64,7 +65,11 @@ public class LayoutParser {
 
         parseName(layoutElement);
 
-        objectTypeSuperclass = layoutElement.getAnnotation(Layout.class).objectTypeSuperclass();
+        for (AnnotationMirror annotationMirror : layoutElement.getAnnotationMirrors()) {
+            if (annotationMirror.getAnnotationType().toString().equals(Layout.class.getCanonicalName())) {
+                objectTypeSuperclass = ElementUtils.getAnnotationValue(TypeMirror.class, annotationMirror, "objectTypeSuperclass");
+            }
+        }
 
         for (Element element : layoutElement.getEnclosedElements()) {
             if (element.getKind() == ElementKind.FIELD) {

@@ -185,7 +185,8 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.object.dsl"
+        "com.oracle.truffle.api.object.dsl",
+        "com.oracle.truffle.dsl.processor"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
@@ -354,7 +355,7 @@ suite = {
       "subDir" : "truffle",
       "javaCompliance" : "1.7",
       "dependencies" : ["com.oracle.truffle.object.dsl.processor"],
-      "distDependencies" : ["TRUFFLE_API"],
+      "distDependencies" : ["TRUFFLE_API", "TRUFFLE_DSL_PROCESSOR"],
       "description" : "The Truffle DSL Processor generates source code for object model layouts.",
     },
 
