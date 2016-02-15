@@ -87,28 +87,28 @@ public abstract class Stub {
     protected CompilationResult compResult;
 
     /**
-     * The registers destroyed by this stub.
+     * The registers destroyed by this stub (from the caller's perspective).
      */
-    private Set<Register> destroyedRegisters;
+    private Set<Register> destroyedCallerRegisters;
 
-    public void initDestroyedRegisters(Set<Register> registers) {
+    public void initDestroyedCallerRegisters(Set<Register> registers) {
         assert registers != null;
-        assert destroyedRegisters == null || registers.equals(destroyedRegisters) : "cannot redefine";
-        destroyedRegisters = registers;
+        assert destroyedCallerRegisters == null || registers.equals(destroyedCallerRegisters) : "cannot redefine";
+        destroyedCallerRegisters = registers;
     }
 
     /**
-     * Gets the registers defined by this stub. These are the temporaries of this stub and must thus
-     * be caller saved by a callers of this stub.
+     * Gets the registers destroyed by this stub from a caller's perspective. These are the
+     * temporaries of this stub and must thus be caller saved by a callers of this stub.
      */
-    public Set<Register> getDestroyedRegisters() {
-        assert destroyedRegisters != null : "not yet initialized";
-        return destroyedRegisters;
+    public Set<Register> getDestroyedCallerRegisters() {
+        assert destroyedCallerRegisters != null : "not yet initialized";
+        return destroyedCallerRegisters;
     }
 
     /**
      * Determines if this stub preserves all registers apart from those it
-     * {@linkplain #getDestroyedRegisters() destroys}.
+     * {@linkplain #getDestroyedCallerRegisters() destroys}.
      */
     public boolean preservesRegisters() {
         return true;
@@ -189,7 +189,7 @@ public abstract class Stub {
                     throw Debug.handle(e);
                 }
 
-                assert destroyedRegisters != null;
+                assert destroyedCallerRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {
                     HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(null, null, compResult);
                     code = codeCache.installCode(null, compiledCode, null, null, false);

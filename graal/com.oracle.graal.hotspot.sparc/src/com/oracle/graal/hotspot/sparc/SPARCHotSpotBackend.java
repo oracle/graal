@@ -33,6 +33,12 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARC.g5;
+import static jdk.vm.ci.sparc.SPARC.i0;
+import static jdk.vm.ci.sparc.SPARC.i7;
+import static jdk.vm.ci.sparc.SPARC.l0;
+import static jdk.vm.ci.sparc.SPARC.l7;
+import static jdk.vm.ci.sparc.SPARC.o0;
+import static jdk.vm.ci.sparc.SPARC.o7;
 import static jdk.vm.ci.sparc.SPARC.sp;
 
 import java.util.HashSet;
@@ -237,9 +243,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
         if (stub != null) {
             // Even on sparc we need to save floating point registers
-            Set<Register> definedRegisters = gatherDefinedRegisters(lir);
+            Set<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
             Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = gen.getCalleeSaveInfo();
-            updateStub(stub, definedRegisters, calleeSaveInfo, frameMap);
+            updateStub(stub, destroyedCallerRegisters, calleeSaveInfo, frameMap);
         }
         assert registerSizePredictionValidator(crb);
         return crb;
@@ -486,5 +492,28 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new SPARCHotSpotRegisterAllocationConfig(registerConfigNonNull);
+    }
+
+    @Override
+    public Set<Register> translateToCallerRegisters(Set<Register> calleeRegisters) {
+        HashSet<Register> callerRegisters = new HashSet<>(calleeRegisters.size());
+        for (Register register : calleeRegisters) {
+            if (l0.number <= register.number && register.number <= l7.number) {
+                // do nothing
+            } else if (o0.number <= register.number && register.number <= o7.number) {
+                // do nothing
+            } else if (i0.number <= register.number && register.number <= i7.number) {
+                // translate input to output registers
+                callerRegisters.add(translateInputToOutputRegister(register));
+            } else {
+                callerRegisters.add(register);
+            }
+        }
+        return callerRegisters;
+    }
+
+    private Register translateInputToOutputRegister(Register register) {
+        assert i0.number <= register.number && register.number <= i7.number : "Not an input register " + register;
+        return getTarget().arch.getRegisters()[o0.number + register.number - i0.number];
     }
 }

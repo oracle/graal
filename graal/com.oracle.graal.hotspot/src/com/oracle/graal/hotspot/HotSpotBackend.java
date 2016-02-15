@@ -205,15 +205,15 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @param lir the LIR to examine
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
-    protected static Set<Register> gatherDefinedRegisters(LIR lir) {
-        final Set<Register> definedRegisters = new HashSet<>();
+    protected final Set<Register> gatherDestroyedCallerRegisters(LIR lir) {
+        final Set<Register> destroyedRegisters = new HashSet<>();
         ValueConsumer defConsumer = new ValueConsumer() {
 
             @Override
             public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (ValueUtil.isRegister(value)) {
                     final Register reg = ValueUtil.asRegister(value);
-                    definedRegisters.add(reg);
+                    destroyedRegisters.add(reg);
                 }
             }
         };
@@ -227,7 +227,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                 }
             }
         }
-        return definedRegisters;
+        return translateToCallerRegisters(destroyedRegisters);
     }
 
     /**
@@ -247,7 +247,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      *            slot to a frame slot index
      */
     protected void updateStub(Stub stub, Set<Register> destroyedRegisters, Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo, FrameMap frameMap) {
-        stub.initDestroyedRegisters(destroyedRegisters);
+        stub.initDestroyedCallerRegisters(destroyedRegisters);
 
         for (Map.Entry<LIRFrameState, SaveRegistersOp> e : calleeSaveInfo.entrySet()) {
             SaveRegistersOp save = e.getValue();

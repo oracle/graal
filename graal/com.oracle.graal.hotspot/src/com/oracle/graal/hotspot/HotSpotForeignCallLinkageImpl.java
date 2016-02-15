@@ -221,7 +221,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
             assert stub != null : "linkage without an address must be a stub - forgot to register a Stub associated with " + descriptor + "?";
             InstalledCode code = stub.getCode(backend);
 
-            Set<Register> destroyedRegisters = stub.getDestroyedRegisters();
+            Set<Register> destroyedRegisters = stub.getDestroyedCallerRegisters();
             if (!destroyedRegisters.isEmpty()) {
                 AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
                 int i = 0;

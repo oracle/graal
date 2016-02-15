@@ -227,8 +227,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         }
 
         if (stub != null) {
-            Set<Register> definedRegisters = gatherDefinedRegisters(lir);
-            updateStub(stub, definedRegisters, gen.getCalleeSaveInfo(), frameMap);
+            Set<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
+            updateStub(stub, destroyedCallerRegisters, gen.getCalleeSaveInfo(), frameMap);
         }
         return crb;
     }
@@ -319,5 +319,10 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new AArch64HotSpotRegisterAllocationConfig(registerConfigNonNull);
+    }
+
+    @Override
+    public Set<Register> translateToCallerRegisters(Set<Register> calleeRegisters) {
+        return calleeRegisters;
     }
 }
