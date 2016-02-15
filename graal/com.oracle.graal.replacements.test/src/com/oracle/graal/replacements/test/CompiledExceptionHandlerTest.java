@@ -22,30 +22,61 @@
  */
 package com.oracle.graal.replacements.test;
 
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.phases.HighTier;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graph.iterators.NodePredicates;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.java.ExceptionObjectNode;
-import com.oracle.graal.phases.common.AbstractInliningPhase;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.phases.tiers.Suites;
 
 /**
  * Tests compilation of a hot exception handler.
  */
 public class CompiledExceptionHandlerTest extends GraalCompilerTest {
 
-    public CompiledExceptionHandlerTest() {
-        getSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
+    @Override
+    @SuppressWarnings("try")
+    protected Suites createSuites() {
+        try (OverrideScope scope = OptionValue.override(HighTier.Options.Inline, false)) {
+            return super.createSuites();
+        }
+    }
+
+    @Override
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        GraphBuilderConfiguration ret = super.editGraphBuilderConfiguration(conf);
+        ret.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
+
+            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+                if (method.getName().startsWith("raiseException")) {
+                    return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+                } else {
+                    return null;
+                }
+            }
+        });
+        return ret;
     }
 
     @Override
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
         StructuredGraph graph = super.parseEager(m, allowAssumptions);
-        int handlers = graph.getNodes().filter(ExceptionObjectNode.class).count();
+        int handlers = graph.getNodes().filter(NodePredicates.isA(ExceptionObjectNode.class).or(BytecodeExceptionNode.class)).count();
         Assert.assertEquals(1, handlers);
         return graph;
     }
@@ -56,12 +87,6 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        // Ensure the profile shows a hot exception
-        for (int i = 0; i < 10000; i++) {
-            test1Snippet("");
-            test1Snippet(null);
-        }
-
         test("test1Snippet", "a string");
         test("test1Snippet", (String) null);
     }
@@ -83,12 +108,6 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
 
     @Test
     public void test2() {
-        // Ensure the profile shows a hot exception
-        for (int i = 0; i < 10000; i++) {
-            test2Snippet("m1", "m2", "m3", "m4", "m5");
-            test2Snippet(null, "m2", "m3", "m4", "m5");
-        }
-
         test("test2Snippet", "m1", "m2", "m3", "m4", "m5");
         test("test2Snippet", null, "m2", "m3", "m4", "m5");
     }
@@ -105,15 +124,12 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void test3() {
-        // Ensure the profile shows a hot exception
-        for (int i = 0; i < 10000; i++) {
-            test3Snippet("object1", "object2");
-            test3Snippet(null, "object2");
+        try (OverrideScope s = OptionValue.override(GraalOptions.StressExplicitExceptionCode, true)) {
+            test("test3Snippet", (Object) null, "object2");
+            test("test3Snippet", "object1", "object2");
         }
-
-        test("test3Snippet", (Object) null, "object2");
-        test("test3Snippet", "object1", "object2");
     }
 
     public static String test3Snippet(Object o, Object o2) {
