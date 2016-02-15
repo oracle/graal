@@ -31,7 +31,7 @@ import sanitycheck
 import re
 
 import mx
-from mx_gate import Task, Tags
+from mx_gate import Task
 from sanitycheck import _noneAsEmptyList
 
 from mx_unittest import unittest
