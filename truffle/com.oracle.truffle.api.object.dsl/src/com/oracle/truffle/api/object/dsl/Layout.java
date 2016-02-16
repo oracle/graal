@@ -39,6 +39,8 @@ import java.lang.annotation.Target;
  * methods generated from an {@link Layout}-annotated interface are suitable for use on the
  * fast-path.
  *
+ * The name of the interface should end with 'Layout'.
+ *
  * <pre>
  * {@literal@}Layout
  * public interface RectLayout {
@@ -238,7 +240,7 @@ import java.lang.annotation.Target;
  *
  * <pre>
  * &#64;Layout
- * interface Base {
+ * interface BaseLayout {
  *
  *     DynamicObject createBase(int a);
  *
@@ -251,7 +253,7 @@ import java.lang.annotation.Target;
  * }
  *
  * &#64;Layout
- * interface Super implements Base {
+ * interface SuperLayout implements BaseLayout {
  *
  *     DynamicObject createSuper(int a, int b);
  *
