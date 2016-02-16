@@ -29,13 +29,13 @@ import javax.lang.model.type.TypeMirror;
 public class PropertyModel {
 
     private final String name;
+    private final TypeMirror type;
     private final boolean hasObjectTypeGetter;
-    private final boolean hasFactoryGetter;
-    private final boolean hasFactorySetter;
+    private final boolean hasShapeGetter;
+    private final boolean hasShapeSetter;
     private final boolean hasGetter;
     private final boolean hasSetter;
     private final boolean hasUnsafeSetter;
-    private final TypeMirror type;
     private final boolean nullable;
     private final boolean volatileSemantics;
     private final boolean hasCompareAndSet;
@@ -43,25 +43,14 @@ public class PropertyModel {
     private final boolean hasIdentifier;
     private final boolean isShapeProperty;
 
-    public PropertyModel(String name, boolean hasObjectTypeGetter, boolean hasFactoryGetter, boolean hasFactorySetter,
-                    boolean hasGetter, boolean hasSetter, boolean hasUnsafeSetter,
-                    TypeMirror type, boolean nullable,
-                    boolean volatileSemantics, boolean hasCompareAndSet, boolean hasGetAndSet,
+    public PropertyModel(String name, TypeMirror type, boolean hasObjectTypeGetter, boolean hasShapeGetter,
+                    boolean hasShapeSetter, boolean hasGetter, boolean hasSetter, boolean hasUnsafeSetter,
+                    boolean nullable, boolean volatileSemantics, boolean hasCompareAndSet, boolean hasGetAndSet,
                     boolean hasIdentifier, boolean isShapeProperty) {
-        // assert name != null;
-        // assert type != null;
-
-        // if (hasFactoryGetter || hasFactorySetter || hasObjectTypeGetter) {
-        // assert isShapeProperty;
-        // }
-
-        // assert !(volatileSemantics && isShapeProperty);
-        // assert !(volatileSemantics && hasUnsafeSetter);
-
         this.name = name;
         this.hasObjectTypeGetter = hasObjectTypeGetter;
-        this.hasFactoryGetter = hasFactoryGetter;
-        this.hasFactorySetter = hasFactorySetter;
+        this.hasShapeGetter = hasShapeGetter;
+        this.hasShapeSetter = hasShapeSetter;
         this.hasGetter = hasGetter;
         this.hasSetter = hasSetter;
         this.hasUnsafeSetter = hasUnsafeSetter;
@@ -78,16 +67,20 @@ public class PropertyModel {
         return name;
     }
 
+    public TypeMirror getType() {
+        return type;
+    }
+
     public boolean hasObjectTypeGetter() {
         return hasObjectTypeGetter;
     }
 
-    public boolean hasFactorySetter() {
-        return hasFactorySetter;
+    public boolean hasShapeSetter() {
+        return hasShapeSetter;
     }
 
-    public boolean hasFactoryGetter() {
-        return hasFactoryGetter;
+    public boolean hasShapeGetter() {
+        return hasShapeGetter;
     }
 
     public boolean hasGetter() {
@@ -104,10 +97,6 @@ public class PropertyModel {
 
     public boolean hasUnsafeSetter() {
         return hasUnsafeSetter;
-    }
-
-    public TypeMirror getType() {
-        return type;
     }
 
     public boolean isNullable() {
@@ -137,4 +126,5 @@ public class PropertyModel {
     public boolean isShapeProperty() {
         return isShapeProperty;
     }
+
 }

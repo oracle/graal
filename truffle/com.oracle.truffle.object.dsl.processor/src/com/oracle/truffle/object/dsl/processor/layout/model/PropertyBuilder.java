@@ -112,9 +112,9 @@ public class PropertyBuilder {
     }
 
     public PropertyModel build() {
-        return new PropertyModel(name, hasObjectTypeGetter, hasShapeGetter, hasShapeSetter,
-                        hasGetter, hasSetter, hasUnsafeSetter, type,
-                        nullable, volatileSemantics, hasCompareAndSet, hasGetAndSet, hasIdentifier, isShapeProperty);
+        return new PropertyModel(name, type, hasObjectTypeGetter, hasShapeGetter, hasShapeSetter,
+                        hasGetter, hasSetter, hasUnsafeSetter, nullable, volatileSemantics, hasCompareAndSet,
+                        hasGetAndSet, hasIdentifier, isShapeProperty);
     }
 
 }
