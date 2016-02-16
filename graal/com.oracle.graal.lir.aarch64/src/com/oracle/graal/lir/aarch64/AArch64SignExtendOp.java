@@ -38,19 +38,21 @@ public class AArch64SignExtendOp extends AArch64LIRInstruction {
 
     @Def protected AllocatableValue resultValue;
     @Use protected AllocatableValue inputValue;
+    private final int fromBits;
+    private final int toBits;
 
-    public AArch64SignExtendOp(AllocatableValue resultValue, AllocatableValue inputValue) {
+    public AArch64SignExtendOp(AllocatableValue resultValue, AllocatableValue inputValue, int fromBits, int toBits) {
         super(TYPE);
         this.resultValue = resultValue;
         this.inputValue = inputValue;
+        this.fromBits = fromBits;
+        this.toBits = toBits;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Register result = asRegister(resultValue);
         Register input = asRegister(inputValue);
-        int to = resultValue.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        int from = inputValue.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        masm.sxt(to, from, result, input);
+        masm.sxt(toBits, fromBits, result, input);
     }
 }

@@ -239,7 +239,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
         LIRKind resultKind = getResultLirKind(toBits, inputVal);
         Variable result = getLIRGen().newVariable(resultKind);
-        getLIRGen().append(new AArch64SignExtendOp(result, getLIRGen().asAllocatable(inputVal)));
+        getLIRGen().append(new AArch64SignExtendOp(result, getLIRGen().asAllocatable(inputVal), fromBits, toBits));
         return result;
     }
 
@@ -254,9 +254,9 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     protected Variable emitBinary(LIRKind resultKind, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
         Variable result = getLIRGen().newVariable(resultKind);
-        if (isValidBinaryConstant(op, b)) {
+        if (isValidBinaryConstant(op, a, b)) {
             emitBinaryConst(result, op, getLIRGen().asAllocatable(a), asJavaConstant(b));
-        } else if (commutative && isValidBinaryConstant(op, a)) {
+        } else if (commutative && isValidBinaryConstant(op, b, a)) {
             emitBinaryConst(result, op, getLIRGen().asAllocatable(b), asJavaConstant(a));
         } else {
             emitBinaryVar(result, op, getLIRGen().asAllocatable(a), getLIRGen().asAllocatable(b));
@@ -284,18 +284,18 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         getLIRGen().append(new AArch64ArithmeticOp.BinaryConstOp(op, result, x, b));
     }
 
-    private static boolean isValidBinaryConstant(AArch64ArithmeticOp op, Value val) {
-        if (!isJavaConstant(val)) {
+    private static boolean isValidBinaryConstant(AArch64ArithmeticOp op, Value a, Value b) {
+        if (!isJavaConstant(b)) {
             return false;
         }
-        JavaConstant constValue = asJavaConstant(val);
+        JavaConstant constValue = asJavaConstant(b);
         switch (op.category) {
             case LOGICAL:
                 return isLogicalConstant(constValue);
             case ARITHMETIC:
                 return isArithmeticConstant(constValue);
             case SHIFT:
-                assert constValue.asLong() >= 0 && constValue.asLong() < val.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+                assert constValue.asLong() >= 0 && constValue.asLong() < a.getPlatformKind().getSizeInBytes() * Byte.SIZE;
                 return true;
             case NONE:
                 return false;
