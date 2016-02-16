@@ -190,13 +190,14 @@ public class AArch64Call {
     public static void directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info) {
         int before = masm.position();
         if (scratch != null) {
-            // offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
-            // immediate
-            // address which is fixed up by HotSpot.
+            /*
+             * Offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
+             * immediate address which is fixed up by HotSpot.
+             */
             masm.forceMov(scratch, 0L);
             masm.blr(scratch);
         } else {
-            // address is fixed up by HotSpot.
+            // Address is fixed up by HotSpot.
             masm.bl(0);
         }
         int after = masm.position();

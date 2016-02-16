@@ -66,6 +66,7 @@ import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.HINT;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.HLT;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.LDAR;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.LDAXR;
+import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.LDP;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.LDR;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.LDRS;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.LDXR;
@@ -88,6 +89,7 @@ import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.SCVTF;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.SDIV;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.STLR;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.STLXR;
+import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.STP;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.STR;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.STXR;
 import static com.oracle.graal.asm.aarch64.AArch64Assembler.Instruction.SUB;
@@ -143,8 +145,8 @@ public abstract class AArch64Assembler extends Assembler {
          *            64-bit instruction to load the 32-bit pattern into a register.
          * @return enum specifying whether immediate can be used for 32- and 64-bit logical
          *         instructions ({@code #Representable.YES}), for 64-bit instructions only (
-         *         {@code #Representable.SIXTY_FOUR_BIT_ONLY}) or not at all (
-         *         {@code #Representable.NO} ).
+         *         {@link Representable#SIXTY_FOUR_BIT_ONLY}) or not at all (
+         *         {@link Representable#NO}).
          */
         public static Representable isRepresentable(boolean is64bit, long immediate) {
             int pos = getLogicalImmTablePos(is64bit, immediate);
@@ -168,7 +170,7 @@ public abstract class AArch64Assembler extends Assembler {
 
         public static int getLogicalImmEncoding(boolean is64bit, long value) {
             int pos = getLogicalImmTablePos(is64bit, value);
-            assert pos >= 0 : "Value cannot be represented as logical immediate";
+            assert pos >= 0 : "Value cannot be represented as logical immediate: " + value + ", is64bit=" + is64bit;
             Immediate imm = IMMEDIATE_TABLE[pos];
             assert is64bit || !imm.only64bit() : "Immediate can only be represented for 64bit, but 32bit instruction specified";
             return IMMEDIATE_TABLE[pos].encoding;
@@ -313,6 +315,8 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int Rs2Offset = 16;
     private static final int Rs3Offset = 10;
     private static final int RtOffset = 0;
+    private static final int RnOffset = 5;
+    private static final int Rt2Offset = 10;
 
     /* Helper functions */
     private static int rd(Register reg) {
@@ -335,14 +339,22 @@ public abstract class AArch64Assembler extends Assembler {
         return reg.encoding << RtOffset;
     }
 
+    private static int rt2(Register reg) {
+        return reg.encoding << Rt2Offset;
+    }
+
+    private static int rn(Register reg) {
+        return reg.encoding << RnOffset;
+    }
+
     /**
      * Enumeration of all different instruction kinds: General32/64 are the general instructions
      * (integer, branch, etc.), for 32-, respectively 64-bit operands. FP32/64 is the encoding for
      * the 32/64bit float operations
      */
     protected enum InstructionType {
-        General32(0x00000000, 32, true),
-        General64(0x80000000, 64, true),
+        General32(0b00 << 30, 32, true),
+        General64(0b10 << 30, 64, true),
         FP32(0x00000000, 32, false),
         FP64(0x00400000, 64, false);
 
@@ -419,12 +431,15 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int ConditionalSelectOp = 0x1A800000;
     private static final int ConditionalConditionOffset = 12;
 
-    private static final int LoadStoreScaledOp = 0x39000000;
-    private static final int LoadStoreUnscaledOp = 0x38000000;
-    private static final int LoadStoreRegisterOp = 0x38200800;
+    private static final int LoadStoreScaledOp = 0b111_0_01_00 << 22;
+    private static final int LoadStoreUnscaledOp = 0b111_0_00_00 << 22;
+
+    private static final int LoadStoreRegisterOp = 0b111_0_00_00_1 << 21 | 0b10 << 10;
+
     private static final int LoadLiteralOp = 0x18000000;
-    private static final int LoadStorePostIndexedOp = 0x38000400;
-    private static final int LoadStorePreIndexedOp = 0x38000C00;
+
+    private static final int LoadStorePostIndexedOp = 0b111_0_00_00_0 << 21 | 0b01 << 10;
+    private static final int LoadStorePreIndexedOp = 0b111_0_00_00_0 << 21 | 0b11 << 10;
 
     private static final int LoadStoreUnscaledImmOffset = 12;
     private static final int LoadStoreScaledImmOffset = 10;
@@ -433,6 +448,11 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int LoadStoreTransferSizeOffset = 30;
     private static final int LoadStoreFpFlagOffset = 26;
     private static final int LoadLiteralImmeOffset = 5;
+
+    private static final int LoadStorePairOp = 0b101_0_010 << 23;
+    @SuppressWarnings("unused") private static final int LoadStorePairPostIndexOp = 0b101_0_001 << 23;
+    @SuppressWarnings("unused") private static final int LoadStorePairPreIndexOp = 0b101_0_011 << 23;
+    private static final int LoadStorePairImm7Offset = 15;
 
     private static final int LogicalShiftOp = 0x0A000000;
 
@@ -468,6 +488,9 @@ public abstract class AArch64Assembler extends Assembler {
         STXR(0x08007c00),
         STLR(0x089ffc00),
         STLXR(0x0800fc00),
+
+        LDP(0b1 << 22),
+        STP(0b0 << 22),
 
         ADR(0x00000000),
         ADRP(0x80000000),
@@ -868,8 +891,7 @@ public abstract class AArch64Assembler extends Assembler {
         assert reg.getRegisterCategory().equals(CPU);
         assert !reg.equals(zr);
         assert !reg.equals(sp);
-        final int instrEncoding = instr.encoding | UnconditionalBranchRegOp;
-        emitInt(instrEncoding | rs1(reg));
+        emitInt(instr.encoding | UnconditionalBranchRegOp | rs1(reg));
     }
 
     /* Load-Store Single Register (5.3.1) */
@@ -952,7 +974,36 @@ public abstract class AArch64Assembler extends Assembler {
                 emitInt(memop | LoadStorePreIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode());
+        }
+    }
+
+    /**
+     *
+     */
+    public void ldp(int size, Register rt, Register rt2, AArch64Address address) {
+        assert size == 32 || size == 64;
+        loadStorePairInstruction(LDP, rt, rt2, address, generalFromSize(size));
+    }
+
+    /**
+     * Store Pair of Registers calculates an address from a base register value and an immediate
+     * offset, and stores two 32-bit words or two 64-bit doublewords to the calculated address, from
+     * two registers.
+     */
+    public void stp(int size, Register rt, Register rt2, AArch64Address address) {
+        assert size == 32 || size == 64;
+        loadStorePairInstruction(STP, rt, rt2, address, generalFromSize(size));
+    }
+
+    private void loadStorePairInstruction(Instruction instr, Register rt, Register rt2, AArch64Address address, InstructionType type) {
+        int memop = type.encoding | instr.encoding | address.getImmediate() << LoadStorePairImm7Offset | rt2(rt2) | rn(address.getBase()) | rt(rt);
+        switch (address.getAddressingMode()) {
+            case IMMEDIATE_UNSCALED:
+                emitInt(memop | LoadStorePairOp);
+                break;
+            default:
+                throw JVMCIError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode());
         }
     }
 
@@ -1103,6 +1154,10 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void adr(Register dst, int imm21) {
         emitInt(ADR.encoding | PcRelImmOp | rd(dst) | getPcRelativeImmEncoding(imm21));
+    }
+
+    public void adr(Register dst, int imm21, int pos) {
+        emitInt(ADR.encoding | PcRelImmOp | rd(dst) | getPcRelativeImmEncoding(imm21), pos);
     }
 
     private static int getPcRelativeImmEncoding(int imm21) {
