@@ -195,10 +195,10 @@ public class LayoutGenerator {
             stream.printf("    protected static final Shape.Allocator %S_ALLOCATOR = LAYOUT.createAllocator();%n", NameUtils.identifierToConstant(layout.getName()));
             stream.println("    ");
 
-            if (layout.getSuperLayout().hasNonShapeProperties()) {
+            if (layout.getSuperLayout().hasInstanceProperties()) {
                 stream.println("    static {");
 
-                for (PropertyModel property : layout.getSuperLayout().getAllNonShapeProperties()) {
+                for (PropertyModel property : layout.getSuperLayout().getAllInstanceProperties()) {
                     final List<String> modifiers = new ArrayList<>();
 
                     if (!property.isNullable()) {
@@ -254,7 +254,7 @@ public class LayoutGenerator {
             }
         }
 
-        for (PropertyModel property : layout.getNonShapeProperties()) {
+        for (PropertyModel property : layout.getInstanceProperties()) {
             if (!property.hasIdentifier()) {
                 stream.printf("    protected static final HiddenKey %s_IDENTIFIER = new HiddenKey(\"%s\");%n", NameUtils.identifierToConstant(property.getName()), property.getName());
             }
@@ -376,7 +376,7 @@ public class LayoutGenerator {
             stream.println("))");
         }
 
-        iterateProperties(layout.getAllNonShapeProperties(), new PropertyIteratorAction() {
+        iterateProperties(layout.getAllInstanceProperties(), new PropertyIteratorAction() {
 
             @Override
             public void run(PropertyModel property, boolean last) {
@@ -439,13 +439,13 @@ public class LayoutGenerator {
             stream.print("    private");
         }
 
-        if (layout.hasNonShapeProperties()) {
+        if (layout.hasInstanceProperties()) {
             stream.printf(" DynamicObject create%s(%n", layout.getName());
             stream.println("            DynamicObjectFactory factory,");
 
             stream.println();
 
-            for (PropertyModel property : layout.getAllNonShapeProperties()) {
+            for (PropertyModel property : layout.getAllInstanceProperties()) {
                 stream.printf("            %s %s", property.getType().toString(), property.getName());
 
                 if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
@@ -462,21 +462,21 @@ public class LayoutGenerator {
         stream.println("        CompilerAsserts.partialEvaluationConstant(factory);");
         stream.printf("        assert creates%s(factory);%n", layout.getName());
 
-        for (PropertyModel property : layout.getAllNonShapeProperties()) {
+        for (PropertyModel property : layout.getAllInstanceProperties()) {
             stream.printf("        assert factory.getShape().hasProperty(%s_IDENTIFIER);%n", NameUtils.identifierToConstant(property.getName()));
         }
 
-        for (PropertyModel property : layout.getAllNonShapeProperties()) {
+        for (PropertyModel property : layout.getAllInstanceProperties()) {
             if (!property.getType().getKind().isPrimitive() && !property.isNullable()) {
                 stream.printf("        assert %s != null;%n", property.getName());
             }
         }
 
         if (GENERATE_SHAPE_BOUNDARY_CONSTANT_CHECKS) {
-            if (layout.hasNonShapeProperties()) {
+            if (layout.hasInstanceProperties()) {
                 stream.printf("        return create%sBoundary(factory,%n", layout.getName());
 
-                for (PropertyModel property : layout.getAllNonShapeProperties()) {
+                for (PropertyModel property : layout.getAllInstanceProperties()) {
                     stream.printf("            %s", property.getName());
 
                     if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
@@ -489,10 +489,10 @@ public class LayoutGenerator {
                 stream.printf("        return create%sBoundary(factory);%n", layout.getName());
             }
         } else {
-            if (layout.hasNonShapeProperties()) {
+            if (layout.hasInstanceProperties()) {
                 stream.println("        return factory.newInstance(");
 
-                for (PropertyModel property : layout.getAllNonShapeProperties()) {
+                for (PropertyModel property : layout.getAllInstanceProperties()) {
                     if (property.isVolatile()) {
                         if (property.getType().getKind() == TypeKind.INT) {
                             stream.printf("            new AtomicInteger(%s)", property.getName());
@@ -522,11 +522,11 @@ public class LayoutGenerator {
         if (GENERATE_SHAPE_BOUNDARY_CONSTANT_CHECKS) {
             stream.println("    @TruffleBoundary");
 
-            if (layout.hasNonShapeProperties()) {
+            if (layout.hasInstanceProperties()) {
                 stream.printf("    private DynamicObject create%sBoundary(%n", layout.getName());
                 stream.println("            DynamicObjectFactory factory,");
 
-                for (PropertyModel property : layout.getAllNonShapeProperties()) {
+                for (PropertyModel property : layout.getAllInstanceProperties()) {
                     stream.printf("            %s %s", property.getType().toString(), property.getName());
 
                     if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
@@ -543,20 +543,20 @@ public class LayoutGenerator {
             stream.println("        CompilerAsserts.partialEvaluationConstant(factory);");
             stream.printf("        assert creates%s(factory);%n", layout.getName());
 
-            for (PropertyModel property : layout.getAllNonShapeProperties()) {
+            for (PropertyModel property : layout.getAllInstanceProperties()) {
                 stream.printf("        assert factory.getShape().hasProperty(%s_IDENTIFIER);%n", NameUtils.identifierToConstant(property.getName()));
             }
 
-            for (PropertyModel property : layout.getAllNonShapeProperties()) {
+            for (PropertyModel property : layout.getAllInstanceProperties()) {
                 if (!property.getType().getKind().isPrimitive() && !property.isNullable()) {
                     stream.printf("        assert %s != null;%n", property.getName());
                 }
             }
 
-            if (layout.hasNonShapeProperties()) {
+            if (layout.hasInstanceProperties()) {
                 stream.println("        return factory.newInstance(");
 
-                for (PropertyModel property : layout.getAllNonShapeProperties()) {
+                for (PropertyModel property : layout.getAllInstanceProperties()) {
                     if (property.isVolatile()) {
                         if (property.getType().getKind() == TypeKind.INT) {
                             stream.printf("            new AtomicInteger(%s)", property.getName());

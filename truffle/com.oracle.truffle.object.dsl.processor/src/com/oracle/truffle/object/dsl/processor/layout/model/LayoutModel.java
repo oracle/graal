@@ -42,18 +42,10 @@ public class LayoutModel {
     private final boolean hasObjectGuard;
     private final boolean hasDynamicObjectGuard;
     private final List<PropertyModel> properties;
-    private final boolean hasShapeProperties;
 
     public LayoutModel(TypeMirror objectTypeSuperclass, LayoutModel superLayout, String name, String packageName,
                     boolean hasObjectTypeGuard, boolean hasObjectGuard, boolean hasDynamicObjectGuard,
-                    Collection<PropertyModel> properties, String interfaceFullName,
-                    boolean hasShapeProperties) {
-        // assert objectTypeSuperclass != null;
-        // assert name != null;
-        // assert packageName != null;
-        // assert interfaceFullName != null;
-        // assert properties != null;
-
+                    Collection<PropertyModel> properties, String interfaceFullName) {
         this.objectTypeSuperclass = objectTypeSuperclass;
         this.superLayout = superLayout;
         this.name = name;
@@ -63,7 +55,6 @@ public class LayoutModel {
         this.hasObjectGuard = hasObjectGuard;
         this.hasDynamicObjectGuard = hasDynamicObjectGuard;
         this.properties = Collections.unmodifiableList(new ArrayList<>(properties));
-        this.hasShapeProperties = hasShapeProperties;
     }
 
     public TypeMirror getObjectTypeSuperclass() {
@@ -86,6 +77,10 @@ public class LayoutModel {
         return interfaceFullName;
     }
 
+    public boolean hasObjectTypeGuard() {
+        return hasObjectTypeGuard;
+    }
+
     public boolean hasObjectGuard() {
         return hasObjectGuard;
     }
@@ -94,95 +89,64 @@ public class LayoutModel {
         return hasDynamicObjectGuard;
     }
 
-    public List<PropertyModel> getProperties() {
-        return properties;
-    }
-
-    public List<PropertyModel> getNonShapeProperties() {
-        final List<PropertyModel> nonShapeProperties = new ArrayList<>();
-
-        for (PropertyModel property : getProperties()) {
-            if (!property.isShapeProperty()) {
-                nonShapeProperties.add(property);
-            }
-        }
-
-        return nonShapeProperties;
-    }
-
-    public List<PropertyModel> getShapeProperties() {
-        final List<PropertyModel> shapeProperties = new ArrayList<>();
-
-        for (PropertyModel property : getProperties()) {
-            if (property.isShapeProperty()) {
-                shapeProperties.add(property);
-            }
-        }
-
-        return shapeProperties;
-    }
-
-    public List<PropertyModel> getAllProperties() {
-        final List<PropertyModel> allProperties = new ArrayList<>();
-
-        if (superLayout != null) {
-            allProperties.addAll(superLayout.getAllProperties());
-        }
-
-        allProperties.addAll(properties);
-
-        return allProperties;
-    }
-
-    public List<PropertyModel> getAllNonShapeProperties() {
-        final List<PropertyModel> allNonShapeProperties = new ArrayList<>();
-
-        for (PropertyModel property : getAllProperties()) {
-            if (!property.isShapeProperty()) {
-                allNonShapeProperties.add(property);
-            }
-        }
-
-        return allNonShapeProperties;
-    }
-
-    public List<PropertyModel> getInheritedShapeProperties() {
-        final List<PropertyModel> inheritedShapeProperties = new ArrayList<>();
-
-        for (PropertyModel property : getAllProperties()) {
-            if (!properties.contains(property) && property.isShapeProperty()) {
-                inheritedShapeProperties.add(property);
-            }
-        }
-
-        return inheritedShapeProperties;
-    }
-
-    public List<PropertyModel> getAllShapeProperties() {
-        final List<PropertyModel> allShapeProperties = new ArrayList<>();
-
-        for (PropertyModel property : getAllProperties()) {
-            if (property.isShapeProperty()) {
-                allShapeProperties.add(property);
-            }
-        }
-
-        return allShapeProperties;
+    public boolean hasInstanceProperties() {
+        return !selectProperties(true, false, true, true).isEmpty();
     }
 
     public boolean hasShapeProperties() {
-        if (superLayout != null && superLayout.hasShapeProperties()) {
-            return true;
+        return !selectProperties(false, true, true, true).isEmpty();
+    }
+
+    public List<PropertyModel> getProperties() {
+        return selectProperties(true, true, true, false);
+    }
+
+    public List<PropertyModel> getInstanceProperties() {
+        return selectProperties(true, false, true, false);
+    }
+
+    public List<PropertyModel> getShapeProperties() {
+        return selectProperties(false, true, true, false);
+    }
+
+    public List<PropertyModel> getAllProperties() {
+        return selectProperties(true, true, true, true);
+    }
+
+    public List<PropertyModel> getAllInstanceProperties() {
+        return selectProperties(true, false, true, true);
+    }
+
+    public List<PropertyModel> getInheritedShapeProperties() {
+        return selectProperties(false, true, false, true);
+    }
+
+    public List<PropertyModel> getAllShapeProperties() {
+        return selectProperties(false, true, true, true);
+    }
+
+    private List<PropertyModel> selectProperties(boolean instance, boolean shape, boolean declared, boolean inherited) {
+        final List<PropertyModel> selectedProperties = new ArrayList<>();
+
+        if (inherited && superLayout != null) {
+            selectedProperties.addAll(superLayout.selectProperties(instance, shape, true, true));
         }
 
-        return hasShapeProperties;
+        if (declared) {
+            for (PropertyModel property : properties) {
+                if (property.isInstanceProperty() && !instance) {
+                    continue;
+                }
+
+                if (property.isShapeProperty() && !shape) {
+                    continue;
+                }
+
+                selectedProperties.add(property);
+            }
+        }
+
+        return Collections.unmodifiableList(selectedProperties);
     }
 
-    public boolean hasNonShapeProperties() {
-        return !getAllNonShapeProperties().isEmpty();
-    }
-
-    public boolean hasObjectTypeGuard() {
-        return hasObjectTypeGuard;
-    }
 }

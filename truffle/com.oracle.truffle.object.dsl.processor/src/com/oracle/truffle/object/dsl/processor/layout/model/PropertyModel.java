@@ -130,6 +130,10 @@ public class PropertyModel {
         return hasIdentifier;
     }
 
+    public boolean isInstanceProperty() {
+        return !isShapeProperty;
+    }
+
     public boolean isShapeProperty() {
         return isShapeProperty;
     }
