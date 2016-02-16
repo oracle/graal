@@ -425,6 +425,9 @@ public class AArch64Move {
     private static void reg2reg(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
         Register dst = asRegister(result);
         Register src = asRegister(input);
+        if (src.equals(dst)) {
+            return;
+        }
         AArch64Kind kind = (AArch64Kind) input.getPlatformKind();
         int size = kind.getSizeInBytes() * Byte.SIZE;
         if (kind.isInteger()) {

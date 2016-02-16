@@ -220,7 +220,11 @@ class UnitTestRun:
     def run(self, suites, tasks, extraVMarguments=None):
         for suite in suites:
             with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
-                if t: unittest(['--suite', suite, '--fail-fast'] + self.args + _noneAsEmptyList(extraVMarguments))
+                if mx_gate.Task.verbose:
+                    extra_args = ['--verbose', '--enable-timing']
+                else:
+                    extra_args = []
+                if t: unittest(['--suite', suite, '--fail-fast'] + extra_args + self.args + _noneAsEmptyList(extraVMarguments))
 
 class BootstrapTest:
     def __init__(self, name, vmbuild, args, tags, suppress=None):

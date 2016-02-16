@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -319,13 +319,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public void mov(int size, Register dst, Register src) {
-        if (dst.equals(src)) {
-            return;
-        }
         if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);
         } else {
-            or(size, dst, src, zr);
+            or(size, dst, zr, src);
         }
     }
 
@@ -963,9 +960,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void fmov(int size, Register dst, Register src) {
         assert !(dst.getRegisterCategory().equals(CPU) && src.getRegisterCategory().equals(CPU)) : "src and dst cannot both be integer registers.";
-        if (dst.equals(src)) {
-            return;
-        }
         if (dst.getRegisterCategory().equals(CPU)) {
             super.fmovFpu2Cpu(size, dst, src);
         } else if (src.getRegisterCategory().equals(CPU)) {
@@ -1089,7 +1083,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         BRANCH_UNCONDITIONALLY(0x1),
         BRANCH_NONZERO(0x2),
         BRANCH_ZERO(0x3),
-        JUMP_ADDRESS(0x4);
+        JUMP_ADDRESS(0x4),
+        ADR(0x5);
 
         /**
          * Offset by which additional information for branch conditionally, branch zero and branch
@@ -1110,6 +1105,18 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             return values()[encoding & NumUtil.getNbitNumberInt(INFORMATION_OFFSET)];
         }
 
+    }
+
+    public void adr(Register dst, Label label) {
+        // TODO Handle case where offset is too large for a single jump instruction
+        if (label.isBound()) {
+            int offset = label.position() - position();
+            super.adr(dst, offset);
+        } else {
+            label.addPatchAt(position());
+            // Encode condition flag so that we know how to patch the instruction later
+            emitInt(PatchLabelKind.ADR.encoding | dst.encoding << PatchLabelKind.INFORMATION_OFFSET);
+        }
     }
 
     /**
@@ -1307,16 +1314,16 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         switch (type) {
             case BRANCH_CONDITIONALLY:
                 ConditionFlag cf = ConditionFlag.fromEncoding(instruction >>> PatchLabelKind.INFORMATION_OFFSET);
-                super.b(cf, branchOffset, /* pos */branch);
+                super.b(cf, branchOffset, branch);
                 break;
             case BRANCH_UNCONDITIONALLY:
-                super.b(branchOffset, /* pos */branch);
+                super.b(branchOffset, branch);
                 break;
             case JUMP_ADDRESS:
-                emitInt(jumpTarget, /* pos */branch);
+                emitInt(jumpTarget, branch);
                 break;
             case BRANCH_NONZERO:
-            case BRANCH_ZERO:
+            case BRANCH_ZERO: {
                 int information = instruction >>> PatchLabelKind.INFORMATION_OFFSET;
                 int sizeEncoding = information & 1;
                 int regEncoding = information >>> 1;
@@ -1325,13 +1332,23 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 int size = sizeEncoding * 32 + 32;
                 switch (type) {
                     case BRANCH_NONZERO:
-                        super.cbnz(size, reg, branchOffset, /* pos */branch);
+                        super.cbnz(size, reg, branchOffset, branch);
                         break;
                     case BRANCH_ZERO:
-                        super.cbz(size, reg, branchOffset, /* pos */branch);
+                        super.cbz(size, reg, branchOffset, branch);
                         break;
                 }
                 break;
+            }
+            case ADR: {
+                int information = instruction >>> PatchLabelKind.INFORMATION_OFFSET;
+                int regEncoding = information;
+                Register reg = AArch64.cpuRegisters[regEncoding];
+                // XXX The -4 is an ugly hack for the fact that we can't pass the Label to
+                // AArch64Call.directCall
+                super.adr(reg, branchOffset - 4, branch);
+                break;
+            }
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
