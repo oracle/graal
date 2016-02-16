@@ -1,1 +1,1 @@
-com.oracle.truffle.object.dsl.processor.OMProcessor
+com.oracle.truffle.object.dsl.processor.LayoutProcessor

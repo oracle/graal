@@ -44,7 +44,7 @@ import java.util.Set;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.object.dsl.Layout")
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
-public class OMProcessor extends AbstractProcessor {
+public class LayoutProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
