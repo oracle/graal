@@ -1,5 +1,4 @@
 import tarfile
-import glob
 import os
 from os.path import join
 import shutil
@@ -252,6 +251,18 @@ def truffle_extract_VM_args(args, useDoubleDash=False):
                 remainder += [arg]
     return vmArgs, remainder
 
+
+def extract_compiler_args(args, useDoubleDash=False):
+    compilerArgs, remainder = [], []
+    if args is not None:
+        for (_, arg) in enumerate(args):
+            if any(arg.startswith(prefix) for prefix in ['-']):
+                compilerArgs += [arg]
+            else:
+                remainder += [arg]
+    return compilerArgs, remainder
+
+
 def runDebugLLVM(args=None):
     """uses Sulong to execute a LLVM IR file and starts debugging on port 5005"""
     runLLVM(['-Xdebug', '-Xrunjdwp:server=y,transport=dt_socket,address=5005,suspend=y'] + args)
@@ -318,7 +329,7 @@ def getCommonOptions():
 
 # other OSs?
 def getSearchPathOption():
-    return '-Dllvm-dyn-libs=/usr/lib/x86_64-linux-gnu/libgfortran.so.3'
+    return '-Dllvm-dyn-libs=/usr/lib/x86_64-linux-gnu/libgfortran.so.3:/usr/lib/x86_64-linux-gnu/libstdc++.so.6:/lib/x86_64-linux-gnu/libc.so.6'
 
 
 def getCommonUnitTestOptions():
@@ -412,19 +423,42 @@ def suBench(args=None):
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
     ensureLLVMBinariesExist()
-    vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
-    opt(['-S', '-mem2reg', '-instcombine', '-o', 'test.ll', 'test.ll'])
-    runLLVM(['-Dllvm-print-retval=false', 'test.ll'] + vmArgs)
+    vmArgs, _ = truffle_extract_VM_args(args)
+    inputFile = args[0]
+    outputFile = 'test.ll'
+    _, ext = os.path.splitext(inputFile)
+    if ext == '.c':
+        mx.run(['clang', '-S', '-emit-llvm', '-o', outputFile, inputFile])
+        mx.run(['opt', '-S', '-o', outputFile, '-mem2reg', outputFile])
+    elif ext == '.cpp':
+        mx.run(['clang++', '-S', '-emit-llvm', '-o', outputFile, inputFile])
+        mx.run(['opt', '-S', '-o', outputFile, '-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg', outputFile])
+    else:
+        exit(ext + " is not supported!")
+    runLLVM(['-Dllvm-print-retval=false', getSearchPathOption(), 'test.ll'] + vmArgs)
 
 def clangBench(args=None):
-    """ Executes a benchmark with Clang"""
-    compileWithClang(args + standardLinkerCommands())
+    """ Executes a benchmark with the system default Clang"""
+    _, inputFiles = extract_compiler_args(args)
+    _, ext = os.path.splitext(inputFiles[0])
+    if ext == '.c':
+        mx.run(['clang'] + args + standardLinkerCommands())
+    elif ext == '.cpp':
+        mx.run(['clang++'] + args + standardLinkerCommands())
+    else:
+        exit(ext + " is not supported!")
     mx.run(['./a.out'])
 
 def gccBench(args=None):
-    """ executes a benchmark with GCC"""
-    mx.run(['gcc-4.6'] + args + standardLinkerCommands())
+    """ executes a benchmark with the system default GCC version"""
+    _, inputFiles = extract_compiler_args(args)
+    _, ext = os.path.splitext(inputFiles[0])
+    if ext == '.c':
+        mx.run(['gcc'] + args + standardLinkerCommands())
+    elif ext == '.cpp':
+        mx.run(['g++'] + args + standardLinkerCommands())
+    else:
+        exit(ext + " is not supported!")
     mx.run(['./a.out'])
 
 def standardLinkerCommands(args=None):
