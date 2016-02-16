@@ -247,9 +247,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         } else {
             result = null;
         }
-        // Testing existence of a substitution and retrieving
-        // the substitution should be consistent
-        assert (result != null) == hasSubstitution(method, invokeBci) : method + "@" + invokeBci;
         return result;
     }
 
