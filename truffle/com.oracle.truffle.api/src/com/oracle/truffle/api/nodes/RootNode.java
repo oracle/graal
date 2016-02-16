@@ -108,7 +108,7 @@ public abstract class RootNode extends Node {
      * heuristics can use the loop count to guide compilation and inlining.
      */
     public final void reportLoopCount(int count) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call RootNode.reportLoopCount from compiled code");
         if (getCallTarget() instanceof LoopCountReceiver) {
             ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
         }
@@ -141,7 +141,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     *
+     * 
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();

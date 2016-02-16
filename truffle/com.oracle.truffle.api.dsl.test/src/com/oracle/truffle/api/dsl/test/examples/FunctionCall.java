@@ -106,7 +106,7 @@ public class FunctionCall {
         }
 
         protected final boolean cacheFunctionTarget(Function function) {
-            CompilerAsserts.neverPartOfCompilation();
+            CompilerAsserts.neverPartOfCompilation("do not cache function target in compiled code");
             if (cachedFunctions != null) {
                 for (int i = 0; i < cachedFunctions.length; i++) {
                     Function cachedFunction = cachedFunctions[i];
