@@ -838,4 +838,8 @@ public class LayoutGenerator {
 
     }
 
+    public String getGeneratedClassName() {
+        return layout.getPackageName() + "." + layout.getName() + "LayoutImpl";
+    }
+
 }

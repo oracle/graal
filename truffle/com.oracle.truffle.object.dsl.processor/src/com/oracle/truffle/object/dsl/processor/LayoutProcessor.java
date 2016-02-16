@@ -35,9 +35,11 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
-import java.io.FileOutputStream;
+import javax.tools.Diagnostic.Kind;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Set;
@@ -49,7 +51,10 @@ public class LayoutProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
         for (Element element : roundEnvironment.getElementsAnnotatedWith(Layout.class)) {
-            // assert element.getKind() == ElementKind.INTERFACE : element.getKind();
+            if (element.getKind() != ElementKind.INTERFACE) {
+                reportError(element, "@Layout should only be applied to interfaces");
+            }
+
             processLayout((TypeElement) element);
         }
 
@@ -58,29 +63,26 @@ public class LayoutProcessor extends AbstractProcessor {
 
     private void processLayout(TypeElement layoutElement) {
         try {
-            final LayoutParser parser = new LayoutParser();
+            final LayoutParser parser = new LayoutParser(this);
             parser.parse(layoutElement);
 
             final LayoutModel layout = parser.build();
 
             final LayoutGenerator generator = new LayoutGenerator(layout);
 
-            JavaFileObject output = processingEnv.getFiler().createSourceFile(layout.getPackageName() + "." + layout.getName() + "LayoutImpl", layoutElement);
+            final JavaFileObject output = processingEnv.getFiler().createSourceFile(generator.getGeneratedClassName(), layoutElement);
 
-            try (PrintStream stream = new PrintStream(output.openOutputStream(), false, "US-ASCII")) {
+            try (PrintStream stream = new PrintStream(output.openOutputStream(), false, "UTF8")) {
                 generator.generate(stream);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            reportError(layoutElement, "IO error %s while writing code generated from @Layout", e.getMessage());
         }
     }
 
-    public static void log(String file, String message) {
-        try (PrintStream stream = new PrintStream(new FileOutputStream(file, true), false, "US-ASCII")) {
-            stream.println(message);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public void reportError(Element element, String messageFormat, Object... formatArgs) {
+        final String message = String.format(messageFormat, formatArgs);
+        processingEnv.getMessager().printMessage(Kind.ERROR, message, element);
     }
 
 }

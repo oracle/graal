@@ -31,6 +31,7 @@ import com.oracle.truffle.api.object.dsl.Layout;
 import com.oracle.truffle.api.object.dsl.Nullable;
 import com.oracle.truffle.api.object.dsl.Volatile;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.object.dsl.processor.LayoutProcessor;
 import com.oracle.truffle.object.dsl.processor.layout.model.LayoutModel;
 import com.oracle.truffle.object.dsl.processor.layout.model.NameUtils;
 import com.oracle.truffle.object.dsl.processor.layout.model.PropertyBuilder;
@@ -46,6 +47,8 @@ import java.util.Map;
 
 public class LayoutParser {
 
+    private final LayoutProcessor processor;
+
     private TypeMirror objectTypeSuperclass;
     private LayoutModel superLayout;
     private String name;
@@ -57,6 +60,10 @@ public class LayoutParser {
     private boolean hasShapeProperties;
     private final List<String> constructorProperties = new ArrayList<>();
     private final Map<String, PropertyBuilder> properties = new HashMap<>();
+
+    public LayoutParser(LayoutProcessor processor) {
+        this.processor = processor;
+    }
 
     public void parse(TypeElement layoutElement) {
         if (!layoutElement.getInterfaces().isEmpty()) {
@@ -118,7 +125,7 @@ public class LayoutParser {
     }
 
     private void parseSuperLayout(TypeElement superTypeElement) {
-        final LayoutParser superParser = new LayoutParser();
+        final LayoutParser superParser = new LayoutParser(processor);
         superParser.parse(superTypeElement);
 
         superLayout = superParser.build();
