@@ -85,7 +85,6 @@ test-suite-3.2.src/SingleSource/UnitTests/Integer/structInit.c
 test-suite-3.2.src/SingleSource/UnitTests/Integer/local-array.c
 test-suite-3.2.src/SingleSource/UnitTests/Integer/cppfield.cpp
 test-suite-3.2.src/SingleSource/UnitTests/Integer/union-init.c
-test-suite-3.2.src/SingleSource/UnitTests/ObjC/bitfield-access.m
 test-suite-3.2.src/SingleSource/Regression/C/sumarraymalloc.c
 test-suite-3.2.src/SingleSource/UnitTests/2006-12-04-DynAllocAndRestore.cpp
 test-suite-3.2.src/SingleSource/UnitTests/2006-01-23-UnionInit.c
