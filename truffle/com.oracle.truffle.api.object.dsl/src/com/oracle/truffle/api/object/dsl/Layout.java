@@ -240,7 +240,7 @@ import java.lang.annotation.Target;
  * &#64;Layout
  * interface Base {
  *
- *     DynamicObject createBaset(int a);
+ *     DynamicObject createBase(int a);
  *
  *     boolean isBase(DynamicObject object);
  *
@@ -270,6 +270,23 @@ import java.lang.annotation.Target;
  * Generated layouts use custom {@link ObjectType} subclasses internally. The default base class
  * that is inherited from is simply {@link ObjectType}. You can change this with the
  * {@link #objectTypeSuperclass} property on the {@link Layout} annotation.
+ *
+ * <h2>Custom Identifiers</h2>
+ *
+ * By default, internal {@link HiddenKey} identifiers with descriptive names will be created for
+ * your properties automatically. You can also specify the identifiers to use by defining them as
+ * public static final fields in the interface.
+ *
+ * <pre>
+ * &#64;Layout
+ * interface CustomIdentifierLayout {
+ *
+ *     public static final String A_IDENTIFIER = "$A";
+ *
+ *     DynamicObject createCustomIdentifier(int a);
+ *
+ * }
+ * </pre>
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
