@@ -29,10 +29,12 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 @ExpectError("Inconsistent argument length.")
 @AcceptMessage(value = "com.oracle.truffle.api.dsl.test.interop.MyMessage", receiverType = ValidTruffleObject.class, language = TestTruffleLanguage.class)
 public final class AcceptMyMessage2 extends AcceptMyMessageBase2 {
+    @Override
     public Object access(VirtualFrame frame, ValidTruffleObject object, int a, double b, Object c) {
         return true;
     }
 
+    @Override
     public Object access(VirtualFrame frame, ValidTruffleObject object, int a, double b) {
         return true;
     }

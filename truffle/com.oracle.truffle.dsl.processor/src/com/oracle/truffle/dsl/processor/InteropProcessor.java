@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -108,12 +107,20 @@ public final class InteropProcessor extends AbstractProcessor {
 
             final String clazzName = extending.toString();
             String fqn = pkg + "." + clazzName;
-            String messageName = message.value().toLowerCase(Locale.ENGLISH);
+            String messageName = message.value();
 
             MessageGenerator currentGenerator = null;
-            Message currentMessage = null;
+            Object currentMessage = null;
             try {
-                currentMessage = Message.valueOf(message.value());
+                currentMessage = Message.valueOf(messageName);
+            } catch (IllegalArgumentException ex) {
+                TypeElement typeElement = processingEnv.getElementUtils().getTypeElement(message.value());
+                TypeElement messageElement = processingEnv.getElementUtils().getTypeElement(Message.class.getName());
+                if (typeElement != null && processingEnv.getTypeUtils().isAssignable(typeElement.asType(), messageElement.asType())) {
+                    currentMessage = messageName;
+                }
+            }
+            if (currentMessage != null) {
                 if (Message.READ.toString().equalsIgnoreCase(messageName)) {
                     currentGenerator = new ReadGenerator(processingEnv, e, pkg, clazzName, fqn, messageName, ((TypeElement) e).getSimpleName().toString(), truffleLanguageFullClazzName);
                 } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
@@ -131,7 +138,6 @@ public final class InteropProcessor extends AbstractProcessor {
                                     ((TypeElement) e).getSimpleName().toString(),
                                     truffleLanguageFullClazzName);
                 }
-            } catch (IllegalArgumentException ex) {
             }
 
             if (currentGenerator == null) {
@@ -817,7 +823,7 @@ public final class InteropProcessor extends AbstractProcessor {
         private final String className;
         private final JavaFileObject factoryFile;
 
-        private final Map<Message, String> messageHandlers;
+        private final Map<Object, String> messageHandlers;
 
         FactoryGenerator(String packageName, String className, String receiverTypeClass, JavaFileObject factoryFile) {
             this.receiverTypeClass = receiverTypeClass;
@@ -827,7 +833,7 @@ public final class InteropProcessor extends AbstractProcessor {
             this.messageHandlers = new HashMap<>();
         }
 
-        public void addMessageHandler(Message message, String factoryMethodInvocation) {
+        public void addMessageHandler(Object message, String factoryMethodInvocation) {
             messageHandlers.put(message, factoryMethodInvocation);
         }
 
@@ -975,9 +981,10 @@ public final class InteropProcessor extends AbstractProcessor {
 
         private void appendFactoryAccessMessage(Writer w) throws IOException {
             w.append("    public CallTarget accessMessage(Message unknown) {").append("\n");
-            for (Message m : messageHandlers.keySet()) {
+            for (Object m : messageHandlers.keySet()) {
                 if (!KNOWN_MESSAGES.contains(m)) {
-                    w.append("      if (unknown instanceof ").append(Message.toString(m)).append(") {").append("\n");
+                    String msg = m instanceof Message ? Message.toString((Message) m) : (String) m;
+                    w.append("      if (unknown instanceof ").append(msg).append(") {").append("\n");
                     w.append("        return Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(m)).append(");").append("\n");
                     w.append("      }").append("\n");
                 }
