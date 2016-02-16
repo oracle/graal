@@ -29,13 +29,13 @@ import javax.lang.model.type.TypeMirror;
 public class PropertyBuilder {
 
     private final String name;
+    private TypeMirror type;
     private boolean hasObjectTypeGetter;
-    private boolean hasFactoryGetter;
-    private boolean hasFactorySetter;
+    private boolean hasShapeGetter;
+    private boolean hasShapeSetter;
     private boolean hasGetter;
     private boolean hasSetter;
     private boolean hasUnsafeSetter;
-    private TypeMirror type;
     private boolean nullable;
     private boolean volatileSemantics;
     private boolean hasCompareAndSet;
@@ -51,24 +51,24 @@ public class PropertyBuilder {
         return name;
     }
 
-    public PropertyModel build() {
-        // assert type != null;
+    public TypeMirror getType() {
+        return type;
+    }
 
-        return new PropertyModel(name, hasObjectTypeGetter, hasFactoryGetter, hasFactorySetter,
-                        hasGetter, hasSetter, hasUnsafeSetter, type,
-                        nullable, volatileSemantics, hasCompareAndSet, hasGetAndSet, hasIdentifier, isShapeProperty);
+    public void setType(TypeMirror type) {
+        this.type = type;
     }
 
     public void setHasObjectTypeGetter(boolean hasObjectTypeGetter) {
         this.hasObjectTypeGetter = hasObjectTypeGetter;
     }
 
-    public void setHasFactoryGetter(boolean hasFactoryGetter) {
-        this.hasFactoryGetter = hasFactoryGetter;
+    public void setHasShapeGetter(boolean hasShapeGetter) {
+        this.hasShapeGetter = hasShapeGetter;
     }
 
-    public void setHasFactorySetter(boolean hasFactorySetter) {
-        this.hasFactorySetter = hasFactorySetter;
+    public void setHasShapeSetter(boolean hasShapeSetter) {
+        this.hasShapeSetter = hasShapeSetter;
     }
 
     public void setHasGetter(boolean hasGetter) {
@@ -83,14 +83,6 @@ public class PropertyBuilder {
         this.hasUnsafeSetter = hasUnsafeSetter;
     }
 
-    public TypeMirror getType() {
-        return type;
-    }
-
-    public void setType(TypeMirror type) {
-        this.type = type;
-    }
-
     public void setNullable(boolean nullable) {
         this.nullable = nullable;
     }
@@ -100,12 +92,10 @@ public class PropertyBuilder {
     }
 
     public void setHasCompareAndSet(boolean hasCompareAndSet) {
-        // assert !hasCompareAndSet || volatileSemantics;
         this.hasCompareAndSet = hasCompareAndSet;
     }
 
     public void setHasGetAndSet(boolean hasGetAndSet) {
-        // assert !hasGetAndSet || volatileSemantics;
         this.hasGetAndSet = hasGetAndSet;
     }
 
@@ -120,4 +110,11 @@ public class PropertyBuilder {
     public void setIsShapeProperty(boolean isShapeProperty) {
         this.isShapeProperty = isShapeProperty;
     }
+
+    public PropertyModel build() {
+        return new PropertyModel(name, hasObjectTypeGetter, hasShapeGetter, hasShapeSetter,
+                        hasGetter, hasSetter, hasUnsafeSetter, type,
+                        nullable, volatileSemantics, hasCompareAndSet, hasGetAndSet, hasIdentifier, isShapeProperty);
+    }
+
 }
