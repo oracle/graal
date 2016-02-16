@@ -17,3 +17,6 @@ hs_err_pid*.log
 workingsets.xml
 \.idea
 *.swp
+findbugs.results
+.metadata/
+/eclipseformat.backup.zip

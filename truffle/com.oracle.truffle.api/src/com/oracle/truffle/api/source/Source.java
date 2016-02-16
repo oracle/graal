@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -545,7 +546,33 @@ public abstract class Source {
      */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
         checkRange(charIndex, length);
-        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, SourceSection.EMTPY_TAGS);
+    }
+
+    /**
+     * Creates a representation of a contiguous region of text in the source.
+     * <p>
+     * This method performs no checks on the validity of the arguments.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     * @param identifier terse description of the region
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param charIndex the 0-based index of the first character of the section
+     * @param length the number of characters in the section
+     * @param tags the tags associated with this section. Tags must be non-null and
+     *            {@link String#intern() interned}.
+     * @return newly created object representing the specified region
+     */
+    public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length, String... tags) {
+        checkRange(charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
+    }
+
+    private SourceSection createSectionImpl(String identifier, int startLine, int startColumn, int charIndex, int length, String[] tags) {
+        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length, tags);
     }
 
     /**
@@ -571,7 +598,7 @@ public abstract class Source {
             throw new IllegalArgumentException("column out of range");
         }
         final int startOffset = lineStartOffset + startColumn - 1;
-        return new SourceSection(null, this, identifier, startLine, startColumn, startOffset, length);
+        return createSectionImpl(identifier, startLine, startColumn, startOffset, length, SourceSection.EMTPY_TAGS);
     }
 
     /**
@@ -594,10 +621,35 @@ public abstract class Source {
      * @throws IllegalStateException if the source is one of the "null" instances
      */
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
+        return createSection(identifier, charIndex, length, SourceSection.EMTPY_TAGS);
+    }
+
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
+     * source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     *
+     * @param identifier terse description of the region
+     * @param charIndex 0-based position of the first character in the section
+     * @param length the number of characters in the section
+     * @param tags the tags associated with this section. Tags must be non-null and
+     *            {@link String#intern() interned}.
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if either of the arguments are outside the text of the
+     *             source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     */
+    public final SourceSection createSection(String identifier, int charIndex, int length, String... tags) throws IllegalArgumentException {
         checkRange(charIndex, length);
         final int startLine = getLineNumber(charIndex);
         final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
-        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
     }
 
     void checkRange(int charIndex, int length) {
@@ -749,7 +801,7 @@ public abstract class Source {
 
         @Override
         public int hashCode() {
-            return description.hashCode() * code.hashCode();
+            return Objects.hash(description, code);
         }
 
         @Override
@@ -762,7 +814,7 @@ public abstract class Source {
             }
             if (obj instanceof LiteralSource) {
                 LiteralSource other = (LiteralSource) obj;
-                return description.equals(other.description) && code.equals(other.code) && equalMime(other);
+                return Objects.equals(description, other.description) && code.equals(other.code) && equalMime(other);
             }
             return false;
         }
