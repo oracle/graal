@@ -61,7 +61,7 @@ public final class FrameDescriptor implements Cloneable {
      * @param defaultValue to be returned from {@link #getDefaultValue()}
      */
     public FrameDescriptor(Object defaultValue) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
         this.defaultValue = defaultValue;
         slots = new ArrayList<>();
         identifierToSlotMap = new HashMap<>();

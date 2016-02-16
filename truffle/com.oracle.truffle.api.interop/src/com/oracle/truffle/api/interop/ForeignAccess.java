@@ -46,7 +46,7 @@ public final class ForeignAccess {
     private ForeignAccess(Factory faf) {
         this.factory = faf;
         this.initThread = Thread.currentThread();
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not create a ForeignAccess object from compiled code");
     }
 
     /**

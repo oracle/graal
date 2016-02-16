@@ -34,7 +34,7 @@ import java.util.concurrent.Callable;
 public class DSLShare {
 
     public static boolean isExcluded(Node currentNode, DSLMetadata otherMetadata) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call DSLShare.isExcluded from compiled code");
 
         assert otherMetadata.getExcludedBy().length > 0 : "At least one exclude must be defined for isIncluded.";
         Node cur = findRoot(currentNode);
@@ -55,7 +55,7 @@ public class DSLShare {
     }
 
     public static <T extends Node & DSLNode> T rewrite(final Node thisNode, final T newNode, final String message) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call DSLShare.rewrite from compiled code");
 
         return thisNode.atomic(new Callable<T>() {
             public T call() {
@@ -77,7 +77,7 @@ public class DSLShare {
 
     @SuppressWarnings("unchecked")
     public static <T extends Node> T findRoot(T node) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call DSLShare.findRoot from compiled code");
 
         Node prev = node;
         Node cur;
@@ -99,7 +99,7 @@ public class DSLShare {
     }
 
     public static <T extends Node & DSLNode> T rewriteUninitialized(final Node uninitialized, final T newNode) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call DSLShare.rewriteUninitialized from compiled code");
 
         return uninitialized.atomic(new Callable<T>() {
             public T call() {
@@ -117,7 +117,7 @@ public class DSLShare {
 
     public static <T extends Node & DSLNode> T rewriteToPolymorphic(final Node oldNode, final DSLNode uninitializedDSL, final T polymorphic, final DSLNode currentCopy, final DSLNode newNodeDSL,
                     final String message) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call DSLShare.rewriteToPolymorphic from compiled code");
 
         return oldNode.atomic(new Callable<T>() {
             public T call() {
