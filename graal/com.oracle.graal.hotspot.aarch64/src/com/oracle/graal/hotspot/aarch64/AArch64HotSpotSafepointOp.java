@@ -80,7 +80,7 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
         int pos = masm.position();
         if (isPollingPageFar(config)) {
             crb.recordMark(onReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
-            masm.forceMov(scratch, config.safepointPollingAddress);
+            masm.movNativeAddress(scratch, config.safepointPollingAddress);
             if (state != null) {
                 crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             }

@@ -202,7 +202,7 @@ public class AArch64Call {
              * Offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
              * immediate address which is fixed up by HotSpot.
              */
-            masm.forceMov(scratch, 0L);
+            masm.movNativeAddress(scratch, 0L);
             masm.blr(scratch);
         } else {
             // Address is fixed up by HotSpot.

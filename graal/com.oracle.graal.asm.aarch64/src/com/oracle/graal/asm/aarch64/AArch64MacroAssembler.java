@@ -327,21 +327,17 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Generates a move 64-bit immediate code sequence. The immediate may later be updated by
-     * HotSpot.
-     *
-     * In AArch64 mode the virtual address space is 48 bits in size, so we only need three
-     * instructions to create a patchable instruction sequence that can reach anywhere.
+     * Generates a 64-bit immediate move code sequence.
      *
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
      * @param imm
      */
-    public void forceMov(Register dst, long imm, boolean optimize) {
+    private void mov64(Register dst, long imm) {
         // We have to move all non zero parts of the immediate in 16-bit chunks
         boolean firstMove = true;
-        for (int offset = 0; offset < 48; offset += 16) {
+        for (int offset = 0; offset < 64; offset += 16) {
             int chunk = (int) (imm >> offset) & NumUtil.getNbitNumberInt(16);
-            if (optimize && chunk == 0) {
+            if (chunk == 0) {
                 continue;
             }
             if (firstMove) {
@@ -352,10 +348,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             }
         }
         assert !firstMove;
-    }
-
-    public void forceMov(Register dst, long imm) {
-        forceMov(dst, imm, /* optimize */false);
     }
 
     /**
@@ -378,7 +370,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             mov(dst, (int) imm);
             sxt(64, 32, dst, dst);
         } else {
-            forceMov(dst, imm, /* optimize move */true);
+            mov64(dst, imm);
         }
     }
 
@@ -390,6 +382,31 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void mov(Register dst, int imm) {
         mov(dst, imm & 0xFFFF_FFFFL);
+    }
+
+    /**
+     * Generates a 48-bit immediate move code sequence. The immediate may later be updated by
+     * HotSpot.
+     *
+     * In AArch64 mode the virtual address space is 48-bits in size, so we only need three
+     * instructions to create a patchable instruction sequence that can reach anywhere.
+     *
+     * @param dst general purpose register. May not be null, stackpointer or zero-register.
+     * @param imm
+     */
+    public void movNativeAddress(Register dst, long imm) {
+        // We have to move all non zero parts of the immediate in 16-bit chunks
+        boolean firstMove = true;
+        for (int offset = 0; offset < 48; offset += 16) {
+            int chunk = (int) (imm >> offset) & NumUtil.getNbitNumberInt(16);
+            if (firstMove) {
+                movz(64, dst, chunk, offset);
+                firstMove = false;
+            } else {
+                movk(64, dst, chunk, offset);
+            }
+        }
+        assert !firstMove;
     }
 
     /**

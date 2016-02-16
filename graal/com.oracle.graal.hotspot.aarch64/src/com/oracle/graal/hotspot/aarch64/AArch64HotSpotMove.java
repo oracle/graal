@@ -63,7 +63,7 @@ public class AArch64HotSpotMove {
                 // masm.forceMov(asRegister(result), 0);
                 throw JVMCIError.unimplemented();
             } else {
-                masm.forceMov(asRegister(result), 0);
+                masm.movNativeAddress(asRegister(result), 0);
             }
         }
 
