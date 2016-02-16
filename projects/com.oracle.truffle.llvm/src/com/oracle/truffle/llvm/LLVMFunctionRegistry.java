@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.intrinsics.c.LLVMExitFactory;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMMallocFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
 import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
@@ -165,6 +166,8 @@ public class LLVMFunctionRegistry {
             argNode = LLVMArgNodeFactory.LLVMDoubleArgNodeGen.create(i);
         } else if (clazz.equals(LLVMAddressNode.class)) {
             argNode = LLVMArgNodeFactory.LLVMAddressArgNodeGen.create(i);
+        } else if (clazz.equals(LLVMFunctionNode.class)) {
+            argNode = LLVMArgNodeFactory.LLVMFunctionArgNodeGen.create(i);
         } else {
             throw new AssertionError(clazz);
         }

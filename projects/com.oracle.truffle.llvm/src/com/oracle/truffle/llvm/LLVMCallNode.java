@@ -53,6 +53,9 @@ import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeFactory.LLVMAddressToI64NodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNode;
+import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
@@ -87,7 +90,7 @@ public abstract class LLVMCallNode {
                     if (nativeHandle == null) {
                         throw new IllegalStateException("could not find function " + function.getName());
                     }
-                    return replace(getResolvedNativeCall(function, nativeHandle, args)).executeGeneric(frame);
+                    return replace(getResolvedNativeCall(function, nativeHandle, args, context)).executeGeneric(frame);
                 } else {
                     return replace(new LLVMResolvedDirectCallNode(callTarget, args)).executeGeneric(frame);
                 }
@@ -132,12 +135,12 @@ public abstract class LLVMCallNode {
         private final NativeFunctionHandle functionHandle;
         @Children private final LLVMExpressionNode[] args;
 
-        public LLVMResolvedDirectNativeCallNode(@SuppressWarnings("unused") LLVMFunction function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args) {
+        public LLVMResolvedDirectNativeCallNode(@SuppressWarnings("unused") LLVMFunction function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
             functionHandle = nativeFunctionHandle;
-            this.args = prepareForNative(args);
+            this.args = prepareForNative(args, context);
         }
 
-        protected static LLVMExpressionNode[] prepareForNative(LLVMExpressionNode[] originalArgs) {
+        protected static LLVMExpressionNode[] prepareForNative(LLVMExpressionNode[] originalArgs, LLVMContext context) {
             CompilerAsserts.neverPartOfCompilation();
             LLVMExpressionNode[] newNodes = new LLVMExpressionNode[originalArgs.length];
             for (int i = 0; i < newNodes.length; i++) {
@@ -146,6 +149,15 @@ public abstract class LLVMCallNode {
                 } else if (originalArgs[i] instanceof LLVM80BitFloatNode) {
                     newNodes[i] = LLVM80BitArgConvertNodeGen.create((LLVM80BitFloatNode) originalArgs[i]);
                     throw new AssertionError("foreign function interface does not support 80 bit floats yet");
+                } else if (originalArgs[i] instanceof LLVMFunctionNode) {
+                    LLVMFunction function = ((LLVMFunctionLiteralNode) originalArgs[i]).executeFunction();
+                    String functionName = function.getName();
+                    long getNativeSymbol = context.getNativeHandle(functionName);
+                    if (getNativeSymbol != 0) {
+                        newNodes[i] = new LLVMI64LiteralNode(getNativeSymbol);
+                    } else {
+                        throw new LLVMUnsupportedException(UnsupportedReason.FUNCTION_POINTER_ESCAPES_TO_NATIVE);
+                    }
                 } else {
                     newNodes[i] = originalArgs[i];
                 }
@@ -165,13 +177,13 @@ public abstract class LLVMCallNode {
 
     }
 
-    public static LLVMResolvedDirectNativeCallNode getResolvedNativeCall(LLVMFunction function, NativeFunctionHandle nativeHandle, LLVMExpressionNode[] args) {
+    public static LLVMResolvedDirectNativeCallNode getResolvedNativeCall(LLVMFunction function, NativeFunctionHandle nativeHandle, LLVMExpressionNode[] args, LLVMContext context) {
         if (function.getLlvmReturnType() == LLVMRuntimeType.ADDRESS || function.getLlvmReturnType() == LLVMRuntimeType.STRUCT) {
-            return new LLVMResolvedNativeAddressCallNode(function, nativeHandle, args);
+            return new LLVMResolvedNativeAddressCallNode(function, nativeHandle, args, context);
         } else if (function.getLlvmReturnType() == LLVMRuntimeType.X86_FP80) {
-            return new LLVMResolvedNative80BitFloatCallNode(function, nativeHandle, args);
+            return new LLVMResolvedNative80BitFloatCallNode(function, nativeHandle, args, context);
         } else {
-            return new LLVMResolvedDirectNativeCallNode(function, nativeHandle, args);
+            return new LLVMResolvedDirectNativeCallNode(function, nativeHandle, args, context);
         }
     }
 

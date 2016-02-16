@@ -40,8 +40,6 @@ import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 
 public class LLVMNativeFactory {
 
@@ -65,7 +63,7 @@ public class LLVMNativeFactory {
         } else if (node instanceof LLVM80BitFloatNode) {
             return byte[].class;
         } else if (node instanceof LLVMFunctionNode) {
-            throw new LLVMUnsupportedException(UnsupportedReason.FUNCTION_POINTER_ESCAPES_TO_NATIVE);
+            return long.class;
         } else {
             throw new AssertionError(node);
         }

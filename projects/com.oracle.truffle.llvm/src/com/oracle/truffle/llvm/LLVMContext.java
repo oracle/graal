@@ -101,16 +101,37 @@ public class LLVMContext extends ExecutionContext {
     // TODO lazy loading
     private static final NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
 
+    static final int LOOKUP_FAILURE = 0;
+
     // TODO extend foreign function interface API
     private static long lookupSymbol(String name) {
         try {
             Method method = HotSpotNativeFunctionInterface.class.getDeclaredMethod("lookupFunctionPointer", String.class, NativeLibraryHandle.class, boolean.class);
             HotSpotNativeFunctionInterface face = (HotSpotNativeFunctionInterface) nfi;
             method.setAccessible(true);
-            HotSpotNativeFunctionPointer result = (HotSpotNativeFunctionPointer) method.invoke(face, name, new HotSpotNativeLibraryHandle("", 0), false);
-            return result.getRawValue();
+            HotSpotNativeLibraryHandle handle;
+            NativeLibraryHandle[] nativeFunctionHandles = getNativeFunctionHandles();
+            if (nativeFunctionHandles.length == 0) {
+                handle = new HotSpotNativeLibraryHandle("", 0);
+                return ((HotSpotNativeFunctionPointer) method.invoke(face, name, handle, false)).getRawValue();
+            } else {
+                for (NativeLibraryHandle libraryHandle : nativeFunctionHandles) {
+                    try {
+                        HotSpotNativeFunctionPointer hotSpotPointer = (HotSpotNativeFunctionPointer) method.invoke(face, name, libraryHandle, false);
+                        if (hotSpotPointer != null) {
+                            return hotSpotPointer.getRawValue();
+                        }
+                    } catch (UnsatisfiedLinkError e) {
+                        // fall through and try with the next
+                    }
+                }
+                return LOOKUP_FAILURE;
+            }
         } catch (Exception e) {
-            return 0;
+            if (LLVMOptions.isDebug()) {
+                System.err.println("external symbol " + name + " could not be resolved!");
+            }
+            return LOOKUP_FAILURE;
         }
     }
 
@@ -136,21 +157,26 @@ public class LLVMContext extends ExecutionContext {
         if (functionName.equals("fork") || functionName.equals("pthread_create") || functionName.equals("pipe")) {
             throw new LLVMUnsupportedException(UnsupportedReason.MULTITHREADING);
         }
-        String[] dynamicLibraryPaths = LLVMOptions.getDynamicLibraryPaths();
-        if (dynamicLibraryPaths == null) {
+        if (LLVMOptions.getDynamicLibraryPaths() == null) {
             functionHandle = nfi.getFunctionHandle(functionName, retType, paramTypes);
         } else {
-            int i = 0;
-            NativeLibraryHandle[] handles = new NativeLibraryHandle[dynamicLibraryPaths.length];
-            for (String library : dynamicLibraryPaths) {
-                handles[i++] = nfi.getLibraryHandle(library);
-            }
+            NativeLibraryHandle[] handles = getNativeFunctionHandles();
             functionHandle = nfi.getFunctionHandle(handles, functionName, retType, paramTypes);
         }
         if (LLVMOptions.isNativeCallStats() && functionHandle != null) {
             recordNativeFunctionCallSite(function);
         }
         return functionHandle;
+    }
+
+    private static NativeLibraryHandle[] getNativeFunctionHandles() {
+        String[] dynamicLibraryPaths = LLVMOptions.getDynamicLibraryPaths();
+        int i = 0;
+        NativeLibraryHandle[] handles = new NativeLibraryHandle[dynamicLibraryPaths.length];
+        for (String library : dynamicLibraryPaths) {
+            handles[i++] = nfi.getLibraryHandle(library);
+        }
+        return handles;
     }
 
     private void recordNativeFunctionCallSite(LLVMFunction function) {
@@ -198,7 +224,7 @@ public class LLVMContext extends ExecutionContext {
             case X86_FP80:
                 return byte[].class;
             case FUNCTION_ADDRESS:
-                throw new LLVMUnsupportedException(UnsupportedReason.FUNCTION_POINTER_ESCAPES_TO_NATIVE);
+                return long.class;
             default:
                 throw new AssertionError(type);
         }
