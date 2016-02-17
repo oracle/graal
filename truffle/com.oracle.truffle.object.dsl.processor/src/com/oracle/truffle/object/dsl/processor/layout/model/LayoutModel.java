@@ -97,6 +97,16 @@ public class LayoutModel {
         return !selectProperties(false, true, true, true).isEmpty();
     }
 
+    public boolean hasProperty(String propertyName) {
+        for (PropertyModel property : getAllProperties()) {
+            if (property.getName().equals(propertyName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public List<PropertyModel> getProperties() {
         return selectProperties(true, true, true, false);
     }
@@ -129,7 +139,7 @@ public class LayoutModel {
         final List<PropertyModel> selectedProperties = new ArrayList<>();
 
         if (inherited && superLayout != null) {
-            selectedProperties.addAll(superLayout.selectProperties(instance, shape, true, true));
+            selectedProperties.addAll(superLayout.selectProperties(instance, shape, declared, inherited));
         }
 
         if (declared) {

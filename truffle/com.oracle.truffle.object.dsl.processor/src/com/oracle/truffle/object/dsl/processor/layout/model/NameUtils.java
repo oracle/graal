@@ -80,4 +80,9 @@ public abstract class NameUtils {
     public static String typeWithoutParameters(String type) {
         return type.replaceAll("<\\w+(\\.\\w+)*>", "");
     }
+
+    public static String titleToCamel(String name) {
+        return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
 }

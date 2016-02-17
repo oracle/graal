@@ -127,7 +127,7 @@ import java.lang.annotation.Target;
  * {@link AtomicReference#getAndSet}.
  *
  * <pre>
- * boolean compareAndSetNAME(DynamicObject object, TYPE expected, TYPE newValue);
+ * boolean compareAndSetNAME(DynamicObject object, TYPE expectedValue, TYPE newValue);
  *
  * TYPE getAndSet(DynamicObject object, TYPE value);
  * </pre>

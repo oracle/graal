@@ -42,15 +42,15 @@ public class ShapePropertiesTest {
 
         DynamicObject createShapePropertiesTest(DynamicObjectFactory factory, int instanceProperty);
 
-        int getShapeProperty(DynamicObjectFactory object);
+        int getShapeProperty(DynamicObjectFactory factory);
 
-        DynamicObjectFactory setShapeProperty(DynamicObjectFactory object, int value);
+        DynamicObjectFactory setShapeProperty(DynamicObjectFactory factory, int value);
 
         int getShapeProperty(DynamicObject object);
 
         void setShapeProperty(DynamicObject object, int value);
 
-        int getShapeProperty(ObjectType object);
+        int getShapeProperty(ObjectType objectType);
 
         int getInstanceProperty(DynamicObject object);
 

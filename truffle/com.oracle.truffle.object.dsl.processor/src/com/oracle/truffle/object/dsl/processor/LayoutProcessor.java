@@ -35,7 +35,6 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
 import javax.tools.Diagnostic.Kind;
@@ -51,10 +50,6 @@ public class LayoutProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
         for (Element element : roundEnvironment.getElementsAnnotatedWith(Layout.class)) {
-            if (element.getKind() != ElementKind.INTERFACE) {
-                reportError(element, "@Layout should only be applied to interfaces");
-            }
-
             processLayout((TypeElement) element);
         }
 
