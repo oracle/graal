@@ -278,7 +278,7 @@ public abstract class Accessor {
     @TruffleBoundary
     @SuppressWarnings("unused")
     protected Closeable executionStart(Object vm, int currentDepth, Debugger debugger, Source s) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
         Objects.requireNonNull(vm);
         final Object prev = CURRENT_VM.get();
         final Closeable debugClose = DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);

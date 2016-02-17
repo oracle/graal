@@ -60,7 +60,7 @@ public final class FrameSlot implements Cloneable {
 
     /**
      * Identifier of the slot.
-     * 
+     *
      * @return value as specified in {@link FrameDescriptor#addFrameSlot(java.lang.Object)}
      *         parameter
      */
@@ -70,7 +70,7 @@ public final class FrameSlot implements Cloneable {
 
     /**
      * Information about the slot.
-     * 
+     *
      * @return value as specified as second parameter of
      *         {@link FrameDescriptor#addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)}
      */
@@ -80,7 +80,7 @@ public final class FrameSlot implements Cloneable {
 
     /**
      * Index of the slot in the {@link FrameDescriptor}.
-     * 
+     *
      * @return position of the slot computed after
      *         {@link FrameDescriptor#addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)
      *         adding} it.
@@ -94,7 +94,7 @@ public final class FrameSlot implements Cloneable {
      * {@link FrameDescriptor#addFrameSlot(java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)
      * creation time} or updated via {@link #setKind(com.oracle.truffle.api.frame.FrameSlotKind)}
      * method.
-     * 
+     *
      * @return current kind of this slot
      */
     public FrameSlotKind getKind() {
@@ -105,7 +105,7 @@ public final class FrameSlot implements Cloneable {
      * Changes the kind of this slot. Change of the slot kind is done on <em>slow path</em> and
      * invalidates assumptions about {@link FrameDescriptor#createVersion() version} of
      * {@link #getFrameDescriptor() associated descriptor}.
-     * 
+     *
      * @param kind new kind of the slot
      */
     public void setKind(final FrameSlotKind kind) {
@@ -118,13 +118,13 @@ public final class FrameSlot implements Cloneable {
 
     @Override
     public String toString() {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call FrameSlot.toString from compiled code");
         return "[" + index + "," + identifier + "," + kind + "]";
     }
 
     /**
      * Frame descriptor this slot is associated with.
-     * 
+     *
      * @return instance of descriptor that {@link FrameDescriptor#addFrameSlot(java.lang.Object)
      *         created} the slot
      */
