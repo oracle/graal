@@ -90,7 +90,8 @@ public class LLVMOptions {
         OPTIMIZATION_INJECT_PROBS_SELECT("llvm-opt-select", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean),
         OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("llvm-opt-cintrinsics", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean),
         OPTIMIZATION_INJECT_PROBS_COND_BRANCH("llvm-opt-br", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean),
-        NATIVE_CALL_STATS("llvm-native-call-stats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean);
+        NATIVE_CALL_STATS("llvm-native-call-stats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean),
+        LIFE_TIME_ANALYSIS_STATS("llvm-lifetime-analysis-stats", "Outputs the results of the lifetime analysis", "false", LLVMOptions::parseBoolean);
 
         Property(String key, String description, String defaultValue, OptionParser parser) {
             this.key = key;
@@ -211,6 +212,10 @@ public class LLVMOptions {
 
     public static boolean isNativeCallStats() {
         return getParsedProperty(Property.NATIVE_CALL_STATS);
+    }
+
+    public static boolean isNativeAnalysisStats() {
+        return getParsedProperty(Property.LIFE_TIME_ANALYSIS_STATS);
     }
 
 }

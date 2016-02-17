@@ -55,8 +55,15 @@ import com.intel.llvm.ireditor.lLVM_IR.TerminatorInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.impl.Instruction_brImpl;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.runtime.LLVMOptions;
 
+/**
+ * This class determines which variables are dead after each basic block.
+ */
 public final class LLVMLifeTimeAnalysisVisitor {
+
+    private static final String FUNCTION_FORMAT = "%s:\n";
+    private static final String AFTER_BLOCK_FORMAT = "\t dead after bb %4s:";
 
     private final FrameDescriptor frameDescriptor;
     private final EList<BasicBlock> basicBlocks;
@@ -71,7 +78,29 @@ public final class LLVMLifeTimeAnalysisVisitor {
     }
 
     public static Map<BasicBlock, FrameSlot[]> visit(FunctionDef function, FrameDescriptor frameDescriptor) {
-        return new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
+        Map<BasicBlock, FrameSlot[]> mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
+        if (LLVMOptions.isNativeAnalysisStats()) {
+            printAnalysisResults(function, mapping);
+        }
+        return mapping;
+    }
+
+    private static void printAnalysisResults(FunctionDef analyzedFunction, Map<BasicBlock, FrameSlot[]> mapping) {
+        System.out.print(String.format(FUNCTION_FORMAT, analyzedFunction.getHeader().getName()));
+        for (BasicBlock b : mapping.keySet()) {
+            System.out.print(String.format(AFTER_BLOCK_FORMAT, b.getName()));
+            FrameSlot[] variables = mapping.get(b);
+            if (variables.length != 0) {
+                System.out.print("\t");
+                for (int i = 0; i < variables.length; i++) {
+                    if (i != 0) {
+                        System.out.print(", ");
+                    }
+                    System.out.print(variables[i].getIdentifier());
+                }
+            }
+            System.out.println();
+        }
     }
 
     private Map<BasicBlock, FrameSlot[]> visit() {
