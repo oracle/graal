@@ -25,14 +25,11 @@ package com.oracle.graal.lir.aarch64;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.InvokeTarget;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Value;
 
+import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
@@ -40,6 +37,11 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.InvokeTarget;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 public class AArch64Call {
 
@@ -122,10 +124,12 @@ public class AArch64Call {
 
     public abstract static class ForeignCallOp extends CallOp {
         protected final ForeignCallLinkage callTarget;
+        protected final Label label;
 
-        protected ForeignCallOp(LIRInstructionClass<? extends ForeignCallOp> c, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        protected ForeignCallOp(LIRInstructionClass<? extends ForeignCallOp> c, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state, Label label) {
             super(c, result, parameters, temps, state);
             this.callTarget = callTarget;
+            this.label = label;
         }
 
         @Override
@@ -145,13 +149,13 @@ public class AArch64Call {
     public static class DirectNearForeignCallOp extends ForeignCallOp {
         public static final LIRInstructionClass<DirectNearForeignCallOp> TYPE = LIRInstructionClass.create(DirectNearForeignCallOp.class);
 
-        public DirectNearForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(TYPE, callTarget, result, parameters, temps, state);
+        public DirectNearForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state, Label label) {
+            super(TYPE, callTarget, result, parameters, temps, state, label);
         }
 
         @Override
         protected void emitCall(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            directCall(crb, masm, callTarget, null, state);
+            directCall(crb, masm, callTarget, null, state, label);
         }
     }
 
@@ -159,15 +163,15 @@ public class AArch64Call {
     public static class DirectFarForeignCallOp extends ForeignCallOp {
         public static final LIRInstructionClass<DirectFarForeignCallOp> TYPE = LIRInstructionClass.create(DirectFarForeignCallOp.class);
 
-        public DirectFarForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(TYPE, callTarget, result, parameters, temps, state);
+        public DirectFarForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state, Label label) {
+            super(TYPE, callTarget, result, parameters, temps, state, label);
         }
 
         @Override
         protected void emitCall(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             // We can use any scratch register we want, since we know that they have been saved
             // before calling.
-            directCall(crb, masm, callTarget, AArch64.r8, state);
+            directCall(crb, masm, callTarget, r8, state, label);
         }
     }
 
@@ -188,17 +192,25 @@ public class AArch64Call {
     }
 
     public static void directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info) {
+        directCall(crb, masm, callTarget, scratch, info, null);
+    }
+
+    public static void directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info, Label label) {
         int before = masm.position();
         if (scratch != null) {
             /*
              * Offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
              * immediate address which is fixed up by HotSpot.
              */
-            masm.forceMov(scratch, 0L);
+            masm.movNativeAddress(scratch, 0L);
             masm.blr(scratch);
         } else {
             // Address is fixed up by HotSpot.
             masm.bl(0);
+        }
+        if (label != null) {
+            // We need this label to be the return address.
+            masm.bind(label);
         }
         int after = masm.position();
         crb.recordDirectCall(before, after, callTarget, info);

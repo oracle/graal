@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,7 +63,7 @@ final class AArch64HotSpotDirectStaticCallOp extends DirectCallOp {
         // valid object which causes the called function to call a handler that installs the
         // correct inline cache value here.
         crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
-        masm.forceMov(inlineCacheRegister, config.nonOopBits);
+        masm.movNativeAddress(inlineCacheRegister, config.nonOopBits);
         super.emitCode(crb, masm);
     }
 }

@@ -44,6 +44,7 @@ import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.aarch64.AArch64AddressValue;
+import com.oracle.graal.lir.aarch64.AArch64Call;
 import com.oracle.graal.lir.aarch64.AArch64FrameMapBuilder;
 import com.oracle.graal.lir.aarch64.AArch64Move.StoreOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -81,14 +82,26 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
+    public HotSpotProviders getProviders() {
+        return (HotSpotProviders) super.getProviders();
+    }
+
+    @Override
     public boolean needOnlyOopMaps() {
         // Stubs only need oop maps
         return getResult().getStub() != null;
     }
 
+    @SuppressWarnings("unused") private LIRFrameState currentRuntimeCallInfo;
+
     @Override
-    public HotSpotProviders getProviders() {
-        return (HotSpotProviders) super.getProviders();
+    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+        currentRuntimeCallInfo = info;
+        if (AArch64Call.isNearCall(linkage)) {
+            append(new AArch64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info, label));
+        } else {
+            append(new AArch64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info, label));
+        }
     }
 
     @Override
@@ -169,6 +182,8 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         getResult().setMaxInterpreterFrameSize(debugInfoBuilder.maxInterpreterFrameSize());
     }
 
+    private Label label;
+
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args) {
         HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
@@ -183,10 +198,16 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             HotSpotRegistersProvider registers = getProviders().getRegisters();
             Register thread = registers.getThreadRegister();
             Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
-            Label label = new Label();
+
+            // We need a label for the return address.
+            label = new Label();
+
             append(new AArch64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadLastJavaFpOffset(), thread, scratch, label));
             result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
-            append(new AArch64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread, label));
+            append(new AArch64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread));
+
+            // Clear it out so it's not being reused later.
+            label = null;
         } else {
             result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
         }

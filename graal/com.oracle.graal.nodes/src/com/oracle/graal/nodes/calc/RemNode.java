@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,12 +33,16 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(shortName = "%")
-public final class RemNode extends BinaryArithmeticNode<Rem> implements Lowerable {
+public class RemNode extends BinaryArithmeticNode<Rem> implements Lowerable {
 
     public static final NodeClass<RemNode> TYPE = NodeClass.create(RemNode.class);
 
     public RemNode(ValueNode x, ValueNode y) {
-        super(TYPE, ArithmeticOpTable::getRem, x, y);
+        this(TYPE, x, y);
+    }
+
+    protected RemNode(NodeClass<? extends RemNode> c, ValueNode x, ValueNode y) {
+        super(c, ArithmeticOpTable::getRem, x, y);
     }
 
     @Override

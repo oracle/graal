@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.graal.jtt.bytecode;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
-
-/*
- */
-public class BC_fdiv extends JTTTest {
+public class BC_fdiv extends BC_fdiv_frem_base {
 
     public static float test(float a, float b) {
         return a / b;
     }
 
     @Test
-    public void run0() throws Throwable {
-        runTest("test", 311.0f, 10f);
+    @Override
+    public void run() {
+        super.run();
     }
 
-    @Test
-    public void run1() throws Throwable {
-        runTest("test", 311.0f, 0f);
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,11 @@
 package com.oracle.graal.replacements.aarch64;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FixedBinaryNode;
 import com.oracle.graal.nodes.calc.IntegerDivNode;
@@ -39,10 +40,13 @@ import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.Snippets;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -76,117 +80,120 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     }
 
     public void lower(FixedBinaryNode node, LoweringTool tool) {
-        // assert node.kind() == JavaKind.Int || node.kind() == JavaKind.Long;
-        // SnippetTemplate.SnippetInfo snippet;
-        // if (node instanceof SafeNode) {
-        // // We already introduced the 0 division check, nothing to do.
-        // return;
-        // } else if (node instanceof IntegerDivNode) {
-        // snippet = node.kind() == JavaKind.Int ? idiv : ldiv;
-        // } else if (node instanceof IntegerRemNode) {
-        // snippet = node.kind() == JavaKind.Int ? irem : lrem;
-        // } else if (node instanceof UnsignedDivNode) {
-        // snippet = node.kind() == JavaKind.Int ? uidiv : uldiv;
-        // } else if (node instanceof UnsignedRemNode) {
-        // snippet = node.kind() == JavaKind.Int ? uirem : ulrem;
-        // } else {
-        // throw GraalInternalError.shouldNotReachHere();
-        // }
-        // Arguments args = new Arguments(snippet, node.graph().getGuardsStage());
-        // args.add("x", node.x());
-        // args.add("y", node.y());
-        // template(args).instantiate(providers.getMetaAccess(), node,
-        // SnippetTemplate.DEFAULT_REPLACER,
-        // args);
-        throw JVMCIError.unimplemented(node + ", " + tool);
+        JavaKind kind = node.stamp().getStackKind();
+        assert kind == JavaKind.Int || kind == JavaKind.Long;
+        SnippetTemplate.SnippetInfo snippet;
+        if (node instanceof SafeNode) {
+            // We already introduced the zero division check, nothing to do.
+            return;
+        } else if (node instanceof IntegerDivNode) {
+            snippet = kind == JavaKind.Int ? idiv : ldiv;
+        } else if (node instanceof IntegerRemNode) {
+            snippet = kind == JavaKind.Int ? irem : lrem;
+        } else if (node instanceof UnsignedDivNode) {
+            snippet = kind == JavaKind.Int ? uidiv : uldiv;
+        } else if (node instanceof UnsignedRemNode) {
+            snippet = kind == JavaKind.Int ? uirem : ulrem;
+        } else {
+            throw JVMCIError.shouldNotReachHere();
+        }
+        StructuredGraph graph = node.graph();
+        Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
+        args.add("x", node.getX());
+        args.add("y", node.getY());
+        template(args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
     }
 
     @Snippet
     public static int idivSnippet(int x, int y) {
         checkForZero(y);
-        return safeDiv(JavaKind.Int, x, y);
+        return safeDiv(x, y);
     }
 
     @Snippet
     public static long ldivSnippet(long x, long y) {
         checkForZero(y);
-        return safeDiv(JavaKind.Long, x, y);
+        return safeDiv(x, y);
     }
 
     @Snippet
     public static int iremSnippet(int x, int y) {
         checkForZero(y);
-        return safeRem(JavaKind.Int, x, y);
+        return safeRem(x, y);
     }
 
     @Snippet
     public static long lremSnippet(long x, long y) {
         checkForZero(y);
-        return safeRem(JavaKind.Long, x, y);
+        return safeRem(x, y);
     }
 
     @Snippet
     public static int uidivSnippet(int x, int y) {
         checkForZero(y);
-        return safeUDiv(JavaKind.Int, x, y);
+        return safeUDiv(x, y);
     }
 
     @Snippet
     public static long uldivSnippet(long x, long y) {
         checkForZero(y);
-        return safeUDiv(JavaKind.Long, x, y);
+        return safeUDiv(x, y);
     }
 
     @Snippet
     public static int uiremSnippet(int x, int y) {
         checkForZero(y);
-        return safeURem(JavaKind.Int, x, y);
+        return safeURem(x, y);
     }
 
     @Snippet
     public static long ulremSnippet(long x, long y) {
         checkForZero(y);
-        return safeURem(JavaKind.Long, x, y);
+        return safeURem(x, y);
     }
 
     private static void checkForZero(int y) {
         if (y == 0) {
-            throw new ArithmeticException("/ by zero.");
+            // "/ by zero"
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.ArithmeticException);
         }
     }
 
     private static void checkForZero(long y) {
         if (y == 0) {
-            throw new ArithmeticException("/ by zero.");
+            // "/ by zero"
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.ArithmeticException);
         }
     }
 
     @NodeIntrinsic(SafeIntegerDivNode.class)
-    private static native int safeDiv(@ConstantNodeParameter JavaKind kind, int x, int y);
+    private static native int safeDiv(int x, int y);
 
     @NodeIntrinsic(SafeIntegerDivNode.class)
-    private static native long safeDiv(@ConstantNodeParameter JavaKind kind, long x, long y);
+    private static native long safeDiv(long x, long y);
 
     @NodeIntrinsic(SafeIntegerRemNode.class)
-    private static native int safeRem(@ConstantNodeParameter JavaKind kind, int x, int y);
+    private static native int safeRem(int x, int y);
 
     @NodeIntrinsic(SafeIntegerRemNode.class)
-    private static native long safeRem(@ConstantNodeParameter JavaKind kind, long x, long y);
+    private static native long safeRem(long x, long y);
 
     @NodeIntrinsic(SafeUnsignedDivNode.class)
-    private static native int safeUDiv(@ConstantNodeParameter JavaKind kind, int x, int y);
+    private static native int safeUDiv(int x, int y);
 
     @NodeIntrinsic(SafeUnsignedDivNode.class)
-    private static native long safeUDiv(@ConstantNodeParameter JavaKind kind, long x, long y);
+    private static native long safeUDiv(long x, long y);
 
     @NodeIntrinsic(SafeUnsignedRemNode.class)
-    private static native int safeURem(@ConstantNodeParameter JavaKind kind, int x, int y);
+    private static native int safeURem(int x, int y);
 
     @NodeIntrinsic(SafeUnsignedRemNode.class)
-    private static native long safeURem(@ConstantNodeParameter JavaKind kind, long x, long y);
+    private static native long safeURem(long x, long y);
 
-    // Marker interface to distinguish untreated nodes from ones where we have installed the
-    // additional checks
+    /**
+     * Marker interface to distinguish untreated nodes from ones where we have installed the
+     * additional checks.
+     */
     private interface SafeNode {
     }
 
@@ -194,9 +201,8 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     static class SafeIntegerDivNode extends IntegerDivNode implements SafeNode {
         public static final NodeClass<SafeIntegerDivNode> TYPE = NodeClass.create(SafeIntegerDivNode.class);
 
-        @SuppressWarnings("unused")
-        protected SafeIntegerDivNode(JavaKind kind, ValueNode x, ValueNode y) {
-            super(x, y);
+        protected SafeIntegerDivNode(ValueNode x, ValueNode y) {
+            super(TYPE, x, y);
         }
     }
 
@@ -204,9 +210,8 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     static class SafeIntegerRemNode extends IntegerRemNode implements SafeNode {
         public static final NodeClass<SafeIntegerRemNode> TYPE = NodeClass.create(SafeIntegerRemNode.class);
 
-        @SuppressWarnings("unused")
-        protected SafeIntegerRemNode(JavaKind kind, ValueNode x, ValueNode y) {
-            super(x, y);
+        protected SafeIntegerRemNode(ValueNode x, ValueNode y) {
+            super(TYPE, x, y);
         }
     }
 
@@ -214,9 +219,8 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     static class SafeUnsignedDivNode extends UnsignedDivNode implements SafeNode {
         public static final NodeClass<SafeUnsignedDivNode> TYPE = NodeClass.create(SafeUnsignedDivNode.class);
 
-        @SuppressWarnings("unused")
-        protected SafeUnsignedDivNode(JavaKind kind, ValueNode x, ValueNode y) {
-            super(x, y);
+        protected SafeUnsignedDivNode(ValueNode x, ValueNode y) {
+            super(TYPE, x, y);
         }
     }
 
@@ -224,9 +228,9 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     static class SafeUnsignedRemNode extends UnsignedRemNode implements SafeNode {
         public static final NodeClass<SafeUnsignedRemNode> TYPE = NodeClass.create(SafeUnsignedRemNode.class);
 
-        @SuppressWarnings("unused")
-        protected SafeUnsignedRemNode(JavaKind kind, ValueNode x, ValueNode y) {
-            super(x, y);
+        protected SafeUnsignedRemNode(ValueNode x, ValueNode y) {
+            super(TYPE, x, y);
         }
     }
+
 }

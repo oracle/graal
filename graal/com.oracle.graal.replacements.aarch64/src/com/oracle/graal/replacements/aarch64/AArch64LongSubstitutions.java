@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,17 @@
  */
 package com.oracle.graal.replacements.aarch64;
 
+import com.oracle.graal.api.replacements.ClassSubstitution;
+import com.oracle.graal.api.replacements.MethodSubstitution;
+
 /**
  * Aarch64 ISA offers a count leading zeros instruction which can be used to implement
  * numberOfLeadingZeros more efficiently than using BitScanReverse.
  */
+@ClassSubstitution(Long.class)
 public class AArch64LongSubstitutions {
 
+    @MethodSubstitution
     public static int bitCount(long value) {
         // Based on Warren, Hacker's Delight, slightly adapted to profit from Aarch64 add + shift
         // instruction.

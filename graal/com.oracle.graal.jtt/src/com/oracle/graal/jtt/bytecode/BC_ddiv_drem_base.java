@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,18 +23,33 @@
 
 package com.oracle.graal.jtt.bytecode;
 
-import org.junit.Test;
+import com.oracle.graal.jtt.JTTTest;
 
-public class BC_ddiv extends BC_ddiv_drem_base {
+public abstract class BC_ddiv_drem_base extends JTTTest {
 
-    public static double test(double a, double b) {
-        return a / b;
-    }
+    /** Some interesting values. */
+    private static final double[] values = {
+                    0.0d,
+                    -0.0d,
+                    1.0d,
+                    -1.0d,
+                    Double.POSITIVE_INFINITY,
+                    Double.NEGATIVE_INFINITY,
+                    Double.NaN,
+                    10.0d,
+                    -10.0d,
+                    311.0d,
+                    -311.0d,
+    };
 
-    @Test
-    @Override
     public void run() {
-        super.run();
+        for (int i = 0; i < values.length; i++) {
+            double x = values[i];
+            for (int j = 0; j < values.length; j++) {
+                double y = values[j];
+                runTest("test", x, y);
+            }
+        }
     }
 
 }

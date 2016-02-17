@@ -24,26 +24,20 @@
 package com.oracle.graal.replacements.aarch64;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Rem;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
 import com.oracle.graal.nodes.calc.RemNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.Snippets;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -63,79 +57,76 @@ public class AArch64FloatArithmeticSnippets extends SnippetTemplate.AbstractTemp
     }
 
     public void lower(RemNode node, LoweringTool tool) {
-        // assert node.kind() == JavaKind.Float || node.kind() == JavaKind.Double;
-        // if (node instanceof SafeNode) {
-        // // We already introduced the necessary checks, nothing to do.
-        // return;
-        // }
-        // SnippetTemplate.SnippetInfo snippet = node.kind() == Kind.Double ? drem : frem;
-        // SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet,
-        // node.graph().getGuardsStage());
-        // args.add("x", node.x());
-        // args.add("y", node.y());
-        // args.add("isStrictFP", node.isStrictFP());
-        // template(args).instantiate(providers.getMetaAccess(), node,
-        // SnippetTemplate.DEFAULT_REPLACER,
-        // tool, args);
-        throw JVMCIError.unimplemented(node + ", " + tool);
+        JavaKind kind = node.stamp().getStackKind();
+        assert kind == JavaKind.Float || kind == JavaKind.Double;
+        if (node instanceof SafeNode) {
+            // We already introduced the necessary checks, nothing to do.
+            return;
+        }
+        SnippetTemplate.SnippetInfo snippet = kind == JavaKind.Float ? frem : drem;
+        StructuredGraph graph = node.graph();
+        Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
+        args.add("x", node.getX());
+        args.add("y", node.getY());
+        template(args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, tool, args);
     }
 
     @Snippet
-    public static double dremSnippet(double x, double y, @Snippet.ConstantParameter boolean isStrictFP) {
-        if (Double.isInfinite(x) || y == 0.0 || Double.isNaN(y)) {
-            return Double.NaN;
-        }
-        // -0.0 % 5.0 will result in 0.0 and not -0.0 if we don't check here.
-        if (Double.isInfinite(y) || x == 0.0) {
-            return x;
-        }
-        return safeRem(JavaKind.Double, x, y, isStrictFP);
-    }
-
-    @Snippet
-    public static float fremSnippet(float x, float y, @Snippet.ConstantParameter boolean isStrictFP) {
+    public static float fremSnippet(float x, float y) {
         if (Float.isInfinite(x) || y == 0.0f || Float.isNaN(y)) {
             return Float.NaN;
         }
         // -0.0 % 5.0 will result in 0.0 and not -0.0 if we don't check here.
-        if (Float.isInfinite(y) || x == 0.0f) {
+        if (x == 0.0f || Float.isInfinite(y)) {
             return x;
         }
-        return safeRem(JavaKind.Float, x, y, isStrictFP);
+        // -x % -y where x == y will result in 0.0 but should be -0.0.
+        // JVMS: If neither value1' nor value2' is NaN, the sign of the result equals the sign of
+        // the dividend.
+        if (x == y && x < 0.0f) {
+            return -0.0f;
+        }
+        return safeRem(x, y);
+    }
+
+    @Snippet
+    public static double dremSnippet(double x, double y) {
+        if (Double.isInfinite(x) || y == 0.0 || Double.isNaN(y)) {
+            return Double.NaN;
+        }
+        // -0.0 % 5.0 will result in 0.0 and not -0.0 if we don't check here.
+        if (x == 0.0 || Double.isInfinite(y)) {
+            return x;
+        }
+        // -x % -y where x == y will result in 0.0 but should be -0.0.
+        // JVMS: If neither value1' nor value2' is NaN, the sign of the result equals the sign of
+        // the dividend.
+        if (x == y && x < 0.0d) {
+            return -0.0d;
+        }
+        return safeRem(x, y);
     }
 
     @NodeIntrinsic(SafeFloatRemNode.class)
-    private static native double safeRem(@Node.ConstantNodeParameter JavaKind kind, double x, double y, @Node.ConstantNodeParameter boolean isStrictFP);
+    private static native float safeRem(float x, float y);
 
     @NodeIntrinsic(SafeFloatRemNode.class)
-    private static native float safeRem(@Node.ConstantNodeParameter JavaKind kind, float x, float y, @Node.ConstantNodeParameter boolean isStrictFP);
+    private static native double safeRem(double x, double y);
 
-    // Marker interface to distinguish untreated nodes from ones where we have installed the
-    // additional checks
+    /**
+     * Marker interface to distinguish untreated nodes from ones where we have installed the
+     * additional checks.
+     */
     private interface SafeNode {
     }
 
     @NodeInfo
     // static class SafeFloatRemNode extends FloatRemNode implements SafeNode {
-    static class SafeFloatRemNode extends BinaryArithmeticNode<Rem> implements SafeNode {
-
+    static class SafeFloatRemNode extends RemNode implements SafeNode {
         public static final NodeClass<SafeFloatRemNode> TYPE = NodeClass.create(SafeFloatRemNode.class);
 
-        @SuppressWarnings("unused")
-        protected SafeFloatRemNode(JavaKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-            super(TYPE, ArithmeticOpTable::getRem, x, y);
-        }
-
-        public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
-            throw JVMCIError.unimplemented();
-        }
-
-        public void generate(NodeLIRBuilderTool generator) {
-            throw JVMCIError.unimplemented();
-        }
-
-        public Node canonical(CanonicalizerTool tool) {
-            throw JVMCIError.unimplemented();
+        protected SafeFloatRemNode(ValueNode x, ValueNode y) {
+            super(TYPE, x, y);
         }
     }
 
