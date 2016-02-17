@@ -73,38 +73,52 @@ public class AArch64FloatArithmeticSnippets extends SnippetTemplate.AbstractTemp
 
     @Snippet
     public static float fremSnippet(float x, float y) {
+        // JVMS: If either value1' or value2' is NaN, the result is NaN.
+        // JVMS: If the dividend is an infinity or the divisor is a zero or both, the result is NaN.
         if (Float.isInfinite(x) || y == 0.0f || Float.isNaN(y)) {
             return Float.NaN;
         }
-        // -0.0 % 5.0 will result in 0.0 and not -0.0 if we don't check here.
+        // JVMS: If the dividend is finite and the divisor is an infinity, the result equals the
+        // dividend.
+        // JVMS: If the dividend is a zero and the divisor is finite, the result equals the
+        // dividend.
         if (x == 0.0f || Float.isInfinite(y)) {
             return x;
         }
-        // -x % -y where x == y will result in 0.0 but should be -0.0.
+
+        float result = safeRem(x, y);
+
         // JVMS: If neither value1' nor value2' is NaN, the sign of the result equals the sign of
         // the dividend.
-        if (x == y && x < 0.0f) {
-            return -0.0f;
+        if (result == 0.0f && x < 0.0f) {
+            return -result;
         }
-        return safeRem(x, y);
+        return result;
     }
 
     @Snippet
     public static double dremSnippet(double x, double y) {
+        // JVMS: If either value1' or value2' is NaN, the result is NaN.
+        // JVMS: If the dividend is an infinity or the divisor is a zero or both, the result is NaN.
         if (Double.isInfinite(x) || y == 0.0 || Double.isNaN(y)) {
             return Double.NaN;
         }
-        // -0.0 % 5.0 will result in 0.0 and not -0.0 if we don't check here.
+        // JVMS: If the dividend is finite and the divisor is an infinity, the result equals the
+        // dividend.
+        // JVMS: If the dividend is a zero and the divisor is finite, the result equals the
+        // dividend.
         if (x == 0.0 || Double.isInfinite(y)) {
             return x;
         }
-        // -x % -y where x == y will result in 0.0 but should be -0.0.
+
+        double result = safeRem(x, y);
+
         // JVMS: If neither value1' nor value2' is NaN, the sign of the result equals the sign of
         // the dividend.
-        if (x == y && x < 0.0d) {
-            return -0.0d;
+        if (result == 0.0 && x < 0.0) {
+            return -result;
         }
-        return safeRem(x, y);
+        return result;
     }
 
     @NodeIntrinsic(SafeFloatRemNode.class)
