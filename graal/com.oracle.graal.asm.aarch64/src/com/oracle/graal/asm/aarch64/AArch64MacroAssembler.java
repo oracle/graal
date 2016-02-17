@@ -395,6 +395,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param imm
      */
     public void movNativeAddress(Register dst, long imm) {
+        assert (imm & 0xFFFF_0000_0000_0000L) == 0;
         // We have to move all non zero parts of the immediate in 16-bit chunks
         boolean firstMove = true;
         for (int offset = 0; offset < 48; offset += 16) {
