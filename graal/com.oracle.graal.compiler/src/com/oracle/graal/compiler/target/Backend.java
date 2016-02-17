@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.compiler.target;
 
+import java.util.Set;
+
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -133,5 +136,12 @@ public abstract class Backend implements TargetProvider {
      *            installed. This argument can be null.
      */
     public abstract void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner);
+
+    /**
+     * Translates a set of registers from the callee's perspective to the caller's perspective. This
+     * is needed for architectures where input/output registers are renamed during a call (e.g.
+     * register windows on SPARC). Registers which are not visible by the caller are removed.
+     */
+    public abstract Set<Register> translateToCallerRegisters(Set<Register> calleeRegisters);
 
 }
