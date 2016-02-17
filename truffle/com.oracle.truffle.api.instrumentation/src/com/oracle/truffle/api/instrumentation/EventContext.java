@@ -25,8 +25,12 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -97,6 +101,64 @@ public final class EventContext {
      */
     public CallTarget parseInContext(Source source, String... argumentNames) throws IOException {
         return InstrumentationHandler.ACCESSOR.parse(null, source, getInstrumentedNode(), argumentNames);
+    }
+
+    /**
+     * Returns the first found parent {@link EventNode event node} created from a given
+     * {@link EventNodeFactory factory}. If multiple
+     * {@link Instrumenter#attachFactory(SourceSectionFilter, EventNodeFactory) bindings} were
+     * created with a single {@link EventNodeFactory factory} instance then the first EventNode
+     * which is found is returned in the order of event binding attachment.
+     *
+     * @param factory a event node factory for which to return the first event node
+     * @return the first event node found in the order of event binding attachment
+     */
+    @TruffleBoundary
+    public EventNode findParentEventNode(final EventNodeFactory factory) {
+        Node parent = getInstrumentedNode().getParent();
+        while ((parent = parent.getParent()) != null) {
+            EventNode eventNode = findEventNode(factory, parent);
+            if (eventNode != null) {
+                return eventNode;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns all first-level child event nodes created from a given {@link EventNodeFactory
+     * factory}.
+     *
+     * @param factory an event node factory for which to return all first-level children
+     * @return all first-level children that were created from a given factory
+     */
+    @TruffleBoundary
+    public List<EventNode> findChildEventNodes(final EventNodeFactory factory) {
+        final List<EventNode> eventNodes = new ArrayList<>();
+        Node instrumentedNode = getInstrumentedNode();
+        // TODO ideally one could use a NodeListener instead of the recursive algortihm.
+        // Unfortunately returning false in NodeVisitor#visit does not continue traversing all
+        // parents children but stops visitation completely. Bug!?
+        collectEventNodes(eventNodes, factory, instrumentedNode);
+        return Collections.unmodifiableList(eventNodes);
+    }
+
+    private void collectEventNodes(List<EventNode> eventNodes, EventNodeFactory factory, Node node) {
+        for (Node child : node.getChildren()) {
+            EventNode eventNode = findEventNode(factory, child);
+            if (eventNode != null) {
+                eventNodes.add(eventNode);
+            } else if (child != null) {
+                collectEventNodes(eventNodes, factory, child);
+            }
+        }
+    }
+
+    private static EventNode findEventNode(EventNodeFactory factory, Node node) {
+        if (node instanceof WrapperNode) {
+            return ((WrapperNode) node).getProbeNode().findEventNode(factory);
+        }
+        return null;
     }
 
     /*
