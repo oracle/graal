@@ -556,13 +556,6 @@ public final class CompileTheWorld {
 
                     classFileCounter++;
 
-                    if (methodFilters != null && !MethodFilter.matchesClassName(methodFilters, className)) {
-                        continue;
-                    }
-                    if (excludeMethodFilters != null && MethodFilter.matchesClassName(excludeMethodFilters, className)) {
-                        continue;
-                    }
-
                     if (className.startsWith("jdk.management.") || className.startsWith("jdk.internal.cmm.*")) {
                         continue;
                     }
@@ -581,6 +574,17 @@ public final class CompileTheWorld {
                         } catch (Throwable t) {
                             // If something went wrong during pre-loading we just ignore it.
                             println("Preloading failed for (%d) %s: %s", classFileCounter, className, t);
+                        }
+
+                        /*
+                         * Only check filters after class loading and resolution to mitigate impact
+                         * on reproducibility.
+                         */
+                        if (methodFilters != null && !MethodFilter.matchesClassName(methodFilters, className)) {
+                            continue;
+                        }
+                        if (excludeMethodFilters != null && MethodFilter.matchesClassName(excludeMethodFilters, className)) {
+                            continue;
                         }
 
                         // Are we compiling this class?
