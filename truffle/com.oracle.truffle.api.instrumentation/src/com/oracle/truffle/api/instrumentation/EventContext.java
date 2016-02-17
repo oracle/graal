@@ -104,20 +104,20 @@ public final class EventContext {
     }
 
     /**
-     * Returns the first found parent {@link EventNode event node} created from a given
-     * {@link EventNodeFactory factory}. If multiple
-     * {@link Instrumenter#attachFactory(SourceSectionFilter, EventNodeFactory) bindings} were
-     * created with a single {@link EventNodeFactory factory} instance then the first EventNode
-     * which is found is returned in the order of event binding attachment.
+     * Returns the first found parent {@link ExecutionEventNode event node} created from a given
+     * {@link ExecutionEventNodeFactory factory}. If multiple
+     * {@link Instrumenter#attachFactory(SourceSectionFilter, ExecutionEventNodeFactory) bindings}
+     * were created with a single {@link ExecutionEventNodeFactory factory} instance then the first
+     * ExecutionEventNode which is found is returned in the order of event binding attachment.
      *
      * @param factory a event node factory for which to return the first event node
      * @return the first event node found in the order of event binding attachment
      */
     @TruffleBoundary
-    public EventNode findParentEventNode(final EventNodeFactory factory) {
+    public ExecutionEventNode findParentEventNode(final ExecutionEventNodeFactory factory) {
         Node parent = getInstrumentedNode().getParent();
         while ((parent = parent.getParent()) != null) {
-            EventNode eventNode = findEventNode(factory, parent);
+            ExecutionEventNode eventNode = findEventNode(factory, parent);
             if (eventNode != null) {
                 return eventNode;
             }
@@ -126,15 +126,15 @@ public final class EventContext {
     }
 
     /**
-     * Returns all first-level child event nodes created from a given {@link EventNodeFactory
-     * factory}.
+     * Returns all first-level child event nodes created from a given
+     * {@link ExecutionEventNodeFactory factory}.
      *
      * @param factory an event node factory for which to return all first-level children
      * @return all first-level children that were created from a given factory
      */
     @TruffleBoundary
-    public List<EventNode> findChildEventNodes(final EventNodeFactory factory) {
-        final List<EventNode> eventNodes = new ArrayList<>();
+    public List<ExecutionEventNode> findChildEventNodes(final ExecutionEventNodeFactory factory) {
+        final List<ExecutionEventNode> eventNodes = new ArrayList<>();
         Node instrumentedNode = getInstrumentedNode();
         // TODO ideally one could use a NodeListener instead of the recursive algortihm.
         // Unfortunately returning false in NodeVisitor#visit does not continue traversing all
@@ -143,9 +143,9 @@ public final class EventContext {
         return Collections.unmodifiableList(eventNodes);
     }
 
-    private void collectEventNodes(List<EventNode> eventNodes, EventNodeFactory factory, Node node) {
+    private void collectEventNodes(List<ExecutionEventNode> eventNodes, ExecutionEventNodeFactory factory, Node node) {
         for (Node child : node.getChildren()) {
-            EventNode eventNode = findEventNode(factory, child);
+            ExecutionEventNode eventNode = findEventNode(factory, child);
             if (eventNode != null) {
                 eventNodes.add(eventNode);
             } else if (child != null) {
@@ -154,7 +154,7 @@ public final class EventContext {
         }
     }
 
-    private static EventNode findEventNode(EventNodeFactory factory, Node node) {
+    private static ExecutionEventNode findEventNode(ExecutionEventNodeFactory factory, Node node) {
         if (node instanceof WrapperNode) {
             return ((WrapperNode) node).getProbeNode().findEventNode(factory);
         }

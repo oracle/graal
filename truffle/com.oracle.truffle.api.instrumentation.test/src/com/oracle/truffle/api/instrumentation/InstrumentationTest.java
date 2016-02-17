@@ -749,24 +749,24 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         static List<FindParentEventNode> nodes = new ArrayList<>();
 
-        static class FindParentEventNode extends EventNode {
+        static class FindParentEventNode extends ExecutionEventNode {
 
             private final EventContext context;
-            private final EventNodeFactory factory;
+            private final ExecutionEventNodeFactory factory;
 
-            public FindParentEventNode(EventContext context, EventNodeFactory factory) {
+            FindParentEventNode(EventContext context, ExecutionEventNodeFactory factory) {
                 this.context = context;
                 this.factory = factory;
                 nodes.add(this);
             }
 
-            EventNode parentNode;
-            List<List<EventNode>> beforeChildren = new ArrayList<>();
-            List<List<EventNode>> afterChildren = new ArrayList<>();
+            ExecutionEventNode parentNode;
+            List<List<ExecutionEventNode>> beforeChildren = new ArrayList<>();
+            List<List<ExecutionEventNode>> afterChildren = new ArrayList<>();
 
             @Override
             protected void onEnter(VirtualFrame frame) {
-                EventNode parent = context.findParentEventNode(factory);
+                ExecutionEventNode parent = context.findParentEventNode(factory);
                 if (this.parentNode != null) {
                     Assert.assertSame(parent, parentNode);
                 }
@@ -783,8 +783,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(final Env env) {
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build(), new EventNodeFactory() {
-                public EventNode create(final EventContext context) {
+            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventNodeFactory() {
+                public ExecutionEventNode create(final EventContext context) {
                     return new FindParentEventNode(context, this);
                 }
             });

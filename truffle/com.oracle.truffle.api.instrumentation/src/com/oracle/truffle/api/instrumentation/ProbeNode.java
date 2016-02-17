@@ -149,14 +149,14 @@ public final class ProbeNode extends Node {
         }
     }
 
-    EventNode findEventNode(final EventNodeFactory factory) {
+    ExecutionEventNode findEventNode(final ExecutionEventNodeFactory factory) {
         if (version != null && version.isValid() && chain != null) {
             return findEventNodeInChain(factory);
         }
         return null;
     }
 
-    private EventNode findEventNodeInChain(EventNodeFactory factory) {
+    private ExecutionEventNode findEventNodeInChain(ExecutionEventNodeFactory factory) {
         EventChainNode currentChain = this.chain;
         while (currentChain != null) {
             if (currentChain.binding.getElement() == factory) {
@@ -214,7 +214,7 @@ public final class ProbeNode extends Node {
         try {
             eventNode = ((ExecutionEventNodeFactory) element).create(context);
             if (eventNode.getParent() != null) {
-                throw new IllegalStateException(String.format("Returned EventNode %s was already adopted by another AST.", eventNode));
+                throw new IllegalStateException(String.format("Returned ExecutionEventNode %s was already adopted by another AST.", eventNode));
             }
         } catch (Throwable t) {
             if (binding.isLanguageBinding()) {
