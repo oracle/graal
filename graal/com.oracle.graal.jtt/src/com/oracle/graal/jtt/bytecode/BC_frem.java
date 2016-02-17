@@ -32,9 +32,8 @@ public class BC_frem extends BC_fdiv_frem_base {
     }
 
     @Test
-    @Override
-    public void run() {
-        super.run();
+    public void frem() {
+        runTest("test", x, y);
     }
 
 }
