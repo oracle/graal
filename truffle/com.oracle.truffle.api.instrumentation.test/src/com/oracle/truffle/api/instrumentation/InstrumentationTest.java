@@ -40,7 +40,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationTest.TestFindParentEventNode1.FindParentEventNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.BaseNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -683,8 +682,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testTestFindParentEventNode1() throws IOException {
-        TestFindParentEventNode1.nodes = new ArrayList<>();
-        List<FindParentEventNode> nodes = TestFindParentEventNode1.nodes;
+        InstrumentationTest.nodes = new ArrayList<>();
+        List<FindParentEventNode> nodes = InstrumentationTest.nodes;
 
         engine.getInstruments().get("testTestFindParentEventNode1").setEnabled(true);
         run("STATEMENT(EXPRESSION,EXPRESSION(STATEMENT))");
@@ -747,46 +746,53 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         static int parentNodesFound = 0;
 
-        static List<FindParentEventNode> nodes = new ArrayList<>();
+        @Override
+        protected void onCreate(final Env env) {
+            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build(),
+                            new FindParentExecutionEventNodeFactory());
+        }
+    }
 
-        static class FindParentEventNode extends ExecutionEventNode {
+    static class FindParentExecutionEventNodeFactory implements ExecutionEventNodeFactory {
+        public ExecutionEventNode create(final EventContext context) {
+            return new FindParentEventNode(context, this);
+        }
+    }
 
-            private final EventContext context;
-            private final ExecutionEventNodeFactory factory;
+    static List<FindParentEventNode> nodes = new ArrayList<>();
 
-            FindParentEventNode(EventContext context, ExecutionEventNodeFactory factory) {
-                this.context = context;
-                this.factory = factory;
-                nodes.add(this);
+    static class FindParentEventNode extends ExecutionEventNode {
+
+        private final EventContext context;
+        private final ExecutionEventNodeFactory factory;
+
+        FindParentEventNode(EventContext context, ExecutionEventNodeFactory factory) {
+            this.context = context;
+            this.factory = factory;
+            nodes.add(this);
+        }
+
+        ExecutionEventNode parentNode;
+        List<List<ExecutionEventNode>> beforeChildren = new ArrayList<>();
+        List<List<ExecutionEventNode>> afterChildren = new ArrayList<>();
+
+        @Override
+        protected void onEnter(VirtualFrame frame) {
+            ExecutionEventNode parent = context.findParentEventNode(factory);
+            if (this.parentNode != null) {
+                Assert.assertSame(parent, parentNode);
             }
-
-            ExecutionEventNode parentNode;
-            List<List<ExecutionEventNode>> beforeChildren = new ArrayList<>();
-            List<List<ExecutionEventNode>> afterChildren = new ArrayList<>();
-
-            @Override
-            protected void onEnter(VirtualFrame frame) {
-                ExecutionEventNode parent = context.findParentEventNode(factory);
-                if (this.parentNode != null) {
-                    Assert.assertSame(parent, parentNode);
-                }
-                this.parentNode = parent;
-                this.beforeChildren.add(context.findChildEventNodes(factory));
-            }
-
-            @Override
-            protected void onReturnValue(VirtualFrame frame, Object result) {
-                Assert.assertSame(parentNode, context.findParentEventNode(factory));
-                this.afterChildren.add(context.findChildEventNodes(factory));
-            }
+            this.parentNode = parent;
+            this.beforeChildren.add(context.findChildEventNodes(factory));
         }
 
         @Override
-        protected void onCreate(final Env env) {
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventNodeFactory() {
-                public ExecutionEventNode create(final EventContext context) {
-                    return new FindParentEventNode(context, this);
-                }
+        protected void onReturnValue(VirtualFrame frame, Object result) {
+            Assert.assertSame(parentNode, context.findParentEventNode(factory));
+            this.afterChildren.add(context.findChildEventNodes(factory));
+        }
+    }
+}
             });
         }
     }
