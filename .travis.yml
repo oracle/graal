@@ -22,8 +22,12 @@ env:
     - DEFAULT_VM="jvmci"
     - MX_BINARY_SUITES="jvmci,truffle"
   matrix:
-    - JDK="jdk8" GATE="build,style,test"
+    - GATE="style"
+    - GATE="fullbuild"
+    - JDK="jdk8" GATE="build,test"
+    - JDK="jdk8" GATE="build,bootstrap"
     - JDK="jdk9" GATE="build,test"
+    - JDK="jdk9" GATE="build,bootstrap"
 install:
   - |
       export MX_PATH=$TRAVIS_BUILD_DIR/../mx
@@ -37,13 +41,16 @@ install:
         pip install astroid==1.1.0
         pip install pylint==1.1.0
 
-        export JDT=$MX_PATH/ecj.jar
-        wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar -O $JDT
-
         export ECLIPSE_TAR=$TRAVIS_BUILD_DIR/../eclipse.tar.gz
         wget https://lafo.ssw.uni-linz.ac.at/slavefiles/gate/eclipse-jdk8-linux-x86_64.tar.gz -O $ECLIPSE_TAR
         tar -C $TRAVIS_BUILD_DIR/.. -xf $ECLIPSE_TAR
         export ECLIPSE_EXE=$TRAVIS_BUILD_DIR/../eclipse/eclipse
+      fi
+  - |
+      if [[ $GATE == *fullbuild* ]]
+      then
+        export JDT=$MX_PATH/ecj.jar
+        wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar -O $JDT
       fi
   - |
       if [ "$JDK" == "jdk9" ]
