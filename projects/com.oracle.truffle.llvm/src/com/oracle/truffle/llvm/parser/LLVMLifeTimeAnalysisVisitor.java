@@ -60,19 +60,21 @@ import com.oracle.truffle.llvm.runtime.LLVMOptions;
 /**
  * This class determines which variables are dead after each basic block.
  */
-public class LLVMLifeTimeAnalysisVisitor {
+public final class LLVMLifeTimeAnalysisVisitor {
 
     private static final String FUNCTION_FORMAT = "%s:\n";
     private static final String AFTER_BLOCK_FORMAT = "\t dead after bb %4s:";
 
-    private final FunctionDef function;
     private final FrameDescriptor frameDescriptor;
-    private EList<BasicBlock> basicBlocks;
-    private BasicBlock entryBlock;
+    private final EList<BasicBlock> basicBlocks;
+    private final BasicBlock entryBlock;
+    private final Map<BasicBlock, List<FrameSlot>> writtenFrameSlotsPerBlock;
 
-    public LLVMLifeTimeAnalysisVisitor(FunctionDef function, FrameDescriptor frameDescriptor) {
-        this.function = function;
+    private LLVMLifeTimeAnalysisVisitor(FunctionDef function, FrameDescriptor frameDescriptor) {
         this.frameDescriptor = frameDescriptor;
+        basicBlocks = function.getBasicBlocks();
+        entryBlock = basicBlocks.get(0);
+        writtenFrameSlotsPerBlock = getWrittenFrameSlotsPerBlock(basicBlocks);
     }
 
     public static Map<BasicBlock, FrameSlot[]> visit(FunctionDef function, FrameDescriptor frameDescriptor) {
@@ -102,8 +104,6 @@ public class LLVMLifeTimeAnalysisVisitor {
     }
 
     private Map<BasicBlock, FrameSlot[]> visit() {
-        basicBlocks = function.getBasicBlocks();
-        entryBlock = basicBlocks.get(0);
         Map<BasicBlock, FrameSlot[]> map = new HashMap<>();
         for (BasicBlock block : basicBlocks) {
             List<BasicBlock> successors = getSuccessors(block);
@@ -121,7 +121,7 @@ public class LLVMLifeTimeAnalysisVisitor {
                     }
                 }
                 if (!dominatesASuccessor) {
-                    frameSlots.addAll(getSlotsDeadAfterBlock(currentBlock));
+                    frameSlots.addAll(writtenFrameSlotsPerBlock.get(currentBlock));
                     List<BasicBlock> predecessors = getPredecessors(currentBlock);
                     for (BasicBlock pred : predecessors) {
                         if (!processed.contains(pred)) {
@@ -216,35 +216,44 @@ public class LLVMLifeTimeAnalysisVisitor {
         return realTermInstr instanceof Instruction_ret || realTermInstr instanceof Instruction_unreachable;
     }
 
-    private List<FrameSlot> getSlotsDeadAfterBlock(BasicBlock block) {
-        List<FrameSlot> frameSlots = new ArrayList<>();
+    private Map<BasicBlock, List<FrameSlot>> getWrittenFrameSlotsPerBlock(EList<BasicBlock> bbs) {
+        Map<BasicBlock, List<FrameSlot>> writes = new HashMap<>();
+        for (BasicBlock bb : bbs) {
+            List<FrameSlot> slots = getWrittenVariables(bb);
+            writes.put(bb, slots);
+        }
+        return writes;
+    }
+
+    private List<FrameSlot> getWrittenVariables(BasicBlock block) {
+        List<FrameSlot> slots = new ArrayList<>();
         for (Instruction instr : block.getInstructions()) {
-            FrameSlot slot = visitInstruction(instr);
+            FrameSlot slot = getWrites(instr);
             if (slot != null) {
-                frameSlots.add(slot);
+                slots.add(slot);
             }
         }
-        return frameSlots;
+        return slots;
     }
 
-    private FrameSlot visitInstruction(Instruction instr) {
+    private FrameSlot getWrites(Instruction instr) {
         if (instr instanceof MiddleInstruction) {
-            return visitMiddleInstruction((MiddleInstruction) instr);
+            return getWrites((MiddleInstruction) instr);
         } else {
             return null;
         }
     }
 
-    private FrameSlot visitMiddleInstruction(MiddleInstruction instr) {
+    private FrameSlot getWrites(MiddleInstruction instr) {
         EObject realInstr = instr.getInstruction();
         if (realInstr instanceof NamedMiddleInstruction) {
-            return visitNamedMiddleInstruction((NamedMiddleInstruction) realInstr);
+            return getWrites((NamedMiddleInstruction) realInstr);
         } else {
             return null;
         }
     }
 
-    private FrameSlot visitNamedMiddleInstruction(NamedMiddleInstruction namedMiddleInstr) {
+    private FrameSlot getWrites(NamedMiddleInstruction namedMiddleInstr) {
         String name = namedMiddleInstr.getName();
         FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
         return frameSlot;
