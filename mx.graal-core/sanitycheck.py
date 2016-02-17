@@ -26,6 +26,7 @@
 from outputparser import OutputParser, ValuesMatcher
 import re, mx, mx_graal_core, os, sys, StringIO, subprocess
 from os.path import isfile, join, exists
+from types import FunctionType
 
 gc = 'UseSerialGC'
 
@@ -217,13 +218,10 @@ def getDacapos(level=SanityCheckLevel.Normal, gateBuildLevel=None, dacapoArgs=No
 def getDacapo(name, dacapoArgs=None, extraVmArguments=None):
     dacapo = mx.get_env('DACAPO_CP')
     if dacapo is None:
-        l = mx.library('DACAPO', False)
-        if l is not None:
-            dacapo = l.get_path(True)
-        else:
+        dacapo = mx.library('DACAPO', False)
+        if dacapo is None:
             mx.abort('DaCapo 9.12 jar file must be specified with DACAPO_CP environment variable or as DACAPO library')
-
-    if not isfile(dacapo) or not dacapo.endswith('.jar'):
+    elif not isfile(dacapo) or not dacapo.endswith('.jar'):
         mx.abort('Specified DaCapo jar file does not exist or is not a jar file: ' + dacapo)
 
     dacapoSuccess = re.compile(r"^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", re.MULTILINE)
@@ -234,9 +232,15 @@ def getDacapo(name, dacapoArgs=None, extraVmArguments=None):
     dacapoMatcher = ValuesMatcher(dacapoTime, {'group' : 'DaCapo', 'name' : '<benchmark>', 'score' : '<time>'})
     dacapoMatcher1 = ValuesMatcher(dacapoTime1, {'group' : 'DaCapo-1stRun', 'name' : '<benchmark>', 'score' : '<time>'})
 
+    def cmd():
+        if isinstance(dacapo, mx.Library):
+            path = dacapo.get_path(True)
+        else:
+            path = dacapo
+        return ['-jar', mx._cygpathU2W(path), name] + _noneAsEmptyList(dacapoArgs)
+
     # Use ipv4 stack for dacapos; tomcat+solaris+ipv6_interface fails (see also: JDK-8072384)
-    return Test("DaCapo-" + name, ['-jar', mx._cygpathU2W(dacapo), name] + _noneAsEmptyList(dacapoArgs), [dacapoSuccess], [dacapoFail],
-                [dacapoMatcher, dacapoMatcher1],
+    return Test("DaCapo-" + name, cmd, [dacapoSuccess], [dacapoFail], [dacapoMatcher, dacapoMatcher1],
                 ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops', "-Djava.net.preferIPv4Stack=true", '-G:+ExitVMOnException'] +
                 _noneAsEmptyList(extraVmArguments))
 
@@ -253,13 +257,10 @@ def getScalaDacapos(level=SanityCheckLevel.Normal, gateBuildLevel=None, dacapoAr
 def getScalaDacapo(name, dacapoArgs=None, extraVmArguments=None):
     dacapo = mx.get_env('DACAPO_SCALA_CP')
     if dacapo is None:
-        l = mx.library('DACAPO_SCALA', False)
-        if l is not None:
-            dacapo = l.get_path(True)
-        else:
+        dacapo = mx.library('DACAPO_SCALA', False)
+        if dacapo is None:
             mx.abort('Scala DaCapo 0.1.0 jar file must be specified with DACAPO_SCALA_CP environment variable or as DACAPO_SCALA library')
-
-    if not isfile(dacapo) or not dacapo.endswith('.jar'):
+    elif not isfile(dacapo) or not dacapo.endswith('.jar'):
         mx.abort('Specified Scala DaCapo jar file does not exist or is not a jar file: ' + dacapo)
 
     dacapoSuccess = re.compile(r"^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", re.MULTILINE)
@@ -268,7 +269,14 @@ def getScalaDacapo(name, dacapoArgs=None, extraVmArguments=None):
 
     dacapoMatcher = ValuesMatcher(dacapoTime, {'group' : "Scala-DaCapo", 'name' : '<benchmark>', 'score' : '<time>'})
 
-    return Test("Scala-DaCapo-" + name, ['-jar', mx._cygpathU2W(dacapo), name] + _noneAsEmptyList(dacapoArgs), [dacapoSuccess], [dacapoFail], [dacapoMatcher], ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops'] + _noneAsEmptyList(extraVmArguments))
+    def cmd():
+        if isinstance(dacapo, mx.Library):
+            path = dacapo.get_path(True)
+        else:
+            path = dacapo
+        return ['-jar', mx._cygpathU2W(path), name] + _noneAsEmptyList(dacapoArgs)
+
+    return Test("Scala-DaCapo-" + name, cmd, [dacapoSuccess], [dacapoFail], [dacapoMatcher], ['-Xms2g', '-XX:+' + gc, '-XX:-UseCompressedOops'] + _noneAsEmptyList(extraVmArguments))
 
 def getBootstraps():
     time = re.compile(r"Bootstrapping Graal\.+ in (?P<time>[0-9]+) ms( \(compiled (?P<methods>[0-9]+) methods\))?")
@@ -332,6 +340,10 @@ class Test:
         if benchmarkCompilationRate:
             self.vmOpts = self.vmOpts + ['-XX:+CITime']
 
+    def lazyInit(self):
+        if isinstance(self.cmd, FunctionType):
+            self.cmd = self.cmd()
+
     def __str__(self):
         return self.name
 
@@ -341,6 +353,8 @@ class Test:
         """
         if vm in self.ignoredVMs:
             return True
+
+        self.lazyInit()
         if cwd is None:
             cwd = self.defaultCwd
         parser = OutputParser()
@@ -386,6 +400,8 @@ class Test:
         """
         if vm in self.ignoredVMs:
             return {}
+
+        self.lazyInit()
         if cwd is None:
             cwd = self.defaultCwd
         parser = OutputParser()
