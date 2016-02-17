@@ -548,6 +548,11 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         @Override
+        protected boolean isInstrumentable(RootNode rootNode) {
+            return rootNode.isInstrumentable();
+        }
+
+        @Override
         protected void probeAST(RootNode rootNode) {
             super.probeAST(rootNode);
         }

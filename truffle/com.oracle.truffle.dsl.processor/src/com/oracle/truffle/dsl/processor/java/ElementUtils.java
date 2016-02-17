@@ -952,7 +952,7 @@ public class ElementUtils {
             for (int i = 0; i < params.length; i++) {
                 TypeMirror param1 = params[i];
                 TypeMirror param2 = method.getParameters().get(i).asType();
-                if (param1.getKind() != TypeKind.TYPEVAR && param2.getKind() != TypeKind.TYPEVAR) {
+                if (param1 != null && param1.getKind() != TypeKind.TYPEVAR && param2 != null && param2.getKind() != TypeKind.TYPEVAR) {
                     if (!getQualifiedName(param1).equals(getQualifiedName(param2))) {
                         continue method;
                     }

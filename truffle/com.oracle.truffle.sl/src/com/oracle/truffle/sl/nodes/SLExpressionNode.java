@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -56,6 +57,7 @@ import com.oracle.truffle.sl.runtime.SLFunction;
  */
 @TypeSystemReference(SLTypes.class)
 @NodeInfo(description = "The abstract base node for all expressions")
+@Instrumentable(factory = SLExpressionNodeWrapper.class)
 public abstract class SLExpressionNode extends SLStatementNode {
 
     public SLExpressionNode(SourceSection src) {

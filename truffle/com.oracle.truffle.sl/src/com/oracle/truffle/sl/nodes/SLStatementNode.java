@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.nodes;
 import java.io.File;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * local variables.
  */
 @NodeInfo(language = "Simple Language", description = "The abstract base node for all statements")
+@Instrumentable(factory = SLStatementNodeWrapper.class)
 public abstract class SLStatementNode extends Node {
     private final SourceSection section;
 
@@ -63,6 +65,10 @@ public abstract class SLStatementNode extends Node {
     @Override
     public SourceSection getSourceSection() {
         return section;
+    }
+
+    protected SLStatementNode(SLStatementNode delegate) {
+        this(delegate.getSourceSection());
     }
 
     /**
@@ -106,4 +112,5 @@ public abstract class SLStatementNode extends Node {
             return String.format("%s:%d%s", sourceName, startLine, estimated ? "~" : "");
         }
     }
+
 }
