@@ -423,8 +423,8 @@ def suBench(args=None):
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
     ensureLLVMBinariesExist()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    inputFile = args[0]
+    vmArgs, other = truffle_extract_VM_args(args)
+    inputFile = other[0]
     outputFile = 'test.ll'
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
@@ -454,7 +454,7 @@ def gccBench(args=None):
     _, inputFiles = extract_compiler_args(args)
     _, ext = os.path.splitext(inputFiles[0])
     if ext == '.c':
-        mx.run(['gcc'] + args + standardLinkerCommands())
+        mx.run(['gcc', '-std=gnu99'] + args + standardLinkerCommands())
     elif ext == '.cpp':
         mx.run(['g++'] + args + standardLinkerCommands())
     else:
