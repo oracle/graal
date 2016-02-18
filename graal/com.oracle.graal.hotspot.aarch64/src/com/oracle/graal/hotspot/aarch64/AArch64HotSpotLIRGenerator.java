@@ -23,6 +23,9 @@
 
 package com.oracle.graal.hotspot.aarch64;
 
+import static com.oracle.graal.lir.LIRValueUtil.asConstant;
+import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
+
 import java.util.function.Function;
 
 import com.oracle.graal.asm.Label;
@@ -56,18 +59,23 @@ import com.oracle.graal.lir.aarch64.AArch64FrameMapBuilder;
 import com.oracle.graal.lir.aarch64.AArch64Move.StoreOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -129,6 +137,43 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     private HotSpotLockStack getLockStack() {
         assert debugInfoBuilder != null && debugInfoBuilder.lockStack() != null;
         return debugInfoBuilder.lockStack();
+    }
+
+    @Override
+    public void emitCompareBranch(PlatformKind cmpKind, Value x, Value y, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
+                    double trueDestinationProbability) {
+        Value localX = x;
+        Value localY = y;
+        if (localX instanceof HotSpotObjectConstant) {
+            localX = load(localX);
+        }
+        if (localY instanceof HotSpotObjectConstant) {
+            localY = load(localY);
+        }
+        super.emitCompareBranch(cmpKind, localX, localY, cond, unorderedIsTrue, trueDestination, falseDestination, trueDestinationProbability);
+    }
+
+    @Override
+    protected boolean emitCompare(PlatformKind cmpKind, Value a, Value b, Condition condition, boolean unorderedIsTrue) {
+        Value localA = a;
+        Value localB = b;
+        if (isConstantValue(a)) {
+            Constant c = asConstant(a);
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                localA = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
+            } else if (c instanceof HotSpotObjectConstant) {
+                localA = load(localA);
+            }
+        }
+        if (isConstantValue(b)) {
+            Constant c = asConstant(b);
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                localB = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
+            } else if (c instanceof HotSpotObjectConstant) {
+                localB = load(localB);
+            }
+        }
+        return super.emitCompare(cmpKind, localA, localB, condition, unorderedIsTrue);
     }
 
     @Override

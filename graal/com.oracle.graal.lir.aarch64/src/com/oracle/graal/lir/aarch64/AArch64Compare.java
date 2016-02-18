@@ -28,10 +28,6 @@ import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
@@ -40,15 +36,20 @@ import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Value;
+
 public class AArch64Compare {
 
     public static class CompareOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CompareOp> TYPE = LIRInstructionClass.create(CompareOp.class);
 
-        @Use protected AllocatableValue x;
+        @Use protected Value x;
         @Use({REG, CONST}) protected Value y;
 
-        public CompareOp(AllocatableValue x, AllocatableValue y) {
+        public CompareOp(Value x, Value y) {
             super(TYPE);
             assert ((AArch64Kind) x.getPlatformKind()).isInteger() && ((AArch64Kind) y.getPlatformKind()).isInteger();
             assert x.getPlatformKind() == y.getPlatformKind();
@@ -68,26 +69,48 @@ public class AArch64Compare {
      * @param x integer value to compare. May not be null.
      * @param y integer value to compare. May not be null.
      */
-    public static void gpCompare(AArch64MacroAssembler masm, AllocatableValue x, Value y) {
-        int size = x.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+    public static void gpCompare(AArch64MacroAssembler masm, Value x, Value y) {
+        final int size = x.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         if (isRegister(y)) {
             masm.cmp(size, asRegister(x), asRegister(y));
         } else {
-            JavaConstant c = asJavaConstant(y);
-            assert NumUtil.isInt(c.asLong());
-            masm.cmp(size, asRegister(x), (int) c.asLong());
+            JavaConstant constant = asJavaConstant(y);
+            if (constant.isDefaultForKind()) {
+                masm.cmp(size, asRegister(x), 0);
+            } else {
+                final long longValue = constant.asLong();
+                assert NumUtil.isInt(longValue);
+                int maskedValue;
+                switch (constant.getJavaKind()) {
+                    case Boolean:
+                    case Byte:
+                        maskedValue = (int) (longValue & 0xFF);
+                        break;
+                    case Char:
+                    case Short:
+                        maskedValue = (int) (longValue & 0xFFFF);
+                        break;
+                    case Int:
+                    case Long:
+                        maskedValue = (int) longValue;
+                        break;
+                    default:
+                        throw JVMCIError.shouldNotReachHere();
+                }
+                masm.cmp(size, asRegister(x), maskedValue);
+            }
         }
     }
 
     public static class FloatCompareOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<FloatCompareOp> TYPE = LIRInstructionClass.create(FloatCompareOp.class);
 
-        @Use protected AllocatableValue x;
+        @Use protected Value x;
         @Use({REG, CONST}) protected Value y;
         private final Condition condition;
         private final boolean unorderedIsTrue;
 
-        public FloatCompareOp(AllocatableValue x, AllocatableValue y, Condition condition, boolean unorderedIsTrue) {
+        public FloatCompareOp(Value x, Value y, Condition condition, boolean unorderedIsTrue) {
             super(TYPE);
             assert !isJavaConstant(y) || isFloatCmpConstant(y, condition, unorderedIsTrue);
             this.x = x;

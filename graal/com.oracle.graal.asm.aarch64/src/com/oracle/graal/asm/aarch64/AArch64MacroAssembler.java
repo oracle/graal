@@ -739,7 +739,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * @return True if immediate can be used directly for arithmetic instructions (add/sub), false
+     * Add/subtract instruction encoding supports 12-bit immediate values.
+     *
+     * @param imm immediate value to be tested.
+     * @return true if immediate can be used directly for arithmetic instructions (add/sub), false
      *         otherwise.
      */
     public static boolean isArithmeticImmediate(long imm) {
@@ -749,30 +752,41 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * @return True if immediate can be used directly with comparison instructions, false otherwise.
+     * Compare instructions are add/subtract instructions and so support 12-bit immediate values.
+     *
+     * @param imm immediate value to be tested.
+     * @return true if immediate can be used directly with comparison instructions, false otherwise.
      */
     public static boolean isComparisonImmediate(long imm) {
         return isArithmeticImmediate(imm);
     }
 
     /**
-     * @return True if immediate can be moved directly into a register, false otherwise.
+     * Move wide immediate instruction encoding supports 16-bit immediate values which can be
+     * optionally-shifted by multiples of 16 (i.e. 0, 16, 32, 48).
+     *
+     * @return true if immediate can be moved directly into a register, false otherwise.
      */
     public static boolean isMovableImmediate(long imm) {
-        // Moves allow a 16bit immediate value that can be shifted by multiples of 16.
-        // Positions of first, respectively last set bit.
-        int start = Long.numberOfTrailingZeros(imm);
-        int end = 64 - Long.numberOfLeadingZeros(imm);
-        int length = end - start;
-        if (length > 16) {
-            return false;
-        }
-        // We can shift the necessary part of the immediate (i.e. everything between the first and
-        // last set bit) by as much as 16 - length around to arrive at a valid shift amount
-        int tolerance = 16 - length;
-        int prevMultiple = NumUtil.roundDown(start, 16);
-        int nextMultiple = NumUtil.roundUp(start, 16);
-        return start - prevMultiple <= tolerance || nextMultiple - start <= tolerance;
+        // // Positions of first, respectively last set bit.
+        // int start = Long.numberOfTrailingZeros(imm);
+        // int end = 64 - Long.numberOfLeadingZeros(imm);
+        // int length = end - start;
+        // if (length > 16) {
+        // return false;
+        // }
+        // // We can shift the necessary part of the immediate (i.e. everything between the first
+        // and
+        // // last set bit) by as much as 16 - length around to arrive at a valid shift amount
+        // int tolerance = 16 - length;
+        // int prevMultiple = NumUtil.roundDown(start, 16);
+        // int nextMultiple = NumUtil.roundUp(start, 16);
+        // return start - prevMultiple <= tolerance || nextMultiple - start <= tolerance;
+        /*
+         * This is a bit optimistic because the constant could also be for an arithmetic instruction
+         * which only supports 12-bits. That case needs to be handled in the backend.
+         */
+        return NumUtil.isInt(Math.abs(imm)) && NumUtil.isUnsignedNbit(16, (int) Math.abs(imm));
     }
 
     /**

@@ -31,6 +31,7 @@ import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ExtendType;
+import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.lir.ConstantValue;
@@ -63,6 +64,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.Value;
 
 public abstract class AArch64LIRGenerator extends LIRGenerator {
@@ -311,39 +313,52 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      * @param b the right operand of the comparison. Has to have same type as a. Non null.
      * @return true if mirrored (i.e. "b cmp a" instead of "a cmp b" was done).
      */
-    private boolean emitCompare(PlatformKind cmpKind, Value a, Value b, Condition condition, boolean unorderedIsTrue) {
-        AllocatableValue left;
+    protected boolean emitCompare(PlatformKind cmpKind, Value a, Value b, Condition condition, boolean unorderedIsTrue) {
+        Value left;
         Value right;
         boolean mirrored;
         AArch64Kind kind = (AArch64Kind) cmpKind;
         if (kind.isInteger()) {
-            if (LIRValueUtil.isVariable(b) || b instanceof RegisterValue) {
-                left = loadReg(b);
+            if (LIRValueUtil.isVariable(b)) {
+                left = load(b);
                 right = loadNonConst(a);
                 mirrored = true;
             } else {
-                left = loadReg(a);
+                left = load(a);
                 right = loadNonConst(b);
                 mirrored = false;
             }
-            append(new AArch64Compare.CompareOp(left, asAllocatable(right)));
-        } else {
+            append(new AArch64Compare.CompareOp(left, loadNonCompareConst(right)));
+        } else if (kind.isSIMD()) {
             if (AArch64Compare.FloatCompareOp.isFloatCmpConstant(a, condition, unorderedIsTrue)) {
-                left = loadReg(b);
+                left = load(b);
                 right = a;
                 mirrored = true;
             } else if (AArch64Compare.FloatCompareOp.isFloatCmpConstant(b, condition, unorderedIsTrue)) {
-                left = loadReg(a);
+                left = load(a);
                 right = b;
                 mirrored = false;
             } else {
-                left = loadReg(a);
+                left = load(a);
                 right = loadReg(b);
                 mirrored = false;
             }
             append(new AArch64Compare.FloatCompareOp(left, asAllocatable(right), condition, unorderedIsTrue));
+        } else {
+            throw JVMCIError.shouldNotReachHere();
         }
         return mirrored;
+    }
+
+    /**
+     * If value is a constant that cannot be used directly with a gpCompare instruction load it into
+     * a register and return the register, otherwise return constant value unchanged.
+     */
+    protected Value loadNonCompareConst(Value value) {
+        if (!isCompareConstant(value)) {
+            return loadReg(value);
+        }
+        return value;
     }
 
     /**
@@ -356,15 +371,35 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      * @return true if value can be used directly in comparison instruction, false otherwise.
      */
     public boolean isCompareConstant(Value value) {
-        if (!isJavaConstant(value)) {
-            return false;
+        if (isJavaConstant(value)) {
+            JavaConstant constant = asJavaConstant(value);
+            if (constant instanceof PrimitiveConstant) {
+                final long longValue = constant.asLong();
+                long maskedValue;
+                switch (constant.getJavaKind()) {
+                    case Boolean:
+                    case Byte:
+                        maskedValue = longValue & 0xFF;
+                        break;
+                    case Char:
+                    case Short:
+                        maskedValue = longValue & 0xFFFF;
+                        break;
+                    case Int:
+                        maskedValue = longValue & 0xFFFF_FFFF;
+                        break;
+                    case Long:
+                        maskedValue = longValue;
+                        break;
+                    default:
+                        throw JVMCIError.shouldNotReachHere();
+                }
+                return AArch64MacroAssembler.isArithmeticImmediate(maskedValue);
+            } else {
+                return constant.isDefaultForKind();
+            }
         }
-        JavaConstant constant = asJavaConstant(value);
-        if (((AArch64Kind) value.getPlatformKind()).isInteger()) {
-            return AArch64ArithmeticLIRGenerator.isArithmeticConstant(constant);
-        } else {
-            return constant.isDefaultForKind();
-        }
+        return false;
     }
 
     /**
@@ -450,17 +485,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             return emitMove(val);
         }
         return (AllocatableValue) val;
-    }
-
-    /**
-     * If value is a constant that cannot be used directly with a gpCompare instruction load it into
-     * a register and return the register, otherwise return constant value unchanged.
-     */
-    protected Value loadNonCompareConst(Value value) {
-        if (!isCompareConstant(value)) {
-            return loadReg(value);
-        }
-        return value;
     }
 
     @Override

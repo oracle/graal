@@ -386,8 +386,7 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int ExtendTypeOffset = 13;
 
     private static final int AddSubImmOp = 0x11000000;
-    // If 1 the immediate is interpreted as being left-shifted by 12 bits.
-    private static final int AddSubShiftOffset = 22;
+    private static final int AddSubShift12 = 0b01 << 22;
     private static final int AddSubSetFlag = 0x20000000;
 
     private static final int LogicalImmOp = 0x12000000;
@@ -1239,8 +1238,8 @@ public abstract class AArch64Assembler extends Assembler {
     /**
      * Encodes arithmetic immediate.
      *
-     * @param imm Immediate has to be either an unsigned 12bit value or un unsigned 24bit value with
-     *            the lower 12 bits 0.
+     * @param imm Immediate has to be either an unsigned 12-bit value or an unsigned 24-bit value
+     *            with the lower 12 bits zero.
      * @return Representation of immediate for use with arithmetic instructions.
      */
     private static int encodeAimm(int imm) {
@@ -1248,9 +1247,9 @@ public abstract class AArch64Assembler extends Assembler {
         if (NumUtil.isUnsignedNbit(12, imm)) {
             return imm << ImmediateOffset;
         } else {
-            // First 12 bit are 0, so shift immediate 12 bit and set flag to indicate
+            // First 12-bit are zero, so shift immediate 12-bit and set flag to indicate
             // shifted immediate value.
-            return (imm >>> 12 << ImmediateOffset) | (1 << AddSubShiftOffset);
+            return (imm >>> 12 << ImmediateOffset) | AddSubShift12;
         }
     }
 
