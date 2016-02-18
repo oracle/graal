@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Neg;
+import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
@@ -52,7 +53,7 @@ public final class NegateNode extends UnaryArithmeticNode<Neg> implements Narrow
         if (forValue instanceof NegateNode) {
             return ((NegateNode) forValue).getValue();
         }
-        if (forValue instanceof SubNode) {
+        if (forValue instanceof SubNode && !(forValue.stamp() instanceof FloatStamp)) {
             SubNode sub = (SubNode) forValue;
             return new SubNode(sub.getY(), sub.getX());
         }
