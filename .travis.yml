@@ -22,8 +22,7 @@ env:
     - DEFAULT_VM="jvmci"
     - MX_BINARY_SUITES="jvmci,truffle"
   matrix:
-    - GATE="style"
-    - GATE="fullbuild"
+    - GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
     - JDK="jdk8" GATE="build,bootstrap"
     - JDK="jdk9" GATE="build,test"
