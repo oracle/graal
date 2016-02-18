@@ -44,8 +44,10 @@ import com.oracle.truffle.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicVoidNode;
 import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicAddressNodeGen;
 import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicDoubleNodeGen;
 import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicFloatNodeGen;
+import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI16NodeGen;
 import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI32NodeGen;
 import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI64NodeGen;
+import com.oracle.truffle.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI8NodeGen;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMAbortFactory;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMACosFactory;
 import com.oracle.truffle.llvm.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMASinFactory;
@@ -66,8 +68,10 @@ import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
 import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -176,7 +180,11 @@ public class LLVMFunctionRegistry {
 
     private static RootNode getRootNode(LLVMIntrinsic intrinsicNode) throws AssertionError {
         RootNode functionRoot;
-        if (intrinsicNode instanceof LLVMI32Node) {
+        if (intrinsicNode instanceof LLVMI8Node) {
+            functionRoot = LLVMIntrinsicI8NodeGen.create((LLVMI8Node) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMI16Node) {
+            functionRoot = LLVMIntrinsicI16NodeGen.create((LLVMI16Node) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMI32Node) {
             functionRoot = LLVMIntrinsicI32NodeGen.create((LLVMI32Node) intrinsicNode);
         } else if (intrinsicNode instanceof LLVMI64Node) {
             functionRoot = LLVMIntrinsicI64NodeGen.create((LLVMI64Node) intrinsicNode);
