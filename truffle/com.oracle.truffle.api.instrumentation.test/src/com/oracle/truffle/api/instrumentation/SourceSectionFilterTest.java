@@ -96,55 +96,55 @@ public class SourceSectionFilterTest {
     @Test
     public void testLineIn() {
         Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 1).build(),
                                         sampleSource.createSection(null, 6, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(1, 2).build(),
                                         sampleSource.createSection(null, 2, 1, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(1, 1).build(),
                                         sampleSource.createSection(null, 6, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 2).build(),
                                         sampleSource.createSection(null, 3 * LINE_LENGTH, 1, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 2).build(),
                                         sampleSource.createSection(null, 3 * LINE_LENGTH - 1, 1, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 2).build(),
                                         sampleSource.createSection(null, 3 * LINE_LENGTH - 2, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 2).build(),
                                         sampleSource.createSection(null, 0, LINE_LENGTH, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 2).build(),
                                         sampleSource.createSection(null, 0, LINE_LENGTH + 1, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 2).build(),
                                         sampleSource.createSection(null, 1 * LINE_LENGTH - 2, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 2).build(),
                                         sampleSource.createSection(null, 1 * LINE_LENGTH, 1, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 2).build(),
                                         sampleSource.createSection(null, 1 * LINE_LENGTH - 2, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIn(1, 1).build(),
                                         SourceSection.createUnavailable(null, null)));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().lineIs(1).build(),
                                         sampleSource.createSection(null, 0, LINE_LENGTH, tags())));
 
@@ -164,27 +164,27 @@ public class SourceSectionFilterTest {
     @Test
     public void testMimeType() {
         Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().mimeTypeIs().build(),
                                         sampleSource.withMimeType("mime3").createSection(null, 0, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().mimeTypeIs("mime1").build(),
                                         sampleSource.withMimeType("mime1").createSection(null, 0, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().mimeTypeIs("mime1").build(),
                                         sampleSource.withMimeType("mime2").createSection(null, 0, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().mimeTypeIs("mime1", "mime2").build(),
                                         sampleSource.withMimeType("mime2").createSection(null, 0, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().mimeTypeIs("mime1", "mime2").build(),
                                         sampleSource.withMimeType("mime3").createSection(null, 0, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().mimeTypeIs("mime1", "mime2").build(),
                                         sampleSource.withMimeType(null).createSection(null, 0, 5, tags())));
 
@@ -194,51 +194,51 @@ public class SourceSectionFilterTest {
     @Test
     public void testIndexIn() {
         Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(0, 0).build(),
                                         sampleSource.createSection(null, 0, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(0, 1).build(),
                                         sampleSource.createSection(null, 0, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 5, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 0, 4, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 0, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 4, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 4, 6, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 5, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 10, 1, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 9, 1, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         sampleSource.createSection(null, 9, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().indexIn(5, 5).build(),
                                         SourceSection.createUnavailable(null, null)));
 
@@ -262,27 +262,27 @@ public class SourceSectionFilterTest {
         Source sampleSource2 = Source.fromText("line1\nline2\nline3\nline4", null);
         Source sampleSource3 = Source.fromText("line1\nline2\nline3\nline4", null);
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceIs(sampleSource1).build(),
                                         sampleSource1.createSection(null, 0, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceIs(sampleSource1).build(),
                                         SourceSection.createUnavailable(null, null)));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceIs(sampleSource1).build(),
                                         sampleSource2.createSection(null, 0, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceIs(sampleSource1, sampleSource2).build(),
                                         sampleSource2.createSection(null, 0, 5, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceIs(sampleSource1, sampleSource2).build(),
                                         sampleSource1.createSection(null, 0, 5, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceIs(sampleSource1, sampleSource2).build(),
                                         sampleSource3.createSection(null, 0, 5, tags())));
 
@@ -294,35 +294,35 @@ public class SourceSectionFilterTest {
         Source sampleSource1 = Source.fromText("line1\nline2\nline3\nline4", null);
         Source sampleSource2 = Source.fromText("line1\nline2\nline3\nline4", null);
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
                                         sampleSource1.createSection(null, 1, 6, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
                                         sampleSource2.createSection(null, 1, 6, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 1, 7)).build(),
                                         sampleSource1.createSection(null, 1, 6, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 2, 6)).build(),
                                         sampleSource1.createSection(null, 1, 6, tags())));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 2, 6), sampleSource1.createSection(null, 2, 7)).build(),
                                         sampleSource1.createSection(null, 2, 7, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 2, 6), sampleSource1.createSection(null, 2, 7)).build(),
                                         sampleSource1.createSection(null, 2, 8, tags())));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 2, 6), sampleSource1.createSection(null, 2, 7)).build(),
                                         SourceSection.createUnavailable(null, null)));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 2, 6), sampleSource1.createSection(null, 2, 7)).build(),
                                         null));
 
@@ -335,32 +335,32 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testTagsIn() {
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIs().build(), source()));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIs().build(), source(InstrumentationTestLanguage.STATEMENT)));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), source(InstrumentationTestLanguage.STATEMENT)));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.STATEMENT)));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.ROOT)));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT).build(),
                                         source()));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT)));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT)));
 
@@ -369,35 +369,35 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testTagsNotIn() {
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIsNot().build(),
                                         source()));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIsNot().build(),
                                         source(InstrumentationTestLanguage.STATEMENT)));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIsNot(InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.STATEMENT)));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIsNot(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.STATEMENT)));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIsNot(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.ROOT)));
 
-        Assert.assertTrue(//
+        Assert.assertTrue(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIsNot(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT).build(),
                                         source()));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIsNot(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT)));
 
-        Assert.assertFalse(//
+        Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().tagIsNot(InstrumentationTestLanguage.STATEMENT).build(),
                                         source(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT)));
 
