@@ -642,7 +642,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.compilationTask = compilationTask;
     }
 
-    static final AccessorOptimizedCallTarget ACCESSOR = new AccessorOptimizedCallTarget();
+    private static final AccessorOptimizedCallTarget ACCESSOR = new AccessorOptimizedCallTarget();
 
     static final class AccessorOptimizedCallTarget extends Accessor {
 
