@@ -682,8 +682,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testTestFindParentEventNode1() throws IOException {
-        InstrumentationTest.nodes = new ArrayList<>();
-        List<FindParentEventNode> nodes = InstrumentationTest.nodes;
+        InstrumentationTest.findParentNodes = new ArrayList<>();
+        List<FindParentEventNode> nodes = InstrumentationTest.findParentNodes;
 
         engine.getInstruments().get("testTestFindParentEventNode1").setEnabled(true);
         run("STATEMENT(EXPRESSION,EXPRESSION(STATEMENT))");
@@ -759,7 +759,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
     }
 
-    static List<FindParentEventNode> nodes = new ArrayList<>();
+    static List<FindParentEventNode> findParentNodes = new ArrayList<>();
 
     static class FindParentEventNode extends ExecutionEventNode {
 
@@ -769,7 +769,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         FindParentEventNode(EventContext context, ExecutionEventNodeFactory factory) {
             this.context = context;
             this.factory = factory;
-            nodes.add(this);
+            findParentNodes.add(this);
         }
 
         ExecutionEventNode parentNode;
