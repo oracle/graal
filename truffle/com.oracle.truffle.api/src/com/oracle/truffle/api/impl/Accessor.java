@@ -45,7 +45,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -98,12 +97,6 @@ public abstract class Accessor {
 
             @Override
             protected WrapperNode createWrapperNode(Node node) {
-                return null;
-            }
-
-            @SuppressWarnings("deprecation")
-            @Override
-            protected Visualizer getVisualizer() {
                 return null;
             }
 
@@ -317,8 +310,7 @@ public abstract class Accessor {
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
     @TruffleBoundary
-    @SuppressWarnings("unused")
-    protected Closeable executionStart(Object vm, int currentDepth, boolean debugger, Source s) {
+    protected Closeable executionStart(Object vm, @SuppressWarnings("unused") int currentDepth, boolean debugger, Source s) {
         CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
         Objects.requireNonNull(vm);
         final Object prev = CURRENT_VM.get();
@@ -418,6 +410,30 @@ public abstract class Accessor {
 
     protected String toString(TruffleLanguage<?> language, Env env, Object obj) {
         return API.toString(language, env, obj);
+    }
+
+    protected boolean supportsOnLoopCount() {
+        return false;
+    }
+
+    @SuppressWarnings("deprecation")
+    protected void onLoopCount(Node source, int count) {
+        // optimized calltarget is not existent on default runtimes
+        if (OPTIMIZEDCALLTARGET != null) {
+            if (OPTIMIZEDCALLTARGET.supportsOnLoopCount()) {
+                OPTIMIZEDCALLTARGET.onLoopCount(source, count);
+            } else {
+                // needs an additional compatibilty check so older graal runtimes
+                // still run with newer truffle versions
+                RootNode root = source.getRootNode();
+                if (root != null) {
+                    RootCallTarget target = root.getCallTarget();
+                    if (target instanceof com.oracle.truffle.api.LoopCountReceiver) {
+                        ((com.oracle.truffle.api.LoopCountReceiver) target).reportLoopCount(count);
+                    }
+                }
+            }
+        }
     }
 
     static <T extends TruffleLanguage<?>> T findLanguageByClass(Object vm, Class<T> languageClass) {
