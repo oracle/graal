@@ -49,11 +49,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     public OptimizedDirectCallNode(GraalTruffleRuntime runtime, OptimizedCallTarget target) {
         super(target);
         this.runtime = runtime;
-        if (TruffleCompilerOptions.TruffleSplittingNew.getValue()) {
-            this.splittingStrategy = new DefaultTruffleSplittingStrategyNew(this);
-        } else {
-            this.splittingStrategy = new DefaultTruffleSplittingStrategy(this);
-        }
+        this.splittingStrategy = new DefaultTruffleSplittingStrategy(this);
     }
 
     @Override

@@ -28,7 +28,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
-public class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy {
+public final class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy {
 
     private final OptimizedDirectCallNode call;
 
