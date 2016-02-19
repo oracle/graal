@@ -51,9 +51,6 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
         call.installSplitCallTarget(call.getCallTarget().cloneUninitialized());
     }
 
-    public void afterCall(Object returnValue) {
-    }
-
     private boolean shouldSplit() {
         if (call.getClonedCallTarget() != null) {
             return false;

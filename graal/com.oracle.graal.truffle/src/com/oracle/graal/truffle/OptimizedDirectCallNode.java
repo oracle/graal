@@ -57,16 +57,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall(arguments);
         }
-        Object result = callProxy(this, getCurrentCallTarget(), frame, arguments, true);
-
-        if (CompilerDirectives.inInterpreter()) {
-            afterInterpreterCall(result);
-        }
-        return result;
-    }
-
-    private void afterInterpreterCall(Object result) {
-        splittingStrategy.afterCall(result);
+        return callProxy(this, getCurrentCallTarget(), frame, arguments, true);
     }
 
     public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean direct) {
