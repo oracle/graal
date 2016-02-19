@@ -95,7 +95,10 @@ public class DefaultCallTarget implements RootCallTarget {
         synchronized (this) {
             if (!this.initialized) {
                 this.initialized = true;
-                Accessor.INSTRUMENTHANDLER.initializeCallTarget(this);
+                Accessor accessor = Accessor.INSTRUMENTHANDLER;
+                if (accessor != null) {
+                    accessor.initializeCallTarget(this);
+                }
             }
         }
     }
