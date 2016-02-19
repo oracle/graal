@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api;
 
+import java.util.Collection;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -35,7 +37,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.Collection;
 
 /**
  * Interface representing a Truffle runtime object. The runtime is responsible for creating call
@@ -69,7 +70,11 @@ public interface TruffleRuntime {
     DirectCallNode createDirectCallNode(CallTarget target);
 
     /**
-     * Experimental API. May change without notice.
+     * Creates a new loop node with an implementation provided by a Truffle runtime implementation.
+     * Using Truffle loop nodes allows the runtime to do additional optimizations such as on stack
+     * replacement for loops.
+     *
+     * @see LoopNode usage example
      */
     LoopNode createLoopNode(RepeatingNode body);
 
