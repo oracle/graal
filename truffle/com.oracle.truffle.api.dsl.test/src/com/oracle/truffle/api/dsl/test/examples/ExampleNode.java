@@ -72,7 +72,7 @@ public abstract class ExampleNode extends Node {
 
         @Child ExampleNode child;
 
-        public ExampleRootNode(ExampleNode child) {
+        ExampleRootNode(ExampleNode child) {
             super(TestingLanguage.class, null, null);
             this.child = child;
         }
@@ -88,7 +88,7 @@ public abstract class ExampleNode extends Node {
 
         private final int index;
 
-        public ExampleArgumentNode(int index) {
+        ExampleArgumentNode(int index) {
             this.index = index;
         }
 
@@ -110,7 +110,7 @@ public abstract class ExampleNode extends Node {
 
         private final int argumentIndex;
 
-        public DummyCallRootNode(int argumentIndex) {
+        DummyCallRootNode(int argumentIndex) {
             super(TestingLanguage.class, null, null);
             this.argumentIndex = argumentIndex;
         }

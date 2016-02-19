@@ -62,7 +62,7 @@ public final class DebuggerExample extends TruffleInstrument {
         private EventBinding<?> stepping;
         private Callback currentStatementCallback;
 
-        public Controller(Instrumenter instrumenter) {
+        Controller(Instrumenter instrumenter) {
             this.instrumenter = instrumenter;
         }
 

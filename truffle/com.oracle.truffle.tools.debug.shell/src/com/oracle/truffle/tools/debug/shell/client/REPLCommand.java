@@ -31,7 +31,7 @@ abstract class REPLCommand {
     private final String abbreviation;
     private final String description;
 
-    public REPLCommand(String command, String abbreviation, String description) {
+    REPLCommand(String command, String abbreviation, String description) {
         this.command = command;
         this.abbreviation = abbreviation;
         this.description = description;

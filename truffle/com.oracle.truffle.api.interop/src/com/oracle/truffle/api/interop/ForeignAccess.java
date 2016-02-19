@@ -603,7 +603,7 @@ public final class ForeignAccess {
         private final Class<?> baseClass;
         private final Factory10 factory;
 
-        public DelegatingFactory(Class<?> baseClass, Factory10 factory) {
+        DelegatingFactory(Class<?> baseClass, Factory10 factory) {
             this.baseClass = baseClass;
             this.factory = factory;
         }

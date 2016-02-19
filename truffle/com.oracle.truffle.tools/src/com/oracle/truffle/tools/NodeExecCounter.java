@@ -121,7 +121,7 @@ public final class NodeExecCounter extends Instrumenter.Tool {
                 /*
                  * Everything up to here is inlined by Truffle compilation. Delegate the next part
                  * to a method behind an inlining boundary.
-                 *
+                 * 
                  * Note that it is not permitted to pass a {@link VirtualFrame} across an inlining
                  * boundary; they are truly virtual in inlined code.
                  */
@@ -334,7 +334,7 @@ public final class NodeExecCounter extends Instrumenter.Tool {
         private final Class<?> nodeClass;
         private final long count;
 
-        public NodeExecCountImpl(Class<?> nodeClass, long count) {
+        NodeExecCountImpl(Class<?> nodeClass, long count) {
             this.nodeClass = nodeClass;
             this.count = count;
         }

@@ -35,7 +35,7 @@ final class Schema {
 
         private final int size;
 
-        private Type(int size) {
+        Type(int size) {
             this.size = size;
         }
     }

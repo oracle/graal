@@ -208,7 +208,7 @@ public class MergeSpecializationsTest {
         public final Object secondValue;
         public final Object thirdValue;
 
-        public Executions(Object firstValue, Object secondValue, Object thirdValue) {
+        Executions(Object firstValue, Object secondValue, Object thirdValue) {
             this.firstValue = firstValue;
             this.secondValue = secondValue;
             this.thirdValue = thirdValue;

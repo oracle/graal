@@ -41,7 +41,7 @@ public class CodeFormatTest {
 
     abstract static class LineWrappingTest extends ValueNode {
 
-        public LineWrappingTest() {
+        LineWrappingTest() {
         }
 
         protected static boolean guardWithaReeeeeeeeaaaaaaaaaaalllllllllyyyyyyyyLLLLLLLLLLLLLoooooooonnnnnnngggggggName1() {

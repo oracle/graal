@@ -29,7 +29,7 @@ import com.oracle.truffle.tck.impl.LongBinaryOperation;
 final class MaxMinObject implements LongBinaryOperation {
     private final boolean max;
 
-    public MaxMinObject(boolean max) {
+    MaxMinObject(boolean max) {
         this.max = max;
     }
 
