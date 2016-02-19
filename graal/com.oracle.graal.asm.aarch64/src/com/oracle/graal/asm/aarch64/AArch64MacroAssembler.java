@@ -1387,8 +1387,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * Generates an address of the form {@code base + displacement}.
      *
-     * Does not change base register to fulfil this requirement. Will fail if displacement cannot be
-     * represented directly as address.
+     * Does not change base register to fulfill this requirement. Will fail if displacement cannot
+     * be represented directly as address.
      *
      * @param base general purpose register. May not be null or the zero register.
      * @param displacement arbitrary displacement added to base.
