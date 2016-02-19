@@ -71,7 +71,6 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
                     Map<String, Object> properties = new LinkedHashMap<>();
                     addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
-                    properties.put("Stamp", callNode.getCurrentCallTarget().getArgumentStamp());
                     log(compilable, depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;

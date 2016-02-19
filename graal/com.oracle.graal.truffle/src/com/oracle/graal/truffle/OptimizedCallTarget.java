@@ -34,7 +34,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -95,10 +94,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private final RootNode rootNode;
     private volatile RootNode uninitializedRootNode = UNINITIALIZED;
 
-    /* Experimental fields for new splitting. */
-    private final Map<TruffleStamp, OptimizedCallTarget> splitVersions = new HashMap<>();
-    private TruffleStamp argumentStamp = DefaultTruffleStamp.getInstance();
-
     private TruffleInlining inlining;
     private int cachedNonTrivialNodeCount = -1;
     private int cloneIndex;
@@ -153,14 +148,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return nodeRewritingAssumption.getAssumption();
     }
 
-    public final void mergeArgumentStamp(TruffleStamp p) {
-        this.argumentStamp = this.argumentStamp.join(p);
-    }
-
-    public final TruffleStamp getArgumentStamp() {
-        return argumentStamp;
-    }
-
     public int getCloneIndex() {
         return cloneIndex;
     }
@@ -192,10 +179,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (uninitializedRootNode == UNINITIALIZED) {
             this.uninitializedRootNode = sourceCallTarget == null ? cloneRootNode(rootNode) : sourceCallTarget.uninitializedRootNode;
         }
-    }
-
-    public Map<TruffleStamp, OptimizedCallTarget> getSplitVersions() {
-        return splitVersions;
     }
 
     public SpeculationLog getSpeculationLog() {
@@ -479,7 +462,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             superString += " <opt>";
         }
         if (sourceCallTarget != null) {
-            superString += " <split-" + cloneIndex + "-" + argumentStamp.toStringShort() + ">";
+            superString += " <split-" + cloneIndex + ">";
         }
         return superString;
     }
