@@ -38,6 +38,7 @@ import com.oracle.graal.graph.iterators.NodePredicate;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.ArithmeticOperation;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
@@ -45,7 +46,7 @@ import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeValueMap;
 
 @NodeInfo
-public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticLIRLowerable, Canonicalizable.Binary<ValueNode> {
+public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticOperation, ArithmeticLIRLowerable, Canonicalizable.Binary<ValueNode> {
 
     @SuppressWarnings("rawtypes") public static final NodeClass<BinaryArithmeticNode> TYPE = NodeClass.create(BinaryArithmeticNode.class);
 
@@ -65,8 +66,12 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return getOp.apply(table);
     }
 
+    public final BinaryOp<OP> getArithmeticOp() {
+        return getOp(getX(), getY());
+    }
+
     public boolean isAssociative() {
-        return getOp(getX(), getY()).isAssociative();
+        return getArithmeticOp().isAssociative();
     }
 
     @Override
@@ -89,7 +94,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     @Override
     public Stamp foldStamp(Stamp stampX, Stamp stampY) {
         assert stampX.isCompatible(x.stamp()) && stampY.isCompatible(y.stamp());
-        return getOp(getX(), getY()).foldStamp(stampX, stampY);
+        return getArithmeticOp().foldStamp(stampX, stampY);
     }
 
     public static AddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
