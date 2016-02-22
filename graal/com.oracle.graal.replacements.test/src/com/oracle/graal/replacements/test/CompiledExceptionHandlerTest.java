@@ -64,9 +64,17 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
 
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
                 if (method.getName().startsWith("raiseException")) {
+                    /*
+                     * Make sure the raiseException* method invokes are not inlined and compiled
+                     * with explicit exception handler.
+                     */
                     return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
                 } else {
-                    return null;
+                    /*
+                     * We don't care whether other invokes are inlined or not, but we definitely
+                     * don't want another explicit exception handler in the graph.
+                     */
+                    return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
                 }
             }
         });
