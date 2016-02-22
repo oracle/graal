@@ -453,8 +453,6 @@ public class LayoutGenerator {
             stream.printf(" DynamicObject create%s(%n", layout.getName());
             stream.println("            DynamicObjectFactory factory,");
 
-            stream.println();
-
             for (PropertyModel property : layout.getAllInstanceProperties()) {
                 stream.printf("            %s %s", property.getType().toString(), property.getName());
 
