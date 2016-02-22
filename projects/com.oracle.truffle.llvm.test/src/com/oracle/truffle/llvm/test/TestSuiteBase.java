@@ -135,7 +135,7 @@ public abstract class TestSuiteBase {
 
     @AfterClass
     public static void displayEndSummary() {
-        if (LLVMOptions.isGate()) {
+        if (!LLVMOptions.isDiscoveryTestMode()) {
             printList("failing tests:", failingTests);
         }
     }

@@ -333,7 +333,7 @@ def getSearchPathOption():
 
 
 def getCommonUnitTestOptions():
-    return getCommonOptions() + ['-Xss56m', getSearchPathOption(), getLLVMRootOption(), getGateOption()]
+    return getCommonOptions() + ['-Xss56m', getSearchPathOption(), getLLVMRootOption()]
 
 # PE does not work yet for all test cases
 def doNotCompileOption():
@@ -344,9 +344,6 @@ def getRemoteClasspathOption():
 
 def getLLVMRootOption():
     return "-Dllvm-root=" + _root
-
-def getGateOption():
-    return "-Dllvm-gate=true"
 
 def pullsuite(suiteDir, urls):
     name = os.path.basename(urls[0])
