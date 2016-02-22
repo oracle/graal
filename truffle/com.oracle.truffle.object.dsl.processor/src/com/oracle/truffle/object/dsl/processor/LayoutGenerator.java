@@ -36,9 +36,6 @@ import java.util.List;
 
 public class LayoutGenerator {
 
-    private static final boolean GENERATE_SHAPE_BOUNDARY_CONSTANT_CHECKS = Boolean.valueOf(
-                    System.getProperty("org.jruby.truffle.om.dsl.processor.layout.LayoutGenerator.GENERATE_SHAPE_BOUNDARY_CONSTANT_CHECKS", Boolean.FALSE.toString()));
-
     private final LayoutModel layout;
 
     public LayoutGenerator(LayoutModel layout) {
@@ -472,116 +469,34 @@ public class LayoutGenerator {
             }
         }
 
-        if (GENERATE_SHAPE_BOUNDARY_CONSTANT_CHECKS) {
-            if (layout.hasInstanceProperties()) {
-                stream.printf("        return create%sBoundary(factory,%n", layout.getName());
+        if (layout.hasInstanceProperties()) {
+            stream.println("        return factory.newInstance(");
 
-                for (PropertyModel property : layout.getAllInstanceProperties()) {
-                    stream.printf("            %s", property.getName());
-
-                    if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
-                        stream.println(");");
+            for (PropertyModel property : layout.getAllInstanceProperties()) {
+                if (property.isVolatile()) {
+                    if (property.getType().getKind() == TypeKind.INT) {
+                        stream.printf("            new AtomicInteger(%s)", property.getName());
+                    } else if (property.getType().getKind() == TypeKind.BOOLEAN) {
+                        stream.printf("            new AtomicBoolean(%s)", property.getName());
                     } else {
-                        stream.println(",");
+                        stream.printf("            new AtomicReference<%s>(%s)", property.getType(), property.getName());
                     }
+                } else {
+                    stream.printf("            %s", property.getName());
                 }
-            } else {
-                stream.printf("        return create%sBoundary(factory);%n", layout.getName());
+
+                if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
+                    stream.println(");");
+                } else {
+                    stream.println(",");
+                }
             }
         } else {
-            if (layout.hasInstanceProperties()) {
-                stream.println("        return factory.newInstance(");
-
-                for (PropertyModel property : layout.getAllInstanceProperties()) {
-                    if (property.isVolatile()) {
-                        if (property.getType().getKind() == TypeKind.INT) {
-                            stream.printf("            new AtomicInteger(%s)", property.getName());
-                        } else if (property.getType().getKind() == TypeKind.BOOLEAN) {
-                            stream.printf("            new AtomicBoolean(%s)", property.getName());
-                        } else {
-                            stream.printf("            new AtomicReference<%s>(%s)", property.getType(), property.getName());
-                        }
-                    } else {
-                        stream.printf("            %s", property.getName());
-                    }
-
-                    if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
-                        stream.println(");");
-                    } else {
-                        stream.println(",");
-                    }
-                }
-            } else {
-                stream.println("        return factory.newInstance();");
-            }
+            stream.println("        return factory.newInstance();");
         }
 
         stream.println("    }");
         stream.println("    ");
-
-        if (GENERATE_SHAPE_BOUNDARY_CONSTANT_CHECKS) {
-            stream.println("    @TruffleBoundary");
-
-            if (layout.hasInstanceProperties()) {
-                stream.printf("    private DynamicObject create%sBoundary(%n", layout.getName());
-                stream.println("            DynamicObjectFactory factory,");
-
-                for (PropertyModel property : layout.getAllInstanceProperties()) {
-                    stream.printf("            %s %s", property.getType().toString(), property.getName());
-
-                    if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
-                        stream.println(") {");
-                    } else {
-                        stream.println(",");
-                    }
-                }
-            } else {
-                stream.printf(" DynamicObject create%sBoundary(DynamicObjectFactory factory) {%n", layout.getName());
-            }
-
-            stream.println("        assert factory != null;");
-            stream.println("        CompilerAsserts.partialEvaluationConstant(factory);");
-            stream.printf("        assert creates%s(factory);%n", layout.getName());
-
-            for (PropertyModel property : layout.getAllInstanceProperties()) {
-                stream.printf("        assert factory.getShape().hasProperty(%s_IDENTIFIER);%n", NameUtils.identifierToConstant(property.getName()));
-            }
-
-            for (PropertyModel property : layout.getAllInstanceProperties()) {
-                if (!property.getType().getKind().isPrimitive() && !property.isNullable()) {
-                    stream.printf("        assert %s != null;%n", property.getName());
-                }
-            }
-
-            if (layout.hasInstanceProperties()) {
-                stream.println("        return factory.newInstance(");
-
-                for (PropertyModel property : layout.getAllInstanceProperties()) {
-                    if (property.isVolatile()) {
-                        if (property.getType().getKind() == TypeKind.INT) {
-                            stream.printf("            new AtomicInteger(%s)", property.getName());
-                        } else if (property.getType().getKind() == TypeKind.BOOLEAN) {
-                            stream.printf("            new AtomicBoolean(%s)", property.getName());
-                        } else {
-                            stream.printf("            new AtomicReference<%s>(%s)", property.getType(), property.getName());
-                        }
-                    } else {
-                        stream.printf("            %s", property.getName());
-                    }
-
-                    if (property == layout.getAllProperties().get(layout.getAllProperties().size() - 1)) {
-                        stream.println(");");
-                    } else {
-                        stream.println(",");
-                    }
-                }
-            } else {
-                stream.println("        return factory.newInstance();");
-            }
-
-            stream.println("    }");
-            stream.println("    ");
-        }
 
         if (layout.hasObjectGuard()) {
             stream.println("    @Override");
