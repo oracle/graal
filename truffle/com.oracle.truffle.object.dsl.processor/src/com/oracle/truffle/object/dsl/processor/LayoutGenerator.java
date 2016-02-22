@@ -25,6 +25,7 @@
 package com.oracle.truffle.object.dsl.processor;
 
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
 import com.oracle.truffle.object.dsl.processor.model.NameUtils;
@@ -590,7 +591,7 @@ public class LayoutGenerator {
                                             NameUtils.identifierToConstant(property.getName()), layout.getName());
                         }
                     } else {
-                        stream.printf("        return (%s) %s_PROPERTY.get(object, is%s(object));%n", property.getType(), NameUtils.identifierToConstant(property.getName()), layout.getName());
+                        stream.printf("        return %s%s_PROPERTY.get(object, is%s(object));%n", cast(property.getType()), NameUtils.identifierToConstant(property.getName()), layout.getName());
                     }
                 }
 
@@ -758,6 +759,14 @@ public class LayoutGenerator {
     private void iterateProperties(List<PropertyModel> properties, PropertyIteratorAction action) {
         for (int n = 0; n < properties.size(); n++) {
             action.run(properties.get(n), n == properties.size() - 1);
+        }
+    }
+
+    private static String cast(TypeMirror type) {
+        if (type.toString().equals(Object.class.getName())) {
+            return "";
+        } else {
+            return String.format("(%s) ", type.toString());
         }
     }
 
