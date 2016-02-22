@@ -46,6 +46,9 @@ import com.intel.llvm.ireditor.lLVM_IR.StartingInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.lLVM_IR.ValueRef;
 
+/**
+ * This class finds a list of phis that reference a given block.
+ */
 public class LLVMPhiVisitor {
 
     private final Map<BasicBlock, List<Phi>> basicBlockReferences = new HashMap<>();
@@ -82,22 +85,21 @@ public class LLVMPhiVisitor {
 
     }
 
-    public List<Phi> getPhiReferences(BasicBlock basicBlock) {
-        List<Phi> phiReferences = basicBlockReferences.get(basicBlock);
-        if (phiReferences == null) {
-            return Collections.emptyList();
-        } else {
-            return phiReferences;
-        }
+    public static Map<BasicBlock, List<Phi>> visit(FunctionDef function) {
+        return new LLVMPhiVisitor().visitFunction(function);
     }
 
-    public void visit(FunctionDef function) {
+    private Map<BasicBlock, List<Phi>> visitFunction(FunctionDef function) {
         EList<BasicBlock> basicBlocks = function.getBasicBlocks();
+        for (BasicBlock block : basicBlocks) {
+            basicBlockReferences.put(block, new ArrayList<Phi>());
+        }
         for (BasicBlock block : basicBlocks) {
             for (Instruction instr : block.getInstructions()) {
                 visitInstruction(instr);
             }
         }
+        return basicBlockReferences;
     }
 
     private void visitInstruction(Instruction instr) {
@@ -109,10 +111,6 @@ public class LLVMPhiVisitor {
             for (BasicBlockRef blockRef : labels) {
                 BasicBlock block = blockRef.getRef();
                 List<Phi> valueRefs = basicBlockReferences.get(block);
-                if (valueRefs == null) {
-                    valueRefs = new ArrayList<>();
-                    basicBlockReferences.put(block, valueRefs);
-                }
                 ValueRef valueRef = phi.getValues().get(valueIndex++);
                 valueRefs.add(new Phi(startingInstr.getName(), valueRef, phi.getType(), startingInstr));
             }
