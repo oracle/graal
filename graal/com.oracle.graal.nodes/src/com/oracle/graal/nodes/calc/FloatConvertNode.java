@@ -77,7 +77,7 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
 
     @Override
     public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
-        return getOp(getValue()).foldConstant(c);
+        return getArithmeticOp().foldConstant(c);
     }
 
     @Override
