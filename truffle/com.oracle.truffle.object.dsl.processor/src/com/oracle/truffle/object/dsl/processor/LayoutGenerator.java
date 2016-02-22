@@ -530,7 +530,7 @@ public class LayoutGenerator {
             stream.println("    @Override");
             stream.print("    public");
         } else {
-            stream.print("    private");
+            stream.print("    private static");
         }
 
         stream.printf(" boolean is%s(ObjectType objectType) {%n", layout.getName());
@@ -538,7 +538,13 @@ public class LayoutGenerator {
         stream.println("    }");
         stream.println("    ");
 
-        stream.printf("    private boolean creates%s(DynamicObjectFactory factory) {%n", layout.getName());
+        stream.printf("    private");
+
+        if (!layout.hasObjectTypeGuard()) {
+            stream.printf(" static");
+        }
+
+        stream.printf(" boolean creates%s(DynamicObjectFactory factory) {%n", layout.getName());
         stream.printf("        return is%s(factory.getShape().getObjectType());%n", layout.getName());
         stream.println("    }");
         stream.println("    ");
