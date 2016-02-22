@@ -22,13 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.object.dsl.processor.layout;
+package com.oracle.truffle.object.dsl.processor;
 
 import javax.lang.model.type.TypeKind;
 
-import com.oracle.truffle.object.dsl.processor.layout.model.LayoutModel;
-import com.oracle.truffle.object.dsl.processor.layout.model.NameUtils;
-import com.oracle.truffle.object.dsl.processor.layout.model.PropertyModel;
+import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
+import com.oracle.truffle.object.dsl.processor.model.NameUtils;
+import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
 
 import java.io.PrintStream;
 import java.util.ArrayList;

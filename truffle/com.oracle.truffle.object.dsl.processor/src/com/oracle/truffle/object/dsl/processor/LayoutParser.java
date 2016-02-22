@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.object.dsl.processor.layout;
+package com.oracle.truffle.object.dsl.processor;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
@@ -31,11 +31,10 @@ import com.oracle.truffle.api.object.dsl.Layout;
 import com.oracle.truffle.api.object.dsl.Nullable;
 import com.oracle.truffle.api.object.dsl.Volatile;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.object.dsl.processor.LayoutProcessor;
-import com.oracle.truffle.object.dsl.processor.layout.model.LayoutModel;
-import com.oracle.truffle.object.dsl.processor.layout.model.NameUtils;
-import com.oracle.truffle.object.dsl.processor.layout.model.PropertyBuilder;
-import com.oracle.truffle.object.dsl.processor.layout.model.PropertyModel;
+import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
+import com.oracle.truffle.object.dsl.processor.model.NameUtils;
+import com.oracle.truffle.object.dsl.processor.model.PropertyBuilder;
+import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;

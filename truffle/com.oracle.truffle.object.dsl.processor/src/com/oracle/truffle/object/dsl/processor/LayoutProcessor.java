@@ -25,9 +25,7 @@
 package com.oracle.truffle.object.dsl.processor;
 
 import com.oracle.truffle.api.object.dsl.Layout;
-import com.oracle.truffle.object.dsl.processor.layout.LayoutGenerator;
-import com.oracle.truffle.object.dsl.processor.layout.LayoutParser;
-import com.oracle.truffle.object.dsl.processor.layout.model.LayoutModel;
+import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;

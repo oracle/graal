@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.object.dsl.processor.layout.model;
+package com.oracle.truffle.object.dsl.processor.model;
 
 import javax.lang.model.type.TypeMirror;
 
