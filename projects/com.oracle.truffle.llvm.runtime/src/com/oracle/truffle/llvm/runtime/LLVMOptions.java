@@ -84,7 +84,6 @@ public class LLVMOptions {
         DYN_LIBRARY_PATHS("llvm-dyn-libs", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath),
         PROJECT_ROOT("llvm-root", "Overrides the root of the LLVM project. This option exists to set the project root from mx", ".", LLVMOptions::parseString),
         IS_GATE("llvm-gate", "Tell Sulong that the gate is executing", "false", LLVMOptions::parseBoolean),
-        PRINT_RET_VAL("llvm-print-retval", "Prints the return value of an execution", "true", LLVMOptions::parseBoolean),
         OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("llvm-opt-expect", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean),
         OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("llvm-opt-valueprofiling", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean),
         OPTIMIZATION_INJECT_PROBS_SELECT("llvm-opt-select", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean),
@@ -184,10 +183,6 @@ public class LLVMOptions {
 
     public static boolean isGate() {
         return getParsedProperty(Property.IS_GATE);
-    }
-
-    public static boolean isPrintRetVal() {
-        return getParsedProperty(Property.PRINT_RET_VAL);
     }
 
     public static boolean specializeForExpectIntrinsic() {
