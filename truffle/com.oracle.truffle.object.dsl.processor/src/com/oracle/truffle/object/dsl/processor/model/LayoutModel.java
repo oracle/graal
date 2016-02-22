@@ -90,11 +90,11 @@ public class LayoutModel {
     }
 
     public boolean hasInstanceProperties() {
-        return !selectProperties(true, false, true, true).isEmpty();
+        return !selectProperties(true, false, false, true, true).isEmpty();
     }
 
     public boolean hasShapeProperties() {
-        return !selectProperties(false, true, true, true).isEmpty();
+        return !selectProperties(false, true, false, true, true).isEmpty();
     }
 
     public boolean hasProperty(String propertyName) {
@@ -108,38 +108,47 @@ public class LayoutModel {
     }
 
     public List<PropertyModel> getProperties() {
-        return selectProperties(true, true, true, false);
+        return selectProperties(true, true, false, true, false);
     }
 
     public List<PropertyModel> getInstanceProperties() {
-        return selectProperties(true, false, true, false);
+        return selectProperties(true, false, false, true, false);
     }
 
     public List<PropertyModel> getShapeProperties() {
-        return selectProperties(false, true, true, false);
+        return selectProperties(false, true, false, true, false);
     }
 
     public List<PropertyModel> getAllProperties() {
-        return selectProperties(true, true, true, true);
+        return selectProperties(true, true, false, true, true);
     }
 
     public List<PropertyModel> getAllInstanceProperties() {
-        return selectProperties(true, false, true, true);
+        return selectProperties(true, false, false, true, true);
     }
 
     public List<PropertyModel> getInheritedShapeProperties() {
-        return selectProperties(false, true, false, true);
+        return selectProperties(false, true, false, false, true);
     }
 
     public List<PropertyModel> getAllShapeProperties() {
-        return selectProperties(false, true, true, true);
+        return selectProperties(false, true, false, true, true);
     }
 
-    private List<PropertyModel> selectProperties(boolean instance, boolean shape, boolean declared, boolean inherited) {
+    public boolean hasVolatileProperties() {
+        return !selectProperties(true, true, true, true, false).isEmpty();
+    }
+
+    private List<PropertyModel> selectProperties(
+                    boolean instance,
+                    boolean shape,
+                    boolean onlyVolatile,
+                    boolean declared,
+                    boolean inherited) {
         final List<PropertyModel> selectedProperties = new ArrayList<>();
 
         if (inherited && superLayout != null) {
-            selectedProperties.addAll(superLayout.selectProperties(instance, shape, declared, inherited));
+            selectedProperties.addAll(superLayout.selectProperties(instance, shape, onlyVolatile, declared, inherited));
         }
 
         if (declared) {
@@ -149,6 +158,10 @@ public class LayoutModel {
                 }
 
                 if (property.isShapeProperty() && !shape) {
+                    continue;
+                }
+
+                if (!property.isVolatile() && onlyVolatile) {
                     continue;
                 }
 
