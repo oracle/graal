@@ -727,7 +727,8 @@ public class LayoutGenerator {
                         } else if (property.getType().getKind() == TypeKind.BOOLEAN) {
                             stream.printf("        ((AtomicBoolean) %s_PROPERTY.get(object, is%s(object))).set(value);%n", NameUtils.identifierToConstant(property.getName()), layout.getName());
                         } else {
-                            stream.printf("        ((AtomicReference<%s>) %s_PROPERTY.get(object, is%s(object))).set(value);%n", property.getType(), NameUtils.identifierToConstant(property.getName()),
+                            stream.printf("        ((AtomicReference<%s>) %s_PROPERTY.get(object, is%s(object))).set(value);%n", property.getType(),
+                                            NameUtils.identifierToConstant(property.getName()),
                                             layout.getName());
                         }
                     } else {
