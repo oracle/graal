@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,13 @@ import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.amd64.AMD64NodeLIRBuilder;
+import com.oracle.graal.compiler.common.type.RawPointerStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
@@ -53,6 +56,38 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
         this.args = new NodeInputList<>(this, args);
     }
 
+    private static class PointerType implements JavaType {
+
+        public String getName() {
+            return "void*";
+        }
+
+        public JavaType getComponentType() {
+            return null;
+        }
+
+        public JavaType getArrayClass() {
+            return null;
+        }
+
+        public JavaKind getJavaKind() {
+            // native pointers and java objects use the same registers in the calling convention
+            return JavaKind.Object;
+        }
+
+        public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
+            return null;
+        }
+    }
+
+    private static JavaType toJavaType(Stamp stamp, MetaAccessProvider metaAccess) {
+        if (stamp instanceof RawPointerStamp) {
+            return new PointerType();
+        } else {
+            return stamp.javaType(metaAccess);
+        }
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         AMD64NodeLIRBuilder gen = (AMD64NodeLIRBuilder) generator;
@@ -60,9 +95,9 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
         JavaType[] parameterTypes = new JavaType[args.count()];
         for (int i = 0; i < args.count(); i++) {
             parameter[i] = generator.operand(args.get(i));
-            parameterTypes[i] = args.get(i).stamp().javaType(gen.getLIRGeneratorTool().getMetaAccess());
+            parameterTypes[i] = toJavaType(args.get(i).stamp(), gen.getLIRGeneratorTool().getMetaAccess());
         }
-        ResolvedJavaType returnType = stamp().javaType(gen.getLIRGeneratorTool().getMetaAccess());
+        JavaType returnType = toJavaType(stamp(), gen.getLIRGeneratorTool().getMetaAccess());
         CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.NativeCall, returnType, parameterTypes,
                         generator.getLIRGeneratorTool().target());
         gen.getLIRGeneratorTool().emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));

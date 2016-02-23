@@ -1089,6 +1089,18 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
+    "com.oracle.graal.truffle.hotspot.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.truffle.hotspot",
+        "com.oracle.graal.compiler.test",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,Truffle,Test",
+    },
+
     "com.oracle.graal.truffle.hotspot.amd64" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
