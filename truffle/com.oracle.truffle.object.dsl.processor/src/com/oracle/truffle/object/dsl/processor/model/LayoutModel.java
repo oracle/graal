@@ -139,6 +139,36 @@ public class LayoutModel {
         return !selectProperties(true, true, true, true, false).isEmpty();
     }
 
+    public boolean hasNonNullableProperties() {
+        for (PropertyModel property : properties) {
+            if (!property.isNullable()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public boolean hasFinalProperties() {
+        for (PropertyModel property : properties) {
+            if (property.isFinal()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public boolean hasGettersOrSetters() {
+        for (PropertyModel property : properties) {
+            if (property.hasGetter() || property.hasSetter()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private List<PropertyModel> selectProperties(
                     boolean instance,
                     boolean shape,
