@@ -119,9 +119,9 @@ import java.lang.annotation.Target;
  *
  * <h2>Volatile Properties</h2>
  *
- * To define a property with volatile semantics, in the sense of the Java Language Specification §
- * 8.3.1.4, annotate the constructor parameter with {@link Volatile}. A property annotated as
- * volatile also allows you to define atomic operation methods in your layout interface for that
+ * To define a property with volatile semantics, in the sense of the Java Language Specification
+ * section 8.3.1.4, annotate the constructor parameter with {@link Volatile}. A property annotated
+ * as volatile also allows you to define atomic operation methods in your layout interface for that
  * property. Methods available are {@code compareAndSet}, in the sense of
  * {@link AtomicReference#compareAndSet}, and {@code getAndSet}, in the sense of
  * {@link AtomicReference#getAndSet}.
