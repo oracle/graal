@@ -198,22 +198,6 @@ public final class Debugger {
      * assumed to be in the same language as the code location where attached.
      *
      * @param ignoreCount number of hits to ignore before halting
-     * @param oneShot if {@code true} breakpoint removes it self after a hit
-     * @return a new breakpoint, initially enabled
-     * @throws IOException if the breakpoint already set
-     */
-    @TruffleBoundary
-    public Breakpoint setTagBreakpoint(int ignoreCount, String tag, boolean oneShot) throws IOException {
-        return breakpoints.create(ignoreCount, tag, oneShot);
-    }
-
-    /**
-     * Sets a breakpoint to halt at any node holding a specified <em>tag</em>.
-     * <p>
-     * If a breakpoint <em>condition</em> is applied to the breakpoint, then the condition will be
-     * assumed to be in the same language as the code location where attached.
-     *
-     * @param ignoreCount number of hits to ignore before halting
      * @param tag
      * @param oneShot if {@code true} breakpoint removes it self after a hit
      * @return a new breakpoint, initially enabled

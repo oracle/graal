@@ -31,11 +31,11 @@ import java.util.List;
 
 import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.QuitException;
-import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 import com.oracle.truffle.api.nodes.Node;
@@ -265,7 +265,7 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final REPLMessage reply = createReply();
             try {
-                replServer.setTagBreakpoint(DEFAULT_IGNORE_COUNT, Debugger.THROW_TAG, false);
+                replServer.setTagBreakpoint(DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, false);
                 return finishReplySucceeded(reply, "Breakpoint at any throw set");
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex);
@@ -279,7 +279,7 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final REPLMessage reply = createReply();
             try {
-                replServer.setTagBreakpoint(DEFAULT_IGNORE_COUNT, Debugger.THROW_TAG, true);
+                replServer.setTagBreakpoint(DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, true);
                 return finishReplySucceeded(reply, "One-shot breakpoint at any throw set");
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex);

@@ -45,6 +45,7 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 import com.oracle.truffle.api.nodes.Node;
@@ -536,7 +537,7 @@ public final class REPLServer {
         return info;
     }
 
-    BreakpointInfo setTagBreakpoint(int ignoreCount, String tag, boolean oneShot) throws IOException {
+    BreakpointInfo setTagBreakpoint(int ignoreCount, StandardSyntaxTag tag, boolean oneShot) throws IOException {
         final BreakpointInfo info = new TagBreakpointInfo(tag, ignoreCount, oneShot);
         info.activate();
         return info;
@@ -581,14 +582,15 @@ public final class REPLServer {
     }
 
     final class TagBreakpointInfo extends BreakpointInfo {
-        private final String tag;
+        private final StandardSyntaxTag tag;
 
-        private TagBreakpointInfo(String tag, int ignoreCount, boolean oneShot) {
+        private TagBreakpointInfo(StandardSyntaxTag tag, int ignoreCount, boolean oneShot) {
             super(ignoreCount, oneShot);
             this.tag = tag;
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         protected void activate() throws IOException {
             breakpoint = db.setTagBreakpoint(ignoreCount, tag, oneShot);
             // TODO (mlvdv) check if resolved
