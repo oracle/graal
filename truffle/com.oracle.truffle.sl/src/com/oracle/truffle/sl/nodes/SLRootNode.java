@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import java.io.PrintStream;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -62,17 +61,6 @@ import com.oracle.truffle.sl.runtime.SLContext;
  */
 @NodeInfo(language = "Simple Language", description = "The root of all Simple Language execution trees")
 public final class SLRootNode extends RootNode {
-
-    private static final boolean TRACE = Boolean.getBoolean("truffle.sl-ast.trace");
-    private static final String TRACE_PREFIX = "SLRoot: ";
-    private static final PrintStream OUT = System.out;
-
-    private static void trace(String format, Object... args) {
-        if (TRACE) {
-            OUT.println(TRACE_PREFIX + String.format(format, args));
-        }
-    }
-
     /** The function body that is executed, and specialized during execution. */
     @Child private SLExpressionNode bodyNode;
 
