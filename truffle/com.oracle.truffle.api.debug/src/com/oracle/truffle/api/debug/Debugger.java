@@ -64,9 +64,15 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * is turned on}.
  */
 public final class Debugger {
-    /** A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that represent a call */
+    /**
+     * A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that
+     * represent a call.
+     */
     public static final String CALL_TAG = "debug-CALL";
-    /** A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that a place where debugger shall stop */
+    /**
+     * A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that a place
+     * where debugger shall stop.
+     */
     public static final String HALT_TAG = "debug-HALT";
 
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");

@@ -30,10 +30,10 @@ import com.oracle.truffle.api.source.Source;
 
 /**
  * Breakpoint in a {@link com.oracle.truffle.api.vm.PolyglotEngine} with
- * {@link com.oracle.truffle.api.debug debugging turned on}. You can ask
+ * {@link com.oracle.truffle.api.debug debugging turned on}. You can request an instance of
+ * breakpoint by calling
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)} or
- * {@link Debugger#setTagBreakpoint(int, String, boolean)} to create an instance of
- * {@link Breakpoint}.
+ * other methods in the {@link Debugger} class.
  */
 @SuppressWarnings("javadoc")
 public abstract class Breakpoint {
