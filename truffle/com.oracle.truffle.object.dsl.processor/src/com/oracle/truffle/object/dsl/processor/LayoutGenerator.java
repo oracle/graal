@@ -45,6 +45,52 @@ public class LayoutGenerator {
         stream.printf("package %s;%n", layout.getPackageName());
         stream.println();
 
+        generateImports(stream);
+
+        stream.println();
+        stream.printf("@GeneratedBy(%s.class)%n", layout.getInterfaceFullName());
+        stream.printf("public class %sLayoutImpl", layout.getName());
+
+        if (layout.getSuperLayout() != null) {
+            stream.printf(" extends %sLayoutImpl", layout.getSuperLayout().getName());
+        }
+
+        stream.printf(" implements %sLayout {%n", layout.getName());
+
+        stream.println("    ");
+        stream.printf("    public static final %sLayout INSTANCE = new %sLayoutImpl();%n", layout.getName(), layout.getName());
+        stream.println("    ");
+
+        generateObjectType(stream);
+
+        if (!layout.hasShapeProperties()) {
+            stream.printf("    protected static final %sType %s_TYPE = new %sType();%n", layout.getName(),
+                            NameUtils.identifierToConstant(layout.getName()), layout.getName());
+            stream.println("    ");
+        }
+
+        generateAllocator(stream);
+        generateProperties(stream);
+
+        if (!layout.hasShapeProperties()) {
+            stream.printf("    private static final DynamicObjectFactory %s_FACTORY = create%sShape();%n",
+                            NameUtils.identifierToConstant(layout.getName()), layout.getName());
+            stream.println("    ");
+        }
+
+        stream.printf("    protected %sLayoutImpl() {%n", layout.getName());
+        stream.println("    }");
+        stream.println("    ");
+
+        generateShapeFactory(stream);
+        generateFactory(stream);
+        generateGuards(stream);
+        generateAccessors(stream);
+
+        stream.println("}");
+    }
+
+    private void generateImports(PrintStream stream) {
         boolean needsAtomicInteger = false;
         boolean needsAtomicBoolean = false;
         boolean needsAtomicReference = false;
@@ -138,21 +184,9 @@ public class LayoutGenerator {
         if (layout.getSuperLayout() != null) {
             stream.printf("import %s.%sLayoutImpl;%n", layout.getSuperLayout().getPackageName(), layout.getSuperLayout().getName());
         }
+    }
 
-        stream.println();
-        stream.printf("@GeneratedBy(%s.class)%n", layout.getInterfaceFullName());
-        stream.printf("public class %sLayoutImpl", layout.getName());
-
-        if (layout.getSuperLayout() != null) {
-            stream.printf(" extends %sLayoutImpl", layout.getSuperLayout().getName());
-        }
-
-        stream.printf(" implements %sLayout {%n", layout.getName());
-
-        stream.println("    ");
-        stream.printf("    public static final %sLayout INSTANCE = new %sLayoutImpl();%n", layout.getName(), layout.getName());
-        stream.println("    ");
-
+    private void generateObjectType(final PrintStream stream) {
         final String typeSuperclass;
 
         if (layout.getSuperLayout() == null) {
@@ -263,12 +297,9 @@ public class LayoutGenerator {
 
         stream.println("    }");
         stream.println("    ");
+    }
 
-        if (!layout.hasShapeProperties()) {
-            stream.printf("    protected static final %sType %s_TYPE = new %sType();%n", layout.getName(), NameUtils.identifierToConstant(layout.getName()), layout.getName());
-            stream.println("    ");
-        }
-
+    private void generateAllocator(final PrintStream stream) {
         if (layout.getSuperLayout() == null) {
             stream.println("    protected static final Layout LAYOUT = Layout.newLayout().addAllowedImplicitCast(Layout.ImplicitCast.IntToLong).build();");
             stream.printf("    protected static final Shape.Allocator %S_ALLOCATOR = LAYOUT.createAllocator();%n", NameUtils.identifierToConstant(layout.getName()));
@@ -334,7 +365,9 @@ public class LayoutGenerator {
                 stream.println("    ");
             }
         }
+    }
 
+    private void generateProperties(final PrintStream stream) {
         for (PropertyModel property : layout.getInstanceProperties()) {
             if (!property.hasIdentifier()) {
                 stream.printf("    protected static final HiddenKey %s_IDENTIFIER = new HiddenKey(\"%s\");%n", NameUtils.identifierToConstant(property.getName()), property.getName());
@@ -393,16 +426,9 @@ public class LayoutGenerator {
 
             stream.println("    ");
         }
+    }
 
-        if (!layout.hasShapeProperties()) {
-            stream.printf("    private static final DynamicObjectFactory %s_FACTORY = create%sShape();%n", NameUtils.identifierToConstant(layout.getName()), layout.getName());
-            stream.println("    ");
-        }
-
-        stream.printf("    protected %sLayoutImpl() {%n", layout.getName());
-        stream.println("    }");
-        stream.println("    ");
-
+    private void generateShapeFactory(final PrintStream stream) {
         if (layout.hasShapeProperties()) {
             stream.println("    @Override");
             stream.print("    public");
@@ -470,7 +496,9 @@ public class LayoutGenerator {
 
         stream.println("    }");
         stream.println("    ");
+    }
 
+    private void generateFactory(final PrintStream stream) {
         if (!layout.hasShapeProperties()) {
             stream.println("    @Override");
             stream.printf("    public DynamicObject create%s(", layout.getName());
@@ -583,7 +611,9 @@ public class LayoutGenerator {
 
         stream.println("    }");
         stream.println("    ");
+    }
 
+    private void generateGuards(final PrintStream stream) {
         if (layout.hasObjectGuard()) {
             stream.println("    @Override");
             stream.printf("    public boolean is%s(Object object) {%n", layout.getName());
@@ -632,7 +662,9 @@ public class LayoutGenerator {
         stream.printf("        return is%s(factory.getShape().getObjectType());%n", layout.getName());
         stream.println("    }");
         stream.println("    ");
+    }
 
+    private void generateAccessors(final PrintStream stream) {
         for (PropertyModel property : layout.getProperties()) {
             if (property.hasObjectTypeGetter()) {
                 stream.println("    @Override");
@@ -692,8 +724,6 @@ public class LayoutGenerator {
                 stream.println("    }");
                 stream.println("    ");
             }
-
-            // assert !(property.hasSetter() && property.hasUnsafeSetter());
 
             if (property.hasSetter() || property.hasUnsafeSetter()) {
                 addUncheckedCastWarning(stream, property);
@@ -835,8 +865,6 @@ public class LayoutGenerator {
             stream.println("    }");
             stream.println("    ");
         }
-
-        stream.println("}");
     }
 
     private static void addUncheckedCastWarning(final PrintStream stream, PropertyModel property) {
