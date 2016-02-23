@@ -45,22 +45,88 @@ public class LayoutGenerator {
         stream.printf("package %s;%n", layout.getPackageName());
         stream.println();
 
+        boolean needsAtomicInteger = false;
+        boolean needsAtomicBoolean = false;
+        boolean needsAtomicReference = false;
+        boolean needsIncompatibleLocationException = false;
+        boolean needsFinalLocationException = false;
+        boolean needsHiddenKey = false;
+
+        for (PropertyModel property : layout.getProperties()) {
+            if (!property.hasIdentifier()) {
+                needsHiddenKey = true;
+            }
+
+            if (property.isVolatile()) {
+                if (property.getType().getKind() == TypeKind.INT) {
+                    needsAtomicInteger = true;
+                } else if (property.getType().getKind() == TypeKind.BOOLEAN) {
+                    needsAtomicBoolean = true;
+                } else {
+                    needsAtomicReference = true;
+                }
+            } else {
+                if (property.hasSetter()) {
+                    if (!property.isShapeProperty()) {
+                        needsIncompatibleLocationException = true;
+                        needsFinalLocationException = true;
+                    }
+                }
+            }
+        }
+
         if (layout.hasFinalProperties() || layout.hasNonNullableProperties()) {
             stream.println("import java.util.EnumSet;");
         }
 
-        stream.println("import com.oracle.truffle.api.object.*;");
+        if (needsAtomicBoolean) {
+            stream.println("import java.util.concurrent.atomic.AtomicBoolean;");
+        }
+
+        if (needsAtomicInteger) {
+            stream.println("import java.util.concurrent.atomic.AtomicInteger;");
+        }
+
+        if (needsAtomicReference) {
+            stream.println("import java.util.concurrent.atomic.AtomicReference;");
+        }
+
+        stream.println("import com.oracle.truffle.api.CompilerAsserts;");
 
         if (!layout.getShapeProperties().isEmpty()) {
             stream.println("import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;");
         }
 
-        stream.println("import com.oracle.truffle.api.CompilerAsserts;");
+        stream.println("import com.oracle.truffle.api.object.DynamicObject;");
+        stream.println("import com.oracle.truffle.api.object.DynamicObjectFactory;");
 
-        if (layout.hasVolatileProperties()) {
-            stream.println("import java.util.concurrent.atomic.*;");
+        if (needsFinalLocationException) {
+            stream.println("import com.oracle.truffle.api.object.FinalLocationException;");
         }
 
+        if (needsHiddenKey) {
+            stream.println("import com.oracle.truffle.api.object.HiddenKey;");
+        }
+
+        if (needsIncompatibleLocationException) {
+            stream.println("import com.oracle.truffle.api.object.IncompatibleLocationException;");
+        }
+
+        if (layout.getSuperLayout() == null) {
+            stream.println("import com.oracle.truffle.api.object.Layout;");
+        }
+
+        if (layout.hasFinalProperties() || layout.hasNonNullableProperties()) {
+            stream.println("import com.oracle.truffle.api.object.LocationModifier;");
+        }
+
+        stream.println("import com.oracle.truffle.api.object.ObjectType;");
+
+        if (!layout.getInstanceProperties().isEmpty()) {
+            stream.println("import com.oracle.truffle.api.object.Property;");
+        }
+
+        stream.println("import com.oracle.truffle.api.object.Shape;");
         stream.printf("import %s;%n", layout.getInterfaceFullName());
 
         if (layout.getSuperLayout() != null) {
