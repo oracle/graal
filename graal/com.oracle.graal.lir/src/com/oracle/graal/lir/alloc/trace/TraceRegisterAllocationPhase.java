@@ -93,24 +93,26 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
 
         Debug.dump(lir, "Before TraceRegisterAllocation");
-        for (Trace<B> trace : resultTraces.getTraces()) {
-            try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
-                tracesMetric.increment();
-                if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
-                    trivialTracesMetric.increment();
+        try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
+            for (Trace<B> trace : resultTraces.getTraces()) {
+                try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
+                    tracesMetric.increment();
+                    if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
+                        trivialTracesMetric.increment();
+                    }
+                    Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + trace.getId() + ": " + trace);
+                    if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
+                        TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
+                    } else {
+                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
+                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                    }
+                    Debug.dump(TRACE_DUMP_LEVEL, trace, "After Trace" + trace.getId() + ": " + trace);
                 }
-                Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + trace.getId() + ": " + trace);
-                if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                    TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
-                } else {
-                    TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
-                    allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
-                }
-                Debug.dump(TRACE_DUMP_LEVEL, trace, "After Trace" + trace.getId() + ": " + trace);
-            } catch (Throwable e) {
-                throw Debug.handle(e);
+                unnumberInstructions(trace.getBlocks(), lir);
             }
-            unnumberInstructions(trace.getBlocks(), lir);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
         Debug.dump(lir, "After trace allocation");
 
@@ -134,7 +136,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
             }
         }
         TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
-
+        Debug.dump(TRACE_DUMP_LEVEL, resultTraces, "After TraceBuilding");
         return resultTraces;
     }
 
