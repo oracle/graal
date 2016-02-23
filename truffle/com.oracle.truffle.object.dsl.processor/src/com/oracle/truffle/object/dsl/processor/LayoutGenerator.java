@@ -97,6 +97,7 @@ public class LayoutGenerator {
         }
 
         stream.println("import com.oracle.truffle.api.CompilerAsserts;");
+        stream.println("import com.oracle.truffle.api.dsl.GeneratedBy;");
 
         if (needsBoundary) {
             stream.println("import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;");
@@ -139,6 +140,7 @@ public class LayoutGenerator {
         }
 
         stream.println();
+        stream.printf("@GeneratedBy(%s.class)%n", layout.getInterfaceFullName());
         stream.printf("public class %sLayoutImpl", layout.getName());
 
         if (layout.getSuperLayout() != null) {
