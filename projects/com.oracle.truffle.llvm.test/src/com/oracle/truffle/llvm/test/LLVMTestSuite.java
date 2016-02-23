@@ -74,8 +74,7 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
     public static List<TestCaseFiles[]> getTestFiles() throws IOException {
         File configFile = LLVMPaths.LLVM_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.LLVM_TEST_SUITE;
-        String discoveryPath = LLVMOptions.getLLVMTestDiscoveryPath();
-        return getTestCasesFromConfigFile(configFile, testSuite, discoveryPath, new TestCaseGenerator() {
+        return getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGenerator() {
 
             public List<TestCaseFiles> getCompiledTestCaseFiles(File toBeCompiled) {
                 String expectedOutputName = PathUtil.replaceExtension(toBeCompiled.getAbsolutePath(), LLVM_REFERENCE_OUTPUT_EXTENSION);
