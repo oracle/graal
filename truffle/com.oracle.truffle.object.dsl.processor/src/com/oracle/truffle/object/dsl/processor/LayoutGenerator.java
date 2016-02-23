@@ -330,7 +330,7 @@ public class LayoutGenerator {
                         modifiersExpressionBuilder.append(", EnumSet.of(");
 
                         for (String modifier : modifiers) {
-                            if (modifier != modifiers.get(0)) {
+                            if (!modifier.equals(modifiers.get(0))) {
                                 modifiersExpressionBuilder.append(", ");
                             }
 
@@ -392,7 +392,7 @@ public class LayoutGenerator {
                 modifiersExpressionBuilder.append(", EnumSet.of(");
 
                 for (String modifier : modifiers) {
-                    if (modifier != modifiers.get(0)) {
+                    if (!modifier.equals(modifiers.get(0))) {
                         modifiersExpressionBuilder.append(", ");
                     }
 
