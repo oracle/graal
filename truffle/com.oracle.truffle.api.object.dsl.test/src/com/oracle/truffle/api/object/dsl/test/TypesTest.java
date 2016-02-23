@@ -39,8 +39,6 @@ public class TypesTest {
     public interface TypesTestLayout {
 
         DynamicObject createTypesTest(
-                        byte y,
-                        short s,
                         int i,
                         long l,
                         boolean b,
@@ -48,14 +46,6 @@ public class TypesTest {
                         int[] ia,
                         int[][] iaa,
                         BigInteger bi);
-
-        byte getY(DynamicObject object);
-
-        void setY(DynamicObject object, byte value);
-
-        short getS(DynamicObject object);
-
-        void setS(DynamicObject object, short value);
 
         int getI(DynamicObject object);
 
@@ -91,8 +81,6 @@ public class TypesTest {
 
     private static DynamicObject create() {
         return LAYOUT.createTypesTest(
-                        (byte) 1,
-                        (short) 2,
                         3,
                         4,
                         true,
@@ -101,22 +89,6 @@ public class TypesTest {
                         new int[][]{{1}, {2}},
                         BigInteger.TEN);
 
-    }
-
-    @Test
-    public void testByte() {
-        final DynamicObject object = create();
-        Assert.assertEquals((byte) 1, LAYOUT.getY(object));
-        LAYOUT.setY(object, (byte) 10);
-        Assert.assertEquals((byte) 10, LAYOUT.getY(object));
-    }
-
-    @Test
-    public void testShort() {
-        final DynamicObject object = create();
-        Assert.assertEquals((short) 2, LAYOUT.getS(object));
-        LAYOUT.setS(object, (short) 20);
-        Assert.assertEquals((short) 20, LAYOUT.getS(object));
     }
 
     @Test
