@@ -100,4 +100,10 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         return handled.cardinality() == expectedLength;
     }
 
+    void numberTraces() {
+        for (int i = 0; i < traces.size(); i++) {
+            traces.get(i).setId(i);
+        }
+    }
+
 }

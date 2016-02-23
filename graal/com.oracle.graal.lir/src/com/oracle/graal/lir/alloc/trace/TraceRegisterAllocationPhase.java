@@ -93,26 +93,26 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
 
         Debug.dump(lir, "Before TraceRegisterAllocation");
-        int traceNumber = 0;
-        for (Trace<B> trace : resultTraces.getTraces()) {
-            try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", traceNumber, trace); Scope s = Debug.scope("AllocateTrace", trace)) {
-                tracesMetric.increment();
-                if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
-                    trivialTracesMetric.increment();
+        try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
+            for (Trace<B> trace : resultTraces.getTraces()) {
+                try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
+                    tracesMetric.increment();
+                    if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
+                        trivialTracesMetric.increment();
+                    }
+                    Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + trace.getId() + ": " + trace);
+                    if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
+                        TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
+                    } else {
+                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
+                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                    }
+                    Debug.dump(TRACE_DUMP_LEVEL, trace, "After Trace" + trace.getId() + ": " + trace);
                 }
-                Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + traceNumber + ": " + trace);
-                if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                    TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
-                } else {
-                    TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
-                    allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
-                }
-                Debug.dump(TRACE_DUMP_LEVEL, trace, "After Trace" + traceNumber + ": " + trace);
-                traceNumber++;
-            } catch (Throwable e) {
-                throw Debug.handle(e);
+                unnumberInstructions(trace.getBlocks(), lir);
             }
-            unnumberInstructions(trace.getBlocks(), lir);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
         Debug.dump(lir, "After trace allocation");
 
@@ -120,24 +120,27 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         deconstructSSIForm(lir);
     }
 
+    @SuppressWarnings("try")
     private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> builtTraces(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
-        TraceBuilderContext traceBuilderContext = new TraceBuilderPhase.TraceBuilderContext();
-        TRACE_BUILDER_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceBuilderContext, false);
+        try (Scope s = Debug.scope("TraceBuilding")) {
+            TraceBuilderContext traceBuilderContext = new TraceBuilderPhase.TraceBuilderContext();
+            TRACE_BUILDER_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceBuilderContext, false);
 
-        @SuppressWarnings("unchecked")
-        TraceBuilderResult<B> resultTraces = (TraceBuilderResult<B>) traceBuilderContext.traceBuilderResult;
+            @SuppressWarnings("unchecked")
+            TraceBuilderResult<B> resultTraces = (TraceBuilderResult<B>) traceBuilderContext.traceBuilderResult;
 
-        assert TraceBuilderResult.verify(resultTraces, lirGenRes.getLIR().getControlFlowGraph().getBlocks().size());
-        if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
-            List<Trace<B>> traces = resultTraces.getTraces();
-            for (int i = 0; i < traces.size(); i++) {
-                Trace<B> trace = traces.get(i);
-                Debug.log(TRACE_LOG_LEVEL, "Trace %5d: %s", i, trace);
+            assert TraceBuilderResult.verify(resultTraces, lirGenRes.getLIR().getControlFlowGraph().getBlocks().size());
+            if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
+                List<Trace<B>> traces = resultTraces.getTraces();
+                for (int i = 0; i < traces.size(); i++) {
+                    Trace<B> trace = traces.get(i);
+                    Debug.log(TRACE_LOG_LEVEL, "Trace %5d: %s%s", i, trace, isTrivialTrace(lirGenRes.getLIR(), trace) ? " (trivial)" : "");
+                }
             }
+            TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
+            Debug.dump(TRACE_DUMP_LEVEL, resultTraces, "After TraceBuilding");
+            return resultTraces;
         }
-        TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
-
-        return resultTraces;
     }
 
     /**

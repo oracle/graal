@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
  */
 public class Trace<T extends AbstractBlockBase<T>> {
     private final List<T> blocks;
+    private int id;
 
     public Trace(Collection<T> blocks) {
         this.blocks = new ArrayList<>(blocks);
@@ -53,5 +54,13 @@ public class Trace<T extends AbstractBlockBase<T>> {
     @Override
     public String toString() {
         return "Trace" + blocks;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    void setId(int id) {
+        this.id = id;
     }
 }
