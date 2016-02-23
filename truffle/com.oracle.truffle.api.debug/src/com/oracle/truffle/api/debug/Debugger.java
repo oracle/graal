@@ -62,33 +62,33 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * Instance of this class is delivered via {@link SuspendedEvent#getDebugger()} and
  * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
  * is turned on}.
+ * <p>
+ * Debugger <em>stepping</em> behavior is configured by each {@link TruffleLanguage language
+ * implementation} through application of {@linkplain SourceSection#withTags(java.lang.String...)
+ * tags} at specific source language locations that have {@link SourceSection source information}
+ * attached.
+ * <ul>
+ * <li>For most stepping situations, the debugger will halt just <em>before</em> a code location is
+ * executed that is marked with {@link #HALT_TAG}.</li>
+ * <li>When when stepping out of a call, the debugger will halt at the code location just executed
+ * that has been marked with {@link #CALL_TAG}.</li>
+ * </ul>
  */
 public final class Debugger {
+
     /**
-     * A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that
-     * represent a call.
-     * 
+     * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
+     * where the debugger will halt during normal stepping.
+     */
+    public static final String HALT_TAG = "debug-HALT";
+
+    /**
+     * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
+     * where the debugger will halt when <em>stepping out</em> of a call.
+     *
      * @see #HALT_TAG
      */
     public static final String CALL_TAG = "debug-CALL";
-    /**
-     * A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that a place
-     * where debugger shall stop.
-     *
-     * <p>
-     * Debugger <em>stepping</em> behavior is configured by each {@link TruffleLanguage language
-     * implementation} through application of {@linkplain SourceSection#hasTag(String)
-     * <em>tags</em>} at specific source language locations that have {@link SourceSection source
-     * information} attached.
-     * <ul>
-     * <li>For most stepping situations, the debugger will halt just <em>before</em> code locations
-     * are executed that are marked with the tag {@link #HALT_TAG}.</li>
-     * <li>When when stepping out of a call, the debugger will halt at the code location just
-     * executed that has been marked with the tag {@link #CALL_TAG}.</li>
-     * </ul>
-     *
-     */
-    public static final String HALT_TAG = "debug-HALT";
 
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
     private static final String TRACE_PREFIX = "Debug: ";
