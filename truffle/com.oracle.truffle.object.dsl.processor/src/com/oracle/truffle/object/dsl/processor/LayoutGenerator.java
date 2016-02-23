@@ -751,7 +751,13 @@ public class LayoutGenerator {
         }
 
         if (layout.hasShapeProperties() && (layout.getSuperLayout() == null || !layout.getSuperLayout().hasShapeProperties())) {
-            stream.printf("    private %sType getObjectType(DynamicObject object) {%n", layout.getName());
+            stream.print("    private");
+
+            if (!layout.hasObjectTypeGuard()) {
+                stream.print(" static");
+            }
+
+            stream.printf(" %sType getObjectType(DynamicObject object) {%n", layout.getName());
             stream.printf("        assert is%s(object);%n", layout.getName());
             stream.printf("        return (%sType) object.getShape().getObjectType();%n", layout.getName());
             stream.println("    }");
