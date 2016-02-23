@@ -67,11 +67,26 @@ public final class Debugger {
     /**
      * A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that
      * represent a call.
+     * 
+     * @see #HALT_TAG
      */
     public static final String CALL_TAG = "debug-CALL";
     /**
      * A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that a place
      * where debugger shall stop.
+     *
+     * <p>
+     * Debugger <em>stepping</em> behavior is configured by each {@link TruffleLanguage language
+     * implementation} through application of {@linkplain SourceSection#hasTag(String)
+     * <em>tags</em>} at specific source language locations that have {@link SourceSection source
+     * information} attached.
+     * <ul>
+     * <li>For most stepping situations, the debugger will halt just <em>before</em> code locations
+     * are executed that are marked with the tag {@link #HALT_TAG}.</li>
+     * <li>When when stepping out of a call, the debugger will halt at the code location just
+     * executed that has been marked with the tag {@link #CALL_TAG}.</li>
+     * </ul>
+     *
      */
     public static final String HALT_TAG = "debug-HALT";
 
