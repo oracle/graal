@@ -176,7 +176,7 @@ public class LayoutModel {
         final List<PropertyModel> selectedProperties = new ArrayList<>();
 
         if (inherited && superLayout != null) {
-            selectedProperties.addAll(superLayout.selectProperties(instance, shape, onlyVolatile, declared, inherited));
+            selectedProperties.addAll(superLayout.selectProperties(instance, shape, onlyVolatile, true, inherited));
         }
 
         if (declared) {

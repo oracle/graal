@@ -593,7 +593,7 @@ public class LayoutGenerator {
                 stream.print("    private");
             }
 
-            if (!layout.hasObjectTypeGuard()) {
+            if (!layout.hasDynamicObjectGuard() && !layout.hasObjectTypeGuard()) {
                 stream.printf(" static");
             }
 
@@ -815,7 +815,7 @@ public class LayoutGenerator {
             }
         }
 
-        if (layout.hasShapeProperties() && (layout.getSuperLayout() == null || !layout.getSuperLayout().hasShapeProperties())) {
+        if (!layout.getShapeProperties().isEmpty()) {
             stream.print("    private");
 
             if (!layout.hasObjectTypeGuard()) {
