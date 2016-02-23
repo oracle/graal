@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.Assumption;
@@ -317,9 +318,9 @@ public abstract class Accessor {
 
     @TruffleBoundary
     @SuppressWarnings("unused")
-    protected Closeable executionStart(Object vm, int currentDepth, boolean debugger, Source s) {
-        vm.getClass();
-        CompilerAsserts.neverPartOfCompilation();
+    protected Closeable executionStart(Object vm, int currentDepth, Object debugger, Source s) {
+        CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
+        Objects.requireNonNull(vm);
         final Object prev = CURRENT_VM.get();
         final Closeable debugClose = DEBUG == null ? null : DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
         if (!(vm == previousVM.get())) {
