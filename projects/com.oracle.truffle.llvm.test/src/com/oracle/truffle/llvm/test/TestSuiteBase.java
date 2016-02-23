@@ -181,12 +181,12 @@ public abstract class TestSuiteBase {
 
     }
 
-    static List<TestCaseFiles[]> getTestCasesFromConfigFile(File configFile, File testSuite, String discoveryPath, TestCaseGenerator gen) throws IOException, AssertionError {
+    static List<TestCaseFiles[]> getTestCasesFromConfigFile(File configFile, File testSuite, TestCaseGenerator gen) throws IOException, AssertionError {
         TestSpecification testSpecification = SpecificationFileReader.readSpecificationFolder(configFile, testSuite);
         List<File> includedFiles = testSpecification.getIncludedFiles();
         if (LLVMOptions.isDiscoveryTestMode()) {
             List<File> excludedFiles = testSpecification.getExcludedFiles();
-            File absoluteDiscoveryPath = new File(testSuite.getAbsolutePath(), discoveryPath);
+            File absoluteDiscoveryPath = new File(testSuite.getAbsolutePath(), LLVMOptions.getTestDiscoveryPath());
             assert absoluteDiscoveryPath.exists() : absoluteDiscoveryPath.toString();
             if (LLVMOptions.isDebug()) {
                 System.out.println("\tcollect files");

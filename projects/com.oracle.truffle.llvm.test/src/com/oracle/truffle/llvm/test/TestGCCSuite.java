@@ -58,11 +58,10 @@ public class TestGCCSuite extends TestSuiteBase {
     public static List<TestCaseFiles[]> getTestFiles() throws IOException {
         File configFile = LLVMPaths.GCC_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.GCC_TEST_SUITE;
-        String discoveryPath = LLVMOptions.getGCCTestDiscoveryPath();
         if (LLVMOptions.isDebug()) {
             System.out.println("...start to read and compile files");
         }
-        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, discoveryPath, new TestCaseGeneratorImpl());
+        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl());
         if (LLVMOptions.isDebug()) {
             System.out.println("...finished reading and compiling files!");
         }

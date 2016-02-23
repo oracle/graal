@@ -78,9 +78,11 @@ public class LLVMOptions {
          * the right value just copy the boot class path that you use to launch the main LLVM class"
          */
         REMOTE_TEST_BOOT_CLASSPATH("llvm-test-boot", "The boot classpath for the remote JVM used to capture native printf and other output.", null, LLVMOptions::parseString),
-        GCC_TEST_DISCOVERY_PATH("llvm-test-gcc-discovery", "Looks for newly supported GCC test cases in the specified path.", null, LLVMOptions::parseString),
-        LLVM_TEST_DISCOVER_PATH("llvm-test-llvm-discovery", "Looks for newly supported LLVM test cases in the specified path.", null, LLVMOptions::parseString),
-        NWCC_TEST_DISCOVER_PATH("llvm-test-nwcc-discovery", "Looks for newly supported NWCC test cases in the specified path.", null, LLVMOptions::parseString),
+        TEST_DISCOVERY_PATH(
+                        "llvm-test-discovery",
+                        "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.",
+                        null,
+                        LLVMOptions::parseString),
         DYN_LIBRARY_PATHS("llvm-dyn-libs", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath),
         PROJECT_ROOT("llvm-root", "Overrides the root of the LLVM project. This option exists to set the project root from mx", ".", LLVMOptions::parseString),
         OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("llvm-opt-expect", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean),
@@ -156,20 +158,12 @@ public class LLVMOptions {
         return getParsedProperty(Property.REMOTE_TEST_BOOT_CLASSPATH);
     }
 
-    public static String getGCCTestDiscoveryPath() {
-        return getParsedProperty(Property.GCC_TEST_DISCOVERY_PATH);
+    public static String getTestDiscoveryPath() {
+        return getParsedProperty(Property.TEST_DISCOVERY_PATH);
     }
 
     public static boolean isDiscoveryTestMode() {
-        return getGCCTestDiscoveryPath() != null || getLLVMTestDiscoveryPath() != null || getNWCCDiscoveryPath() != null;
-    }
-
-    public static String getLLVMTestDiscoveryPath() {
-        return getParsedProperty(Property.LLVM_TEST_DISCOVER_PATH);
-    }
-
-    public static String getNWCCDiscoveryPath() {
-        return getParsedProperty(Property.NWCC_TEST_DISCOVER_PATH);
+        return getTestDiscoveryPath() != null;
     }
 
     public static String[] getDynamicLibraryPaths() {
