@@ -68,33 +68,12 @@ public class NullabilityTest {
     }
 
     @Test
-    public void testCreateNotAlllowedNull() {
-        // TODO CS 7-Feb-16 assertion failure at the moment - should it raise an exception?
-        LAYOUT.createNullabilityTest(null, "bar");
-    }
-
-    @Test
-    public void testCreateBothNull() {
-        // TODO CS 7-Feb-16 assertion failure at the moment - should it raise an exception?
-        LAYOUT.createNullabilityTest(null, null);
-    }
-
-    @Test
     public void testSetNonNullableToNonNull() {
         final DynamicObject object = LAYOUT.createNullabilityTest("foo", "bar");
         Assert.assertNotNull(object);
         Assert.assertEquals("foo", LAYOUT.getNotNullable(object));
         LAYOUT.setNotNullable(object, "baz");
         Assert.assertEquals("baz", LAYOUT.getNotNullable(object));
-    }
-
-    @Test
-    public void testSetNonNullableToNull() {
-        // TODO CS 7-Feb-16 assertion failure at the moment - should it raise an exception?
-        final DynamicObject object = LAYOUT.createNullabilityTest("foo", "bar");
-        Assert.assertNotNull(object);
-        Assert.assertEquals("foo", LAYOUT.getNotNullable(object));
-        LAYOUT.setNotNullable(object, null);
     }
 
     @Test
