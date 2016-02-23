@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.debug;
+package com.oracle.truffle.api.debug.test;
 
-import com.oracle.truffle.api.instrument.SyntaxTag;
+import org.junit.Test;
 
-/**
- * A breakpoint associated with a {@link SyntaxTag}.
- *
- * @see Debugger
- */
-abstract class TagBreakpoint extends Breakpoint {
-
-    TagBreakpoint(State state, int ignoreCount, boolean isOneShot) {
-        super(state, ignoreCount, isOneShot);
+public final class DebugInstrumentTest {
+    @Test
+    public void placeholder() {
     }
-
-    /**
-     * Gets the tag that specifies where this breakpoint will trigger.
-     */
-    public abstract SyntaxTag getTag();
-
 }

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  * clones consistent.
  */
 @NodeInfo(cost = NodeCost.NONE)
+@SuppressWarnings("deprecation")
 final class ProbeNode extends EventHandlerNode {
 
     // Never changed once set.

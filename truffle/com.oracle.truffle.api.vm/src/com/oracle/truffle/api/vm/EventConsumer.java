@@ -25,14 +25,13 @@
 package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.debug.ExecutionEvent;
-import com.oracle.truffle.api.debug.SuspendedEvent;
 
 /**
  * {@link PolyglotEngine} generates various events and delivers them to
  * {@link PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) registered}
  * handlers. Each handler is registered for a particular type of event. Examples of events include
- * {@link ExecutionEvent} or {@link SuspendedEvent} useful when debugging {@link TruffleLanguage
+ * {@link com.oracle.truffle.api.debug.ExecutionEvent} or
+ * {@link com.oracle.truffle.api.debug.SuspendedEvent} useful when debugging {@link TruffleLanguage
  * Truffle language}s.
  *
  * @param <Event> type of event to observe and handle

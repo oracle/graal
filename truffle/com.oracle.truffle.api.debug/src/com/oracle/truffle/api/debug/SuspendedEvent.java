@@ -48,8 +48,8 @@ import com.oracle.truffle.api.nodes.Node;
 @SuppressWarnings("javadoc")
 public final class SuspendedEvent {
 
-    private static boolean TRACE = false;
-    private static final String TRACE_PREFIX = "EVENT: ";
+    private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
+    private static final String TRACE_PREFIX = "Suspnd: ";
     private static final PrintStream OUT = System.out;
 
     private static void trace(String format, Object... args) {

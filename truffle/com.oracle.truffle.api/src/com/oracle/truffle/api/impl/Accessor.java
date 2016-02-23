@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import java.io.OutputStream;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.Assumption;
@@ -42,8 +41,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
@@ -103,6 +100,7 @@ public abstract class Accessor {
                 return null;
             }
 
+            @SuppressWarnings("deprecation")
             @Override
             protected Visualizer getVisualizer() {
                 return null;
@@ -118,8 +116,7 @@ public abstract class Accessor {
         }.getRootNode();
 
         try {
-            Class.forName(Instrumenter.class.getName(), true, Instrumenter.class.getClassLoader());
-            Class.forName(Debugger.class.getName(), true, Debugger.class.getClassLoader());
+            Class.forName("com.oracle.truffle.api.instrument.Instrumenter", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             throw new IllegalStateException(ex);
         }
@@ -172,7 +169,7 @@ public abstract class Accessor {
         return API.eval(l, s, cache);
     }
 
-    protected Object evalInContext(Object vm, SuspendedEvent ev, String code, Node node, MaterializedFrame frame) throws IOException {
+    protected Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
         return API.evalInContext(vm, ev, code, node, frame);
     }
 
@@ -230,6 +227,11 @@ public abstract class Accessor {
     @SuppressWarnings("rawtypes")
     protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
         return INSTRUMENT.findLanguage(probe);
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected Class<? extends TruffleLanguage> findLanguage(Node node) {
+        return NODES.findLanguage(node);
     }
 
     @SuppressWarnings("rawtypes")
@@ -310,20 +312,16 @@ public abstract class Accessor {
         return INSTRUMENTHANDLER.createInstrumentationHandler(vm, out, err, in);
     }
 
-    protected Debugger createDebugger(Object vm, Instrumenter instrumenter) {
-        return DEBUG.createDebugger(vm, instrumenter);
-    }
-
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
     @TruffleBoundary
     @SuppressWarnings("unused")
-    protected Closeable executionStart(Object vm, int currentDepth, Debugger debugger, Source s) {
-        CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
-        Objects.requireNonNull(vm);
+    protected Closeable executionStart(Object vm, int currentDepth, boolean debugger, Source s) {
+        vm.getClass();
+        CompilerAsserts.neverPartOfCompilation();
         final Object prev = CURRENT_VM.get();
-        final Closeable debugClose = DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
+        final Closeable debugClose = DEBUG == null ? null : DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
         if (!(vm == previousVM.get())) {
             previousVM = new WeakReference<>(vm);
             oneVM.invalidate();
@@ -336,7 +334,9 @@ public abstract class Accessor {
             @Override
             public void close() throws IOException {
                 CURRENT_VM.set(prev);
-                debugClose.close();
+                if (debugClose != null) {
+                    debugClose.close();
+                }
             }
         }
         return new ContextCloseable();

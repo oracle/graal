@@ -51,7 +51,6 @@ public class EvalInstrumentTest {
 
     @Before
     public void before() {
-        // TODO (mlvdv) eventually abstract this
         try {
             vm = PolyglotEngine.newBuilder().build();
             final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");

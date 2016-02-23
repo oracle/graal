@@ -24,12 +24,6 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
-import com.oracle.truffle.api.instrument.QuitException;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.debug.shell.REPLClient;
-import com.oracle.truffle.tools.debug.shell.REPLMessage;
-import com.oracle.truffle.tools.debug.shell.server.REPLServer;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -43,6 +37,12 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import jline.console.ConsoleReader;
+
+import com.oracle.truffle.api.QuitException;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tools.debug.shell.REPLClient;
+import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import com.oracle.truffle.tools.debug.shell.server.REPLServer;
 
 /**
  * A very simple line-oriented, language-agnostic debugging client shell: the first step toward a
@@ -445,7 +445,7 @@ public class SimpleREPLClient implements REPLClient {
             final int fileLineCount = whereSource.getLineCount();
             final String code = whereSource.getCode();
 
-            writer.println("Frame " + selectedFrameNumber + ": " + whereSource.getShortName() + "\n");
+            writer.println("Frame " + selectedFrameNumber + " in " + whereSource.getShortName());
             final int halfListSize = listSize / 2;
             final int startLineNumber = Math.max(1, whereLineNumber - halfListSize);
             final int lastLineNumber = Math.min(startLineNumber + listSize - 1, fileLineCount);

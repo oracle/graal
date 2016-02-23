@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -40,10 +39,8 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -620,19 +617,8 @@ public final class NodeUtil {
      * </ul>
      */
     public static String printSyntaxTags(final Object node) {
-        if (node instanceof WrapperNode) {
-            final Probe probe = ((WrapperNode) node).getProbe();
-            final Collection<SyntaxTag> syntaxTags = probe.getSyntaxTags();
-            final StringBuilder sb = new StringBuilder();
-            String prefix = "";
-            sb.append("[");
-            for (SyntaxTag tag : syntaxTags) {
-                sb.append(prefix);
-                prefix = ",";
-                sb.append(tag.toString());
-            }
-            sb.append("]");
-            return sb.toString();
+        if ((node instanceof Node) && ((Node) node).getSourceSection() != null) {
+            return ((Node) node).getSourceSection().toString();
         }
         return "";
     }

@@ -62,6 +62,7 @@ public final class TestTruffleLanguage extends TruffleLanguage<Object> {
         return false;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected Visualizer getVisualizer() {
         return null;

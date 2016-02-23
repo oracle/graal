@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,26 +37,29 @@ import com.oracle.truffle.api.nodes.Node;
  */
 public interface Visualizer {
 
-    // TODO (mlvdv) "Visualizer" is misleading: rename.
     /**
      * Gets a printer for Truffle ASTs, possibly specialized to be helpful for a specific guest
      * language implementation.
      */
+    @Deprecated
     ASTPrinter getASTPrinter();
 
     /**
      * A short description of a source location in terms of source + line number.
      */
+    @Deprecated
     String displaySourceLocation(Node node);
 
     /**
      * Describes the name of the method containing a node.
      */
+    @Deprecated
     String displayMethodName(Node node);
 
     /**
      * The name of the method.
      */
+    @Deprecated
     String displayCallTargetName(CallTarget callTarget);
 
     /**
@@ -65,11 +68,13 @@ public interface Visualizer {
      * @param trim if {@code > 0}, them limit size of String to either the value of trim or the
      *            number of characters in the first line, whichever is lower.
      */
+    @Deprecated
     String displayValue(Object value, int trim);
 
     /**
      * Converts a slot identifier in the guest language to a display string.
      */
+    @Deprecated
     String displayIdentifier(FrameSlot slot);
 
 }
