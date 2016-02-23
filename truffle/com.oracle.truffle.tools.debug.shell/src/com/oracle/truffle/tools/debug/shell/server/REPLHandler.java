@@ -35,14 +35,13 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
-import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
+import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.BreakpointInfo;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.Context;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.Visualizer;
@@ -256,34 +255,6 @@ public abstract class REPLHandler {
             reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointInfo.getID()));
             reply.put(REPLMessage.LINE_NUMBER, Integer.toString(lineNumber));
             return finishReplySucceeded(reply, "One-shot line breakpoint set");
-        }
-    };
-
-    public static final REPLHandler BREAK_AT_THROW_HANDLER = new REPLHandler(REPLMessage.BREAK_AT_THROW) {
-
-        @Override
-        public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
-            final REPLMessage reply = createReply();
-            try {
-                replServer.setTagBreakpoint(DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, false);
-                return finishReplySucceeded(reply, "Breakpoint at any throw set");
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
-        }
-    };
-
-    public static final REPLHandler BREAK_AT_THROW_ONCE_HANDLER = new REPLHandler(REPLMessage.BREAK_AT_THROW_ONCE) {
-
-        @Override
-        public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
-            final REPLMessage reply = createReply();
-            try {
-                replServer.setTagBreakpoint(DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, true);
-                return finishReplySucceeded(reply, "One-shot breakpoint at any throw set");
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
         }
     };
 

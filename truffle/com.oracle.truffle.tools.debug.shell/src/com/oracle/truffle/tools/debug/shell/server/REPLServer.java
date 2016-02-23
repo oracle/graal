@@ -46,8 +46,6 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
-import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.LineLocation;
@@ -59,6 +57,8 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
 import com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient;
+import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
+import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 
 /**
  * The server side of a simple message-based protocol for a possibly remote language
@@ -175,8 +175,6 @@ public final class REPLServer {
         add(REPLHandler.BACKTRACE_HANDLER);
         add(REPLHandler.BREAK_AT_LINE_HANDLER);
         add(REPLHandler.BREAK_AT_LINE_ONCE_HANDLER);
-        add(REPLHandler.BREAK_AT_THROW_HANDLER);
-        add(REPLHandler.BREAK_AT_THROW_ONCE_HANDLER);
         add(REPLHandler.BREAKPOINT_INFO_HANDLER);
         add(REPLHandler.CALL_HANDLER);
         add(REPLHandler.CLEAR_BREAK_HANDLER);
@@ -537,6 +535,7 @@ public final class REPLServer {
         return info;
     }
 
+    @Deprecated
     BreakpointInfo setTagBreakpoint(int ignoreCount, StandardSyntaxTag tag, boolean oneShot) throws IOException {
         final BreakpointInfo info = new TagBreakpointInfo(tag, ignoreCount, oneShot);
         info.activate();

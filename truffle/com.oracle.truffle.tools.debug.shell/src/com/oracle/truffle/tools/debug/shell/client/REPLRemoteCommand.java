@@ -147,60 +147,6 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
     };
 
-    public static final REPLRemoteCommand BREAK_AT_THROW_CMD = new REPLRemoteCommand("break-at-throw", "breakthrow", "Break at any throw") {
-
-        private final String[] help = {"break-at-throw: set breakpoint on any throw"};
-
-        @Override
-        public String[] getHelp() {
-            return help;
-        }
-
-        @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.BREAK_AT_THROW);
-            return request;
-        }
-
-        @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
-
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                firstReply.put(REPLMessage.DISPLAY_MSG, "breakpoint at any throw set");
-            }
-            super.processReply(context, replies);
-        }
-    };
-
-    public static final REPLRemoteCommand BREAK_AT_THROW_ONCE_CMD = new REPLRemoteCommand("break-at-throw-once", "break1throw", "Break once at any throw") {
-
-        private final String[] help = {"break-at-throw: set one-short breakpoint on any throw"};
-
-        @Override
-        public String[] getHelp() {
-            return help;
-        }
-
-        @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.BREAK_AT_THROW_ONCE);
-            return request;
-        }
-
-        @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
-
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                firstReply.put(REPLMessage.DISPLAY_MSG, "one-shot breakpoint at any throw set");
-            }
-            super.processReply(context, replies);
-        }
-    };
-
     public static final REPLRemoteCommand CALL_CMD = new REPLRemoteCommand("call", null, "call a method/function") {
 
         private final String[] help = {"call <name> <args>: calls a function by name"};

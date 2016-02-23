@@ -47,8 +47,8 @@ public final class REPLMessage {
     public static final String BACKTRACE = "backtrace";
     public static final String BREAK_AT_LINE = "break-at-line";
     public static final String BREAK_AT_LINE_ONCE = "break-at-line-once";
-    public static final String BREAK_AT_THROW = "break-at-throw";
-    public static final String BREAK_AT_THROW_ONCE = "break-at-throw-once";
+    @Deprecated public static final String BREAK_AT_THROW = "break-at-throw";
+    @Deprecated public static final String BREAK_AT_THROW_ONCE = "break-at-throw-once";
     public static final String BREAKPOINT_CONDITION = "breakpoint-condition";
     public static final String BREAKPOINT_HIT_COUNT = "breakpoint-hit-count";
     public static final String BREAKPOINT_ID = "breakpoint-id";

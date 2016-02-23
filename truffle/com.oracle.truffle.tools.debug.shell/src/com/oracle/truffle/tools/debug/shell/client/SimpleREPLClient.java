@@ -155,8 +155,6 @@ public class SimpleREPLClient implements REPLClient {
         addCommand(backtraceCommand);
         addCommand(REPLRemoteCommand.BREAK_AT_LINE_CMD);
         addCommand(REPLRemoteCommand.BREAK_AT_LINE_ONCE_CMD);
-        addCommand(REPLRemoteCommand.BREAK_AT_THROW_CMD);
-        addCommand(REPLRemoteCommand.BREAK_AT_THROW_ONCE_CMD);
         addCommand(REPLRemoteCommand.CALL_CMD);
         addCommand(REPLRemoteCommand.CALL_STEP_INTO_CMD);
         addCommand(REPLRemoteCommand.CLEAR_BREAK_CMD);
