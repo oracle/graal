@@ -25,11 +25,11 @@ package com.oracle.truffle.dsl.processor;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -58,6 +58,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
  * THIS IS NOT PUBLIC API.
  */
 public final class InteropProcessor extends AbstractProcessor {
+
+    private static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{Message.READ, Message.WRITE, Message.IS_NULL, Message.IS_EXECUTABLE, Message.IS_BOXED, Message.HAS_SIZE,
+                    Message.GET_SIZE, Message.UNBOX, Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -104,12 +107,20 @@ public final class InteropProcessor extends AbstractProcessor {
 
             final String clazzName = extending.toString();
             String fqn = pkg + "." + clazzName;
-            String messageName = message.value().toLowerCase(Locale.ENGLISH);
+            String messageName = message.value();
 
             MessageGenerator currentGenerator = null;
-            Message currentMessage = null;
+            Object currentMessage = null;
             try {
                 currentMessage = Message.valueOf(messageName);
+            } catch (IllegalArgumentException ex) {
+                TypeElement typeElement = processingEnv.getElementUtils().getTypeElement(message.value());
+                TypeElement messageElement = processingEnv.getElementUtils().getTypeElement(Message.class.getName());
+                if (typeElement != null && processingEnv.getTypeUtils().isAssignable(typeElement.asType(), messageElement.asType())) {
+                    currentMessage = messageName;
+                }
+            }
+            if (currentMessage != null) {
                 if (Message.READ.toString().equalsIgnoreCase(messageName)) {
                     currentGenerator = new ReadGenerator(processingEnv, e, pkg, clazzName, fqn, messageName, ((TypeElement) e).getSimpleName().toString(), truffleLanguageFullClazzName);
                 } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
@@ -121,40 +132,54 @@ public final class InteropProcessor extends AbstractProcessor {
                 } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
                                 Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
                     currentGenerator = new ExecuteGenerator(processingEnv, e, pkg, clazzName, fqn, messageName, ((TypeElement) e).getSimpleName().toString(), truffleLanguageFullClazzName);
+                } else {
+                    assert !KNOWN_MESSAGES.contains(currentMessage);
+                    currentGenerator = new GenericGenerator(processingEnv, e, pkg, clazzName, fqn, messageName.substring(messageName.lastIndexOf('.') + 1),
+                                    ((TypeElement) e).getSimpleName().toString(),
+                                    truffleLanguageFullClazzName);
                 }
-            } catch (IllegalArgumentException ex) {
-                // fall through
             }
 
             if (currentGenerator == null) {
-                generateErrorClass(e, pkg, fqn, clazzName);
+                generateErrorClass(e, pkg, fqn, clazzName, null);
                 emitError("Unknown message type: " + message.value(), e);
                 continue;
             }
 
             if (isInstanceMissing(receiverTypeFullClassName)) {
-                generateErrorClass(e, pkg, fqn, clazzName);
+                generateErrorClass(e, pkg, fqn, clazzName, null);
                 emitError("Missing isInstance method in class " + receiverTypeFullClassName, e);
                 continue;
             }
 
             if (!e.getModifiers().contains(javax.lang.model.element.Modifier.FINAL)) {
-                generateErrorClass(e, pkg, fqn, clazzName);
+                generateErrorClass(e, pkg, fqn, clazzName, null);
                 emitError("Class must be final", e);
                 continue;
             }
 
             List<ExecutableElement> methods = currentGenerator.getAccessMethods();
-            if (methods.size() == 0) {
-                generateErrorClass(e, pkg, fqn, clazzName);
+            if (methods.isEmpty()) {
+                generateErrorClass(e, pkg, fqn, clazzName, null);
                 emitError("There needs to be at least one access method.", e);
                 continue;
+            }
+
+            List<? extends VariableElement> params = methods.get(0).getParameters();
+            int argumentSize = params.size();
+            for (ExecutableElement m : methods) {
+                params = m.getParameters();
+                if (argumentSize != params.size()) {
+                    generateErrorClass(e, pkg, fqn, clazzName, methods);
+                    emitError("Inconsistent argument length.", e);
+                    continue top;
+                }
             }
 
             for (ExecutableElement m : methods) {
                 String errorMessage = currentGenerator.checkSignature(m);
                 if (errorMessage != null) {
-                    generateErrorClass(e, pkg, fqn, clazzName);
+                    generateErrorClass(e, pkg, fqn, clazzName, null);
                     emitError(errorMessage, m);
                     continue top;
                 }
@@ -186,7 +211,7 @@ public final class InteropProcessor extends AbstractProcessor {
         return true;
     }
 
-    private void generateErrorClass(Element e, final String pkg, final String fqn, final String clazzName) {
+    private void generateErrorClass(Element e, final String pkg, final String fqn, final String clazzName, List<ExecutableElement> methods) {
         try {
             JavaFileObject file = processingEnv.getFiler().createSourceFile(fqn, e);
             Writer w = file.openWriter();
@@ -194,6 +219,11 @@ public final class InteropProcessor extends AbstractProcessor {
 
             w.append("abstract class ").append(clazzName).append(" {\n");
             w.append("  // An error occured, fix ").append(e.getSimpleName()).append(" first.\n");
+            if (methods != null) {
+                for (ExecutableElement m : methods) {
+                    generateAbstractMethod(w, m, null);
+                }
+            }
             w.append("}\n");
             w.close();
         } catch (IOException ex1) {
@@ -251,6 +281,19 @@ public final class InteropProcessor extends AbstractProcessor {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
+    }
+
+    static void generateAbstractMethod(Writer w, ExecutableElement method, String extraName) throws IOException {
+        String methodName = extraName == null ? method.getSimpleName().toString() : extraName;
+        w.append("  protected abstract ").append(method.getReturnType().toString()).append(" ").append(methodName);
+        w.append("(");
+        final List<? extends VariableElement> params = method.getParameters();
+        String sep = "";
+        for (VariableElement p : params) {
+            w.append(sep).append(p.asType().toString()).append(" ").append(p.getSimpleName());
+            sep = ", ";
+        }
+        w.append(");\n");
     }
 
     private abstract static class MessageGenerator {
@@ -328,15 +371,7 @@ public final class InteropProcessor extends AbstractProcessor {
 
         void appendAbstractMethods(Writer w) throws IOException {
             for (ExecutableElement method : getAccessMethods()) {
-                w.append("  protected abstract ").append(method.getReturnType().toString()).append(" ").append(ACCESS_METHOD_NAME);
-                w.append("(");
-                final List<? extends VariableElement> params = method.getParameters();
-                String sep = "";
-                for (VariableElement p : params) {
-                    w.append(sep).append(p.asType().toString()).append(" ").append(p.getSimpleName());
-                    sep = ", ";
-                }
-                w.append(");\n");
+                generateAbstractMethod(w, method, ACCESS_METHOD_NAME);
             }
         }
 
@@ -413,7 +448,8 @@ public final class InteropProcessor extends AbstractProcessor {
         private final String targetableUnaryNode;
         private final String unaryRootNode;
 
-        UnaryGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName, String truffleLanguageFullClazzName) {
+        UnaryGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName,
+                        String truffleLanguageFullClazzName) {
             super(processingEnv, e, pkg, clazzName, fullClazzName, methodName, userClassName, truffleLanguageFullClazzName);
             this.targetableUnaryNode = (new StringBuilder(methodName)).replace(0, 1, methodName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
             this.unaryRootNode = (new StringBuilder(methodName)).replace(0, 1, methodName.substring(0, 1).toUpperCase()).append("RootNode").toString();
@@ -587,7 +623,8 @@ public final class InteropProcessor extends AbstractProcessor {
         private static final String TARGETABLE_READ_NODE = "TargetableReadNode";
         private static final String READ_ROOT_NODE = "ReadRootNode";
 
-        ReadGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName, String truffleLanguageFullClazzName) {
+        ReadGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName,
+                        String truffleLanguageFullClazzName) {
             super(processingEnv, e, pkg, clazzName, fullClazzName, methodName, userClassName, truffleLanguageFullClazzName);
         }
 
@@ -651,7 +688,8 @@ public final class InteropProcessor extends AbstractProcessor {
         private static final String TARGETABLE_WRITE_NODE = "TargetableWriteNode";
         private static final String WRITE_ROOT_NODE = "WriteRootNode";
 
-        WriteGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName, String truffleLanguageFullClazzName) {
+        WriteGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName,
+                        String truffleLanguageFullClazzName) {
             super(processingEnv, e, pkg, clazzName, fullClazzName, methodName, userClassName, truffleLanguageFullClazzName);
         }
 
@@ -709,6 +747,86 @@ public final class InteropProcessor extends AbstractProcessor {
 
     }
 
+    private static class GenericGenerator extends MessageGenerator {
+
+        private final String targetableExecuteNode;
+        private final String executeRootNode;
+
+        GenericGenerator(ProcessingEnvironment processingEnv, Element e, String pkg, String clazzName, String fullClazzName, String methodName, String userClassName,
+                        String truffleLanguageFullClazzName) {
+            super(processingEnv, e, pkg, clazzName, fullClazzName, methodName, userClassName, truffleLanguageFullClazzName);
+            this.targetableExecuteNode = (new StringBuilder(methodName)).replace(0, 1, methodName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
+            this.executeRootNode = (new StringBuilder(methodName)).replace(0, 1, methodName.substring(0, 1).toUpperCase()).append("RootNode").toString();
+        }
+
+        @Override
+        int getParameterCount() {
+            return getAccessMethods().get(0).getParameters().size();
+        }
+
+        @Override
+        String getTargetableNodeName() {
+            return targetableExecuteNode;
+        }
+
+        @Override
+        void appendImports(Writer w) throws IOException {
+            super.appendImports(w);
+            w.append("import java.util.List;").append("\n");
+        }
+
+        @Override
+        void appendRootNode(Writer w) throws IOException {
+            w.append("    private final static class ").append(executeRootNode).append(" extends RootNode {\n");
+            w.append("        protected ").append(executeRootNode).append("(Class<? extends TruffleLanguage<?>> language) {\n");
+            w.append("            super(language, null, null);\n");
+            w.append("        }\n");
+            w.append("\n");
+            w.append("        @Child private ").append(targetableExecuteNode).append(" node = ").append(pkg).append(".").append(clazzName).append("Factory.").append(targetableExecuteNode).append(
+                            "Gen.create();\n");
+            w.append("\n");
+            w.append("        @Override\n");
+            w.append("        public Object execute(VirtualFrame frame) {\n");
+            w.append("            try {\n");
+            w.append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
+            w.append("              List<Object> arguments = ForeignAccess.getArguments(frame);\n");
+            for (int i = 0; i < getParameterCount() - 2; i++) {
+                String index = String.valueOf(i);
+                w.append("              Object arg").append(index).append(" = arguments.get(").append(index).append(");\n");
+            }
+            w.append("              return node.executeWithTarget(frame, receiver, ");
+            String sep = "";
+            for (int i = 0; i < getParameterCount() - 2; i++) {
+                String index = String.valueOf(i);
+                w.append(sep).append("arg").append(index);
+                sep = ", ";
+            }
+            w.append(");\n");
+
+            w.append("            } catch (UnsupportedSpecializationException e) {\n");
+            w.append("                throw UnsupportedTypeException.raise(e.getSuppliedValues());\n");
+            w.append("            }\n");
+            w.append("        }\n");
+            w.append("\n");
+            w.append("    }\n");
+        }
+
+        @Override
+        String getRootNodeName() {
+            return executeRootNode;
+        }
+
+        @Override
+        String checkSignature(ExecutableElement method) {
+            final List<? extends VariableElement> params = method.getParameters();
+            if (!params.get(0).asType().toString().equals(VirtualFrame.class.getName())) {
+                return "The first argument must be a " + VirtualFrame.class.getName() + "- but is " + params.get(0).asType().toString();
+            }
+            return null;
+        }
+
+    }
+
     private static class FactoryGenerator {
 
         private final String receiverTypeClass;
@@ -716,7 +834,7 @@ public final class InteropProcessor extends AbstractProcessor {
         private final String className;
         private final JavaFileObject factoryFile;
 
-        private final Map<Message, String> messageHandlers;
+        private final Map<Object, String> messageHandlers;
 
         FactoryGenerator(String packageName, String className, String receiverTypeClass, JavaFileObject factoryFile) {
             this.receiverTypeClass = receiverTypeClass;
@@ -726,7 +844,7 @@ public final class InteropProcessor extends AbstractProcessor {
             this.messageHandlers = new HashMap<>();
         }
 
-        public void addMessageHandler(Message message, String factoryMethodInvocation) {
+        public void addMessageHandler(Object message, String factoryMethodInvocation) {
             messageHandlers.put(message, factoryMethodInvocation);
         }
 
@@ -874,10 +992,13 @@ public final class InteropProcessor extends AbstractProcessor {
 
         private void appendFactoryAccessMessage(Writer w) throws IOException {
             w.append("    public CallTarget accessMessage(Message unknown) {").append("\n");
-            for (Message m : messageHandlers.keySet()) {
-                w.append("      if (Message.valueOf(\"").append(m.toString()).append("\").getClass().isInstance(unknown)) {").append("\n");
-                w.append("        return Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(m)).append(");").append("\n");
-                w.append("      }").append("\n");
+            for (Object m : messageHandlers.keySet()) {
+                if (!KNOWN_MESSAGES.contains(m)) {
+                    String msg = m instanceof Message ? Message.toString((Message) m) : (String) m;
+                    w.append("      if (unknown instanceof ").append(msg).append(") {").append("\n");
+                    w.append("        return Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(m)).append(");").append("\n");
+                    w.append("      }").append("\n");
+                }
             }
             w.append("      throw UnsupportedMessageException.raise(unknown);").append("\n");
             w.append("    }").append("\n");

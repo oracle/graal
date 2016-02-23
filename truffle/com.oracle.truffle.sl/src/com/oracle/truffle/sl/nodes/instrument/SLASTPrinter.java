@@ -40,26 +40,28 @@
  */
 package com.oracle.truffle.sl.nodes.instrument;
 
+import com.oracle.truffle.api.instrument.ASTPrinter;
 import com.oracle.truffle.api.instrument.InstrumentationNode;
-import com.oracle.truffle.api.instrument.impl.DefaultASTPrinter;
+import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.source.SourceSection;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 
 /**
  * SLASTPrinter is used to print for SL's internal Truffle AST. This is used by
  * {@link SLDefaultVisualizer} to provide a means of displaying the internal Truffle AST
  */
-public final class SLASTPrinter extends DefaultASTPrinter {
+public final class SLASTPrinter implements ASTPrinter {
 
     public SLASTPrinter() {
     }
 
-    @Override
     protected void printTree(PrintWriter p, Node node, int maxDepth, Node markNode, int level) {
         if (node == null) {
             p.print("null");
@@ -122,6 +124,106 @@ public final class SLASTPrinter extends DefaultASTPrinter {
                 p.print("}");
             }
         }
+    }
+
+    @Override
+    public void printTree(PrintWriter p, Node node, int maxDepth, Node markNode) {
+        printTree(p, node, maxDepth, markNode, 1);
+        p.println();
+        p.flush();
+    }
+
+    @Override
+    public String printTreeToString(Node node, int maxDepth, Node markNode) {
+        StringWriter out = new StringWriter();
+        printTree(new PrintWriter(out), node, maxDepth, markNode);
+        return out.toString();
+    }
+
+    @Override
+    public String printTreeToString(Node node, int maxDepth) {
+        return printTreeToString(node, maxDepth, null);
+    }
+
+    @Override
+    public String printNodeWithInstrumentation(Node node) {
+        if (node == null) {
+            return "null";
+        }
+        final StringBuilder sb = new StringBuilder();
+        sb.append(nodeName(node));
+        sb.append("(");
+        if (node instanceof InstrumentationNode) {
+            sb.append(instrumentInfo((InstrumentationNode) node));
+        }
+        sb.append(sourceInfo(node));
+        sb.append(NodeUtil.printSyntaxTags(node));
+        sb.append(")");
+        final Node parent = node.getParent();
+        if (parent instanceof WrapperNode) {
+            final WrapperNode wrapper = (WrapperNode) parent;
+            sb.append(" Probed");
+            sb.append(NodeUtil.printSyntaxTags(wrapper));
+        }
+        return sb.toString();
+    }
+
+    protected void printChildren(PrintWriter p, int maxDepth, Node markNode, int level, NodeFieldAccessor field, Object value) {
+        printNewLine(p, level);
+        p.print(field.getName());
+        Node[] children = (Node[]) value;
+        p.print(" = [");
+        String sep = "";
+        for (Node child : children) {
+            p.print(sep);
+            sep = ", ";
+            printTree(p, child, maxDepth, markNode, level + 1);
+        }
+        p.print("]");
+    }
+
+    protected void printChild(PrintWriter p, int maxDepth, Node markNode, int level, NodeFieldAccessor field, Object value) {
+        final Node valueNode = (Node) value;
+        printNewLine(p, level, valueNode == markNode);
+        p.print(field.getName());
+        p.print(" = ");
+        printTree(p, valueNode, maxDepth, markNode, level + 1);
+    }
+
+    protected static void printNewLine(PrintWriter p, int level, boolean mark) {
+        p.println();
+        for (int i = 0; i < level; i++) {
+            if (mark && i == 0) {
+                p.print(" -->");
+            } else {
+                p.print("    ");
+            }
+        }
+    }
+
+    protected static void printNewLine(PrintWriter p, int level) {
+        printNewLine(p, level, false);
+    }
+
+    protected static String nodeName(Node node) {
+        return node.getClass().getSimpleName();
+    }
+
+    protected static String sourceInfo(Node node) {
+        final SourceSection src = node.getSourceSection();
+        if (src != null) {
+            if (src.getSource() == null) {
+                return src.getShortDescription();
+            } else {
+                return src.getSource().getName() + ":" + src.getStartLine();
+            }
+        }
+        return "";
+    }
+
+    protected static String instrumentInfo(InstrumentationNode node) {
+        final String info = node.instrumentationInfo();
+        return info == null ? "" : info;
     }
 
 }

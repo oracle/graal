@@ -260,7 +260,7 @@ public class SimpleREPLClient implements REPLClient {
         /**
          * Create a new context on the occasion of an execution halting.
          */
-        public ClientContextImpl(ClientContextImpl predecessor, REPLMessage message) {
+        ClientContextImpl(ClientContextImpl predecessor, REPLMessage message) {
             this.predecessor = predecessor;
             this.level = predecessor == null ? 0 : predecessor.level + 1;
 
@@ -696,7 +696,7 @@ public class SimpleREPLClient implements REPLClient {
      */
     private abstract class REPLLocalCommand extends REPLCommand {
 
-        public REPLLocalCommand(String command, String abbreviation, String description) {
+        REPLLocalCommand(String command, String abbreviation, String description) {
             super(command, abbreviation, description);
         }
 
@@ -708,7 +708,7 @@ public class SimpleREPLClient implements REPLClient {
      */
     private abstract class REPLIndirectCommand extends REPLCommand {
 
-        public REPLIndirectCommand(String command, String abbreviation, String description) {
+        REPLIndirectCommand(String command, String abbreviation, String description) {
             super(command, abbreviation, description);
         }
 
@@ -1350,7 +1350,7 @@ public class SimpleREPLClient implements REPLClient {
 
         private Boolean value;
 
-        public BooleanOption(boolean value, String name, String description) {
+        BooleanOption(boolean value, String name, String description) {
             super(name, description);
             this.value = value;
         }
@@ -1380,7 +1380,7 @@ public class SimpleREPLClient implements REPLClient {
 
         private Integer value;
 
-        public IntegerOption(int value, String name, String description) {
+        IntegerOption(int value, String name, String description) {
             super(name, description);
             this.value = value;
         }

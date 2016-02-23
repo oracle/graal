@@ -37,12 +37,12 @@ final class GenericObjectAccessNode extends ObjectAccessNode {
 
     @Child private ForeignAccessArguments accessArguments = new ForeignAccessArguments();
 
-    public GenericObjectAccessNode(Message access) {
+    GenericObjectAccessNode(Message access) {
         this.access = access;
         indirectCallNode = Truffle.getRuntime().createIndirectCallNode();
     }
 
-    public GenericObjectAccessNode(GenericObjectAccessNode prev) {
+    GenericObjectAccessNode(GenericObjectAccessNode prev) {
         this(prev.access);
     }
 

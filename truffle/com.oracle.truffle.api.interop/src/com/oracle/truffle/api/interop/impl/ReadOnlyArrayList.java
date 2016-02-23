@@ -236,7 +236,7 @@ public final class ReadOnlyArrayList<T> implements List<T> {
     private final class LI implements ListIterator<T>, Iterator<T> {
         private int index;
 
-        public LI(int index) {
+        LI(int index) {
             this.index = index;
         }
 

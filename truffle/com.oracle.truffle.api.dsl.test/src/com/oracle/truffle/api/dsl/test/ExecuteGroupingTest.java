@@ -51,7 +51,7 @@ public class ExecuteGroupingTest {
 
         private final Object returnValue;
 
-        public ExecuteGroupingChild(Object returnValue) {
+        ExecuteGroupingChild(Object returnValue) {
             this.returnValue = returnValue;
         }
 

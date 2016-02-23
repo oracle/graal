@@ -49,6 +49,8 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing an
@@ -236,7 +238,7 @@ public abstract class TruffleLanguage<C> {
      * {@linkplain Instrumenter#probe(Node) probing}.
      * <p>
      * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
-     *
+     * 
      * @see WrapperNode
      */
     protected abstract boolean isInstrumentable(Node node);
@@ -361,6 +363,7 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream err;
         private final OutputStream out;
         private final Instrumenter instrumenter;
+        private final Object[] services;
         private final Map<String, Object> config;
 
         Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, Map<String, Object> config) {
@@ -370,6 +373,9 @@ public abstract class TruffleLanguage<C> {
             this.out = out;
             this.lang = lang;
             this.instrumenter = instrumenter;
+            LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
+            API.collectEnvServices(collectedServices, vm, lang, this);
+            this.services = collectedServices.toArray();
             this.config = config;
             this.langCtx = new LangCtx<>(lang, this);
         }
@@ -454,6 +460,28 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Looks additional service up. An environment for a particular {@link TruffleLanguage
+         * language} and a {@link com.oracle.truffle.api.vm.PolyglotEngine} may also be associated
+         * with additional services. One can request implementations of such services by calling
+         * this method with the type identifying the requested service and its API.
+         *
+         * Services that can be obtained via this method include
+         * {@link com.oracle.truffle.api.instrumentation.Instrumenter} and others.
+         *
+         * @param <T> type of requested service
+         * @param type class of requested service
+         * @return instance of T or <code>null</code> if there is no such service available
+         */
+        public <T> T lookup(Class<T> type) {
+            for (Object obj : services) {
+                if (type.isInstance(obj)) {
+                    return type.cast(obj);
+                }
+            }
+            return null;
+        }
+
+        /**
          * Configuration arguments for this language. Arguments set
          * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#config when constructing the
          * engine} are accessible via this map.
@@ -492,6 +520,11 @@ public abstract class TruffleLanguage<C> {
         protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> config) {
             Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
             return env;
+        }
+
+        @Override
+        protected void collectEnvServices(Set<Object> collectTo, Object vm, TruffleLanguage<?> impl, Env context) {
+            super.collectEnvServices(collectTo, vm, impl, context);
         }
 
         @Override

@@ -132,7 +132,7 @@ public class SourceSectionTest {
         // BEGIN: NodeWithFixedSourceSection
         private final SourceSection section;
 
-        public NodeWithFixedSourceSection(SourceSection section) {
+        NodeWithFixedSourceSection(SourceSection section) {
             this.section = section;
         }
 

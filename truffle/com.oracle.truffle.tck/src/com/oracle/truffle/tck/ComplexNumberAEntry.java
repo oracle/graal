@@ -32,7 +32,7 @@ final class ComplexNumberAEntry implements TruffleObject {
     private final ComplexNumbersA numbers;
     private final int index;
 
-    public ComplexNumberAEntry(ComplexNumbersA numbers, int index) {
+    ComplexNumberAEntry(ComplexNumbersA numbers, int index) {
         this.numbers = numbers;
         this.index = index;
     }

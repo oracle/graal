@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -120,6 +121,8 @@ public abstract class Source {
     private static final Map<String, WeakReference<Source>> nameToSource = new HashMap<>();
 
     private static boolean fileCacheEnabled = true;
+
+    private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
 
     /**
      * Locates an existing instance by the name under which it was indexed.
@@ -195,7 +198,7 @@ public abstract class Source {
      *             method matches the file name
      */
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Source.fromFileName from compiled code");
         assert chars != null;
 
         final WeakReference<Source> nameRef = nameToSource.get(fileName);
@@ -228,7 +231,7 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      */
     public static Source fromText(CharSequence chars, String description) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
         return new LiteralSource(description, chars.toString());
     }
 
@@ -240,7 +243,7 @@ public abstract class Source {
      * @return a newly created, non-indexed, initially empty, appendable source representation
      */
     public static Source fromAppendableText(String description) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
         return new AppendableLiteralSource(description);
     }
 
@@ -254,7 +257,7 @@ public abstract class Source {
      * @return a newly created, source representation
      */
     public static Source fromNamedText(CharSequence chars, String name) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
         final Source source = new LiteralSource(name, chars.toString());
         nameToSource.put(name, new WeakReference<>(source));
         return source;
@@ -270,7 +273,7 @@ public abstract class Source {
      * @return a newly created, indexed, initially empty, appendable source representation
      */
     public static Source fromNamedAppendableText(String name) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedAppendable from compiled code");
         final Source source = new AppendableLiteralSource(name);
         nameToSource.put(name, new WeakReference<>(source));
         return source;
@@ -287,7 +290,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if the specified sub-range is not contained in the base
      */
     public static Source subSource(Source base, int baseCharIndex, int length) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
         final SubSource subSource = SubSource.create(base, baseCharIndex, length);
         return subSource;
     }
@@ -302,7 +305,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if the index is out of range
      */
     public static Source subSource(Source base, int baseCharIndex) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
 
         return subSource(base, baseCharIndex, base.getLength() - baseCharIndex);
     }
@@ -316,7 +319,7 @@ public abstract class Source {
      * @throws IOException if reading fails
      */
     public static Source fromURL(URL url, String description) throws IOException {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Source.fromURL from compiled code");
         return URLSource.get(url, description);
     }
 
@@ -329,7 +332,7 @@ public abstract class Source {
      * @throws IOException if reading fails
      */
     public static Source fromReader(Reader reader, String description) throws IOException {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Source.fromReader from compiled code");
         return new LiteralSource(description, read(reader));
     }
 
@@ -361,7 +364,7 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      */
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, Charset charset) {
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
         return new BytesSource(description, bytes, byteIndex, length, charset);
     }
 
@@ -543,7 +546,33 @@ public abstract class Source {
      */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
         checkRange(charIndex, length);
-        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, SourceSection.EMTPY_TAGS);
+    }
+
+    /**
+     * Creates a representation of a contiguous region of text in the source.
+     * <p>
+     * This method performs no checks on the validity of the arguments.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     * @param identifier terse description of the region
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param charIndex the 0-based index of the first character of the section
+     * @param length the number of characters in the section
+     * @param tags the tags associated with this section. Tags must be non-null and
+     *            {@link String#intern() interned}.
+     * @return newly created object representing the specified region
+     */
+    public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length, String... tags) {
+        checkRange(charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
+    }
+
+    private SourceSection createSectionImpl(String identifier, int startLine, int startColumn, int charIndex, int length, String[] tags) {
+        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length, tags);
     }
 
     /**
@@ -569,7 +598,7 @@ public abstract class Source {
             throw new IllegalArgumentException("column out of range");
         }
         final int startOffset = lineStartOffset + startColumn - 1;
-        return new SourceSection(null, this, identifier, startLine, startColumn, startOffset, length);
+        return createSectionImpl(identifier, startLine, startColumn, startOffset, length, SourceSection.EMTPY_TAGS);
     }
 
     /**
@@ -592,10 +621,35 @@ public abstract class Source {
      * @throws IllegalStateException if the source is one of the "null" instances
      */
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
+        return createSection(identifier, charIndex, length, SourceSection.EMTPY_TAGS);
+    }
+
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
+     * source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     *
+     * @param identifier terse description of the region
+     * @param charIndex 0-based position of the first character in the section
+     * @param length the number of characters in the section
+     * @param tags the tags associated with this section. Tags must be non-null and
+     *            {@link String#intern() interned}.
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if either of the arguments are outside the text of the
+     *             source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     */
+    public final SourceSection createSection(String identifier, int charIndex, int length, String... tags) throws IllegalArgumentException {
         checkRange(charIndex, length);
         final int startLine = getLineNumber(charIndex);
         final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
-        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
     }
 
     void checkRange(int charIndex, int length) {
@@ -747,7 +801,7 @@ public abstract class Source {
 
         @Override
         public int hashCode() {
-            return description.hashCode() * code.hashCode();
+            return Objects.hash(description, code);
         }
 
         @Override
@@ -760,7 +814,7 @@ public abstract class Source {
             }
             if (obj instanceof LiteralSource) {
                 LiteralSource other = (LiteralSource) obj;
-                return description.equals(other.description) && code.equals(other.code) && equalMime(other);
+                return Objects.equals(description, other.description) && code.equals(other.code) && equalMime(other);
             }
             return false;
         }

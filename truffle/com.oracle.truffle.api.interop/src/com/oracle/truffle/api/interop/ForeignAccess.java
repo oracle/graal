@@ -46,7 +46,7 @@ public final class ForeignAccess {
     private ForeignAccess(Factory faf) {
         this.factory = faf;
         this.initThread = Thread.currentThread();
-        CompilerAsserts.neverPartOfCompilation();
+        CompilerAsserts.neverPartOfCompilation("do not create a ForeignAccess object from compiled code");
     }
 
     /**
@@ -603,7 +603,7 @@ public final class ForeignAccess {
         private final Class<?> baseClass;
         private final Factory10 factory;
 
-        public DelegatingFactory(Class<?> baseClass, Factory10 factory) {
+        DelegatingFactory(Class<?> baseClass, Factory10 factory) {
             this.baseClass = baseClass;
             this.factory = factory;
         }

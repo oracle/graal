@@ -140,7 +140,7 @@ final class Compile implements DiagnosticListener<JavaFileObject> {
 
                 private final String n;
 
-                public VirtFO(URI uri, Kind kind, String n) {
+                VirtFO(URI uri, Kind kind, String n) {
                     super(uri, kind);
                     this.n = n;
                 }

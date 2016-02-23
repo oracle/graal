@@ -32,7 +32,7 @@ class ComplexNumberBEntry implements TruffleObject {
     private final ComplexNumbersB numbers;
     private final int index;
 
-    public ComplexNumberBEntry(ComplexNumbersB numbers, int index) {
+    ComplexNumberBEntry(ComplexNumbersB numbers, int index) {
         this.numbers = numbers;
         this.index = index;
     }

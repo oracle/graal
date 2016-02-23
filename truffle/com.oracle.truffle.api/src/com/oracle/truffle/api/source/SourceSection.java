@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.util.Arrays;
+
 /**
  * Description of contiguous section of text within a {@link Source} of program code; supports
  * multiple modes of access to the text and its location. A special
@@ -37,6 +39,9 @@ package com.oracle.truffle.api.source;
  * @see #createUnavailable
  */
 public final class SourceSection {
+
+    static final String[] EMTPY_TAGS = new String[0];
+
     private final Source source;
     private final String identifier;
     private final int startLine;
@@ -44,6 +49,7 @@ public final class SourceSection {
     private final int charIndex;
     private final int charLength;
     private final String kind;
+    private final String[] tags;
 
     /**
      * Creates a new object representing a contiguous text section within the source code of a guest
@@ -67,8 +73,9 @@ public final class SourceSection {
      * @param startColumn the 1-based number of the start column of the section
      * @param charIndex the 0-based index of the first character of the section
      * @param charLength the length of the section in number of characters
+     * @param tags the assigned tags for the source section
      */
-    SourceSection(String kind, Source source, String identifier, int startLine, int startColumn, int charIndex, int charLength) {
+    SourceSection(String kind, Source source, String identifier, int startLine, int startColumn, int charIndex, int charLength, String[] tags) {
         this.kind = kind;
         this.source = source;
         this.identifier = identifier;
@@ -76,6 +83,39 @@ public final class SourceSection {
         this.startColumn = startColumn;
         this.charIndex = charIndex;
         this.charLength = charLength;
+        this.tags = tags;
+        assert tagsAreNonNullAndInterned(tags) : "All tags set for a source section must be interned and non-null.";
+    }
+
+    @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
+    private static boolean tagsAreNonNullAndInterned(String[] tags) {
+        for (int i = 0; i < tags.length; i++) {
+            if (tags[i] == null) {
+                return false;
+            }
+            if (tags[i].intern() != tags[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns <code>true</code> if the source section is tagged the given tag. The given tag must
+     * be interned using {@link String#intern()} an non null.
+     *
+     * @param tag the tag to search for
+     * @return <code>true</code> if tag was found else <code>false</code>
+     */
+    @SuppressFBWarnings("ES_COMPARING_PARAMETER_STRING_WITH_EQ")
+    public boolean hasTag(String tag) {
+        assert tag.intern() == tag;
+        for (int i = 0; i < tags.length; i++) {
+            if (tags[i] == tag) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -204,9 +244,39 @@ public final class SourceSection {
         if (source == null) {
             return kind + ": " + identifier;
         } else {
+
             return "source=" + source.getShortName() + " pos=" + charIndex + " len=" + charLength + " line=" + startLine + " col=" + startColumn +
-                            (identifier != null ? " identifier=" + identifier : "") + " code=" + getCode();
+                            (identifier != null ? " identifier=" + identifier : "") + "tags=" + Arrays.toString(tags) + " code=" + getCode();
         }
+    }
+
+    /**
+     * Copies this source sections with a different set of source section tags. The provided tag
+     * strings must be {@link String#intern() interned}. If the set tags match the provide tags no
+     * copy will be created and just this instance is returned.
+     *
+     * @param tags source section tags
+     * @return a copy of the source section with different tags
+     */
+    public SourceSection withTags(@SuppressWarnings("hiding") String... tags) {
+        if (sameTags(tags)) {
+            // optimize copying of tags if tags are unchanged
+            return this;
+        }
+        return new SourceSection(kind, source, identifier, startLine, startColumn, charIndex, charLength, tags);
+    }
+
+    @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
+    private boolean sameTags(String... t) {
+        if (t.length == tags.length) {
+            for (int i = 0; i < tags.length; i++) {
+                if (t[i] != tags[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -219,10 +289,12 @@ public final class SourceSection {
         result = prime * result + ((source == null) ? 0 : source.hashCode());
         result = prime * result + startColumn;
         result = prime * result + startLine;
+        result = prime * result + Arrays.hashCode(tags);
         return result;
     }
 
     @Override
+    @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
@@ -260,6 +332,16 @@ public final class SourceSection {
         if (startLine != other.startLine) {
             return false;
         }
+
+        String[] otherTags = other.tags;
+        if (tags.length != otherTags.length) {
+            return false;
+        }
+        for (int i = 0; i < tags.length; i++) {
+            if (tags[i] != otherTags[i]) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -275,6 +357,6 @@ public final class SourceSection {
      * @return source section which is mostly <em>empty</em>
      */
     public static SourceSection createUnavailable(String kind, String name) {
-        return new SourceSection(kind, null, name == null ? "<unknown>" : name, -1, -1, -1, -1);
+        return new SourceSection(kind, null, name == null ? "<unknown>" : name, -1, -1, -1, -1, EMTPY_TAGS);
     }
 }

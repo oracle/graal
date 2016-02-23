@@ -29,7 +29,7 @@ import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
 final class ConstantFunction implements ObjectBinaryOperation {
     private final Object constant;
 
-    public ConstantFunction(Object constant) {
+    ConstantFunction(Object constant) {
         this.constant = constant;
     }
 
