@@ -212,7 +212,7 @@ public @interface Layout {
         // END: rectlayout
 
         private static class RectLayoutImpl {
-            public static final Object INSTANCE = null;
+            public static final RectLayoutImpl INSTANCE = new RectLayoutImpl();
         }
 
         static Object rectLayoutImpl() {
@@ -300,7 +300,7 @@ public @interface Layout {
 
         static class JavaObjectImpl {
 
-            static final JavaObjectImpl INSTANCE = null;
+            static final JavaObjectImpl INSTANCE = new JavaObjectImpl();
 
             @SuppressWarnings("unused")
             Object createJavaObject(Object x, Object y) {
@@ -361,7 +361,7 @@ public @interface Layout {
 
         static class BaseImpl {
 
-            static final BaseImpl INSTANCE = null;
+            static final BaseImpl INSTANCE = new BaseImpl();
 
             @SuppressWarnings("unused")
             boolean isBase(Object x) {
@@ -377,7 +377,7 @@ public @interface Layout {
 
         static class SuperImpl {
 
-            static final SuperImpl INSTANCE = null;
+            static final SuperImpl INSTANCE = new SuperImpl();
 
             @SuppressWarnings("unused")
             DynamicObject createSuper(int x, int y) {
