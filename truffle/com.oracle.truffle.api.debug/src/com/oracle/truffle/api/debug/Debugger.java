@@ -64,13 +64,10 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * is turned on}.
  */
 public final class Debugger {
-    public static final String BLOCK_TAG = "debug-BLOCK";
-
+    /** A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that represent a call */
     public static final String CALL_TAG = "debug-CALL";
-    public static final String EXPR_TAG = "debug-EXPR";
+    /** A {@link SourceSection#withTags(java.lang.String...) tag} for {@link Node nodes} that a place where debugger shall stop */
     public static final String HALT_TAG = "debug-HALT";
-    public static final String ROOT_TAG = "debug-ROOT";
-    public static final String THROW_TAG = "debug-THROW";
 
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
     private static final String TRACE_PREFIX = "Debug: ";
