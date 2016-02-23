@@ -34,7 +34,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,11 +43,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.SpeculationLog;
 
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.truffle.api.Assumption;
@@ -63,6 +57,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -71,6 +66,11 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -94,13 +94,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private final RootNode rootNode;
     private volatile RootNode uninitializedRootNode = UNINITIALIZED;
 
-    /* Experimental fields for new splitting. */
-    private final Map<TruffleStamp, OptimizedCallTarget> splitVersions = new HashMap<>();
-    private TruffleStamp argumentStamp = DefaultTruffleStamp.getInstance();
-
     private TruffleInlining inlining;
     private int cachedNonTrivialNodeCount = -1;
     private int cloneIndex;
+    private boolean initialized;
 
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
@@ -151,20 +148,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return nodeRewritingAssumption.getAssumption();
     }
 
-    public final void mergeArgumentStamp(TruffleStamp p) {
-        this.argumentStamp = this.argumentStamp.join(p);
-    }
-
-    public final TruffleStamp getArgumentStamp() {
-        return argumentStamp;
-    }
-
     public int getCloneIndex() {
         return cloneIndex;
     }
 
     public OptimizedCallTarget cloneUninitialized() {
-        ensureCloned();
+        if (!initialized) {
+            initialize();
+        }
         RootNode copiedRoot = cloneRootNode(uninitializedRootNode);
         if (copiedRoot == null) {
             return null;
@@ -174,18 +165,20 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return splitTarget;
     }
 
-    private void ensureCloned() {
-        if (uninitializedRootNode == UNINITIALIZED) {
-            synchronized (this) {
-                if (uninitializedRootNode == UNINITIALIZED) {
-                    this.uninitializedRootNode = sourceCallTarget == null ? cloneRootNode(rootNode) : sourceCallTarget.uninitializedRootNode;
-                }
+    private void initialize() {
+        synchronized (this) {
+            if (!initialized) {
+                initialized = true;
+                ensureCloned();
+                ACCESSOR.initializeCallTarget(this);
             }
         }
     }
 
-    public Map<TruffleStamp, OptimizedCallTarget> getSplitVersions() {
-        return splitVersions;
+    private void ensureCloned() {
+        if (uninitializedRootNode == UNINITIALIZED) {
+            this.uninitializedRootNode = sourceCallTarget == null ? cloneRootNode(rootNode) : sourceCallTarget.uninitializedRootNode;
+        }
     }
 
     public SpeculationLog getSpeculationLog() {
@@ -372,8 +365,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             // Stubs were deoptimized => reinstall.
             this.runtime.reinstallStubs();
         } else {
-            if (uninitializedRootNode == UNINITIALIZED) {
-                ensureCloned();
+            if (!initialized) {
+                initialize();
             }
             compilationProfile.reportInterpreterCall();
             if (!isCompiling() && compilationPolicy.shouldCompile(compilationProfile, getCompilerOptions())) {
@@ -384,7 +377,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     public final void compile() {
         if (!isCompiling()) {
-            ensureCloned();
+            if (!initialized) {
+                initialize();
+            }
             runtime.compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
         }
     }
@@ -467,7 +462,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             superString += " <opt>";
         }
         if (sourceCallTarget != null) {
-            superString += " <split-" + cloneIndex + "-" + argumentStamp.toStringShort() + ">";
+            superString += " <split-" + cloneIndex + ">";
         }
         return superString;
     }
@@ -628,5 +623,15 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     void setCompilationTask(Future<?> compilationTask) {
         this.compilationTask = compilationTask;
+    }
+
+    private static final AccessorOptimizedCallTarget ACCESSOR = new AccessorOptimizedCallTarget();
+
+    static final class AccessorOptimizedCallTarget extends Accessor {
+
+        @Override
+        protected void initializeCallTarget(RootCallTarget target) {
+            super.initializeCallTarget(target);
+        }
     }
 }

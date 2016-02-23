@@ -31,7 +31,7 @@ def suites(l):
     return [s for s in l if not JDK9 or not s.get('name') == "jvmci"]
 
 suite = {
-  "mxversion" : "5.7.0",
+  "mxversion" : "5.8.1",
   "name" : "graal-core",
 
   "imports" : {
@@ -47,7 +47,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "385095c3a988e6b16fbcdeb8dc8d55150cfbbefd",
+               "version" : "0df57671a11bab09241c3f5a08f9826fd9c658f1",
                "urls" : [
                     {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
