@@ -380,7 +380,10 @@ public abstract class Accessor {
      * instrumentation.
      */
     protected void initializeCallTarget(RootCallTarget target) {
-        INSTRUMENTHANDLER.initializeCallTarget(target);
+        Accessor accessor = INSTRUMENTHANDLER;
+        if (accessor != null) {
+            accessor.initializeCallTarget(target);
+        }
     }
 
     protected void collectEnvServices(Set<Object> collectTo, Object vm, TruffleLanguage<?> impl, Env context) {
