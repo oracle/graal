@@ -62,29 +62,20 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * Instance of this class is delivered via {@link SuspendedEvent#getDebugger()} and
  * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
  * is turned on}.
- * <p>
- * Debugger <em>stepping</em> behavior is configured by each {@link TruffleLanguage language
- * implementation} through application of {@linkplain SourceSection#withTags(java.lang.String...)
- * tags} at specific source language locations that have {@link SourceSection source information}
- * attached.
- * <ul>
- * <li>For most stepping situations, the debugger will halt just <em>before</em> a code location is
- * executed that is marked with {@link #HALT_TAG}.</li>
- * <li>When when stepping out of a call, the debugger will halt at the code location just executed
- * that has been marked with {@link #CALL_TAG}.</li>
- * </ul>
  */
 public final class Debugger {
 
     /**
      * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
-     * where the debugger will halt during normal stepping.
+     * where ordinary stepping should halt. The debugger will halt just <em>before</em> a code
+     * location is executed that is marked with this tag.
      */
     public static final String HALT_TAG = "debug-HALT";
 
     /**
      * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
-     * where the debugger will halt when <em>stepping out</em> of a call.
+     * where <em>returning</em> or <em>stepping out</em> from a method/procedure call should halt.
+     * The debugger will halt at the code location that has just executed the call that returned.
      *
      * @see #HALT_TAG
      */
