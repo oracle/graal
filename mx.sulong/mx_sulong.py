@@ -329,18 +329,18 @@ def getCommonOptions():
 
 # other OSs?
 def getSearchPathOption():
-    return '-Dllvm-dyn-libs=/usr/lib/x86_64-linux-gnu/libgfortran.so.3:/usr/lib/x86_64-linux-gnu/libstdc++.so.6:/lib/x86_64-linux-gnu/libc.so.6'
+    return '-Dllvm-dyn-libs=libgfortran.so.3:libstdc++.so.6:libc.so.6'
 
 
 def getCommonUnitTestOptions():
     return getCommonOptions() + ['-Xss56m', getSearchPathOption(), getLLVMRootOption()]
 
 # PE does not work yet for all test cases
-def doNotCompileOption():
-    return "-Dgraal.TruffleCompileOnly=~"
+def compilationSucceedsOption():
+    return "-Dgraal.TruffleCompilationExceptionsAreFatal=true"
 
 def getRemoteClasspathOption():
-    return "-Dllvm-test-boot=-Xbootclasspath/p:" + mx.classpath(['com.oracle.truffle.llvm.nodes']) + " " + getLLVMRootOption() + " " + doNotCompileOption() + " " " -Dllvm-debug=false"
+    return "-Dllvm-test-boot=-Xbootclasspath/p:" + mx.classpath(['com.oracle.truffle.llvm.nodes']) + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " " " -Dllvm-debug=false"
 
 def getLLVMRootOption():
     return "-Dllvm-root=" + _root
