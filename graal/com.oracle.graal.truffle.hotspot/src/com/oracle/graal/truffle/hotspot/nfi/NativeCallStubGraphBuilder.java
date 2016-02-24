@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,135 +23,159 @@
 package com.oracle.graal.truffle.hotspot.nfi;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCompiledCode;
+import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.GraalCompiler;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.BoxNode;
-import com.oracle.graal.nodes.java.LoadFieldNode;
+import com.oracle.graal.nodes.extended.UnboxNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
-import com.oracle.graal.nodes.virtual.EscapeObjectState;
-import com.oracle.graal.word.nodes.WordCastNode;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.Suites;
+import com.oracle.graal.replacements.ConstantBindingParameterPlugin;
 
 /**
  * Utility creating a graph for a stub used to call a native function.
  */
 public class NativeCallStubGraphBuilder {
 
-    /**
-     * Creates a graph for a stub used to call a native function.
-     *
-     * @param functionPointer a native function pointer
-     * @param returnType the type of the return value
-     * @param argumentTypes the types of the arguments
-     * @return the graph that represents the call stub
-     */
-    public static StructuredGraph getGraph(HotSpotProviders providers, RawNativeCallNodeFactory factory, long functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
-        try {
-            ResolvedJavaMethod method = providers.getMetaAccess().lookupJavaMethod(NativeCallStubGraphBuilder.class.getMethod("libCall", Object.class, Object.class, Object.class));
-            StructuredGraph g = new StructuredGraph(method, AllowAssumptions.NO);
-            ParameterNode arg0 = g.unique(new ParameterNode(0, StampFactory.forKind(JavaKind.Object)));
-            ParameterNode arg1 = g.unique(new ParameterNode(1, StampFactory.forKind(JavaKind.Object)));
-            ParameterNode arg2 = g.unique(new ParameterNode(2, StampFactory.forKind(JavaKind.Object)));
-            FrameState frameState = g.add(new FrameState(null, method, 0, Arrays.asList(new ValueNode[]{arg0, arg1, arg2}), 3, 0, false, false, null, new ArrayList<EscapeObjectState>()));
-            g.start().setStateAfter(frameState);
-            List<ValueNode> parameters = new ArrayList<>();
-            FixedWithNextNode fixedWithNext = getParameters(g, arg0, argumentTypes.length, argumentTypes, parameters, providers);
-            JavaConstant functionPointerNode = JavaConstant.forLong(functionPointer);
+    private final HotSpotProviders providers;
+    private final Backend backend;
+    private final RawNativeCallNodeFactory factory;
 
-            ValueNode[] arguments = new ValueNode[parameters.size()];
+    private final ResolvedJavaMethod callStubMethod;
 
-            for (int i = 0; i < arguments.length; i++) {
-                arguments[i] = parameters.get(i);
-            }
+    private class CallPlugin implements InvocationPlugin {
 
-            FixedWithNextNode callNode = g.add(factory.createRawCallNode(getKind(returnType), functionPointerNode, arguments));
-
-            if (fixedWithNext == null) {
-                g.start().setNext(callNode);
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+            JavaConstant constHandle = receiver.get().asJavaConstant();
+            if (constHandle != null) {
+                HotSpotNativeFunctionHandle handle = providers.getSnippetReflection().asObject(HotSpotNativeFunctionHandle.class, constHandle);
+                buildNativeCall(b, handle.getPointer(), arg, handle.getReturnType(), handle.getArgumentTypes());
+                return true;
             } else {
-                fixedWithNext.setNext(callNode);
+                return false;
             }
-
-            // box result
-            BoxNode boxedResult;
-            if (callNode.getStackKind() != JavaKind.Void) {
-                if (callNode.getStackKind() == JavaKind.Object) {
-                    throw new IllegalArgumentException("Return type not supported: " + returnType.getName());
-                }
-                ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(callNode.getStackKind().toBoxedJavaClass());
-                boxedResult = g.add(new BoxNode(callNode, type, callNode.getStackKind()));
-            } else {
-                boxedResult = g.add(new BoxNode(ConstantNode.forLong(0, g), providers.getMetaAccess().lookupJavaType(Long.class), JavaKind.Long));
-            }
-
-            callNode.setNext(boxedResult);
-            ReturnNode returnNode = g.add(new ReturnNode(boxedResult));
-            boxedResult.setNext(returnNode);
-            return g;
-        } catch (NoSuchMethodException e) {
-            throw JVMCIError.shouldNotReachHere("Call Stub method not found");
         }
     }
 
-    private static FixedWithNextNode getParameters(StructuredGraph g, ParameterNode argumentsArray, int numArgs, Class<?>[] argumentTypes, List<ValueNode> args, HotSpotProviders providers) {
-        assert numArgs == argumentTypes.length;
-        FixedWithNextNode last = null;
-        for (int i = 0; i < numArgs; i++) {
-            // load boxed array element:
-            LoadIndexedNode boxedElement = g.add(new LoadIndexedNode(argumentsArray, ConstantNode.forInt(i, g), JavaKind.Object));
-            if (i == 0) {
-                g.start().setNext(boxedElement);
-                last = boxedElement;
-            } else {
-                last.setNext(boxedElement);
-                last = boxedElement;
+    private static class NativeCallStub {
+
+        @SuppressWarnings("unused")
+        private static Object libCall(HotSpotNativeFunctionHandle function, Object[] args) {
+            return function.call(args);
+        }
+    }
+
+    NativeCallStubGraphBuilder(HotSpotProviders providers, Backend backend, RawNativeCallNodeFactory factory) {
+        this.providers = providers;
+        this.backend = backend;
+        this.factory = factory;
+
+        Registration r = new Registration(providers.getGraphBuilderPlugins().getInvocationPlugins(), HotSpotNativeFunctionHandle.class);
+        r.register2("call", Receiver.class, Object[].class, new CallPlugin());
+
+        ResolvedJavaType stubClass = providers.getMetaAccess().lookupJavaType(NativeCallStub.class);
+        ResolvedJavaMethod[] methods = stubClass.getDeclaredMethods();
+        assert methods.length == 1 && methods[0].getName().equals("libCall");
+        this.callStubMethod = methods[0];
+    }
+
+    /**
+     * Creates and installs a stub for calling a native function.
+     */
+    @SuppressWarnings("try")
+    void installNativeFunctionStub(HotSpotNativeFunctionHandle function) {
+        Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
+        plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(new Object[]{function, null}, providers.getMetaAccess(), providers.getSnippetReflection()));
+
+        PhaseSuite<HighTierContext> graphBuilder = new PhaseSuite<>();
+        graphBuilder.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins)));
+
+        Suites suites = providers.getSuites().getDefaultSuites();
+        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites();
+
+        StructuredGraph g = new StructuredGraph(callStubMethod, AllowAssumptions.NO);
+        CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
+                        lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+
+        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {
+            HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(g.method(), null, compResult);
+            function.code = providers.getCodeCache().addCode(g.method(), compiledCode, null, null);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+    }
+
+    private void buildNativeCall(GraphBuilderContext b, HotSpotNativeFunctionPointer functionPointer, ValueNode argArray, Class<?> returnType, Class<?>... argumentTypes) {
+        JavaConstant functionPointerNode = JavaConstant.forLong(functionPointer.getRawValue());
+        ValueNode[] arguments = getParameters(b, argArray, argumentTypes);
+
+        FixedWithNextNode callNode = b.add(factory.createRawCallNode(getKind(returnType), functionPointerNode, arguments));
+
+        // box result
+        if (callNode.getStackKind() != JavaKind.Void) {
+            if (callNode.getStackKind() == JavaKind.Object) {
+                throw new IllegalArgumentException("Return type not supported: " + returnType.getName());
             }
+            ResolvedJavaType type = b.getMetaAccess().lookupJavaType(callNode.getStackKind().toBoxedJavaClass());
+            b.addPush(JavaKind.Object, new BoxNode(callNode, type, callNode.getStackKind()));
+        } else {
+            ValueNode zero = b.add(ConstantNode.forLong(0));
+            b.addPush(JavaKind.Object, new BoxNode(zero, b.getMetaAccess().lookupJavaType(Long.class), JavaKind.Long));
+        }
+    }
+
+    private static ValueNode[] getParameters(GraphBuilderContext b, ValueNode argArray, Class<?>[] argumentTypes) {
+        ValueNode[] ret = new ValueNode[argumentTypes.length];
+        for (int i = 0; i < argumentTypes.length; i++) {
+            // load boxed array element:
+            ValueNode idx = b.add(ConstantNode.forInt(i));
             Class<?> type = argumentTypes[i];
             JavaKind kind = getKind(type);
+
+            LoadIndexedNode boxedElement = b.add(new LoadIndexedNode(argArray, idx, JavaKind.Object));
             if (kind == JavaKind.Object) {
                 // array value
                 JavaKind arrayElementKind = getElementKind(type);
                 int displacement = getArrayBaseOffset(arrayElementKind);
-                AddressNode arrayAddress = g.unique(new OffsetAddressNode(boxedElement, ConstantNode.forLong(displacement, g)));
-                WordCastNode cast = g.add(WordCastNode.addressToWord(arrayAddress, providers.getWordTypes().getWordKind()));
-                last.setNext(cast);
-                last = cast;
-                args.add(cast);
+                ValueNode dispNode = b.add(ConstantNode.forLong(displacement));
+                ret[i] = b.add(new OffsetAddressNode(boxedElement, dispNode));
             } else {
                 // boxed primitive value
-                try {
-                    ResolvedJavaField field = providers.getMetaAccess().lookupJavaField(kind.toBoxedJavaClass().getDeclaredField("value"));
-                    LoadFieldNode loadFieldNode = g.add(new LoadFieldNode(boxedElement, field));
-                    last.setNext(loadFieldNode);
-                    last = loadFieldNode;
-                    args.add(loadFieldNode);
-                } catch (NoSuchFieldException e) {
-                    throw new JVMCIError(e);
-                }
+                ret[i] = b.add(new UnboxNode(boxedElement, kind));
             }
         }
-        return last;
+        return ret;
     }
 
     public static JavaKind getElementKind(Class<?> clazz) {
@@ -185,10 +209,5 @@ public class NativeCallStubGraphBuilder {
         } else {
             throw new IllegalArgumentException("Type not supported: " + clazz);
         }
-    }
-
-    @SuppressWarnings("unused")
-    public static Object libCall(Object argLoc, Object unused1, Object unused2) {
-        throw JVMCIError.shouldNotReachHere("GNFI libCall method must not be called");
     }
 }
