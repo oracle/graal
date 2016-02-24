@@ -336,11 +336,11 @@ def getCommonUnitTestOptions():
     return getCommonOptions() + ['-Xss56m', getSearchPathOption(), getLLVMRootOption()]
 
 # PE does not work yet for all test cases
-def doNotCompileOption():
-    return "-Dgraal.TruffleCompileOnly=~"
+def compilationSucceedsOption():
+    return "-Dgraal.TruffleCompilationExceptionsAreFatal=true"
 
 def getRemoteClasspathOption():
-    return "-Dllvm-test-boot=-Xbootclasspath/p:" + mx.classpath(['com.oracle.truffle.llvm.nodes']) + " " + getLLVMRootOption() + " " + doNotCompileOption() + " " " -Dllvm-debug=false"
+    return "-Dllvm-test-boot=-Xbootclasspath/p:" + mx.classpath(['com.oracle.truffle.llvm.nodes']) + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " " " -Dllvm-debug=false"
 
 def getLLVMRootOption():
     return "-Dllvm-root=" + _root
