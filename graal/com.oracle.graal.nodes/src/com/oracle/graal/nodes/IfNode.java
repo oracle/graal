@@ -876,16 +876,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      */
     private static boolean conditionUses(LogicNode condition, PhiNode phi) {
         if (condition instanceof ShortCircuitOrNode) {
-            if (condition.graph().getGuardsStage().areDeoptsFixed()) {
-                /*
-                 * It can be unsafe to simplify a ShortCircuitOr before deopts are fixed because
-                 * conversion to guards assumes that all the required conditions are being tested.
-                 * Simplfying the condition based on context before this happens may lose a
-                 * condition.
-                 */
-                ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
-                return conditionUses(orNode.x, phi) || conditionUses(orNode.y, phi);
-            }
+            // Temporarily disabled
+            // if (condition.graph().getGuardsStage().areDeoptsFixed()) {
+            // /*
+            // * It can be unsafe to simplify a ShortCircuitOr before deopts are fixed because
+            // * conversion to guards assumes that all the required conditions are being tested.
+            // * Simplfying the condition based on context before this happens may lose a
+            // * condition.
+            // */
+            // ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
+            // return conditionUses(orNode.x, phi) || conditionUses(orNode.y, phi);
+            // }
         } else if (condition instanceof Canonicalizable.Unary<?>) {
             Canonicalizable.Unary<?> unary = (Canonicalizable.Unary<?>) condition;
             return unary.getValue() == phi;
