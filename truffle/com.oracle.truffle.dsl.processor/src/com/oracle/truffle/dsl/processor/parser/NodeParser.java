@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -457,15 +457,21 @@ public class NodeParser extends AbstractParser<NodeData> {
                 String name = ElementUtils.firstLetterLowerCase(ElementUtils.getAnnotationValue(String.class, mirror, "name"));
                 TypeMirror type = ElementUtils.getAnnotationValue(TypeMirror.class, mirror, "type");
 
-                NodeFieldData field = new NodeFieldData(typeElement, mirror, new CodeVariableElement(type, name), true);
-                if (name.isEmpty()) {
-                    field.addError(ElementUtils.getAnnotationValue(mirror, "name"), "Field name cannot be empty.");
-                } else if (names.contains(name)) {
-                    field.addError(ElementUtils.getAnnotationValue(mirror, "name"), "Duplicate field name '%s'.", name);
-                }
-                names.add(name);
+                if (type != null) {
+                    NodeFieldData field = new NodeFieldData(typeElement, mirror, new CodeVariableElement(type, name), true);
+                    if (name.isEmpty()) {
+                        field.addError(ElementUtils.getAnnotationValue(mirror, "name"), "Field name cannot be empty.");
+                    } else if (names.contains(name)) {
+                        field.addError(ElementUtils.getAnnotationValue(mirror, "name"), "Duplicate field name '%s'.", name);
+                    }
 
-                fields.add(field);
+                    names.add(name);
+
+                    fields.add(field);
+                } else {
+                    // Type is null here. This indicates that the type could not be resolved.
+                    // The Java compiler will subsequently raise the appropriate error.
+                }
             }
         }
 
