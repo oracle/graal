@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,6 +80,28 @@
  * {@link com.oracle.truffle.api.debug.ExecutionEvent}. Use its
  * {@link com.oracle.truffle.api.debug.Debugger ev.getDebugger}()
  * methods to submit breakpoints.
+ *
+ * <h4>Enable Debugging for your Language</h4>
+ *
+ * The platform's core support for 
+ * {@link com.oracle.truffle.api.debug.Debugger debugging} is language-agnostic. A
+ * {@link com.oracle.truffle.api.TruffleLanguage language implementation} enables debugging by supplying
+ * extra information in every AST that configures debugger behavior for code written in that particular language.
+ * <p>
+ * This extra information is expressed as
+ * {@linkplain com.oracle.truffle.api.source.SourceSection#withTags(java.lang.String...) tags}.
+ * The language implementation applies tags to the 
+ * {@link com.oracle.truffle.api.source.SourceSection source information} associated with
+ * {@link com.oracle.truffle.api.nodes.Node nodes} relevant to debugging. 
+ * At this time the debugger requries two tags for basic behavior; more tags may be required in the future
+ * as the debugger acquires more functionality.
+ * <ul>
+ * <li>{@link com.oracle.truffle.api.debug.Debugger#HALT_TAG}: must be applied to every Node where the debugger
+ * should halt during ordinary <em>stepping</em>.  This typically corresponds to "statements" in each language.</li>
+ * <li>{@link com.oracle.truffle.api.debug.Debugger#CALL_TAG}: must be applied to every Node where the debugger
+ * should halt when either <em>returning</em> or <em>stepping out</em> from a call.  This typically corresponds
+ * to function/method calls in each language.</li>
+ * </ul>
  */
 package com.oracle.truffle.api.debug;
 
