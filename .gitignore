@@ -6,8 +6,11 @@ mx.sulong/eclipse-launches/**
 build.xml
 workingsets.xml
 hs_err_pid*.log
+compilations-*.cfg
 lib/**
 mxbuild/**
+mx.imports/**
+.idea/**
 build/**
 graal/**
 projects/*/nbproject/
