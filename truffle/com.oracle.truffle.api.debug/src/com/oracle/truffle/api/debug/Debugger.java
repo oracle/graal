@@ -165,7 +165,9 @@ public final class Debugger {
 
         @TruffleBoundary
         public void haltedAt(Node astNode, MaterializedFrame mFrame, String haltReason) {
-            debugContext.halt(astNode, mFrame, true, haltReason);
+            if (debugContext != null) {
+                debugContext.halt(astNode, mFrame, true, haltReason);
+            }
         }
     };
 
@@ -277,7 +279,8 @@ public final class Debugger {
      * <li>User breakpoints are enabled.</li>
      * <li>Execution will continue until either:
      * <ol>
-     * <li>execution arrives at the nearest enclosing call site on the stack, <strong>or</strong></li>
+     * <li>execution arrives at the nearest enclosing call site on the stack, <strong>or</strong>
+     * </li>
      * <li>execution completes.</li>
      * </ol>
      * <li>StepOut mode persists only through one resumption, and reverts by default to Continue

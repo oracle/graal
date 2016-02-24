@@ -100,7 +100,7 @@ public class SLNodeFactory {
     /* Tags for the debugger */
     private static final String[] ROOT_TAGS = {};
     private static final String[] BLOCK_TAGS = {};
-    private static final String[] STATEMENT_TAGS = {Debugger.HALT_TAG};
+    private static final String[] DEBUGGER_HALT = {Debugger.HALT_TAG};
     private static final String[] CALL_TAGS = {Debugger.CALL_TAG};
     private static final String[] EXPRESSION_TAGS = {};
 
@@ -166,7 +166,9 @@ public class SLNodeFactory {
          */
         final SourceSection src = srcFromToken(nameToken, EXPRESSION_TAGS);
         final SLReadArgumentNode readArg = new SLReadArgumentNode(src, parameterCount);
-        methodNodes.add(createAssignment(nameToken, readArg));
+        SLExpressionNode assignment = createAssignment(nameToken, readArg);
+        assignment.setSourceSection(null); // no halts on variable assignments (part of the prolog)
+        methodNodes.add(assignment);
         parameterCount++;
     }
 
@@ -199,9 +201,18 @@ public class SLNodeFactory {
 
         List<SLStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
         flattenBlocks(bodyNodes, flattenedNodes);
-
+        for (SLStatementNode statement : flattenedNodes) {
+            SourceSection sourceSection = statement.getSourceSection();
+            if (sourceSection != null && !isHaltInCondition(statement)) {
+                statement.setSourceSection(sourceSection.withTags(DEBUGGER_HALT));
+            }
+        }
         final SourceSection src = source.createSection("block", startPos, length, BLOCK_TAGS);
         return new SLBlockNode(src, flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
+    }
+
+    private static boolean isHaltInCondition(SLStatementNode statement) {
+        return (statement instanceof SLIfNode) || (statement instanceof SLWhileNode);
     }
 
     private void flattenBlocks(Iterable<? extends Node> bodyNodes, List<SLStatementNode> flattenedNodes) {
@@ -221,7 +232,7 @@ public class SLNodeFactory {
      * @return A SLBreakNode for the given token.
      */
     public SLStatementNode createBreak(Token breakToken) {
-        final SLBreakNode breakNode = new SLBreakNode(srcFromToken(breakToken, STATEMENT_TAGS));
+        final SLBreakNode breakNode = new SLBreakNode(srcFromToken(breakToken));
         return breakNode;
     }
 
@@ -232,7 +243,7 @@ public class SLNodeFactory {
      * @return A SLContinueNode built using the given token.
      */
     public SLStatementNode createContinue(Token continueToken) {
-        final SLContinueNode continueNode = new SLContinueNode(srcFromToken(continueToken, STATEMENT_TAGS));
+        final SLContinueNode continueNode = new SLContinueNode(srcFromToken(continueToken));
         return continueNode;
     }
 
@@ -245,6 +256,7 @@ public class SLNodeFactory {
      * @return A SLWhileNode built using the given parameters.
      */
     public SLStatementNode createWhile(Token whileToken, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
+        conditionNode.setSourceSection(conditionNode.getSourceSection().withTags(DEBUGGER_HALT));
         final int start = whileToken.charPos;
         final int end = bodyNode.getSourceSection().getCharEndIndex();
         final SLWhileNode whileNode = new SLWhileNode(source.createSection(whileToken.val, start, end - start), conditionNode, bodyNode);
@@ -261,6 +273,7 @@ public class SLNodeFactory {
      * @return An SLIfNode for the given parameters.
      */
     public SLStatementNode createIf(Token ifToken, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
+        conditionNode.setSourceSection(conditionNode.getSourceSection().withTags(DEBUGGER_HALT));
         final int start = ifToken.charPos;
         final int end = elsePartNode == null ? thenPartNode.getSourceSection().getCharEndIndex() : elsePartNode.getSourceSection().getCharEndIndex();
         final SLIfNode ifNode = new SLIfNode(source.createSection(ifToken.val, start, end - start), conditionNode, thenPartNode, elsePartNode);
@@ -277,7 +290,7 @@ public class SLNodeFactory {
     public SLStatementNode createReturn(Token t, SLExpressionNode valueNode) {
         final int start = t.charPos;
         final int length = valueNode == null ? t.val.length() : valueNode.getSourceSection().getCharEndIndex() - start;
-        final SLReturnNode returnNode = new SLReturnNode(source.createSection(t.val, start, length, STATEMENT_TAGS), valueNode);
+        final SLReturnNode returnNode = new SLReturnNode(source.createSection(t.val, start, length, DEBUGGER_HALT), valueNode);
         return returnNode;
     }
 
@@ -357,8 +370,8 @@ public class SLNodeFactory {
     /**
      * Returns a {@link SLReadLocalVariableNode} if this read is a local variable or a
      * {@link SLFunctionLiteralNode} if this read is global. In Simple, the only global names are
-     * functions. </br> There is currently no instrumentation{@linkplain Instrumenter
-     * Instrumentation} for this node.
+     * functions. </br>
+     * There is currently no instrumentation{@linkplain Instrumenter Instrumentation} for this node.
      *
      * @param nameToken The name of the variable/function being read
      * @return either:
@@ -437,7 +450,7 @@ public class SLNodeFactory {
     /**
      * Creates source description of a single token.
      */
-    private SourceSection srcFromToken(Token token, String[] tags) {
+    private SourceSection srcFromToken(Token token, String... tags) {
         return source.createSection(token.val, token.charPos, token.val.length(), tags);
     }
 

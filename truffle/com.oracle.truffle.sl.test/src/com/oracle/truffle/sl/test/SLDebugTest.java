@@ -40,182 +40,267 @@
  */
 package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.ExecutionEvent;
-import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.source.LineLocation;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.EventConsumer;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.io.ByteArrayOutputStream;
-import java.util.LinkedList;
-import java.util.concurrent.Callable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.LinkedList;
+
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.source.LineLocation;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.EventConsumer;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+
 public class SLDebugTest {
-    private Source factorial;
     private Debugger debugger;
-    private final LinkedList<Callable<?>> run = new LinkedList<>();
+    private final LinkedList<Runnable> run = new LinkedList<>();
     private SuspendedEvent suspendedEvent;
     private Throwable ex;
     private ExecutionEvent executionEvent;
+    protected PolyglotEngine engine;
+    protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    protected final ByteArrayOutputStream err = new ByteArrayOutputStream();
 
-    @Test
-    public void stepInStepOver() throws Throwable {
-        // @formatter:off
-        factorial = Source.fromText(
-            "function main() {\n" +
-            "  res = fac(2);\n" +
-            "  println(res);\n" +
-            "  return res;\n" +
-            "}\n" +
-            "function fac(n) {\n" +
-            "  if (n <= 1) {\n" +
-            "    return 1;\n" +
-            "  }\n" +
-            "  nMinusOne = n - 1;\n" +
-            "  nMOFact = fac(nMinusOne);\n" +
-            "  res = n * nMOFact;\n" +
-            "  return res;\n" +
-            "}\n" +
-             "", "factorial.sl"
-        ).withMimeType("application/x-sl");
-        // @formatter:on
-
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-
-        PolyglotEngine engine = PolyglotEngine.newBuilder().onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+    @Before
+    public void before() {
+        suspendedEvent = null;
+        executionEvent = null;
+        engine = PolyglotEngine.newBuilder().setOut(out).setErr(err).onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
                 executionEvent = event;
                 performWork();
+                executionEvent = null;
             }
         }).onEvent(new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
             @Override
             protected void on(SuspendedEvent event) {
                 suspendedEvent = event;
                 performWork();
+                suspendedEvent = null;
             }
-        }).setOut(os).build();
+        }).build();
         debugger = Debugger.find(engine);
         assertNotNull("Debugger found", debugger);
+        run.clear();
+    }
 
-        onEvent(new Callable<Void>() {
+    private static Source createFactorial() {
+        return Source.fromText("function main() {\n" +
+                        "  res = fac(2);\n" + "  println(res);\n" +
+                        "  return res;\n" +
+                        "}\n" +
+                        "function fac(n) {\n" +
+                        "  if (n <= 1) {\n" +
+                        "    return 1;\n" + "  }\n" +
+                        "  nMinusOne = n - 1;\n" +
+                        "  nMOFact = fac(nMinusOne);\n" +
+                        "  res = n * nMOFact;\n" +
+                        "  return res;\n" + "}\n",
+                        "factorial.sl").withMimeType(
+                                        "application/x-sl");
+    }
+
+    protected final String getOut() {
+        return new String(out.toByteArray());
+    }
+
+    protected final String getErr() {
+        try {
+            err.flush();
+        } catch (IOException e) {
+        }
+        return new String(err.toByteArray());
+    }
+
+    @Test
+    public void testBreakpoint() throws Throwable {
+        final Source factorial = createFactorial();
+
+        run.addLast(new Runnable() {
             @Override
-            public Void call() throws Exception {
-                LineLocation nMinusOne = factorial.createLineLocation(7);
-                debugger.setLineBreakpoint(0, nMinusOne, true);
-                executionEvent.prepareContinue();
-                return null;
+            public void run() {
+                try {
+                    assertNull(suspendedEvent);
+                    assertNotNull(executionEvent);
+                    LineLocation nMinusOne = factorial.createLineLocation(8);
+                    debugger.setLineBreakpoint(0, nMinusOne, false);
+                    executionEvent.prepareContinue();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
-
-        PolyglotEngine.Value value = engine.eval(factorial);
-
-        assertNull("Parsing done", value.get());
-
+        engine.eval(factorial);
         assertExecutedOK();
 
-        run(new Callable<Void>() {
+        run.addLast(new Runnable() {
             @Override
-            public Void call() throws Exception {
+            public void run() {
+                // the breakpoint should hit instead
+            }
+        });
+        assertLocation(8, "return 1",
+                        "n", 1L,
+                        "nMinusOne", null,
+                        "nMOFact", null,
+                        "res", null);
+        continueExecution();
+
+        Value value = engine.findGlobalSymbol("main").execute();
+        assertExecutedOK();
+        Assert.assertEquals("2\n", getOut());
+        Number n = value.as(Number.class);
+        assertNotNull(n);
+        assertEquals("Factorial computed OK", 2, n.intValue());
+    }
+
+    @Test
+    public void stepInStepOver() throws Throwable {
+        final Source factorial = createFactorial();
+        engine.eval(factorial);
+
+        // @formatter:on
+        run.addLast(new Runnable() {
+            @Override
+            public void run() {
                 assertNull(suspendedEvent);
+                assertNotNull(executionEvent);
                 executionEvent.prepareStepInto();
-                return null;
             }
         });
 
-        run(new Callable<Void>() {
-            @Override
-            public Void call() throws Exception {
-                assertNotNull(suspendedEvent);
-                final MaterializedFrame frame = suspendedEvent.getFrame();
-                assertEquals("No arguments", 0, frame.getArguments().length);
-                assertEquals("one var slot", 1, frame.getFrameDescriptor().getSlots().size());
-                Object resName = frame.getFrameDescriptor().getSlots().get(0).getFrameDescriptor().getIdentifiers().iterator().next();
-                assertEquals("res", resName);
-                suspendedEvent.prepareStepInto(1);
-                suspendedEvent = null;
-                return null;
-            }
-        });
+        assertLocation(2, "res = fac(2)", "res", null);
+        stepInto(1);
+        assertLocation(7, "n <= 1",
+                        "n", 2L,
+                        "nMinusOne", null,
+                        "nMOFact", null,
+                        "res", null);
+        stepOver(1);
+        assertLocation(10, "nMinusOne = n - 1",
+                        "n", 2L,
+                        "nMinusOne", null,
+                        "nMOFact", null,
+                        "res", null);
+        stepOver(1);
+        assertLocation(11, "nMOFact = fac(nMinusOne)",
+                        "n", 2L,
+                        "nMinusOne", 1L,
+                        "nMOFact", null,
+                        "res", null);
+        stepOver(1);
+        assertLocation(12, "res = n * nMOFact",
+                        "n", 2L, "nMinusOne", 1L,
+                        "nMOFact", 1L,
+                        "res", null);
+        stepOver(1);
+        assertLocation(13, "return res",
+                        "n", 2L,
+                        "nMinusOne", 1L,
+                        "nMOFact", 1L,
+                        "res", 2L);
+        stepOver(1);
+        assertLocation(2, "fac(2)", "res", null);
+        stepOver(1);
+        assertLocation(3, "println(res)", "res", 2L);
+        stepOut();
 
-        run(new Callable<Void>() {
-            @Override
-            public Void call() throws Exception {
-                assertLine(7);
-
-                final MaterializedFrame frame = suspendedEvent.getFrame();
-                assertEquals("One argument", 1, frame.getArguments().length);
-                assertEquals("One argument value 2", 2L, frame.getArguments()[0]);
-                suspendedEvent.prepareStepOver(1);
-                suspendedEvent = null;
-                return null;
-            }
-        });
-
-        run(new Callable<Void>() {
-            @Override
-            public Void call() throws Exception {
-                assertNotNull(suspendedEvent);
-                assertLine(10);
-                suspendedEvent.prepareContinue();
-                suspendedEvent = null;
-                return null;
-            }
-        });
-
-        PolyglotEngine.Value main = engine.findGlobalSymbol("main");
-        value = main.execute();
-
-        // assertExecutedOK();
+        Value value = engine.findGlobalSymbol("main").execute();
+        assertExecutedOK();
 
         Number n = value.as(Number.class);
         assertNotNull(n);
         assertEquals("Factorial computed OK", 2, n.intValue());
     }
 
-    private void run(Callable<?> callable) throws Throwable {
-        if (ex != null) {
-            throw ex;
-        }
-        if (callable == null) {
-            assertTrue("Assuming all requests processed: " + run, run.isEmpty());
-            return;
-        }
-        run.addLast(callable);
-        if (ex != null) {
-            throw ex;
+    private void performWork() {
+        try {
+            if (ex == null && !run.isEmpty()) {
+                Runnable c = run.removeFirst();
+                c.run();
+            }
+        } catch (Throwable e) {
+            ex = e;
         }
     }
 
-    private void performWork() {
-        Callable<?> c = run.removeFirst();
-        try {
-            c.call();
-        } catch (Exception e) {
-            this.ex = e;
-        }
+    private void stepOver(final int size) {
+        run.addLast(new Runnable() {
+            public void run() {
+                suspendedEvent.prepareStepOver(size);
+            }
+        });
+    }
+
+    private void stepOut() {
+        run.addLast(new Runnable() {
+            public void run() {
+                suspendedEvent.prepareStepOut();
+            }
+        });
+    }
+
+    private void continueExecution() {
+        run.addLast(new Runnable() {
+            public void run() {
+                suspendedEvent.prepareContinue();
+            }
+        });
+    }
+
+    private void stepInto(final int size) {
+        run.addLast(new Runnable() {
+            public void run() {
+                suspendedEvent.prepareStepInto(size);
+            }
+        });
+    }
+
+    private void assertLocation(final int line, final String code, final Object... expectedFrame) {
+        run.addLast(new Runnable() {
+            public void run() {
+                assertNotNull(suspendedEvent);
+                Assert.assertEquals(line, suspendedEvent.getNode().getSourceSection().getLineLocation().getLineNumber());
+                Assert.assertEquals(code, suspendedEvent.getNode().getSourceSection().getCode());
+                final MaterializedFrame frame = suspendedEvent.getFrame();
+
+                Assert.assertEquals(expectedFrame.length / 2, frame.getFrameDescriptor().getSize());
+
+                for (int i = 0; i < expectedFrame.length; i = i + 2) {
+                    String expectedIdentifier = (String) expectedFrame[i];
+                    Object expectedValue = expectedFrame[i + 1];
+                    FrameSlot slot = frame.getFrameDescriptor().findFrameSlot(expectedIdentifier);
+                    Assert.assertNotNull(slot);
+                    Assert.assertEquals(expectedValue, frame.getValue(slot));
+                }
+                run.removeFirst().run();
+            }
+        });
     }
 
     private void assertExecutedOK() throws Throwable {
-        run(null);
-    }
-
-    void assertLine(int line) {
-        assertNotNull(suspendedEvent);
-        final SourceSection expLoc = factorial.createSection("Line " + line, line);
-        final SourceSection sourceLoc = suspendedEvent.getNode().getEncapsulatingSourceSection();
-        assertEquals("Exp\n" + expLoc + "\nbut was\n" + sourceLoc, line, sourceLoc.getLineLocation().getLineNumber());
-    }
-
-    private void onEvent(Callable<Void> callable) throws Throwable {
-        run(callable);
+        Assert.assertTrue(getErr(), getErr().isEmpty());
+        if (ex != null) {
+            if (ex instanceof AssertionError) {
+                throw ex;
+            } else {
+                throw new AssertionError("Error during execution", ex);
+            }
+        }
+        assertTrue("Assuming all requests processed: " + run, run.isEmpty());
     }
 }
