@@ -58,6 +58,8 @@ import com.oracle.graal.graph.DefaultNodeCollectionsProvider;
 import com.oracle.graal.graph.NodeCollectionsProvider;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.meta.HotSpotStampProvider;
+import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.runtime.RuntimeProvider;
@@ -201,6 +203,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
             return (T) getHostProviders().getSnippetReflection();
+        } else if (clazz == StampProvider.class) {
+            return (T) new HotSpotStampProvider();
         }
         return null;
     }
