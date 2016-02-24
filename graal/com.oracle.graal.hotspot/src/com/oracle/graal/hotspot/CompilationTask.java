@@ -181,9 +181,12 @@ public class CompilationTask {
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(getId()), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
-                // Use HotSpot's Inline flag if Graal's flag has the default setting
-                boolean inline = Inline.hasDefaultValue() ? config.inline : Inline.getValue();
-                try (OverrideScope s1 = OptionValue.override(Inline, inline)) {
+                /*
+                 * Disable inlining if HotSpot has it disabled unless it's been explicitly set in
+                 * Graal.
+                 */
+                boolean disableInlining = !config.inline && !Inline.hasBeenSet();
+                try (OverrideScope s1 = disableInlining ? OptionValue.override(Inline, false) : null) {
                     result = compiler.compile(method, entryBCI, useProfilingInfo);
                 }
             } catch (Throwable e) {
