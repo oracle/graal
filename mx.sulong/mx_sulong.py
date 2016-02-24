@@ -329,7 +329,7 @@ def getCommonOptions():
 
 # other OSs?
 def getSearchPathOption():
-    return '-Dllvm-dyn-libs=/usr/lib/x86_64-linux-gnu/libgfortran.so.3:/usr/lib/x86_64-linux-gnu/libstdc++.so.6:/lib/x86_64-linux-gnu/libc.so.6'
+    return '-Dllvm-dyn-libs=libgfortran.so.3:libstdc++.so.6:libc.so.6'
 
 
 def getCommonUnitTestOptions():
