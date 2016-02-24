@@ -457,20 +457,21 @@ public class NodeParser extends AbstractParser<NodeData> {
                 String name = ElementUtils.firstLetterLowerCase(ElementUtils.getAnnotationValue(String.class, mirror, "name"));
                 TypeMirror type = ElementUtils.getAnnotationValue(TypeMirror.class, mirror, "type");
 
-                NodeFieldData field = new NodeFieldData(typeElement, mirror, new CodeVariableElement(type, name), true);
-                if (name.isEmpty()) {
-                    field.addError(ElementUtils.getAnnotationValue(mirror, "name"), "Field name cannot be empty.");
-                } else if (names.contains(name)) {
-                    field.addError(ElementUtils.getAnnotationValue(mirror, "name"), "Duplicate field name '%s'.", name);
+                if (type != null) {
+                    NodeFieldData field = new NodeFieldData(typeElement, mirror, new CodeVariableElement(type, name), true);
+                    if (name.isEmpty()) {
+                        field.addError(ElementUtils.getAnnotationValue(mirror, "name"), "Field name cannot be empty.");
+                    } else if (names.contains(name)) {
+                        field.addError(ElementUtils.getAnnotationValue(mirror, "name"), "Duplicate field name '%s'.", name);
+                    }
+
+                    names.add(name);
+
+                    fields.add(field);
+                } else {
+                    // Type is null here. This indicates that the type could not be resolved.
+                    // The Java compiler will subsequently raise the appropriate error.
                 }
-
-                if (type == null) {
-                    throw new AssertionError("The type specified in the NodeField annotation cannot be found. A possible cause could be a missing import statement for the type.");
-                }
-
-                names.add(name);
-
-                fields.add(field);
             }
         }
 
