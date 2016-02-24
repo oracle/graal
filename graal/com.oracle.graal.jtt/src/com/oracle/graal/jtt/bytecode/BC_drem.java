@@ -23,6 +23,9 @@
 
 package com.oracle.graal.jtt.bytecode;
 
+import static org.junit.Assume.assumeFalse;
+import jdk.vm.ci.sparc.SPARC;
+
 import org.junit.Test;
 
 public class BC_drem extends BC_ddiv_drem_base {
@@ -33,6 +36,7 @@ public class BC_drem extends BC_ddiv_drem_base {
 
     @Test
     public void drem() {
+        assumeFalse("Skipping test on SPARC which is known not working. See  https://github.com/graalvm/graal-core/issues/46", getTarget().arch instanceof SPARC);
         runTest("test", x, y);
     }
 
