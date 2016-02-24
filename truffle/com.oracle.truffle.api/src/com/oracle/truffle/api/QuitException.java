@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrument;
+package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.nodes.ControlFlowException;
 
 /**
- * Controls breaking out of an execution context, such as a shell or eval.
+ * Controls breaking out of all executions and ending Truffle execution.
  */
-@Deprecated
-public final class KillException extends ControlFlowException {
-
-    private static final long serialVersionUID = 3163641880088766957L;
+public final class QuitException extends ControlFlowException {
+    private static final long serialVersionUID = -7101931337099807445L;
 }

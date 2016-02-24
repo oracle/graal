@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,22 +29,22 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import com.oracle.truffle.api.KillException;
+import com.oracle.truffle.api.QuitException;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.ASTPrinter;
-import com.oracle.truffle.api.instrument.KillException;
-import com.oracle.truffle.api.instrument.QuitException;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
+import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
+import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.BreakpointInfo;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.Context;
+import com.oracle.truffle.tools.debug.shell.server.REPLServer.Visualizer;
 
 /**
  * Server-side REPL implementation of an {@linkplain REPLMessage "op"}.
@@ -124,11 +124,10 @@ public abstract class REPLHandler {
     }
 
     protected static final REPLMessage createFrameInfoMessage(final REPLServer replServer, int number, Node node) {
-        final Visualizer visualizer = replServer.getVisualizer();
         final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.FRAME_INFO);
         infoMessage.put(REPLMessage.FRAME_NUMBER, Integer.toString(number));
-        infoMessage.put(REPLMessage.SOURCE_LOCATION, visualizer.displaySourceLocation(node));
-        infoMessage.put(REPLMessage.METHOD_NAME, visualizer.displayMethodName(node));
+        infoMessage.put(REPLMessage.SOURCE_LOCATION, replServer.getLocationPrinter().displaySourceLocation(node));
+        infoMessage.put(REPLMessage.METHOD_NAME, replServer.getCurrentContext().getVisualizer().displayMethodName(node));
 
         if (node != null) {
             SourceSection section = node.getSourceSection();
@@ -149,13 +148,13 @@ public abstract class REPLHandler {
 
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
-            final Visualizer visualizer = replServer.getVisualizer();
+            final Visualizer visualizer = replServer.getCurrentContext().getVisualizer();
             final ArrayList<REPLMessage> replies = new ArrayList<>();
             final Context currentContext = replServer.getCurrentContext();
             final List<FrameInstance> stack = currentContext.getStack();
-            replies.add(btMessage(0, currentContext.getNode(), visualizer));
+            replies.add(btMessage(0, currentContext.getNode(), visualizer, replServer.getLocationPrinter()));
             for (int i = 1; i <= stack.size(); i++) {
-                replies.add(btMessage(i, stack.get(i - 1).getCallNode(), visualizer));
+                replies.add(btMessage(i, stack.get(i - 1).getCallNode(), visualizer, replServer.getLocationPrinter()));
             }
             if (replies.size() > 0) {
                 return replies.toArray(new REPLMessage[0]);
@@ -164,11 +163,11 @@ public abstract class REPLHandler {
         }
     };
 
-    private static REPLMessage btMessage(int index, Node node, Visualizer visualizer) {
+    private static REPLMessage btMessage(int index, Node node, Visualizer visualizer, LocationPrinter locationPrinter) {
         final REPLMessage btMessage = new REPLMessage(REPLMessage.OP, REPLMessage.BACKTRACE);
         btMessage.put(REPLMessage.FRAME_NUMBER, Integer.toString(index));
         if (node != null) {
-            btMessage.put(REPLMessage.SOURCE_LOCATION, visualizer.displaySourceLocation(node));
+            btMessage.put(REPLMessage.SOURCE_LOCATION, locationPrinter.displaySourceLocation(node));
             btMessage.put(REPLMessage.METHOD_NAME, visualizer.displayMethodName(node));
             SourceSection section = node.getSourceSection();
             if (section == null) {
@@ -209,7 +208,12 @@ public abstract class REPLHandler {
             if (ignoreCount == null) {
                 ignoreCount = 0;
             }
-            final BreakpointInfo breakpointInfo = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), false);
+            BreakpointInfo breakpointInfo;
+            try {
+                breakpointInfo = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), false);
+            } catch (IOException ex) {
+                return finishReplyFailed(reply, ex.getMessage());
+            }
             reply.put(REPLMessage.SOURCE_NAME, fileName);
             reply.put(REPLMessage.FILE_PATH, source.getPath());
             reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointInfo.getID()));
@@ -240,40 +244,17 @@ public abstract class REPLHandler {
             if (lineNumber == null) {
                 return finishReplyFailed(reply, "missing line number");
             }
-            final BreakpointInfo breakpointInfo = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), true);
+            BreakpointInfo breakpointInfo;
+            try {
+                breakpointInfo = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), true);
+            } catch (IOException ex) {
+                return finishReplyFailed(reply, ex.getMessage());
+            }
             reply.put(REPLMessage.SOURCE_NAME, fileName);
             reply.put(REPLMessage.FILE_PATH, source.getPath());
             reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointInfo.getID()));
             reply.put(REPLMessage.LINE_NUMBER, Integer.toString(lineNumber));
             return finishReplySucceeded(reply, "One-shot line breakpoint set");
-        }
-    };
-
-    public static final REPLHandler BREAK_AT_THROW_HANDLER = new REPLHandler(REPLMessage.BREAK_AT_THROW) {
-
-        @Override
-        public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
-            final REPLMessage reply = createReply();
-            try {
-                replServer.setTagBreakpoint(DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, false);
-                return finishReplySucceeded(reply, "Breakpoint at any throw set");
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
-        }
-    };
-
-    public static final REPLHandler BREAK_AT_THROW_ONCE_HANDLER = new REPLHandler(REPLMessage.BREAK_AT_THROW_ONCE) {
-
-        @Override
-        public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
-            final REPLMessage reply = createReply();
-            try {
-                replServer.setTagBreakpoint(DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, true);
-                return finishReplySucceeded(reply, "One-shot breakpoint at any throw set");
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
         }
     };
 
@@ -417,7 +398,7 @@ public abstract class REPLHandler {
             reply.put(REPLMessage.DEBUG_LEVEL, Integer.toString(serverContext.getLevel()));
 
             final String source = request.get(REPLMessage.CODE);
-            final Visualizer visualizer = replServer.getVisualizer();
+            final Visualizer visualizer = replServer.getCurrentContext().getVisualizer();
             final Integer frameNumber = request.getIntValue(REPLMessage.FRAME_NUMBER);
             final boolean stepInto = REPLMessage.TRUE.equals(request.get(REPLMessage.STEP_INTO));
             try {
@@ -476,7 +457,7 @@ public abstract class REPLHandler {
             if (frameNumber < 0 || frameNumber > stack.size()) {
                 return finishReplyFailed(createReply(), "frame number " + frameNumber + " out of range");
             }
-            final Visualizer visualizer = replServer.getVisualizer();
+            final Visualizer visualizer = replServer.getCurrentContext().getVisualizer();
 
             MaterializedFrame frame;
             Node node;
@@ -658,8 +639,9 @@ public abstract class REPLHandler {
             if (repeat == null) {
                 repeat = 1;
             }
+            final String countMessage = repeat == 1 ? "" : "<" + repeat + ">";
             replServer.getCurrentContext().prepareStepInto(repeat);
-            return finishReplySucceeded(reply, "StepInto <" + repeat + "> enabled");
+            return finishReplySucceeded(reply, "StepInto " + countMessage + " enabled");
         }
     };
 
@@ -667,8 +649,9 @@ public abstract class REPLHandler {
 
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
+            final REPLMessage reply = createReply();
             replServer.getCurrentContext().prepareStepOut();
-            return finishReplySucceeded(createReply(), "StepOut enabled");
+            return finishReplySucceeded(reply, "StepOut enabled");
         }
     };
 
@@ -681,8 +664,9 @@ public abstract class REPLHandler {
             if (repeat == null) {
                 repeat = 1;
             }
+            final String countMessage = repeat == 1 ? "" : "<" + repeat + ">";
             replServer.getCurrentContext().prepareStepOver(repeat);
-            return finishReplySucceeded(reply, "StepOver <" + repeat + "> enabled");
+            return finishReplySucceeded(reply, "StepOver " + countMessage + " enabled");
         }
     };
 
@@ -691,7 +675,7 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final REPLMessage reply = createReply();
-            final ASTPrinter astPrinter = replServer.getVisualizer().getASTPrinter();
+            final ASTPrinter astPrinter = replServer.getASTPrinter();
             final String topic = request.get(REPLMessage.TOPIC);
             reply.put(REPLMessage.TOPIC, topic);
             Node node = replServer.getCurrentContext().getNodeAtHalt();
@@ -708,11 +692,11 @@ public abstract class REPLHandler {
                         while (node.getParent() != null) {
                             node = node.getParent();
                         }
-                        final String astText = astPrinter.printTreeToString(node, depth, replServer.getCurrentContext().getNodeAtHalt());
+                        final String astText = astPrinter.displayAST(node, depth, replServer.getCurrentContext().getNodeAtHalt());
                         return finishReplySucceeded(reply, astText);
                     case REPLMessage.SUBTREE:
                     case REPLMessage.SUB:
-                        final String subTreeText = astPrinter.printTreeToString(node, depth);
+                        final String subTreeText = astPrinter.displayAST(node, depth);
                         return finishReplySucceeded(reply, subTreeText);
                     default:
                         return finishReplyFailed(reply, "Unknown \"" + REPLMessage.TRUFFLE.toString() + "\" topic");
@@ -752,7 +736,6 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
             final REPLMessage reply = createReply();
-            final ASTPrinter astPrinter = replServer.getVisualizer().getASTPrinter();
             final Node node = replServer.getCurrentContext().getNodeAtHalt();
             if (node == null) {
                 return finishReplyFailed(reply, "no current AST node");
@@ -760,7 +743,7 @@ public abstract class REPLHandler {
 
             try {
                 final StringBuilder sb = new StringBuilder();
-                sb.append(astPrinter.printNodeWithInstrumentation(node));
+                sb.append(replServer.getASTPrinter().displayNodeWithInstrumentation(node));
 
                 final SourceSection sourceSection = node.getSourceSection();
                 if (sourceSection != null) {

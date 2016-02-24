@@ -463,10 +463,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         return false;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected Visualizer getVisualizer() {
-        // old API
-        throw new UnsupportedOperationException();
+        return null;
     }
 
     @Override

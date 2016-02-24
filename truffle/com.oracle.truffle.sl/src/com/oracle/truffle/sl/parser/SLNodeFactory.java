@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.instrument.Instrumenter;
@@ -96,11 +97,12 @@ import com.oracle.truffle.sl.runtime.SLContext;
  */
 public class SLNodeFactory {
 
-    /* Tags for instrumentations */
-    private static final String[] ROOT_TAGS = {"ROOT"};
-    private static final String[] BLOCK_TAGS = {"BLOCK"};
-    private static final String[] STATEMENT_TAGS = {"STATEMENT"};
-    private static final String[] EXPRESSION_TAGS = {"EXPRESSION"};
+    /* Tags for the debugger */
+    private static final String[] ROOT_TAGS = {};
+    private static final String[] BLOCK_TAGS = {};
+    private static final String[] STATEMENT_TAGS = {Debugger.HALT_TAG};
+    private static final String[] CALL_TAGS = {Debugger.CALL_TAG};
+    private static final String[] EXPRESSION_TAGS = {};
 
     /**
      * Local variable names that are visible in the current block. Variables are not visible outside
@@ -333,7 +335,7 @@ public class SLNodeFactory {
     public SLExpressionNode createCall(SLExpressionNode functionNode, List<SLExpressionNode> parameterNodes, Token finalToken) {
         final int startPos = functionNode.getSourceSection().getCharIndex();
         final int endPos = finalToken.charPos + finalToken.val.length();
-        final SourceSection src = source.createSection(functionNode.getSourceSection().getIdentifier(), startPos, endPos - startPos, EXPRESSION_TAGS);
+        final SourceSection src = source.createSection(functionNode.getSourceSection().getIdentifier(), startPos, endPos - startPos, CALL_TAGS);
         return SLInvokeNodeGen.create(src, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]), functionNode);
     }
 

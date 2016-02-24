@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,16 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.instrument.Instrument;
 import java.io.IOException;
 
-import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.source.Source;
 
 /**
  * Breakpoint in a {@link com.oracle.truffle.api.vm.PolyglotEngine} with
- * {@link com.oracle.truffle.api.debug debugging turned on}. You can ask
+ * {@link com.oracle.truffle.api.debug debugging turned on}. You can request an instance of
+ * breakpoint by calling
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)} or
- * {@link Debugger#setTagBreakpoint(int, com.oracle.truffle.api.instrument.SyntaxTag, boolean)} to
- * create an instance of {@link Breakpoint}.
+ * other methods in the {@link Debugger} class.
  */
 @SuppressWarnings("javadoc")
 public abstract class Breakpoint {
@@ -47,41 +44,31 @@ public abstract class Breakpoint {
     public enum State {
 
         /**
-         * Not attached, enabled.
-         * <p>
-         * Created for a source location but not yet attached: perhaps just created and the source
-         * hasn't been loaded yet; perhaps source has been loaded, but the line location isn't
-         * probed so a breakpoint cannot be attached. Can be either enabled or disabled.
+         * No matching source locations have been identified, but it is enables so that the
+         * breakpoint will become active when any matching source locations appear.
          */
         ENABLED_UNRESOLVED("Enabled/Unresolved"),
 
         /**
-         * Not attached, disabled.
-         * <p>
-         * Created for a source location but not yet attached: perhaps just created and the source
-         * hasn't been loaded yet; perhaps source has been loaded, but the line location isn't
-         * probed so a breakpoint cannot be attached.
+         * No matching source locations have been identified, and it is disabled. The breakpoint
+         * will become associated with any matching source locations that appear, but will not
+         * become active until explicitly enabled.
          */
         DISABLED_UNRESOLVED("Disabled/Unresolved"),
 
         /**
-         * Attached, instrument enabled.
-         * <p>
-         * Is currently implemented by some {@link Instrument}, which is attached to a {@link Probe}
-         * at a specific node in the AST, and the breakpoint is enabled.
+         * Matching source locations have been identified and the breakpoint is active at them.
          */
         ENABLED("Enabled"),
 
         /**
-         * Attached, instrument disabled.
-         * <p>
-         * Is currently implemented by some {@link Instrument}, which is attached to a {@link Probe}
-         * at a specific node in the AST, and the breakpoint is disabled.
+         * Matching source locations have been identified, but he breakpoint is disabled. It will
+         * not be active until explicitly enabled.
          */
         DISABLED("Disabled"),
 
         /**
-         * Not attached, instrument is permanently disabled.
+         * The breakpoint is permanently inactive.
          */
         DISPOSED("Disposed");
 
@@ -102,26 +89,19 @@ public abstract class Breakpoint {
 
     }
 
-    private final boolean isOneShot;
-
-    private int ignoreCount;
-
-    private int hitCount;
-
-    private State state;
-
-    Breakpoint(State state, int ignoreCount, boolean isOneShot) {
-        this.state = state;
-        this.isOneShot = isOneShot;
-        this.ignoreCount = ignoreCount;
+    Breakpoint() {
     }
 
     /**
-     * Enables or disables this breakpoint's AST {@linkplain Instrumenter instrumentation}. The
-     * breakpoint is enabled by default.
+     * Gets current state of the breakpoint.
+     */
+    public abstract State getState();
+
+    /**
+     * Enables/disables this breakpoint; enabled by default.
      *
-     * @param enabled <code>true</code> to activate the instrumentation, <code>false</code> to
-     *            deactivate the instrumentation so that it has no effect.
+     * @param enabled <code>true</code> to activate the breakpoint, <code>false</code> to deactivate
+     *            it so that it has no effect.
      */
     public abstract void setEnabled(boolean enabled);
 
@@ -144,23 +124,17 @@ public abstract class Breakpoint {
      * Gets the text that defines the current condition on this breakpoint; {@code null} if this
      * breakpoint is currently unconditional.
      */
-    public Source getCondition() {
-        return null;
-    }
+    public abstract Source getCondition();
 
     /**
      * Does this breakpoint remove itself after first activation?
      */
-    public final boolean isOneShot() {
-        return isOneShot;
-    }
+    public abstract boolean isOneShot();
 
     /**
      * Gets the number of hits left to be ignored before halting.
      */
-    public final int getIgnoreCount() {
-        return ignoreCount;
-    }
+    public abstract int getIgnoreCount();
 
     /**
      * Change the threshold for when this breakpoint should start causing a break. When both an
@@ -168,17 +142,13 @@ public abstract class Breakpoint {
      * is evaluated first: if {@code false} it is not considered to be a hit. In other words, the
      * ignore count is for successful conditions only.
      */
-    public final void setIgnoreCount(int ignoreCount) {
-        this.ignoreCount = ignoreCount;
-    }
+    public abstract void setIgnoreCount(int ignoreCount);
 
     /**
      * Number of times this breakpoint has reached, with one exception; if the breakpoint has a
      * condition that evaluates to {@code false}, it does not count as a hit.
      */
-    public final int getHitCount() {
-        return hitCount;
-    }
+    public abstract int getHitCount();
 
     /**
      * Disables this breakpoint and removes any associated instrumentation; it becomes permanently
@@ -190,41 +160,4 @@ public abstract class Breakpoint {
      * Gets a human-sensible description of this breakpoint's location in a {@link Source}.
      */
     public abstract String getLocationDescription();
-
-    public final State getState() {
-        return state;
-    }
-
-    final void assertState(State s) {
-        assert state == s;
-    }
-
-    final void setState(State state) {
-        this.state = state;
-    }
-
-    /**
-     * Assumes that all conditions for causing the break have been satisfied, so increments the
-     * <em>hit count</em>. Then checks if the <em>ignore count</em> has been exceeded, and if so
-     * returns {@code true}. If not, it still counts as a <em>hit</em> but should be ignored.
-     *
-     * @return whether to proceed
-     */
-    final boolean incrHitCountCheckIgnore() {
-        return ++hitCount > ignoreCount;
-    }
-
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder(getClass().getSimpleName());
-        sb.append(" state=");
-        sb.append(getState() == null ? "<none>" : getState().getName());
-        if (isOneShot()) {
-            sb.append(", " + "One-Shot");
-        }
-        if (getCondition() != null) {
-            sb.append(", condition=\"" + getCondition() + "\"");
-        }
-        return sb.toString();
-    }
 }

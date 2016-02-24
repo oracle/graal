@@ -68,6 +68,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.vm",
         "mx:JUNIT",
       ],
@@ -139,11 +140,36 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.vm",
+        "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.dsl.test",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.debug" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["com.oracle.truffle.api.vm"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["INTERNAL_PROCESSOR"],
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.debug.test" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.debug",
+        "com.oracle.truffle.api.instrumentation.test",
+        "com.oracle.truffle.api.dsl.test",
+        "mx:JUNIT"
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -253,7 +279,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
                         "com.oracle.truffle.tools",
-                        "com.oracle.truffle.api.vm",
+                        "com.oracle.truffle.api.debug",
                         "JLINE"
                         ],
       "checkstyle" : "com.oracle.truffle.api",
@@ -286,17 +312,21 @@ suite = {
       "license" : "UPL",
     },
 
-     "com.oracle.truffle.sl.tools" : {
-      "subDir" : "truffle",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.tools.debug.shell",
-                        "com.oracle.truffle.sl"],
-      "checkstyle" : "com.oracle.truffle.sl",
-      "javaCompliance" : "1.7",
-      "workingSets" : "Truffle,SimpleLanguage,Tools",
-      "license" : "UPL",
-    },
-  },
+    "com.oracle.truffle.sl.tools" : {
+       "subDir" : "truffle",
+       "sourceDirs" : ["src"],
+       "dependencies" : [
+                        "com.oracle.truffle.tools.debug.shell",
+                        ],
+       "generatedDependencies" : [
+                        "com.oracle.truffle.sl",
+                        ],
+       "checkstyle" : "com.oracle.truffle.sl",
+       "javaCompliance" : "1.7",
+       "workingSets" : "Truffle,SimpleLanguage,Tools",
+       "license" : "UPL",
+     },
+   },
 
   "licenses" : {
     "UPL" : {
@@ -316,6 +346,7 @@ suite = {
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.profiles",
+        "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",
       ],
@@ -336,6 +367,15 @@ suite = {
       "exclude" : ["mx:JUNIT"],
       "description" : """A collection of tests that can certify language implementation to be compliant
         with most recent requirements of the Truffle infrastructure and tooling.""",
+    },
+
+    "INTERNAL_PROCESSOR" : {
+      "internal" : True,
+      "subDir" : "truffle",
+      "javaCompliance" : "1.7",
+      "dependencies" : ["com.oracle.truffle.dsl.processor"],
+      "distDependencies" : [],
+      "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {

@@ -452,7 +452,7 @@ public abstract class ProbeInstrument extends Instrument {
         }
     }
 
-    // TODO (mlvdv) experimental
+    // Experimental
     public interface TruffleOptListener {
         void notifyIsCompiled(boolean isCompiled);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,9 +106,7 @@ import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
 import com.oracle.truffle.sl.nodes.expression.SLMulNode;
 import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNode;
-import com.oracle.truffle.sl.nodes.instrument.SLDefaultVisualizer;
 import com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode;
-import com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber;
 import com.oracle.truffle.sl.nodes.instrument.SLStatementWrapperNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
@@ -197,7 +195,6 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String builtinKind = "SL builtin";
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
-    private static Visualizer visualizer = new SLDefaultVisualizer();
     private static int parsingCount;
 
     private final Map<Source, CallTarget> compiled;
@@ -216,7 +213,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
             context.installBuiltin(builtin, true);
         }
-        env.instrumenter().registerASTProber(new SLStandardASTProber());
         return context;
     }
 
@@ -490,9 +486,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return object instanceof SLFunction;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected Visualizer getVisualizer() {
-        return visualizer;
+        return null;
     }
 
     @Override

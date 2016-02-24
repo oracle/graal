@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.debug;
+package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.source.LineLocation;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 
 /**
- * A breakpoint associated with a {@linkplain LineLocation source line location}.
- *
- * @see Debugger
+ * Controls breaking out of an execution context, such as a shell or eval.
  */
-abstract class LineBreakpoint extends Breakpoint {
-
-    LineBreakpoint(State state, int ignoreCount, boolean isOneShot) {
-        super(state, ignoreCount, isOneShot);
-    }
-
-    /**
-     * Gets the {@linkplain LineLocation source line location} that specifies where this breakpoint
-     * will trigger.
-     */
-    public abstract LineLocation getLineLocation();
-
+public final class KillException extends ControlFlowException {
+    private static final long serialVersionUID = -8638020836970813894L;
 }

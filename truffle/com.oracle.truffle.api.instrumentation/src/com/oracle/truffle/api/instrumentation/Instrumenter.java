@@ -44,7 +44,7 @@ public abstract class Instrumenter {
     public abstract <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(SourceSectionFilter filter, T factory);
 
     /**
-     * Starts event notification for a given {@link ExecutionEventListener listeenr} and returns a
+     * Starts event notification for a given {@link ExecutionEventListener listener} and returns a
      * {@link EventBinding binding} which represents a handle to dispose the notification.
      */
     public abstract <T extends ExecutionEventListener> EventBinding<T> attachListener(SourceSectionFilter filter, T listener);
