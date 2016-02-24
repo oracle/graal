@@ -242,6 +242,18 @@ public abstract class GraalCompilerTest extends GraalTest {
         this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
     }
 
+    /**
+     * Set up a test for a non-default backend.
+     *
+     * @param backend the desired backend
+     */
+    public GraalCompilerTest(Backend backend) {
+        this.backend = backend;
+        this.providers = backend.getProviders();
+        this.suites = new DerivedOptionValue<>(this::createSuites);
+        this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
+    }
+
     @BeforeClass
     public static void initializeDebugging() {
         DebugEnvironment.initialize(System.out);
