@@ -514,7 +514,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     private LLVMBlockNode getFunctionBlockStatements(FunctionDef def) {
         List<LLVMNode> allFunctionNodes = new ArrayList<>();
-        Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
         int currentIndex = 0;
         int[] basicBlockIndices = new int[def.getBasicBlocks().size()];
         int i = 0;
@@ -526,6 +525,12 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
         LLVMStackFrameNuller[][] indexToSlotNuller = new LLVMStackFrameNuller[currentIndex][];
         i = 0;
+        Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock;
+        if (LLVMOptions.isNativeAnalysis()) {
+            deadSlotsAfterBlock = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
+        } else {
+            deadSlotsAfterBlock = new HashMap<>();
+        }
         for (BasicBlock basicBlock : def.getBasicBlocks()) {
             FrameSlot[] deadSlots = deadSlotsAfterBlock.get(basicBlock);
             indexToSlotNuller[basicBlockIndices[i++]] = getSlotNullerNode(deadSlots);
