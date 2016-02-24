@@ -914,21 +914,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 LogicNode resultY = computeCondition(tool, orNode.y, phi, value);
                 return orNode.canonical(tool, resultX, resultY);
             }
-            return null;
         } else if (condition instanceof Canonicalizable.Binary<?>) {
             Canonicalizable.Binary<Node> compare = (Canonicalizable.Binary<Node>) condition;
             if (compare.getX() == phi) {
                 return (LogicNode) compare.canonical(tool, value, compare.getY());
-            } else {
-                assert compare.getY() == phi;
+            } else if (compare.getY() == phi) {
                 return (LogicNode) compare.canonical(tool, compare.getX(), value);
             }
         } else if (condition instanceof Canonicalizable.Unary<?>) {
             Canonicalizable.Unary<Node> compare = (Canonicalizable.Unary<Node>) condition;
-            return (LogicNode) compare.canonical(tool, value);
-        } else {
-            throw new JVMCIError("unexpected conditional");
+            if (compare.getValue() == phi) {
+                return (LogicNode) compare.canonical(tool, value);
+            }
         }
+        if (condition instanceof Canonicalizable) {
+            return (LogicNode) ((Canonicalizable) condition).canonical(tool);
+        }
+        return condition;
     }
 
     private static void transferProxies(AbstractBeginNode successor, MergeNode falseMerge) {
