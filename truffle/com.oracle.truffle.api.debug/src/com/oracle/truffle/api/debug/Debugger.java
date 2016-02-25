@@ -165,7 +165,9 @@ public final class Debugger {
 
         @TruffleBoundary
         public void haltedAt(Node astNode, MaterializedFrame mFrame, String haltReason) {
-            debugContext.halt(astNode, mFrame, true, haltReason);
+            if (debugContext != null) {
+                debugContext.halt(astNode, mFrame, true, haltReason);
+            }
         }
     };
 
