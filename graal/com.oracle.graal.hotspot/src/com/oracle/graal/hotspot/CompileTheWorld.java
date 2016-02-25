@@ -279,7 +279,11 @@ public final class CompileTheWorld {
     }
 
     public void println(String s) {
-        if (verbose) {
+        println(verbose, s);
+    }
+
+    public static void println(boolean cond, String s) {
+        if (cond) {
             TTY.println(s);
         }
     }
@@ -726,8 +730,10 @@ public final class CompileTheWorld {
         }
         HotSpotVMConfig c = config();
         if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > c.hugeMethodLimit) {
-            println("CompileTheWorld (%d) : Skipping huge method %s (use -XX:-DontCompileHugeMethods or -XX:HugeMethodLimit=%d to include it)", classFileCounter, javaMethod.format("%H.%n(%p):%r"),
-                            javaMethod.getCodeSize());
+            println(verbose || methodFilters != null,
+                            String.format("CompileTheWorld (%d) : Skipping huge method %s (use -XX:-DontCompileHugeMethods or -XX:HugeMethodLimit=%d to include it)", classFileCounter,
+                                            javaMethod.format("%H.%n(%p):%r"),
+                                            javaMethod.getCodeSize()));
             return false;
         }
         // Allow use of -XX:CompileCommand=dontinline to exclude problematic methods
