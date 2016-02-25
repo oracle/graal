@@ -204,7 +204,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         } else if (clazz == SnippetReflectionProvider.class) {
             return (T) getHostProviders().getSnippetReflection();
         } else if (clazz == StampProvider.class) {
-            return (T) new HotSpotStampProvider();
+            return (T) getHostProviders().getStampProvider();
         }
         return null;
     }
