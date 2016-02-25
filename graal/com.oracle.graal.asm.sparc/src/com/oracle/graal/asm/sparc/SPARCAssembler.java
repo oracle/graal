@@ -909,7 +909,7 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec fcc = new ContinousBitSpec(26, 25, "cc");
         private static final BitSpec d16hi = new ContinousBitSpec(21, 20, "d16hi");
         private static final BitSpec d16lo = new ContinousBitSpec(13, 0, "d16lo");
-        private static final BitSpec d16 = new CompositeBitSpec(d16hi, d16lo);
+        private static final BitSpec d16 = new CompositeBitSpec(d16hi, d16lo, true);
         // Movcc
         private static final BitSpec movccLo = new ContinousBitSpec(12, 11, "cc_lo");
         private static final BitSpec movccHi = new ContinousBitSpec(18, 18, "cc_hi");
@@ -919,12 +919,12 @@ public abstract class SPARCAssembler extends Assembler {
         // CBCond
         private static final BitSpec cLo = new ContinousBitSpec(27, 25, "cLo");
         private static final BitSpec cHi = new ContinousBitSpec(29, 29, "cHi");
-        private static final BitSpec c = new CompositeBitSpec(cHi, cLo);
+        private static final BitSpec c = new CompositeBitSpec(cHi, cLo, false);
         private static final BitSpec cbcond = new ContinousBitSpec(28, 28, "cbcond");
         private static final BitSpec cc2 = new ContinousBitSpec(21, 21, "cc2");
         private static final BitSpec d10Lo = new ContinousBitSpec(12, 5, "d10Lo");
         private static final BitSpec d10Hi = new ContinousBitSpec(20, 19, "d10Hi");
-        private static final BitSpec d10 = new CompositeBitSpec(d10Hi, d10Lo);
+        private static final BitSpec d10 = new CompositeBitSpec(d10Hi, d10Lo, true);
         private static final BitSpec simm5 = new ContinousBitSpec(4, 0, true, "simm5");
 
         public abstract int setBits(int word, int value);
@@ -998,31 +998,41 @@ public abstract class SPARCAssembler extends Assembler {
         private final int leftWidth;
         private final BitSpec right;
         private final int rightWidth;
+        private final boolean signExt;
 
-        public CompositeBitSpec(BitSpec left, BitSpec right) {
+        public CompositeBitSpec(BitSpec left, BitSpec right, boolean signExtend) {
             super();
             this.left = left;
             this.leftWidth = left.getWidth();
             this.right = right;
             this.rightWidth = right.getWidth();
+            this.signExt = signExtend;
         }
 
         @Override
         public int getBits(int word) {
             int l = left.getBits(word);
             int r = right.getBits(word);
+            if (signExt) {
+                l = signExtend(l, leftWidth);
+            }
             return l << rightWidth | r;
         }
 
         @Override
         public int setBits(int word, int value) {
+            assert valueFits(value) : String.format("Value %s does not fit in %s", value, this);
             int l = leftBits(value);
             int r = rightBits(value);
             return left.setBits(right.setBits(word, r), l);
         }
 
         private int leftBits(int value) {
-            return SPARCAssembler.getBits(value, rightWidth + leftWidth - 1, rightWidth);
+            int l = SPARCAssembler.getBits(value, rightWidth + leftWidth - 1, rightWidth);
+            if (signExt) {
+                signExtend(l, leftWidth);
+            }
+            return l;
         }
 
         private int rightBits(int value) {
@@ -1041,7 +1051,16 @@ public abstract class SPARCAssembler extends Assembler {
 
         @Override
         public boolean valueFits(int value) {
-            return left.valueFits(leftBits(value)) && right.valueFits(rightBits(value));
+            if (signExt) {
+                return isSimm(value, getWidth());
+            } else {
+                return isImm(value, getWidth());
+            }
+        }
+
+        private static int signExtend(int l, int bits) {
+            int shiftAmt = (32 - bits);
+            return (l << shiftAmt) >> shiftAmt;
         }
     }
 
@@ -1327,6 +1346,13 @@ public abstract class SPARCAssembler extends Assembler {
         public boolean isConditional(int inst) {
             int cond = BitSpec.cond.getBits(inst);
             return cond != ConditionFlag.Always.value && cond != ConditionFlag.Never.value;
+        }
+
+        public void emit(SPARCMacroAssembler masm, ConditionFlag cond, Annul a, Label lab) {
+            int inst = setBits(0);
+            inst = BitSpec.cond.setBits(inst, cond.value);
+            inst = BitSpec.a.setBits(inst, a.flag);
+            masm.emitInt(setDisp(inst, masm, lab));
         }
     }
 

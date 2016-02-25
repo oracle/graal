@@ -472,6 +472,18 @@ suite = {
       "workingSets" : "Graal,Assembler,SPARC",
     },
 
+    "com.oracle.graal.asm.sparc.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.asm.test",
+        "com.oracle.graal.asm.sparc",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,Assembler,SPARC,Test",
+    },
+
     "com.oracle.graal.bytecode" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
