@@ -109,7 +109,7 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
 
     @Test(timeout = TEST_TIMEOUT_TIME)
     public void test() throws IOException {
-        if (LLVMOptions.isDebug()) {
+        if (LLVMOptions.debugEnabled()) {
             System.out.println("current file: " + originalFile);
         }
         List<String> expectedLines;
@@ -131,7 +131,7 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
 
     public List<String> launchLocal() {
         List<String> result = new ArrayList<>();
-        if (LLVMOptions.isDebug()) {
+        if (LLVMOptions.debugEnabled()) {
             System.out.println("current file: " + originalFile);
         }
         try {

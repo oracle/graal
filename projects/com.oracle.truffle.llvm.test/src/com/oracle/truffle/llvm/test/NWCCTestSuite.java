@@ -63,7 +63,7 @@ public class NWCCTestSuite extends RemoteTestSuiteBase {
 
     @Test
     public void test() throws Throwable {
-        if (LLVMOptions.isDebug()) {
+        if (LLVMOptions.debugEnabled()) {
             System.out.println("original file: " + tuple.getOriginalFile());
         }
         try {

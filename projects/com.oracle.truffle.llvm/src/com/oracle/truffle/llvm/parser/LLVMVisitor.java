@@ -291,7 +291,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             } else if (object instanceof TargetInfo) {
                 // already parsed
             } else if (object instanceof NamedMetadata) {
-                if (LLVMOptions.isDebug()) {
+                if (LLVMOptions.debugEnabled()) {
                     System.err.println(object + " not supported!");
                 }
             } else if (object instanceof FunctionDecl) {
@@ -307,7 +307,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             } else if (object instanceof Alias) {
                 // do nothing, visit later when alias is referenced
             } else if (object instanceof InlineAsm) {
-                if (LLVMOptions.isDebug()) {
+                if (LLVMOptions.debugEnabled()) {
                     System.err.println("ignoring module level inline assembler!");
                 }
             } else {
@@ -503,7 +503,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
         LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(functionBodyNode, stackPointerSlot, beforeFunction, afterFunction, frameDescriptor, functionName);
-        if (LLVMOptions.isPrintFunctionAsts()) {
+        if (LLVMOptions.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
         LLVMFunction function = createLLVMFunctionFromHeader(def.getHeader());
@@ -526,7 +526,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMStackFrameNuller[][] indexToSlotNuller = new LLVMStackFrameNuller[currentIndex][];
         i = 0;
         Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock;
-        if (LLVMOptions.isNativeAnalysis()) {
+        if (LLVMOptions.lifeTimeAnalysisEnabled()) {
             deadSlotsAfterBlock = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
         } else {
             deadSlotsAfterBlock = new HashMap<>();

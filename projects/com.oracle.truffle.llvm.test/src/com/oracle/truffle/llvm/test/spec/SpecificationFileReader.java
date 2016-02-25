@@ -64,7 +64,7 @@ public class SpecificationFileReader {
     };
 
     public static TestSpecification readSpecificationFolder(File directory, File testRoot) throws IOException {
-        if (LLVMOptions.isDebug()) {
+        if (LLVMOptions.debugEnabled()) {
             System.out.println("\tread specification files in " + directory);
         }
         List<File> includeFiles = getSpecificationFiles(directory, testRoot, FILE_NAME_INCLUDE_FILTER);

@@ -144,11 +144,11 @@ public class LLVMOptions {
         return (T) parsedProperties.get(property);
     }
 
-    public static boolean isDebug() {
+    public static boolean debugEnabled() {
         return getParsedProperty(Property.DEBUG);
     }
 
-    public static boolean isPrintFunctionAsts() {
+    public static boolean printFunctionASTs() {
         return getParsedProperty(Property.PRINT_FUNCTION_ASTS);
     }
 
@@ -163,7 +163,7 @@ public class LLVMOptions {
         return getParsedProperty(Property.TEST_DISCOVERY_PATH);
     }
 
-    public static boolean isDiscoveryTestMode() {
+    public static boolean discoveryTestModeEnabled() {
         return getTestDiscoveryPath() != null;
     }
 
@@ -195,16 +195,16 @@ public class LLVMOptions {
         return getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_COND_BRANCH);
     }
 
-    public static boolean isNativeCallStats() {
+    public static boolean printNativeCallStats() {
         return getParsedProperty(Property.NATIVE_CALL_STATS);
     }
 
-    public static boolean isNativeAnalysis() {
+    public static boolean lifeTimeAnalysisEnabled() {
         return getParsedProperty(Property.OPTIMIZATION_LIFE_TIME_ANALYSIS);
     }
 
-    public static boolean isNativeAnalysisStats() {
-        return isNativeAnalysis() && (boolean) getParsedProperty(Property.LIFE_TIME_ANALYSIS_STATS);
+    public static boolean printLifeTimeAnalysis() {
+        return lifeTimeAnalysisEnabled() && (boolean) getParsedProperty(Property.LIFE_TIME_ANALYSIS_STATS);
     }
 
 }

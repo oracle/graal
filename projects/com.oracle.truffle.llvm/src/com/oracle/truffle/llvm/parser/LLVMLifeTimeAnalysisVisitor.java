@@ -79,7 +79,7 @@ public final class LLVMLifeTimeAnalysisVisitor {
 
     public static Map<BasicBlock, FrameSlot[]> visit(FunctionDef function, FrameDescriptor frameDescriptor) {
         Map<BasicBlock, FrameSlot[]> mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
-        if (LLVMOptions.isNativeAnalysisStats()) {
+        if (LLVMOptions.printLifeTimeAnalysis()) {
             printAnalysisResults(function, mapping);
         }
         return mapping;

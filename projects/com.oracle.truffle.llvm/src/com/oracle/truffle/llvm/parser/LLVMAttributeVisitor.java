@@ -74,7 +74,7 @@ public class LLVMAttributeVisitor {
                 // ignore for the moment, investigate later
                 break;
             default:
-                if (LLVMOptions.isDebug()) {
+                if (LLVMOptions.debugEnabled()) {
                     System.err.println(attribute + " not supported!");
                 }
         }
@@ -83,7 +83,7 @@ public class LLVMAttributeVisitor {
     private static void visitAttributeGroup(AttributeGroup attributeGroup) {
         EList<TargetSpecificAttribute> targetSpecificAttributes = attributeGroup.getTargetSpecificAttributes();
         if (targetSpecificAttributes.size() != 0) {
-            if (LLVMOptions.isDebug()) {
+            if (LLVMOptions.debugEnabled()) {
                 System.err.println("target specific attributes not yet supported");
             }
         }
