@@ -343,16 +343,16 @@ public class AArch64Move {
      * </code>
      */
     @Opcode("CAS")
-    public static class CompareAndSwap extends AArch64LIRInstruction {
-        public static final LIRInstructionClass<CompareAndSwap> TYPE = LIRInstructionClass.create(CompareAndSwap.class);
+    public static class CompareAndSwapOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
         @Def protected AllocatableValue resultValue;
         @Alive protected Value expectedValue;
         @Alive protected AllocatableValue newValue;
-        @Alive(COMPOSITE) protected AArch64AddressValue addressValue;
+        @Alive protected AllocatableValue addressValue;
         @Temp protected AllocatableValue scratchValue;
 
-        public CompareAndSwap(AllocatableValue result, Value expectedValue, AllocatableValue newValue, AArch64AddressValue addressValue, AllocatableValue scratch) {
+        public CompareAndSwapOp(AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch) {
             super(TYPE);
             this.resultValue = result;
             this.expectedValue = expectedValue;
@@ -365,15 +365,15 @@ public class AArch64Move {
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             AArch64Kind kind = (AArch64Kind) expectedValue.getPlatformKind();
             assert kind.isInteger();
-            int size = kind.getSizeInBytes() * Byte.SIZE;
+            final int size = kind.getSizeInBytes() * Byte.SIZE;
 
-            AArch64Address address = addressValue.toAddress();
+            Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
             Register newVal = asRegister(newValue);
             Register scratch = asRegister(scratchValue);
             // We could avoid using a scratch register here, by reusing resultValue for the stlxr
-            // success flag
-            // and issue a mov resultValue, expectedValue in case of success before returning.
+            // success flag and issue a mov resultValue, expectedValue in case of success before
+            // returning.
             Label retry = new Label();
             Label fail = new Label();
             masm.bind(retry);
