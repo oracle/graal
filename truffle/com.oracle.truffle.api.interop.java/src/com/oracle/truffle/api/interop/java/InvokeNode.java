@@ -24,41 +24,33 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.List;
 
-final class InvokeMemberNode extends RootNode {
-    InvokeMemberNode() {
-        super(JavaInteropLanguage.class, null, null);
-    }
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.AcceptMessage;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.java.ExecuteNode.DoExecuteNode;
+
+@AcceptMessage(value = "INVOKE", receiverType = JavaObject.class, language = JavaInteropLanguage.class)
+final class InvokeNode extends InvokeBaseNode {
+
+    @Child private DoExecuteNode doExecute;
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        JavaInterop.JavaObject receiver = (JavaInterop.JavaObject) ForeignAccess.getReceiver(frame);
-        final List<Object> args = ForeignAccess.getArguments(frame);
-        final Object nameOrIndex = args.get(0);
-        final int argsLength = args.size() - 1;
-        if (nameOrIndex instanceof Integer) {
-            throw UnknownIdentifierException.raise(String.valueOf(nameOrIndex));
-        } else {
-            String name = (String) nameOrIndex;
-            for (Method m : receiver.clazz.getMethods()) {
-                final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
-                if (isStatic) {
-                    continue;
-                }
-                if (m.getName().equals(name) && m.getParameterTypes().length == argsLength) {
-                    Object[] arr = args.subList(1, args.size()).toArray();
-                    return JavaFunctionNode.execute(m, receiver.obj, arr);
+    public Object access(VirtualFrame frame, JavaObject object, String name, Object[] args) {
+        for (Method m : object.clazz.getMethods()) {
+            if (m.getName().equals(name)) {
+                if (m.getParameterTypes().length == args.length || m.isVarArgs()) {
+                    if (doExecute == null || args.length != doExecute.numberOfArguments()) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        doExecute = insert(new DoExecuteNode(args.length));
+                    }
+                    return doExecute.execute(frame, m, object.obj, args);
                 }
             }
-            throw UnknownIdentifierException.raise(name);
         }
+        throw UnknownIdentifierException.raise(name);
     }
 
 }

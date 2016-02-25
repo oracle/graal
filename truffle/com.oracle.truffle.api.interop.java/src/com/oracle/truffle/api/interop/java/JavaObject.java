@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,44 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.nodes.RootNode;
-import java.util.List;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-final class JavaObjectMethodNode extends RootNode {
-    @Child ReadFieldNode readField;
-    @Child JavaFunctionNode function;
+final class JavaObject implements TruffleObject {
 
-    JavaObjectMethodNode() {
-        super(JavaInteropLanguage.class, null, null);
-        readField = new ReadFieldNode();
-        function = new JavaFunctionNode();
+    static final JavaObject NULL = new JavaObject(null, Object.class);
+
+    final Object obj;
+    final Class<?> clazz;
+
+    JavaObject(Object obj, Class<?> clazz) {
+        this.obj = obj;
+        this.clazz = clazz;
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        JavaInterop.JavaFunctionObject f = (JavaInterop.JavaFunctionObject) readField.execute(frame);
-        List<Object> args = ForeignAccess.getArguments(frame);
-        return JavaFunctionNode.execute(f, args.subList(1, args.size()).toArray());
+    public ForeignAccess getForeignAccess() {
+        return JavaObjectForeign.createAccess();
     }
 
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(obj);
+    }
+
+    public static boolean isInstance(TruffleObject obj) {
+        return obj instanceof JavaObject;
+    }
+
+    public boolean isClass() {
+        return obj == null;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof JavaObject) {
+            return obj == ((JavaObject) other).obj && clazz == ((JavaObject) other).clazz;
+        }
+        return false;
+    }
 }

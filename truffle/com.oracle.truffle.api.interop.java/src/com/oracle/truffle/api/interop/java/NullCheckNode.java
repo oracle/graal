@@ -25,18 +25,14 @@
 package com.oracle.truffle.api.interop.java;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.java.JavaInterop.JavaObject;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.interop.AcceptMessage;
 
-final class NullCheckNode extends RootNode {
-    NullCheckNode() {
-        super(JavaInteropLanguage.class, null, null);
-    }
+@AcceptMessage(value = "IS_NULL", receiverType = JavaObject.class, language = JavaInteropLanguage.class)
+final class NullCheckNode extends NullCheckBaseNode {
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        return ForeignAccess.getReceiver(frame) == JavaObject.NULL;
+    public Object access(VirtualFrame frame, JavaObject object) {
+        return object == JavaObject.NULL;
     }
 
 }
