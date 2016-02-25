@@ -29,6 +29,7 @@ import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintFilter;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
+import static com.oracle.graal.compiler.phases.HighTier.Options.Inline;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequestResult;
@@ -47,7 +48,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.code.CompilationResult;
-import static com.oracle.graal.compiler.phases.HighTier.Options.Inline;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
@@ -281,7 +281,14 @@ public class CompilationTask {
     }
 
     protected void handleException(Throwable t) {
-        if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
+        /*
+         * Automatically enable ExitVMOnException when asserts are enabled but respect
+         * ExitVMOnException if it's been explicitly set.
+         */
+        boolean exitVMOnException = ExitVMOnException.getValue();
+        assert ExitVMOnException.hasBeenSet() || (exitVMOnException = true) == true;
+
+        if (PrintStackTraceOnException.getValue() || exitVMOnException) {
             try {
                 t.printStackTrace(TTY.out);
             } catch (Throwable throwable) {
@@ -289,7 +296,7 @@ public class CompilationTask {
             }
         }
 
-        if (ExitVMOnException.getValue()) {
+        if (exitVMOnException) {
             System.exit(-1);
         }
     }
