@@ -849,7 +849,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
         private final ValueNode guard;
 
         public InfoElement(Stamp stamp, ValueNode guard) {
-            Debug.log(4, "Creating an info element with stamp %s and guard %s", stamp.toString(), guard.toString());
             this.stamp = stamp;
             this.guard = guard;
         }
