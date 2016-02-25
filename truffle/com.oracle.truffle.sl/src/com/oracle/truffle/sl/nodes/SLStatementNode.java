@@ -42,6 +42,8 @@ package com.oracle.truffle.sl.nodes;
 
 import java.io.File;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.nodes.Node;
@@ -56,14 +58,20 @@ import com.oracle.truffle.api.source.SourceSection;
 @NodeInfo(language = "Simple Language", description = "The abstract base node for all statements")
 @Instrumentable(factory = SLStatementNodeWrapper.class)
 public abstract class SLStatementNode extends Node {
-    private final SourceSection section;
+
+    @CompilationFinal private SourceSection section;
 
     public SLStatementNode(SourceSection src) {
         section = src;
     }
 
+    public final void setSourceSection(SourceSection section) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.section = section;
+    }
+
     @Override
-    public SourceSection getSourceSection() {
+    public final SourceSection getSourceSection() {
         return section;
     }
 
