@@ -57,7 +57,6 @@ import java.util.WeakHashMap;
 public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     private final ThreadLocal<LinkedList<FrameInstance>> stackTraces = new ThreadLocal<>();
-    private final ThreadLocal<FrameInstance> currentFrames = new ThreadLocal<>();
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
 
     public DefaultTruffleRuntime() {
@@ -76,10 +75,12 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         return target;
     }
 
+    @Override
     public DirectCallNode createDirectCallNode(CallTarget target) {
         return new DefaultDirectCallNode(target);
     }
 
+    @Override
     public IndirectCallNode createIndirectCallNode() {
         return new DefaultIndirectCallNode();
     }
@@ -114,29 +115,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         return new DefaultAssumption(name);
     }
 
-    private LinkedList<FrameInstance> getThreadLocalStackTrace() {
-        LinkedList<FrameInstance> result = stackTraces.get();
-        if (result == null) {
-            result = new LinkedList<>();
-            stackTraces.set(result);
-        }
-        return result;
-    }
-
-    public FrameInstance setCurrentFrame(FrameInstance newValue) {
-        FrameInstance oldValue = currentFrames.get();
-        currentFrames.set(newValue);
-        return oldValue;
-    }
-
-    public void pushFrame(FrameInstance frame) {
-        getThreadLocalStackTrace().addFirst(frame);
-    }
-
-    public void popFrame() {
-        getThreadLocalStackTrace().removeFirst();
-    }
-
     @Override
     public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
         T result = null;
@@ -151,7 +129,12 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public FrameInstance getCallerFrame() {
-        return getThreadLocalStackTrace().peekFirst();
+        LinkedList<FrameInstance> result = getThreadLocalStackTrace();
+        if (result.size() > 1) {
+            return result.get(1);
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -161,7 +144,24 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public FrameInstance getCurrentFrame() {
-        return currentFrames.get();
+        return getThreadLocalStackTrace().peekFirst();
+    }
+
+    private LinkedList<FrameInstance> getThreadLocalStackTrace() {
+        LinkedList<FrameInstance> result = stackTraces.get();
+        if (result == null) {
+            result = new LinkedList<>();
+            stackTraces.set(result);
+        }
+        return result;
+    }
+
+    void pushFrame(FrameInstance frame) {
+        getThreadLocalStackTrace().addFirst(frame);
+    }
+
+    void popFrame() {
+        getThreadLocalStackTrace().removeFirst();
     }
 
     public <T> T getCapability(Class<T> capability) {
