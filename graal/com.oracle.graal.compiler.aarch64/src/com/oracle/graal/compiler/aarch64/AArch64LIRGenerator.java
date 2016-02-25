@@ -27,14 +27,11 @@ import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.function.Function;
 
-import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
-import com.oracle.graal.asm.aarch64.AArch64Assembler.ExtendType;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.LabelRef;
@@ -49,7 +46,7 @@ import com.oracle.graal.lir.aarch64.AArch64ControlFlow.BranchOp;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.aarch64.AArch64Move;
-import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwap;
+import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.aarch64.AArch64Move.MembarOp;
 import com.oracle.graal.lir.aarch64.AArch64PauseOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -124,51 +121,10 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        AArch64AddressValue addressValue = convertToBaseRegisterOnlyAddress(asAddressValue(address));
         Variable result = newVariable(trueValue.getLIRKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.WORD));
-        append(new CompareAndSwap(result, loadNonCompareConst(expectedValue), loadReg(newValue), addressValue, scratch));
+        append(new CompareAndSwapOp(result, loadNonCompareConst(expectedValue), loadReg(newValue), asAllocatable(address), scratch));
         return result;
-    }
-
-    /**
-     * Converts an arbitrary address to a BASE_REGISTER_ONLY form. This is useful since several
-     * instructions (e.g. load-acquire/store-release) are limited to this addressing mode.
-     *
-     * @return An address using the
-     *         {@link com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode#BASE_REGISTER_ONLY}
-     *         addressingmode, pointing to the same location as address.
-     */
-    private AArch64AddressValue convertToBaseRegisterOnlyAddress(AArch64AddressValue address) {
-        AllocatableValue base = address.getBase();
-        AllocatableValue index = address.getOffset();
-        int immediate = address.getImmediate();
-        int shiftAmt;
-        if (address.isScaled()) {
-            shiftAmt = NumUtil.log2Ceil(address.getPlatformKind().getSizeInBytes() * Byte.SIZE);
-        } else {
-            shiftAmt = 0;
-        }
-        switch (address.getAddressingMode()) {
-            case IMMEDIATE_SCALED:
-            case IMMEDIATE_UNSCALED:
-                JavaConstant constVal = JavaConstant.forInt(immediate << shiftAmt);
-                ConstantValue constValue = new ConstantValue(LIRKind.value(AArch64Kind.WORD), constVal);
-                base = asAllocatable(getArithmetic().emitAdd(base, constValue, false));
-                break;
-            case REGISTER_OFFSET:
-                append(new AArch64ArithmeticOp.ExtendedAddShiftOp(base, base, index, ExtendType.UXTX, shiftAmt));
-                break;
-            case EXTENDED_REGISTER_OFFSET:
-                append(new AArch64ArithmeticOp.ExtendedAddShiftOp(base, base, index, ExtendType.SXTW, shiftAmt));
-                break;
-            case BASE_REGISTER_ONLY:
-                // nothing to do.
-                break;
-            default:
-                throw JVMCIError.shouldNotReachHere();
-        }
-        return new AArch64AddressValue(address.getLIRKind(), base, Value.ILLEGAL, 0, false, AddressingMode.BASE_REGISTER_ONLY);
     }
 
     @Override
