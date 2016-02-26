@@ -328,7 +328,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     public FrameInstance getCallerFrame() {
         return iterateImpl(frame -> {
             return frame;
-        } , 1);
+        }, 1);
     }
 
     @TruffleBoundary
