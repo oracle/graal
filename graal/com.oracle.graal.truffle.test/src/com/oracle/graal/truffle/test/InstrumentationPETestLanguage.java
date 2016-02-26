@@ -33,7 +33,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.ASTProber;
 import com.oracle.truffle.api.instrument.EventHandlerNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrument.Visualizer;
@@ -100,6 +99,7 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
         return false;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected Visualizer getVisualizer() {
         return null;
@@ -195,8 +195,6 @@ public final class InstrumentationPETestLanguage extends TruffleLanguage<Object>
             try {
                 result = child.execute(vFrame);
                 eventHandlerNode.returnValue(child, vFrame, result);
-            } catch (KillException e) {
-                throw (e);
             } catch (Exception e) {
                 eventHandlerNode.returnExceptional(child, vFrame, e);
                 throw (e);
