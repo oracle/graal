@@ -338,7 +338,8 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                 mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
             arg = '-Dgraal.' + arg[len('-G:'):]
         return arg
-    args = map(translateGOption, args)
+    # add default graal.options.file and translate -G: options
+    args = ['-Dgraal.options.file=graal.options'] + map(translateGOption, args)
 
     if '-G:+PrintFlags' in args and '-Xcomp' not in args:
         mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
