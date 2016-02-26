@@ -69,7 +69,7 @@ public class LLVMContext extends ExecutionContext {
     public LLVMContext(NodeFactoryFacade facade, LLVMOptimizationConfiguration optimizationConfig) {
         this.facade = facade;
         this.registry = new LLVMFunctionRegistry(optimizationConfig);
-        if (LLVMOptions.isNativeCallStats()) {
+        if (LLVMOptions.printNativeCallStats()) {
             nativeFunctionLookupStats = new TreeMap<>();
         } else {
             nativeFunctionLookupStats = null;
@@ -128,7 +128,7 @@ public class LLVMContext extends ExecutionContext {
                 return LOOKUP_FAILURE;
             }
         } catch (Exception e) {
-            if (LLVMOptions.isDebug()) {
+            if (LLVMOptions.debugEnabled()) {
                 System.err.println("external symbol " + name + " could not be resolved!");
             }
             return LOOKUP_FAILURE;
@@ -163,7 +163,7 @@ public class LLVMContext extends ExecutionContext {
             NativeLibraryHandle[] handles = getNativeFunctionHandles();
             functionHandle = nfi.getFunctionHandle(handles, functionName, retType, paramTypes);
         }
-        if (LLVMOptions.isNativeCallStats() && functionHandle != null) {
+        if (LLVMOptions.printNativeCallStats() && functionHandle != null) {
             recordNativeFunctionCallSite(function);
         }
         return functionHandle;
