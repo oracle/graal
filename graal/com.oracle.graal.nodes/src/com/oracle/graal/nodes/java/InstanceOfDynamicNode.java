@@ -23,20 +23,21 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.compiler.common.type.CheckedJavaType;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
+import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not
@@ -86,7 +87,11 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
     }
 
     public LogicNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
-        LogicNode res = findSynonym(graph().getAssumptions(), tool.getConstantReflection(), forObject, forMirror);
+        StructuredGraph graph = forObject.graph();
+        if (graph == null) {
+            graph = forMirror.graph();
+        }
+        LogicNode res = findSynonym(graph.getAssumptions(), tool.getConstantReflection(), forObject, forMirror);
         if (res == null) {
             res = this;
         }
