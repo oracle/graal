@@ -68,7 +68,7 @@ public class SulongTestSuite extends TestSuiteBase {
 
     @Parameterized.Parameters
     public static List<TestCaseFiles[]> getTestFiles() {
-        if (LLVMOptions.isDiscoveryTestMode()) {
+        if (LLVMOptions.discoveryTestModeEnabled()) {
             throw new AssertionError("this suite does not have a discovery mode!");
         }
         return getFilesRecursively(LLVMPaths.LOCAL_TESTS);
