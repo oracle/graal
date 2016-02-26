@@ -446,10 +446,10 @@ public class PartialEvaluator {
         HashMap<String, ArrayList<ValueNode>> groupedByType;
         groupedByType = new HashMap<>();
         for (CheckCastNode cast : graph.getNodes().filter(CheckCastNode.class)) {
-            if (cast.type().findLeafConcreteSubtype() == null) {
+            if (!cast.type().isExactType()) {
                 warnings.add(cast);
-                groupedByType.putIfAbsent(cast.type().getName(), new ArrayList<>());
-                groupedByType.get(cast.type().getName()).add(cast);
+                groupedByType.putIfAbsent(cast.type().getType().getName(), new ArrayList<>());
+                groupedByType.get(cast.type().getType().getName()).add(cast);
             }
         }
         for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
@@ -458,10 +458,10 @@ public class PartialEvaluator {
 
         groupedByType = new HashMap<>();
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
-            if (instanceOf.type().findLeafConcreteSubtype() == null) {
+            if (!instanceOf.type().isExactType()) {
                 warnings.add(instanceOf);
-                groupedByType.putIfAbsent(instanceOf.type().getName(), new ArrayList<>());
-                groupedByType.get(instanceOf.type().getName()).add(instanceOf);
+                groupedByType.putIfAbsent(instanceOf.type().getType().getName(), new ArrayList<>());
+                groupedByType.get(instanceOf.type().getType().getName()).add(instanceOf);
             }
         }
         for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {

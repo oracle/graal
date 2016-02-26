@@ -48,6 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.type.CheckedJavaType;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -331,7 +332,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             if (arrayType != null && StampTool.isExactType(array)) {
                 ResolvedJavaType elementType = arrayType.getComponentType();
                 if (!elementType.isJavaLangObject()) {
-                    ValueNode storeCheck = CheckCastNode.create(elementType, value, null, true, graph.getAssumptions());
+                    ValueNode storeCheck = CheckCastNode.create(CheckedJavaType.create(storeIndexed.graph().getAssumptions(), elementType), value, null, true);
                     if (storeCheck.graph() == null) {
                         checkCastNode = (CheckCastNode) storeCheck;
                         checkCastNode = graph.add(checkCastNode);

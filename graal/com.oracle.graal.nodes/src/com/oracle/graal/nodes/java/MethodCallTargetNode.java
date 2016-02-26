@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.compiler.common.type.CheckedJavaType;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -236,7 +237,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  * an assumption but as we need an instanceof check anyway we can verify both
                  * properties by checking of the receiver is an instance of the single implementor.
                  */
-                LogicNode condition = graph().unique(InstanceOfNode.create(singleImplementor, receiver, getProfile()));
+                LogicNode condition = graph().unique(InstanceOfNode.create(CheckedJavaType.create(assumptions, singleImplementor), receiver, getProfile()));
                 FixedGuardNode guard = graph().add(new FixedGuardNode(condition, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false));
                 graph().addBeforeFixed(invoke().asNode(), guard);
                 PiNode piNode = graph().unique(new PiNode(receiver, StampFactory.declaredNonNull(singleImplementor), guard));

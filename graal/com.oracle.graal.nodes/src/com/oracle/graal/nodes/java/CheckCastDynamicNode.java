@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import com.oracle.graal.compiler.common.type.CheckedJavaType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -99,7 +100,7 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         if (forHub.isConstant()) {
             ResolvedJavaType t = tool.getConstantReflection().asJavaType(forHub.asConstant());
             if (t != null) {
-                return new CheckCastNode(t, forObject, null, forStoreCheck);
+                return new CheckCastNode(CheckedJavaType.create(graph().getAssumptions(), t), forObject, null, forStoreCheck);
             }
         }
         return this;
