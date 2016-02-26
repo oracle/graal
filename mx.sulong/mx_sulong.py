@@ -131,12 +131,12 @@ def pullLLVMBinaries(args=None):
 def dragonEgg(args=None):
     """executes GCC with dragonegg"""
     executeCommand = ["gcc-4.6", "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
-    mx.run(executeCommand + args)
+    return mx.run(executeCommand + args)
 
 def dragonEggGPP(args=None):
     """executes G++ with dragonegg"""
     executeCommand = ["g++-4.6", "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
-    mx.run(executeCommand + args)
+    return mx.run(executeCommand + args)
 
 def hasDragoneggGCCInstalled():
     return os.system('gcc-4.6 --version') == 0
@@ -154,7 +154,7 @@ def pullInstallDragonEgg(args=None):
         os.environ['GCC'] = 'gcc-4.6'
         os.environ['LLVM_CONFIG'] = _toolDir + 'tools/llvm/bin/llvm-config'
         compileCommand = ['make']
-        mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
+        return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
     else:
         print 'could not find gcc-4.6, skip installing dragonegg!'
 
@@ -265,12 +265,12 @@ def extract_compiler_args(args, useDoubleDash=False):
 
 def runDebugLLVM(args=None):
     """uses Sulong to execute a LLVM IR file and starts debugging on port 5005"""
-    runLLVM(['-Xdebug', '-Xrunjdwp:server=y,transport=dt_socket,address=5005,suspend=y'] + args)
+    return runLLVM(['-Xdebug', '-Xrunjdwp:server=y,transport=dt_socket,address=5005,suspend=y'] + args)
 
 def runLLVM(args=None):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    mx.run_java(getCommonOptions() + vmArgs + ['-XX:-UseJVMCIClassLoader', '-cp', mx.classpath(['com.oracle.truffle.llvm']), "com.oracle.truffle.llvm.LLVM"] + sulongArgs, jdk=mx.get_jdk(tag='jvmci'))
+    return mx.run_java(getCommonOptions() + vmArgs + ['-XX:-UseJVMCIClassLoader', '-cp', mx.classpath(['com.oracle.truffle.llvm']), "com.oracle.truffle.llvm.LLVM"] + sulongArgs, jdk=mx.get_jdk(tag='jvmci'))
 
 def runTests(args=None):
     """runs all the test cases"""
@@ -288,7 +288,7 @@ def runBenchmarkTestCases(args=None):
     ensureDragonEggExists()
     ensureBenchmarkSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.BenchmarkGameSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.BenchmarkGameSuite"])
 
 def runGCCTestCases(args=None):
     """runs the GCC test suite"""
@@ -296,33 +296,33 @@ def runGCCTestCases(args=None):
     ensureGCCSuiteExists()
     ensureDragonEggExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.TestGCCSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.TestGCCSuite"])
 
 def runNWCCTestCases(args=None):
     """runs the NWCC (Nils Weller's C Compiler) test cases"""
     ensureLLVMBinariesExist()
     ensureNWCCSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.NWCCTestSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.NWCCTestSuite"])
 
 def runLLVMTestCases(args=None):
     """runs the LLVM test suite"""
     ensureLLVMBinariesExist()
     ensureLLVMSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMTestSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMTestSuite"])
 
 def runTruffleTestCases(args=None):
     """runs the Sulong test suite"""
     ensureLLVMBinariesExist()
     ensureDragonEggExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.SulongTestSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.SulongTestSuite"])
 
 def runTypeTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
-    unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
 
 def getCommonOptions():
     return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true']
@@ -355,30 +355,30 @@ def compileWithClang(args=None):
     """runs Clang"""
     ensureLLVMBinariesExist()
     clangPath = _toolDir + 'tools/llvm/bin/clang'
-    mx.run([clangPath] + args)
+    return mx.run([clangPath] + args)
 
 def compileWithGCC(args=None):
     """runs GCC"""
     ensureLLVMBinariesExist()
     clangPath = _toolDir + 'tools/llvm/bin/clang'
-    mx.run([clangPath] + args)
+    return mx.run([clangPath] + args)
 
 
 def opt(args=None):
     """"Runs opt."""
     ensureLLVMBinariesExist()
     optPath = _toolDir + 'tools/llvm/bin/opt'
-    mx.run([optPath] + args)
+    return mx.run([optPath] + args)
 
 def compileWithClangPP(args=None):
     """runs Clang++"""
     ensureLLVMBinariesExist()
     clangPath = _toolDir + 'tools/llvm/bin/clang++'
-    mx.run([clangPath] + args)
+    return mx.run([clangPath] + args)
 
 def printOptions(args=None):
     """prints the Sulong Java property options"""
-    mx.run_java(['-cp', mx.classpath(['com.oracle.truffle.llvm.runtime']), "com.oracle.truffle.llvm.runtime.LLVMOptions"])
+    return mx.run_java(['-cp', mx.classpath(['com.oracle.truffle.llvm.runtime']), "com.oracle.truffle.llvm.runtime.LLVMOptions"])
 
 def ensureGCCSuiteExists():
     """downloads the GCC suite if not downloaded yet"""
@@ -415,7 +415,7 @@ def suBench(args=None):
     ensureLLVMBinariesExist()
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
-    runLLVM(['-Dllvm-print-retval=false', 'test.ll'] + vmArgs)
+    return runLLVM(['test.ll'] + vmArgs)
 
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
@@ -432,7 +432,7 @@ def suOptBench(args=None):
         mx.run(['opt', '-S', '-o', outputFile, '-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg', outputFile])
     else:
         exit(ext + " is not supported!")
-    runLLVM(['-Dllvm-print-retval=false', getSearchPathOption(), 'test.ll'] + vmArgs)
+    return runLLVM([getSearchPathOption(), 'test.ll'] + vmArgs)
 
 def clangBench(args=None):
     """ Executes a benchmark with the system default Clang"""
@@ -444,7 +444,7 @@ def clangBench(args=None):
         mx.run(['clang++'] + args + standardLinkerCommands())
     else:
         exit(ext + " is not supported!")
-    mx.run(['./a.out'])
+    return mx.run(['./a.out'])
 
 def gccBench(args=None):
     """ executes a benchmark with the system default GCC version"""
@@ -456,7 +456,7 @@ def gccBench(args=None):
         mx.run(['g++'] + args + standardLinkerCommands())
     else:
         exit(ext + " is not supported!")
-    mx.run(['./a.out'])
+    return mx.run(['./a.out'])
 
 def standardLinkerCommands(args=None):
     return ['-lm']
