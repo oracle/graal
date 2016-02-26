@@ -47,7 +47,7 @@ public abstract class SLGenerateDummyNodesBuiltin extends SLGraalRuntimeBuiltin 
     @Specialization
     public Object generateNodes(long count) {
         CompilerAsserts.neverPartOfCompilation("generateNodes should never get optimized.");
-        FrameInstance callerFrame = Truffle.getRuntime().getCallerFrame();
+        FrameInstance callerFrame = Truffle.getRuntime().getCurrentFrame();
         SLRootNode root = (SLRootNode) callerFrame.getCallNode().getRootNode();
         root.getBodyNode().replace(createBinaryTree((int) (count - 1)));
         return SLNull.SINGLETON;

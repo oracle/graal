@@ -29,6 +29,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
@@ -51,7 +52,6 @@ import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
@@ -343,16 +343,16 @@ public class AArch64Move {
      * </code>
      */
     @Opcode("CAS")
-    public static class CompareAndSwap extends AArch64LIRInstruction {
-        public static final LIRInstructionClass<CompareAndSwap> TYPE = LIRInstructionClass.create(CompareAndSwap.class);
+    public static class CompareAndSwapOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
         @Def protected AllocatableValue resultValue;
         @Alive protected Value expectedValue;
         @Alive protected AllocatableValue newValue;
-        @Alive(COMPOSITE) protected AArch64AddressValue addressValue;
+        @Alive protected AllocatableValue addressValue;
         @Temp protected AllocatableValue scratchValue;
 
-        public CompareAndSwap(AllocatableValue result, Value expectedValue, AllocatableValue newValue, AArch64AddressValue addressValue, AllocatableValue scratch) {
+        public CompareAndSwapOp(AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch) {
             super(TYPE);
             this.resultValue = result;
             this.expectedValue = expectedValue;
@@ -365,15 +365,15 @@ public class AArch64Move {
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             AArch64Kind kind = (AArch64Kind) expectedValue.getPlatformKind();
             assert kind.isInteger();
-            int size = kind.getSizeInBytes() * Byte.SIZE;
+            final int size = kind.getSizeInBytes() * Byte.SIZE;
 
-            AArch64Address address = addressValue.toAddress();
+            Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
             Register newVal = asRegister(newValue);
             Register scratch = asRegister(scratchValue);
             // We could avoid using a scratch register here, by reusing resultValue for the stlxr
-            // success flag
-            // and issue a mov resultValue, expectedValue in case of success before returning.
+            // success flag and issue a mov resultValue, expectedValue in case of success before
+            // returning.
             Label retry = new Label();
             Label fail = new Label();
             masm.bind(retry);
@@ -450,14 +450,17 @@ public class AArch64Move {
     }
 
     private static void stack2reg(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
-        AArch64Address src = loadStackSlotAddress(crb, masm, asStackSlot(input), result);
-        Register dest = asRegister(result);
         AArch64Kind kind = (AArch64Kind) input.getPlatformKind();
-        int size = kind.getSizeInBytes() * Byte.SIZE;
+        final int size = kind.getSizeInBytes() * Byte.SIZE;
         if (kind.isInteger()) {
-            masm.ldr(size, dest, src);
+            AArch64Address src = loadStackSlotAddress(crb, masm, asStackSlot(input), result);
+            masm.ldr(size, asRegister(result), src);
         } else {
-            masm.fldr(size, dest, src);
+            try (ScratchRegister sc = masm.getScratchRegister()) {
+                AllocatableValue scratchRegisterValue = sc.getRegister().asValue(LIRKind.combine(input));
+                AArch64Address src = loadStackSlotAddress(crb, masm, asStackSlot(input), scratchRegisterValue);
+                masm.fldr(size, asRegister(result), src);
+            }
         }
     }
 
@@ -547,8 +550,8 @@ public class AArch64Move {
     private static AArch64Address loadStackSlotAddress(CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot slot, AllocatableValue scratch) {
         int displacement = crb.frameMap.offsetForStackSlot(slot);
         int transferSize = slot.getPlatformKind().getSizeInBytes();
-        Register scratchReg = Value.ILLEGAL.equals(scratch) ? AArch64.zr : asRegister(scratch);
-        return masm.makeAddress(AArch64.sp, displacement, scratchReg, transferSize, /* allowOverwrite */false);
+        Register scratchReg = Value.ILLEGAL.equals(scratch) ? zr : asRegister(scratch);
+        return masm.makeAddress(sp, displacement, scratchReg, transferSize, /* allowOverwrite */false);
     }
 
 }

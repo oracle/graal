@@ -45,7 +45,7 @@ import com.oracle.graal.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.aarch64.AArch64BreakpointOp;
-import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwap;
+import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -182,6 +182,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
     @Override
     public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
+        AllocatableValue address = gen.asAllocatable(operand(x.getAddress()));
         AllocatableValue cmpValue = gen.asAllocatable(operand(x.expectedValue()));
         AllocatableValue newValue = gen.asAllocatable(operand(x.newValue()));
         LIRKind kind = cmpValue.getLIRKind();
@@ -189,7 +190,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
         Variable result = gen.newVariable(newValue.getLIRKind());
         Variable scratch = gen.newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new CompareAndSwap(result, cmpValue, newValue, getGen().asAddressValue(operand(x.getAddress())), scratch));
+        append(new CompareAndSwapOp(result, cmpValue, newValue, address, scratch));
         setResult(x, result);
     }
 

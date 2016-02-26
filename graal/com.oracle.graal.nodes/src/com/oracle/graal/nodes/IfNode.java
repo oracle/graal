@@ -776,7 +776,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      *
      * @param tool
      */
-    @SuppressWarnings("unchecked")
     private boolean splitIfAtPhi(SimplifierTool tool) {
         if (!(predecessor() instanceof MergeNode)) {
             return false;
@@ -802,17 +801,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        if (condition() instanceof Canonicalizable.Unary<?>) {
-            Canonicalizable.Unary<?> unary = (Canonicalizable.Unary<?>) condition();
-            if (unary.getValue() != phi) {
-                return false;
-            }
-        } else if (condition() instanceof Canonicalizable.Binary<?>) {
-            Canonicalizable.Binary<?> binary = (Canonicalizable.Binary<?>) condition();
-            if (binary.getX() != phi && binary.getY() != phi) {
-                return false;
-            }
-        } else {
+        if (!conditionUses(condition(), phi)) {
             return false;
         }
 
@@ -829,19 +818,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         for (EndNode end : merge.forwardEnds().snapshot()) {
             Node value = phi.valueAt(end);
-            LogicNode result = null;
-            if (condition() instanceof Canonicalizable.Binary<?>) {
-                Canonicalizable.Binary<Node> compare = (Canonicalizable.Binary<Node>) condition;
-                if (compare.getX() == phi) {
-                    result = (LogicNode) compare.canonical(tool, value, compare.getY());
-                } else {
-                    result = (LogicNode) compare.canonical(tool, compare.getX(), value);
-                }
-            } else {
-                assert condition() instanceof Canonicalizable.Unary<?>;
-                Canonicalizable.Unary<Node> compare = (Canonicalizable.Unary<Node>) condition;
-                result = (LogicNode) compare.canonical(tool, value);
-            }
+            LogicNode result = computeCondition(tool, condition, phi, value);
             if (result instanceof LogicConstantNode) {
                 merge.removeEnd(end);
                 if (((LogicConstantNode) result).getValue()) {
@@ -890,6 +867,71 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         cleanupMerge(tool, falseMerge);
 
         return true;
+    }
+
+    /**
+     * @param condition
+     * @param phi
+     * @return true if the passed in {@code condition} uses {@code phi}.
+     */
+    private static boolean conditionUses(LogicNode condition, PhiNode phi) {
+        if (condition instanceof ShortCircuitOrNode) {
+            // Temporarily disabled
+            // if (condition.graph().getGuardsStage().areDeoptsFixed()) {
+            // /*
+            // * It can be unsafe to simplify a ShortCircuitOr before deopts are fixed because
+            // * conversion to guards assumes that all the required conditions are being tested.
+            // * Simplfying the condition based on context before this happens may lose a
+            // * condition.
+            // */
+            // ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
+            // return conditionUses(orNode.x, phi) || conditionUses(orNode.y, phi);
+            // }
+        } else if (condition instanceof Canonicalizable.Unary<?>) {
+            Canonicalizable.Unary<?> unary = (Canonicalizable.Unary<?>) condition;
+            return unary.getValue() == phi;
+        } else if (condition instanceof Canonicalizable.Binary<?>) {
+            Canonicalizable.Binary<?> binary = (Canonicalizable.Binary<?>) condition;
+            return binary.getX() == phi || binary.getY() == phi;
+        }
+        return false;
+    }
+
+    /**
+     * Canonicalize {@code} condition using {@code value} in place of {@code phi}.
+     *
+     * @param tool
+     * @param condition
+     * @param phi
+     * @param value
+     * @return an improved LogicNode or the original condition
+     */
+    @SuppressWarnings("unchecked")
+    private static LogicNode computeCondition(SimplifierTool tool, LogicNode condition, PhiNode phi, Node value) {
+        if (condition instanceof ShortCircuitOrNode) {
+            if (condition.graph().getGuardsStage().areDeoptsFixed()) {
+                ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
+                LogicNode resultX = computeCondition(tool, orNode.x, phi, value);
+                LogicNode resultY = computeCondition(tool, orNode.y, phi, value);
+                return orNode.canonical(tool, resultX, resultY);
+            }
+        } else if (condition instanceof Canonicalizable.Binary<?>) {
+            Canonicalizable.Binary<Node> compare = (Canonicalizable.Binary<Node>) condition;
+            if (compare.getX() == phi) {
+                return (LogicNode) compare.canonical(tool, value, compare.getY());
+            } else if (compare.getY() == phi) {
+                return (LogicNode) compare.canonical(tool, compare.getX(), value);
+            }
+        } else if (condition instanceof Canonicalizable.Unary<?>) {
+            Canonicalizable.Unary<Node> compare = (Canonicalizable.Unary<Node>) condition;
+            if (compare.getValue() == phi) {
+                return (LogicNode) compare.canonical(tool, value);
+            }
+        }
+        if (condition instanceof Canonicalizable) {
+            return (LogicNode) ((Canonicalizable) condition).canonical(tool);
+        }
+        return condition;
     }
 
     private static void transferProxies(AbstractBeginNode successor, MergeNode falseMerge) {

@@ -22,57 +22,35 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.getGraph;
 import static jdk.vm.ci.common.UnsafeUtil.createCString;
 import static jdk.vm.ci.common.UnsafeUtil.writeCString;
 
 import java.lang.reflect.Field;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.DefaultProfilingInfo;
-import jdk.vm.ci.meta.TriState;
 import sun.misc.Unsafe;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionPointer;
 import com.oracle.nfi.api.NativeLibraryHandle;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
 
-    private final HotSpotProviders providers;
-    private final Backend backend;
     private final HotSpotNativeLibraryHandle rtldDefault;
     private final HotSpotNativeFunctionPointer libraryLoadFunctionPointer;
     private final HotSpotNativeFunctionPointer functionLookupFunctionPointer;
-    private final RawNativeCallNodeFactory factory;
+    private final NativeCallStubGraphBuilder graphBuilder;
 
     private HotSpotNativeFunctionHandle libraryLookupFunctionHandle;
     private HotSpotNativeFunctionHandle dllLookupFunctionHandle;
 
     public HotSpotNativeFunctionInterface(HotSpotProviders providers, RawNativeCallNodeFactory factory, Backend backend, long dlopen, long dlsym, long rtldDefault) {
         this.rtldDefault = rtldDefault == HotSpotVMConfig.INVALID_RTLD_DEFAULT_HANDLE ? null : new HotSpotNativeLibraryHandle("RTLD_DEFAULT", rtldDefault);
-        this.providers = providers;
-        assert backend != null;
-        this.backend = backend;
-        this.factory = factory;
         this.libraryLoadFunctionPointer = new HotSpotNativeFunctionPointer(dlopen, "os::dll_load");
         this.functionLookupFunctionPointer = new HotSpotNativeFunctionPointer(dlsym, "os::dll_lookup");
+        this.graphBuilder = new NativeCallStubGraphBuilder(providers, backend, factory);
     }
 
     @Override
@@ -160,32 +138,12 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
     private HotSpotNativeFunctionHandle createHandle(NativeFunctionPointer functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
         HotSpotNativeFunctionPointer hs = (HotSpotNativeFunctionPointer) functionPointer;
         if (hs != null) {
-            InstalledCode code = installNativeFunctionStub(hs.value, returnType, argumentTypes);
-            return new HotSpotNativeFunctionHandle(code, hs.name, argumentTypes);
+            HotSpotNativeFunctionHandle handle = new HotSpotNativeFunctionHandle(hs, returnType, argumentTypes);
+            graphBuilder.installNativeFunctionStub(handle);
+            return handle;
         } else {
             return null;
         }
-    }
-
-    /**
-     * Creates and installs a stub for calling a native function.
-     */
-    @SuppressWarnings("try")
-    private InstalledCode installNativeFunctionStub(long functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
-        StructuredGraph g = getGraph(providers, factory, functionPointer, returnType, argumentTypes);
-        Suites suites = providers.getSuites().getDefaultSuites();
-        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites();
-        PhaseSuite<HighTierContext> phaseSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
-        CompilationResult compResult = GraalCompiler.compileGraph(g, g.method(), providers, backend, phaseSuite, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
-                        lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
-        InstalledCode installedCode;
-        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {
-            HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(g.method(), null, compResult);
-            installedCode = providers.getCodeCache().addCode(g.method(), compiledCode, null, null);
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-        return installedCode;
     }
 
     @Override

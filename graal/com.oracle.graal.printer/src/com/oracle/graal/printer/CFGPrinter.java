@@ -23,6 +23,9 @@
 package com.oracle.graal.printer;
 
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -34,6 +37,8 @@ import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
+import com.oracle.graal.compiler.common.alloc.Trace;
+import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
@@ -465,33 +470,37 @@ class CFGPrinter extends CompilationPrinter {
 
         for (int i = 0; i < lirInstructions.size(); i++) {
             LIRInstruction inst = lirInstructions.get(i);
-            if (inst == null) {
-                out.print("nr   -1 ").print(COLUMN_END).print(" instruction ").print("<deleted>").print(COLUMN_END);
-                out.println(COLUMN_END);
-            } else {
-                out.printf("nr %4d ", inst.id()).print(COLUMN_END);
-
-                final StringBuilder stateString = new StringBuilder();
-                inst.forEachState(state -> {
-                    if (state.hasDebugInfo()) {
-                        DebugInfo di = state.debugInfo();
-                        stateString.append(debugInfoToString(di.getBytecodePosition(), di.getReferenceMap(), state.getLiveBasePointers(), di.getCalleeSaveInfo()));
-                    } else {
-                        stateString.append(debugInfoToString(state.topFrame, null, state.getLiveBasePointers(), null));
-                    }
-                });
-                if (stateString.length() > 0) {
-                    int level = out.indentationLevel();
-                    out.adjustIndentation(-level);
-                    out.print(" st ").print(HOVER_START).print("st").print(HOVER_SEP).print(stateString.toString()).print(HOVER_END).print(COLUMN_END);
-                    out.adjustIndentation(level);
-                }
-
-                out.print(" instruction ").print(inst.toString()).print(COLUMN_END);
-                out.println(COLUMN_END);
-            }
+            printLIRInstruction(inst);
         }
         end("IR");
+    }
+
+    private void printLIRInstruction(LIRInstruction inst) {
+        if (inst == null) {
+            out.print("nr   -1 ").print(COLUMN_END).print(" instruction ").print("<deleted>").print(COLUMN_END);
+            out.println(COLUMN_END);
+        } else {
+            out.printf("nr %4d ", inst.id()).print(COLUMN_END);
+
+            final StringBuilder stateString = new StringBuilder();
+            inst.forEachState(state -> {
+                if (state.hasDebugInfo()) {
+                    DebugInfo di = state.debugInfo();
+                    stateString.append(debugInfoToString(di.getBytecodePosition(), di.getReferenceMap(), state.getLiveBasePointers(), di.getCalleeSaveInfo()));
+                } else {
+                    stateString.append(debugInfoToString(state.topFrame, null, state.getLiveBasePointers(), null));
+                }
+            });
+            if (stateString.length() > 0) {
+                int level = out.indentationLevel();
+                out.adjustIndentation(-level);
+                out.print(" st ").print(HOVER_START).print("st").print(HOVER_SEP).print(stateString.toString()).print(HOVER_END).print(COLUMN_END);
+                out.adjustIndentation(level);
+            }
+
+            out.print(" instruction ").print(inst.toString()).print(COLUMN_END);
+            out.println(COLUMN_END);
+        }
     }
 
     private String nodeToString(Node node) {
@@ -605,4 +614,141 @@ class CFGPrinter extends CompilationPrinter {
 
         printBlockEpilog(block);
     }
+
+    public void printTraces(String label, TraceBuilderResult<?> traces) {
+        begin("cfg");
+        out.print("name \"").print(label).println('"');
+
+        for (Trace<?> trace : traces.getTraces()) {
+            printTrace(trace, traces);
+        }
+
+        end("cfg");
+    }
+
+    private void printTrace(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+        printTraceProlog(trace, traceBuilderResult);
+        printTraceInstructions(trace, traceBuilderResult);
+        printTraceEpilog();
+    }
+
+    private void printTraceProlog(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+        begin("block");
+
+        out.print("name \"").print(traceToString(trace)).println('"');
+        out.println("from_bci -1");
+        out.println("to_bci -1");
+
+        out.print("predecessors ");
+        for (Trace<?> pred : getPredecessors(trace, traceBuilderResult)) {
+            out.print("\"").print(traceToString(pred)).print("\" ");
+        }
+        out.println();
+
+        out.print("successors ");
+        for (Trace<?> succ : getSuccessors(trace, traceBuilderResult)) {
+            // if (!succ.isExceptionEntry()) {
+            out.print("\"").print(traceToString(succ)).print("\" ");
+            // }
+        }
+        out.println();
+
+        out.print("xhandlers");
+        // TODO(je) add support for exception handler
+        out.println();
+
+        out.print("flags ");
+        // TODO(je) add support for flags
+        out.println();
+        // TODO(je) add support for loop infos
+    }
+
+    private void printTraceInstructions(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+        if (lir == null) {
+            return;
+        }
+        begin("IR");
+        out.println("LIR");
+
+        for (AbstractBlockBase<?> block : trace.getBlocks()) {
+            List<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
+            if (lirInstructions == null) {
+                continue;
+            }
+            printBlockInstruction(block, traceBuilderResult);
+            for (int i = 0; i < lirInstructions.size(); i++) {
+                LIRInstruction inst = lirInstructions.get(i);
+                printLIRInstruction(inst);
+            }
+        }
+        end("IR");
+    }
+
+    private void printBlockInstruction(AbstractBlockBase<?> block, TraceBuilderResult<?> traceBuilderResult) {
+        out.print("nr ").print(block.toString()).print(COLUMN_END).print(" instruction ");
+
+        if (block.getPredecessorCount() > 0) {
+            out.print("<- ");
+            printBlockListWithTrace(block.getPredecessors(), traceBuilderResult);
+            out.print(" ");
+        }
+        if (block.getSuccessorCount() > 0) {
+            out.print("-> ");
+            printBlockListWithTrace(block.getSuccessors(), traceBuilderResult);
+        }
+
+        out.print(COLUMN_END);
+        out.println(COLUMN_END);
+    }
+
+    private void printBlockListWithTrace(List<? extends AbstractBlockBase<?>> blocks, TraceBuilderResult<?> traceBuilderResult) {
+        Iterator<? extends AbstractBlockBase<?>> it = blocks.iterator();
+        printBlockWithTrace(it.next(), traceBuilderResult);
+        while (it.hasNext()) {
+            out.print(",");
+            printBlockWithTrace(it.next(), traceBuilderResult);
+        }
+    }
+
+    private void printBlockWithTrace(AbstractBlockBase<?> block, TraceBuilderResult<?> traceBuilderResult) {
+        out.print(block.toString());
+        out.print("[T").print(traceBuilderResult.getTraceForBlock(block)).print("]");
+    }
+
+    private void printTraceEpilog() {
+        end("block");
+    }
+
+    private static List<Trace<?>> getSuccessors(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+        BitSet bs = new BitSet(traceBuilderResult.getTraces().size());
+        for (AbstractBlockBase<?> block : trace.getBlocks()) {
+            for (AbstractBlockBase<?> s : block.getSuccessors()) {
+                bs.set(traceBuilderResult.getTraceForBlock(s));
+            }
+        }
+        List<Trace<?>> succ = new ArrayList<>();
+        for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
+            succ.add(traceBuilderResult.getTraces().get(i));
+        }
+        return succ;
+    }
+
+    private static List<Trace<?>> getPredecessors(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+        BitSet bs = new BitSet(traceBuilderResult.getTraces().size());
+        for (AbstractBlockBase<?> block : trace.getBlocks()) {
+            for (AbstractBlockBase<?> p : block.getPredecessors()) {
+                bs.set(traceBuilderResult.getTraceForBlock(p));
+            }
+        }
+        List<Trace<?>> pred = new ArrayList<>();
+        for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
+            pred.add(traceBuilderResult.getTraces().get(i));
+        }
+        return pred;
+    }
+
+    private static String traceToString(Trace<?> trace) {
+        return new StringBuilder("T").append(trace.getId()).toString();
+    }
+
 }
