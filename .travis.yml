@@ -3,23 +3,38 @@ python:
   - "2.7"
 jdk:
   - oraclejdk8
-before_install:
+install:
+  - sudo add-apt-repository -y ppa:mercurial-ppa/releases
+  - sudo add-apt-repository -y ppa:fkrull/deadsnakes
+  - sudo apt-get -y update
+  - sudo apt-get install python2.7
+  - sudo apt-get install mercurial
   - sudo apt-get install gcc-4.6
+  - sudo apt-get install gcc-4.6-plugin-dev
+  - sudo apt-get install gobjc++-4.6
+  - sudo apt-get install g++-4.6
+  - sudo apt-get install gfortran-4.6
+  - sudo apt-get install libgmp3-dev
+  - sudo apt-get install llvm-3.3
   - sudo pip install astroid==1.1.0
   - sudo pip install pylint==1.1.0
   - pylint --version
-install:
-  - git clone https://github.com/graalvm/mx.git
+  - hg --version
+  - git clone https://github.com/graalvm/mx
   - wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar
   - mv ecj-4.5.1.jar mx/ecj.jar
-  - export JDT=mx/ecj.jar
+  - export JDT=`pwd`/mx/ecj.jar
   - wget https://lafo.ssw.uni-linz.ac.at/slavefiles/gate/eclipse-jdk8-linux-x86_64.tar.gz
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
   - export ECLIPSE_EXE=eclipse/eclipse
+  - export DEFAULT_VM=server
 script:
   - $TEST_COMMAND
 env:
-  - TEST_COMMAND='mx/mx --vm server pylint'
-  - TEST_COMMAND='mx/mx --vm server checkstyle'
-  - TEST_COMMAND='mx/mx --vm server checkoverlap'
-  - TEST_COMMAND='mx/mx --vm server canonicalizeprojects'
+  - TEST_COMMAND='mx/mx pylint'
+  - TEST_COMMAND='mx/mx checkstyle'
+  - TEST_COMMAND='mx/mx checkoverlap'
+  - TEST_COMMAND='mx/mx canonicalizeprojects'
+  - TEST_COMMAND='mx/mx su-local-gate'
+after_failure:
+  - find . -iname "*.log" -print0 | xargs -0 cat

@@ -37,7 +37,7 @@ def executeGate():
     """executes the TruffleLLVM gate tasks"""
     tasks = []
     with Task('BuildHotSpotGraalServer: product', tasks) as t:
-        if t: buildvms(['--vms', 'server', '--builds', 'product'])
+        if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()

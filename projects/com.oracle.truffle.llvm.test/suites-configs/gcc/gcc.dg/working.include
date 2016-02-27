@@ -11,7 +11,6 @@ gcc.dg/20030826-2.c
 gcc.dg/pr31529-1.c
 gcc.dg/pr11492.c
 gcc.dg/Warray-bounds-6.c
-gcc.dg/cdce1.c
 gcc.dg/pr55430.c
 gcc.dg/pr41935.c
 gcc.dg/c99-bool-1.c
