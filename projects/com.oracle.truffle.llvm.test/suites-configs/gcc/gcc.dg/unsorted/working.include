@@ -208,7 +208,6 @@ gcc.dg/c99-func-1.c
 gcc.dg/unsigned-long-compare.c
 gcc.dg/pr17581-1.c
 gcc.dg/struct-ret-libc.c
-gcc.dg/cdce2.c
 gcc.dg/long-long-compare-1.c
 gcc.dg/Wdeclaration-after-statement-3.c
 gcc.dg/builtin-choose-expr.c
