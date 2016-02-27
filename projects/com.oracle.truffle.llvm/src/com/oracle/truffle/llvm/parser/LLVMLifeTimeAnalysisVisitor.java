@@ -172,15 +172,23 @@ public final class LLVMLifeTimeAnalysisVisitor {
         }
     }
 
-    private static List<BasicBlock> getSuccessors(BasicBlock block) {
-        List<BasicBlock> successors = new ArrayList<>();
-        EList<Instruction> instructions = block.getInstructions();
-        List<TerminatorInstruction> terminatorInstructions = instructions.stream().filter(i -> i instanceof TerminatorInstruction).map(i -> (TerminatorInstruction) i).collect(Collectors.toList());
-        for (TerminatorInstruction termInstr : terminatorInstructions) {
-            List<BasicBlock> successorBlocks = getSuccessors(termInstr);
-            successors.addAll(successorBlocks);
+    private Map<BasicBlock, List<BasicBlock>> succesors = new HashMap<>();
+
+    private List<BasicBlock> getSuccessors(BasicBlock block) {
+        if (succesors.containsKey(block)) {
+            return succesors.get(block);
+        } else {
+            List<BasicBlock> successors = new ArrayList<>();
+            EList<Instruction> instructions = block.getInstructions();
+            List<TerminatorInstruction> terminatorInstructions = instructions.stream().filter(i -> i instanceof TerminatorInstruction).map(i -> (TerminatorInstruction) i).collect(Collectors.toList());
+            for (TerminatorInstruction termInstr : terminatorInstructions) {
+                List<BasicBlock> successorBlocks = getSuccessors(termInstr);
+                successors.addAll(successorBlocks);
+            }
+            succesors.put(block, successors);
+            return successors;
         }
-        return successors;
+
     }
 
     private static List<BasicBlock> getSuccessors(TerminatorInstruction termInstr) {
