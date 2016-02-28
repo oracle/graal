@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 public class LLVMOptions {
 
@@ -129,11 +130,48 @@ public class LLVMOptions {
         public String toString() {
             return String.format(FORMAT_STRING, getKey(), getDefaultValue(), getDescription());
         }
+
+        public static Property fromKey(String key) {
+            for (Property p : values()) {
+                if (p.getKey().equals(key)) {
+                    return p;
+                }
+            }
+            return null;
+        }
+
     }
 
     private static Map<Property, Object> parsedProperties = new HashMap<>();
 
     static {
+        parseOptions();
+        checkForInvalidOptionNames();
+    }
+
+    private static void checkForInvalidOptionNames() {
+        boolean wrongOptionName = false;
+        Properties allProperties = System.getProperties();
+        for (String key : allProperties.stringPropertyNames()) {
+            if (key.startsWith(OPTION_PREFIX)) {
+                if (Property.fromKey(key) == null) {
+                    wrongOptionName = true;
+                    // Checkstyle: stop
+                    System.err.println(key + " is an invalid option!");
+                    // Checkstyle: resume
+                }
+            }
+        }
+        if (wrongOptionName) {
+            // Checkstyle: stop
+            System.err.println("\nvalid options:");
+            // Checkstyle: resume
+            LLVMOptions.main(new String[0]);
+            System.exit(-1);
+        }
+    }
+
+    private static void parseOptions() {
         Property[] properties = Property.values();
         for (Property prop : properties) {
             parsedProperties.put(prop, prop.parse());
