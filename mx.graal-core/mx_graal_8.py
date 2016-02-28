@@ -416,7 +416,9 @@ def _buildGOptionsArgs(args):
             arg = '-Dgraal.' + arg[len('-G:'):]
         return arg
     # add default graal.options.file and translate -G: options
-    return ['-Dgraal.options.file=graal.options'] + map(_translateGOption, args)
+    options_file = join(mx.primary_suite().dir, 'graal.options')
+    options_file_arg = ['-Dgraal.options.file=' + options_file] if exists(options_file) else []
+    return options_file_arg + map(_translateGOption, args)
 
 def run_vm(*positionalargs, **kwargs):
     """run a Java program by executing the java executable in a Graal JDK"""
