@@ -30,6 +30,9 @@ install:
   - export DEFAULT_VM=server
 script:
   - $TEST_COMMAND
+branches:
+  only:
+    - master
 env:
   - TEST_COMMAND='mx/mx pylint'
   - TEST_COMMAND='mx/mx checkstyle'
