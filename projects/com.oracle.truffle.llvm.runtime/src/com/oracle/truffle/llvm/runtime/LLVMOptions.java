@@ -44,6 +44,7 @@ public class LLVMOptions {
     }
 
     private static final String PATH_DELIMITER = ":";
+    private static final String OPTION_PREFIX = "sulong.";
 
     @FunctionalInterface
     interface OptionParser {
@@ -69,33 +70,33 @@ public class LLVMOptions {
 
     public enum Property {
 
-        DEBUG("llvm-debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean),
-        PRINT_FUNCTION_ASTS("llvm-print-asts", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean),
+        DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean),
+        PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean),
         /*
          * The boot classpath that should be used to execute the remote JVM when executing the LLVM
          * test suite (and other tests). These rely on comparing output sent to stdout that cannot
          * becaptured inside Java, since, e.g., a printf is executed by native code. To determine
          * the right value just copy the boot class path that you use to launch the main LLVM class"
          */
-        REMOTE_TEST_BOOT_CLASSPATH("llvm-test-boot", "The boot classpath for the remote JVM used to capture native printf and other output.", null, LLVMOptions::parseString),
+        REMOTE_TEST_BOOT_CLASSPATH("TestRemoteBootPath", "The boot classpath for the remote JVM used to capture native printf and other output.", null, LLVMOptions::parseString),
         TEST_DISCOVERY_PATH(
-                        "llvm-test-discovery",
+                        "TestDiscoveryPath",
                         "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.",
                         null,
                         LLVMOptions::parseString),
-        DYN_LIBRARY_PATHS("llvm-dyn-libs", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath),
-        PROJECT_ROOT("llvm-root", "Overrides the root of the LLVM project. This option exists to set the project root from mx", ".", LLVMOptions::parseString),
-        OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("llvm-opt-expect", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("llvm-opt-valueprofiling", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_INJECT_PROBS_SELECT("llvm-opt-select", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("llvm-opt-cintrinsics", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_INJECT_PROBS_COND_BRANCH("llvm-opt-br", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_LIFE_TIME_ANALYSIS("llvm-life-time-analysis", "Performs a lifetime analysis to set dead frame slots to null to assist the PE", "true", LLVMOptions::parseBoolean),
-        NATIVE_CALL_STATS("llvm-native-call-stats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean),
-        LIFE_TIME_ANALYSIS_STATS("llvm-lifetime-analysis-stats", "Outputs the results of the lifetime analysis (if enabled)", "false", LLVMOptions::parseBoolean);
+        DYN_LIBRARY_PATHS("DynamicNativeLibraryPath", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath),
+        PROJECT_ROOT("ProjectRoot", "Overrides the root of the project. This option exists to set the project root from mx", ".", LLVMOptions::parseString),
+        OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("SpecializeExpectIntrinsic", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("ValueProfileMemoryReads", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_INJECT_PROBS_SELECT("InjectProbabilitySelect", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_INJECT_PROBS_COND_BRANCH("InjectProbabilityBr", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean),
+        OPTIMIZATION_LIFE_TIME_ANALYSIS("EnableLifetimeAnalysis", "Performs a lifetime analysis to set dead frame slots to null to assist the PE", "true", LLVMOptions::parseBoolean),
+        NATIVE_CALL_STATS("PrintNativeCallStats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean),
+        LIFE_TIME_ANALYSIS_STATS("PrintNativeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", "false", LLVMOptions::parseBoolean);
 
         Property(String key, String description, String defaultValue, OptionParser parser) {
-            this.key = key;
+            this.key = OPTION_PREFIX + key;
             this.description = description;
             this.defaultValue = defaultValue;
             this.parser = parser;
@@ -122,7 +123,7 @@ public class LLVMOptions {
             return parser.parse(this);
         }
 
-        private static final String FORMAT_STRING = "%25s (default = %5s) %s";
+        private static final String FORMAT_STRING = "%40s (default = %5s) %s";
 
         @Override
         public String toString() {

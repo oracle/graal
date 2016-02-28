@@ -329,7 +329,7 @@ def getCommonOptions():
 
 # other OSs?
 def getSearchPathOption():
-    return '-Dllvm-dyn-libs=libgfortran.so.3:libstdc++.so.6:libc.so.6'
+    return '-Dsulong.DynamicNativeLibraryPath=libgfortran.so.3:libstdc++.so.6:libc.so.6'
 
 
 def getCommonUnitTestOptions():
@@ -340,10 +340,10 @@ def compilationSucceedsOption():
     return "-Dgraal.TruffleCompilationExceptionsAreFatal=true"
 
 def getRemoteClasspathOption():
-    return "-Dllvm-test-boot=-Xbootclasspath/p:" + mx.classpath(['com.oracle.truffle.llvm.nodes']) + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " " " -Dllvm-debug=false"
+    return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.classpath(['com.oracle.truffle.llvm.nodes']) + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " " " -Dsulong.Debug=false"
 
 def getLLVMRootOption():
-    return "-Dllvm-root=" + _root
+    return "-Dsulong.ProjectRoot=" + _root
 
 def pullsuite(suiteDir, urls):
     name = os.path.basename(urls[0])
