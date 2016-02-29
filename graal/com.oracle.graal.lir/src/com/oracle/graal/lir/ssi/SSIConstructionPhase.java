@@ -39,14 +39,14 @@ import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase;
+import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.ssa.SSAUtil;
 
-public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
+public final class SSIConstructionPhase extends AllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PreAllocationOptimizationContext context) {
+                    AllocationContext context) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
         LIR lir = lirGenRes.getLIR();
         new SSIBuilder(lir, lirGenRes.getFrameMapBuilder()).build(lirGenRes);
