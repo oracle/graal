@@ -46,12 +46,10 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class SourceSectionFilter {
 
-    private final EventFilterExpression[] nodeExpressions;
-    private final EventFilterExpression[] rootNodeExpressions;
+    private final EventFilterExpression[] expressions;
 
-    private SourceSectionFilter(EventFilterExpression[] rootNodeExpressions, EventFilterExpression[] nodeExpressions) {
-        this.rootNodeExpressions = rootNodeExpressions;
-        this.nodeExpressions = nodeExpressions;
+    private SourceSectionFilter(EventFilterExpression[] expressions) {
+        this.expressions = expressions;
     }
 
     /**
@@ -74,7 +72,46 @@ public final class SourceSectionFilter {
      * @since 0.12
      */
     public static Builder newBuilder() {
-        return new SourceSectionFilter(null, null).new Builder();
+        return new SourceSectionFilter(null).new Builder();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder b = new StringBuilder("SourceSectionFilter[");
+        String sep = "";
+        for (EventFilterExpression expression : expressions) {
+            b.append(sep);
+            b.append(expression.toString());
+            sep = " and ";
+        }
+        b.append("]");
+        return b.toString();
+    }
+
+    // implementation
+
+    boolean isInstrumentedRoot(SourceSection rootSourceSection) {
+        if (rootSourceSection == null) {
+            return true;
+        }
+        for (EventFilterExpression exp : expressions) {
+            if (!exp.isRootIncluded(rootSourceSection)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    boolean isInstrumentedNode(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return false;
+        }
+        for (EventFilterExpression exp : expressions) {
+            if (!exp.isIncluded(sourceSection)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -84,8 +121,7 @@ public final class SourceSectionFilter {
      * @since 0.12
      */
     public final class Builder {
-        private List<EventFilterExpression> nodeExpressions = new ArrayList<>();
-        private List<EventFilterExpression> rootNodeExpressions = new ArrayList<>();
+        private List<EventFilterExpression> expressions = new ArrayList<>();
 
         private Builder() {
         }
@@ -97,7 +133,7 @@ public final class SourceSectionFilter {
          */
         public Builder sourceIs(Source... source) {
             verifyNotNull(source);
-            rootNodeExpressions.add(new EventFilterExpression.SourceIs(source));
+            expressions.add(new EventFilterExpression.SourceIs(source));
             return this;
         }
 
@@ -110,7 +146,7 @@ public final class SourceSectionFilter {
          */
         public Builder mimeTypeIs(String... mimeTypes) {
             verifyNotNull(mimeTypes);
-            rootNodeExpressions.add(new EventFilterExpression.MimeTypeIs(mimeTypes));
+            expressions.add(new EventFilterExpression.MimeTypeIs(mimeTypes));
             return this;
         }
 
@@ -121,7 +157,7 @@ public final class SourceSectionFilter {
          */
         public Builder tagIs(String... tags) {
             verifyNotNull(tags);
-            nodeExpressions.add(new EventFilterExpression.TagIs(tags));
+            expressions.add(new EventFilterExpression.TagIs(tags));
             return this;
         }
 
@@ -132,7 +168,7 @@ public final class SourceSectionFilter {
          */
         public Builder tagIsNot(String... tags) {
             verifyNotNull(tags);
-            nodeExpressions.add(new EventFilterExpression.TagIsNot(tags));
+            expressions.add(new EventFilterExpression.TagIsNot(tags));
             return this;
         }
 
@@ -143,9 +179,18 @@ public final class SourceSectionFilter {
          */
         public Builder sourceSectionEquals(SourceSection... section) {
             verifyNotNull(section);
-            EventFilterExpression expression = new EventFilterExpression.SourceSectionEquals(section);
-            rootNodeExpressions.add(expression);
-            nodeExpressions.add(expression);
+            expressions.add(new EventFilterExpression.SourceSectionEquals(section));
+            return this;
+        }
+
+        /**
+         * Add a filter for all sources sections which indices are contained in one of the given
+         * index ranges.
+         * @since 0.12
+         */
+        public Builder indexIn(IndexRange... ranges) {
+            verifyNotNull(ranges);
+            expressions.add(new EventFilterExpression.IndexIn(ranges));
             return this;
         }
 
@@ -156,15 +201,22 @@ public final class SourceSectionFilter {
          * @since 0.12
          */
         public Builder indexIn(int startIndex, int length) {
-            if (startIndex < 0) {
-                throw new IllegalArgumentException(String.format("The argument startIndex must be positive but is %s.", startIndex));
-            } else if (length < 0) {
-                throw new IllegalArgumentException(String.format("The argument length must be positive but is %s.", length));
-            }
+            return indexIn(IndexRange.byLength(startIndex, length));
+        }
 
-            EventFilterExpression.IndexIn e = new EventFilterExpression.IndexIn(startIndex, length);
-            rootNodeExpressions.add(e);
-            nodeExpressions.add(e);
+        /**
+         * Add a filter for all sources sections which lines are contained in one of the given index
+         * ranges. Line indices must be greater or equal to <code>1</code>.
+         * @since 0.12
+         */
+        public Builder lineIn(IndexRange... ranges) {
+            verifyNotNull(ranges);
+            for (IndexRange indexRange : ranges) {
+                if (indexRange.getStartIndex() < 1) {
+                    throw new IllegalArgumentException(String.format("Start line indices must be >= 1 but were %s.", indexRange.getStartIndex()));
+                }
+            }
+            expressions.add(new EventFilterExpression.LineIn(ranges));
             return this;
         }
 
@@ -175,21 +227,12 @@ public final class SourceSectionFilter {
          * @since 0.12
          */
         public Builder lineIn(int startLine, int length) {
-            if (startLine < 1) {
-                throw new IllegalArgumentException(String.format("The argument startLine must >= 1 but is %s.", startLine));
-            } else if (length < 0) {
-                throw new IllegalArgumentException(String.format("The argument length must be positive but is %s.", length));
-            }
-
-            EventFilterExpression.LineIn e = new EventFilterExpression.LineIn(startLine, length);
-            rootNodeExpressions.add(e);
-            nodeExpressions.add(e);
-            return this;
+            return lineIn(IndexRange.byLength(startLine, length));
         }
 
         /**
-         * Add a filter for all sources sections where the line is exactly the given line.
-         * 
+         * Add a filter for all sources sections where the line is exactly the given line. Line
+         * indices must be greater or equal to <code>1</code>.         * 
          * @since 0.12
          */
         public Builder lineIs(int line) {
@@ -202,10 +245,8 @@ public final class SourceSectionFilter {
          * @since 0.12
          */
         public SourceSectionFilter build() {
-            Collections.sort(rootNodeExpressions);
-            Collections.sort(nodeExpressions);
-            return new SourceSectionFilter(rootNodeExpressions.toArray(new EventFilterExpression[rootNodeExpressions.size()]),
-                            nodeExpressions.toArray(new EventFilterExpression[nodeExpressions.size()]));
+            Collections.sort(expressions);
+            return new SourceSectionFilter(expressions.toArray(new EventFilterExpression[0]));
         }
 
         private void verifyNotNull(Object[] values) {
@@ -221,49 +262,100 @@ public final class SourceSectionFilter {
 
     }
 
-    /** @since 0.12 */
-    @Override
-    public String toString() {
-        StringBuilder b = new StringBuilder("SourceSectionFilter[");
-        String sep = "";
-        for (EventFilterExpression expression : rootNodeExpressions) {
-            b.append(sep);
-            sep = " and ";
-            b.append(expression.toString());
+
+    /**
+     * Represents a range between two indices within a {@link SourceSectionFilter source section
+     * filter}. Instances are immutable.
+     *
+     * @see SourceSectionFilter
+     * @see #between(int, int)
+     * @see #byLength(int, int)
+     * @since 0.12
+     */
+    public static final class IndexRange {
+
+        private final int startIndex;
+        private final int endIndex;
+
+        private IndexRange(int startIndex, int endIndex) {
+            this.startIndex = startIndex;
+            this.endIndex = endIndex;
         }
 
-        for (EventFilterExpression expression : nodeExpressions) {
-            b.append(sep);
-            sep = " and ";
-            b.append(expression.toString());
+        /**
+         * Returns the start index of the index range. Invariants are
+         * <code>{@link #getStartIndex() startIndex} >= 0</code> and
+         * <code>{@link #getStartIndex() startIndex} <= {@link #getEndIndex() endIndex}</code>.
+         */
+        public int getStartIndex() {
+            return startIndex;
         }
-        b.append("]");
 
-        return b.toString();
-    }
+        /**
+         * Returns the end index of the index range. Invariants are
+         * <code>{@link #getEndIndex() endIndex} >= 0</code> and
+         * <code>{@link #getStartIndex() startIndex} <= {@link #getEndIndex() endIndex}</code>.
+         */
+        public int getEndIndex() {
+            return endIndex;
+        }
 
-    // implementation
+        /**
+         * Returns the length of the index range. The invariant is
+         * <code>{@link #getLength() length} >= 0</code>.
+         */
+        public int getLength() {
+            return endIndex - startIndex;
+        }
 
-    boolean isInstrumentedRoot(SourceSection rootSourceSection) {
-        for (EventFilterExpression exp : rootNodeExpressions) {
-            if (!exp.isRootIncluded(rootSourceSection)) {
-                return false;
+        /**
+         * Constructs a new index range between one a first index inclusive and a second index
+         * exclusive. Parameters must comply <code>startIndex >= 0</code> and
+         * <code>startIndex <= endIndex</code>.
+         *
+         * @param startIndex the start index (inclusive)
+         * @param endIndex the end index (inclusive)
+         * @return a new index range
+         * @throws IllegalArgumentException if parameter invariants are violated
+         * @since 0.12
+         */
+        public static IndexRange between(int startIndex, int endIndex) {
+            if (startIndex < 0) {
+                throw new IllegalArgumentException(String.format("The argument startIndex must be positive but is %s.", startIndex));
+            } else if (endIndex < startIndex) {
+                throw new IllegalArgumentException(String.format("Invalid range %s:%s.", startIndex, endIndex));
             }
+            return new IndexRange(startIndex, endIndex);
         }
-        return true;
-    }
 
-    boolean isInstrumentedNode(SourceSection sourceSection) {
-        for (EventFilterExpression exp : nodeExpressions) {
-            if (!exp.isIncluded(sourceSection)) {
-                return false;
+        /**
+         * Constructs a new index range with a given first index inclusive and a given length.
+         * Parameters must comply <code>startIndex >= 0</code> and <code>length >= 0</code>.
+         *
+         * @param startIndex the start index (inclusive)
+         * @param length the length of the range
+         * @return a new index range
+         * @throws IllegalArgumentException if parameter invariants are violated
+         * @since 0.12
+         */
+        public static IndexRange byLength(int startIndex, int length) {
+            if (length < 0) {
+                throw new IllegalArgumentException(String.format("The argument length must be positive but is %s.", length));
+            } else if (startIndex < 0) {
+                throw new IllegalArgumentException(String.format("The argument startIndex must be positive but is %s.", startIndex));
             }
+            return new IndexRange(startIndex, startIndex + length);
         }
-        return true;
-    }
 
-    boolean isInstrumented(SourceSection sourceSection) {
-        return isInstrumentedRoot(sourceSection) && isInstrumentedNode(sourceSection);
+        boolean contains(int otherStartIndex, int otherEndIndex) {
+            return startIndex <= otherEndIndex && otherStartIndex < endIndex;
+        }
+
+        @Override
+        public String toString() {
+            return "[" + startIndex + "-" + endIndex + "[";
+        }
+
     }
 
     private abstract static class EventFilterExpression implements Comparable<EventFilterExpression> {
@@ -288,9 +380,6 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(SourceSection s) {
-                if (s == null) {
-                    return false;
-                }
                 Source src = s.getSource();
                 for (Source otherSource : sources) {
                     if (src == otherSource) {
@@ -302,7 +391,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(SourceSection sourceSection) {
-                return true;
+                return isRootIncluded(sourceSection);
             }
 
             @Override
@@ -326,9 +415,6 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(SourceSection source) {
-                if (source == null) {
-                    return false;
-                }
                 String mimeType = source.getSource().getMimeType();
                 if (mimeType != null) {
                     for (String otherMimeType : mimeTypes) {
@@ -342,7 +428,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(SourceSection sourceSection) {
-                return true;
+                return isRootIncluded(sourceSection);
             }
 
             @Override
@@ -456,9 +542,6 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(SourceSection s) {
-                if (s == null) {
-                    return false;
-                }
                 SourceSection withoutTags = s.withTags();
                 for (SourceSection compareSection : sourceSections) {
                     if (withoutTags.equals(compareSection)) {
@@ -470,9 +553,6 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(SourceSection rootSection) {
-                if (rootSection == null) {
-                    return true;
-                }
                 Source rootSource = rootSection.getSource();
                 if (rootSource != null) {
                     for (SourceSection compareSection : sourceSections) {
@@ -498,30 +578,27 @@ public final class SourceSectionFilter {
 
         private static final class IndexIn extends EventFilterExpression {
 
-            private final int start;
-            private final int end;
+            private final IndexRange[] ranges;
 
-            IndexIn(int startIndex, int length) {
-                this.start = startIndex;
-                this.end = startIndex + length;
+            IndexIn(IndexRange[] ranges) {
+                this.ranges = ranges;
             }
 
             @Override
             boolean isRootIncluded(SourceSection rootSourceSection) {
-                if (rootSourceSection == null) {
-                    return true;
-                }
                 return isIncluded(rootSourceSection);
             }
 
             @Override
             boolean isIncluded(SourceSection sourceSection) {
-                if (sourceSection == null) {
-                    return false;
-                }
                 int otherStart = sourceSection.getCharIndex();
                 int otherEnd = otherStart + sourceSection.getCharLength();
-                return start <= otherEnd && otherStart < end;
+                for (IndexRange indexRange : ranges) {
+                    if (indexRange.contains(otherStart, otherEnd)) {
+                        return true;
+                    }
+                }
+                return false;
             }
 
             @Override
@@ -531,33 +608,32 @@ public final class SourceSectionFilter {
 
             @Override
             public String toString() {
-                return String.format("index between %s-%s", start, end);
+                StringBuilder builder = new StringBuilder("(index-between ");
+                String sep = "";
+                for (IndexRange range : ranges) {
+                    builder.append(sep).append(range);
+                    sep = " or ";
+                }
+                builder.append(")");
+                return builder.toString();
             }
         }
 
         private static final class LineIn extends EventFilterExpression {
 
-            private final int start;
-            private final int end;
+            private final IndexRange[] ranges;
 
-            LineIn(int startLine, int length) {
-                this.start = startLine;
-                this.end = start + length;
+            LineIn(IndexRange[] ranges) {
+                this.ranges = ranges;
             }
 
             @Override
             boolean isRootIncluded(SourceSection rootSourceSection) {
-                if (rootSourceSection == null) {
-                    return true;
-                }
                 return isIncluded(rootSourceSection);
             }
 
             @Override
             boolean isIncluded(SourceSection sourceSection) {
-                if (sourceSection == null) {
-                    return false;
-                }
                 int otherStart = sourceSection.getStartLine();
                 int otherEnd;
                 if (sourceSection.getSource() == null) {
@@ -565,7 +641,12 @@ public final class SourceSectionFilter {
                 } else {
                     otherEnd = sourceSection.getEndLine();
                 }
-                return start <= otherEnd && otherStart < end;
+                for (IndexRange indexRange : ranges) {
+                    if (indexRange.contains(otherStart, otherEnd)) {
+                        return true;
+                    }
+                }
+                return false;
             }
 
             @Override
@@ -575,7 +656,14 @@ public final class SourceSectionFilter {
 
             @Override
             public String toString() {
-                return String.format("index between %s-%s", start, end);
+                StringBuilder builder = new StringBuilder("(line-between ");
+                String sep = "";
+                for (IndexRange range : ranges) {
+                    builder.append(sep).append(range);
+                    sep = " or ";
+                }
+                builder.append(")");
+                return builder.toString();
             }
         }
 
