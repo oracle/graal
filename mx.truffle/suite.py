@@ -155,7 +155,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.vm"],
       "checkstyle" : "com.oracle.truffle.api",
-      "annotationProcessors" : ["INTERNAL_PROCESSOR"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -182,6 +182,7 @@ suite = {
         "com.oracle.truffle.api.dsl"
       ],
       "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -369,7 +370,7 @@ suite = {
         with most recent requirements of the Truffle infrastructure and tooling.""",
     },
 
-    "INTERNAL_PROCESSOR" : {
+    "TRUFFLE_DSL_PROCESSOR_INTERNAL" : {
       "internal" : True,
       "subDir" : "truffle",
       "javaCompliance" : "1.7",

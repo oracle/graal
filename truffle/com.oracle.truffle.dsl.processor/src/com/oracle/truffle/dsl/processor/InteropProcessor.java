@@ -855,7 +855,7 @@ public final class InteropProcessor extends AbstractProcessor {
                 appendImports(w);
                 w.append("final class ").append(className).append(" implements Factory10, Factory {\n");
 
-                appendSingelton(w);
+                appendSingletonAndGetter(w);
                 appendPrivateConstructor(w);
                 appendFactoryCanHandle(w);
 
@@ -891,8 +891,9 @@ public final class InteropProcessor extends AbstractProcessor {
             w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
         }
 
-        private void appendSingelton(Writer w) throws IOException {
+        private void appendSingletonAndGetter(Writer w) throws IOException {
             w.append("  public static final ForeignAccess ACCESS = ForeignAccess.create(null, new ").append(className).append("());").append("\n");
+            w.append("  public static ForeignAccess createAccess() { return ForeignAccess.create(null, new ").append(className).append("());}").append("\n");
             w.append("\n");
         }
 
