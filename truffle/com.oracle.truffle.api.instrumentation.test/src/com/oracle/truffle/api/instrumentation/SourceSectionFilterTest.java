@@ -150,6 +150,61 @@ public class SourceSectionFilterTest {
         Assert.assertNotNull(SourceSectionFilter.newBuilder().lineIn(2, 2).build().toString());
     }
 
+    @Test
+    public void testLineNotIn() {
+        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        SourceSection root = sampleSource.createSection(null, 0, 23);
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 1)).build(),
+                        root, sampleSource.createSection(null, 6, 5, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(1, 2)).build(),
+                        root, sampleSource.createSection(null, 2, 1, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(1, 1)).build(),
+                        root, sampleSource.createSection(null, 6, 5, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 3 * LINE_LENGTH, 1, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 3 * LINE_LENGTH - 1, 1, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 3 * LINE_LENGTH - 2, 5, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 0, LINE_LENGTH, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 0, LINE_LENGTH + 1, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 1 * LINE_LENGTH - 2, 5, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 1 * LINE_LENGTH, 1, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 1 * LINE_LENGTH - 2, 5, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(1, 1)).build(),
+                        root, SourceSection.createUnavailable(null, null)));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(1, 1)).build(),
+                        root, sampleSource.createSection(null, 0, LINE_LENGTH, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(1, 1)).build(),
+                        root, sampleSource.createSection(null, LINE_LENGTH, LINE_LENGTH, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(1, 1), IndexRange.between(2, 3), IndexRange.byLength(3, 1)).build(),
+                        root, sampleSource.createSection(null, LINE_LENGTH, LINE_LENGTH, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(1, 1), IndexRange.byLength(3, 1)).build(),
+                        root, sampleSource.createSection(null, LINE_LENGTH, LINE_LENGTH, tags())));
+
+        Assert.assertNotNull(SourceSectionFilter.newBuilder().lineIn(2, 2).build().toString());
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void testLineInFail1() {
         SourceSectionFilter.newBuilder().lineIn(0, 5);
@@ -237,6 +292,59 @@ public class SourceSectionFilterTest {
                         root, sampleSource.createSection(null, 5, 5, tags())));
 
         Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexIn(IndexRange.between(0, 5), IndexRange.between(11, 12)).build(),
+                        root, sampleSource.createSection(null, 5, 5, tags())));
+
+        Assert.assertNotNull(SourceSectionFilter.newBuilder().indexIn(5, 5).build().toString());
+
+    }
+
+    @Test
+    public void testIndexNotIn() {
+        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        SourceSection root = sampleSource.createSection(null, 0, 23);
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(0, 0)).build(),
+                        root, sampleSource.createSection(null, 0, 5, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(0, 1)).build(),
+                        root, sampleSource.createSection(null, 0, 5, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 5, 5, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 0, 4, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 0, 5, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 4, 5, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 4, 6, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 5, 5, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 10, 1, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 9, 1, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, sampleSource.createSection(null, 9, 5, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(5, 5)).build(),
+                        root, SourceSection.createUnavailable(null, null)));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.between(0, 5)).build(),
+                        root, sampleSource.createSection(null, 5, 5, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.between(0, 5), IndexRange.between(5, 6)).build(),
+                        root, sampleSource.createSection(null, 5, 5, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.between(0, 5), IndexRange.between(11, 12)).build(),
                         root, sampleSource.createSection(null, 5, 5, tags())));
 
         Assert.assertNotNull(SourceSectionFilter.newBuilder().indexIn(5, 5).build().toString());
