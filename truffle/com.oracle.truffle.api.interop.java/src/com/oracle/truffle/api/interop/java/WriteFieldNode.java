@@ -24,32 +24,24 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.java.JavaInterop.JavaObject;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Array;
 
-class WriteFieldNode extends RootNode {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.AcceptMessage;
 
-    WriteFieldNode() {
-        super(JavaInteropLanguage.class, null, null);
-    }
+@AcceptMessage(value = "WRITE", receiverType = JavaObject.class, language = JavaInteropLanguage.class)
+final class WriteFieldNode extends WriteFieldBaseNode {
+
+    @Child private ToJavaNode toJava = new ToJavaNode();
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object access(VirtualFrame frame, JavaObject receiver, String name, Object value) {
         try {
-            JavaInterop.JavaObject receiver = (JavaInterop.JavaObject) ForeignAccess.getReceiver(frame);
             Object obj = receiver.obj;
-            final Object indexOrName = ForeignAccess.getArguments(frame).get(0);
-            Object value = ForeignAccess.getArguments(frame).get(1);
-            if (indexOrName instanceof Integer) {
-                Array.set(obj, (Integer) indexOrName, value);
-                return JavaObject.NULL;
-            }
-            String name = (String) indexOrName;
             try {
-                receiver.clazz.getField(name).set(obj, value);
+                Class<?> fieldType = receiver.clazz.getField(name).getType();
+                Object convertedValue = toJava.convert(frame, value, fieldType);
+                receiver.clazz.getField(name).set(obj, convertedValue);
                 return JavaObject.NULL;
             } catch (NoSuchFieldException ex) {
                 throw new RuntimeException(ex);
@@ -57,6 +49,13 @@ class WriteFieldNode extends RootNode {
         } catch (IllegalAccessException ex) {
             throw new RuntimeException(ex);
         }
+    }
+
+    @Override
+    public Object access(VirtualFrame frame, JavaObject receiver, int index, Object value) {
+        Object obj = receiver.obj;
+        Array.set(obj, index, value);
+        return JavaObject.NULL;
     }
 
 }

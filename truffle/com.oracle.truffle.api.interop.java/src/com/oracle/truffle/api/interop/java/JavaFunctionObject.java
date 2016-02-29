@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,27 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import java.lang.reflect.Method;
+
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-class ReadReceiverNode extends Node {
+final class JavaFunctionObject implements TruffleObject {
+    final Method method;
+    final Object obj;
 
-    public Object execute(VirtualFrame frame) {
-        return ForeignAccess.getReceiver(frame);
+    JavaFunctionObject(Method method, Object obj) {
+        this.method = method;
+        this.obj = obj;
+    }
+
+    public static boolean isInstance(TruffleObject obj) {
+        return obj instanceof JavaFunctionObject;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return JavaFunctionObjectForeign.createAccess();
     }
 
 }

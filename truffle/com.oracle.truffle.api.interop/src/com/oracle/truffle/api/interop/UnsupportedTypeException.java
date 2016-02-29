@@ -25,8 +25,6 @@
 
 package com.oracle.truffle.api.interop;
 
-import java.util.Arrays;
-
 /**
  * An exception thrown if a {@link TruffleObject} does not support the type of one ore more
  * arguments provided by a foreign access.
@@ -37,9 +35,13 @@ public final class UnsupportedTypeException extends InteropException {
 
     private final Object[] suppliedValues;
 
-    private UnsupportedTypeException(Object[] suppliedValues) {
-        super("Unsupported types: " + Arrays.toString(suppliedValues));
+    private UnsupportedTypeException(Exception cause, Object[] suppliedValues) {
+        super(cause);
         this.suppliedValues = suppliedValues;
+    }
+
+    private UnsupportedTypeException(Object[] suppliedValues) {
+        this(null, suppliedValues);
     }
 
     /**
@@ -63,6 +65,21 @@ public final class UnsupportedTypeException extends InteropException {
      * @return the exception
      */
     public static RuntimeException raise(Object[] suppliedValues) {
-        return silenceException(RuntimeException.class, new UnsupportedTypeException(suppliedValues));
+        return raise(null, suppliedValues);
+    }
+
+    /**
+     * Raises an {@link UnsupportedTypeException}, hidden as a {@link RuntimeException}, which
+     * allows throwing it without an explicit throws declaration. The {@link ForeignAccess} methods
+     * (e.g. <code> ForeignAccess.sendRead </code>) catch the exceptions and re-throw them as
+     * checked exceptions.
+     *
+     * @param cause cause of this exception
+     * @param suppliedValues values that were not supported
+     *
+     * @return the exception
+     */
+    public static RuntimeException raise(Exception cause, Object[] suppliedValues) {
+        return silenceException(RuntimeException.class, new UnsupportedTypeException(cause, suppliedValues));
     }
 }

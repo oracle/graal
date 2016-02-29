@@ -24,19 +24,16 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Array;
 
-final class ArrayHasSizeNode extends RootNode {
-    ArrayHasSizeNode() {
-        super(JavaInteropLanguage.class, null, null);
-    }
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.AcceptMessage;
+
+@AcceptMessage(value = "HAS_SIZE", receiverType = JavaObject.class, language = JavaInteropLanguage.class)
+final class ArrayHasSizeNode extends ArrayHasSizeBaseNode {
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        JavaInterop.JavaObject receiver = (JavaInterop.JavaObject) ForeignAccess.getReceiver(frame);
+    public Object access(VirtualFrame frame, JavaObject receiver) {
         Object obj = receiver.obj;
         if (obj == null) {
             return false;

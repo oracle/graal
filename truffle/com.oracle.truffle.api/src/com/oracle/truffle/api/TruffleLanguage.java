@@ -228,7 +228,9 @@ public abstract class TruffleLanguage<C> {
      * Gets visualization services for language-specific information.
      */
     @Deprecated
-    protected abstract Visualizer getVisualizer();
+    protected Visualizer getVisualizer() {
+        return null;
+    }
 
     /**
      * Returns {@code true} for a node can be "instrumented" by
@@ -238,7 +240,9 @@ public abstract class TruffleLanguage<C> {
      * 
      * @see WrapperNode
      */
-    protected abstract boolean isInstrumentable(Node node);
+    protected boolean isInstrumentable(@SuppressWarnings("unused") Node node) {
+        return false;
+    }
 
     /**
      * For nodes in this language that are <em>instrumentable</em>, this method returns an
@@ -251,7 +255,9 @@ public abstract class TruffleLanguage<C> {
      *
      * @return an appropriately typed {@link WrapperNode}
      */
-    protected abstract WrapperNode createWrapperNode(Node node);
+    protected WrapperNode createWrapperNode(@SuppressWarnings("unused") Node node) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Runs source code in a halted execution context, or at top level.
