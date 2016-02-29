@@ -24,27 +24,16 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.FindContextNode;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
 
 final class FindContextNodeImpl<L> extends FindContextNode {
-    private static Reference<Object> previousVM = new WeakReference<>(null);
-    private static Assumption oneGlobalVM = Truffle.getRuntime().createAssumption();
-
-    static void usingVM(PolyglotEngine polyglotEngine) {
-        if (polyglotEngine != previousVM.get()) {
-            oneGlobalVM.invalidate();
-        }
-    }
-
+    private static final Object NOT_INITIALIZED = new Object();
+    private static final Object MULTIPLE = new Object();
     private final TruffleLanguage<L> language;
-    @CompilerDirectives.CompilationFinal private L context;
-    @CompilerDirectives.CompilationFinal private Assumption oneVM;
+    @CompilerDirectives.CompilationFinal private Object singleEngine = NOT_INITIALIZED;
+    @CompilerDirectives.CompilationFinal private L singleContext;
 
     public FindContextNodeImpl(TruffleLanguage<L> language) {
         this.language = language;
@@ -56,17 +45,33 @@ final class FindContextNodeImpl<L> extends FindContextNode {
         if (this.language != language) {
             throw new ClassCastException();
         }
-        return (C) findContext((PolyglotEngine)engine);
+        return (C) findContext(engine);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private L findContext(PolyglotEngine engine) {
-        if (context != null && oneVM.isValid()) {
-            return context;
+    private L findContext(Object rawEngine) {
+        if (singleEngine == MULTIPLE) {
+            return findFromEnv((PolyglotEngine) rawEngine);
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        oneVM = oneGlobalVM;
+        if (singleEngine == NOT_INITIALIZED) {
+            final PolyglotEngine engine = (PolyglotEngine) rawEngine;
+            singleEngine = engine;
+            singleContext = findFromEnv(engine);
+            return singleContext;
+        } else {
+            if (singleEngine != rawEngine) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                singleEngine = MULTIPLE;
+                singleContext = null;
+                return findFromEnv((PolyglotEngine) rawEngine);
+            }
+            return singleContext;
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private L findFromEnv(PolyglotEngine engine) {
         TruffleLanguage.Env env = engine.findEnv(language.getClass());
-        return context = (L) PolyglotEngine.findContext(env);
+        return (L) PolyglotEngine.findContext(env);
     }
 }

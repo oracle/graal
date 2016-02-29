@@ -324,7 +324,6 @@ public abstract class Accessor {
         Objects.requireNonNull(vm);
         final Object prev = CURRENT_VM.get();
         final Closeable debugClose = DEBUG == null ? null : DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
-        SPI.usingVM(vm);
         CURRENT_VM.set(vm);
         class ContextCloseable implements Closeable {
             @TruffleBoundary
@@ -410,8 +409,5 @@ public abstract class Accessor {
         Env env = API.findLanguage(vm, languageClass);
         TruffleLanguage<?> language = API.findLanguage(env);
         return languageClass.cast(language);
-    }
-
-    protected void usingVM(Object vm) {
     }
 }

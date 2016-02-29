@@ -1254,10 +1254,5 @@ public class PolyglotEngine {
         protected String toString(TruffleLanguage language, TruffleLanguage.Env env, Object obj) {
             return super.toString(language, env, obj);
         }
-
-        @Override
-        protected void usingVM(Object vm) {
-            FindContextNodeImpl.usingVM((PolyglotEngine) vm);
-        }
     } // end of SPIAccessor
 }
