@@ -43,7 +43,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.gen.BlockValueMap;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.util.ValueMap;
 import com.oracle.graal.lir.util.VariableVirtualStackValueMap;
 
@@ -237,36 +237,36 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
 
     // finish
 
-    public void finish(LIRGeneratorTool gen) {
-        Debug.dump(gen.getResult().getLIR(), "Before SSI operands");
-        AbstractControlFlowGraph<?> cfg = gen.getResult().getLIR().getControlFlowGraph();
+    public void finish(LIRGenerationResult lirGenRes) {
+        Debug.dump(lirGenRes.getLIR(), "Before SSI operands");
+        AbstractControlFlowGraph<?> cfg = lirGenRes.getLIR().getControlFlowGraph();
         for (AbstractBlockBase<?> block : cfg.getBlocks()) {
             // set label
             BlockData data = blockData.get(block);
             if (data != null) {
                 if (data.incoming != null && data.incoming.size() > 0) {
-                    LabelOp label = getLabel(gen, block);
+                    LabelOp label = getLabel(lirGenRes, block);
                     label.addIncomingValues(data.incoming.toArray(new Value[data.incoming.size()]));
                 }
                 // set block end
                 if (data.outgoing != null && data.outgoing.size() > 0) {
-                    BlockEndOp blockEndOp = getBlockEnd(gen, block);
+                    BlockEndOp blockEndOp = getBlockEnd(lirGenRes, block);
                     blockEndOp.addOutgoingValues(data.outgoing.toArray(new Value[data.outgoing.size()]));
                 }
             }
         }
     }
 
-    private static List<LIRInstruction> getLIRforBlock(LIRGeneratorTool gen, AbstractBlockBase<?> block) {
-        return gen.getResult().getLIR().getLIRforBlock(block);
+    private static List<LIRInstruction> getLIRforBlock(LIRGenerationResult lirGenRes, AbstractBlockBase<?> block) {
+        return lirGenRes.getLIR().getLIRforBlock(block);
     }
 
-    private static LabelOp getLabel(LIRGeneratorTool gen, AbstractBlockBase<?> block) {
-        return (LabelOp) getLIRforBlock(gen, block).get(0);
+    private static LabelOp getLabel(LIRGenerationResult lirGenRes, AbstractBlockBase<?> block) {
+        return (LabelOp) getLIRforBlock(lirGenRes, block).get(0);
     }
 
-    private static BlockEndOp getBlockEnd(LIRGeneratorTool gen, AbstractBlockBase<?> block) {
-        List<LIRInstruction> instructions = getLIRforBlock(gen, block);
+    private static BlockEndOp getBlockEnd(LIRGenerationResult lirGenRes, AbstractBlockBase<?> block) {
+        List<LIRInstruction> instructions = getLIRforBlock(lirGenRes, block);
         return (BlockEndOp) instructions.get(instructions.size() - 1);
     }
 }
