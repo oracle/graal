@@ -1089,6 +1089,14 @@ public class PolyglotEngine {
         throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
     }
 
+    static Env findEnv(TruffleLanguage<?> language) {
+        return SPI.findEnv(language.getClass());
+    }
+
+    static Object findContext(TruffleLanguage.Env env) {
+        return SPI.findContext(env);
+    }
+
     private static class SPIAccessor extends Accessor {
         @Override
         public Object importSymbol(Object vmObj, TruffleLanguage<?> ownLang, String globalName) {
@@ -1197,6 +1205,10 @@ public class PolyglotEngine {
             return vm.findLanguage(mimeType) != null;
         }
 
+        public Env findEnv(Class<? extends TruffleLanguage> languageClass) {
+            return super.findLanguage(null, languageClass);
+        }
+
         @Override
         protected Env findLanguage(Object obj, Class<? extends TruffleLanguage> languageClass) {
             PolyglotEngine vm = (PolyglotEngine) obj;
@@ -1226,6 +1238,16 @@ public class PolyglotEngine {
         }
 
         @Override
+        protected Node createFindContextNode(TruffleLanguage<?> language) {
+            return new FindContextNodeImpl(language);
+        }
+
+        @Override
+        protected Object findContext(Env env) {
+            return super.findContext(env);
+        }
+
+        @Override
         protected void dispatchEvent(Object obj, Object event) {
             PolyglotEngine vm = (PolyglotEngine) obj;
             vm.dispatch(event);
@@ -1239,6 +1261,11 @@ public class PolyglotEngine {
         @Override
         protected String toString(TruffleLanguage language, TruffleLanguage.Env env, Object obj) {
             return super.toString(language, env, obj);
+        }
+
+        @Override
+        protected void usingVM(Object vm) {
+            FindContextNodeImpl.usingVM((PolyglotEngine) vm);
         }
     } // end of SPIAccessor
 }
