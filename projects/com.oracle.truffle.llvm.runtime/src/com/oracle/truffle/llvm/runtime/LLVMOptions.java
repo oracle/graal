@@ -29,18 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 public class LLVMOptions {
 
     public static void main(String[] args) {
-        Property[] properties = Property.values();
-        for (Property prop : properties) {
-            // Checkstyle: stop
-            System.out.println(prop);
-            // Checkstyle: resume
+        for (PropertyCategory category : PropertyCategory.values()) {
+            List<Property> properties = category.getProperties();
+            if (!properties.isEmpty()) {
+                // Checkstyle: stop
+                System.out.println(category + ":");
+                for (Property prop : properties) {
+                    System.out.println(prop);
+                }
+                System.out.println();
+                // Checkstyle: resume
+            }
+
         }
     }
 
@@ -69,44 +78,75 @@ public class LLVMOptions {
         }
     }
 
+    public enum PropertyCategory {
+        GENERAL,
+        DEBUG,
+        PERFORMANCE,
+        TESTS,
+        MX;
+
+        public List<Property> getProperties() {
+            List<Property> properties = new ArrayList<>();
+            for (Property p : Property.values()) {
+                if (this == p.getCategory()) {
+                    properties.add(p);
+                }
+            }
+            return properties;
+        }
+    }
+
     public enum Property {
 
-        DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean),
-        PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean),
+        DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+        PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         /*
          * The boot classpath that should be used to execute the remote JVM when executing the LLVM
          * test suite (and other tests). These rely on comparing output sent to stdout that cannot
          * becaptured inside Java, since, e.g., a printf is executed by native code. To determine
          * the right value just copy the boot class path that you use to launch the main LLVM class"
          */
-        REMOTE_TEST_BOOT_CLASSPATH("TestRemoteBootPath", "The boot classpath for the remote JVM used to capture native printf and other output.", null, LLVMOptions::parseString),
+        REMOTE_TEST_BOOT_CLASSPATH(
+                        "TestRemoteBootPath",
+                        "The boot classpath for the remote JVM used to capture native printf and other output.",
+                        null,
+                        LLVMOptions::parseString,
+                        PropertyCategory.TESTS),
         TEST_DISCOVERY_PATH(
                         "TestDiscoveryPath",
                         "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.",
                         null,
-                        LLVMOptions::parseString),
-        DYN_LIBRARY_PATHS("DynamicNativeLibraryPath", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath),
-        PROJECT_ROOT("ProjectRoot", "Overrides the root of the project. This option exists to set the project root from mx", ".", LLVMOptions::parseString),
-        OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("SpecializeExpectIntrinsic", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("ValueProfileMemoryReads", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_INJECT_PROBS_SELECT("InjectProbabilitySelect", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_INJECT_PROBS_COND_BRANCH("InjectProbabilityBr", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean),
-        OPTIMIZATION_LIFE_TIME_ANALYSIS("EnableLifetimeAnalysis", "Performs a lifetime analysis to set dead frame slots to null to assist the PE", "true", LLVMOptions::parseBoolean),
-        NATIVE_CALL_STATS("PrintNativeCallStats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean),
-        LIFE_TIME_ANALYSIS_STATS("PrintNativeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", "false", LLVMOptions::parseBoolean);
+                        LLVMOptions::parseString,
+                        PropertyCategory.TESTS),
+        DYN_LIBRARY_PATHS("DynamicNativeLibraryPath", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath, PropertyCategory.GENERAL),
+        PROJECT_ROOT("ProjectRoot", "Overrides the root of the project. This option exists to set the project root from mx", ".", LLVMOptions::parseString, PropertyCategory.MX),
+        OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("SpecializeExpectIntrinsic", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+        OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("ValueProfileMemoryReads", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+        OPTIMIZATION_INJECT_PROBS_SELECT("InjectProbabilitySelect", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+        OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+        OPTIMIZATION_INJECT_PROBS_COND_BRANCH("InjectProbabilityBr", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+        OPTIMIZATION_LIFE_TIME_ANALYSIS(
+                        "EnableLifetimeAnalysis",
+                        "Performs a lifetime analysis to set dead frame slots to null to assist the PE",
+                        "true",
+                        LLVMOptions::parseBoolean,
+                        PropertyCategory.PERFORMANCE),
+        NATIVE_CALL_STATS("PrintNativeCallStats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+        LIFE_TIME_ANALYSIS_STATS("PrintNativeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG);
 
-        Property(String key, String description, String defaultValue, OptionParser parser) {
+        Property(String key, String description, String defaultValue, OptionParser parser, PropertyCategory category) {
             this.key = OPTION_PREFIX + key;
             this.description = description;
             this.defaultValue = defaultValue;
             this.parser = parser;
+            this.category = category;
         }
 
         private final String key;
         private final String description;
         private final String defaultValue;
         private final OptionParser parser;
+        private final PropertyCategory category;
 
         public String getKey() {
             return key;
@@ -118,6 +158,10 @@ public class LLVMOptions {
 
         public String getDefaultValue() {
             return defaultValue;
+        }
+
+        public PropertyCategory getCategory() {
+            return category;
         }
 
         public Object parse() {
