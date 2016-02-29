@@ -439,6 +439,30 @@ public class SourceSectionFilterTest {
         Assert.assertNotNull(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build().toString());
     }
 
+    @Test
+    public void testRootSourceSectionEquals() {
+        Source sampleSource1 = Source.fromText("line1\nline2\nline3\nline4", null);
+
+        Assert.assertTrue(isInstrumentedNode(SourceSectionFilter.newBuilder().rootSourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
+                        sampleSource1.createSection(null, 6, 4)));
+        Assert.assertTrue(isInstrumentedRoot(SourceSectionFilter.newBuilder().rootSourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
+                        sampleSource1.createSection(null, 1, 6)));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().rootSourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
+                        sampleSource1.createSection(null, 1, 6), sampleSource1.createSection(null, 6, 4)));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().rootSourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
+                        sampleSource1.createSection(null, 2, 6), sampleSource1.createSection(null, 1, 4)));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().rootSourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
+                        sampleSource1.createSection(null, 1, 7), sampleSource1.createSection(null, 1, 4)));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().rootSourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
+                        sampleSource1.createSection(null, 1, 6), SourceSection.createUnavailable(null, null)));
+
+        Assert.assertNotNull(SourceSectionFilter.newBuilder().rootSourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build().toString());
+    }
+
     private static SourceSection source(String... tags) {
         return Source.fromText("foo", null).createSection(null, 0, 3, tags);
     }

@@ -184,6 +184,19 @@ public final class SourceSectionFilter {
         }
 
         /**
+         * Add a filter for all root sources sections that equal one of the given source sections.
+         * All descendant source sections of a matching root source section are included in the
+         * filter. This can mean in the dynamic language domain that all nodes of a function for
+         * which the root source section matches the given source section is instrumented but its
+         * inner functions and its nodes are not instrumented.
+         */
+        public Builder rootSourceSectionEquals(SourceSection... section) {
+            verifyNotNull(section);
+            expressions.add(new EventFilterExpression.RootSourceSectionEquals(section));
+            return this;
+        }
+
+        /**
          * Add a filter for all sources sections which indices are not contained in one of the given
          * index ranges.
          */
@@ -555,6 +568,46 @@ public final class SourceSectionFilter {
                         if (rootSource.equals(compareSection.getSource())) {
                             return true;
                         }
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            protected int getOrder() {
+                return 6;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("source-section equals one-of %s", Arrays.toString(sourceSections));
+            }
+
+        }
+
+        private static final class RootSourceSectionEquals extends EventFilterExpression {
+
+            private final SourceSection[] sourceSections;
+
+            RootSourceSectionEquals(SourceSection... sourceSection) {
+                this.sourceSections = sourceSection;
+                // clear tags
+                for (int i = 0; i < sourceSection.length; i++) {
+                    sourceSections[i] = sourceSection[i].withTags();
+                }
+            }
+
+            @Override
+            boolean isIncluded(SourceSection s) {
+                return true;
+            }
+
+            @Override
+            boolean isRootIncluded(SourceSection rootSection) {
+                SourceSection withoutTags = rootSection.withTags();
+                for (SourceSection compareSection : sourceSections) {
+                    if (withoutTags.equals(compareSection)) {
+                        return true;
                     }
                 }
                 return false;
