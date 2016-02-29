@@ -248,6 +248,10 @@ public abstract class Accessor {
         return SPI.findLanguage(vm, languageClass);
     }
 
+    static Object findCurrentVM() {
+        return CURRENT_VM.get();
+    }
+
     @SuppressWarnings("rawtypes")
     protected TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass, String mimeType) {
         Object vm;

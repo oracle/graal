@@ -36,5 +36,11 @@ public abstract class FindContextNode extends Node {
      *         {@link TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
      * @throws ClassCastException if the language isn't the one for which the node was created
      */
-    public abstract <C> C executeFindContext(TruffleLanguage<C> language);
+    public <C> C executeFindContext(TruffleLanguage<C> language) {
+        return findContextForEngine(Accessor.findCurrentVM(), language);
+    }
+
+    /** Seeks for a context in a given language.
+     */
+    protected abstract <C> C findContextForEngine(Object engine, TruffleLanguage<C> language);
 }

@@ -52,21 +52,21 @@ final class FindContextNodeImpl<L> extends FindContextNode {
 
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public <C> C executeFindContext(TruffleLanguage<C> language) {
+    protected <C> C findContextForEngine(Object engine, TruffleLanguage<C> language) {
         if (this.language != language) {
             throw new ClassCastException();
         }
-        return (C) findContext();
+        return (C) findContext((PolyglotEngine)engine);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private L findContext() {
+    private L findContext(PolyglotEngine engine) {
         if (context != null && oneVM.isValid()) {
             return context;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         oneVM = oneGlobalVM;
-        TruffleLanguage.Env env = PolyglotEngine.findEnv(language);
+        TruffleLanguage.Env env = engine.findEnv(language.getClass());
         return context = (L) PolyglotEngine.findContext(env);
     }
 }

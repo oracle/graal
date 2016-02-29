@@ -1089,10 +1089,6 @@ public class PolyglotEngine {
         throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
     }
 
-    static Env findEnv(TruffleLanguage<?> language) {
-        return SPI.findEnv(language.getClass());
-    }
-
     static Object findContext(TruffleLanguage.Env env) {
         return SPI.findContext(env);
     }
@@ -1203,10 +1199,6 @@ public class PolyglotEngine {
         protected boolean isMimeTypeSupported(Object obj, String mimeType) {
             final PolyglotEngine vm = (PolyglotEngine) obj;
             return vm.findLanguage(mimeType) != null;
-        }
-
-        public Env findEnv(Class<? extends TruffleLanguage> languageClass) {
-            return super.findLanguage(null, languageClass);
         }
 
         @Override
