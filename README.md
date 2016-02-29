@@ -1,9 +1,8 @@
 ![Sulong Logo](https://raw.githubusercontent.com/mrigger/sulong-logos/master/sulong_black_with_text_transparent_300x185.png)
 
-
 Sulong (Graal LLVM) is an interpreter for LLVM IR written in
 Java using the Truffle language implementation framework and Graal as a
-just-in-time (JIT) compiler.
+just-in-time (JIT) compiler. 
 
 With Sulong you can execute C/C++, Fortran, and other programs written 
 in a LLVM language on the JVM. To execute a program by Sulong, you have
@@ -162,6 +161,11 @@ mx igv
 mx su-run <file> -Dgraal.Dump=Truffle
 ```
 
+
+Build Status
+------------
+Thanks to Travis CI, all commits of this repository are tested:
+[![Build Status](https://travis-ci.org/graalvm/sulong.svg?branch=master)](https://travis-ci.org/graalvm/sulong)
 
 Further Information
 -------------------
