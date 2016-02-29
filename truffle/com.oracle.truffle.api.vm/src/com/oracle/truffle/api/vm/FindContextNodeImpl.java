@@ -29,10 +29,10 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.FindContextNode;
 
 final class FindContextNodeImpl<L> extends FindContextNode {
-    private static final Object NOT_INITIALIZED = new Object();
+    private static final Object UNINITIALIZED = new Object();
     private static final Object MULTIPLE = new Object();
     private final TruffleLanguage<L> language;
-    @CompilerDirectives.CompilationFinal private Object singleEngine = NOT_INITIALIZED;
+    @CompilerDirectives.CompilationFinal private Object singleEngine = UNINITIALIZED;
     @CompilerDirectives.CompilationFinal private L singleContext;
 
     public FindContextNodeImpl(TruffleLanguage<L> language) {
@@ -50,28 +50,27 @@ final class FindContextNodeImpl<L> extends FindContextNode {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private L findContext(Object rawEngine) {
-        if (singleEngine == MULTIPLE) {
-            return findFromEnv((PolyglotEngine) rawEngine);
-        }
-        if (singleEngine == NOT_INITIALIZED) {
-            final PolyglotEngine engine = (PolyglotEngine) rawEngine;
-            singleEngine = engine;
-            singleContext = findFromEnv(engine);
-            return singleContext;
-        } else {
-            if (singleEngine != rawEngine) {
+        if (singleEngine != MULTIPLE) {
+            if (singleEngine == rawEngine) {
+                return singleContext;
+            } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                singleEngine = MULTIPLE;
-                singleContext = null;
-                return findFromEnv((PolyglotEngine) rawEngine);
+                if (singleEngine == UNINITIALIZED) {
+                    singleEngine = rawEngine;
+                    singleContext = findFromEnv(rawEngine);
+                    return singleContext;
+                } else {
+                    singleEngine = MULTIPLE;
+                    singleContext = null;
+                }
             }
-            return singleContext;
         }
+        return findFromEnv(rawEngine);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private L findFromEnv(PolyglotEngine engine) {
-        TruffleLanguage.Env env = engine.findEnv(language.getClass());
+    private L findFromEnv(Object engine) {
+        TruffleLanguage.Env env = ((PolyglotEngine)engine).findEnv(language.getClass());
         return (L) PolyglotEngine.findContext(env);
     }
 }
