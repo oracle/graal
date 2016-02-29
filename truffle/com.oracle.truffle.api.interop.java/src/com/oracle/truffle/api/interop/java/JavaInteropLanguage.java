@@ -26,5 +26,5 @@ package com.oracle.truffle.api.interop.java;
 
 import com.oracle.truffle.api.TruffleLanguage;
 
-public abstract class JavaInteropLanguage extends TruffleLanguage<Object> {
+abstract class JavaInteropLanguage extends TruffleLanguage<Object> {
 }
