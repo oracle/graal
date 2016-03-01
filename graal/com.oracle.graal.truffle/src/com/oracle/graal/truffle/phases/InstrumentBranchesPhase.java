@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.truffle.phases;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
 
 import java.lang.reflect.Field;
 import java.util.LinkedHashMap;

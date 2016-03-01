@@ -37,8 +37,12 @@ import jdk.vm.ci.meta.SpeculationLog;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.DebugMemUseTracker;
+import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -60,7 +64,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 public abstract class TruffleCompiler {
 
     protected final Providers providers;
-
     protected final Suites suites;
     protected final GraphBuilderConfiguration config;
     protected final LIRSuites lirSuites;

@@ -26,11 +26,21 @@ import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 
 import java.lang.invoke.MethodHandle;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.*;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
@@ -45,8 +55,14 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.graphbuilderconf.*;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.LoopExplosionPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
@@ -325,7 +341,7 @@ public class PartialEvaluator {
         }
 
         return new CachingPEGraphDecoder(providers, newConfig, TruffleCompiler.Optimizations,
-                AllowAssumptions.from(graph.getAssumptions() != null), architecture) {
+                        AllowAssumptions.from(graph.getAssumptions() != null), architecture) {
             @Override
             protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initial) {
                 return new DefaultTruffleCompiler.InstrumentedGraphBuilderPhase.Instance(tierContext, newConfig, initial);
@@ -412,8 +428,6 @@ public class PartialEvaluator {
         } catch (Throwable t) {
             Debug.handle(t);
         }
-
-
 
         // recompute loop frequencies now that BranchProbabilities have had time to canonicalize
         ComputeLoopFrequenciesClosure.compute(graph);

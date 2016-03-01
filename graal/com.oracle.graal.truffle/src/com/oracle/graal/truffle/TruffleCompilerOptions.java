@@ -37,7 +37,7 @@ public class TruffleCompilerOptions {
     /**
      * Instructs the Truffle Compiler to compile call targets only if their name contains at least one element of a comma-separated list of includes.
      * Excludes are prefixed with a tilde (~).
-     * <p>
+     *
      * The format in EBNF:
      * <pre>
      * CompileOnly = Element, { ',', Element } ;
