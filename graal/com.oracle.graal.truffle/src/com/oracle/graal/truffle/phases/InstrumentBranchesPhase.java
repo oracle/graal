@@ -170,18 +170,14 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         }
     }
 
-    private void insertCounter(StructuredGraph graph, HighTierContext context, IfNode ifNode,
-                    BranchInstrumentation.Point p, boolean isTrue) {
-        Field javaField = null;
-        try {
-            javaField = InstrumentBranchesPhase.class.getField("TABLE");
-        } catch (Exception e) {
-            return;
-        }
-        AbstractBeginNode beginNode = (isTrue) ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
-        ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(javaField);
-        JavaConstant tableConstant = context.getConstantReflection().readConstantFieldValue(tableField, null);
+    public InstrumentBranchesPhase() {
+
+    }
+
+    private void insertCounter(StructuredGraph graph, ResolvedJavaField tableField, JavaConstant tableConstant,
+                    IfNode ifNode, BranchInstrumentation.Point p, boolean isTrue) {
         assert (tableConstant != null);
+        AbstractBeginNode beginNode = (isTrue) ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
         ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.exactNonNull((ResolvedJavaType) tableField.getType())));
         ConstantNode rawIndex = graph.unique(ConstantNode.forInt(p.getRawIndex(isTrue)));
         ConstantNode v = graph.unique(ConstantNode.forBoolean(true));
@@ -197,12 +193,20 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
         if (METHOD_REGEX_FILTER.matcher(graph.method().getName()).matches()) {
+            Field javaField = null;
+            try {
+                javaField = InstrumentBranchesPhase.class.getField("TABLE");
+            } catch (Exception e) {
+                return;
+            }
+            ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(javaField);
+            JavaConstant tableConstant = context.getConstantReflection().readConstantFieldValue(tableField, null);
             try {
                 for (IfNode n : graph.getNodes().filter(IfNode.class)) {
                     BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
                     if (p != null) {
-                        insertCounter(graph, context, n, p, true);
-                        insertCounter(graph, context, n, p, false);
+                        insertCounter(graph, tableField, tableConstant, n, p, true);
+                        insertCounter(graph, tableField, tableConstant, n, p, false);
                     }
                 }
             } catch (Exception e) {
