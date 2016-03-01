@@ -199,6 +199,15 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             }
         }
 
+        private final InstructionValueProcedure assignProc = new InstructionValueProcedure() {
+            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                if (isVariable(value)) {
+                    return colorLirOperand(instruction, (Variable) value, mode);
+                }
+                return value;
+            }
+        };
+
         /**
          * Assigns the operand of an {@link LIRInstruction}.
          *
@@ -217,7 +226,6 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                 }
             }
 
-            InstructionValueProcedure assignProc = (inst, operand, mode, flags) -> isVariable(operand) ? colorLirOperand(inst, (Variable) operand, mode) : operand;
             // remove useless moves
             if (op instanceof MoveOp) {
                 AllocatableValue result = ((MoveOp) op).getResult();
@@ -267,7 +275,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             }
         }
 
-        private InstructionValueProcedure colorOutgoingIncomingValues = new InstructionValueProcedure() {
+        private final InstructionValueProcedure colorOutgoingIncomingValues = new InstructionValueProcedure() {
 
             public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVariable(value)) {
