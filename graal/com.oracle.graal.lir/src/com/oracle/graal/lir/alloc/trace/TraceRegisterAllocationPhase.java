@@ -48,7 +48,7 @@ import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.StableOptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
 
@@ -61,13 +61,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Use inter-trace register hints.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAuseInterTraceHints = new OptionValue<>(true);
+        public static final StableOptionValue<Boolean> TraceRAuseInterTraceHints = new StableOptionValue<>(true);
         @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAtrivialBlockAllocator = new OptionValue<>(true);
+        public static final StableOptionValue<Boolean> TraceRAtrivialBlockAllocator = new StableOptionValue<>(true);
         @Option(help = "Share information about spilled values to other traces.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAshareSpillInformation = new OptionValue<>(true);
+        public static final StableOptionValue<Boolean> TraceRAshareSpillInformation = new StableOptionValue<>(true);
         @Option(help = "Reuse spill slots for global move resolution cycle breaking.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAreuseStackSlotsForMoveResolutionCycleBreaking = new OptionValue<>(true);
+        public static final StableOptionValue<Boolean> TraceRAreuseStackSlotsForMoveResolutionCycleBreaking = new StableOptionValue<>(true);
         // @formatter:on
     }
 
