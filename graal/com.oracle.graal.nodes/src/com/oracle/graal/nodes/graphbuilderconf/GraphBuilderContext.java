@@ -144,8 +144,9 @@ public interface GraphBuilderContext {
      * @param targetMethod the method being intrinsified
      * @param substitute the intrinsic implementation
      * @param args the arguments with which to inline the invocation
+     * @return whether the intrinsification was successful
      */
-    void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args);
+    boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args);
 
     StampProvider getStampProvider();
 

@@ -1094,7 +1094,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.truffle.hotspot",
-        "com.oracle.graal.compiler.test",
+        "com.oracle.graal.truffle.test",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",

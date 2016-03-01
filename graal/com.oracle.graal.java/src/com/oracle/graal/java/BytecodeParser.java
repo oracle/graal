@@ -1534,9 +1534,10 @@ public class BytecodeParser implements GraphBuilderContext {
         return null;
     }
 
-    public void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
+    public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
         boolean res = inline(targetMethod, substitute, true, args);
         assert res : "failed to inline " + substitute;
+        return res;
     }
 
     private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean isIntrinsic, ValueNode[] args) {
