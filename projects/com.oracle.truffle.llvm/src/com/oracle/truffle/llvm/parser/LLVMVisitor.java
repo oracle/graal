@@ -163,13 +163,6 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI1Litera
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI8LiteralNode;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorDoubleLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorFloatLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI16LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI1LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI32LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI64LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI8LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
@@ -1273,31 +1266,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         int nrElements = vectorType.getSize();
         LLVMAddressNode target = allocateVectorResult(type);
         LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(vectorType);
-        switch (llvmType) {
-            case I1_VECTOR:
-                LLVMI1Node[] i1Vals = factoryFacade.createI1LiteralNodes(nrElements, false);
-                return LLVMVectorI1LiteralNodeGen.create(i1Vals, target);
-            case I8_VECTOR:
-                LLVMI8Node[] i8Vals = factoryFacade.createI8LiteralNodes(nrElements, (byte) 0);
-                return LLVMVectorI8LiteralNodeGen.create(i8Vals, target);
-            case I16_VECTOR:
-                LLVMI16Node[] i16Vals = factoryFacade.createI16LiteralNodes(nrElements, (short) 0);
-                return LLVMVectorI16LiteralNodeGen.create(i16Vals, target);
-            case I32_VECTOR:
-                LLVMI32Node[] i32Vals = factoryFacade.createI32LiteralNodes(nrElements, 0);
-                return LLVMVectorI32LiteralNodeGen.create(i32Vals, target);
-            case I64_VECTOR:
-                LLVMI64Node[] i64Vals = factoryFacade.createI64LiteralNodes(nrElements, 0);
-                return LLVMVectorI64LiteralNodeGen.create(i64Vals, target);
-            case FLOAT_VECTOR:
-                LLVMFloatNode[] floatVals = factoryFacade.createFloatLiteralNodes(nrElements, 0.0f);
-                return LLVMVectorFloatLiteralNodeGen.create(floatVals, target);
-            case DOUBLE_VECTOR:
-                LLVMDoubleNode[] doubleVals = factoryFacade.createDoubleLiteralNodes(nrElements, 0.0f);
-                return LLVMVectorDoubleLiteralNodeGen.create(doubleVals, target);
-            default:
-                throw new AssertionError(llvmType);
-        }
+        return factoryFacade.createZeroVectorInitializer(nrElements, target, llvmType);
     }
 
     private LLVMExpressionNode visitZeroStructInitializer(EObject type) {

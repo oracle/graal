@@ -148,4 +148,15 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMI1Node condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue);
 
+    /**
+     * Creates a zero vector initializer.
+     *
+     * @param nrElements the number of elements of the vector
+     * @param target the allocated result storage
+     * @param llvmType the type of the vector
+     *
+     * @return the zero vector initializer
+     */
+    LLVMExpressionNode createZeroVectorInitializer(int nrElements, LLVMExpressionNode target, LLVMBaseType llvmType);
+
 }

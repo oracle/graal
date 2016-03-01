@@ -255,4 +255,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue, runtime);
     }
 
+    public LLVMExpressionNode createZeroVectorInitializer(int nrElements, LLVMExpressionNode target, LLVMBaseType llvmType) {
+        return LLVMLiteralFactory.createZeroVectorInitializer(nrElements, (LLVMAddressNode) target, llvmType);
+    }
+
 }
