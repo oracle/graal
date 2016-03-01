@@ -24,7 +24,6 @@ package com.oracle.graal.truffle.test.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.EventHandlerNode;
-import com.oracle.truffle.api.instrument.KillException;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -66,8 +65,6 @@ public final class WrapperTestNode extends AbstractTestNode implements WrapperNo
             final int result = child.execute(frame);
             eventHandlerNode.returnValue(child, frame, result);
             return result;
-        } catch (KillException e) {
-            throw (e);
         } catch (Exception e) {
             eventHandlerNode.returnExceptional(child, frame, e);
             throw (e);

@@ -121,8 +121,7 @@ public class PointerTrackingTest extends GraalCompilerTest implements Snippets {
         ResolvedJavaMethod intrinsic = getResolvedJavaMethod(fnName + "Intrinsic");
         r.register1(fnName, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                b.intrinsify(targetMethod, intrinsic, new ValueNode[]{arg});
-                return true;
+                return b.intrinsify(targetMethod, intrinsic, new ValueNode[]{arg});
             }
         });
     }

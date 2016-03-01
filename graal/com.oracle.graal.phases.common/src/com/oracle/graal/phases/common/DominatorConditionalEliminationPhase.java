@@ -102,7 +102,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph) {
-        Debug.log("Starting conditional elimination....");
         try (Debug.Scope s = Debug.scope("DominatorConditionalElimination")) {
             Function<Block, Iterable<? extends Node>> blockToNodes;
             Function<Node, Block> nodeToBlock;
@@ -173,7 +172,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
             @Override
             public void postprocess() {
-                Debug.log("[Post Processing block %s]", block.toString());
+                Debug.log("[Post Processing block %s]", block);
                 undoOperations.forEach(x -> x.run());
             }
 
@@ -269,7 +268,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
             @Override
             public void preprocess() {
-                Debug.log("[Pre Processing block %s]", block.toString());
+                Debug.log("[Pre Processing block %s]", block);
                 AbstractBeginNode beginNode = block.getBeginNode();
                 if (beginNode instanceof LoopExitNode && beginNode.isAlive()) {
                     LoopExitNode loopExitNode = (LoopExitNode) beginNode;
@@ -424,7 +423,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
              */
             @SuppressWarnings("unchecked")
             Stamp recursiveFoldStamp(Node node, ValueNode original, Stamp newStamp) {
-                Debug.log(String.format("Recursively fold stamp for node %s original %s stamp %s", node.toString(), original.toString(), newStamp.toString()));
+                Debug.log("Recursively fold stamp for node %s original %s stamp %s", node, original, newStamp);
                 InfoElement element = new InfoElement(newStamp, original);
                 Pair<InfoElement, Stamp> result = recursiveFoldStamp(node, (value) -> value == original ? Collections.singleton(element) : Collections.EMPTY_LIST);
                 if (result != null) {
@@ -475,8 +474,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                          */
                         InputFilter v = new InputFilter(original);
                         thisGuard.getCondition().acceptInputs(v);
-                        if (v.ok && foldGuard(thisGuard, pending.guard, result, rewireGuardFunction)) {
-                            Debug.log("foldPendingTest %s %s %1s", result, newStamp, pending.condition);
+                        if (v.ok && foldGuard(thisGuard, pending.guard, rewireGuardFunction)) {
                             return true;
                         }
                     }
@@ -484,7 +482,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 return false;
             }
 
-            protected boolean foldGuard(DeoptimizingGuard thisGuard, DeoptimizingGuard otherGuard, TriState testResult, GuardRewirer rewireGuardFunction) {
+            protected boolean foldGuard(DeoptimizingGuard thisGuard, DeoptimizingGuard otherGuard, GuardRewirer rewireGuardFunction) {
                 if (otherGuard.getAction() == thisGuard.getAction() && otherGuard.getReason() == thisGuard.getReason() && otherGuard.getSpeculation() == thisGuard.getSpeculation()) {
                     LogicNode condition = (LogicNode) thisGuard.getCondition().copyWithInputs();
                     GuardRewirer rewirer = (guard, result) -> {
@@ -496,7 +494,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
                         return false;
                     };
                     // Move the later test up
-                    Debug.log("Folding guard %s %s %1s %s %1s %s\n", testResult, otherGuard, otherGuard.getCondition(), thisGuard, thisGuard.getCondition(), thisGuard.asNode().graph());
                     return rewireGuards(otherGuard.asNode(), !thisGuard.isNegated(), rewirer);
                 }
                 return false;
@@ -704,7 +701,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     }
                     metricStampsRegistered.increment();
                     final Info finalInfo = info;
-                    Debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value.toString(), newStamp.toString(), guard == null ? "null" : guard.toString());
+                    Debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, newStamp, guard == null ? "null" : guard);
                     finalInfo.pushElement(new InfoElement(newStamp, guard));
                     undoOperations.add(() -> finalInfo.popElement());
                 }
@@ -849,7 +846,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
         private final ValueNode guard;
 
         public InfoElement(Stamp stamp, ValueNode guard) {
-            Debug.log(4, "Creating an info element with stamp %s and guard %s", stamp.toString(), guard.toString());
             this.stamp = stamp;
             this.guard = guard;
         }
@@ -880,7 +876,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         public void pushElement(InfoElement element) {
-            Debug.log(4, "Pushing an info element:%s   size %d", element.toString(), infos.size());
+            Debug.log(4, "Pushing an info element:%s   size %d", element, infos);
             infos.add(element);
         }
 

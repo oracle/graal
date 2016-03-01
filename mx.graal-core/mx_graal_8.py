@@ -400,20 +400,25 @@ def jdkartifactstats(args):
         print '{:>10}  {}'.format('<missing>', jvmLib)
 
 # Support for -G: options
-def _translateGOption(arg):
-    if arg.startswith('-G:+'):
-        if '=' in arg:
-            mx.abort('Mixing + and = in -G: option specification: ' + arg)
-        arg = '-Dgraal.' + arg[len('-G:+'):] + '=true'
-    elif arg.startswith('-G:-'):
-        if '=' in arg:
-            mx.abort('Mixing - and = in -G: option specification: ' + arg)
-        arg = '-Dgraal.' + arg[len('-G:+'):] + '=false'
-    elif arg.startswith('-G:'):
-        if '=' not in arg:
-            mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
-        arg = '-Dgraal.' + arg[len('-G:'):]
-    return arg
+def _buildGOptionsArgs(args):
+    def _translateGOption(arg):
+        if arg.startswith('-G:+'):
+            if '=' in arg:
+                mx.abort('Mixing + and = in -G: option specification: ' + arg)
+            arg = '-Dgraal.' + arg[len('-G:+'):] + '=true'
+        elif arg.startswith('-G:-'):
+            if '=' in arg:
+                mx.abort('Mixing - and = in -G: option specification: ' + arg)
+            arg = '-Dgraal.' + arg[len('-G:+'):] + '=false'
+        elif arg.startswith('-G:'):
+            if '=' not in arg:
+                mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
+            arg = '-Dgraal.' + arg[len('-G:'):]
+        return arg
+    # add default graal.options.file and translate -G: options
+    options_file = join(mx.primary_suite().dir, 'graal.options')
+    options_file_arg = ['-Dgraal.options.file=' + options_file] if exists(options_file) else []
+    return options_file_arg + map(_translateGOption, args)
 
 def run_vm(*positionalargs, **kwargs):
     """run a Java program by executing the java executable in a Graal JDK"""
@@ -423,13 +428,13 @@ def run_vm(*positionalargs, **kwargs):
     args = positionalargs[0]
     if '-G:+PrintFlags' in args and '-Xcomp' not in args:
         mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
-    positionalargs[0] = map(_translateGOption, args)
+    positionalargs[0] = _buildGOptionsArgs(args)
     return _jvmci_run_vm(*positionalargs, **kwargs)
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     if isJVMCIEnabled(get_vm()):
-        return (map(_translateGOption, vmArgs), mainClass, mainClassArgs)
+        return (_buildGOptionsArgs(vmArgs), mainClass, mainClassArgs)
     return config
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -482,7 +487,7 @@ def get_graal_jdk():
                     JVMCI8JDKConfig.__init__(self, vmbuild)
 
                 def parseVmArgs(self, args, addDefaultArgs=True):
-                    return JVMCI8JDKConfig.parseVmArgs(self, map(_translateGOption, args), addDefaultArgs=addDefaultArgs)
+                    return JVMCI8JDKConfig.parseVmArgs(self, _buildGOptionsArgs(args), addDefaultArgs=addDefaultArgs)
 
             jdk = GraalJDK8Config(vmbuild)
             _graal_jdks[vmbuild] = jdk
@@ -495,7 +500,7 @@ def get_graal_jdk():
                     JVMCI9JDKConfig.__init__(self, debugLevel)
 
                 def parseVmArgs(self, args, addDefaultArgs=True):
-                    return JVMCI9JDKConfig.parseVmArgs(self, map(_translateGOption, args), addDefaultArgs=addDefaultArgs)
+                    return JVMCI9JDKConfig.parseVmArgs(self, _buildGOptionsArgs(args), addDefaultArgs=addDefaultArgs)
             jdk = GraalJDK9Config(jvmci_jdk.debugLevel)
             _graal_jdks['default'] = jdk
     return jdk

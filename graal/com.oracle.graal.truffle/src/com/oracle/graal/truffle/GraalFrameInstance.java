@@ -36,155 +36,97 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
-public abstract class GraalFrameInstance implements FrameInstance {
+public final class GraalFrameInstance implements FrameInstance {
 
-    protected final InspectedFrame stackFrame;
+    private static final int CALL_TARGET_INDEX = 0;
+    private static final int CALL_TARGET_FRAME_INDEX = 1;
 
-    public GraalFrameInstance(InspectedFrame stackFrame) {
-        this.stackFrame = stackFrame;
+    private static final int CALL_NODE_NOTIFY_INDEX = 0;
+    private static final int CALL_NODE_FRAME_INDEX = 2;
+
+    public static final Method CALL_TARGET_METHOD;
+    public static final Method CALL_NODE_METHOD;
+
+    static {
+        try {
+            CALL_NODE_METHOD = OptimizedDirectCallNode.class.getDeclaredMethod("callProxy", MaterializedFrameNotify.class, CallTarget.class, VirtualFrame.class, Object[].class, boolean.class);
+            CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
+        } catch (NoSuchMethodException | SecurityException e) {
+            throw new JVMCIError(e);
+        }
     }
 
-    protected abstract int getNotifyIndex();
+    private InspectedFrame callTargetFrame;
+    private InspectedFrame callNodeFrame;
+    private final boolean currentFrame;
 
-    protected abstract int getFrameIndex();
+    public GraalFrameInstance(boolean currentFrame) {
+        this.currentFrame = currentFrame;
+    }
+
+    void setCallTargetFrame(InspectedFrame callTargetFrame) {
+        this.callTargetFrame = callTargetFrame;
+    }
+
+    void setCallNodeFrame(InspectedFrame callNodeFrame) {
+        this.callNodeFrame = callNodeFrame;
+    }
 
     @TruffleBoundary
     public Frame getFrame(FrameAccess access, boolean slowPath) {
+        if (!slowPath && currentFrame) {
+            throw new UnsupportedOperationException("cannot access current frame as fast path");
+        }
         if (access == FrameAccess.NONE) {
             return null;
         }
-        if (!slowPath && getNotifyIndex() != -1) {
-            MaterializedFrameNotify notify = (MaterializedFrameNotify) stackFrame.getLocal(getNotifyIndex());
+        if (!slowPath && callNodeFrame != null) {
+            MaterializedFrameNotify notify = (MaterializedFrameNotify) callNodeFrame.getLocal(CALL_NODE_NOTIFY_INDEX);
             if (notify != null) {
                 if (access.ordinal() > notify.getOutsideFrameAccess().ordinal()) {
                     notify.setOutsideFrameAccess(access);
                 }
-                if (stackFrame.isVirtual(getFrameIndex())) {
-                    stackFrame.materializeVirtualObjects(true);
+                if (callNodeFrame.isVirtual(CALL_NODE_FRAME_INDEX)) {
+                    callNodeFrame.materializeVirtualObjects(true);
                 }
             }
         }
         switch (access) {
             case READ_ONLY: {
-                Frame frame = (Frame) stackFrame.getLocal(getFrameIndex());
+                Frame frame = (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
                 // assert that it is really used read only
                 assert (frame = new ReadOnlyFrame(frame)) != null;
                 return frame;
             }
             case READ_WRITE:
             case MATERIALIZE:
-                if (stackFrame.isVirtual(getFrameIndex())) {
-                    stackFrame.materializeVirtualObjects(false);
+                if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
+                    callTargetFrame.materializeVirtualObjects(false);
                 }
-                return (Frame) stackFrame.getLocal(getFrameIndex());
+                return (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
             default:
                 throw JVMCIError.unimplemented();
         }
     }
 
     public boolean isVirtualFrame() {
-        return stackFrame.isVirtual(getFrameIndex());
+        return callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX);
     }
 
-    public abstract CallTarget getCallTarget();
+    @Override
+    public CallTarget getCallTarget() {
+        return (CallTarget) callTargetFrame.getLocal(CALL_TARGET_INDEX);
+    }
 
-    public abstract Node getCallNode();
-
-    /**
-     * This class represents a frame that is taken from the
-     * {@link OptimizedDirectCallNode#callProxy(MaterializedFrameNotify, CallTarget, VirtualFrame, Object[], boolean)}
-     * method.
-     */
-    public static final class CallNodeFrame extends GraalFrameInstance {
-        public static final Method METHOD;
-        static {
-            try {
-                METHOD = OptimizedDirectCallNode.class.getDeclaredMethod("callProxy", MaterializedFrameNotify.class, CallTarget.class, VirtualFrame.class, Object[].class, boolean.class);
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw new JVMCIError(e);
-            }
-        }
-        private static final int NOTIFY_INDEX = 0;
-        private static final int FRAME_INDEX = 2;
-
-        public CallNodeFrame(InspectedFrame stackFrame) {
-            super(stackFrame);
-        }
-
-        @Override
-        protected int getNotifyIndex() {
-            return NOTIFY_INDEX;
-        }
-
-        @Override
-        protected int getFrameIndex() {
-            return FRAME_INDEX;
-        }
-
-        @Override
-        public CallTarget getCallTarget() {
-            return getCallNode().getRootNode().getCallTarget();
-        }
-
-        @Override
-        public Node getCallNode() {
-            Object receiver = stackFrame.getLocal(getNotifyIndex());
+    @Override
+    public Node getCallNode() {
+        if (callNodeFrame != null) {
+            Object receiver = callNodeFrame.getLocal(CALL_NODE_NOTIFY_INDEX);
             if (receiver instanceof DirectCallNode || receiver instanceof IndirectCallNode) {
                 return (Node) receiver;
             }
-            return null;
         }
+        return null;
     }
 
-    /**
-     * This class represents a frame that is taken from the {@link OptimizedCallTarget#callProxy}
-     * method.
-     */
-    public static final class CallTargetFrame extends GraalFrameInstance {
-        public static final Method METHOD;
-        static {
-            try {
-                METHOD = OptimizedCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw new JVMCIError(e);
-            }
-        }
-        private static final int NOTIFY_INDEX = -1;
-        private static final int CALL_TARGET_INDEX = 0;
-        private static final int FRAME_INDEX = 1;
-        private final boolean currentFrame;
-
-        public CallTargetFrame(InspectedFrame stackFrame, boolean currentFrame) {
-            super(stackFrame);
-            this.currentFrame = currentFrame;
-        }
-
-        @Override
-        public Frame getFrame(FrameAccess access, boolean slowPath) {
-            if (!slowPath && currentFrame) {
-                throw new UnsupportedOperationException("cannot access current frame as fast path");
-            }
-            return super.getFrame(access, slowPath);
-        }
-
-        @Override
-        protected int getNotifyIndex() {
-            return NOTIFY_INDEX;
-        }
-
-        @Override
-        protected int getFrameIndex() {
-            return FRAME_INDEX;
-        }
-
-        @Override
-        public CallTarget getCallTarget() {
-            return (CallTarget) stackFrame.getLocal(CALL_TARGET_INDEX);
-        }
-
-        @Override
-        public Node getCallNode() {
-            return null;
-        }
-    }
 }

@@ -242,43 +242,97 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @TruffleBoundary
     @Override
-    public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
-        StackIntrospection stackIntrospection = getStackIntrospection();
+    public <T> T iterateFrames(final FrameInstanceVisitor<T> visitor) {
+        return iterateImpl(visitor, 0);
+    }
 
-        InspectedFrameVisitor<T> inspectedFrameVisitor = new InspectedFrameVisitor<T>() {
-            private boolean skipNext = false;
+    private static final class FrameVisitor<T> implements InspectedFrameVisitor<T> {
 
-            public T visitFrame(InspectedFrame frame) {
-                if (skipNext) {
-                    assert frame.isMethod(getCallMethods().callTargetMethod[0]);
-                    skipNext = false;
+        private final FrameInstanceVisitor<T> visitor;
+        private final ResolvedJavaMethod callTargetMethod;
+        private final ResolvedJavaMethod callNodeMethod;
+
+        private GraalFrameInstance next;
+        private boolean nextAvailable;
+        private boolean first = true;
+        private int skipFrames;
+
+        FrameVisitor(FrameInstanceVisitor<T> visitor, CallMethods methods, int skip) {
+            this.visitor = visitor;
+            this.callTargetMethod = methods.callTargetMethod;
+            this.callNodeMethod = methods.callNodeMethod;
+            this.skipFrames = skip;
+        }
+
+        public T visitFrame(InspectedFrame frame) {
+            if (nextAvailable) {
+                T result = onNext(frame);
+                if (result != null) {
+                    return result;
+                }
+            }
+            if (frame.isMethod(callTargetMethod)) {
+                nextAvailable = true;
+                if (skipFrames == 0) {
+                    GraalFrameInstance graalFrame = new GraalFrameInstance(first);
+                    graalFrame.setCallTargetFrame(frame);
+                    next = graalFrame;
+                }
+                first = false;
+            }
+            return null;
+        }
+
+        private T onNext(InspectedFrame frame) {
+            try {
+                if (skipFrames == 0) {
+                    if (frame != null && frame.isMethod(callNodeMethod)) {
+                        next.setCallNodeFrame(frame);
+                    }
+                    return visitor.visitFrame(next);
+                } else {
+                    skipFrames--;
                     return null;
                 }
-
-                if (frame.isMethod(getCallMethods().callNodeMethod[0])) {
-                    skipNext = true;
-                    return visitor.visitFrame(new GraalFrameInstance.CallNodeFrame(frame));
-                } else {
-                    assert frame.isMethod(getCallMethods().callTargetMethod[0]);
-                    return visitor.visitFrame(new GraalFrameInstance.CallTargetFrame(frame, false));
-                }
-
+            } finally {
+                next = null;
+                nextAvailable = false;
             }
-        };
-        return stackIntrospection.iterateFrames(getCallMethods().anyFrameMethod, getCallMethods().anyFrameMethod, 1, inspectedFrameVisitor);
+        }
+
+        /* Method to collect the last result. */
+        public T afterVisitation() {
+            if (nextAvailable) {
+                return onNext(null);
+            } else {
+                return null;
+            }
+        }
+
+    }
+
+    private <T> T iterateImpl(FrameInstanceVisitor<T> visitor, final int skip) {
+        CallMethods methods = getCallMethods();
+        FrameVisitor<T> jvmciVisitor = new FrameVisitor<>(visitor, methods, skip);
+        T result = getStackIntrospection().iterateFrames(methods.anyFrameMethod, methods.anyFrameMethod, 0, jvmciVisitor);
+        if (result != null) {
+            return result;
+        } else {
+            return jvmciVisitor.afterVisitation();
+        }
     }
 
     protected abstract StackIntrospection getStackIntrospection();
 
     @Override
     public FrameInstance getCallerFrame() {
-        return iterateFrames(frame -> frame);
+        return iterateImpl(frame -> frame, 1);
     }
 
     @TruffleBoundary
     @Override
     public FrameInstance getCurrentFrame() {
-        return getStackIntrospection().iterateFrames(getCallMethods().callTargetMethod, getCallMethods().callTargetMethod, 0, frame -> new GraalFrameInstance.CallTargetFrame(frame, true));
+        return iterateImpl(frame -> frame, 0);
     }
 
     public <T> T getCapability(Class<T> capability) {
@@ -542,14 +596,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     protected static final class CallMethods {
-        public final ResolvedJavaMethod[] callNodeMethod;
-        public final ResolvedJavaMethod[] callTargetMethod;
+        public final ResolvedJavaMethod callNodeMethod;
+        public final ResolvedJavaMethod callTargetMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
 
         private CallMethods(MetaAccessProvider metaAccess) {
-            this.callNodeMethod = new ResolvedJavaMethod[]{metaAccess.lookupJavaMethod(GraalFrameInstance.CallNodeFrame.METHOD)};
-            this.callTargetMethod = new ResolvedJavaMethod[]{metaAccess.lookupJavaMethod(GraalFrameInstance.CallTargetFrame.METHOD)};
-            this.anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod[0], callTargetMethod[0]};
+            this.callNodeMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
+            this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
+            this.anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod, callTargetMethod};
         }
 
         public static CallMethods lookup(MetaAccessProvider metaAccess) {
