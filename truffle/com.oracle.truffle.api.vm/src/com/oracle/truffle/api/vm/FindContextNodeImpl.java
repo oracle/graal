@@ -44,15 +44,14 @@ final class FindContextNodeImpl<L> extends FindContextNode {
     }
 
     @Override
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <C> C findContextForEngine(Object engine, TruffleLanguage<C> language) {
-        if (this.language != language) {
+    @SuppressWarnings({"unchecked"})
+    protected <C> C findContextForEngine(Object engine, TruffleLanguage<C> forLanguage) {
+        if (this.language != forLanguage) {
             throw new ClassCastException();
         }
         return (C) findContext(engine);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private L findContext(Object rawEngine) {
         if (singleEngine != MULTIPLE) {
             if (singleEngine == rawEngine) {
@@ -72,7 +71,7 @@ final class FindContextNodeImpl<L> extends FindContextNode {
         return findFromEnv(rawEngine);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
     private L findFromEnv(Object engine) {
         return (L)((PolyglotEngine)engine).findContext(language);
     }

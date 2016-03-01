@@ -295,7 +295,6 @@ public abstract class TruffleLanguage<C> {
      * @return node to be inserted into program to effectively find out current execution context
      *         for this language
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
     protected final Node createFindContextNode() {
         return API.createFindContextNode(this);
     }
@@ -313,7 +312,6 @@ public abstract class TruffleLanguage<C> {
      * @throws ClassCastException if the node has not been created by <code>this</code>.
      *             {@link #createFindContextNode()} method.
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
     protected final C findContext(Node n) {
         FindContextNode fcn = (FindContextNode) n;
         return fcn.executeFindContext(this);
