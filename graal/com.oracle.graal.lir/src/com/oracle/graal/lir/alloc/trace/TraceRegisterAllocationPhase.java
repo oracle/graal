@@ -100,14 +100,14 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
                         trivialTracesMetric.increment();
                     }
-                    Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + trace.getId() + ": " + trace);
+                    Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace%s: %s", trace.getId(), trace);
                     if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
                         TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
                     } else {
                         TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
                         allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
                     }
-                    Debug.dump(TRACE_DUMP_LEVEL, trace, "After Trace" + trace.getId() + ": " + trace);
+                    Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }
                 unnumberInstructions(trace.getBlocks(), lir);
             }
