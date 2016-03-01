@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.java;
 
+import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

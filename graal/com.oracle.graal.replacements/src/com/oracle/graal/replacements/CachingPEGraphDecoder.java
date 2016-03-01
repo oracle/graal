@@ -65,13 +65,19 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.graphCache = new HashMap<>();
     }
 
+    protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
+        return new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(),
+                providers.getConstantReflection(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+    }
+
     @SuppressWarnings("try")
     private EncodedGraph createGraph(ResolvedJavaMethod method, boolean isIntrinsic) {
         StructuredGraph graph = new StructuredGraph(method, allowAssumptions);
         try (Debug.Scope scope = Debug.scope("createGraph", graph)) {
 
             IntrinsicContext initialIntrinsicContext = isIntrinsic ? new IntrinsicContext(method, method, INLINE_AFTER_PARSING) : null;
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext).apply(graph);
+            GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);
+            graphBuilderPhaseInstance.apply(graph);
 
             PhaseContext context = new PhaseContext(providers);
             new CanonicalizerPhase().apply(graph, context);

@@ -22,18 +22,6 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.ConditionalElimination;
-import static com.oracle.graal.compiler.common.GraalOptions.FullUnroll;
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.compiler.common.GraalOptions.LoopPeeling;
-import static com.oracle.graal.compiler.common.GraalOptions.LoopUnswitch;
-import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
-import static com.oracle.graal.compiler.common.GraalOptions.OptConvertDeoptsToGuards;
-import static com.oracle.graal.compiler.common.GraalOptions.OptLoopTransform;
-import static com.oracle.graal.compiler.common.GraalOptions.PartialEscapeAnalysis;
-import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
-
 import com.oracle.graal.loop.DefaultLoopPolicies;
 import com.oracle.graal.loop.LoopPolicies;
 import com.oracle.graal.loop.phases.LoopFullUnrollPhase;
@@ -44,16 +32,14 @@ import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
-import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
-import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.common.RemoveValueProxyPhase;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.InliningPhase;
 import com.oracle.graal.phases.common.instrumentation.HighTierReconcileInstrumentationPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
+
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 public class HighTier extends PhaseSuite<HighTierContext> {
 

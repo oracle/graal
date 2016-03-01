@@ -26,21 +26,11 @@ import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 
 import java.lang.invoke.MethodHandle;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.*;
 import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
@@ -49,17 +39,13 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
+import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.nodes.graphbuilderconf.LoopExplosionPlugin;
-import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.*;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
@@ -85,6 +71,7 @@ import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
 import com.oracle.graal.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import com.oracle.graal.truffle.nodes.frame.MaterializeFrameNode;
 import com.oracle.graal.truffle.nodes.frame.NewFrameNode.VirtualOnlyInstanceNode;
+import com.oracle.graal.truffle.phases.InstrumentBranchesPhase;
 import com.oracle.graal.truffle.phases.VerifyFrameDoesNotEscapePhase;
 import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
 import com.oracle.graal.truffle.substitutions.TruffleInvocationPluginProvider;
@@ -322,8 +309,8 @@ public class PartialEvaluator {
 
     }
 
-    protected PEGraphDecoder createGraphDecoder(StructuredGraph graph) {
-        GraphBuilderConfiguration newConfig = configForParsing.copy();
+    protected PEGraphDecoder createGraphDecoder(StructuredGraph graph, final HighTierContext tierContext) {
+        final GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
         LoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
@@ -337,13 +324,19 @@ public class PartialEvaluator {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        return new CachingPEGraphDecoder(providers, newConfig, TruffleCompiler.Optimizations, AllowAssumptions.from(graph.getAssumptions() != null), architecture);
+        return new CachingPEGraphDecoder(providers, newConfig, TruffleCompiler.Optimizations,
+                AllowAssumptions.from(graph.getAssumptions() != null), architecture) {
+            @Override
+            protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initial) {
+                return new DefaultTruffleCompiler.InstrumentedGraphBuilderPhase.Instance(tierContext, newConfig, initial);
+            }
+        };
     }
 
-    protected void doGraphPE(OptimizedCallTarget callTarget, StructuredGraph graph) {
+    protected void doGraphPE(OptimizedCallTarget callTarget, StructuredGraph graph, HighTierContext tierContext) {
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
 
-        PEGraphDecoder decoder = createGraphDecoder(graph);
+        PEGraphDecoder decoder = createGraphDecoder(graph, tierContext);
 
         LoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
         ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(callTarget);
@@ -393,7 +386,7 @@ public class PartialEvaluator {
 
     @SuppressWarnings({"try", "unused"})
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
-        doGraphPE(callTarget, graph);
+        doGraphPE(callTarget, graph, tierContext);
         Debug.dump(graph, "After FastPE");
 
         graph.maybeCompress();
@@ -420,8 +413,14 @@ public class PartialEvaluator {
             Debug.handle(t);
         }
 
+
+
         // recompute loop frequencies now that BranchProbabilities have had time to canonicalize
         ComputeLoopFrequenciesClosure.compute(graph);
+
+        if (TruffleCompilerOptions.TruffleInstrumentBranches.getValue()) {
+            new InstrumentBranchesPhase().apply(graph, tierContext);
+        }
 
         graph.maybeCompress();
 
