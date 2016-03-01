@@ -2478,6 +2478,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     /* Hook for subclasses of BytecodeParser to generate custom nodes before an IfNode. */
 
+    @SuppressWarnings("unused")
     protected void postProcessIfNode(ValueNode node) {
     }
 
