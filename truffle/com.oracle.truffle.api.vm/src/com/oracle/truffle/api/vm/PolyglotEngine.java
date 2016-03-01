@@ -1089,9 +1089,11 @@ public class PolyglotEngine {
         throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
     }
 
-    static Object findContext(TruffleLanguage.Env env) {
+    Object findContext(TruffleLanguage language) {
+        Env env = findEnv(language.getClass());
         return SPI.findContext(env);
     }
+
 
     private static class SPIAccessor extends Accessor {
         @Override
@@ -1231,7 +1233,7 @@ public class PolyglotEngine {
 
         @Override
         protected Node createFindContextNode(TruffleLanguage<?> language) {
-            return new FindContextNodeImpl(language);
+            return FindContextNodeImpl.create(language);
         }
 
         @Override

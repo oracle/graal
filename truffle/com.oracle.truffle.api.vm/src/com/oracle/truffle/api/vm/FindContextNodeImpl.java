@@ -35,8 +35,12 @@ final class FindContextNodeImpl<L> extends FindContextNode {
     @CompilerDirectives.CompilationFinal private Object singleEngine = UNINITIALIZED;
     @CompilerDirectives.CompilationFinal private L singleContext;
 
-    public FindContextNodeImpl(TruffleLanguage<L> language) {
+    private FindContextNodeImpl(TruffleLanguage<L> language) {
         this.language = language;
+    }
+
+    static <C> FindContextNodeImpl<C> create(TruffleLanguage<C> language) {
+        return new FindContextNodeImpl<>(language);
     }
 
     @Override
@@ -70,7 +74,6 @@ final class FindContextNodeImpl<L> extends FindContextNode {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private L findFromEnv(Object engine) {
-        TruffleLanguage.Env env = ((PolyglotEngine)engine).findEnv(language.getClass());
-        return (L) PolyglotEngine.findContext(env);
+        return (L)((PolyglotEngine)engine).findContext(language);
     }
 }
