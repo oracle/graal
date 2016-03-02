@@ -124,6 +124,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.llvm.LLVMCallNode;
 import com.oracle.truffle.llvm.LLVMContext;
@@ -190,19 +191,6 @@ import com.oracle.truffle.llvm.nodes.others.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.others.LLVMStackFrameNuller.LLVMObjectNuller;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMWrappedStatementNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVM80BitFloatStructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMAddressStructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMCompoundStructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMDoubleStructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMEmptyStructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMFloatStructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMFunctionStructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI16StructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI1StructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI32StructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI64StructWriteNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI8StructWriteNode;
 import com.oracle.truffle.llvm.parser.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacade;
@@ -1303,7 +1291,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         ConstantList list = structure.getList();
         EList<TypedConstant> typedConstants = list.getTypedConstants();
         int[] offsets = new int[typedConstants.size()];
-        LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[typedConstants.size()];
+        Node[] nodes = new LLVMStructWriteNode[typedConstants.size()];
         int i = 0;
         int currentOffset = 0;
         boolean packed = structure.getPacked() != null;
@@ -1316,51 +1304,9 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 currentOffset += LLVMTypeHelper.computePaddingByte(currentOffset, resolvedType);
             }
             offsets[i] = currentOffset;
-            int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
             LLVMExpressionNode parsedConstant = visitConstant(constant.getType(), constant.getValue());
-            LLVMBaseType llvmType = getLLVMType(constant.getType());
-            switch (llvmType) {
-                case I1:
-                    nodes[i] = new LLVMI1StructWriteNode((LLVMI1Node) parsedConstant);
-                    break;
-                case I8:
-                    nodes[i] = new LLVMI8StructWriteNode((LLVMI8Node) parsedConstant);
-                    break;
-                case I16:
-                    nodes[i] = new LLVMI16StructWriteNode((LLVMI16Node) parsedConstant);
-                    break;
-                case I32:
-                    nodes[i] = new LLVMI32StructWriteNode((LLVMI32Node) parsedConstant);
-                    break;
-                case I64:
-                    nodes[i] = new LLVMI64StructWriteNode((LLVMI64Node) parsedConstant);
-                    break;
-                case FLOAT:
-                    nodes[i] = new LLVMFloatStructWriteNode((LLVMFloatNode) parsedConstant);
-                    break;
-                case DOUBLE:
-                    nodes[i] = new LLVMDoubleStructWriteNode((LLVMDoubleNode) parsedConstant);
-                    break;
-                case X86_FP80:
-                    nodes[i] = new LLVM80BitFloatStructWriteNode((LLVM80BitFloatNode) parsedConstant);
-                    break;
-                case ARRAY:
-                case STRUCT:
-                    if (byteSize == 0) {
-                        nodes[i] = new LLVMEmptyStructWriteNode();
-                    } else {
-                        nodes[i] = new LLVMCompoundStructWriteNode((LLVMAddressNode) parsedConstant, byteSize);
-                    }
-                    break;
-                case ADDRESS:
-                    nodes[i] = new LLVMAddressStructWriteNode((LLVMAddressNode) parsedConstant);
-                    break;
-                case FUNCTION_ADDRESS:
-                    nodes[i] = new LLVMFunctionStructWriteNode((LLVMFunctionNode) parsedConstant);
-                    break;
-                default:
-                    throw new AssertionError(llvmType);
-            }
+            int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
+            nodes[i] = factoryFacade.createStructWriteNode(parsedConstant, resolvedType);
             currentOffset += byteSize;
             i++;
         }
@@ -1368,7 +1314,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         if (ref != null) {
             throw new AssertionError();
         }
-        return new StructLiteralNode(offsets, nodes, alloc);
+        return factoryFacade.createStructLiteralNode(offsets, nodes, alloc);
     }
 
     private LLVMExpressionNode getUndefinedValueNode(EObject type) {

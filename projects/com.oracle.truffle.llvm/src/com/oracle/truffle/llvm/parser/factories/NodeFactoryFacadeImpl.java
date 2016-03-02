@@ -40,11 +40,13 @@ import com.intel.llvm.ireditor.types.ResolvedType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
@@ -203,6 +205,16 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     public LLVMExpressionNode createLiteral(Object value, LLVMBaseType type) {
         return LLVMLiteralFactory.createLiteral(value, type);
+    }
+
+    public Node createStructWriteNode(LLVMExpressionNode node, ResolvedType type) {
+        return LLVMAggregateFactory.createStructWriteNode(node, type);
+    }
+
+    public LLVMExpressionNode createStructLiteralNode(int[] offsets, Node[] nodes, LLVMExpressionNode alloc) {
+        LLVMStructWriteNode[] structWriteNodes = new LLVMStructWriteNode[nodes.length];
+        System.arraycopy(nodes, 0, structWriteNodes, 0, nodes.length);
+        return LLVMAggregateFactory.createStructLiteralNode(offsets, structWriteNodes, (LLVMAddressNode) alloc);
     }
 
 }

@@ -29,8 +29,33 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.intel.llvm.ireditor.types.ResolvedType;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
+import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
+import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
+import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVM80BitFloatStructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMAddressStructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMCompoundStructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMDoubleStructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMEmptyStructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMFloatStructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMFunctionStructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI16StructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI1StructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI32StructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI64StructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI8StructWriteNode;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtract80BitFloatValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractAddressValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractDoubleValueNodeGen;
@@ -41,6 +66,7 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtr
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI64ValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 
 public final class LLVMAggregateFactory {
 
@@ -71,6 +97,46 @@ public final class LLVMAggregateFactory {
             default:
                 throw new AssertionError(type);
         }
+    }
+
+    public static Node createStructWriteNode(LLVMExpressionNode parsedConstant, ResolvedType resolvedType) {
+        int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
+        LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(resolvedType);
+        switch (llvmType) {
+            case I1:
+                return new LLVMI1StructWriteNode((LLVMI1Node) parsedConstant);
+            case I8:
+                return new LLVMI8StructWriteNode((LLVMI8Node) parsedConstant);
+            case I16:
+                return new LLVMI16StructWriteNode((LLVMI16Node) parsedConstant);
+            case I32:
+                return new LLVMI32StructWriteNode((LLVMI32Node) parsedConstant);
+            case I64:
+                return new LLVMI64StructWriteNode((LLVMI64Node) parsedConstant);
+            case FLOAT:
+                return new LLVMFloatStructWriteNode((LLVMFloatNode) parsedConstant);
+            case DOUBLE:
+                return new LLVMDoubleStructWriteNode((LLVMDoubleNode) parsedConstant);
+            case X86_FP80:
+                return new LLVM80BitFloatStructWriteNode((LLVM80BitFloatNode) parsedConstant);
+            case ARRAY:
+            case STRUCT:
+                if (byteSize == 0) {
+                    return new LLVMEmptyStructWriteNode();
+                } else {
+                    return new LLVMCompoundStructWriteNode((LLVMAddressNode) parsedConstant, byteSize);
+                }
+            case ADDRESS:
+                return new LLVMAddressStructWriteNode((LLVMAddressNode) parsedConstant);
+            case FUNCTION_ADDRESS:
+                return new LLVMFunctionStructWriteNode((LLVMFunctionNode) parsedConstant);
+            default:
+                throw new AssertionError(llvmType);
+        }
+    }
+
+    public static LLVMExpressionNode createStructLiteralNode(int[] offsets, LLVMStructWriteNode[] nodes, LLVMAddressNode alloc) {
+        return new StructLiteralNode(offsets, nodes, alloc);
     }
 
 }
