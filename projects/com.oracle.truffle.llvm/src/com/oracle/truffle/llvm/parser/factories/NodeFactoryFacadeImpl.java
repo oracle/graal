@@ -238,4 +238,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return LLVMBranchFactory.createUnconditionalBranch(unconditionalIndex);
     }
 
+    public LLVMAddressNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType) {
+        return LLVMLiteralFactory.createArrayLiteral(runtime, arrayValues, arrayType);
+    }
+
 }
