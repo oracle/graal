@@ -33,14 +33,11 @@ import org.junit.Assert;
 
 public class IdentifierTest {
 
-    private static final String A_IDENTIFIER_VALUE = "a_identifier";
-    private static final Integer B_IDENTIFIER_VALUE = 14;
-
     @Layout
     public interface IdentifierTestLayout {
 
-        public static final String A_IDENTIFIER = A_IDENTIFIER_VALUE;
-        public static final Integer B_IDENTIFIER = B_IDENTIFIER_VALUE;
+        public static final String A_IDENTIFIER = "a_identifier";
+        public static final Integer B_IDENTIFIER = 14;
 
         DynamicObject createIdentifierTest(int a, int b);
 
@@ -51,30 +48,30 @@ public class IdentifierTest {
     @Test
     public void testContainsKey() {
         final DynamicObject object = LAYOUT.createIdentifierTest(1, 2);
-        Assert.assertTrue(object.containsKey(A_IDENTIFIER_VALUE));
-        Assert.assertTrue(object.containsKey(B_IDENTIFIER_VALUE));
+        Assert.assertTrue(object.containsKey(IdentifierTestLayout.A_IDENTIFIER));
+        Assert.assertTrue(object.containsKey(IdentifierTestLayout.B_IDENTIFIER));
     }
 
     @Test
     public void testHasProperty() {
         final DynamicObject object = LAYOUT.createIdentifierTest(1, 2);
-        Assert.assertTrue(object.getShape().hasProperty(A_IDENTIFIER_VALUE));
-        Assert.assertTrue(object.getShape().hasProperty(B_IDENTIFIER_VALUE));
+        Assert.assertTrue(object.getShape().hasProperty(IdentifierTestLayout.A_IDENTIFIER));
+        Assert.assertTrue(object.getShape().hasProperty(IdentifierTestLayout.B_IDENTIFIER));
     }
 
     @Test
     public void testGet() {
         final DynamicObject object = LAYOUT.createIdentifierTest(1, 2);
-        Assert.assertEquals(1, object.get(A_IDENTIFIER_VALUE));
-        Assert.assertEquals(2, object.get(B_IDENTIFIER_VALUE));
+        Assert.assertEquals(1, object.get(IdentifierTestLayout.A_IDENTIFIER));
+        Assert.assertEquals(2, object.get(IdentifierTestLayout.B_IDENTIFIER));
     }
 
     @Test
     public void testSet() {
         final DynamicObject object = LAYOUT.createIdentifierTest(1, 2);
-        Assert.assertEquals(1, object.get(A_IDENTIFIER_VALUE));
-        object.set(A_IDENTIFIER_VALUE, 11);
-        Assert.assertEquals(11, object.get(A_IDENTIFIER_VALUE));
+        Assert.assertEquals(1, object.get(IdentifierTestLayout.A_IDENTIFIER));
+        object.set(IdentifierTestLayout.A_IDENTIFIER, 11);
+        Assert.assertEquals(11, object.get(IdentifierTestLayout.A_IDENTIFIER));
     }
 
 }

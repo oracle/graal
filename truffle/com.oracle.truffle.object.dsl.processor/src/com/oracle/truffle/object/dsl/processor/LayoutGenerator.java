@@ -25,6 +25,7 @@ package com.oracle.truffle.object.dsl.processor;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
 import com.oracle.truffle.object.dsl.processor.model.NameUtils;
 import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
@@ -301,7 +302,16 @@ public class LayoutGenerator {
 
     private void generateAllocator(final PrintStream stream) {
         if (layout.getSuperLayout() == null) {
-            stream.println("    protected static final Layout LAYOUT = Layout.newLayout().addAllowedImplicitCast(Layout.ImplicitCast.IntToLong).build();");
+            stream.print("    protected static final Layout LAYOUT = Layout.newLayout()");
+
+            for (Layout.ImplicitCast implicitCast : layout.getImplicitCasts()) {
+                stream.print(".addAllowedImplicitCast(Layout.ImplicitCast.");
+                stream.print(implicitCast.name());
+                stream.print(")");
+            }
+
+            stream.println(".build();");
+
             stream.printf("    protected static final Shape.Allocator %S_ALLOCATOR = LAYOUT.createAllocator();%n", NameUtils.identifierToConstant(layout.getName()));
         } else {
             stream.printf("    protected static final Shape.Allocator %S_ALLOCATOR = LAYOUT.createAllocator();%n", NameUtils.identifierToConstant(layout.getName()));

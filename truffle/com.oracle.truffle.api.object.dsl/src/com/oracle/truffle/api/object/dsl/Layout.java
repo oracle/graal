@@ -187,6 +187,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * that is inherited from is simply {@link ObjectType}. You can change this with the
  * {@link #objectTypeSuperclass} property on the {@link Layout} annotation.
  *
+ * <h2>Implicit Casts</h2>
+ *
+ * {@link com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong} and
+ * {@link com.oracle.truffle.api.object.Layout.ImplicitCast.IntToDouble} flags can be set in the
+ * generated layout by setting {@link #implicitCastIntToLong} or {@link #implicitCastIntToDouble}.
+ * This can only be done in base layouts, not subclassed layouts.
+ *
  * <h2>Custom Identifiers</h2>
  *
  * By default, internal {@link HiddenKey} identifiers with descriptive names will be created for
@@ -200,6 +207,10 @@ import java.util.concurrent.atomic.AtomicReference;
 public @interface Layout {
 
     Class<? extends ObjectType> objectTypeSuperclass() default ObjectType.class;
+
+    boolean implicitCastIntToLong() default false;
+
+    boolean implicitCastIntToDouble() default false;
 
 }
 

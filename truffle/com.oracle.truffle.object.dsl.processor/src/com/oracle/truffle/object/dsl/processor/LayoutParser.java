@@ -24,6 +24,7 @@ package com.oracle.truffle.object.dsl.processor;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.dsl.Layout;
 import com.oracle.truffle.api.object.dsl.Nullable;
@@ -62,6 +63,7 @@ public class LayoutParser {
     private boolean hasShapeProperties;
     private final List<String> constructorProperties = new ArrayList<>();
     private final Map<String, PropertyBuilder> properties = new HashMap<>();
+    private List<ImplicitCast> implicitCasts = new ArrayList<>();
 
     public LayoutParser(LayoutProcessor processor) {
         this.processor = processor;
@@ -86,7 +88,19 @@ public class LayoutParser {
         for (AnnotationMirror annotationMirror : layoutElement.getAnnotationMirrors()) {
             if (ElementUtils.getQualifiedName(annotationMirror.getAnnotationType()).equals(Layout.class.getCanonicalName())) {
                 objectTypeSuperclass = ElementUtils.getAnnotationValue(TypeMirror.class, annotationMirror, "objectTypeSuperclass");
+
+                if (ElementUtils.getAnnotationValue(Boolean.class, annotationMirror, "implicitCastIntToLong")) {
+                    implicitCasts.add(ImplicitCast.IntToLong);
+                }
+
+                if (ElementUtils.getAnnotationValue(Boolean.class, annotationMirror, "implicitCastIntToDouble")) {
+                    implicitCasts.add(ImplicitCast.IntToDouble);
+                }
             }
+        }
+
+        if (superLayout != null && !implicitCasts.isEmpty()) {
+            processor.reportError(layoutElement, "@Layout implicit casts need to be specified in the base layout");
         }
 
         for (Element element : layoutElement.getEnclosedElements()) {
@@ -474,7 +488,7 @@ public class LayoutParser {
 
     public LayoutModel build() {
         return new LayoutModel(objectTypeSuperclass, superLayout, name, packageName, hasObjectTypeGuard, hasObjectGuard,
-                        hasDynamicObjectGuard, buildProperties(), interfaceFullName);
+                        hasDynamicObjectGuard, buildProperties(), interfaceFullName, implicitCasts);
     }
 
     private List<PropertyModel> buildProperties() {

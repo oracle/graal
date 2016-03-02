@@ -29,6 +29,8 @@ import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.api.object.Layout.ImplicitCast;
+
 public class LayoutModel {
 
     private final TypeMirror objectTypeSuperclass;
@@ -40,10 +42,11 @@ public class LayoutModel {
     private final boolean hasObjectGuard;
     private final boolean hasDynamicObjectGuard;
     private final List<PropertyModel> properties;
+    private final List<ImplicitCast> implicitCasts;
 
     public LayoutModel(TypeMirror objectTypeSuperclass, LayoutModel superLayout, String name, String packageName,
                     boolean hasObjectTypeGuard, boolean hasObjectGuard, boolean hasDynamicObjectGuard,
-                    Collection<PropertyModel> properties, String interfaceFullName) {
+                    Collection<PropertyModel> properties, String interfaceFullName, Collection<ImplicitCast> implicitCasts) {
         this.objectTypeSuperclass = objectTypeSuperclass;
         this.superLayout = superLayout;
         this.name = name;
@@ -53,6 +56,7 @@ public class LayoutModel {
         this.hasObjectGuard = hasObjectGuard;
         this.hasDynamicObjectGuard = hasDynamicObjectGuard;
         this.properties = Collections.unmodifiableList(new ArrayList<>(properties));
+        this.implicitCasts = Collections.unmodifiableList(new ArrayList<>(implicitCasts));
     }
 
     public TypeMirror getObjectTypeSuperclass() {
@@ -165,6 +169,10 @@ public class LayoutModel {
         }
 
         return false;
+    }
+
+    public List<ImplicitCast> getImplicitCasts() {
+        return implicitCasts;
     }
 
     private List<PropertyModel> selectProperties(
