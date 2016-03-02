@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -220,6 +221,10 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     public LLVMNode createUnreachableNode() {
         return new LLVMUnreachableNode();
+    }
+
+    public LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets) {
+        return new LLVMIndirectBranchNode((LLVMAddressNode) value, labelTargets);
     }
 
 }
