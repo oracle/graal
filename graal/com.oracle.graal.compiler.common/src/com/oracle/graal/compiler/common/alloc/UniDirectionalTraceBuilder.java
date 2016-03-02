@@ -78,7 +78,7 @@ public final class UniDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
 
     @SuppressWarnings("try")
     private TraceBuilderResult<T> build(T startBlock) {
-        try (Indent indent = Debug.logAndIndent("start trace building: " + startBlock)) {
+        try (Indent indent = Debug.logAndIndent("start trace building: %s", startBlock)) {
             ArrayList<Trace<T>> traces = buildTraces(startBlock);
             return new TraceBuilderResult<>(traces, blockToTrace);
         }
@@ -107,7 +107,7 @@ public final class UniDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
         assert checkPredecessorsProcessed(block);
         ArrayList<T> trace = new ArrayList<>();
         int blockNumber = 0;
-        try (Indent i = Debug.logAndIndent("StartTrace: " + block)) {
+        try (Indent i = Debug.logAndIndent("StartTrace: %s", block)) {
             for (T currentBlock = block; currentBlock != null; currentBlock = selectNext(currentBlock)) {
                 Debug.log("add %s (prob: %f)", currentBlock, currentBlock.probability());
                 processed.set(currentBlock.getId());

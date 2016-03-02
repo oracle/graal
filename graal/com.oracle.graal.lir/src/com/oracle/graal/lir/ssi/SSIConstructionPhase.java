@@ -39,19 +39,17 @@ import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase;
+import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.ssa.SSAUtil;
 
-public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
+public final class SSIConstructionPhase extends AllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PreAllocationOptimizationContext context) {
-        LIRGeneratorTool lirGen = context.lirGen;
+                    AllocationContext context) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
         LIR lir = lirGenRes.getLIR();
-        new SSIBuilder(lir, lirGenRes.getFrameMapBuilder()).build(lirGen);
+        new SSIBuilder(lir, lirGenRes.getFrameMapBuilder()).build(lirGenRes);
     }
 
     private static final class SSIBuilder {
@@ -66,7 +64,7 @@ public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
         }
 
         @SuppressWarnings("try")
-        private void build(LIRGeneratorTool lirGen) {
+        private void build(LIRGenerationResult lirGenRes) {
             Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>(lir.getControlFlowGraph().getBlocks());
             while (!worklist.isEmpty()) {
                 AbstractBlockBase<?> block = worklist.poll();
@@ -90,7 +88,7 @@ public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
                     }
                 }
             }
-            valueMap.finish(lirGen);
+            valueMap.finish(lirGenRes);
         }
 
         @SuppressWarnings("try")
