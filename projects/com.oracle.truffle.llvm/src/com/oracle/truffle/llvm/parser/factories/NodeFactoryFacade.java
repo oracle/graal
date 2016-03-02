@@ -146,4 +146,8 @@ public interface NodeFactoryFacade {
 
     LLVMStatementNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases, LLVMBaseType llvmType);
 
+    LLVMStatementNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode);
+
+    LLVMStatementNode createUnconditionalBranch(int unconditionalIndex);
+
 }

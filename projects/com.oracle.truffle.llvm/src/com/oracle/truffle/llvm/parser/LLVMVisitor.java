@@ -145,9 +145,6 @@ import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNodeGen;
-import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNodeFactory;
-import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNodeFactory.LLVMBrConditionalInjectionNodeGen;
 import com.oracle.truffle.llvm.nodes.control.LLVMConditionalPhiWriteNode;
 import com.oracle.truffle.llvm.nodes.exception.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.exception.LLVMLandingPadNode.LLVMAddressLandingPadNode;
@@ -1469,15 +1466,11 @@ public class LLVMVisitor implements LLVMParserRuntime {
             int trueIndex = getIndexFromBasicBlock(trueBasicBlock);
             BasicBlock falseBasicBlock = brInstruction.getFalse().getRef();
             int falseIndex = getIndexFromBasicBlock(falseBasicBlock);
-            if (getOptimizationConfiguration().injectBranchProbabilitiesForConditionalBranch()) {
-                return LLVMBrConditionalInjectionNodeGen.create(trueIndex, falseIndex, (LLVMI1Node) conditionNode);
-            } else {
-                return LLVMConditionalBranchNodeFactory.LLVMBrConditionalNodeGen.create(trueIndex, falseIndex, (LLVMI1Node) conditionNode);
-            }
+            return factoryFacade.createConditionalBranch(trueIndex, falseIndex, conditionNode);
         } else {
             BasicBlock unconditional = brInstruction.getUnconditional().getRef();
             int unconditionalIndex = getIndexFromBasicBlock(unconditional);
-            return LLVMBrUnconditionalNodeGen.create(unconditionalIndex);
+            return factoryFacade.createUnconditionalBranch(unconditionalIndex);
         }
     }
 
