@@ -45,7 +45,7 @@ public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
     public static class Options {
         // @formatter:off
         @Option(help = "Use fast SSI construction.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> LIROptFastSSIConstruction = new StableOptionValue<>(false);
+        public static final StableOptionValue<Boolean> LIROptFastSSIConstruction = new StableOptionValue<>(true);
         // @formatter:on
     }
 
