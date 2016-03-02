@@ -189,7 +189,6 @@ import com.oracle.truffle.llvm.nodes.others.LLVMStackFrameNuller.LLVMFloatNuller
 import com.oracle.truffle.llvm.nodes.others.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.others.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.others.LLVMStackFrameNuller.LLVMObjectNuller;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMWrappedStatementNode;
 import com.oracle.truffle.llvm.parser.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
@@ -1416,7 +1415,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         if (termInstruction instanceof Instruction_ret) {
             return visitRet((Instruction_ret) termInstruction);
         } else if (termInstruction instanceof Instruction_unreachable) {
-            return new LLVMUnreachableNode();
+            return factoryFacade.createUnreachableNode();
         } else if (termInstruction instanceof Instruction_br) {
             return visitBr((Instruction_br) termInstruction);
         } else if (termInstruction instanceof Instruction_switch) {

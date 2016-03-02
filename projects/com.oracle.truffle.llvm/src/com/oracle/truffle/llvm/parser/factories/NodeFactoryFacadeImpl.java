@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -215,6 +216,10 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         LLVMStructWriteNode[] structWriteNodes = new LLVMStructWriteNode[nodes.length];
         System.arraycopy(nodes, 0, structWriteNodes, 0, nodes.length);
         return LLVMAggregateFactory.createStructLiteralNode(offsets, structWriteNodes, (LLVMAddressNode) alloc);
+    }
+
+    public LLVMNode createUnreachableNode() {
+        return new LLVMUnreachableNode();
     }
 
 }

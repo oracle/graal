@@ -139,4 +139,6 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createStructLiteralNode(int[] offsets, Node[] nodes, LLVMExpressionNode alloc);
 
+    LLVMNode createUnreachableNode();
+
 }
