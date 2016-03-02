@@ -51,4 +51,8 @@ public class LLVMGetElementPtrFactory {
 
     }
 
+    public static LLVMAddressNode createGetElementPtr(LLVMAddressNode currentAddress, LLVMExpressionNode oneValueNode, int currentOffset) {
+        return LLVMAddressI32GetElementPtrNodeGen.create(currentAddress, (LLVMI32Node) oneValueNode, currentOffset);
+    }
+
 }

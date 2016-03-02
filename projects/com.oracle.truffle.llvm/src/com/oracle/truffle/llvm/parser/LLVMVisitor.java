@@ -143,7 +143,6 @@ import com.oracle.truffle.llvm.nodes.exception.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.exception.LLVMLandingPadNode.LLVMAddressLandingPadNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionBodyNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemCopyFactory.LLVMMemI32CopyFactory;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
 import com.oracle.truffle.llvm.nodes.others.LLVMBlockNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMBlockNode.LLVMBlockControlFlowNode;
@@ -1135,7 +1134,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
     }
 
     private LLVMExpressionNode getConstantElementPtr(LLVMAddressNode baseAddress, Type baseType, EList<Constant> indices) {
-        LLVMAddressNode currentAddress = baseAddress;
+        LLVMExpressionNode currentAddress = baseAddress;
         ResolvedType currentType = resolve(baseType);
         ResolvedType parentType = null;
         int currentOffset = 0;
@@ -1153,7 +1152,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
         if (currentOffset != 0) {
             LLVMExpressionNode oneValueNode = factoryFacade.createLiteral(1, LLVMBaseType.I32);
-            currentAddress = LLVMAddressI32GetElementPtrNodeGen.create(currentAddress, (LLVMI32Node) oneValueNode, currentOffset);
+            currentAddress = factoryFacade.createGetElementPtr(currentAddress, oneValueNode, currentOffset);
         }
         return currentAddress;
     }

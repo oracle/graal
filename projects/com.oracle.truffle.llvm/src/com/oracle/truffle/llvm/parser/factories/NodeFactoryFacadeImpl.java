@@ -270,4 +270,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return new LLVMEmptyStructLiteralNode((LLVMAddressNode) alloca, byteSize);
     }
 
+    public LLVMExpressionNode createGetElementPtr(LLVMExpressionNode currentAddress, LLVMExpressionNode oneValueNode, int currentOffset) {
+        return LLVMGetElementPtrFactory.createGetElementPtr((LLVMAddressNode) currentAddress, oneValueNode, currentOffset);
+    }
+
 }

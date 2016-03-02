@@ -166,4 +166,6 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createEmptyStructLiteralNode(LLVMExpressionNode alloca, int byteSize);
 
+    LLVMExpressionNode createGetElementPtr(LLVMExpressionNode currentAddress, LLVMExpressionNode oneValueNode, int currentOffset);
+
 }
