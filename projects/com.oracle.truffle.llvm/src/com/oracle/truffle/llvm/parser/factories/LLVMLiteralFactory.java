@@ -65,16 +65,6 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMV
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI32LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI64LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI8LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMAddressArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMDoubleArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMFloatArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMFunctionArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI16ArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI1ArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI32ArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI64ArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI8ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
@@ -205,41 +195,6 @@ public final class LLVMLiteralFactory {
         return bigInteger.longValue();
     }
 
-    public static LLVMExpressionNode createZeroArrayLiteral(ResolvedType arrayElementLLVMType, int nrElements, LLVMAllocaInstruction address) {
-        int byteLength = LLVMTypeHelper.getByteSize(arrayElementLLVMType);
-        switch (LLVMTypeHelper.getLLVMType(arrayElementLLVMType)) {
-            case I1:
-                LLVMI1Node[] i1ZeroInits = createI1LiteralNodes(nrElements, false);
-                return LLVMI1ArrayLiteralNodeGen.create(i1ZeroInits, byteLength, address);
-            case I8:
-                LLVMI8Node[] i8ZeroInits = createI8LiteralNodes(nrElements, (byte) 0);
-                return LLVMI8ArrayLiteralNodeGen.create(i8ZeroInits, byteLength, address);
-            case I16:
-                LLVMI16Node[] i16ZeroInits = createI16LiteralNodes(nrElements, (short) 0);
-                return LLVMI16ArrayLiteralNodeGen.create(i16ZeroInits, byteLength, address);
-            case I32:
-                LLVMI32Node[] i32ZeroInits = createI32LiteralNodes(nrElements, 0);
-                return LLVMI32ArrayLiteralNodeGen.create(i32ZeroInits, byteLength, address);
-            case I64:
-                LLVMI64Node[] i64ZeroInits = createI64LiteralNodes(nrElements, 0L);
-                return LLVMI64ArrayLiteralNodeGen.create(i64ZeroInits, byteLength, address);
-            case FLOAT:
-                LLVMFloatNode[] floatZeroInits = createFloatLiteralNodes(nrElements, 0f);
-                return LLVMFloatArrayLiteralNodeGen.create(floatZeroInits, byteLength, address);
-            case DOUBLE:
-                LLVMDoubleNode[] doubleZeroInits = createDoubleLiteralNodes(nrElements, 0d);
-                return LLVMDoubleArrayLiteralNodeGen.create(doubleZeroInits, byteLength, address);
-            case ADDRESS:
-                LLVMAddressNode[] pointerZeroInits = createPointerLiteralNodes(nrElements, LLVMAddress.NULL_POINTER);
-                return LLVMAddressArrayLiteralNodeGen.create(pointerZeroInits, byteLength, address);
-            case FUNCTION_ADDRESS:
-                LLVMFunctionNode[] functionZeroInits = createFunctionLiteralNodes(nrElements, LLVMFunction.createZeroFunction());
-                return LLVMFunctionArrayLiteralNodeGen.create(functionZeroInits, byteLength, address);
-            default:
-                throw new AssertionError(arrayElementLLVMType);
-        }
-    }
-
     public static LLVMFunctionNode[] createFunctionLiteralNodes(int nrElements, LLVMFunction value) {
         LLVMFunctionNode[] functionZeroInits = new LLVMFunctionNode[nrElements];
         for (int i = 0; i < nrElements; i++) {
@@ -365,6 +320,31 @@ public final class LLVMLiteralFactory {
                 return LLVMVectorDoubleLiteralNodeGen.create(doubleVals, target);
             default:
                 throw new AssertionError(llvmType);
+        }
+    }
+
+    public static LLVMExpressionNode createLiteral(Object value, LLVMBaseType type) {
+        switch (type) {
+            case I1:
+                return new LLVMI1LiteralNode((boolean) value);
+            case I8:
+                return new LLVMI8LiteralNode((byte) value);
+            case I16:
+                return new LLVMI16LiteralNode((short) value);
+            case I32:
+                return new LLVMI32LiteralNode((int) value);
+            case I64:
+                return new LLVMI64LiteralNode((long) value);
+            case FLOAT:
+                return new LLVMFloatLiteralNode((float) value);
+            case DOUBLE:
+                return new LLVMDoubleLiteralNode((double) value);
+            case ADDRESS:
+                return new LLVMAddressLiteralNode((LLVMAddress) value);
+            case FUNCTION_ADDRESS:
+                return LLVMFunctionLiteralNodeGen.create((LLVMFunction) value);
+            default:
+                throw new AssertionError(value + " " + type);
         }
     }
 
