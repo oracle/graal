@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStatementNode;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
@@ -154,5 +155,15 @@ public interface NodeFactoryFacade {
     LLVMAddressNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType);
 
     LLVMNode createConditionalPhiWriteNode(LLVMExpressionNode create, LLVMNode phiWriteNode);
+
+    LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment);
+
+    LLVMAllocaInstruction createAlloc(int size, int alignment);
+
+    LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMAddressNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert, LLVMBaseType llvmType);
+
+    LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, int size);
+
+    LLVMExpressionNode createEmptyStructLiteralNode(LLVMExpressionNode alloca, int byteSize);
 
 }

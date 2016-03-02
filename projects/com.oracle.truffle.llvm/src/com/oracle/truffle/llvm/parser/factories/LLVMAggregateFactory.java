@@ -43,6 +43,8 @@ import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertDoubleValueNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertFloatValueNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVM80BitFloatStructWriteNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMAddressStructWriteNode;
@@ -137,6 +139,18 @@ public final class LLVMAggregateFactory {
 
     public static LLVMExpressionNode createStructLiteralNode(int[] offsets, LLVMStructWriteNode[] nodes, LLVMAddressNode alloc) {
         return new StructLiteralNode(offsets, nodes, alloc);
+    }
+
+    public static LLVMExpressionNode createInsertValue(LLVMAddressNode resultAggregate, LLVMAddressNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
+                    LLVMBaseType llvmType) {
+        switch (llvmType) {
+            case FLOAT:
+                return new LLVMInsertFloatValueNode(resultAggregate, sourceAggregate, size, offset, (LLVMFloatNode) valueToInsert);
+            case DOUBLE:
+                return new LLVMInsertDoubleValueNode(resultAggregate, sourceAggregate, size, offset, (LLVMDoubleNode) valueToInsert);
+            default:
+                throw new AssertionError(llvmType);
+        }
     }
 
 }

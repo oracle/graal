@@ -27,49 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.parser.factories;
 
-import org.eclipse.emf.ecore.EObject;
-
-import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
-import com.intel.llvm.ireditor.types.ResolvedType;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.LLVMContext;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMI32AllocaInstructionNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMI64AllocaInstructionNodeGen;
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
 
-public interface LLVMParserRuntime {
+public class LLVMAllocFactory {
 
-    ResolvedType resolve(EObject e);
+    public static LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment) {
+        switch (llvmType) {
+            case I32:
+                return LLVMI32AllocaInstructionNodeGen.create((LLVMI32Node) numElements, byteSize, alignment);
+            case I64:
+                return LLVMI64AllocaInstructionNodeGen.create((LLVMI64Node) numElements, byteSize, alignment);
+            default:
+                throw new AssertionError(llvmType);
+        }
+    }
 
-    /**
-     * Performs an <code>alloc</code> style allocation. At the begin of a function (or the global
-     * scope) the memory is allocated and again released when leaving the function (or the global
-     * scope). The intrinsic <code>@llvm.stacksave</code> might also cause the allocation to be
-     * released earlier.
-     *
-     * @see <a href="http://llvm.org/docs/LangRef.html#llvm-stacksave-intrinsic">llvm.stacksave
-     *      intrinsic</a>
-     * @param size the bytes to be allocated
-     * @return a node that allocates the requested memory.
-     */
-    LLVMExpressionNode allocateFunctionLifetime(int size, int alignment);
+    public static LLVMAllocaInstruction createAlloc(int size, int alignment) {
+        return LLVMAllocaInstructionNodeGen.create(size, alignment);
+    }
 
-    /**
-     * Gets the return slot where the function return value is stored.
-     *
-     * @return the return slot.
-     */
-    FrameSlot getReturnSlot();
-
-    LLVMExpressionNode allocateVectorResult(EObject type);
-
-    LLVMContext getContext();
-
-    LLVMAddress getGlobalAddress(GlobalVariable var);
-
-    FrameSlot getStackPointerSlot();
-
-    LLVMOptimizationConfiguration getOptimizationConfiguration();
 }

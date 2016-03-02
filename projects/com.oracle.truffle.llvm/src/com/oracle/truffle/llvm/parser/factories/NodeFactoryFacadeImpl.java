@@ -52,6 +52,9 @@ import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMConditionalPhiWriteNode;
+import com.oracle.truffle.llvm.nodes.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAddressZeroNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -245,6 +248,26 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     public LLVMNode createConditionalPhiWriteNode(LLVMExpressionNode create, LLVMNode phiWriteNode) {
         return new LLVMConditionalPhiWriteNode((LLVMI1Node) create, phiWriteNode);
+    }
+
+    public LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment) {
+        return LLVMAllocFactory.createAlloc(llvmType, numElements, byteSize, alignment);
+    }
+
+    public LLVMAllocaInstruction createAlloc(int size, int alignment) {
+        return LLVMAllocFactory.createAlloc(size, alignment);
+    }
+
+    public LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMAddressNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert, LLVMBaseType llvmType) {
+        return LLVMAggregateFactory.createInsertValue((LLVMAddressNode) resultAggregate, sourceAggregate, size, offset, valueToInsert, llvmType);
+    }
+
+    public LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, int size) {
+        return new LLVMAddressZeroNode((LLVMAddressNode) addressNode, size);
+    }
+
+    public LLVMExpressionNode createEmptyStructLiteralNode(LLVMExpressionNode alloca, int byteSize) {
+        return new LLVMEmptyStructLiteralNode((LLVMAddressNode) alloca, byteSize);
     }
 
 }

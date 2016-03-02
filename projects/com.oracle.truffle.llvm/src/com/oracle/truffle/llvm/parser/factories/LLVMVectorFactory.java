@@ -70,7 +70,7 @@ public final class LLVMVectorFactory {
     }
 
     public static LLVMVectorNode createInsertElement(LLVMParserRuntime runtime, LLVMBaseType resultType, LLVMExpressionNode vector, Type vectorType, LLVMExpressionNode element, LLVMI32Node index) {
-        LLVMAddressNode target = runtime.allocateVectorResult(vectorType);
+        LLVMAddressNode target = (LLVMAddressNode) runtime.allocateVectorResult(vectorType);
         switch (resultType) {
             case I1_VECTOR:
                 return LLVMI1InsertElementNodeGen.create(target, (LLVMI1VectorNode) vector, (LLVMI1Node) element, index);
