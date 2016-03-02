@@ -44,6 +44,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMStatementNode;
 import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -142,5 +143,7 @@ public interface NodeFactoryFacade {
     LLVMNode createUnreachableNode();
 
     LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets);
+
+    LLVMStatementNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases, LLVMBaseType llvmType);
 
 }
