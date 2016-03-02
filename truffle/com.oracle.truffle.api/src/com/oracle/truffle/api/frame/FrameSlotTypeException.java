@@ -28,11 +28,14 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 
 /**
  * Exception thrown if the frame slot type does not match the access type.
+ * 
+ * @since 0.8 or earlier
  */
 public final class FrameSlotTypeException extends SlowPathException {
 
     private static final long serialVersionUID = 6972120475215757452L;
 
+    /** @since 0.8 or earlier */
     public FrameSlotTypeException() {
     }
 }

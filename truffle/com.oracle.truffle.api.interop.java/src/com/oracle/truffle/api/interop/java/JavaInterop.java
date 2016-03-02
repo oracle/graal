@@ -84,6 +84,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * execute} ones. The real semantic however depends on the actual language one is communicating
  * with.
  * <p>
+ * 
+ * @since 0.9
  */
 public final class JavaInterop {
 
@@ -131,6 +133,7 @@ public final class JavaInterop {
      * @return instance of requested interface granting access to specified
      *         <code>foreignObject</code>, can be <code>null</code>, if the foreignObject parameter
      *         was <code>null</code>
+     * @since 0.9
      */
     public static <T> T asJavaObject(Class<T> type, TruffleObject foreignObject) {
         RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, new ToJavaNode(), foreignObject, type);
@@ -167,6 +170,7 @@ public final class JavaInterop {
      *
      * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
      * @return converted object
+     * @since 0.9
      */
     public static TruffleObject asTruffleObject(Object obj) {
         if (obj instanceof TruffleObject) {
@@ -191,6 +195,7 @@ public final class JavaInterop {
      * @param function <em>Truffle</em> that responds to {@link Message#IS_EXECUTABLE} and can be
      *            invoked
      * @return instance of interface that wraps the provided <code>function</code>
+     * @since 0.9
      */
     public static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
         RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, new ToJavaNode(), function, functionalType);
@@ -216,6 +221,7 @@ public final class JavaInterop {
      *            defining the required behavior
      * @return an {@link Message#IS_EXECUTABLE executable} {@link TruffleObject} ready to be used in
      *         any <em>Truffle</em> language
+     * @since 0.9
      */
     public static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation) {
         final Method[] arr = functionalType.getDeclaredMethods();

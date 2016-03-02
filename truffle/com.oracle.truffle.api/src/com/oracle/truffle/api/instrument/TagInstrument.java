@@ -38,6 +38,7 @@ package com.oracle.truffle.api.instrument;
  *
  * @see SyntaxTag
  * @see Instrumenter
+ * @since 0.8 or earlier
  */
 public abstract class TagInstrument extends Instrument {
 
@@ -45,16 +46,19 @@ public abstract class TagInstrument extends Instrument {
 
     private SyntaxTag tag = null;
 
+    /** @since 0.8 or earlier */
     protected TagInstrument(Instrumenter instrumenter, SyntaxTag tag, String instrumentInfo) {
         super(instrumentInfo);
         this.instrumenter = instrumenter;
         this.tag = tag;
     }
 
+    /** @since 0.8 or earlier */
     public final SyntaxTag getTag() {
         return tag;
     }
 
+    /** @since 0.8 or earlier */
     protected final Instrumenter getInstrumenter() {
         return instrumenter;
     }

@@ -31,12 +31,15 @@ import com.oracle.truffle.api.nodes.RootNode;
  * nodes in a (newly created, not yet executed) {@link RootNode}.
  *
  * @see Instrumenter#probe(com.oracle.truffle.api.nodes.Node)
+ * @since 0.8 or earlier
  */
 public interface ASTProber {
 
     /**
      * Walk the root's AST and enable instrumentation at selected nodes by attaching
      * {@linkplain Probe Probes} to them.
+     * 
+     * @since 0.8 or earlier
      */
     void probeAST(Instrumenter instrumenter, RootNode rootNode);
 

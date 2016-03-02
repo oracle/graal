@@ -62,6 +62,8 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * Instance of this class is delivered via {@link SuspendedEvent#getDebugger()} and
  * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
  * is turned on}.
+ * 
+ * @since 0.9
  */
 public final class Debugger {
 
@@ -69,6 +71,8 @@ public final class Debugger {
      * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
      * where ordinary stepping should halt. The debugger will halt just <em>before</em> a code
      * location is executed that is marked with this tag.
+     * 
+     * @since 0.9
      */
     public static final String HALT_TAG = "debug-HALT";
 
@@ -78,6 +82,7 @@ public final class Debugger {
      * The debugger will halt at the code location that has just executed the call that returned.
      *
      * @see #HALT_TAG
+     * @since 0.9
      */
     public static final String CALL_TAG = "debug-CALL";
 
@@ -100,6 +105,7 @@ public final class Debugger {
      *
      * @param engine the engine to find debugger for
      * @return an instance of associated debugger, never <code>null</code>
+     * @since 0.9
      */
     public static Debugger find(PolyglotEngine engine) {
         return find(engine, true);
@@ -196,6 +202,7 @@ public final class Debugger {
      * @param oneShot breakpoint disposes itself after fist hit, if {@code true}
      * @return a new breakpoint, initially enabled
      * @throws IOException if the breakpoint can not be set.
+     * @since 0.9
      */
     @TruffleBoundary
     public Breakpoint setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
@@ -213,6 +220,7 @@ public final class Debugger {
      * @param oneShot if {@code true} breakpoint removes it self after a hit
      * @return a new breakpoint, initially enabled
      * @throws IOException if the breakpoint already set
+     * @since 0.9
      */
     @SuppressWarnings("static-method")
     @Deprecated
@@ -224,6 +232,8 @@ public final class Debugger {
     /**
      * Gets all existing breakpoints, whatever their status, in natural sorted order. Modification
      * save.
+     * 
+     * @since 0.9
      */
     @TruffleBoundary
     public Collection<Breakpoint> getBreakpoints() {

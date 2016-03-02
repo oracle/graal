@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 /**
  * @deprecated use {@link com.oracle.truffle.api.profiles.ConditionProfile#createCountingProfile()}
  *             instead
+ * @since 0.8 or earlier
  */
 @Deprecated
 @SuppressWarnings("deprecation")
@@ -42,6 +43,7 @@ public final class CountingConditionProfile extends ConditionProfile {
         /* package protected constructor */
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public boolean profile(boolean value) {
         if (value) {
@@ -66,14 +68,17 @@ public final class CountingConditionProfile extends ConditionProfile {
         return CompilerDirectives.injectBranchProbability((double) trueCount / (double) (trueCount + falseCount), value);
     }
 
+    /** @since 0.8 or earlier */
     public int getTrueCount() {
         return trueCount;
     }
 
+    /** @since 0.8 or earlier */
     public int getFalseCount() {
         return falseCount;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String toString() {
         return String.format("%s(trueCount=%s, falseCount=%s)@%x", getClass().getSimpleName(), trueCount, falseCount, hashCode());

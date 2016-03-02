@@ -36,8 +36,16 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * Please note: This class is not intended to be sub classed by guest language implementations.
  *
  * @see DirectCallNode for faster calls with a constantly known {@link CallTarget}.
+ * @since 0.8 or earlier
  */
 public abstract class IndirectCallNode extends Node {
+    /**
+     * Constructor for implementation subclasses.
+     * 
+     * @since 0.8 or earlier
+     */
+    protected IndirectCallNode() {
+    }
 
     /**
      * Performs an indirect call to the given {@link CallTarget} target with the provided arguments.
@@ -46,9 +54,11 @@ public abstract class IndirectCallNode extends Node {
      * @param target the {@link CallTarget} to call
      * @param arguments the arguments to provide
      * @return the return value of the call
+     * @since 0.8 or earlier
      */
     public abstract Object call(VirtualFrame frame, CallTarget target, Object[] arguments);
 
+    /** @since 0.8 or earlier */
     public static IndirectCallNode create() {
         return Truffle.getRuntime().createIndirectCallNode();
     }

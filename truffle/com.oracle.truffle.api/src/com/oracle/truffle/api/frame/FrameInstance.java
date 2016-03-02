@@ -27,20 +27,29 @@ package com.oracle.truffle.api.frame;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.nodes.Node;
 
+/** @since 0.8 or earlier */
 public interface FrameInstance {
-
+    /** @since 0.8 or earlier */
     enum FrameAccess {
+        /** @since 0.8 or earlier */
         NONE,
+        /** @since 0.8 or earlier */
         READ_ONLY,
+        /** @since 0.8 or earlier */
         READ_WRITE,
+        /** @since 0.8 or earlier */
         MATERIALIZE
     }
 
+    /** @since 0.8 or earlier */
     Frame getFrame(FrameAccess access, boolean slowPath);
 
+    /** @since 0.8 or earlier */
     boolean isVirtualFrame();
 
+    /** @since 0.8 or earlier */
     Node getCallNode();
 
+    /** @since 0.8 or earlier */
     CallTarget getCallTarget();
 }

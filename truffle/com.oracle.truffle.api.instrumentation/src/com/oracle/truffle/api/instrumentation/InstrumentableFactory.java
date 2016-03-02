@@ -32,6 +32,7 @@ import com.oracle.truffle.api.nodes.Node;
  * the factory for you.
  * 
  * @param <T> the type of node this factory operates on
+ * @since 0.12
  */
 public interface InstrumentableFactory<T extends Node> {
 
@@ -45,6 +46,7 @@ public interface InstrumentableFactory<T extends Node> {
      *
      * @param probe the {@link ProbeNode probe} that should get adopted by the wrapper node.
      * @return a {@link WrapperNode wrapper} implementation
+     * @since 0.12
      */
     WrapperNode createWrapper(T node, ProbeNode probe);
 
@@ -52,17 +54,23 @@ public interface InstrumentableFactory<T extends Node> {
      * Interface for instrumentation wrapper nodes Abstract class provided by
      * {@link InstrumentableFactory#createWrapper(Node, ProbeNode)} to notify the instrumentation
      * API about execution events.
-     **/
+     *
+     * @since 0.12
+     */
     public interface WrapperNode {
 
         /**
          * Returns the original node that this node delegates to.
+         * 
+         * @since 0.12
          */
         Node getDelegateNode();
 
         /**
          * Returns the probe that was returned by
          * {@link InstrumentableFactory#createWrapper(Node, ProbeNode)}.
+         * 
+         * @since 0.12
          */
         ProbeNode getProbeNode();
 

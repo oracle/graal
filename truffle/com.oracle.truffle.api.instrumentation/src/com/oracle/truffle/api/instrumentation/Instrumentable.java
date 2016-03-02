@@ -72,21 +72,22 @@ import com.oracle.truffle.api.source.SourceSection;
  * &#064;Instrumentable(factory = BaseNodeWrapper.class)
  * public abstract class BaseNode extends Node {
  *     private final String addtionalData;
- *
+ * 
  *     public BaseNode(String additonalData) {
  *         this.additionalData = additionalData;
  *     }
- *
+ * 
  *     public BaseNode(BaseNode delegate) {
  *         this.additionalData = delegate.additionalData;
  *     }
- *
+ * 
  *     public abstract Object execute(VirtualFrame frame);
  * }
  * </pre>
  *
  * @see WrapperNode
  * @see ProbeNode
+ * @since 0.12
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})

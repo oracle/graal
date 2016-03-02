@@ -29,14 +29,18 @@ import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 /**
  * Access to information and basic services in the runtime context for a Truffle-implemented guest
  * language.
+ * 
+ * @since 0.8 or earlier
  */
 public abstract class ExecutionContext {
-
+    /** @since 0.8 or earlier */
     protected ExecutionContext() {
     }
 
     /**
      * Get compiler options specific to this <code>ExecutionContext</code>.
+     * 
+     * @since 0.8 or earlier
      */
     public CompilerOptions getCompilerOptions() {
         return DefaultCompilerOptions.INSTANCE;

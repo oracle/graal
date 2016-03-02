@@ -36,6 +36,8 @@ package com.oracle.truffle.api.debug;
  * {@link IllegalStateException}. One can however obtain reference to {@link Debugger} instance and
  * keep it to further manipulate with debugging capabilities of the
  * {@link com.oracle.truffle.api.vm.PolyglotEngine} when it is running.
+ * 
+ * @since 0.9
  */
 @SuppressWarnings("javadoc")
 public final class ExecutionEvent {
@@ -52,6 +54,7 @@ public final class ExecutionEvent {
      *
      * @return instance of debugger associated with the just starting execution and any subsequent
      *         ones in the same {@link com.oracle.truffle.api.vm.PolyglotEngine}.
+     * @since 0.9
      */
     public Debugger getDebugger() {
         return debugger;
@@ -68,6 +71,8 @@ public final class ExecutionEvent {
      * <li>execution completes.</li>
      * </ol>
      * </ul>
+     * 
+     * @since 0.9
      */
     public void prepareContinue() {
         debugger.prepareContinue(-1);
@@ -90,6 +95,7 @@ public final class ExecutionEvent {
      * </ul>
      *
      * @throws IllegalArgumentException if the specified number is {@code <= 0}
+     * @since 0.9
      */
     public void prepareStepInto() {
         debugger.prepareStepInto(1);

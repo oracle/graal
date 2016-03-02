@@ -41,9 +41,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class SampleNode extends Node {
- *
+ * 
  *     final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
- *
+ * 
  *     double execute(double input) {
  *         double profiledValue = profile.profile(input);
  *         // compiler may know now more about profiledValue
@@ -58,12 +58,14 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * @see #createRawIdentityProfile()
  * @see ValueProfile
+ * @since 0.10
  */
 public abstract class DoubleValueProfile extends Profile {
 
     DoubleValueProfile() {
     }
 
+    /** @since 0.10 */
     public abstract double profile(double value);
 
     /**
@@ -71,6 +73,7 @@ public abstract class DoubleValueProfile extends Profile {
      * {@link Double#doubleToRawLongBits(double)}.
      *
      * @see IntValueProfile
+     * @since 0.10
      */
     public static DoubleValueProfile createRawIdentityProfile() {
         if (Profile.isProfilingEnabled()) {

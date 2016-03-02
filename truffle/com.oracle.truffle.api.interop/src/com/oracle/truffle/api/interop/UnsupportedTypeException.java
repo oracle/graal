@@ -28,6 +28,8 @@ package com.oracle.truffle.api.interop;
 /**
  * An exception thrown if a {@link TruffleObject} does not support the type of one ore more
  * arguments provided by a foreign access.
+ * 
+ * @since 0.11
  */
 public final class UnsupportedTypeException extends InteropException {
 
@@ -49,6 +51,7 @@ public final class UnsupportedTypeException extends InteropException {
      * {@link TruffleObject}.
      *
      * @return the unsupported arguments
+     * @since 0.11
      */
     public Object[] getSuppliedValues() {
         return suppliedValues;
@@ -63,6 +66,7 @@ public final class UnsupportedTypeException extends InteropException {
      * @param suppliedValues values that were not supported
      *
      * @return the exception
+     * @since 0.11
      */
     public static RuntimeException raise(Object[] suppliedValues) {
         return raise(null, suppliedValues);
@@ -78,6 +82,7 @@ public final class UnsupportedTypeException extends InteropException {
      * @param suppliedValues values that were not supported
      *
      * @return the exception
+     * @since 0.11
      */
     public static RuntimeException raise(Exception cause, Object[] suppliedValues) {
         return silenceException(RuntimeException.class, new UnsupportedTypeException(cause, suppliedValues));

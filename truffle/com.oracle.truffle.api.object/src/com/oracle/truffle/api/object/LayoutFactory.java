@@ -26,13 +26,19 @@ package com.oracle.truffle.api.object;
 
 /**
  * Implementation class.
+ * 
+ * @since 0.8 or earlier
  */
 public interface LayoutFactory {
+    /** @since 0.8 or earlier */
     Layout createLayout(Layout.Builder layoutBuilder);
 
+    /** @since 0.8 or earlier */
     Property createProperty(Object id, Location location);
 
+    /** @since 0.8 or earlier */
     Property createProperty(Object id, Location location, int flags);
 
+    /** @since 0.8 or earlier */
     int getPriority();
 }

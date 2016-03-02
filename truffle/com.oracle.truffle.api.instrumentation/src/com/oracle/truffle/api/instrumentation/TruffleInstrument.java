@@ -66,13 +66,13 @@ import com.oracle.truffle.api.source.Source;
  * <pre>
  * &#064;Registration(name = Coverage.NAME, version = Coverage.VERSION, instrumentType = Coverage.TYPE)
  * public final class Coverage extends Instrumentation {
- *
+ * 
  *     public static final String NAME = &quot;sample-coverage&quot;;
  *     public static final String TYPE = &quot;coverage&quot;;
  *     public static final String VERSION = &quot;coverage&quot;;
- *
+ * 
  *     private final Set&lt;SourceSection&gt; coverage = new HashSet&lt;&gt;();
- *
+ * 
  *     &#064;Override
  *     protected void onCreate(Env env, Instrumenter instrumenter) {
  *         instrumenter.attachFactory(SourceSectionFilter.newBuilder() //
@@ -80,7 +80,7 @@ import com.oracle.truffle.api.source.Source;
  *             public EventNode create(final EventContext context) {
  *                 return new EventNode() {
  *                     &#064;CompilationFinal private boolean visited;
- *
+ * 
  *                     &#064;Override
  *                     public void onReturnValue(VirtualFrame vFrame, Object result) {
  *                         if (!visited) {
@@ -93,16 +93,25 @@ import com.oracle.truffle.api.source.Source;
  *             }
  *         });
  *     }
- *
+ * 
  *     &#064;Override
  *     protected void onDispose(Env env) {
  *         // print result
  *     }
- *
+ * 
  * }
  * </pre>
+ * 
+ * @since 0.12
  */
 public abstract class TruffleInstrument {
+    /**
+     * Constructor for subclasses.
+     * 
+     * @since 0.12
+     */
+    protected TruffleInstrument() {
+    }
 
     /**
      * Method invoked if the instrumentation is allocated and used by the runtime system. Invoked
@@ -127,6 +136,7 @@ public abstract class TruffleInstrument {
      * @param env environment information for the instrumentation
      *
      * @see Env#getInstrumenter()
+     * @since 0.12
      */
     protected abstract void onCreate(Env env);
 
@@ -136,6 +146,7 @@ public abstract class TruffleInstrument {
      * {@link TruffleInstrument} implementation instance is created.
      *
      * @param env environment information for the instrumentation
+     * @since 0.12
      */
     protected void onDispose(Env env) {
         // default implementation does nothing
@@ -144,6 +155,8 @@ public abstract class TruffleInstrument {
     /**
      * Provides ways and means to access input, output and error streams. Also allows to parse
      * arbitrary code from other Truffle languages.
+     * 
+     * @since 0.12
      */
     public static final class Env {
 
@@ -164,6 +177,7 @@ public abstract class TruffleInstrument {
          * Returns the instrumenter which lets you instrument guest language ASTs.
          *
          * @see Instrumenter
+         * @since 0.12
          */
         public Instrumenter getInstrumenter() {
             return instrumenter;
@@ -174,6 +188,7 @@ public abstract class TruffleInstrument {
          * {@link TruffleInstrument instrument} is being executed in.
          *
          * @return reader, never <code>null</code>
+         * @since 0.12
          */
         public InputStream in() {
             return in;
@@ -184,6 +199,7 @@ public abstract class TruffleInstrument {
          * {@link TruffleInstrument instrument} is being executed in.
          *
          * @return writer, never <code>null</code>
+         * @since 0.12
          */
         public OutputStream out() {
             return out;
@@ -194,6 +210,7 @@ public abstract class TruffleInstrument {
          * {@link TruffleInstrument instrument} is being executed in.
          *
          * @return writer, never <code>null</code>
+         * @since 0.12
          */
         public OutputStream err() {
             return err;
@@ -214,6 +231,7 @@ public abstract class TruffleInstrument {
          * @throws IllegalStateException if the method is called later than from
          *             {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env) }
          *             method
+         * @since 0.12
          */
         public void registerService(Object service) {
             if (services == null) {
@@ -244,6 +262,7 @@ public abstract class TruffleInstrument {
          *            that can be referenced from the source
          * @return the call target representing the parsed result
          * @throws IOException if the parsing or evaluation fails for some reason
+         * @since 0.12
          */
         @SuppressWarnings("static-method")
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
@@ -255,6 +274,8 @@ public abstract class TruffleInstrument {
     /**
      * Annotation to register an {@link TruffleInstrument instrument} implementations for automatic
      * discovery.
+     * 
+     * @since 0.12
      */
     @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE)

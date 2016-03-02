@@ -30,28 +30,34 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 /**
  * An assumption that is always valid. Used as a placeholder where an assumption is needed but never
  * invalidated.
+ * 
+ * @since 0.8 or earlier
  */
 public final class AlwaysValidAssumption implements Assumption {
-
+    /** @since 0.8 or earlier */
     public static final AlwaysValidAssumption INSTANCE = new AlwaysValidAssumption();
 
     private AlwaysValidAssumption() {
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public void check() throws InvalidAssumptionException {
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public void invalidate() {
         throw new UnsupportedOperationException("Cannot invalidate this assumption - it is always valid");
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String getName() {
         return getClass().getName();
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public boolean isValid() {
         return true;

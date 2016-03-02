@@ -34,30 +34,40 @@ import com.oracle.truffle.api.nodes.Node;
  * from the underlying Truffle implementation.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
+ * 
+ * @since 0.8 or earlier
  */
 public interface Visualizer {
 
     /**
      * Gets a printer for Truffle ASTs, possibly specialized to be helpful for a specific guest
      * language implementation.
+     * 
+     * @since 0.8 or earlier
      */
     @Deprecated
     ASTPrinter getASTPrinter();
 
     /**
      * A short description of a source location in terms of source + line number.
+     * 
+     * @since 0.8 or earlier
      */
     @Deprecated
     String displaySourceLocation(Node node);
 
     /**
      * Describes the name of the method containing a node.
+     * 
+     * @since 0.8 or earlier
      */
     @Deprecated
     String displayMethodName(Node node);
 
     /**
      * The name of the method.
+     * 
+     * @since 0.8 or earlier
      */
     @Deprecated
     String displayCallTargetName(CallTarget callTarget);
@@ -67,12 +77,15 @@ public interface Visualizer {
      *
      * @param trim if {@code > 0}, them limit size of String to either the value of trim or the
      *            number of characters in the first line, whichever is lower.
+     * @since 0.8 or earlier
      */
     @Deprecated
     String displayValue(Object value, int trim);
 
     /**
      * Converts a slot identifier in the guest language to a display string.
+     * 
+     * @since 0.8 or earlier
      */
     @Deprecated
     String displayIdentifier(FrameSlot slot);

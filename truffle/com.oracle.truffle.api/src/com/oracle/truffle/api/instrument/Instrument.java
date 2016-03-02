@@ -36,6 +36,7 @@ package com.oracle.truffle.api.instrument;
  * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  *
  * @see Instrumenter
+ * @since 0.8 or earlier
  */
 public abstract class Instrument {
 
@@ -52,6 +53,7 @@ public abstract class Instrument {
      * Detaches this from its source of execution events and makes itself unusable.
      *
      * @throws IllegalStateException if this has already been disposed
+     * @since 0.8 or earlier
      */
     public void dispose() throws IllegalStateException {
         if (isDisposed) {
@@ -63,11 +65,14 @@ public abstract class Instrument {
 
     /**
      * Has this been detached from its source of execution events?
+     * 
+     * @since 0.8 or earlier
      */
     public boolean isDisposed() {
         return isDisposed;
     }
 
+    /** @since 0.8 or earlier */
     public final String getInstrumentInfo() {
         return instrumentInfo;
     }

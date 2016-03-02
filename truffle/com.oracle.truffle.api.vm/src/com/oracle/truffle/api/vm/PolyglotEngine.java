@@ -99,6 +99,8 @@ import com.oracle.truffle.api.source.Source;
  * {@link Builder#build() created} by and checks that all subsequent calls are coming from the same
  * thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it what to
  * do.
+ * 
+ * @since 0.9
  */
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
@@ -214,6 +216,7 @@ public class PolyglotEngine {
      * {@link #eval(com.oracle.truffle.api.source.Source)} method.
      *
      * @return new builder to create isolated polyglot engine with pre-registered languages
+     * @since 0.10
      */
     public static PolyglotEngine.Builder newBuilder() {
         // making Builder non-static inner class is a
@@ -226,6 +229,7 @@ public class PolyglotEngine {
     /**
      * @return new builder
      * @deprecated use {@link #newBuilder()}
+     * @since 0.9
      */
     @Deprecated
     public static PolyglotEngine.Builder buildNew() {
@@ -243,6 +247,8 @@ public class PolyglotEngine {
      *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
      *     .{@link Builder#build() build()};
      * </pre>
+     * 
+     * @since 0.9
      */
     public class Builder {
         private OutputStream out;
@@ -262,6 +268,7 @@ public class PolyglotEngine {
          *
          * @param os the stream to use as output
          * @return instance of this builder
+         * @since 0.9
          */
         public Builder setOut(OutputStream os) {
             out = os;
@@ -274,6 +281,7 @@ public class PolyglotEngine {
          *
          * @param os the stream to use as output
          * @return instance of this builder
+         * @since 0.9
          */
         public Builder setErr(OutputStream os) {
             err = os;
@@ -286,6 +294,7 @@ public class PolyglotEngine {
          *
          * @param is the stream to use as input
          * @return instance of this builder
+         * @since 0.9
          */
         public Builder setIn(InputStream is) {
             in = is;
@@ -298,6 +307,7 @@ public class PolyglotEngine {
          *
          * @param handler the handler to register
          * @return instance of this builder
+         * @since 0.9
          */
         public Builder onEvent(EventConsumer<?> handler) {
             Objects.requireNonNull(handler);
@@ -323,6 +333,7 @@ public class PolyglotEngine {
          * @param key to identify a language-specific configuration element
          * @param value to parameterize initial state of a language
          * @return instance of this builder
+         * @since 0.11
          */
         public Builder config(String mimeType, String key, Object value) {
             if (this.arguments == null) {
@@ -349,6 +360,7 @@ public class PolyglotEngine {
          * @see PolyglotEngine#findGlobalSymbol(java.lang.String)
          * @throws IllegalArgumentException if the object isn't of primitive type and cannot be
          *             converted to {@link TruffleObject}
+         * @since 0.9
          */
         public Builder globalSymbol(String name, Object obj) {
             final Object truffleReady;
@@ -379,6 +391,7 @@ public class PolyglotEngine {
          * @param executor the executor to use for internal execution inside the {@link #build() to
          *            be created} {@link PolyglotEngine}
          * @return instance of this builder
+         * @since 0.9
          */
         @SuppressWarnings("hiding")
         public Builder executor(Executor executor) {
@@ -391,6 +404,7 @@ public class PolyglotEngine {
          * from values passed into configuration methods in this class.
          *
          * @return new, isolated virtual machine with pre-registered languages
+         * @since 0.9
          */
         public PolyglotEngine build() {
             assertNoTruffle();
@@ -412,6 +426,7 @@ public class PolyglotEngine {
      *
      * @return an immutable map with keys being MIME types and values the {@link Language
      *         descriptions} of associated languages
+     * @since 0.9
      */
     public Map<String, ? extends Language> getLanguages() {
         return Collections.unmodifiableMap(langs);
@@ -422,6 +437,7 @@ public class PolyglotEngine {
      * instruments are enabled automatically at startup.
      *
      * @return the set of instruments
+     * @since 0.9
      */
     public Map<String, Instrument> getInstruments() {
         return instruments;
@@ -435,6 +451,7 @@ public class PolyglotEngine {
      * @param source code snippet to execute
      * @return a {@link Value} object that holds result of an execution, never <code>null</code>
      * @throws IOException thrown to signal errors while processing the code
+     * @since 0.9
      */
     public Value eval(Source source) throws IOException {
         assertNoTruffle();
@@ -455,6 +472,8 @@ public class PolyglotEngine {
      * <p>
      * Calling any other method of this class after the dispose has been done yields an
      * {@link IllegalStateException}.
+     * 
+     * @since 0.9
      */
     public void dispose() {
         checkThread();
@@ -581,6 +600,7 @@ public class PolyglotEngine {
      *
      * @param globalName the name of the symbol to find
      * @return found symbol or <code>null</code> if it has not been found
+     * @since 0.9
      */
     public Value findGlobalSymbol(final String globalName) {
         checkThread();
@@ -678,6 +698,8 @@ public class PolyglotEngine {
      * {@link Builder#executor(java.util.concurrent.Executor) asynchronous execution}, the
      * {@link Value} represents a future - i.e., it is returned immediately, leaving the execution
      * running on behind.
+     * 
+     * @since 0.9
      */
     public class Value {
         private final TruffleLanguage<?>[] language;
@@ -707,6 +729,7 @@ public class PolyglotEngine {
          *
          * @return the object or <code>null</code>
          * @throws IOException in case it is not possible to obtain the value of the object
+         * @since 0.9
          */
         public Object get() throws IOException {
             assertNoTruffle();
@@ -732,6 +755,7 @@ public class PolyglotEngine {
          * @return instance of the view wrapping the object of this symbol
          * @throws IOException in case it is not possible to obtain the value of the object
          * @throws ClassCastException if the value cannot be converted to desired view
+         * @since 0.9
          */
         public <T> T as(final Class<T> representation) throws IOException {
             assertNoTruffle();
@@ -771,6 +795,7 @@ public class PolyglotEngine {
          * @return symbol wrapper around the value returned by invoking the symbol, never
          *         <code>null</code>
          * @throws IOException signals problem during execution
+         * @since 0.9
          */
         @Deprecated
         public Value invoke(final Object thiz, final Object... args) throws IOException {
@@ -793,6 +818,7 @@ public class PolyglotEngine {
          * @return symbol wrapper around the value returned by invoking the symbol, never
          *         <code>null</code>
          * @throws IOException signals problem during execution
+         * @since 0.9
          */
         public Value execute(final Object... args) throws IOException {
             assertNoTruffle();
@@ -827,6 +853,7 @@ public class PolyglotEngine {
             return compute.get();
         }
 
+        /** @since 0.9 */
         @Override
         public String toString() {
             return "PolyglotEngine.Value[" + compute + "]";
@@ -839,6 +866,7 @@ public class PolyglotEngine {
      * {@link Instrument#setEnabled(boolean)} enable/disable a given instrument.
      *
      * @see PolyglotEngine#getInstruments()
+     * @since 0.9
      */
     public final class Instrument {
 
@@ -852,6 +880,7 @@ public class PolyglotEngine {
 
         /**
          * @return the id of the instrument
+         * @since 0.9
          */
         public String getId() {
             return info.getId();
@@ -859,6 +888,7 @@ public class PolyglotEngine {
 
         /**
          * @return a human readable name of the installed instrument.
+         * @since 0.9
          */
         public String getName() {
             return info.getName();
@@ -866,6 +896,7 @@ public class PolyglotEngine {
 
         /**
          * @return the version of the installed instrument.
+         * @since 0.9
          */
         public String getVersion() {
             return info.getVersion();
@@ -877,6 +908,7 @@ public class PolyglotEngine {
 
         /**
          * @return <code>true</code> if the underlying instrument is enabled else <code>false</code>
+         * @since 0.9
          */
         public boolean isEnabled() {
             return enabled;
@@ -890,6 +922,7 @@ public class PolyglotEngine {
          * @param type class of the service that is being requested
          * @return instance of requested type, or <code>null</code> if no such service is available
          *         for the instrument
+         * @since 0.9
          */
         public <T> T lookup(Class<T> type) {
             return SPI.getInstrumentationHandlerService(instrumentationHandler, this, type);
@@ -899,6 +932,7 @@ public class PolyglotEngine {
          * Enables/disables the installed instrument in the engine.
          *
          * @param enabled <code>true</code> to enable <code>false</code> to disable
+         * @since 0.9
          */
         public void setEnabled(final boolean enabled) {
             checkThread();
@@ -930,6 +964,7 @@ public class PolyglotEngine {
             }
         }
 
+        /** @since 0.9 */
         @Override
         public String toString() {
             return "Instrument [id=" + getId() + ", name=" + getName() + ", version=" + getVersion() + ", enabled=" + enabled + "]";
@@ -945,6 +980,8 @@ public class PolyglotEngine {
      * of supported {@link #getMimeTypes() MIME types} for each language. The actual language
      * implementation is not initialized until
      * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) a code is evaluated} in it.
+     * 
+     * @since 0.9
      */
     public class Language {
         private final Map<Source, CallTarget> cache;
@@ -960,6 +997,7 @@ public class PolyglotEngine {
          * MIME types recognized by the language.
          *
          * @return returns immutable set of recognized MIME types
+         * @since 0.9
          */
         public Set<String> getMimeTypes() {
             return info.getMimeTypes();
@@ -969,6 +1007,7 @@ public class PolyglotEngine {
          * Human readable name of the language. Think of C, Ruby, JS, etc.
          *
          * @return string giving the language a name
+         * @since 0.9
          */
         public String getName() {
             return info.getName();
@@ -978,6 +1017,7 @@ public class PolyglotEngine {
          * Name of the language version.
          *
          * @return string specifying the language version
+         * @since 0.9
          */
         public String getVersion() {
             return info.getVersion();
@@ -990,6 +1030,7 @@ public class PolyglotEngine {
          * @param source code snippet to execute
          * @return a {@link Value} object that holds result of an execution, never <code>null</code>
          * @throws IOException thrown to signal errors while processing the code
+         * @since 0.9
          */
         public Value eval(Source source) throws IOException {
             assertNoTruffle();
@@ -1006,6 +1047,7 @@ public class PolyglotEngine {
          *
          * @return the global object or <code>null</code> if the language does not support such
          *         concept
+         * @since 0.9
          */
         @SuppressWarnings("try")
         public Value getGlobalObject() {
@@ -1045,6 +1087,7 @@ public class PolyglotEngine {
             return env;
         }
 
+        /** @since 0.9 */
         @Override
         public String toString() {
             return "[" + getName() + "@ " + getVersion() + " for " + getMimeTypes() + "]";
