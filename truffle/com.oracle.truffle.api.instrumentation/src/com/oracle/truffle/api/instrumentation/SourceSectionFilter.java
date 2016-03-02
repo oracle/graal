@@ -42,6 +42,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see SourceSectionFilter#newBuilder()
  * @see Instrumenter#attachFactory(SourceSectionFilter, ExecutionEventNodeFactory)
  * @see Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener)
+ * @since 0.12
  */
 public final class SourceSectionFilter {
 
@@ -70,6 +71,7 @@ public final class SourceSectionFilter {
      * @see Builder#build()
      *
      * @return a new builder to create new {@link SourceSectionFilter} instances
+     * @since 0.12
      */
     public static Builder newBuilder() {
         return new SourceSectionFilter(null, null).new Builder();
@@ -78,14 +80,20 @@ public final class SourceSectionFilter {
     /**
      * Configure your own {@link SourceSectionFilter} before creating its instance. Specify various
      * parameters by calling individual {@link Builder} methods. When done, call {@link #build()}.
+     * 
+     * @since 0.12
      */
     public final class Builder {
-
         private List<EventFilterExpression> nodeExpressions = new ArrayList<>();
         private List<EventFilterExpression> rootNodeExpressions = new ArrayList<>();
 
+        private Builder() {
+        }
+
         /**
          * Add a filter for all source sections that reference one of the given sources.
+         * 
+         * @since 0.12
          */
         public Builder sourceIs(Source... source) {
             verifyNotNull(source);
@@ -97,6 +105,8 @@ public final class SourceSectionFilter {
          * Add a filter for all source sections that declare one of the given mime-types. Mime-types
          * which are compared must match exactly one of the mime-types specified by the target guest
          * language.
+         * 
+         * @since 0.12
          */
         public Builder mimeTypeIs(String... mimeTypes) {
             verifyNotNull(mimeTypes);
@@ -106,6 +116,8 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all source sections that are tagged with one of the given String tags.
+         * 
+         * @since 0.12
          */
         public Builder tagIs(String... tags) {
             verifyNotNull(tags);
@@ -115,6 +127,8 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all sources sections that declare not one of the given String tags.
+         * 
+         * @since 0.12
          */
         public Builder tagIsNot(String... tags) {
             verifyNotNull(tags);
@@ -124,6 +138,8 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all sources sections that equal one of the given source sections.
+         * 
+         * @since 0.12
          */
         public Builder sourceSectionEquals(SourceSection... section) {
             verifyNotNull(section);
@@ -136,6 +152,8 @@ public final class SourceSectionFilter {
         /**
          * Add a filter for all sources sections where the index is inside a startIndex (inclusive)
          * plus a given length (exclusive).
+         * 
+         * @since 0.12
          */
         public Builder indexIn(int startIndex, int length) {
             if (startIndex < 0) {
@@ -153,6 +171,8 @@ public final class SourceSectionFilter {
         /**
          * Add a filter for all sources sections where the line is inside a startLine (first index
          * inclusive) plus a given length (last index exclusive).
+         * 
+         * @since 0.12
          */
         public Builder lineIn(int startLine, int length) {
             if (startLine < 1) {
@@ -169,6 +189,8 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all sources sections where the line is exactly the given line.
+         * 
+         * @since 0.12
          */
         public Builder lineIs(int line) {
             return lineIn(line, 1);
@@ -176,6 +198,8 @@ public final class SourceSectionFilter {
 
         /**
          * Finalizes and constructs the {@link SourceSectionFilter} instance.
+         * 
+         * @since 0.12
          */
         public SourceSectionFilter build() {
             Collections.sort(rootNodeExpressions);
@@ -197,6 +221,7 @@ public final class SourceSectionFilter {
 
     }
 
+    /** @since 0.12 */
     @Override
     public String toString() {
         StringBuilder b = new StringBuilder("SourceSectionFilter[");

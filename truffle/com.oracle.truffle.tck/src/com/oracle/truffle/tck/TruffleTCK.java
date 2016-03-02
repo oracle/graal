@@ -68,12 +68,12 @@ import static org.junit.Assert.fail;
  *     <em>// create the engine</em>
  *     <em>// execute necessary scripts</em>
  *   }
- *
+ * 
  *   {@link Override @Override}
  *   <b>protected</b> {@link String} fourtyTwo() {
  *     <b>return</b> <em>// name of function that returns 42</em>
  *   }
- *
+ * 
  *   <em>// and so on...</em>
  * }
  * </pre>
@@ -111,11 +111,14 @@ import static org.junit.Assert.fail;
  * Should the <em>TCK</em> be found unsuitable for your {@link TruffleLanguage language
  * implementation} please speak-up (at <em>Truffle/Graal</em> mailing list for example) and we do
  * our best to analyze your case and adjust the <em>TCK</em> to suite everyone's needs.
+ * 
+ * @since 0.8 or earlier
  */
 public abstract class TruffleTCK {
     private static final Random RANDOM = new Random();
     private PolyglotEngine tckVM;
 
+    /** @since 0.8 or earlier */
     protected TruffleTCK() {
     }
 
@@ -129,6 +132,7 @@ public abstract class TruffleTCK {
      *
      * @return initialized Truffle virtual machine
      * @throws java.lang.Exception thrown when the VM preparation fails
+     * @since 0.8 or earlier
      */
     protected abstract PolyglotEngine prepareVM() throws Exception;
 
@@ -138,6 +142,7 @@ public abstract class TruffleTCK {
      * {@link #prepareVM() created engine}.
      *
      * @return mime type of the tested language
+     * @since 0.8 or earlier
      */
     protected abstract String mimeType();
 
@@ -147,6 +152,7 @@ public abstract class TruffleTCK {
      * <code>42</code>.
      *
      * @return name of globally exported symbol
+     * @since 0.8 or earlier
      */
     protected abstract String fourtyTwo();
 
@@ -158,6 +164,7 @@ public abstract class TruffleTCK {
      * true.
      *
      * @return name of globally exported symbol
+     * @since 0.8 or earlier
      */
     protected abstract String returnsNull();
 
@@ -167,6 +174,7 @@ public abstract class TruffleTCK {
      * {@link Number#intValue()} is equivalent of <code>param1 + param2</code>.
      *
      * @return name of globally exported symbol
+     * @since 0.8 or earlier
      */
     protected String plusInt() {
         throw new UnsupportedOperationException("Override plus(Class,Class) method!");
@@ -174,7 +182,7 @@ public abstract class TruffleTCK {
 
     /**
      * Name of function to add two numbers together. The symbol will be invoked with two parameters
-     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number}
+     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number} 
      * which's {@link Number#intValue()} is equivalent of <code>param1 + param2</code>. As some
      * languages may have different operations for different types of numbers, the actual types are
      * passed to the method and the implementation can decide to return different symbol based on
@@ -183,6 +191,7 @@ public abstract class TruffleTCK {
      * @param type1 one of byte, short, int, long, float, double class
      * @param type2 one of byte, short, int, long, float, double class
      * @return name of globally exported symbol
+     * @since 0.8 or earlier
      */
     protected String plus(Class<?> type1, Class<?> type2) {
         return plusInt();
@@ -195,6 +204,7 @@ public abstract class TruffleTCK {
      * back to its caller.
      *
      * @return name of globally exported symbol
+     * @since 0.8 or earlier
      */
     protected abstract String applyNumbers();
 
@@ -204,6 +214,7 @@ public abstract class TruffleTCK {
      * identical output.
      *
      * @return name of globally exported symbol
+     * @since 0.8 or earlier
      */
     protected String identity() {
         throw new UnsupportedOperationException("identity() method not implemented");
@@ -215,6 +226,7 @@ public abstract class TruffleTCK {
      * imaginary. The first argument contains the result of the addition.
      *
      * @return name of globally exported symbol
+     * @since 0.8 or earlier
      */
     protected String complexAdd() {
         throw new UnsupportedOperationException("complexAdd() method not implemented");
@@ -227,6 +239,7 @@ public abstract class TruffleTCK {
      * result of the addition.
      *
      * @return name of globally exported symbol
+     * @since 0.8 or earlier
      */
     protected String complexAddWithMethod() {
         throw new UnsupportedOperationException("complexAddWithMethod() method not implemented");
@@ -238,6 +251,7 @@ public abstract class TruffleTCK {
      * numbers.
      *
      * @return name of globally exported symbol, <code>null</code> if the test should be skipped
+     * @since 0.8 or earlier
      */
     protected String complexSumReal() {
         throw new UnsupportedOperationException("complexSumReal() method not implemented");
@@ -250,6 +264,7 @@ public abstract class TruffleTCK {
      * source.
      *
      * @return name of globally exported symbol, <code>null</code> if the test should be skipped
+     * @since 0.8 or earlier
      */
     protected String complexCopy() {
         throw new UnsupportedOperationException("complexCopy() method not implemented");
@@ -263,6 +278,7 @@ public abstract class TruffleTCK {
      *
      * @return name of globally exported symbol, return <code>null</code> if the language doesn't
      *         support the concept of global object
+     * @since 0.8 or earlier
      */
     protected String globalObject() {
         throw new UnsupportedOperationException("globalObject() method not implemented");
@@ -275,6 +291,7 @@ public abstract class TruffleTCK {
      * execute it. The result of the execution is then returned back to the caller.
      *
      * @return name of globally exported symbol to invoke when one wants to execute some code
+     * @since 0.8 or earlier
      */
     protected String evaluateSource() {
         throw new UnsupportedOperationException("evaluateSource() method not implemented");
@@ -289,6 +306,7 @@ public abstract class TruffleTCK {
      * @param firstName name of the first variable to multiplyCode
      * @param secondName name of the second variable to multiplyCode
      * @return code snippet that multiplies the two variables in your language
+     * @since 0.8 or earlier
      */
     protected String multiplyCode(String firstName, String secondName) {
         throw new UnsupportedOperationException("multiply(String,String) method not implemeted!");
@@ -304,6 +322,7 @@ public abstract class TruffleTCK {
      * each other. Without being mutually influenced.
      *
      * @return name of globally expected symbol
+     * @since 0.8 or earlier
      */
     protected abstract String countInvocations();
 
@@ -313,6 +332,7 @@ public abstract class TruffleTCK {
      * yield an exception.
      *
      * @return code snippet invalid in the tested language
+     * @since 0.8 or earlier
      */
     protected abstract String invalidCode();
 
@@ -336,6 +356,7 @@ public abstract class TruffleTCK {
      * <b>returnsThis</b> that will return the object itself again.
      *
      * @return name of a function that returns such compound object
+     * @since 0.8 or earlier
      */
     protected String compoundObject() {
         throw new UnsupportedOperationException("compoundObject() method not implemented");
@@ -365,6 +386,7 @@ public abstract class TruffleTCK {
      * should yield new object.
      *
      * @return name of a function that returns such values object
+     * @since 0.8 or earlier
      */
     protected String valuesObject() {
         throw new UnsupportedOperationException("valuesObject() method not implemented");
@@ -384,6 +406,7 @@ public abstract class TruffleTCK {
      * @param expectedValue the value expected by the test
      * @param actualValue the real value produced by the language
      * @throws AssertionError if the values are different according to the language semantics
+     * @since 0.8 or earlier
      */
     protected void assertDouble(String msg, double expectedValue, double actualValue) {
         assertEquals(msg, expectedValue, actualValue, 0.1);
@@ -399,7 +422,7 @@ public abstract class TruffleTCK {
     //
     // The tests
     //
-
+    /** @since 0.8 or earlier */
     @Test
     public void testFortyTwo() throws Exception {
         PolyglotEngine.Value fourtyTwo = findGlobalSymbol(fourtyTwo());
@@ -413,6 +436,7 @@ public abstract class TruffleTCK {
         assert 42 == n.intValue() : "The value is 42 =  " + n.intValue();
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testFortyTwoWithCompoundObject() throws Exception {
         CompoundObject obj = findCompoundSymbol();
@@ -423,6 +447,7 @@ public abstract class TruffleTCK {
         assertEquals("Should be 42", 42, res.intValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testNull() throws Exception {
         PolyglotEngine.Value retNull = findGlobalSymbol(returnsNull());
@@ -432,6 +457,7 @@ public abstract class TruffleTCK {
         assertNull("Should yield real Java null", res);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testNullCanBeCastToAnything() throws Exception {
         PolyglotEngine.Value retNull = findGlobalSymbol(returnsNull());
@@ -441,6 +467,7 @@ public abstract class TruffleTCK {
         assertNull("Should yield real Java null", res);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testNullInCompoundObject() throws Exception {
         CompoundObject obj = findCompoundSymbol();
@@ -451,6 +478,7 @@ public abstract class TruffleTCK {
         assertNull("Should yield real Java null", res);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithInts() throws Exception {
         int a = RANDOM.nextInt(100);
@@ -458,6 +486,7 @@ public abstract class TruffleTCK {
         doPlusWithInts(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithOneNegativeInt() throws Exception {
         int a = -RANDOM.nextInt(100);
@@ -472,6 +501,7 @@ public abstract class TruffleTCK {
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithBytes() throws Exception {
         int a = RANDOM.nextInt(100);
@@ -479,6 +509,7 @@ public abstract class TruffleTCK {
         doPlusWithBytes(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithOneNegativeByte() throws Exception {
         int a = -RANDOM.nextInt(100);
@@ -493,6 +524,7 @@ public abstract class TruffleTCK {
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithShort() throws Exception {
         int a = RANDOM.nextInt(100);
@@ -500,6 +532,7 @@ public abstract class TruffleTCK {
         doPlusWithShorts(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithOneNegativeShort() throws Exception {
         int a = RANDOM.nextInt(100);
@@ -514,6 +547,7 @@ public abstract class TruffleTCK {
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithLong() throws Exception {
         long a = RANDOM.nextInt(100);
@@ -521,6 +555,7 @@ public abstract class TruffleTCK {
         doPlusWithLong(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithLongMaxIntMinInt() throws Exception {
         doPlusWithLong(Integer.MAX_VALUE, Integer.MIN_VALUE);
@@ -533,6 +568,7 @@ public abstract class TruffleTCK {
         assert a + b == n.longValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.longValue();
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleFloatSameAsInt() throws Exception {
         int x = RANDOM.nextInt(100);
@@ -555,6 +591,7 @@ public abstract class TruffleTCK {
         assertEquals("Correct value computed via double: (" + a + " + " + b + ")", intResult.intValue(), doubleResult.intValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithFloat() throws Exception {
         float a = RANDOM.nextFloat() * 100.0f;
@@ -570,6 +607,7 @@ public abstract class TruffleTCK {
         assertDouble("Correct value computed: (" + a + " + " + b + ")", a + b, n.floatValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDouble() throws Exception {
         double a = RANDOM.nextDouble() * 100.0;
@@ -577,6 +615,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleRound() throws Exception {
         double a = RANDOM.nextInt(1000);
@@ -585,6 +624,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleMaxInt() throws Exception {
         double a = Integer.MAX_VALUE;
@@ -593,6 +633,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleMaxMinInt() throws Exception {
         double a = Integer.MAX_VALUE;
@@ -601,6 +642,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleMinIntMinusOne() throws Exception {
         double a = -1;
@@ -609,6 +651,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleMaxIntPlusOne() throws Exception {
         double a = 1;
@@ -617,6 +660,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleNaNPlusNegInf() throws Exception {
         double a = Double.NaN;
@@ -625,6 +669,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleNaNPlusPosInf() throws Exception {
         double a = Double.NaN;
@@ -633,6 +678,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleMaxIntPlusPosInf() throws Exception {
         double a = Integer.MAX_VALUE;
@@ -641,6 +687,7 @@ public abstract class TruffleTCK {
         doPlusWithDouble(a, b);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithDoubleMaxIntPlusNegInf() throws Exception {
         double a = Integer.MAX_VALUE;
@@ -656,6 +703,7 @@ public abstract class TruffleTCK {
         assertDouble("Correct value computed: (" + a + " + " + b + ")", a + b, n.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPlusWithIntsOnCompoundObject() throws Exception {
         int a = RANDOM.nextInt(100);
@@ -670,6 +718,7 @@ public abstract class TruffleTCK {
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
     }
 
+    /** @since 0.8 or earlier */
     @Test(expected = IOException.class)
     public void testInvalidTestMethod() throws Exception {
         String mime = mimeType();
@@ -678,6 +727,7 @@ public abstract class TruffleTCK {
         fail("Should yield IOException, but returned " + ret);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testMaxOrMinValue() throws Exception {
         PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
@@ -692,6 +742,7 @@ public abstract class TruffleTCK {
         assert 42 == n.intValue() : "32 > 18 and plus 10";
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testMaxOrMinValue2() throws Exception {
         PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
@@ -710,6 +761,7 @@ public abstract class TruffleTCK {
         assert 28 == n.intValue() : "18 < 32 and plus 10";
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveReturnTypeByte() throws Exception {
         PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
@@ -721,6 +773,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned (" + value + " + 10): ", value + 10, n.byteValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveReturnTypeShort() throws Exception {
         PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
@@ -732,6 +785,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned (" + value + " + 10): ", value + 10, n.shortValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveReturnTypeInt() throws Exception {
         PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
@@ -743,6 +797,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned (" + value + " + 10): ", value + 10, n.intValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveReturnTypeLong() throws Exception {
         PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
@@ -754,6 +809,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned (" + value + " + 10): ", value + 10, n.longValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveReturnTypeFloat() throws Exception {
         PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
@@ -765,6 +821,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned (" + value + " + 10): ", value + 10, n.floatValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveReturnTypeDouble() throws Exception {
         PolyglotEngine.Value apply = findGlobalSymbol(applyNumbers());
@@ -776,6 +833,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned (" + value + " + 10): ", value + 10, n.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityByte() throws Exception {
         String id = identity();
@@ -790,6 +848,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, n.byteValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityBoxedByte() throws Exception {
         String id = identity();
@@ -805,6 +864,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, n.byteValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityShort() throws Exception {
         String id = identity();
@@ -818,6 +878,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, n.shortValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityBoxedShort() throws Exception {
         String id = identity();
@@ -833,6 +894,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, n.shortValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityInt() throws Exception {
         String id = identity();
@@ -847,6 +909,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, n.intValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityBoxedInt() throws Exception {
         String id = identity();
@@ -862,6 +925,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, n.intValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityLong() throws Exception {
         String id = identity();
@@ -876,6 +940,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, n.longValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityBoxedLong() throws Exception {
         String id = identity();
@@ -891,6 +956,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, n.longValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityFloat() throws Exception {
         String id = identity();
@@ -905,6 +971,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", value, n.floatValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityBoxedFloat() throws Exception {
         String id = identity();
@@ -920,6 +987,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", value, n.floatValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityDouble() throws Exception {
         String id = identity();
@@ -934,6 +1002,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", value, n.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityBoxedDouble() throws Exception {
         String id = identity();
@@ -949,6 +1018,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", value, n.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityString() throws Exception {
         String id = identity();
@@ -963,6 +1033,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, ret);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveidentityBoxedString() throws Exception {
         String id = identity();
@@ -978,6 +1049,7 @@ public abstract class TruffleTCK {
         assertEquals("The same value returned", value, ret);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testPrimitiveIdentityForeignObject() throws Exception {
         String id = identity();
@@ -992,6 +1064,7 @@ public abstract class TruffleTCK {
         assertSameTruffleObject("The same value returned", fn, ret);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
         final String countMethod = countInvocations();
@@ -1025,6 +1098,7 @@ public abstract class TruffleTCK {
         }
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testGlobalObjectIsAccessible() throws Exception {
         String globalObjectFunction = globalObject();
@@ -1040,6 +1114,7 @@ public abstract class TruffleTCK {
         assertEquals("Global from the language same with Java obtained one", language.getGlobalObject().get(), global);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testEvaluateSource() throws Exception {
         Language language = vm().getLanguages().get(mimeType());
@@ -1055,6 +1130,7 @@ public abstract class TruffleTCK {
         assertDouble("Gets the double", expect, value);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void multiplyTwoVariables() throws Exception {
         final String firstVar = "var" + (char) ('A' + RANDOM.nextInt(24));
@@ -1068,6 +1144,7 @@ public abstract class TruffleTCK {
         assertEquals("Right value for " + firstVar + " and " + secondVar, 42, ((Number) result).intValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testAddComplexNumbers() throws Exception {
         String id = complexAdd();
@@ -1085,6 +1162,7 @@ public abstract class TruffleTCK {
         assertEquals(42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER), 0.1);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testAddComplexNumbersWithMethod() throws Exception {
         String id = complexAddWithMethod();
@@ -1102,6 +1180,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", 42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER));
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testSumRealOfComplexNumbersA() throws Exception {
         String id = complexSumReal();
@@ -1116,6 +1195,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", 42.0, n.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testSumRealOfComplexNumbersB() throws Exception {
         String id = complexSumReal();
@@ -1130,6 +1210,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", 42.0, n.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws Exception {
         String id = complexSumReal();
@@ -1147,6 +1228,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", 42.0, n.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws Exception {
         String id = complexSumReal();
@@ -1165,6 +1247,7 @@ public abstract class TruffleTCK {
         assertDouble("The same value returned", 42.0, n.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testCopyComplexNumbersA() throws Exception {
         String id = complexCopy();
@@ -1181,6 +1264,7 @@ public abstract class TruffleTCK {
         Assert.assertArrayEquals(new double[]{41, 42, 43, 44, 45, 46}, a.getData(), 0.1);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testCopyComplexNumbersB() throws Exception {
         String id = complexCopy();
@@ -1197,6 +1281,7 @@ public abstract class TruffleTCK {
         Assert.assertArrayEquals(new double[]{41, 42, 43, 44, 45, 46}, a.getData(), 0.1);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void testCopyStructuredComplexToComplexNumbersA() throws Exception {
         String id = complexCopy();
@@ -1218,6 +1303,7 @@ public abstract class TruffleTCK {
         Assert.assertArrayEquals(new double[]{41, 42, 43, 44, 45, 46}, a.getData(), 0.1);
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void readWriteByteValue() throws Exception {
         String id = valuesObject();
@@ -1228,6 +1314,7 @@ public abstract class TruffleTCK {
         assertEquals("Correct value", value, values.byteValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void readWriteShortValue() throws Exception {
         String id = valuesObject();
@@ -1238,6 +1325,7 @@ public abstract class TruffleTCK {
         assertEquals("Correct value", value, values.shortValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void readWriteIntValue() throws Exception {
         String id = valuesObject();
@@ -1248,6 +1336,7 @@ public abstract class TruffleTCK {
         assertEquals("Correct value", value, values.intValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void readWriteFloatValue() throws Exception {
         String id = valuesObject();
@@ -1258,6 +1347,7 @@ public abstract class TruffleTCK {
         assertDouble("Correct value", value, values.floatValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void readWriteDoubleValue() throws Exception {
         String id = valuesObject();
@@ -1268,6 +1358,7 @@ public abstract class TruffleTCK {
         assertDouble("Correct value", value, values.doubleValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void readWriteCharValue() throws Exception {
         String id = valuesObject();
@@ -1279,6 +1370,7 @@ public abstract class TruffleTCK {
         assertEquals("Correct value", value, values.charValue());
     }
 
+    /** @since 0.8 or earlier */
     @Test
     public void readWriteBooleanValue() throws Exception {
         String id = valuesObject();

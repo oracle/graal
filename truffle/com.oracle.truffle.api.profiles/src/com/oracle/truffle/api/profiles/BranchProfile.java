@@ -41,6 +41,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * {@inheritDoc}
  *
  * @see BranchProfile#enter()
+ * @since 0.10
  */
 public abstract class BranchProfile extends Profile {
 
@@ -49,17 +50,22 @@ public abstract class BranchProfile extends Profile {
 
     /**
      * Call when an unlikely branch is entered.
+     * 
+     * @since 0.10
      */
     public abstract void enter();
 
     /**
      * @deprecated it is not reliable when profiling is turned off.
+     * @since 0.10
      */
     @Deprecated
     public abstract boolean isVisited();
 
     /**
      * Call to create a new instance of a branch profile.
+     * 
+     * @since 0.10
      */
     public static BranchProfile create() {
         if (Profile.isProfilingEnabled()) {

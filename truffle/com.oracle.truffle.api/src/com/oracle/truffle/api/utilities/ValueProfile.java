@@ -28,17 +28,27 @@ import com.oracle.truffle.api.nodes.NodeCloneable;
 
 /**
  * @deprecated use {@link com.oracle.truffle.api.profiles.ValueProfile} instead
+ * @since 0.8 or earlier
  */
 @Deprecated
 @SuppressWarnings("deprecation")
 public abstract class ValueProfile extends NodeCloneable {
+    /**
+     * @since 0.8 or earlier
+     * @deprecated don't use
+     */
+    @Deprecated
+    public ValueProfile() {
+    }
 
+    /** @since 0.8 or earlier */
     public abstract <T> T profile(T value);
 
     /**
      * @deprecated use
      *             {@link com.oracle.truffle.api.profiles.PrimitiveValueProfile#createEqualityProfile()}
      *             instead
+     * @since 0.8 or earlier
      */
     @Deprecated
     public static PrimitiveValueProfile createPrimitiveProfile() {
@@ -48,6 +58,7 @@ public abstract class ValueProfile extends NodeCloneable {
     /**
      * @deprecated use {@link com.oracle.truffle.api.profiles.ValueProfile#createClassProfile()}
      *             instead
+     * @since 0.8 or earlier
      */
     @Deprecated
     public static ValueProfile createClassProfile() {
@@ -57,6 +68,7 @@ public abstract class ValueProfile extends NodeCloneable {
     /**
      * @deprecated use {@link com.oracle.truffle.api.profiles.ValueProfile#createIdentityProfile()}
      *             instead
+     * @since 0.8 or earlier
      */
     @Deprecated
     public static ValueProfile createIdentityProfile() {

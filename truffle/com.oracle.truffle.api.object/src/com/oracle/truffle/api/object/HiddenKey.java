@@ -27,18 +27,23 @@ package com.oracle.truffle.api.object;
 /**
  * A unique key to be used for private object fields; excluded from enumeration and compared by
  * object identity.
+ * 
+ * @since 0.8 or earlier
  */
 public final class HiddenKey {
     private final String name;
 
+    /** @since 0.8 or earlier */
     public HiddenKey(String name) {
         this.name = name;
     }
 
+    /** @since 0.8 or earlier */
     public String getName() {
         return name;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String toString() {
         return name;

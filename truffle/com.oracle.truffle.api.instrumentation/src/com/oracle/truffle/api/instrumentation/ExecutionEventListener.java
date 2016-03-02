@@ -29,6 +29,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 /**
  * A listener attached by an {@link Instrumenter} to specific locations of a guest language program
  * to listen to instrumentation events.
+ * 
+ * @since 0.12
  */
 public interface ExecutionEventListener {
 
@@ -40,6 +42,7 @@ public interface ExecutionEventListener {
      *
      * @param context indicating the current location in the guest language AST
      * @param frame the frame that was used for executing instrumented node
+     * @since 0.12
      */
     void onEnter(EventContext context, VirtualFrame frame);
 
@@ -51,6 +54,7 @@ public interface ExecutionEventListener {
      *
      * @param context indicating the current location in the guest language AST
      * @param frame the frame that was used for executing instrumented node
+     * @since 0.12
      */
     void onReturnValue(EventContext context, VirtualFrame frame, Object result);
 
@@ -62,6 +66,7 @@ public interface ExecutionEventListener {
      *
      * @param context indicating the current location in the guest language AST
      * @param frame the frame that was used for executing instrumented node
+     * @since 0.12
      */
     void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception);
 

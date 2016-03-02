@@ -33,6 +33,8 @@ import com.oracle.truffle.api.nodes.Node;
  * Inter-operability is based on sending messages. Standard messages are defined as as constants
  * like {@link #IS_NULL} or factory methods in this class, but one can always define their own,
  * specialized messages.
+ * 
+ * @since 0.8 or earlier
  */
 public abstract class Message {
     /**
@@ -41,6 +43,8 @@ public abstract class Message {
      * {@link #hashCode()} methods will operate on the class equivalence. Only then the subclass
      * will work properly with {@link #valueOf(java.lang.String)} and
      * {@link #toString(com.oracle.truffle.api.interop.Message)} methods.
+     * 
+     * @since 0.8 or earlier
      */
     protected Message() {
     }
@@ -65,6 +69,8 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
+     * 
+     * @since 0.8 or earlier
      */
     public static final Message READ = Read.INSTANCE;
 
@@ -85,6 +91,8 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
+     * 
+     * @since 0.8 or earlier
      */
     public static final Message UNBOX = Unbox.INSTANCE;
 
@@ -109,6 +117,8 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
+     * 
+     * @since 0.8 or earlier
      */
     public static final Message WRITE = Write.INSTANCE;
 
@@ -156,6 +166,7 @@ public abstract class Message {
      *
      * @param argumentsLength number of parameters to pass to the target
      * @return execute message
+     * @since 0.8 or earlier
      */
     public static Message createExecute(int argumentsLength) {
         return Execute.create(Execute.EXECUTE, argumentsLength);
@@ -181,6 +192,8 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
+     * 
+     * @since 0.8 or earlier
      */
     public static final Message IS_EXECUTABLE = IsExecutable.INSTANCE;
 
@@ -247,6 +260,7 @@ public abstract class Message {
      * @param argumentsLength number of parameters to pass to the target
      * @return message combining read & execute messages tailored for use with object oriented
      *         languages
+     * @since 0.8 or earlier
      */
     public static Message createInvoke(int argumentsLength) {
         return Execute.create(Execute.INVOKE, argumentsLength);
@@ -261,6 +275,7 @@ public abstract class Message {
      *
      * @param argumentsLength number of parameters to pass to the target
      * @return new instance message
+     * @since 0.8 or earlier
      */
     public static Message createNew(int argumentsLength) {
         return Execute.create(Execute.NEW, argumentsLength);
@@ -284,6 +299,8 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
+     * 
+     * @since 0.8 or earlier
      */
     public static final Message IS_NULL = IsNull.INSTANCE;
 
@@ -292,6 +309,8 @@ public abstract class Message {
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
      * this message should yield value of {@link Boolean}.
+     * 
+     * @since 0.8 or earlier
      */
     public static final Message HAS_SIZE = HasSize.INSTANCE;
 
@@ -301,6 +320,8 @@ public abstract class Message {
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
      * this message should yield value of {@link Integer}.
+     * 
+     * @since 0.8 or earlier
      */
     public static final Message GET_SIZE = GetSize.INSTANCE;
 
@@ -320,6 +341,8 @@ public abstract class Message {
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
      * created for this message should yield value of {@link Boolean}. If the object responds with
      * {@link Boolean#TRUE}, it is safe to continue by sending it {@link #UNBOX} message.
+     * 
+     * @since 0.8 or earlier
      */
     public static final Message IS_BOXED = IsBoxed.INSTANCE;
 
@@ -331,6 +354,7 @@ public abstract class Message {
      *
      * @param message the object to compare to
      * @return true, if the structure of the message is that same as of <code>this</code> one.
+     * @since 0.8 or earlier
      */
     @Override
     public abstract boolean equals(Object message);
@@ -340,6 +364,7 @@ public abstract class Message {
      * implement <code>hashCode()</code>.
      *
      * @return hash code
+     * @since 0.8 or earlier
      */
     @Override
     public abstract int hashCode();
@@ -351,6 +376,7 @@ public abstract class Message {
      * @return node to be inserted into your AST and passed back to
      *         {@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object[])}
      *         method.
+     * @since 0.8 or earlier
      */
     public final Node createNode() {
         return new ForeignObjectAccessHeadNode(this);
@@ -363,6 +389,7 @@ public abstract class Message {
      *
      * @param message the message to convert
      * @return canonical string representation
+     * @since 0.9
      */
     public static String toString(Message message) {
         if (Message.READ == message) {
@@ -403,6 +430,7 @@ public abstract class Message {
      * @param message canonical string representation of a message
      * @return the message
      * @throws IllegalArgumentException if the string does not represent known message
+     * @since 0.9
      */
     public static Message valueOf(String message) {
         try {

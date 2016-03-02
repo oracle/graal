@@ -35,6 +35,7 @@ import com.oracle.truffle.api.TruffleLanguage;
  * Truffle language}s.
  *
  * @param <Event> type of event to observe and handle
+ * @since 0.9
  */
 public abstract class EventConsumer<Event> {
     final Class<Event> type;
@@ -43,6 +44,7 @@ public abstract class EventConsumer<Event> {
      * Creates new handler for specified event type.
      *
      * @param eventType type of events to handle
+     * @since 0.9
      */
     public EventConsumer(Class<Event> eventType) {
         this.type = eventType;
@@ -52,6 +54,7 @@ public abstract class EventConsumer<Event> {
      * Called by the {@link PolyglotEngine} when event of requested type appears.
      *
      * @param event the instance of an event of the request type
+     * @since 0.9
      */
     protected abstract void on(Event event);
 }

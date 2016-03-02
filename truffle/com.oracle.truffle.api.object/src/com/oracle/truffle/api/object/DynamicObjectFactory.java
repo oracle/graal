@@ -29,6 +29,7 @@ package com.oracle.truffle.api.object;
  * instance properties initialized to the values passed to {@link #newInstance(Object...)}.
  *
  * @see Shape#createFactory()
+ * @since 0.8 or earlier
  */
 public interface DynamicObjectFactory {
     /**
@@ -37,11 +38,13 @@ public interface DynamicObjectFactory {
      *
      * @param initialValues the values to initialize the object with, in order.
      * @return a new {@link DynamicObject} initialized with the provided values.
+     * @since 0.8 or earlier
      */
     DynamicObject newInstance(Object... initialValues);
 
     /**
      * @return the shape of objects created by this factory.
+     * @since 0.8 or earlier
      */
     Shape getShape();
 }

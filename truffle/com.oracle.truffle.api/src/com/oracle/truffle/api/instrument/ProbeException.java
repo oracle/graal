@@ -32,19 +32,24 @@ import com.oracle.truffle.api.nodes.Node;
  * failure.
  * <p>
  * Language and tool implementations should ensure that clients of tools never see this exception.
+ * 
+ * @since 0.8 or earlier
  */
 public class ProbeException extends RuntimeException {
     static final long serialVersionUID = 1L;
     private final ProbeFailure failure;
 
+    /** @since 0.8 or earlier */
     public ProbeException(Reason reason, Node parent, Node child, Object wrapper) {
         this.failure = new ProbeFailure(reason, parent, child, wrapper);
     }
 
+    /** @since 0.8 or earlier */
     public ProbeFailure getFailure() {
         return failure;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String toString() {
         return failure.getMessage();

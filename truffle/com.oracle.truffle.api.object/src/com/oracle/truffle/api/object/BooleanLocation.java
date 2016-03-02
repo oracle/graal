@@ -24,31 +24,38 @@
  */
 package com.oracle.truffle.api.object;
 
+/** @since 0.8 or earlier */
 public interface BooleanLocation extends TypedLocation {
     /**
      * @see #get(DynamicObject, Shape)
+     * @since 0.8 or earlier
      */
     boolean getBoolean(DynamicObject store, Shape shape);
 
     /**
      * @see #get(DynamicObject, boolean)
+     * @since 0.8 or earlier
      */
     boolean getBoolean(DynamicObject store, boolean condition);
 
     /**
      * @see #set(DynamicObject, Object)
+     * @since 0.8 or earlier
      */
     void setBoolean(DynamicObject store, boolean value) throws FinalLocationException;
 
     /**
      * @see #set(DynamicObject, Object, Shape)
+     * @since 0.8 or earlier
      */
     void setBoolean(DynamicObject store, boolean value, Shape shape) throws FinalLocationException;
 
     /**
      * @see #set(DynamicObject, Object, Shape, Shape)
+     * @since 0.8 or earlier
      */
     void setBoolean(DynamicObject store, boolean value, Shape oldShape, Shape newShape);
 
+    /** @since 0.8 or earlier */
     Class<Boolean> getType();
 }

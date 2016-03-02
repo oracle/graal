@@ -30,34 +30,46 @@ import com.oracle.truffle.api.nodes.Node;
 /**
  * An Instrumentation-managed {@link Node} that synchronously propagates notification of AST
  * Execution Events through the {@linkplain Instrumenter Instrumentation Framework} .
+ * 
+ * @since 0.8 or earlier
  */
 public abstract class EventHandlerNode extends Node implements InstrumentationNode {
-
+    /** @since 0.8 or earlier */
     protected EventHandlerNode() {
     }
 
     /**
      * An AST node's execute method is about to be called.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract void enter(Node node, VirtualFrame frame);
 
     /**
      * An AST Node's {@code void}-valued execute method has just returned.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract void returnVoid(Node node, VirtualFrame frame);
 
     /**
      * An AST Node's execute method has just returned a value (boxed if primitive).
+     * 
+     * @since 0.8 or earlier
      */
     public abstract void returnValue(Node node, VirtualFrame frame, Object result);
 
     /**
      * An AST Node's execute method has just thrown an exception.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract void returnExceptional(Node node, VirtualFrame frame, Throwable exception);
 
     /**
      * Gets the {@link Probe} that manages this chain of event handling.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract Probe getProbe();
 

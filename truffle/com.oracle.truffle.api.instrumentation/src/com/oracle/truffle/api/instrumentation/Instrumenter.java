@@ -31,6 +31,7 @@ package com.oracle.truffle.api.instrumentation;
  *
  * @see #attachFactory(SourceSectionFilter, ExecutionEventNodeFactory)
  * @see #attachListener(SourceSectionFilter, ExecutionEventListener)
+ * @since 0.12
  */
 public abstract class Instrumenter {
 
@@ -40,12 +41,16 @@ public abstract class Instrumenter {
     /**
      * Starts event notification for a given {@link ExecutionEventNodeFactory factory} and returns a
      * {@link EventBinding binding} which represents a handle to dispose the notification.
+     * 
+     * @since 0.12
      */
     public abstract <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(SourceSectionFilter filter, T factory);
 
     /**
      * Starts event notification for a given {@link ExecutionEventListener listener} and returns a
      * {@link EventBinding binding} which represents a handle to dispose the notification.
+     * 
+     * @since 0.12
      */
     public abstract <T extends ExecutionEventListener> EventBinding<T> attachListener(SourceSectionFilter filter, T listener);
 

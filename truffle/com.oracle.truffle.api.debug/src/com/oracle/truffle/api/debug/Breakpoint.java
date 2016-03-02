@@ -34,12 +34,16 @@ import com.oracle.truffle.api.source.Source;
  * breakpoint by calling
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)} or
  * other methods in the {@link Debugger} class.
+ * 
+ * @since 0.9
  */
 @SuppressWarnings("javadoc")
 public abstract class Breakpoint {
 
     /**
      * A general model of the states occupied by a {@link Breakpoint} during its lifetime.
+     * 
+     * @since 0.9
      */
     public enum State {
 
@@ -78,10 +82,12 @@ public abstract class Breakpoint {
             this.name = name;
         }
 
+        /** @since 0.9 */
         public String getName() {
             return name;
         }
 
+        /** @since 0.9 */
         @Override
         public String toString() {
             return name;
@@ -94,6 +100,8 @@ public abstract class Breakpoint {
 
     /**
      * Gets current state of the breakpoint.
+     * 
+     * @since 0.9
      */
     public abstract State getState();
 
@@ -102,11 +110,14 @@ public abstract class Breakpoint {
      *
      * @param enabled <code>true</code> to activate the breakpoint, <code>false</code> to deactivate
      *            it so that it has no effect.
+     * @since 0.9
      */
     public abstract void setEnabled(boolean enabled);
 
     /**
      * Is this breakpoint active?
+     * 
+     * @since 0.9
      */
     public abstract boolean isEnabled();
 
@@ -117,22 +128,29 @@ public abstract class Breakpoint {
      *            evaluated in the lexical context at the breakpoint location.
      * @throws IOException if condition is invalid
      * @throws UnsupportedOperationException if the breakpoint does not support conditions
+     * @since 0.9
      */
     public abstract void setCondition(String expr) throws IOException;
 
     /**
      * Gets the text that defines the current condition on this breakpoint; {@code null} if this
      * breakpoint is currently unconditional.
+     * 
+     * @since 0.9
      */
     public abstract Source getCondition();
 
     /**
      * Does this breakpoint remove itself after first activation?
+     * 
+     * @since 0.9
      */
     public abstract boolean isOneShot();
 
     /**
      * Gets the number of hits left to be ignored before halting.
+     * 
+     * @since 0.9
      */
     public abstract int getIgnoreCount();
 
@@ -141,23 +159,31 @@ public abstract class Breakpoint {
      * ignore count and a {@linkplain #setCondition(String) condition} are specified, the condition
      * is evaluated first: if {@code false} it is not considered to be a hit. In other words, the
      * ignore count is for successful conditions only.
+     * 
+     * @since 0.9
      */
     public abstract void setIgnoreCount(int ignoreCount);
 
     /**
      * Number of times this breakpoint has reached, with one exception; if the breakpoint has a
      * condition that evaluates to {@code false}, it does not count as a hit.
+     * 
+     * @since 0.9
      */
     public abstract int getHitCount();
 
     /**
      * Disables this breakpoint and removes any associated instrumentation; it becomes permanently
      * inert.
+     * 
+     * @since 0.9
      */
     public abstract void dispose();
 
     /**
      * Gets a human-sensible description of this breakpoint's location in a {@link Source}.
+     * 
+     * @since 0.9
      */
     public abstract String getLocationDescription();
 }

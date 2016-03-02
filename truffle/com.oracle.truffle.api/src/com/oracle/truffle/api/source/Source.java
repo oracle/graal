@@ -108,6 +108,8 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
  * reload.</li>
  * </ol>
  * <p>
+ * 
+ * @since 0.8 or earlier
  */
 public abstract class Source {
     private static final Logger LOG = Logger.getLogger(Source.class.getName());
@@ -126,6 +128,8 @@ public abstract class Source {
 
     /**
      * Locates an existing instance by the name under which it was indexed.
+     * 
+     * @since 0.8 or earlier
      */
     public static Source find(String name) {
         final WeakReference<Source> nameRef = nameToSource.get(name);
@@ -140,6 +144,7 @@ public abstract class Source {
      * @param reset forces any existing {@link Source} cache to be cleared, forcing a re-read
      * @return canonical representation of the file's contents.
      * @throws IOException if the file can not be read
+     * @since 0.8 or earlier
      */
     public static Source fromFileName(String fileName, boolean reset) throws IOException {
 
@@ -171,6 +176,7 @@ public abstract class Source {
      * @param fileName name
      * @return canonical representation of the file's contents.
      * @throws IOException if the file can not be read
+     * @since 0.8 or earlier
      */
     public static Source fromFileName(String fileName) throws IOException {
         return fromFileName(fileName, false);
@@ -196,6 +202,7 @@ public abstract class Source {
      * @return canonical representation of the file's contents.
      * @throws IOException if the file cannot be found, or if an existing Source not created by this
      *             method matches the file name
+     * @since 0.8 or earlier
      */
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromFileName from compiled code");
@@ -229,6 +236,7 @@ public abstract class Source {
      * @param chars textual source code
      * @param description a note about the origin, for error messages and debugging
      * @return a newly created, non-indexed source representation
+     * @since 0.8 or earlier
      */
     public static Source fromText(CharSequence chars, String description) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
@@ -241,6 +249,7 @@ public abstract class Source {
      *
      * @param description a note about the origin, for error messages and debugging
      * @return a newly created, non-indexed, initially empty, appendable source representation
+     * @since 0.8 or earlier
      */
     public static Source fromAppendableText(String description) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
@@ -255,6 +264,7 @@ public abstract class Source {
      * @param chars textual source code
      * @param name string to use for indexing/lookup
      * @return a newly created, source representation
+     * @since 0.8 or earlier
      */
     public static Source fromNamedText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
@@ -271,6 +281,7 @@ public abstract class Source {
      *
      * @param name string to use for indexing/lookup
      * @return a newly created, indexed, initially empty, appendable source representation
+     * @since 0.8 or earlier
      */
     public static Source fromNamedAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedAppendable from compiled code");
@@ -288,6 +299,7 @@ public abstract class Source {
      * @param length the number of characters in the sub-range
      * @return a new instance representing a sub-range of another Source
      * @throws IllegalArgumentException if the specified sub-range is not contained in the base
+     * @since 0.8 or earlier
      */
     public static Source subSource(Source base, int baseCharIndex, int length) {
         CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
@@ -303,6 +315,7 @@ public abstract class Source {
      * @param baseCharIndex 0-based index of the first character of the sub-range
      * @return a new instance representing a sub-range at the end of another Source
      * @throws IllegalArgumentException if the index is out of range
+     * @since 0.8 or earlier
      */
     public static Source subSource(Source base, int baseCharIndex) {
         CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
@@ -317,6 +330,7 @@ public abstract class Source {
      * @param description identifies the origin, possibly useful for debugging
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
+     * @since 0.8 or earlier
      */
     public static Source fromURL(URL url, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromURL from compiled code");
@@ -330,6 +344,7 @@ public abstract class Source {
      * @param description a note about the origin, possibly useful for debugging
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
+     * @since 0.8 or earlier
      */
     public static Source fromReader(Reader reader, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromReader from compiled code");
@@ -345,6 +360,7 @@ public abstract class Source {
      * @param description a note about the origin, possibly useful for debugging
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
+     * @since 0.8 or earlier
      */
     public static Source fromBytes(byte[] bytes, String description, Charset charset) {
         return fromBytes(bytes, 0, bytes.length, description, charset);
@@ -362,6 +378,7 @@ public abstract class Source {
      * @param description a note about the origin, possibly useful for debugging
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
+     * @since 0.8 or earlier
      */
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, Charset charset) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
@@ -372,6 +389,8 @@ public abstract class Source {
     /**
      * Enables/disables caching of file contents, <em>disabled</em> by default. Caching of sources
      * created from literal text or readers is always enabled.
+     * 
+     * @since 0.8 or earlier
      */
     public static void setFileCaching(boolean enabled) {
         fileCacheEnabled = enabled;
@@ -409,6 +428,7 @@ public abstract class Source {
      * name of a guest language source code file.
      *
      * @return the name of the guest language program
+     * @since 0.8 or earlier
      */
     public abstract String getName();
 
@@ -418,11 +438,14 @@ public abstract class Source {
      * rather than a full path.
      *
      * @return the short name of the guest language program
+     * @since 0.8 or earlier
      */
     public abstract String getShortName();
 
     /**
      * The normalized, canonical name if the source is a file.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract String getPath();
 
@@ -430,16 +453,21 @@ public abstract class Source {
      * The URL if the source is retrieved via URL.
      *
      * @return URL or <code>null</code>
+     * @since 0.8 or earlier
      */
     public abstract URL getURL();
 
     /**
      * Access to the source contents.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract Reader getReader();
 
     /**
      * Access to the source contents.
+     * 
+     * @since 0.8 or earlier
      */
     public final InputStream getInputStream() {
         return new ByteArrayInputStream(getCode().getBytes());
@@ -447,6 +475,8 @@ public abstract class Source {
 
     /**
      * Gets the number of characters in the source.
+     * 
+     * @since 0.8 or earlier
      */
     public final int getLength() {
         return getTextMap().length();
@@ -454,11 +484,15 @@ public abstract class Source {
 
     /**
      * Returns the complete text of the code.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract String getCode();
 
     /**
      * Returns a subsection of the code test.
+     * 
+     * @since 0.8 or earlier
      */
     public String getCode(int charIndex, int charLength) {
         return getCode().substring(charIndex, charIndex + charLength);
@@ -466,6 +500,8 @@ public abstract class Source {
 
     /**
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
+     * 
+     * @since 0.8 or earlier
      */
     public final String getCode(int lineNumber) {
         final int offset = getTextMap().lineStartOffset(lineNumber);
@@ -476,6 +512,8 @@ public abstract class Source {
     /**
      * The number of text lines in the source, including empty lines; characters at the end of the
      * source without a terminating newline count as a line.
+     * 
+     * @since 0.8 or earlier
      */
     public final int getLineCount() {
         return getTextMap().lineCount();
@@ -486,6 +524,7 @@ public abstract class Source {
      * position.
      *
      * @throws IllegalArgumentException if the offset is outside the text contents
+     * @since 0.8 or earlier
      */
     public final int getLineNumber(int offset) throws IllegalArgumentException {
         return getTextMap().offsetToLine(offset);
@@ -495,6 +534,7 @@ public abstract class Source {
      * Given a 0-based character offset, return the 1-based number of the column at the position.
      *
      * @throws IllegalArgumentException if the offset is outside the text contents
+     * @since 0.8 or earlier
      */
     public final int getColumnNumber(int offset) throws IllegalArgumentException {
         return getTextMap().offsetToCol(offset);
@@ -504,6 +544,7 @@ public abstract class Source {
      * Given a 1-based line number, return the 0-based offset of the first character in the line.
      *
      * @throws IllegalArgumentException if there is no such line in the text
+     * @since 0.8 or earlier
      */
     public final int getLineStartOffset(int lineNumber) throws IllegalArgumentException {
         return getTextMap().lineStartOffset(lineNumber);
@@ -514,6 +555,7 @@ public abstract class Source {
      * numbered line.
      *
      * @throws IllegalArgumentException if there is no such line in the text
+     * @since 0.8 or earlier
      */
     public final int getLineLength(int lineNumber) throws IllegalArgumentException {
         return getTextMap().lineLength(lineNumber);
@@ -524,6 +566,7 @@ public abstract class Source {
      *
      * @param chars the text to append
      * @throws UnsupportedOperationException by concrete subclasses that do not support appending
+     * @since 0.8 or earlier
      */
     public void appendCode(CharSequence chars) {
         throw new UnsupportedOperationException();
@@ -543,6 +586,7 @@ public abstract class Source {
      * @param charIndex the 0-based index of the first character of the section
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
+     * @since 0.8 or earlier
      */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
         checkRange(charIndex, length);
@@ -565,6 +609,7 @@ public abstract class Source {
      * @param tags the tags associated with this section. Tags must be non-null and
      *            {@link String#intern() interned}.
      * @return newly created object representing the specified region
+     * @since 0.8 or earlier
      */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length, String... tags) {
         checkRange(charIndex, length);
@@ -591,6 +636,7 @@ public abstract class Source {
      * @return newly created object representing the specified region
      * @throws IllegalArgumentException if arguments are outside the text of the source
      * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.8 or earlier
      */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int length) {
         final int lineStartOffset = getTextMap().lineStartOffset(startLine);
@@ -619,6 +665,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if either of the arguments are outside the text of the
      *             source
      * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.8 or earlier
      */
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
         return createSection(identifier, charIndex, length, SourceSection.EMTPY_TAGS);
@@ -644,6 +691,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if either of the arguments are outside the text of the
      *             source
      * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.8 or earlier
      */
     public final SourceSection createSection(String identifier, int charIndex, int length, String... tags) throws IllegalArgumentException {
         checkRange(charIndex, length);
@@ -667,6 +715,7 @@ public abstract class Source {
      * @return newly created object representing the specified line
      * @throws IllegalArgumentException if the line does not exist the source
      * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.8 or earlier
      */
     public final SourceSection createSection(String identifier, int lineNumber) {
         final int charIndex = getTextMap().lineStartOffset(lineNumber);
@@ -680,6 +729,7 @@ public abstract class Source {
      *
      * @param lineNumber a 1-based line number in this source
      * @return a representation of a line in this source
+     * @since 0.8 or earlier
      */
     public final LineLocation createLineLocation(int lineNumber) {
         return new LineLocation(this, lineNumber);
@@ -719,6 +769,7 @@ public abstract class Source {
      *
      * @param mime mime type to use
      * @return new (identical) source, just associated {@link #getMimeType()}
+     * @since 0.8 or earlier
      */
     public final Source withMimeType(String mime) {
         try {
@@ -736,6 +787,7 @@ public abstract class Source {
      * one can directly {@link #withMimeType(java.lang.String) provide a MIME type} to each source.
      *
      * @return MIME type of this source or <code>null</code>, if unknown
+     * @since 0.8 or earlier
      */
     public String getMimeType() {
         if (mimeType == null) {

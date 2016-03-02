@@ -32,6 +32,8 @@ import java.lang.annotation.Target;
 
 /**
  * Specifies a factory method that creates a {@link Node} which is used to cast this child.
+ * 
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
