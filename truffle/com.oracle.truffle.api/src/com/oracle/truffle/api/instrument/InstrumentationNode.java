@@ -31,11 +31,15 @@ import com.oracle.truffle.api.nodes.Node;
  * {@linkplain Instrumenter Instrumentation Framework} . Such nodes should not be part of any Guest
  * Language execution semantics, and should in general not be visible to ordinary Instrumentation
  * clients.
+ * 
+ * @since 0.8 or earlier
  */
 public interface InstrumentationNode {
 
     /**
      * A short description of the particular role played by the node, intended to support debugging.
+     * 
+     * @since 0.8 or earlier
      */
     String instrumentationInfo();
 

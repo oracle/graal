@@ -38,6 +38,8 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * All instances of classes implementing {@code Assumption} must be held in {@code final} fields for
  * compiler optimizations to take effect.
+ * 
+ * @since 0.8 or earlier
  */
 public interface Assumption {
 
@@ -48,6 +50,7 @@ public interface Assumption {
      * {@link Node#replace(Node)}) with a node that no longer relies on the assumption.
      *
      * @throws InvalidAssumptionException If the assumption is no longer valid.
+     * @since 0.8 or earlier
      */
     void check() throws InvalidAssumptionException;
 
@@ -55,11 +58,14 @@ public interface Assumption {
      * Checks whether the assumption is still valid.
      *
      * @return a boolean value indicating the validity of the assumption
+     * @since 0.8 or earlier
      */
     boolean isValid();
 
     /**
      * Invalidates this assumption. Performs no operation, if the assumption is already invalid.
+     * 
+     * @since 0.8 or earlier
      */
     void invalidate();
 
@@ -67,6 +73,7 @@ public interface Assumption {
      * A name for the assumption that is used for debug output.
      *
      * @return the name of the assumption
+     * @since 0.8 or earlier
      */
     String getName();
 }

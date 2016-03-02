@@ -55,12 +55,14 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @see #createBinaryProfile()
  * @see #createCountingProfile()
  * @see LoopConditionProfile
+ * @since 0.10
  */
 public abstract class ConditionProfile extends Profile {
 
     ConditionProfile() {
     }
 
+    /** @since 0.10 */
     public abstract boolean profile(boolean value);
 
     /**
@@ -73,6 +75,7 @@ public abstract class ConditionProfile extends Profile {
      *
      * @see ConditionProfile
      * @see #createBinaryProfile()
+     * @since 0.10
      */
     public static ConditionProfile createCountingProfile() {
         if (Profile.isProfilingEnabled()) {
@@ -89,6 +92,7 @@ public abstract class ConditionProfile extends Profile {
      *
      * @see ConditionProfile
      * @see ConditionProfile#createCountingProfile()
+     * @since 0.10
      */
     public static ConditionProfile createBinaryProfile() {
         if (Profile.isProfilingEnabled()) {
@@ -124,6 +128,13 @@ public abstract class ConditionProfile extends Profile {
         @CompilationFinal private int trueCount;
         @CompilationFinal private int falseCount;
 
+        /**
+         * A constant holding the maximum value an {@code int} can have, 2<sup>30</sup>-1. The sum
+         * of the true and false count must not overflow. This constant is used to check whether one
+         * of the counts does not exceed the required maximum value.
+         */
+        public static final int MAX_VALUE = 0x3fffffff;
+
         Counting() {
             /* package protected constructor */
         }
@@ -134,13 +145,13 @@ public abstract class ConditionProfile extends Profile {
                 if (value) {
                     // local required to guarantee no overflow in multi-threaded environments
                     int t = trueCount;
-                    if (t < Integer.MAX_VALUE) {
+                    if (t < MAX_VALUE) {
                         trueCount = t + 1;
                     }
                 } else {
                     // local required to guarantee no overflow in multi-threaded environments
                     int f = falseCount;
-                    if (f < Integer.MAX_VALUE) {
+                    if (f < MAX_VALUE) {
                         falseCount = f + 1;
                     }
                 }
@@ -153,15 +164,14 @@ public abstract class ConditionProfile extends Profile {
                 if (value) {
                     if (t == 0) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        t = 1;
                     }
                 } else {
                     if (f == 0) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        f = 1;
                     }
                 }
-                return CompilerDirectives.injectBranchProbability((double) t / (double) (t + f), value);
+                int sum = t + f;
+                return CompilerDirectives.injectBranchProbability((double) t / (double) sum, value);
             }
         }
 
@@ -177,8 +187,9 @@ public abstract class ConditionProfile extends Profile {
         public String toString() {
             int t = trueCount;
             int f = falseCount;
-            return toString(ConditionProfile.class, trueCount == 0 && falseCount == 0, false, //
-                            String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", (double) t / (double) (t + f), t, f));
+            int sum = t + f;
+            String details = String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", (double) t / (double) sum, t, f);
+            return toString(ConditionProfile.class, sum == 0, false, details);
         }
 
         /* Needed for lazy class loading. */

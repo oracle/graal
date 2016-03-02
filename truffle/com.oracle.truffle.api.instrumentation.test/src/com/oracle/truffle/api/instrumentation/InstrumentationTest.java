@@ -251,6 +251,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             return false;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected Visualizer getVisualizer() {
             return null;

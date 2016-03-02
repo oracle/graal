@@ -29,6 +29,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/** @since 0.8 or earlier */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
 public @interface ImplicitCast {

@@ -30,33 +30,45 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
  * Description of a failed attempt to instrument an AST node.
+ * 
+ * @since 0.8 or earlier
  */
 public final class ProbeFailure {
-
+    /** @since 0.8 or earlier */
     public enum Reason {
 
         /**
          * Node to be probed has no parent.
+         * 
+         * @since 0.8 or earlier
          */
         NO_PARENT("Node to be probed has no parent"),
 
         /**
          * The node to be probed is a wrapper.
+         * 
+         * @since 0.8 or earlier
          */
         WRAPPER_NODE("The node to be probed is a wrapper"),
 
         /**
          * The node to be probed does not support {@linkplain Instrumenter Instrumentation} .
+         * 
+         * @since 0.8 or earlier
          */
         NOT_INSTRUMENTABLE("The node to be project is \"not instrumentable\""),
 
         /**
          * No wrapper could be created that is also a {@link Node}.
+         * 
+         * @since 0.8 or earlier
          */
         NO_WRAPPER("No wrapper could be created"),
 
         /**
          * Wrapper not assignable to the parent's child field.
+         * 
+         * @since 0.8 or earlier
          */
         WRAPPER_TYPE("Wrapper not assignable to parent's child field");
 
@@ -66,6 +78,7 @@ public final class ProbeFailure {
             this.message = message;
         }
 
+        /** @since 0.8 or earlier */
         public String getMessage() {
             return message;
         }
@@ -83,6 +96,7 @@ public final class ProbeFailure {
      * @param parent the parent, if known, of the child being probed
      * @param child this child being probed
      * @param wrapper the {@link WrapperNode} created to implement the probe
+     * @since 0.8 or earlier
      */
     public ProbeFailure(Reason reason, Node parent, Node child, Object wrapper) {
         this.reason = reason;
@@ -93,6 +107,7 @@ public final class ProbeFailure {
 
     /**
      * @return a short explanation of the failure
+     * @since 0.8 or earlier
      */
     public Reason getReason() {
         return reason;
@@ -100,6 +115,7 @@ public final class ProbeFailure {
 
     /**
      * @return the parent, if any, of the node being probed
+     * @since 0.8 or earlier
      */
     public Node getParent() {
         return parent;
@@ -107,6 +123,7 @@ public final class ProbeFailure {
 
     /**
      * @return the node being probed
+     * @since 0.8 or earlier
      */
     public Node getChild() {
         return child;
@@ -114,11 +131,13 @@ public final class ProbeFailure {
 
     /**
      * @return the {@link WrapperNode} created for the probe attempt
+     * @since 0.8 or earlier
      */
     public Object getWrapper() {
         return wrapper;
     }
 
+    /** @since 0.8 or earlier */
     public String getMessage() {
         final StringBuilder sb = new StringBuilder(reason.message + ": ");
         if (parent != null) {

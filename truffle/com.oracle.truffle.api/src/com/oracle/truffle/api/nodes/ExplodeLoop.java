@@ -32,6 +32,8 @@ import java.lang.annotation.Target;
 /**
  * Specifies for a method that the loops with constant number of invocations should be fully
  * unrolled.
+ * 
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

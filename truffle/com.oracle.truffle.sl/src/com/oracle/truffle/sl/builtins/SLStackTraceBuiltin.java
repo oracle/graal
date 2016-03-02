@@ -78,8 +78,14 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
         final StringBuilder str = new StringBuilder();
 
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Integer>() {
+            private int skip = 1; // skip stack trace builtin
+
             @Override
             public Integer visitFrame(FrameInstance frameInstance) {
+                if (skip > 0) {
+                    skip--;
+                    return null;
+                }
                 CallTarget callTarget = frameInstance.getCallTarget();
                 Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY, true);
                 RootNode rn = ((RootCallTarget) callTarget).getRootNode();

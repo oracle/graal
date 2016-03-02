@@ -83,6 +83,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see ProbeInstrument
  * @see SyntaxTag
  */
+@Deprecated
 public final class CoverageTracker extends Instrumenter.Tool {
 
     /** Counting data. */

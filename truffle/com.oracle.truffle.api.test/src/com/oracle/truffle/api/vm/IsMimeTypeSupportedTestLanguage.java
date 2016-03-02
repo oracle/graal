@@ -71,6 +71,7 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected Visualizer getVisualizer() {
         throw new UnsupportedOperationException();

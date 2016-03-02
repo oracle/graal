@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,10 +40,12 @@ public class DefaultVisualizer implements Visualizer {
         this.astPrinter = new DefaultASTPrinter();
     }
 
+    @SuppressWarnings("deprecation")
     public ASTPrinter getASTPrinter() {
         return astPrinter;
     }
 
+    @SuppressWarnings("deprecation")
     public String displaySourceLocation(Node node) {
         if (node == null) {
             return "<unknown>";
@@ -60,6 +62,7 @@ public class DefaultVisualizer implements Visualizer {
         return section.getShortDescription() + (estimated ? "~" : "");
     }
 
+    @SuppressWarnings("deprecation")
     public String displayMethodName(Node node) {
         if (node == null) {
             return null;
@@ -71,10 +74,12 @@ public class DefaultVisualizer implements Visualizer {
         return root.getCallTarget().toString();
     }
 
+    @SuppressWarnings("deprecation")
     public String displayCallTargetName(CallTarget callTarget) {
         return callTarget.toString();
     }
 
+    @SuppressWarnings("deprecation")
     public String displayValue(Object value, int trim) {
         if (value == null) {
             return "<empty>";
@@ -82,6 +87,7 @@ public class DefaultVisualizer implements Visualizer {
         return trim(value.toString(), trim);
     }
 
+    @SuppressWarnings("deprecation")
     public String displayIdentifier(FrameSlot slot) {
         return slot.getIdentifier().toString();
     }

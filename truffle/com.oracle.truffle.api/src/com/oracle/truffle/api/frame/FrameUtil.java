@@ -24,7 +24,16 @@
  */
 package com.oracle.truffle.api.frame;
 
+/** @since 0.8 or earlier */
 public final class FrameUtil {
+    /**
+     * @deprecated accidentally public - don't use
+     * @since 0.8 or earlier
+     */
+    @Deprecated
+    public FrameUtil() {
+    }
+
     /**
      * Read a frame slot that is guaranteed to be of the desired kind (either previously checked by
      * a guard or statically known).
@@ -32,6 +41,7 @@ public final class FrameUtil {
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getObject(FrameSlot)
+     * @since 0.8 or earlier
      */
     public static Object getObjectSafe(Frame frame, FrameSlot frameSlot) {
         try {
@@ -48,6 +58,7 @@ public final class FrameUtil {
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getByte(FrameSlot)
+     * @since 0.8 or earlier
      */
     public static byte getByteSafe(Frame frame, FrameSlot frameSlot) {
         try {
@@ -64,6 +75,7 @@ public final class FrameUtil {
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getBoolean(FrameSlot)
+     * @since 0.8 or earlier
      */
     public static boolean getBooleanSafe(Frame frame, FrameSlot frameSlot) {
         try {
@@ -80,6 +92,7 @@ public final class FrameUtil {
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getInt(FrameSlot)
+     * @since 0.8 or earlier
      */
     public static int getIntSafe(Frame frame, FrameSlot frameSlot) {
         try {
@@ -96,6 +109,7 @@ public final class FrameUtil {
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getLong(FrameSlot)
+     * @since 0.8 or earlier
      */
     public static long getLongSafe(Frame frame, FrameSlot frameSlot) {
         try {
@@ -112,6 +126,7 @@ public final class FrameUtil {
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getDouble(FrameSlot)
+     * @since 0.8 or earlier
      */
     public static double getDoubleSafe(Frame frame, FrameSlot frameSlot) {
         try {
@@ -128,6 +143,7 @@ public final class FrameUtil {
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getFloat(FrameSlot)
+     * @since 0.8 or earlier
      */
     public static float getFloatSafe(Frame frame, FrameSlot frameSlot) {
         try {

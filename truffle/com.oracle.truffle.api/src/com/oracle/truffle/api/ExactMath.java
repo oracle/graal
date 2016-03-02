@@ -28,9 +28,19 @@ package com.oracle.truffle.api;
  * This class contains methods that will be part of java.lang.Math starting with JDK 8. Until JDK 8
  * is release, we duplicate them here because they are generally useful for dynamic language
  * implementations.
+ * 
+ * @since 0.8 or earlier
  */
 public class ExactMath {
+    /**
+     * @deprecated accidentally public - don't use
+     * @since 0.8 or earlier
+     */
+    @Deprecated
+    public ExactMath() {
+    }
 
+    /** @since 0.8 or earlier */
     public static int addExact(int x, int y) {
         int r = x + y;
         // HD 2-12 Overflow iff both arguments have the opposite sign of the result
@@ -40,6 +50,7 @@ public class ExactMath {
         return r;
     }
 
+    /** @since 0.8 or earlier */
     public static long addExact(long x, long y) {
         long r = x + y;
         // HD 2-12 Overflow iff both arguments have the opposite sign of the result
@@ -49,6 +60,7 @@ public class ExactMath {
         return r;
     }
 
+    /** @since 0.8 or earlier */
     public static int subtractExact(int x, int y) {
         int r = x - y;
         // HD 2-12 Overflow iff the arguments have different signs and
@@ -59,6 +71,7 @@ public class ExactMath {
         return r;
     }
 
+    /** @since 0.8 or earlier */
     public static long subtractExact(long x, long y) {
         long r = x - y;
         // HD 2-12 Overflow iff the arguments have different signs and
@@ -69,6 +82,7 @@ public class ExactMath {
         return r;
     }
 
+    /** @since 0.8 or earlier */
     public static int multiplyExact(int x, int y) {
         long r = (long) x * (long) y;
         if ((int) r != r) {
@@ -77,6 +91,7 @@ public class ExactMath {
         return (int) r;
     }
 
+    /** @since 0.8 or earlier */
     public static long multiplyExact(long x, long y) {
         long r = x * y;
         long ax = Math.abs(x);
@@ -92,11 +107,13 @@ public class ExactMath {
         return r;
     }
 
+    /** @since 0.8 or earlier */
     public static int multiplyHigh(int x, int y) {
         long r = (long) x * (long) y;
         return (int) (r >> 32);
     }
 
+    /** @since 0.8 or earlier */
     public static int multiplyHighUnsigned(int x, int y) {
         long xl = x & 0xFFFFFFFFL;
         long yl = y & 0xFFFFFFFFL;
@@ -104,6 +121,7 @@ public class ExactMath {
         return (int) (r >> 32);
     }
 
+    /** @since 0.8 or earlier */
     public static long multiplyHigh(long x, long y) {
         // Checkstyle: stop
         long x0, y0, z0;
@@ -125,6 +143,7 @@ public class ExactMath {
         return x1 * y1 + z2 + (z1 >> 32);
     }
 
+    /** @since 0.8 or earlier */
     public static long multiplyHighUnsigned(long x, long y) {
         // Checkstyle: stop
         long x0, y0, z0;

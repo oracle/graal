@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -37,12 +38,12 @@ import com.oracle.truffle.api.nodes.RootNode;
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use
  * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
  */
-public class DefaultCallTarget implements RootCallTarget {
+public final class DefaultCallTarget implements RootCallTarget {
 
     private final RootNode rootNode;
     private boolean initialized;
 
-    protected DefaultCallTarget(RootNode function) {
+    DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
         this.rootNode.applyInstrumentation();
@@ -53,8 +54,21 @@ public class DefaultCallTarget implements RootCallTarget {
         return rootNode.toString();
     }
 
-    public final RootNode getRootNode() {
+    public RootNode getRootNode() {
         return rootNode;
+    }
+
+    Object callDirectOrIndirect(final Node callNode, Object... args) {
+        if (!this.initialized) {
+            initialize();
+        }
+        final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
+        getRuntime().pushFrame(new CallNodeFrameInstance(this, frame, callNode));
+        try {
+            return getRootNode().execute(frame);
+        } finally {
+            getRuntime().popFrame();
+        }
     }
 
     @Override
@@ -63,32 +77,73 @@ public class DefaultCallTarget implements RootCallTarget {
             initialize();
         }
         final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        FrameInstance oldCurrentFrame = defaultTruffleRuntime().setCurrentFrame(new FrameInstance() {
-
-            public Frame getFrame(FrameAccess access, boolean slowPath) {
-                if (access == FrameAccess.MATERIALIZE) {
-                    return new DefaultMaterializedFrame(frame);
-                }
-                return frame;
-            }
-
-            public boolean isVirtualFrame() {
-                return false;
-            }
-
-            public Node getCallNode() {
-                return null;
-            }
-
-            public CallTarget getCallTarget() {
-                return DefaultCallTarget.this;
-            }
-        });
+        getRuntime().pushFrame(new CallTargetFrameInstance(this, frame));
         try {
             return getRootNode().execute(frame);
         } finally {
-            defaultTruffleRuntime().setCurrentFrame(oldCurrentFrame);
+            getRuntime().popFrame();
         }
+    }
+
+    private static DefaultTruffleRuntime getRuntime() {
+        return (DefaultTruffleRuntime) Truffle.getRuntime();
+    }
+
+    private abstract static class DefaultFrameInstance implements FrameInstance {
+
+        private final CallTarget target;
+        private final VirtualFrame frame;
+
+        DefaultFrameInstance(CallTarget target, VirtualFrame frame) {
+            this.target = target;
+            this.frame = frame;
+        }
+
+        public final Frame getFrame(FrameAccess access, boolean slowPath) {
+            if (access == FrameAccess.NONE) {
+                return null;
+            }
+            if (access == FrameAccess.MATERIALIZE) {
+                return frame.materialize();
+            }
+            return frame;
+        }
+
+        public final boolean isVirtualFrame() {
+            return false;
+        }
+
+        public final CallTarget getCallTarget() {
+            return target;
+        }
+
+    }
+
+    private static class CallTargetFrameInstance extends DefaultFrameInstance {
+
+        CallTargetFrameInstance(CallTarget target, VirtualFrame frame) {
+            super(target, frame);
+        }
+
+        public Node getCallNode() {
+            return null;
+        }
+
+    }
+
+    private static class CallNodeFrameInstance extends DefaultFrameInstance {
+
+        private final Node callNode;
+
+        CallNodeFrameInstance(CallTarget target, VirtualFrame frame, Node callNode) {
+            super(target, frame);
+            this.callNode = callNode;
+        }
+
+        public Node getCallNode() {
+            return callNode;
+        }
+
     }
 
     private void initialize() {
@@ -101,9 +156,5 @@ public class DefaultCallTarget implements RootCallTarget {
                 }
             }
         }
-    }
-
-    private static DefaultTruffleRuntime defaultTruffleRuntime() {
-        return (DefaultTruffleRuntime) Truffle.getRuntime();
     }
 }

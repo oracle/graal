@@ -26,6 +26,8 @@ package com.oracle.truffle.api;
 
 /**
  * Represents the target of a call.
+ * 
+ * @since 0.8 or earlier
  */
 public interface CallTarget {
 
@@ -34,6 +36,7 @@ public interface CallTarget {
      *
      * @param arguments passed arguments as an object array
      * @return the return result of the call
+     * @since 0.8 or earlier
      */
     Object call(Object... arguments);
 }

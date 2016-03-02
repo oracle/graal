@@ -115,6 +115,7 @@ import java.lang.annotation.Target;
  * @see TypeSystem
  * @see TypeSystemReference
  * @see UnsupportedSpecializationException
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})

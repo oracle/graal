@@ -73,6 +73,7 @@ import java.lang.annotation.Target;
  *
  * @see Specialization
  * @see NodeChild
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})

@@ -98,6 +98,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @see SyntaxTag
  * @see ProbeFailure
  */
+@Deprecated
 public final class NodeExecCounter extends Instrumenter.Tool {
 
     /**
@@ -339,10 +340,12 @@ public final class NodeExecCounter extends Instrumenter.Tool {
             this.count = count;
         }
 
+        @SuppressWarnings("deprecation")
         public Class<?> nodeClass() {
             return nodeClass;
         }
 
+        @SuppressWarnings("deprecation")
         public long executionCount() {
             return count;
         }
