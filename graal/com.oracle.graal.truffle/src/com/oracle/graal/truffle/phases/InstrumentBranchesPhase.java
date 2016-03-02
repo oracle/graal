@@ -49,11 +49,110 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
-    public static final Pattern METHOD_REGEX_FILTER = Pattern.compile(TruffleInstrumentBranchesFilter.getValue());
-    public static final int TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
-    public static final boolean[] TABLE = new boolean[TABLE_SIZE];
+    private static final Pattern METHOD_REGEX_FILTER = Pattern.compile(TruffleInstrumentBranchesFilter.getValue());
+    private static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
+    private static final boolean[] ACCESS_TABLE = new boolean[ACCESS_TABLE_SIZE];
+    public static BranchInstrumentation instrumentation = new BranchInstrumentation();
+
+    @Override
+    protected void run(StructuredGraph graph, HighTierContext context) {
+        if (METHOD_REGEX_FILTER.matcher(graph.method().getName()).matches()) {
+            Field javaField = null;
+            try {
+                javaField = InstrumentBranchesPhase.class.getField("ACCESS_TABLE");
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(javaField);
+            JavaConstant tableConstant = context.getConstantReflection().readConstantFieldValue(tableField, null);
+            try {
+                for (IfNode n : graph.getNodes().filter(IfNode.class)) {
+                    BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
+                    if (p != null) {
+                        insertCounter(graph, tableField, tableConstant, n, p, true);
+                        insertCounter(graph, tableField, tableConstant, n, p, false);
+                    }
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private static void insertCounter(StructuredGraph graph, ResolvedJavaField tableField, JavaConstant tableConstant,
+                    IfNode ifNode, BranchInstrumentation.Point p, boolean isTrue) {
+        assert (tableConstant != null);
+        AbstractBeginNode beginNode = (isTrue) ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
+        ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.exactNonNull((ResolvedJavaType) tableField.getType())));
+        ConstantNode rawIndex = graph.unique(ConstantNode.forInt(p.getRawIndex(isTrue)));
+        ConstantNode v = graph.unique(ConstantNode.forBoolean(true));
+        StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, JavaKind.Boolean, v));
+
+        graph.addAfterFixed(beginNode, store);
+    }
+
+    public static void addNodeSourceLocation(Node node, BytecodePosition pos) {
+        node.setNodeContext(new SourceLocation(pos));
+    }
+
+    public static class SourceLocation {
+        private BytecodePosition position;
+
+        public SourceLocation(BytecodePosition position) {
+            this.position = position;
+        }
+
+        public BytecodePosition getPosition() {
+            return position;
+        }
+    }
 
     public static class BranchInstrumentation {
+
+        public Map<String, Point> pointMap = new LinkedHashMap<>();
+        public int tableCount = 0;
+
+        /*
+         * Node source location is determined by its inlining chain. The first location in the chain
+         * refers to the location in the original method, so we use that to determine the unique
+         * source location key.
+         */
+        private static String encode(Node ifNode) {
+            SourceLocation loc = ifNode.getNodeContext(SourceLocation.class);
+            if (loc != null) {
+                return loc.getPosition().toString().replace("\n", ",");
+            } else {
+                // IfNode has no position information, and is probably synthetic, so we do not
+                // instrument it.
+                return null;
+            }
+        }
+
+        public synchronized void dumpAccessTable() {
+            // Dump profiling information when exiting.
+            if (TruffleInstrumentBranches.getValue()) {
+                System.out.println("Branch execution profile");
+                System.out.println("========================");
+                for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
+                    System.out.println(entry.getKey() + ": " + entry.getValue() + "\n");
+                }
+            }
+        }
+
+        public synchronized Point getOrCreatePoint(IfNode n) {
+            String key = encode(n);
+            if (key == null)
+                return null;
+            Point existing = pointMap.get(key);
+            if (existing != null)
+                return existing;
+            else {
+                int index = tableCount++;
+                Point p = new Point(index);
+                pointMap.put(key, p);
+                return p;
+            }
+        }
 
         public enum BranchState {
             NONE,
@@ -76,18 +175,14 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         private class Point {
             private int index;
 
-            public Point(int index) {
+            Point(int index) {
                 this.index = index;
-            }
-
-            public int getIndex() {
-                return index;
             }
 
             public BranchState getBranchState() {
                 int rawIndex = index * 2;
-                boolean ifVisited = TABLE[rawIndex];
-                boolean elseVisited = TABLE[rawIndex + 1];
+                boolean ifVisited = ACCESS_TABLE[rawIndex];
+                boolean elseVisited = ACCESS_TABLE[rawIndex + 1];
                 return BranchState.from(ifVisited, elseVisited);
             }
 
@@ -104,114 +199,5 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        public Map<String, Point> pointMap = new LinkedHashMap<>();
-        public int tableCount = 0;
-
-        public BranchInstrumentation() {
-            // Dump profiling information when exiting.
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    if (TruffleInstrumentBranches.getValue()) {
-                        System.out.println("Branch execution profile");
-                        System.out.println("========================");
-                        for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
-                            System.out.println(entry.getKey() + ": " + entry.getValue() + "\n");
-                        }
-                    }
-                }
-            });
-        }
-
-        /*
-         * Node source location is determined by its inlining chain. The first location in the chain
-         * refers to the location in the original method, so we use that to determine the unique
-         * source location key.
-         */
-        private String encode(Node ifNode) {
-            SourceLocation loc = ifNode.getNodeContext(SourceLocation.class);
-            if (loc != null) {
-                return loc.getPosition().toString().replace("\n", ",");
-            } else {
-                // IfNode has no position information, and is probably synthetic, so we do not
-                // instrument it.
-                return null;
-            }
-        }
-
-        public synchronized Point getOrCreatePoint(IfNode n) {
-            String key = encode(n);
-            if (key == null)
-                return null;
-            Point existing = pointMap.get(key);
-            if (existing != null)
-                return existing;
-            else {
-                int index = tableCount++;
-                Point p = new Point(index);
-                pointMap.put(key, p);
-                return p;
-            }
-        }
-
-    }
-
-    public static BranchInstrumentation instrumentation = new BranchInstrumentation();
-
-    public static class SourceLocation {
-        private BytecodePosition position;
-
-        public SourceLocation(BytecodePosition position) {
-            this.position = position;
-        }
-
-        public BytecodePosition getPosition() {
-            return position;
-        }
-    }
-
-    public InstrumentBranchesPhase() {
-
-    }
-
-    private void insertCounter(StructuredGraph graph, ResolvedJavaField tableField, JavaConstant tableConstant,
-                    IfNode ifNode, BranchInstrumentation.Point p, boolean isTrue) {
-        assert (tableConstant != null);
-        AbstractBeginNode beginNode = (isTrue) ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
-        ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.exactNonNull((ResolvedJavaType) tableField.getType())));
-        ConstantNode rawIndex = graph.unique(ConstantNode.forInt(p.getRawIndex(isTrue)));
-        ConstantNode v = graph.unique(ConstantNode.forBoolean(true));
-        StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, JavaKind.Boolean, v));
-
-        graph.addAfterFixed(beginNode, store);
-    }
-
-    public static void addNodeSourceLocation(Node node, BytecodePosition pos) {
-        node.setNodeContext(new SourceLocation(pos));
-    }
-
-    @Override
-    protected void run(StructuredGraph graph, HighTierContext context) {
-        if (METHOD_REGEX_FILTER.matcher(graph.method().getName()).matches()) {
-            Field javaField = null;
-            try {
-                javaField = InstrumentBranchesPhase.class.getField("TABLE");
-            } catch (Exception e) {
-                return;
-            }
-            ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(javaField);
-            JavaConstant tableConstant = context.getConstantReflection().readConstantFieldValue(tableField, null);
-            try {
-                for (IfNode n : graph.getNodes().filter(IfNode.class)) {
-                    BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
-                    if (p != null) {
-                        insertCounter(graph, tableField, tableConstant, n, p, true);
-                        insertCounter(graph, tableField, tableConstant, n, p, false);
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
     }
 }

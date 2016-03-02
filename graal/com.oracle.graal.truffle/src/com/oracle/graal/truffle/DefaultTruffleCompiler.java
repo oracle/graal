@@ -86,7 +86,7 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
         public static class Instance extends GraphBuilderPhase.Instance {
             public Instance(HighTierContext context, GraphBuilderConfiguration config, IntrinsicContext intrinsicContext) {
                 super(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(),
-                        config, context.getOptimisticOptimizations(), intrinsicContext);
+                                config, context.getOptimisticOptimizations(), intrinsicContext);
             }
 
             @Override
@@ -94,9 +94,10 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
                 super.run(graph);
             }
 
+            @Override
             protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent,
-                                                          ResolvedJavaMethod method, int entryBCI,
-                                                          IntrinsicContext intrinsicContext) {
+                            ResolvedJavaMethod method, int entryBCI,
+                            IntrinsicContext intrinsicContext) {
                 return new BytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext) {
                     @Override
                     protected void postProcessIfNode(ValueNode node) {
