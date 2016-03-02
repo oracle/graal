@@ -22,21 +22,6 @@
  */
 package com.oracle.graal.truffle.phases;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
-
-import java.lang.reflect.Field;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.regex.Pattern;
-
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -46,12 +31,26 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
     private static final Pattern METHOD_REGEX_FILTER = Pattern.compile(TruffleInstrumentBranchesFilter.getValue());
     private static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
-    private static final boolean[] ACCESS_TABLE = new boolean[ACCESS_TABLE_SIZE];
+    public static final boolean[] ACCESS_TABLE = new boolean[ACCESS_TABLE_SIZE];
     public static BranchInstrumentation instrumentation = new BranchInstrumentation();
 
     @Override
