@@ -84,7 +84,7 @@ public class LayoutParser {
         }
 
         for (AnnotationMirror annotationMirror : layoutElement.getAnnotationMirrors()) {
-            if (annotationMirror.getAnnotationType().toString().equals(Layout.class.getCanonicalName())) {
+            if (ElementUtils.getQualifiedName(annotationMirror.getAnnotationType()).equals(Layout.class.getCanonicalName())) {
                 objectTypeSuperclass = ElementUtils.getAnnotationValue(TypeMirror.class, annotationMirror, "objectTypeSuperclass");
             }
         }
@@ -126,7 +126,7 @@ public class LayoutParser {
 
     private void parseName(TypeElement layoutElement) {
         parsePackageName(layoutElement);
-        interfaceFullName = layoutElement.getQualifiedName().toString();
+        interfaceFullName = ElementUtils.getQualifiedName(layoutElement);
         final String nameString = layoutElement.getSimpleName().toString();
 
         if (!nameString.endsWith("Layout")) {
@@ -183,7 +183,7 @@ public class LayoutParser {
                                 firstParameter.getSimpleName());
             }
 
-            if (!firstParameter.asType().toString().equals(DynamicObjectFactory.class.getName())) {
+            if (!ElementUtils.getQualifiedName(firstParameter.asType()).equals(DynamicObjectFactory.class.getName())) {
                 processor.reportError(firstParameter, "If an @Layout has shape properties, the first parameter of the constructor must be of type DynamicObjectFactory (was %s)",
                                 firstParameter.asType());
             }
@@ -227,7 +227,7 @@ public class LayoutParser {
     }
 
     private void parsePackageName(TypeElement layoutElement) {
-        final String[] packageComponents = layoutElement.getQualifiedName().toString().split("\\.");
+        final String[] packageComponents = ElementUtils.getQualifiedName(layoutElement).split("\\.");
 
         final StringBuilder packageBuilder = new StringBuilder();
 
@@ -253,7 +253,7 @@ public class LayoutParser {
 
         final VariableElement parameter = methodElement.getParameters().get(0);
 
-        final String type = parameter.asType().toString();
+        final String type = ElementUtils.getQualifiedName(parameter.asType());
 
         final String expectedParameterName;
 
@@ -282,7 +282,7 @@ public class LayoutParser {
         }
 
         final VariableElement parameter = methodElement.getParameters().get(0);
-        final String parameterType = parameter.asType().toString();
+        final String parameterType = ElementUtils.getQualifiedName(parameter.asType());
 
         final boolean isShapeGetter;
         final boolean isObjectTypeGetter;
@@ -331,7 +331,7 @@ public class LayoutParser {
         }
 
         final VariableElement parameter = methodElement.getParameters().get(0);
-        final String parameterType = parameter.asType().toString();
+        final String parameterType = ElementUtils.getQualifiedName(parameter.asType());
 
         final boolean isShapeSetter;
         final String expectedParameterName;
@@ -388,7 +388,7 @@ public class LayoutParser {
         final VariableElement currentValueParameter = methodElement.getParameters().get(1);
         final VariableElement newValueParameter = methodElement.getParameters().get(2);
 
-        if (!objectParameter.asType().toString().equals(DynamicObject.class.getName())) {
+        if (!ElementUtils.getQualifiedName(objectParameter.asType()).equals(DynamicObject.class.getName())) {
             processor.reportError(methodElement, "@Layout compare and set method should have a first parameter of type DynamicObject");
         }
 
@@ -421,7 +421,7 @@ public class LayoutParser {
         final VariableElement objectParameter = methodElement.getParameters().get(0);
         final VariableElement newValueParameter = methodElement.getParameters().get(1);
 
-        if (!objectParameter.asType().toString().equals(DynamicObject.class.getName())) {
+        if (!ElementUtils.getQualifiedName(objectParameter.asType()).equals(DynamicObject.class.getName())) {
             processor.reportError(methodElement, "@Layout get and set method should have a first parameter of type DynamicObject");
         }
 
@@ -455,7 +455,7 @@ public class LayoutParser {
     private void setPropertyType(Element element, PropertyBuilder builder, TypeMirror type) {
         if (builder.getType() == null) {
             builder.setType(type);
-        } else if (!type.toString().equals(builder.getType().toString())) {
+        } else if (!ElementUtils.getQualifiedName(type).equals(ElementUtils.getQualifiedName(builder.getType()))) {
             processor.reportError(element, "@Layout property types are inconsistent - was previously %s but now %s",
                             builder.getType(), type);
         }
