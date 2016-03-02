@@ -218,11 +218,11 @@ public class GraalCompiler {
             for (int i = 0; i < EmitLIRRepeatCount.getValue(); i++) {
                 SchedulePhase dummySchedule = new SchedulePhase();
                 dummySchedule.apply(graph);
-                emitLIR(backend, graph, stub, registerConfig, lirSuites);
+                emitLIR(backend, graph, stub, registerConfig, lirSuites, compilationResult);
             }
 
             LIRGenerationResult lirGen = null;
-            lirGen = emitLIR(backend, graph, stub, registerConfig, lirSuites);
+            lirGen = emitLIR(backend, graph, stub, registerConfig, lirSuites, compilationResult);
             try (Scope s2 = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
                 int bytecodeSize = graph.method() == null ? 0 : graph.getBytecodeSize();
                 compilationResult.setHasUnsafeAccess(graph.hasUnsafeAccess());
@@ -236,12 +236,12 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    public static LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites) {
+    public static <T extends CompilationResult> LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites, T compilationResult) {
         OverrideScope overrideScope = null;
         LIRSuites lirSuites0 = lirSuites;
         while (true) {
             try (OverrideScope scope = overrideScope) {
-                return emitLIR0(backend, graph, stub, registerConfig, lirSuites0);
+                return emitLIR0(backend, graph, stub, registerConfig, lirSuites0, compilationResult);
             } catch (BailoutAndRestartBackendException e) {
                 if (BailoutAndRestartBackendException.Options.LIRUnlockBackendRestart.getValue() && e.shouldRestart()) {
                     overrideScope = e.getOverrideScope();
@@ -257,7 +257,8 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    private static LIRGenerationResult emitLIR0(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites) {
+    private static <T extends CompilationResult> LIRGenerationResult emitLIR0(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites,
+                    T compilationResult) {
         try (Scope ds = Debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start()) {
             ScheduleResult schedule = graph.getLastSchedule();
             List<Block> blocks = schedule.getCFG().getBlocks();
@@ -278,13 +279,7 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
             FrameMapBuilder frameMapBuilder = backend.newFrameMapBuilder(registerConfig);
-            String compilationUnitName;
-            ResolvedJavaMethod method = graph.method();
-            if (method == null) {
-                compilationUnitName = "<unknown>";
-            } else {
-                compilationUnitName = method.format("%H.%n(%p)");
-            }
+            String compilationUnitName = getCompilationUnitName(graph, compilationResult);
             LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, graph, stub);
             LIRGeneratorTool lirGen = backend.newLIRGenerator(lirGenRes);
             NodeLIRBuilderTool nodeLirGen = backend.newNodeLIRBuilder(graph, lirGen);
@@ -308,6 +303,17 @@ public class GraalCompiler {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
+    }
+
+    protected static <T extends CompilationResult> String getCompilationUnitName(StructuredGraph graph, T compilationResult) {
+        if (compilationResult != null && compilationResult.getName() != null) {
+            return compilationResult.getName();
+        }
+        ResolvedJavaMethod method = graph.method();
+        if (method == null) {
+            return "<unknown>";
+        }
+        return method.format("%H.%n(%p)");
     }
 
     public static <T extends AbstractBlockBase<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,

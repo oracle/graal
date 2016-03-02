@@ -904,8 +904,9 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                              * avoid errors
                              */
                             allocator.assignSpillSlot(interval);
-                            Debug.dump(allocator.getLIR(), description);
-                            allocator.printIntervals(description);
+                            if (Debug.isDumpEnabled()) {
+                                dumpLIRAndIntervals(description);
+                            }
                             throw new OutOfRegistersException("LinearScan: no register found", description);
                         }
 
@@ -937,6 +938,11 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             splitAndSpillIntersectingIntervals(reg);
             return;
         }
+    }
+
+    protected void dumpLIRAndIntervals(String description) {
+        Debug.dump(allocator.getLIR(), description);
+        allocator.printIntervals(description);
     }
 
     @SuppressWarnings("try")

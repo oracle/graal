@@ -71,7 +71,7 @@ public final class BiDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
 
     @SuppressWarnings("try")
     private TraceBuilderResult<T> build(T startBlock) {
-        try (Indent indent = Debug.logAndIndent("start trace building: " + startBlock)) {
+        try (Indent indent = Debug.logAndIndent("start trace building: %s", startBlock)) {
             ArrayList<Trace<T>> traces = buildTraces(startBlock);
             return new TraceBuilderResult<>(traces, blockToTrace);
         }
@@ -98,7 +98,7 @@ public final class BiDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
     @SuppressWarnings("try")
     private Collection<T> startTrace(T block, int traceNumber) {
         ArrayDeque<T> trace = new ArrayDeque<>();
-        try (Indent i = Debug.logAndIndent("StartTrace: " + block)) {
+        try (Indent i = Debug.logAndIndent("StartTrace: %s", block)) {
             try (Indent indentFront = Debug.logAndIndent("Head:")) {
                 for (T currentBlock = block; currentBlock != null; currentBlock = selectPredecessor(currentBlock)) {
                     addBlockToTrace(currentBlock, traceNumber);
