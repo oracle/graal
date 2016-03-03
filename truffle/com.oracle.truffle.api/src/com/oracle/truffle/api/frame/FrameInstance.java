@@ -28,7 +28,29 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 
-/** @since 0.8 or earlier */
+/**
+ *
+ *
+ * <pre>
+ *                     ===============
+ * {@link TruffleRuntime#getCurrentFrame() getCurrentFrame()}: |  CallTarget   | FrameInstance
+ *                     ===============
+ * {@link TruffleRuntime#getCallerFrame() getCallerFrame()}:  |  CallNode     | FrameInstance
+ *                    |  CallTarget   |
+ *                     ===============
+ *                    |  CallNode     | FrameInstance
+ *                    |  CallTarget   |
+ *                     ===============
+ *                          ...
+ *                     ===============
+ *                    |  CallNode     | FrameInstance
+ *Initial call:       |  CallTarget   |
+ *                     ===============
+ *
+ * </pre>
+ *
+ * @since 0.8 or earlier
+ */
 public interface FrameInstance {
     /** @since 0.8 or earlier */
     enum FrameAccess {
@@ -49,10 +71,33 @@ public interface FrameInstance {
     boolean isVirtualFrame();
 
     /**
-     * @return the node that is calling the next {@link CallTarget target} or <code>null</code> if
-     *         its the topmost frame or the next {@link CallTarget target} was called without a
-     *         {@link TruffleRuntime#createDirectCallNode(CallTarget)} or
-     *         {@link TruffleRuntime#createIndirectCallNode() indirect} call node.
+     * Returns a node representing the callsite of the next new target on the stack.
+     *
+     * This picture indicates how {@link FrameInstance} groups the stack.
+     *
+     * <pre>
+     *                     ===============
+     * {@link TruffleRuntime#getCurrentFrame() Current}:         ,>|  CallTarget   | FrameInstance
+     *                  | ===============
+     * {@link TruffleRuntime#getCallerFrame() Caller}:          '-|  CallNode     | FrameInstance
+     *                  ,>|  CallTarget   |
+     *                  |  ===============
+     *                  '-|  CallNode     | FrameInstance
+     *                    |  CallTarget   |
+     *                     ===============
+     *                          ...
+     *                     ===============
+     *                    |  CallNode     | FrameInstance
+     *Initial call:       |  CallTarget   |
+     *                     ===============
+     *
+     * </pre>
+     *
+     * @return a node representing the callsite of the next new target on the stack. Null in case
+     *         there is no upper target or if the target was not invoked using a
+     *         {@link TruffleRuntime#createDirectCallNode(CallTarget) direct} or
+     *         {@link TruffleRuntime#createDirectCallNode(CallTarget) indirect} call node.
+     *
      * @since 0.8 or earlier
      **/
     Node getCallNode();

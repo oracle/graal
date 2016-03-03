@@ -165,7 +165,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     void pushFrame(VirtualFrame frame, CallTarget target, Node parentCallNode) {
         LinkedList<FrameInstance> threadLocalStackTrace = getThreadLocalStackTrace();
-        // we need to ensure that frame instances are immutable to we need to recreate the parent
+        // we need to ensure that frame instances are immutable so we need to recreate the parent
         // frame
         if (threadLocalStackTrace.size() > 0) {
             DefaultFrameInstance oldInstance = (DefaultFrameInstance) threadLocalStackTrace.removeFirst();
