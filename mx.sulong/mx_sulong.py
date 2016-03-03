@@ -340,7 +340,7 @@ def compilationSucceedsOption():
     return "-Dgraal.TruffleCompilationExceptionsAreFatal=true"
 
 def getRemoteClasspathOption():
-    return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.classpath(['com.oracle.truffle.llvm.nodes']) + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " " " -Dsulong.Debug=false"
+    return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false"
 
 def getLLVMRootOption():
     return "-Dsulong.ProjectRoot=" + _root

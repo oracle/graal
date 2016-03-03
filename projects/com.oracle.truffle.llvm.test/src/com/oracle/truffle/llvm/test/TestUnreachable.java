@@ -33,7 +33,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.llvm.LLVM;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode.LLVMUnreachableException;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode.LLVMUnreachableException;
 
 public class TestUnreachable {
 
