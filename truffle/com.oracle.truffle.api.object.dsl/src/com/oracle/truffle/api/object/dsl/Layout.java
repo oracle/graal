@@ -189,10 +189,9 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <h2>Implicit Casts</h2>
  *
- * {@link com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong} and
- * {@link com.oracle.truffle.api.object.Layout.ImplicitCast.IntToDouble} flags can be set in the
- * generated layout by setting {@link #implicitCastIntToLong} or {@link #implicitCastIntToDouble}.
- * This can only be done in base layouts, not subclassed layouts.
+ * {@code IntToLong} and {@code IntToDouble} implicit cast flags can be set in the generated layout
+ * by setting {@link #implicitCastIntToLong} or {@link #implicitCastIntToDouble}. This can only be
+ * done in base layouts, not subclassed layouts.
  *
  * <h2>Custom Identifiers</h2>
  *
