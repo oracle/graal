@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.frame;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 
 /** @since 0.8 or earlier */
@@ -47,9 +48,18 @@ public interface FrameInstance {
     /** @since 0.8 or earlier */
     boolean isVirtualFrame();
 
-    /** @since 0.8 or earlier */
+    /**
+     * @return the node that is calling the next {@link CallTarget target} or <code>null</code> if
+     *         its the topmost frame or the next {@link CallTarget target} was called without a
+     *         {@link TruffleRuntime#createDirectCallNode(CallTarget)} or
+     *         {@link TruffleRuntime#createIndirectCallNode() indirect} call node.
+     * @since 0.8 or earlier
+     **/
     Node getCallNode();
 
-    /** @since 0.8 or earlier */
+    /**
+     * @return the {@link CallTarget target} that created this frame instance by executing it.
+     * @since 0.8 or earlier
+     **/
     CallTarget getCallTarget();
 }
