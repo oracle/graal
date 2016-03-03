@@ -37,6 +37,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.ListIterator;
 
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -505,27 +506,32 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                 int instructionIndex = numInstructions;
 
                 // iterate all blocks in reverse order
-                for (int i = allocator.blockCount() - 1; i >= 0; i--) {
+                List<? extends AbstractBlockBase<?>> blocks = allocator.sortedBlocks();
+                ListIterator<? extends AbstractBlockBase<?>> blockIt = blocks.listIterator(blocks.size());
+                while (blockIt.hasPrevious()) {
+                    final AbstractBlockBase<?> block = blockIt.previous();
 
-                    AbstractBlockBase<?> block = allocator.blockAt(i);
                     try (Indent indent2 = Debug.logAndIndent("handle block %d", block.getId())) {
-
-                        List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
 
                         /*
                          * Iterate all instructions of the block in reverse order. definitions of
                          * intervals are processed before uses.
                          */
-                        for (int j = instructions.size() - 1; j >= 0; j--) {
-                            final LIRInstruction op = instructions.get(j);
+                        List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
+                        ListIterator<LIRInstruction> instIt = instructions.listIterator(instructions.size());
+                        while (instIt.hasPrevious()) {
+                            final LIRInstruction op = instIt.previous();
+                            // number instruction
                             instructionIndex--;
                             final int opId = instructionIndex << 1;
                             numberInstruction(block, op, instructionIndex);
 
                             try (Indent indent3 = Debug.logAndIndent("handle inst %d: %s", opId, op)) {
 
-                                // add a temp range for each register if operation destroys
-                                // caller-save registers
+                                /*
+                                 * Add a temp range for each register if operation destroys
+                                 * caller-save registers.
+                                 */
                                 if (op.destroysCallerSavedRegisters()) {
                                     for (Register r : callerSaveRegs) {
                                         if (allocator.attributes(r).isAllocatable()) {
