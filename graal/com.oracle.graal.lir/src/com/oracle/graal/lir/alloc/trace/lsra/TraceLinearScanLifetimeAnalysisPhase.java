@@ -468,7 +468,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                 if (TraceLinearScan.isVariableOrRegister(operand)) {
                     RegisterPriority p = registerPriorityOfInputOperand(flags);
                     int opId = op.id();
-                    int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
+                    int blockFrom = 0;
                     addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
                     addRegisterHint(op, operand, mode, flags, false);
                 }
@@ -480,7 +480,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                 if (TraceLinearScan.isVariableOrRegister(operand)) {
                     int opId = op.id();
                     RegisterPriority p = registerPriorityOfInputOperand(flags);
-                    int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
+                    int blockFrom = 0;
                     addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
                     addRegisterHint(op, operand, mode, flags, false);
                 }
@@ -491,7 +491,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (TraceLinearScan.isVariableOrRegister(operand)) {
                     int opId = op.id();
-                    int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
+                    int blockFrom = 0;
                     addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
                 }
             }
@@ -517,9 +517,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
 
                         List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
 
-                        // number first instruction in the block as it is needed
-                        // TODO(je) remove this requirement
-                        numberInstruction(block, instructions.get(0), instructionIndex - instructions.size());
                         /*
                          * Iterate all instructions of the block in reverse order. definitions of
                          * intervals are processed before uses.
