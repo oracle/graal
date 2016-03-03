@@ -32,45 +32,48 @@ package com.oracle.truffle.llvm.nodes.impl.func;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 /**
  * The global entry point initializes the global scope and starts execution with the main function.
  */
 public class LLVMGlobalRootNode extends RootNode {
 
-    public static LLVMGlobalRootNode createNoArgumentsMain(LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses) {
-        return new LLVMGlobalRootNode(staticInits, main, llvmAddresses);
+    public static LLVMGlobalRootNode createNoArgumentsMain(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses) {
+        return new LLVMGlobalRootNode(context, staticInits, main, llvmAddresses);
     }
 
-    public static LLVMGlobalRootNode createArgsCountMain(LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount) {
-        return new LLVMGlobalRootNode(staticInits, main, llvmAddresses, argsCount);
+    public static LLVMGlobalRootNode createArgsCountMain(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount) {
+        return new LLVMGlobalRootNode(context, staticInits, main, llvmAddresses, argsCount);
     }
 
-    public static LLVMGlobalRootNode createArgsMain(LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount, LLVMAddress args) {
-        return new LLVMGlobalRootNode(staticInits, main, llvmAddresses, argsCount, args);
+    public static LLVMGlobalRootNode createArgsMain(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount, LLVMAddress args) {
+        return new LLVMGlobalRootNode(context, staticInits, main, llvmAddresses, argsCount, args);
     }
 
-    public static LLVMGlobalRootNode createArgsEnvMain(LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount, LLVMAddress args, LLVMAddress envp) {
-        return new LLVMGlobalRootNode(staticInits, main, llvmAddresses, argsCount, args, envp);
+    public static LLVMGlobalRootNode createArgsEnvMain(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount, LLVMAddress args, LLVMAddress envp) {
+        return new LLVMGlobalRootNode(context, staticInits, main, llvmAddresses, argsCount, args, envp);
     }
 
     @Children private final LLVMNode[] staticInits;
     private final DirectCallNode main;
-    private final LLVMAddress[] llvmAddresses;
-    private final Object[] arguments;
+    @CompilationFinal private final LLVMAddress[] llvmAddresses;
+    @CompilationFinal private final Object[] arguments;
+    private final LLVMContext context;
 
-    public LLVMGlobalRootNode(LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, Object... arguments) {
+    public LLVMGlobalRootNode(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, Object... arguments) {
         super(LLVMLanguage.class, null, null);
+        this.context = context;
         this.staticInits = staticInits;
         this.main = Truffle.getRuntime().createDirectCallNode(main);
         this.llvmAddresses = llvmAddresses;
@@ -81,7 +84,7 @@ public class LLVMGlobalRootNode extends RootNode {
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(staticInits);
-        LLVMStack.allocate();
+        context.getStack().reset();
         for (LLVMNode init : staticInits) {
             init.executeVoid(frame);
         }
@@ -93,7 +96,7 @@ public class LLVMGlobalRootNode extends RootNode {
             for (LLVMAddress alloc : llvmAddresses) {
                 LLVMHeap.freeMemory(alloc);
             }
-            LLVMStack.free();
+            context.getStack().free();
         }
     }
 

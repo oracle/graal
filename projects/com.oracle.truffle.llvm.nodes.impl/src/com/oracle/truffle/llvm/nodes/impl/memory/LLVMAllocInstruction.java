@@ -34,22 +34,24 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
-@NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment")})
+@NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = LLVMContext.class, name = "context")})
 public abstract class LLVMAllocInstruction extends LLVMAddressNode {
 
-    public abstract int getSize();
+    abstract int getSize();
 
-    public abstract int getAlignment();
+    abstract int getAlignment();
+
+    abstract LLVMContext getContext();
 
     public abstract static class LLVMAllocaInstruction extends LLVMAllocInstruction {
         @Specialization
         public LLVMAddress execute() {
-            return LLVMStack.allocateMemory(getSize(), getAlignment());
+            return getContext().getStack().allocateMemory(getSize(), getAlignment());
         }
     }
 
@@ -57,7 +59,7 @@ public abstract class LLVMAllocInstruction extends LLVMAddressNode {
     public abstract static class LLVMI32AllocaInstruction extends LLVMAllocInstruction {
         @Specialization
         public LLVMAddress execute(int nr) {
-            return LLVMStack.allocateMemory(getSize() * nr, getAlignment());
+            return getContext().getStack().allocateMemory(getSize() * nr, getAlignment());
         }
     }
 
@@ -65,7 +67,7 @@ public abstract class LLVMAllocInstruction extends LLVMAddressNode {
     public abstract static class LLVMI64AllocaInstruction extends LLVMAllocInstruction {
         @Specialization
         public LLVMAddress execute(long nr) {
-            return LLVMStack.allocateMemory(getSize() * nr, getAlignment());
+            return getContext().getStack().allocateMemory(getSize() * nr, getAlignment());
         }
     }
 

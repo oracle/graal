@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public class LLVMContext extends ExecutionContext {
 
@@ -52,6 +53,8 @@ public class LLVMContext extends ExecutionContext {
     private LLVMAddress[] deallocations;
 
     private final NativeLookup nativeLookup;
+
+    private final LLVMStack stack = new LLVMStack();
 
     public LLVMContext(NodeFactoryFacade facade, LLVMOptimizationConfiguration optimizationConfig) {
         nativeLookup = new NativeLookup(facade);
@@ -91,6 +94,10 @@ public class LLVMContext extends ExecutionContext {
 
     public Map<LLVMFunction, Integer> getNativeFunctionLookupStats() {
         return nativeLookup.getNativeFunctionLookupStats();
+    }
+
+    public LLVMStack getStack() {
+        return stack;
     }
 
 }

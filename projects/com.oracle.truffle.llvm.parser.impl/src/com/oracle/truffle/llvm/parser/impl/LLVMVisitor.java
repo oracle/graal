@@ -132,6 +132,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMMetadataNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStructWriteNode;
@@ -420,7 +421,8 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMFunctionBodyNode functionBodyNode = new LLVMFunctionBodyNode(block, retSlot);
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
-        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(functionBodyNode, stackPointerSlot, beforeFunction, afterFunction, frameDescriptor, functionName);
+        LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
+        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(functionBodyNode, stackPointerSlot, beforeFunction, afterFunction, frameDescriptor, functionName, context);
         if (LLVMOptions.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }

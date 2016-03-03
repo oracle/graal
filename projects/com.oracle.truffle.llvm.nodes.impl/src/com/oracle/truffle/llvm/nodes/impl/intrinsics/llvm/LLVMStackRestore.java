@@ -30,18 +30,22 @@
 package com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 @NodeChild(type = LLVMAddressNode.class)
+@NodeField(type = LLVMContext.class, name = "context")
 public abstract class LLVMStackRestore extends LLVMNode {
+
+    abstract LLVMContext getContext();
 
     @Specialization
     public void executeVoid(LLVMAddress addr) {
-        LLVMStack.setStackPointer(addr);
+        getContext().getStack().setStackPointer(addr);
     }
 
 }
