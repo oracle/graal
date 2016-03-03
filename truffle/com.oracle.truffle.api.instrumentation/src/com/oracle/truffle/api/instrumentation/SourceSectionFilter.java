@@ -75,6 +75,10 @@ public final class SourceSectionFilter {
         return new SourceSectionFilter(null).new Builder();
     }
 
+    /**
+     * @return the filter expressions in a humand readable form for debugging.
+     * @since 0.12
+     */
     @Override
     public String toString() {
         StringBuilder b = new StringBuilder("SourceSectionFilter[");
@@ -117,7 +121,7 @@ public final class SourceSectionFilter {
     /**
      * Configure your own {@link SourceSectionFilter} before creating its instance. Specify various
      * parameters by calling individual {@link Builder} methods. When done, call {@link #build()}.
-     * 
+     *
      * @since 0.12
      */
     public final class Builder {
@@ -128,7 +132,7 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all source sections that reference one of the given sources.
-         * 
+         *
          * @since 0.12
          */
         public Builder sourceIs(Source... source) {
@@ -141,7 +145,9 @@ public final class SourceSectionFilter {
          * Add a filter for all source sections that declare one of the given mime-types. Mime-types
          * which are compared must match exactly one of the mime-types specified by the target guest
          * language.
-         * 
+         *
+         * @param mimeTypes matches one of the given mime types
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder mimeTypeIs(String... mimeTypes) {
@@ -152,7 +158,9 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all source sections that are tagged with one of the given String tags.
-         * 
+         *
+         * @param tags matches one of the given tags
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder tagIs(String... tags) {
@@ -163,7 +171,9 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all sources sections that declare not one of the given String tags.
-         * 
+         *
+         * @param tags matches not one of the given tags
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder tagIsNot(String... tags) {
@@ -174,7 +184,9 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all sources sections that equal one of the given source sections.
-         * 
+         *
+         * @param section matches one of the given source sections
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder sourceSectionEquals(SourceSection... section) {
@@ -189,6 +201,10 @@ public final class SourceSectionFilter {
          * filter. This can mean in the dynamic language domain that all nodes of a function for
          * which the root source section matches the given source section is instrumented but its
          * inner functions and its nodes are not instrumented.
+         *
+         * @param section matches one of the given root source sections
+         * @return the builder to chain calls
+         * @since 0.12
          */
         public Builder rootSourceSectionEquals(SourceSection... section) {
             verifyNotNull(section);
@@ -199,6 +215,10 @@ public final class SourceSectionFilter {
         /**
          * Add a filter for all sources sections which indices are not contained in one of the given
          * index ranges.
+         *
+         * @param ranges matches indices that are not contained one of the given index ranges
+         * @return the builder to chain calls
+         * @since 0.12
          */
         public Builder indexNotIn(IndexRange... ranges) {
             verifyNotNull(ranges);
@@ -209,6 +229,9 @@ public final class SourceSectionFilter {
         /**
          * Add a filter for all sources sections which indices are contained in one of the given
          * index ranges.
+         *
+         * @param ranges matches indices that are contained one of the given index ranges
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder indexIn(IndexRange... ranges) {
@@ -220,7 +243,10 @@ public final class SourceSectionFilter {
         /**
          * Add a filter for all sources sections where the index is inside a startIndex (inclusive)
          * plus a given length (exclusive).
-         * 
+         *
+         * @param startIndex the start index (inclusive)
+         * @param length the number of matched characters
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder indexIn(int startIndex, int length) {
@@ -230,13 +256,16 @@ public final class SourceSectionFilter {
         /**
          * Add a filter for all sources sections which lines are contained in one of the given index
          * ranges. Line indices must be greater or equal to <code>1</code>.
+         *
+         * @param ranges matches lines that are contained one of the given index ranges
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder lineIn(IndexRange... ranges) {
             verifyNotNull(ranges);
             for (IndexRange indexRange : ranges) {
-                if (indexRange.getStartIndex() < 1) {
-                    throw new IllegalArgumentException(String.format("Start line indices must be >= 1 but were %s.", indexRange.getStartIndex()));
+                if (indexRange.startIndex < 1) {
+                    throw new IllegalArgumentException(String.format("Start line indices must be >= 1 but were %s.", indexRange.startIndex));
                 }
             }
             expressions.add(new EventFilterExpression.LineIn(ranges));
@@ -246,12 +275,16 @@ public final class SourceSectionFilter {
         /**
          * Add a filter for all sources sections which lines are not contained in one of the given
          * index ranges. Line indices must be greater or equal to <code>1</code>.
+         *
+         * @param ranges matches lines that are not contained one of the given index ranges
+         * @return the builder to chain calls
+         * @since 0.12
          */
         public Builder lineNotIn(IndexRange... ranges) {
             verifyNotNull(ranges);
             for (IndexRange indexRange : ranges) {
-                if (indexRange.getStartIndex() < 1) {
-                    throw new IllegalArgumentException(String.format("Start line indices must be >= 1 but were %s.", indexRange.getStartIndex()));
+                if (indexRange.startIndex < 1) {
+                    throw new IllegalArgumentException(String.format("Start line indices must be >= 1 but were %s.", indexRange.startIndex));
                 }
             }
             expressions.add(new Not(new EventFilterExpression.LineIn(ranges)));
@@ -261,7 +294,10 @@ public final class SourceSectionFilter {
         /**
          * Add a filter for all sources sections where the line is inside a startLine (first index
          * inclusive) plus a given length (last index exclusive).
-         * 
+         *
+         * @param startLine the start line (inclusive)
+         * @param length the number of matched lines
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder lineIn(int startLine, int length) {
@@ -270,7 +306,10 @@ public final class SourceSectionFilter {
 
         /**
          * Add a filter for all sources sections where the line is exactly the given line. Line
-         * indices must be greater or equal to <code>1</code>.         * 
+         * indices must be greater or equal to <code>1</code>. *
+         *
+         * @param line the line to be matched
+         * @return the builder to chain calls
          * @since 0.12
          */
         public Builder lineIs(int line) {
@@ -279,7 +318,8 @@ public final class SourceSectionFilter {
 
         /**
          * Finalizes and constructs the {@link SourceSectionFilter} instance.
-         * 
+         *
+         * @return the built filter expression
          * @since 0.12
          */
         public SourceSectionFilter build() {
@@ -300,7 +340,6 @@ public final class SourceSectionFilter {
 
     }
 
-
     /**
      * Represents a range between two indices within a {@link SourceSectionFilter source section
      * filter}. Instances are immutable.
@@ -312,38 +351,12 @@ public final class SourceSectionFilter {
      */
     public static final class IndexRange {
 
-        private final int startIndex;
-        private final int endIndex;
+        final int startIndex;
+        final int endIndex;
 
         private IndexRange(int startIndex, int endIndex) {
             this.startIndex = startIndex;
             this.endIndex = endIndex;
-        }
-
-        /**
-         * Returns the start index of the index range. Invariants are
-         * <code>{@link #getStartIndex() startIndex} >= 0</code> and
-         * <code>{@link #getStartIndex() startIndex} <= {@link #getEndIndex() endIndex}</code>.
-         */
-        public int getStartIndex() {
-            return startIndex;
-        }
-
-        /**
-         * Returns the end index of the index range. Invariants are
-         * <code>{@link #getEndIndex() endIndex} >= 0</code> and
-         * <code>{@link #getStartIndex() startIndex} <= {@link #getEndIndex() endIndex}</code>.
-         */
-        public int getEndIndex() {
-            return endIndex;
-        }
-
-        /**
-         * Returns the length of the index range. The invariant is
-         * <code>{@link #getLength() length} >= 0</code>.
-         */
-        public int getLength() {
-            return endIndex - startIndex;
         }
 
         /**
@@ -389,6 +402,10 @@ public final class SourceSectionFilter {
             return startIndex <= otherEndIndex && otherStartIndex < endIndex;
         }
 
+        /**
+         * @return a human readable version of the index range
+         * @since 0.12
+         */
         @Override
         public String toString() {
             return "[" + startIndex + "-" + endIndex + "[";
