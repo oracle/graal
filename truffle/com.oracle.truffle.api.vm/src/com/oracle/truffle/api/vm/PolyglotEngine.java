@@ -478,7 +478,7 @@ public class PolyglotEngine {
         checkThread();
         assertNoTruffle();
         disposed = true;
-        FIND_ENGINE_NODE.disposeEngine(null, this);
+        FIND_ENGINE_NODE.disposeEngine(Thread.currentThread(), this);
         ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
             @Override
             protected Void compute() throws IOException {
@@ -1262,12 +1262,12 @@ public class PolyglotEngine {
         @Override
         protected Closeable executionStart(Object obj, int currentDepth, boolean initializeDebugger, Source s) {
             final PolyglotEngine vm = (PolyglotEngine) obj;
-            FIND_ENGINE_NODE.registerEngine(null, vm);
+            FIND_ENGINE_NODE.registerEngine(Thread.currentThread(), vm);
             final Closeable c = super.executionStart(vm, -1, initializeDebugger, s);
             return new Closeable() {
                 @Override
                 public void close() throws IOException {
-                    FIND_ENGINE_NODE.unregisterEngine(null, vm);
+                    FIND_ENGINE_NODE.unregisterEngine(Thread.currentThread(), vm);
                     c.close();
                 }
             };

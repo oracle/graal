@@ -31,8 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class FindEngineNodeImplTest {
-    @SuppressWarnings("unused")
-    private static final Class<?> basicLayout = BasicLayout.class;
+    @SuppressWarnings("unused") private static final Class<?> basicLayout = BasicLayout.class;
 
     private FindEngineNodeImpl node;
     private PolyglotEngine another;
@@ -74,5 +73,23 @@ public class FindEngineNodeImplTest {
 
         node.registerEngine(myThread, another);
         assertSame("2nd engine still registered", another, node.findEngine());
+    }
+
+    @Test
+    public void moreEnginesForDifferentThreads() {
+        Thread myThread = Thread.currentThread();
+        Thread anotherThread = new Thread();
+        engine = PolyglotEngine.newBuilder().build();
+        another = PolyglotEngine.newBuilder().build();
+
+        node.registerEngine(myThread, engine);
+        assertSame("1st engine registered", engine, node.findEngine());
+
+        node.registerEngine(anotherThread, another);
+        assertSame("1st engine still registered", engine, node.findEngine(myThread));
+        assertSame("2nd engine registered in other thread", another, node.findEngine(anotherThread));
+
+        node.registerEngine(anotherThread, another);
+        assertSame("2nd engine still registered in other thread", another, node.findEngine(anotherThread));
     }
 }
