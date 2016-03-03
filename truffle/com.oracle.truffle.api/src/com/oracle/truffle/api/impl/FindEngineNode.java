@@ -24,33 +24,18 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 
-public abstract class FindContextNode extends Node {
-    @Child
-    private FindEngineNode findEngine;
-
-    /** Creates new context locating node.
-     * @param engineFinder the node to find PolyglotEngine
+public abstract class FindEngineNode extends Node {
+    /** Finds appropriate engine for the current execution.
+     * @return an instance of {@link com.oracle.truffle.api.vm.PolyglotEngine}
      */
-    protected FindContextNode(FindEngineNode engineFinder) {
-        this.findEngine = engineFinder == null ? new FindEngineNode.Default() : engineFinder;
+    protected abstract Object findEngine();
+
+    static final class Default extends FindEngineNode {
+        @Override
+        protected Object findEngine() {
+            return Accessor.findCurrentVM();
+        }
     }
-
-    /**
-     * Finds the context associated with the provided language.
-     * 
-     * @param language the language that is asking for the context
-     * @return context created by
-     *         {@link TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
-     * @throws ClassCastException if the language isn't the one for which the node was created
-     */
-    public <C> C executeFindContext(TruffleLanguage<C> language) {
-        return findContextForEngine(findEngine.findEngine(), language);
-    }
-
-    /** Seeks for a context in a given language.
-     */
-    protected abstract <C> C findContextForEngine(Object engine, TruffleLanguage<C> language);
 }
