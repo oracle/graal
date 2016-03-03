@@ -1000,6 +1000,7 @@ public abstract class Source {
         }
 
         void setCode(CharSequence chars) {
+            clearTextMap();
             this.code = chars.toString();
         }
 
