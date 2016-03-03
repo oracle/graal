@@ -39,7 +39,6 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -86,6 +85,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         private static final int DUMP_DURING_ANALYSIS_LEVEL = 4;
         private final TraceLinearScan allocator;
         private final TraceBuilderResult<?> traceBuilderResult;
+        private int numInstructions;
 
         /**
          * @param linearScan
@@ -97,7 +97,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         }
 
         private void analyze() {
-            numberInstructions();
+            countInstructions();
             allocator.printLir("Before register allocation", true);
             buildIntervals();
         }
@@ -125,43 +125,30 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         }
 
         /**
-         * Numbers all instructions in all blocks. The numbering follows the
-         * {@linkplain ComputeBlockOrder linear scan order}.
+         * Count instructions in all blocks. The numbering follows the
+         * {@linkplain TraceLinearScan#sortedBlocks() register allocation order}.
          */
-        private void numberInstructions() {
+        private void countInstructions() {
 
             allocator.initIntervals();
 
-            // Assign IDs to LIR nodes and build a mapping, lirOps, from ID to LIRInstruction node.
-            int numInstructions = 0;
-            for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
-                numInstructions += allocator.getLIR().getLIRforBlock(block).size();
-            }
-
-            // initialize with correct length
-            allocator.initOpIdMaps(numInstructions);
-
-            int opId = 0;
-            int index = 0;
+            int numberInstructions = 0;
             for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                 allocator.initBlockData(block);
-
-                List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
-
-                int numInst = instructions.size();
-                for (int j = 0; j < numInst; j++) {
-                    LIRInstruction op = instructions.get(j);
-                    op.setId(opId);
-
-                    allocator.putOpIdMaps(index, op, block);
-                    assert allocator.instructionForId(opId) == op : "must match";
-
-                    index++;
-                    opId += 2; // numbering of lirOps by two
-                }
+                numberInstructions += allocator.getLIR().getLIRforBlock(block).size();
             }
-            assert index == numInstructions : "must match";
-            assert (index << 1) == opId : "must match: " + (index << 1);
+            numInstructions = numberInstructions;
+
+            // initialize with correct length
+            allocator.initOpIdMaps(numberInstructions);
+        }
+
+        private void numberInstruction(AbstractBlockBase<?> block, LIRInstruction op, int index) {
+            int opId = index << 1;
+            assert op.id() == -1 || op.id() == opId : "must match";
+            op.setId(opId);
+            allocator.putOpIdMaps(index, op, block);
+            assert allocator.instructionForId(opId) == op : "must match";
         }
 
         private void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, LIRKind kind) {
@@ -517,6 +504,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
 
                 // create a list with all caller-save registers (cpu, fpu, xmm)
                 Register[] callerSaveRegs = allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters();
+                int instructionIndex = numInstructions;
 
                 // iterate all blocks in reverse order
                 for (int i = allocator.blockCount() - 1; i >= 0; i--) {
@@ -529,13 +517,18 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
 
                         List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
 
+                        // number first instruction in the block as it is needed
+                        // TODO(je) remove this requirement
+                        numberInstruction(block, instructions.get(0), instructionIndex - instructions.size());
                         /*
                          * Iterate all instructions of the block in reverse order. definitions of
                          * intervals are processed before uses.
                          */
                         for (int j = instructions.size() - 1; j >= 0; j--) {
                             final LIRInstruction op = instructions.get(j);
-                            final int opId = op.id();
+                            instructionIndex--;
+                            final int opId = instructionIndex << 1;
+                            numberInstruction(block, op, instructionIndex);
 
                             try (Indent indent3 = Debug.logAndIndent("handle inst %d: %s", opId, op)) {
 
@@ -572,6 +565,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                         allocator.printIntervals("After Block " + block);
                     }
                 } // end of block iteration
+                assert instructionIndex == 0 : "not at start?" + instructionIndex;
 
                 // fix spill state for phi/sigma intervals
                 for (TraceInterval interval : allocator.intervals()) {
