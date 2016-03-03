@@ -43,11 +43,11 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.tools.Clang;
-import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions.OptimizationLevel;
 import com.oracle.truffle.llvm.tools.Opt.OptOptions;
 import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
+import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
 
 @RunWith(Parameterized.class)
 /**
