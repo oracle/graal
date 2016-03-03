@@ -4,7 +4,6 @@ import com.oracle.truffle.api.impl.FindEngineNode;
 
 final class FindEngineNodeImpl extends FindEngineNode {
     private PolyglotEngine one;
-    private Exception previousOne;
 
     FindEngineNodeImpl() {
     }
@@ -14,11 +13,9 @@ final class FindEngineNodeImpl extends FindEngineNode {
             return;
         }
         if (one != null) {
-            previousOne.printStackTrace();
-            throw new IllegalStateException("There already is an engine!", previousOne);
+            throw new IllegalStateException("There already is an engine!");
         }
         one = engine;
-        previousOne = new Exception("Allocated by");
     }
 
     void unregisterEngine(Thread wasUsedIn, PolyglotEngine engine) {

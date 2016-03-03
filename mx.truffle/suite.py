@@ -71,6 +71,7 @@ suite = {
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.vm",
+        "com.oracle.truffle.object.basic",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
