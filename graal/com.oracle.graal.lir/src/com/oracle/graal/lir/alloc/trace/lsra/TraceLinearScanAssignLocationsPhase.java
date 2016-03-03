@@ -125,6 +125,13 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             }
 
             if (isIllegal(interval.location()) && interval.canMaterialize()) {
+                if (op instanceof LabelOp) {
+                    /*
+                     * Spilled materialized value in a LabelOp (i.e. incoming): no need for move
+                     * resolution so we can ignore it.
+                     */
+                    return Value.ILLEGAL;
+                }
                 assert mode != OperandMode.DEF;
                 return new ConstantValue(interval.kind(), interval.getMaterializedValue());
             }
