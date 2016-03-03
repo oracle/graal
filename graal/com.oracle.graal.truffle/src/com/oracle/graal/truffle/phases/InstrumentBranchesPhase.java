@@ -128,13 +128,11 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         }
 
         public synchronized void dumpAccessTable() {
-            // Dump profiling information when exiting.
-            if (TruffleInstrumentBranches.getValue()) {
-                System.out.println("Branch execution profile");
-                System.out.println("========================");
-                for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
-                    System.out.println(entry.getKey() + ": " + entry.getValue());
-                }
+            // Dump accumulated profiling information.
+            System.out.println("Branch execution profile");
+            System.out.println("========================");
+            for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
+                System.out.println(entry.getKey() + ": " + entry.getValue());
             }
         }
 
