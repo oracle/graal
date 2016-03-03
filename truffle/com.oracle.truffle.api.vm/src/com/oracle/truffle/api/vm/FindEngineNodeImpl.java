@@ -22,6 +22,7 @@ final class FindEngineNodeImpl extends FindEngineNode {
         engineNode.registerEngine(usableIn, engine);
     }
 
+    @SuppressWarnings("unused")
     void unregisterEngine(Thread wasUsedIn, PolyglotEngine engine) {
     }
 
@@ -45,7 +46,7 @@ final class FindEngineNodeImpl extends FindEngineNode {
 
         abstract PolyglotEngine findEngine(Thread usedBy);
 
-        final IllegalStateException alreadyUsed(PolyglotEngine engine) {
+        static IllegalStateException alreadyUsed(PolyglotEngine engine) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("There already is an engine " + engine);
         }
