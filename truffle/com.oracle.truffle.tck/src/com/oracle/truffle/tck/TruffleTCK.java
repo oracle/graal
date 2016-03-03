@@ -47,6 +47,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tck.Schema.Type;
+import java.util.concurrent.Executors;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -128,7 +129,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * This methods is called before first test is executed. It's purpose is to set a
+     * This methods is called before each test is executed. It's purpose is to set a
      * {@link PolyglotEngine} with your language up, so it is ready for testing.
      * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) Execute} any scripts you
      * need, and prepare global symbols with proper names. The symbols will then be looked up by the
@@ -138,7 +139,27 @@ public abstract class TruffleTCK {
      * @return initialized Truffle virtual machine
      * @throws java.lang.Exception thrown when the VM preparation fails
      */
-    protected abstract PolyglotEngine prepareVM() throws Exception;
+    protected PolyglotEngine prepareVM() throws Exception {
+        return prepareVM(PolyglotEngine.newBuilder());
+    }
+
+    /**
+     * Configure your language insided of provided builder. The method should
+     * do the same operation like {@link #prepareVM()}, but rather than
+     * doing them from scratch, it is supposed to do the changes in provided
+     * builder. The builder may be pre-configured by the TCK - for example
+     * {@link PolyglotEngine.Builder#executor(java.util.concurrent.Executor)}
+     * may be provided or
+     * {@link PolyglotEngine.Builder#globalSymbol(java.lang.String, java.lang.Object)
+     * global symbols} specified, etc.
+     *
+     * @param preparedBuilder the builder to use to construct the engine
+     * @return initialized Truffle virtual machine
+     * @throws java.lang.Exception thrown when the VM preparation fails
+     */
+    protected PolyglotEngine prepareVM(PolyglotEngine.Builder preparedBuilder) throws Exception {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * MIME type associated with your language. The MIME type will be passed to
@@ -1003,12 +1024,13 @@ public abstract class TruffleTCK {
     @Test
     public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
         final String countMethod = countInvocations();
-        PolyglotEngine.Value count1 = findGlobalSymbol(countMethod);
-        PolyglotEngine vm1 = tckVM;
+        PolyglotEngine.Builder builder = PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor());
+        PolyglotEngine vm2 = prepareVM(builder);
         try {
-            tckVM = null; // clean-up
-            PolyglotEngine.Value count2 = findGlobalSymbol(countMethod);
-            PolyglotEngine vm2 = tckVM;
+            PolyglotEngine.Value count2 = vm2.findGlobalSymbol(countMethod);
+
+            PolyglotEngine.Value count1 = findGlobalSymbol(countMethod);
+            PolyglotEngine vm1 = tckVM;
 
             assertNotSame("Two virtual machines allocated", vm1, vm2);
 
@@ -1033,7 +1055,7 @@ public abstract class TruffleTCK {
                 assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2 + "\n" + log;
             }
         } finally {
-            vm1.dispose();
+            vm2.dispose();
         }
     }
 

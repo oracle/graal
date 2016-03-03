@@ -40,6 +40,7 @@ import static org.junit.Assert.fail;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.Executors;
 import org.junit.After;
 import static org.junit.Assert.assertSame;
 
@@ -80,7 +81,7 @@ public class EngineTest {
     public void checkCachingOfNodes() throws IOException {
         PolyglotEngine vm1 = createBuilder().build();
         register(vm1);
-        PolyglotEngine vm2 = createBuilder().build();
+        PolyglotEngine vm2 = createBuilder().executor(Executors.newSingleThreadExecutor()).build();
         register(vm2);
 
         PolyglotEngine.Language language1 = vm1.getLanguages().get("application/x-test-hash");
