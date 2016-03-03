@@ -57,6 +57,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.instrumentation",
+        "com.oracle.truffle.api.object",
       ],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",

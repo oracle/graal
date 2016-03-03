@@ -63,6 +63,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -102,6 +106,7 @@ import com.oracle.truffle.api.source.Source;
  */
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
+    private static final Shape LANGUAGE_CONTEXT_SHAPE  = Layout.createLayout().createShape(new ObjectType());
     static final boolean JAVA_INTEROP_ENABLED = !TruffleOptions.AOT;
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
@@ -117,7 +122,7 @@ public class PolyglotEngine {
     private final Object instrumentationHandler; // new instrumentation
     private final Map<String, Instrument> instruments;
     private final List<Object[]> config;
-    // private final Object debugger;
+    private final DynamicObject languagesContext;
     private boolean disposed;
 
     static {
@@ -147,6 +152,7 @@ public class PolyglotEngine {
         this.instrumentationHandler = null;
         this.instruments = null;
         this.config = null;
+        this.languagesContext = null;
     }
 
     /**
@@ -177,6 +183,7 @@ public class PolyglotEngine {
         }
         this.langs = map;
         this.instruments = createAndAutostartDescriptors(InstrumentCache.load(getClass().getClassLoader()));
+        this.languagesContext = LANGUAGE_CONTEXT_SHAPE.newInstance();
     }
 
     private Map<String, Instrument> createAndAutostartDescriptors(List<InstrumentCache> instrumentCaches) {
@@ -230,6 +237,10 @@ public class PolyglotEngine {
     @Deprecated
     public static PolyglotEngine.Builder buildNew() {
         return newBuilder();
+    }
+
+    DynamicObject getLanguagesContext() {
+        return languagesContext;
     }
 
     /**
@@ -1089,11 +1100,26 @@ public class PolyglotEngine {
         throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
     }
 
-    Object findContext(TruffleLanguage language) {
-        Env env = findEnv(language.getClass());
-        return SPI.findContext(env);
-    }
+    static final class FindContextForEngineNode<L> extends Node {
+        private final TruffleLanguage<L> key;
 
+        public FindContextForEngineNode(TruffleLanguage<L> key) {
+            this.key = key;
+        }
+
+        @SuppressWarnings("unchecked")
+        public L executeFindContext(Object raw) {
+            PolyglotEngine engine = (PolyglotEngine) raw;
+            DynamicObject obj = engine.getLanguagesContext();
+            Object value = obj.get(key);
+            if (value == null) {
+                Env env = engine.findEnv(key.getClass());
+                value = SPI.findContext(env);
+                obj.set(key, value);
+            }
+            return (L) value;
+        }
+    }
 
     private static class SPIAccessor extends Accessor {
         @Override

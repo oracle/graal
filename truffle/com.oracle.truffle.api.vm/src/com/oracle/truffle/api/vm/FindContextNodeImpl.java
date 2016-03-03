@@ -32,10 +32,13 @@ final class FindContextNodeImpl<L> extends FindContextNode {
     private static final Object UNINITIALIZED = new Object();
     private static final Object MULTIPLE = new Object();
     private final TruffleLanguage<L> language;
+    @Child
+    private PolyglotEngine.FindContextForEngineNode<L> fromEngine;
     @CompilerDirectives.CompilationFinal private Object singleEngine = UNINITIALIZED;
     @CompilerDirectives.CompilationFinal private L singleContext;
 
     private FindContextNodeImpl(TruffleLanguage<L> language) {
+        this.fromEngine = new PolyglotEngine.FindContextForEngineNode<>(language);
         this.language = language;
     }
 
@@ -60,7 +63,7 @@ final class FindContextNodeImpl<L> extends FindContextNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (singleEngine == UNINITIALIZED) {
                     singleEngine = rawEngine;
-                    singleContext = findFromEnv(rawEngine);
+                    singleContext = fromEngine.executeFindContext(rawEngine);
                     return singleContext;
                 } else {
                     singleEngine = MULTIPLE;
@@ -68,11 +71,6 @@ final class FindContextNodeImpl<L> extends FindContextNode {
                 }
             }
         }
-        return findFromEnv(rawEngine);
-    }
-
-    @SuppressWarnings({"unchecked"})
-    private L findFromEnv(Object engine) {
-        return (L)((PolyglotEngine)engine).findContext(language);
+        return fromEngine.executeFindContext(rawEngine);
     }
 }
