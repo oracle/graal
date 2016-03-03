@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -338,9 +338,10 @@ public class LinearScan {
             firstDerivedIntervalIndex = intervalsSize;
         }
         if (intervalsSize == intervals.length) {
-            intervals = Arrays.copyOf(intervals, intervals.length + (intervals.length >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT));
+            intervals = Arrays.copyOf(intervals, intervals.length + (intervals.length >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT) + 1);
         }
         intervalsSize++;
+        assert intervalsSize <= intervals.length;
         Variable variable = new Variable(source.kind(), ir.nextVariable());
 
         Interval interval = createInterval(variable);
