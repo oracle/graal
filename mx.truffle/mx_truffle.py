@@ -35,6 +35,10 @@ import mx_gate
 
 _suite = mx.suite('truffle')
 
+def javadoc(args, vm=None):
+    """build the Javadoc for all API packages"""
+    mx.javadoc(['--unified'] + args)
+
 def build(args, vm=None):
     """build the Java sources"""
     opts2 = mx.build(['--source', '1.7'] + args)
@@ -61,6 +65,7 @@ def _truffle_gate_runner(args, tasks):
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
 mx.update_commands(_suite, {
+    'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
     'sldebug' : [sldebug, '[SL args|@VM options]'],
 })
