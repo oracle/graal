@@ -47,6 +47,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tck.Schema.Type;
+import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
@@ -68,12 +69,12 @@ import static org.junit.Assert.fail;
  *     <em>// create the engine</em>
  *     <em>// execute necessary scripts</em>
  *   }
- *
+ * 
  *   {@link Override @Override}
  *   <b>protected</b> {@link String} fourtyTwo() {
  *     <b>return</b> <em>// name of function that returns 42</em>
  *   }
- *
+ * 
  *   <em>// and so on...</em>
  * }
  * </pre>
@@ -117,6 +118,13 @@ public abstract class TruffleTCK {
     private PolyglotEngine tckVM;
 
     protected TruffleTCK() {
+    }
+
+    @After
+    public void dispose() {
+        if (tckVM != null) {
+            tckVM.dispose();
+        }
     }
 
     /**
@@ -174,7 +182,7 @@ public abstract class TruffleTCK {
 
     /**
      * Name of function to add two numbers together. The symbol will be invoked with two parameters
-     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number}
+     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number} 
      * which's {@link Number#intValue()} is equivalent of <code>param1 + param2</code>. As some
      * languages may have different operations for different types of numbers, the actual types are
      * passed to the method and the implementation can decide to return different symbol based on
@@ -997,31 +1005,35 @@ public abstract class TruffleTCK {
         final String countMethod = countInvocations();
         PolyglotEngine.Value count1 = findGlobalSymbol(countMethod);
         PolyglotEngine vm1 = tckVM;
-        tckVM = null; // clean-up
-        PolyglotEngine.Value count2 = findGlobalSymbol(countMethod);
-        PolyglotEngine vm2 = tckVM;
+        try {
+            tckVM = null; // clean-up
+            PolyglotEngine.Value count2 = findGlobalSymbol(countMethod);
+            PolyglotEngine vm2 = tckVM;
 
-        assertNotSame("Two virtual machines allocated", vm1, vm2);
+            assertNotSame("Two virtual machines allocated", vm1, vm2);
 
-        int prev1 = 0;
-        int prev2 = 0;
-        StringBuilder log = new StringBuilder();
-        for (int i = 0; i < 10; i++) {
-            int quantum = RANDOM.nextInt(10);
-            log.append("quantum" + i + " is " + quantum + "\n");
-            for (int j = 0; j < quantum; j++) {
-                Object res = count1.execute().get();
-                assert res instanceof Number : "expecting number: " + res + "\n" + log;
-                ++prev1;
-                assert ((Number) res).intValue() == prev1 : "expecting " + prev1 + " but was " + res + "\n" + log;
+            int prev1 = 0;
+            int prev2 = 0;
+            StringBuilder log = new StringBuilder();
+            for (int i = 0; i < 10; i++) {
+                int quantum = RANDOM.nextInt(10);
+                log.append("quantum" + i + " is " + quantum + "\n");
+                for (int j = 0; j < quantum; j++) {
+                    Object res = count1.execute().get();
+                    assert res instanceof Number : "expecting number: " + res + "\n" + log;
+                    ++prev1;
+                    assert ((Number) res).intValue() == prev1 : "expecting " + prev1 + " but was " + res + "\n" + log;
+                }
+                for (int j = 0; j < quantum; j++) {
+                    Object res = count2.execute().get();
+                    assert res instanceof Number : "expecting number: " + res + "\n" + log;
+                    ++prev2;
+                    assert ((Number) res).intValue() == prev2 : "expecting " + prev2 + " but was " + res + "\n" + log;
+                }
+                assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2 + "\n" + log;
             }
-            for (int j = 0; j < quantum; j++) {
-                Object res = count2.execute().get();
-                assert res instanceof Number : "expecting number: " + res + "\n" + log;
-                ++prev2;
-                assert ((Number) res).intValue() == prev2 : "expecting " + prev2 + " but was " + res + "\n" + log;
-            }
-            assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2 + "\n" + log;
+        } finally {
+            vm1.dispose();
         }
     }
 

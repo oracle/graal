@@ -27,7 +27,9 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class FindEngineNode extends Node {
-    /** Finds appropriate engine for the current execution.
+    /**
+     * Finds appropriate engine for the current execution.
+     * 
      * @return an instance of {@link com.oracle.truffle.api.vm.PolyglotEngine}
      */
     protected abstract Object findEngine();

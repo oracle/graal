@@ -100,14 +100,16 @@ import com.oracle.truffle.api.source.Source;
  * appropriate engine (if found), is initialized. Once an engine gets initialized, it remains so,
  * until the virtual machine isn't garbage collected.
  * <p>
- * The engine is single-threaded and tries to enforce that. It records the thread it has been
- * {@link Builder#build() created} by and checks that all subsequent calls are coming from the same
- * thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it what to
- * do.
+ * The engine is single-threaded and does its best to enforce that. It records the thread it has
+ * been {@link Builder#build() created} by and checks that all subsequent calls are coming from the
+ * same thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it
+ * what to do. Each thread can be associated with at most one {@link PolyglotEngine} using another
+ * one from the same thread yields an exception - unless the previous engine is {@link #dispose()
+ * properly disposed} - then the thread is free for being used by another engine.
  */
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
-    private static final Shape LANGUAGE_CONTEXT_SHAPE  = Layout.createLayout().createShape(new ObjectType());
+    private static final Shape LANGUAGE_CONTEXT_SHAPE = Layout.createLayout().createShape(new ObjectType());
     static final FindEngineNodeImpl FIND_ENGINE_NODE = new FindEngineNodeImpl();
     static final boolean JAVA_INTEROP_ENABLED = !TruffleOptions.AOT;
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
@@ -470,9 +472,13 @@ public class PolyglotEngine {
      * {@link IllegalStateException}.
      */
     public void dispose() {
+        if (disposed) {
+            return;
+        }
         checkThread();
         assertNoTruffle();
         disposed = true;
+        FIND_ENGINE_NODE.disposeEngine(null, this);
         ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
             @Override
             protected Void compute() throws IOException {
@@ -1255,9 +1261,16 @@ public class PolyglotEngine {
 
         @Override
         protected Closeable executionStart(Object obj, int currentDepth, boolean initializeDebugger, Source s) {
-            PolyglotEngine vm = (PolyglotEngine) obj;
+            final PolyglotEngine vm = (PolyglotEngine) obj;
             FIND_ENGINE_NODE.registerEngine(null, vm);
-            return super.executionStart(vm, -1, initializeDebugger, s);
+            final Closeable c = super.executionStart(vm, -1, initializeDebugger, s);
+            return new Closeable() {
+                @Override
+                public void close() throws IOException {
+                    FIND_ENGINE_NODE.unregisterEngine(null, vm);
+                    c.close();
+                }
+            };
         }
 
         @Override

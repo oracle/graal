@@ -285,9 +285,9 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         notifier.fireTestStarted(testCase.name);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PolyglotEngine vm = null;
         try {
-            PolyglotEngine vm = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
-
+            vm = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
             String script = readAllLines(testCase.path);
 
             PrintWriter printer = new PrintWriter(out);
@@ -299,6 +299,9 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         } catch (Throwable ex) {
             notifier.fireTestFailure(new Failure(testCase.name, new IllegalStateException("Cannot run " + testCase.sourceName, ex)));
         } finally {
+            if (vm != null) {
+                vm.dispose();
+            }
             notifier.fireTestFinished(testCase.name);
         }
     }

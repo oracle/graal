@@ -27,15 +27,18 @@ package com.oracle.truffle.api.interop.java.test;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
+import org.junit.After;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class JavaFunctionTest {
+    private PolyglotEngine engine;
+
     @Test
     public void invokeRunnable() throws IOException {
         final boolean[] called = {false};
 
-        PolyglotEngine engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Runnable.class, new Runnable() {
+        engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Runnable.class, new Runnable() {
             @Override
             public void run() {
                 called[0] = true;
@@ -44,5 +47,12 @@ public class JavaFunctionTest {
         engine.findGlobalSymbol("test").execute();
 
         assertTrue("Runnable has been called", called[0]);
+    }
+
+    @After
+    public void dispose() {
+        if (engine != null) {
+            engine.dispose();
+        }
     }
 }

@@ -242,6 +242,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         while (repeats-- > 0) {
             main.execute();
         }
+        vm.dispose();
     }
 
     public static int parsingCount() {

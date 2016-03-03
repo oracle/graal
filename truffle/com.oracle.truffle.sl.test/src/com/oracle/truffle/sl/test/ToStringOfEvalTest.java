@@ -43,16 +43,28 @@ package com.oracle.truffle.sl.test;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
+import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ToStringOfEvalTest {
+    PolyglotEngine engine;
+
+    @Before
+    public void initialize() {
+        engine = PolyglotEngine.newBuilder().build();
+    }
+
+    @After
+    public void dispose() {
+        engine.dispose();
+    }
 
     @Test
     public void checkToStringOnAFunction() throws IOException {
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language sl = engine.getLanguages().get("application/x-sl");
         sl.eval(Source.fromText("function checkName() {}", "defineFn"));
         PolyglotEngine.Value value1 = engine.findGlobalSymbol("checkName");

@@ -43,17 +43,27 @@ package com.oracle.truffle.sl.test;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
+import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 public class ParsingCachedTest {
 
+    private PolyglotEngine engine;
+
+    @After
+    public void dispose() {
+        if (engine != null) {
+            engine.dispose();
+        }
+    }
+
     @Test
     public void stepInStepOver() throws Throwable {
         Source nullSrc = Source.fromText("function main() {}", "yields null").withMimeType("application/x-sl");
 
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        engine = PolyglotEngine.newBuilder().build();
         int cnt = SLLanguage.parsingCount();
         Object res = engine.eval(nullSrc).get();
         assertNull("Is null", res);

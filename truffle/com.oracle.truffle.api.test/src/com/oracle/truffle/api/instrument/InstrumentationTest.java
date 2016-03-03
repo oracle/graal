@@ -44,6 +44,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import org.junit.After;
 
 /**
  * <h3>AST Instrumentation</h3>
@@ -54,9 +55,16 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  */
 public class InstrumentationTest {
 
+    private PolyglotEngine vm;
+
+    @After
+    public void dispose() {
+        vm.dispose();
+    }
+
     @Test
     public void testProbing() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
-        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
+        vm = PolyglotEngine.newBuilder().build();
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);
@@ -98,7 +106,7 @@ public class InstrumentationTest {
     @Test
     public void testTagging() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
 
-        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
+        vm = PolyglotEngine.newBuilder().build();
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
         final Instrumenter instrumenter = (Instrumenter) field.get(vm);

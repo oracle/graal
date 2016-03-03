@@ -32,8 +32,7 @@ final class FindContextNodeImpl<L> extends FindContextNode {
     private static final Object UNINITIALIZED = new Object();
     private static final Object MULTIPLE = new Object();
     private final TruffleLanguage<L> language;
-    @Child
-    private PolyglotEngine.FindContextForEngineNode<L> fromEngine;
+    @Child private PolyglotEngine.FindContextForEngineNode<L> fromEngine;
     @CompilerDirectives.CompilationFinal private Object singleEngine = UNINITIALIZED;
     @CompilerDirectives.CompilationFinal private L singleContext;
 

@@ -70,6 +70,9 @@ public class ImplicitExplicitExportTest {
     @After
     public void cleanThread() {
         mainThread = null;
+        if (vm != null) {
+            vm.dispose();
+        }
     }
 
     @Test

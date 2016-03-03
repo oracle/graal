@@ -29,10 +29,11 @@ import com.oracle.truffle.api.nodes.Node;
 import java.util.Objects;
 
 public abstract class FindContextNode extends Node {
-    @Child
-    private FindEngineNode findEngine;
+    @Child private FindEngineNode findEngine;
 
-    /** Creates new context locating node.
+    /**
+     * Creates new context locating node.
+     * 
      * @param engineFinder the node to find PolyglotEngine
      */
     protected FindContextNode(FindEngineNode engineFinder) {
@@ -52,7 +53,8 @@ public abstract class FindContextNode extends Node {
         return findContextForEngine(findEngine.findEngine(), language);
     }
 
-    /** Seeks for a context in a given language.
+    /**
+     * Seeks for a context in a given language.
      */
     protected abstract <C> C findContextForEngine(Object engine, TruffleLanguage<C> language);
 }

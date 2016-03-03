@@ -33,8 +33,8 @@ public class InstrumentationTestMode {
 
     public static void set(boolean enable) {
 
+        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         try {
-            final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
             final Field instrumenterField = vm.getClass().getDeclaredField("instrumenter");
             instrumenterField.setAccessible(true);
             final Object instrumenter = instrumenterField.get(vm);
@@ -47,6 +47,8 @@ public class InstrumentationTestMode {
             }
         } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
             fail("Reflective access to Instrumenter for testing");
+        } finally {
+            vm.dispose();
         }
 
     }
