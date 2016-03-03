@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
-import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -134,7 +133,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
 
             int numberInstructions = 0;
             for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
-                allocator.initBlockData(block);
                 numberInstructions += allocator.getLIR().getLIRforBlock(block).size();
             }
             numInstructions = numberInstructions;
@@ -510,9 +508,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                 for (int i = allocator.blockCount() - 1; i >= 0; i--) {
 
                     AbstractBlockBase<?> block = allocator.blockAt(i);
-                    // TODO (je) make empty bitset - remove
-                    allocator.getBlockData(block).liveIn = new BitSet();
-                    allocator.getBlockData(block).liveOut = new BitSet();
                     try (Indent indent2 = Debug.logAndIndent("handle block %d", block.getId())) {
 
                         List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
