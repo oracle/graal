@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
+import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.tck.Schema.Type;
 import java.util.concurrent.Executors;
 import org.junit.After;
@@ -147,8 +148,8 @@ public abstract class TruffleTCK {
      * Configure your language insided of provided builder. The method should do the same operation
      * like {@link #prepareVM()}, but rather than doing them from scratch, it is supposed to do the
      * changes in provided builder. The builder may be pre-configured by the TCK - for example
-     * {@link PolyglotEngine.Builder#executor(java.util.concurrent.Executor)} may be provided or
-     * {@link PolyglotEngine.Builder#globalSymbol(java.lang.String, java.lang.Object) global
+     * {@link Builder#executor(java.util.concurrent.Executor)} may be provided or
+     * {@link Builder#globalSymbol(java.lang.String, java.lang.Object) global
      * symbols} specified, etc.
      *
      * @param preparedBuilder the builder to use to construct the engine
