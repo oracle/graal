@@ -58,11 +58,10 @@ public abstract class Accessor {
     static Accessor INSTRUMENTHANDLER;
     private static Accessor DEBUG;
     private static Accessor OPTIMIZEDCALLTARGET;
-    private static Object currentvm;
     private static FindEngineNode CURRENT_VM = new FindEngineNode() {
         @Override
         protected Object findEngine() {
-            return currentvm;
+            return null;
         }
     };
 
@@ -161,6 +160,7 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             SPI = this;
+            CURRENT_VM = SPI.createFindEngineNode();
         }
     }
 
@@ -323,6 +323,10 @@ public abstract class Accessor {
         return SPI.createFindContextNode(language);
     }
 
+    protected FindEngineNode createFindEngineNode() {
+        throw new UnsupportedOperationException();
+    }
+
     @TruffleBoundary
     @SuppressWarnings("unused")
     protected Closeable executionStart(Object vm, int currentDepth, boolean debugger, Source s) {
@@ -330,13 +334,10 @@ public abstract class Accessor {
         Objects.requireNonNull(vm);
         final Object prev = CURRENT_VM.findEngine();
         final Closeable debugClose = DEBUG == null ? null : DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
-        assert currentvm == null;
-        currentvm = vm;
         class ContextCloseable implements Closeable {
             @TruffleBoundary
             @Override
             public void close() throws IOException {
-                currentvm = null;
                 if (debugClose != null) {
                     debugClose.close();
                 }

@@ -55,6 +55,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.FindEngineNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -107,6 +108,7 @@ import com.oracle.truffle.api.source.Source;
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
     private static final Shape LANGUAGE_CONTEXT_SHAPE  = Layout.createLayout().createShape(new ObjectType());
+    private static final FindEngineNodeImpl FIND_ENGINE_NODE = new FindEngineNodeImpl();
     static final boolean JAVA_INTEROP_ENABLED = !TruffleOptions.AOT;
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
@@ -1254,12 +1256,18 @@ public class PolyglotEngine {
         @Override
         protected Closeable executionStart(Object obj, int currentDepth, boolean initializeDebugger, Source s) {
             PolyglotEngine vm = (PolyglotEngine) obj;
+            FIND_ENGINE_NODE.registerEngine(null, vm);
             return super.executionStart(vm, -1, initializeDebugger, s);
         }
 
         @Override
         protected Node createFindContextNode(TruffleLanguage<?> language) {
             return FindContextNodeImpl.create(language);
+        }
+
+        @Override
+        protected FindEngineNode createFindEngineNode() {
+            return FIND_ENGINE_NODE;
         }
 
         @Override
