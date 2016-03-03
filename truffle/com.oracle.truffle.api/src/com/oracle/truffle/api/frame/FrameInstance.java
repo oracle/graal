@@ -29,26 +29,6 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- *
- *
- * <pre>
- *                     ===============
- * {@link TruffleRuntime#getCurrentFrame() getCurrentFrame()}: |  CallTarget   | FrameInstance
- *                     ===============
- * {@link TruffleRuntime#getCallerFrame() getCallerFrame()}:  |  CallNode     | FrameInstance
- *                    |  CallTarget   |
- *                     ===============
- *                    |  CallNode     | FrameInstance
- *                    |  CallTarget   |
- *                     ===============
- *                          ...
- *                     ===============
- *                    |  CallNode     | FrameInstance
- *Initial call:       |  CallTarget   |
- *                     ===============
- *
- * </pre>
- *
  * @since 0.8 or earlier
  */
 public interface FrameInstance {
@@ -76,20 +56,20 @@ public interface FrameInstance {
      * This picture indicates how {@link FrameInstance} groups the stack.
      *
      * <pre>
-     *                     ===============
-     * {@link TruffleRuntime#getCurrentFrame() Current}:         ,>|  CallTarget   | FrameInstance
-     *                  | ===============
-     * {@link TruffleRuntime#getCallerFrame() Caller}:          '-|  CallNode     | FrameInstance
-     *                  ,>|  CallTarget   |
-     *                  |  ===============
-     *                  '-|  CallNode     | FrameInstance
-     *                    |  CallTarget   |
-     *                     ===============
-     *                          ...
-     *                     ===============
-     *                    |  CallNode     | FrameInstance
-     *Initial call:       |  CallTarget   |
-     *                     ===============
+     *                      ===============
+     *  {@link TruffleRuntime#getCurrentFrame() Current}:         ,>|  CallTarget   | FrameInstance
+     *                   |  ===============
+     *  {@link TruffleRuntime#getCallerFrame() Caller}:          '-|  CallNode     | FrameInstance
+     *                   ,>|  CallTarget   |
+     *                   |  ===============
+     *                   '-|  CallNode     | FrameInstance
+     *                     |  CallTarget   |
+     *                      ===============
+     *                           ...
+     *                      ===============
+     *                     |  CallNode     | FrameInstance
+     * Initial call:       |  CallTarget   |
+     *                      ===============
      *
      * </pre>
      *
