@@ -26,6 +26,7 @@ package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
+import java.util.Objects;
 
 public abstract class FindContextNode extends Node {
     @Child
@@ -35,7 +36,8 @@ public abstract class FindContextNode extends Node {
      * @param engineFinder the node to find PolyglotEngine
      */
     protected FindContextNode(FindEngineNode engineFinder) {
-        this.findEngine = engineFinder == null ? new FindEngineNode.Default() : engineFinder;
+        Objects.requireNonNull(engineFinder);
+        this.findEngine = engineFinder;
     }
 
     /**

@@ -38,7 +38,7 @@ final class FindContextNodeImpl<L> extends FindContextNode {
     @CompilerDirectives.CompilationFinal private L singleContext;
 
     private FindContextNodeImpl(TruffleLanguage<L> language) {
-        super(null);
+        super(PolyglotEngine.FIND_ENGINE_NODE);
         this.fromEngine = new PolyglotEngine.FindContextForEngineNode<>(language);
         this.language = language;
     }

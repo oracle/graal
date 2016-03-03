@@ -108,7 +108,7 @@ import com.oracle.truffle.api.source.Source;
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
     private static final Shape LANGUAGE_CONTEXT_SHAPE  = Layout.createLayout().createShape(new ObjectType());
-    private static final FindEngineNodeImpl FIND_ENGINE_NODE = new FindEngineNodeImpl();
+    static final FindEngineNodeImpl FIND_ENGINE_NODE = new FindEngineNodeImpl();
     static final boolean JAVA_INTEROP_ENABLED = !TruffleOptions.AOT;
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();

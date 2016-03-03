@@ -31,11 +31,4 @@ public abstract class FindEngineNode extends Node {
      * @return an instance of {@link com.oracle.truffle.api.vm.PolyglotEngine}
      */
     protected abstract Object findEngine();
-
-    static final class Default extends FindEngineNode {
-        @Override
-        protected Object findEngine() {
-            return Accessor.findCurrentVM();
-        }
-    }
 }
