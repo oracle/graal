@@ -54,7 +54,8 @@ public class Opt {
             FUNC_ATTRS("functionattrs"),
             JUMP_THREADING("jump-threading"),
             SCALAR_REPLACEMENT_AGGREGATES("scalarrepl"),
-            ALWAYS_INLINE("always-inline");
+            ALWAYS_INLINE("always-inline"),
+            GVN("gvn");
 
             private final String option;
 

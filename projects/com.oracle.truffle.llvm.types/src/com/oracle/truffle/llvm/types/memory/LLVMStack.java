@@ -42,26 +42,33 @@ public class LLVMStack extends LLVMMemory {
 
     private static final int STACK_SIZE_BYTE = STACK_SIZE_KB * 1024;
 
-    private static long stackPointer;
+    private long stackPointer;
 
-    @CompilationFinal private static long lowerBounds;
-    @CompilationFinal private static long upperBounds;
+    @CompilationFinal private long lowerBounds;
+    @CompilationFinal private long upperBounds;
+
+    public LLVMStack() {
+        allocate();
+    }
 
     /**
      * Allocates the stack memory.
      */
-    public static void allocate() {
+    private void allocate() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         final long stackAllocation = UNSAFE.allocateMemory(STACK_SIZE_BYTE);
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + STACK_SIZE_BYTE;
+    }
+
+    public void reset() {
         stackPointer = upperBounds;
     }
 
     /**
      * Deallocates the stack memory.
      */
-    public static void free() {
+    public void free() {
         UNSAFE.freeMemory(lowerBounds);
         lowerBounds = 0;
         upperBounds = 0;
@@ -77,7 +84,7 @@ public class LLVMStack extends LLVMMemory {
      * @param alignment the alignment, either {@link #NO_ALIGNMENT_REQUIREMENTS} or a power of two.
      * @return the allocated memory, satisfying the alignment requirements
      */
-    public static LLVMAddress allocateMemory(final long size, final int alignment) {
+    public LLVMAddress allocateMemory(final long size, final int alignment) {
         assert size >= 0;
         assert alignment != 0 && powerOfTo(alignment);
         final long alignedAllocation = (stackPointer - size) & -alignment;
@@ -94,11 +101,11 @@ public class LLVMStack extends LLVMMemory {
         return (value & -value) == value;
     }
 
-    public static LLVMAddress getStackPointer() {
+    public LLVMAddress getStackPointer() {
         return LLVMAddress.fromLong(stackPointer);
     }
 
-    public static void setStackPointer(final LLVMAddress addr) {
+    public void setStackPointer(final LLVMAddress addr) {
         assert stackPointer <= addr.getVal();
         assert lowerBounds < addr.getVal();
         assert upperBounds >= addr.getVal();

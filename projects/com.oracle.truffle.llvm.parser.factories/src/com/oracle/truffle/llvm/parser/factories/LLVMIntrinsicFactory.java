@@ -39,6 +39,8 @@ import com.intel.llvm.ireditor.lLVM_IR.Parameter;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
@@ -64,7 +66,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMNoOpFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMPrefetchFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMReturnAddressFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMStackRestoreNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMStackSave;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMTrapFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.arith.LLVMPowFactory.LLVMPowDoubleFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.arith.LLVMPowFactory.LLVMPowFloatFactory;
@@ -145,13 +147,14 @@ public final class LLVMIntrinsicFactory {
     public static LLVMNode create(String functionName, Object[] argNodes, FunctionDef functionDef, LLVMParserRuntime runtime) {
         NodeFactory<? extends LLVMNode> factory = factories.get(functionName);
         EList<Parameter> paramList = functionDef.getHeader().getParameters().getParameters();
+        LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
         if (factory == null) {
             if (functionName.equals("@llvm.uadd.with.overflow.i32")) {
                 return LLVMUAddWithOverflowI32NodeGen.create((LLVMI32Node) argNodes[1], (LLVMI32Node) argNodes[2], (LLVMAddressNode) argNodes[0]);
             } else if (functionName.equals("@llvm.stacksave")) {
-                return new LLVMStackSave();
+                return LLVMStackSaveNodeGen.create(context);
             } else if (functionName.equals("@llvm.stackrestore")) {
-                return LLVMStackRestoreNodeGen.create((LLVMAddressNode) argNodes[0]);
+                return LLVMStackRestoreNodeGen.create((LLVMAddressNode) argNodes[0], context);
             } else if (functionName.equals("@llvm.frameaddress")) {
                 return LLVMFrameAddressNodeGen.create((LLVMI32Node) argNodes[0], runtime.getStackPointerSlot());
             } else if (functionName.startsWith("@llvm.va_start")) {

@@ -37,9 +37,9 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public class LLVMFunctionStartNode extends RootNode {
 
@@ -48,21 +48,24 @@ public class LLVMFunctionStartNode extends RootNode {
     @Children private final LLVMNode[] afterFunction;
     private final String functionName;
     private final FrameSlot stackSlot;
+    private final LLVMContext context;
 
-    public LLVMFunctionStartNode(LLVMExpressionNode node, FrameSlot stackSlot, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName) {
+    public LLVMFunctionStartNode(LLVMExpressionNode node, FrameSlot stackSlot, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName,
+                    LLVMContext context) {
         super(LLVMLanguage.class, null, frameDescriptor);
         this.node = node;
         this.stackSlot = stackSlot;
         this.beforeFunction = beforeFunction;
         this.afterFunction = afterFunction;
         this.functionName = functionName;
+        this.context = context;
     }
 
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(beforeFunction);
-        final LLVMAddress stackPointer = LLVMStack.getStackPointer();
+        final LLVMAddress stackPointer = context.getStack().getStackPointer();
         frame.setObject(stackSlot, stackPointer);
         for (LLVMNode before : beforeFunction) {
             before.executeVoid(frame);
@@ -72,7 +75,7 @@ public class LLVMFunctionStartNode extends RootNode {
         for (LLVMNode after : afterFunction) {
             after.executeVoid(frame);
         }
-        LLVMStack.setStackPointer(stackPointer);
+        context.getStack().setStackPointer(stackPointer);
         return result;
     }
 

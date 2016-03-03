@@ -169,17 +169,20 @@ public class LLVM {
             LLVMFunction mainSignature = module.getMainSignature();
             int argParamCount = mainSignature.getLlvmParamTypes().length;
             LLVMGlobalRootNode globalFunction;
+            LLVMContext context = module.getContext();
             if (argParamCount == 0) {
-                globalFunction = LLVMGlobalRootNode.createNoArgumentsMain(module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses());
+                globalFunction = LLVMGlobalRootNode.createNoArgumentsMain(context, module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses());
             } else if (argParamCount == 1) {
-                globalFunction = LLVMGlobalRootNode.createArgsCountMain(module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1);
+                globalFunction = LLVMGlobalRootNode.createArgsCountMain(context, module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1);
             } else {
                 LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(fileSource, args);
                 if (argParamCount == 2) {
-                    globalFunction = LLVMGlobalRootNode.createArgsMain(module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1, allocatedArgsStartAddress);
+                    globalFunction = LLVMGlobalRootNode.createArgsMain(context, module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1,
+                                    allocatedArgsStartAddress);
                 } else if (argParamCount == THREE_ARGS) {
                     LLVMAddress posixEnvPointer = LLVMAddress.NULL_POINTER;
-                    globalFunction = LLVMGlobalRootNode.createArgsEnvMain(module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1, allocatedArgsStartAddress,
+                    globalFunction = LLVMGlobalRootNode.createArgsEnvMain(context, module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1,
+                                    allocatedArgsStartAddress,
                                     posixEnvPointer);
                 } else {
                     throw new AssertionError(argParamCount);
