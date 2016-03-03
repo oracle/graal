@@ -24,6 +24,10 @@ package com.oracle.graal.truffle;
 
 import java.util.ListIterator;
 
+import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
@@ -80,13 +84,16 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
 
         @Override
         protected void run(StructuredGraph graph, HighTierContext context) {
-            new InstrumentedGraphBuilderPhase.Instance(context, getGraphBuilderConfig(), null).run(graph);
+            new InstrumentedGraphBuilderPhase.Instance(context.getMetaAccess(), context.getStampProvider(),
+                    context.getConstantReflection(), getGraphBuilderConfig(), context.getOptimisticOptimizations(),
+                    null).run(graph);
         }
 
         public static class Instance extends GraphBuilderPhase.Instance {
-            public Instance(HighTierContext context, GraphBuilderConfiguration config, IntrinsicContext intrinsicContext) {
-                super(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(),
-                                config, context.getOptimisticOptimizations(), intrinsicContext);
+            public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider,
+                            ConstantReflectionProvider constantReflection, GraphBuilderConfiguration config,
+                            OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+                super(metaAccess, stampProvider, constantReflection, config, optimisticOpts, initialIntrinsicContext);
             }
 
             @Override

@@ -133,7 +133,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                 System.out.println("Branch execution profile");
                 System.out.println("========================");
                 for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
-                    System.out.println(entry.getKey() + ": " + entry.getValue() + "\n");
+                    System.out.println(entry.getKey() + ": " + entry.getValue());
                 }
             }
         }
