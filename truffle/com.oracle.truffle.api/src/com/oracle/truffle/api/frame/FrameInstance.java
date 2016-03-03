@@ -103,7 +103,6 @@ public interface FrameInstance {
     Node getCallNode();
 
     /**
-     * @return the {@link CallTarget target} that created this frame instance by executing it.
      * @since 0.8 or earlier
      **/
     CallTarget getCallTarget();
