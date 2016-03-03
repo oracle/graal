@@ -58,7 +58,13 @@ public abstract class Accessor {
     static Accessor INSTRUMENTHANDLER;
     private static Accessor DEBUG;
     private static Accessor OPTIMIZEDCALLTARGET;
-    private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
+    private static Object currentvm;
+    private static FindEngineNode CURRENT_VM = new FindEngineNode() {
+        @Override
+        protected Object findEngine() {
+            return currentvm;
+        }
+    };
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -235,7 +241,7 @@ public abstract class Accessor {
     protected Env findLanguage(Object known, Class<? extends TruffleLanguage> languageClass) {
         Object vm;
         if (known == null) {
-            vm = CURRENT_VM.get();
+            vm = CURRENT_VM.findEngine();
             if (vm == null) {
                 throw new IllegalStateException("Accessor.findLanguage access to vm");
             }
@@ -249,14 +255,14 @@ public abstract class Accessor {
     }
 
     static Object findCurrentVM() {
-        return CURRENT_VM.get();
+        return CURRENT_VM.findEngine();
     }
 
     @SuppressWarnings("rawtypes")
     protected TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass, String mimeType) {
         Object vm;
         if (known == null) {
-            vm = CURRENT_VM.get();
+            vm = CURRENT_VM.findEngine();
             if (vm == null) {
                 throw new IllegalStateException("Accessor.findLanguageImpl access to vm");
             }
@@ -269,7 +275,7 @@ public abstract class Accessor {
     protected Instrumenter getInstrumenter(Object known) {
         Object vm;
         if (known == null) {
-            vm = CURRENT_VM.get();
+            vm = CURRENT_VM.findEngine();
             if (vm == null) {
                 return null;
             }
@@ -294,7 +300,7 @@ public abstract class Accessor {
     protected Object getInstrumentationHandler(Object known) {
         Object vm;
         if (known == null) {
-            vm = CURRENT_VM.get();
+            vm = CURRENT_VM.findEngine();
             if (vm == null) {
                 return null;
             }
@@ -322,14 +328,15 @@ public abstract class Accessor {
     protected Closeable executionStart(Object vm, int currentDepth, boolean debugger, Source s) {
         CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
         Objects.requireNonNull(vm);
-        final Object prev = CURRENT_VM.get();
+        final Object prev = CURRENT_VM.findEngine();
         final Closeable debugClose = DEBUG == null ? null : DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
-        CURRENT_VM.set(vm);
+        assert currentvm == null;
+        currentvm = vm;
         class ContextCloseable implements Closeable {
             @TruffleBoundary
             @Override
             public void close() throws IOException {
-                CURRENT_VM.set(prev);
+                currentvm = null;
                 if (debugClose != null) {
                     debugClose.close();
                 }
