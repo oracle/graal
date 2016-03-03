@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
@@ -256,7 +257,7 @@ public class StaticAnalysis {
                      * This is a constraint of this example code, a real static analysis needs to
                      * handle the Graal nodes for throwing and handling exceptions.
                      */
-                    graphBuilderConfig = graphBuilderConfig.withOmitAllExceptionEdges(true);
+                    graphBuilderConfig = graphBuilderConfig.withBytecodeExceptionMode(BytecodeExceptionMode.OmitAll);
                     /*
                      * We do not want Graal to perform any speculative optimistic optimizations,
                      * i.e., we do not want to use profiling information. Since we do not run the
