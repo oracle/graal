@@ -50,7 +50,7 @@ public class EngineTest {
         return PolyglotEngine.newBuilder();
     }
 
-    private final PolyglotEngine register(PolyglotEngine engine) {
+    private PolyglotEngine register(PolyglotEngine engine) {
         toDispose.add(engine);
         return engine;
     }
