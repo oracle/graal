@@ -21,7 +21,7 @@ final class InstrumentCache {
     static final boolean PRELOAD;
     private static final List<InstrumentCache> CACHE;
 
-    private Class<?> instrumentationClass;
+    private Class<?> instrumentClass;
     private final String className;
     private final String id;
     private final String name;
@@ -71,7 +71,7 @@ final class InstrumentCache {
         try {
             en = loader.getResources("META-INF/truffle/instrumentation");
         } catch (IOException ex) {
-            throw new IllegalStateException("Cannot read list of Truffle instrumentations", ex);
+            throw new IllegalStateException("Cannot read list of Truffle instruments", ex);
         }
         while (en.hasMoreElements()) {
             URL u = en.nextElement();
@@ -86,12 +86,12 @@ final class InstrumentCache {
                 continue;
             }
             for (int cnt = 1;; cnt++) {
-                String prefix = "instrumentation" + cnt + ".";
+                String prefix = "instrument" + cnt + ".";
                 String className = p.getProperty(prefix + "className");
                 if (className == null) {
                     break;
                 }
-                // we don't want multiple instrumentations with the same class name
+                // we don't want multiple instruments with the same class name
                 if (!classNamesUsed.contains(className)) {
                     classNamesUsed.add(className);
                     list.add(new InstrumentCache(prefix, p));
@@ -118,18 +118,18 @@ final class InstrumentCache {
         return version;
     }
 
-    Class<?> getInstrumentationClass() {
-        if (!PRELOAD && instrumentationClass == null) {
+    Class<?> getInstrumentClass() {
+        if (!PRELOAD && instrumentClass == null) {
             loadClass();
         }
-        return instrumentationClass;
+        return instrumentClass;
     }
 
     private void loadClass() {
         try {
-            instrumentationClass = Class.forName(className, true, loader());
+            instrumentClass = Class.forName(className, true, loader());
         } catch (Exception ex) {
-            throw new IllegalStateException("Cannot initialize " + getName() + " instrumentation with implementation " + className, ex);
+            throw new IllegalStateException("Cannot initialize " + getName() + " instrument with implementation " + className, ex);
         }
     }
 
