@@ -92,7 +92,7 @@ public class StubUtil {
     }
 
     public static void handlePendingException(Word thread, boolean isObjectResult) {
-        if (clearPendingException(thread)) {
+        if (clearPendingException(thread) != null) {
             if (isObjectResult) {
                 getAndClearObjectResult(thread);
             }

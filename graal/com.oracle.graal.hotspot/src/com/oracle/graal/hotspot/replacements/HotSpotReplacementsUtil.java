@@ -288,10 +288,10 @@ public class HotSpotReplacementsUtil {
     /**
      * Clears the pending exception for the given thread.
      *
-     * @return {@code true} if there was a pending exception
+     * @return the pending exception, or null if there was none
      */
-    public static boolean clearPendingException(Word thread) {
-        boolean result = thread.readObject(threadPendingExceptionOffset(), PENDING_EXCEPTION_LOCATION) != null;
+    public static Object clearPendingException(Word thread) {
+        Object result = thread.readObject(threadPendingExceptionOffset(), PENDING_EXCEPTION_LOCATION);
         thread.writeObject(threadPendingExceptionOffset(), null, PENDING_EXCEPTION_LOCATION);
         return result;
     }
