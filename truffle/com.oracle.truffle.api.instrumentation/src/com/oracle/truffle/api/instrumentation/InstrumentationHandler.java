@@ -99,7 +99,7 @@ final class InstrumentationHandler {
     }
 
     void addInstrument(Object key, Class<?> clazz) {
-        addInstrumenter(key, new InstrumentationInstrumenter(clazz, out, err, in));
+        addInstrumenter(key, new ClientInstrumenter(clazz, out, err, in));
     }
 
     void disposeInstrumenter(Object key, boolean cleanupRequired) {
@@ -546,16 +546,17 @@ final class InstrumentationHandler {
     }
 
     /**
-     * Instrumenter implementation for {@link TruffleInstrument}.
+     * Instrumenter implementation for use by {@linkplain TruffleInstrument external clients} of
+     * instrumentation.
      */
-    final class InstrumentationInstrumenter extends AbstractInstrumenter {
+    final class ClientInstrumenter extends AbstractInstrumenter {
 
         private final Class<?> instrumentClass;
         private Object[] services;
         private TruffleInstrument instrument;
         private final Env env;
 
-        InstrumentationInstrumenter(Class<?> instrumentClass, OutputStream out, OutputStream err, InputStream in) {
+        ClientInstrumenter(Class<?> instrumentClass, OutputStream out, OutputStream err, InputStream in) {
             this.instrumentClass = instrumentClass;
             this.env = new Env(this, out, err, in);
         }
@@ -606,7 +607,7 @@ final class InstrumentationHandler {
             return instrument != null;
         }
 
-        TruffleInstrument getInstrumentation() {
+        TruffleInstrument getInstrument() {
             return instrument;
         }
 
@@ -635,7 +636,7 @@ final class InstrumentationHandler {
     }
 
     /**
-     * Instrumenter implementation for use in {@link TruffleLanguage}.
+     * Instrumenter implementation for use by {@linkplain TruffleLanguage language implementations}.
      */
     final class LanguageInstrumenter<T> extends AbstractInstrumenter {
         @SuppressWarnings("unused") private final TruffleLanguage.Env env;
@@ -673,8 +674,9 @@ final class InstrumentationHandler {
 
     /**
      * We have two APIs both need an Instrumenter implementation they slightly differ in their
-     * behavior depending on the context in which they are used {@link TruffleInstrument} or
-     * {@link TruffleLanguage}.
+     * behavior depending on the context in which they are used: <em>external clients</em> of
+     * instrumentation services (instances of {@link TruffleInstrument}) or
+     * <em>language implementations</em> (instances of {@link TruffleLanguage}).
      */
     abstract class AbstractInstrumenter extends Instrumenter {
 

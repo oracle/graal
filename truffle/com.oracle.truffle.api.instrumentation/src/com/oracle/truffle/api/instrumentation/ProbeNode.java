@@ -32,7 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentationInstrumenter;
+import com.oracle.truffle.api.instrumentation.InstrumentationHandler.ClientInstrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.source.SourceSection;
@@ -202,23 +202,23 @@ public final class ProbeNode extends Node {
                 throw t;
             } else {
                 /* Client instruments are not allowed to throw exceptions into the AST. */
-                failEventForInstrument(binding, "ProbeNodeFactory.create", t);
+                failEventForClientInstrument(binding, "ProbeNodeFactory.create", t);
                 return null;
             }
         }
         return eventNode;
     }
 
-    static void failEventForInstrument(EventBinding<?> b, String eventName, Throwable t) {
+    static void failEventForClientInstrument(EventBinding<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
-        InstrumentationInstrumenter instrumentationInstrumenter = (InstrumentationInstrumenter) b.getInstrumenter();
-        Class<?> instrumentClass = instrumentationInstrumenter.getInstrumentClass();
+        ClientInstrumenter clientInstrumenter = (ClientInstrumenter) b.getInstrumenter();
+        Class<?> instrumentClass = clientInstrumenter.getInstrumentClass();
 
         String message = String.format("Event %s failed for instrument class %s and listener/factory %s.", //
                         eventName, instrumentClass.getName(), b.getElement());
 
         Exception exception = new Exception(message, t);
-        PrintStream stream = new PrintStream(instrumentationInstrumenter.getEnv().err());
+        PrintStream stream = new PrintStream(clientInstrumenter.getEnv().err());
         exception.printStackTrace(stream);
     }
 
@@ -267,7 +267,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    failEventForInstrument(binding, "onEnter", t);
+                    failEventForClientInstrument(binding, "onEnter", t);
                 }
             }
             if (next != null) {
@@ -289,7 +289,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    failEventForInstrument(binding, "onEnter", t);
+                    failEventForClientInstrument(binding, "onEnter", t);
                 }
             }
             if (next != null) {
@@ -311,7 +311,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    failEventForInstrument(binding, "onReturnValue", t);
+                    failEventForClientInstrument(binding, "onReturnValue", t);
                 }
             }
             if (next != null) {
@@ -333,7 +333,7 @@ public final class ProbeNode extends Node {
                     exception.addSuppressed(t);
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    failEventForInstrument(binding, "onReturnExceptional", t);
+                    failEventForClientInstrument(binding, "onReturnExceptional", t);
                 }
             }
             if (next != null) {
