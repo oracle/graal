@@ -47,12 +47,14 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.Map;
 
 public class JavaInteropTest {
     public int x;
     public double y;
     public String[] arr;
     public Object value;
+    public Object map;
 
     private TruffleObject obj;
     private XYPlus xyp;
@@ -140,6 +142,20 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void objectsAsMap() {
+        x = 10;
+        y = 33.3;
+        map = this;
+        Map<String,Object> map = xyp.map();
+
+        assertEquals("x", map.get("x"), 10);
+        assertEquals("y", map.get("y"), 33.3);
+
+        map.put("x", 13);
+        assertEquals("x changed", x, 13);
+    }
+
+    @Test
     public void nullCanBeReturned() {
         assertNull(xyp.value());
     }
@@ -152,6 +168,8 @@ public class JavaInteropTest {
 
     public interface XYPlus {
         List<String> arr();
+
+        Map<String,Object> map();
 
         int x();
 
