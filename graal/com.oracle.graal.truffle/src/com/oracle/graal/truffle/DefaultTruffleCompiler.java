@@ -84,7 +84,8 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
 
         @Override
         protected void run(StructuredGraph graph, HighTierContext context) {
-            new InstrumentedGraphBuilderPhase.Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), getGraphBuilderConfig(), context.getOptimisticOptimizations(), null).run(graph);
+            new InstrumentedGraphBuilderPhase.Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), getGraphBuilderConfig(),
+                            context.getOptimisticOptimizations(), null).run(graph);
         }
 
         public static class Instance extends GraphBuilderPhase.Instance {
