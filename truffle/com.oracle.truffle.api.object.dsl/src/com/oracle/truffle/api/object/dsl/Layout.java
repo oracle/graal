@@ -200,6 +200,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * public static final fields in the interface.
  *
  * {@codesnippet customid}
+ *
+ * @since 0.8 or earlier
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
