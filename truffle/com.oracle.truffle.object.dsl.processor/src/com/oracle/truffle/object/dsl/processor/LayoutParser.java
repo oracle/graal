@@ -112,11 +112,25 @@ public class LayoutParser {
                 } else {
                     processor.reportError(element, "@Layout interface fields should only be identifier fields, ending with _IDENTIFIER");
                 }
-            } else if (element.getKind() == ElementKind.METHOD) {
+            }
+        }
+
+        for (Element element : layoutElement.getEnclosedElements()) {
+            if (element.getKind() == ElementKind.METHOD) {
                 final String simpleName = element.getSimpleName().toString();
 
                 if (simpleName.equals("create" + name + "Shape")) {
                     parseShapeConstructor((ExecutableElement) element);
+                }
+            }
+        }
+
+        for (Element element : layoutElement.getEnclosedElements()) {
+            if (element.getKind() == ElementKind.METHOD) {
+                final String simpleName = element.getSimpleName().toString();
+
+                if (simpleName.equals("create" + name + "Shape")) {
+                    // Handled above
                 } else if (simpleName.equals("create" + name)) {
                     parseConstructor((ExecutableElement) element);
                 } else if (simpleName.equals("is" + name)) {
@@ -132,7 +146,11 @@ public class LayoutParser {
                 } else {
                     processor.reportError(element, "Unknown method prefix in @Layout interface - woudln't know how to implement this method");
                 }
-            } else {
+            }
+        }
+
+        for (Element element : layoutElement.getEnclosedElements()) {
+            if (element.getKind() != ElementKind.FIELD && element.getKind() != ElementKind.METHOD) {
                 processor.reportError(element, "@Layout interfaces can only contain fields and methods");
             }
         }
@@ -212,6 +230,11 @@ public class LayoutParser {
 
         for (VariableElement element : parameters) {
             final String parameterName = element.getSimpleName().toString();
+
+            if (parameterName.equals("factory")) {
+                processor.reportError(methodElement, "Factory is a confusing name for a property");
+            }
+
             constructorProperties.add(parameterName);
             final PropertyBuilder property = getProperty(parameterName);
             setPropertyType(element, property, element.asType());
@@ -221,7 +244,7 @@ public class LayoutParser {
 
     private void checkSharedParameters(Element element, List<? extends VariableElement> parameters, List<PropertyModel> sharedProperties) {
         if (parameters.size() < sharedProperties.size()) {
-            processor.reportError(element, "@Layout constructor cannot have less parameters than the super layout constructor");
+            processor.reportError(element, "@Layout constructor cannot have less parameters than the super layout constructor " + parameters + " " + sharedProperties);
         }
 
         for (int n = 0; n < sharedProperties.size(); n++) {
