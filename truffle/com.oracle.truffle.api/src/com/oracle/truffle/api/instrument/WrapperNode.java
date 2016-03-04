@@ -65,22 +65,29 @@ import com.oracle.truffle.api.nodes.Node;
  * <p>
  *
  * @see ProbeInstrument
+ * @since 0.8 or earlier
  */
 public interface WrapperNode extends InstrumentationNode {
 
     /**
      * Gets the node being "wrapped", i.e. the AST node for which {@linkplain EventHandlerNode
      * execution events} will be reported through the Instrumentation Framework.
+     * 
+     * @since 0.8 or earlier
      */
     Node getChild();
 
     /**
      * Gets the {@link Probe} responsible for installing this wrapper.
+     * 
+     * @since 0.8 or earlier
      */
     Probe getProbe();
 
     /**
      * Implementation support for completing a newly created wrapper node.
+     * 
+     * @since 0.8 or earlier
      */
     void insertEventHandlerNode(EventHandlerNode eventHandlerNode);
 }

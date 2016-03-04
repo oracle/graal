@@ -26,6 +26,8 @@ package com.oracle.truffle.api.interop;
 
 /**
  * An exception thrown if a {@link TruffleObject} does not support a {@link Message}.
+ * 
+ * @since 0.11
  */
 public final class UnsupportedMessageException extends InteropException {
 
@@ -42,6 +44,7 @@ public final class UnsupportedMessageException extends InteropException {
      * Returns the {@link Message} that was not supported by the {@link TruffleObject}.
      *
      * @return the unsupported message
+     * @since 0.11
      */
     public Message getUnsupportedMessage() {
         return message;
@@ -56,6 +59,7 @@ public final class UnsupportedMessageException extends InteropException {
      * @param message message that is not supported
      *
      * @return the exception
+     * @since 0.11
      */
     public static RuntimeException raise(Message message) {
         return silenceException(RuntimeException.class, new UnsupportedMessageException(message));

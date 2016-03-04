@@ -25,18 +25,14 @@
 package com.oracle.truffle.api.interop.java;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.AcceptMessage;
 
-class ReadArgNode extends Node {
-    private final int argIndex;
+@AcceptMessage(value = "IS_EXECUTABLE", receiverType = JavaFunctionObject.class, language = JavaInteropLanguage.class)
+final class IsExecutableNode extends IsExecutableBaseNode {
 
-    ReadArgNode(int argIndex) {
-        this.argIndex = argIndex;
-    }
-
-    public Object execute(VirtualFrame frame) {
-        return ForeignAccess.getArguments(frame).get(argIndex);
+    @Override
+    public Object access(VirtualFrame frame, JavaFunctionObject receiver) {
+        return Boolean.TRUE;
     }
 
 }

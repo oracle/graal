@@ -31,8 +31,10 @@ import com.oracle.truffle.api.TruffleRuntime;
  * {@link #visitFrame} return null to indicate that frame iteration should continue and the next
  * caller frame should be visited; and return any non-null value to indicate that frame iteration
  * should stop.
+ * 
+ * @since 0.8 or earlier
  */
 public interface FrameInstanceVisitor<T> {
-
+    /** @since 0.8 or earlier */
     T visitFrame(FrameInstance frameInstance);
 }

@@ -40,6 +40,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @see ExecutionEventNodeFactory
  * @see ExecutionEventListener
+ * @since 0.12
  */
 public final class EventContext {
 
@@ -59,6 +60,8 @@ public final class EventContext {
      * <b>Performance note:</b> this is method may be invoked in compiled code and is guaranteed to
      * always return a compilation constant .
      * </p>
+     * 
+     * @since 0.12
      */
     public SourceSection getInstrumentedSourceSection() {
         return sourceSection;
@@ -71,6 +74,8 @@ public final class EventContext {
      * <b>Performance note:</b> this is method may be invoked in compiled code and is guaranteed to
      * always return a compilation constant .
      * </p>
+     * 
+     * @since 0.12
      */
     public Node getInstrumentedNode() {
         WrapperNode wrapper = probeNode.findWrapper();
@@ -88,6 +93,7 @@ public final class EventContext {
      *            can be referenced from the source
      * @return the call target representing the parsed result
      * @throws IOException if the parsing or evaluation fails for some reason
+     * @since 0.12
      */
     public CallTarget parseInContext(Source source, String... argumentNames) throws IOException {
         return InstrumentationHandler.ACCESSOR.parse(null, source, getInstrumentedNode(), argumentNames);
@@ -97,7 +103,7 @@ public final class EventContext {
      * TODO (chumer) a way to parse code in the current language and return something like a node
      * that is directly embeddable into the AST as a @Child.
      */
-
+    /** @since 0.12 */
     @Override
     public String toString() {
         return "EventContext[source=" + getInstrumentedSourceSection() + "]";

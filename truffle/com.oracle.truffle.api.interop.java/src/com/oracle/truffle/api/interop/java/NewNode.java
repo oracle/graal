@@ -24,39 +24,34 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
 
-final class JavaNewNode extends RootNode {
-    JavaNewNode() {
-        super(JavaInteropLanguage.class, null, null);
-    }
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.AcceptMessage;
+
+@AcceptMessage(value = "NEW", receiverType = JavaObject.class, language = JavaInteropLanguage.class)
+final class NewNode extends JavaNewBaseNode {
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        JavaInterop.JavaObject receiver = (JavaInterop.JavaObject) ForeignAccess.getReceiver(frame);
-        List<Object> args = ForeignAccess.getArguments(frame);
-        return execute(receiver, args.toArray());
+    public Object access(VirtualFrame frame, JavaObject object, Object[] args) {
+        return execute(object, args);
     }
 
-    static Object execute(JavaInterop.JavaObject receiver, Object[] args) {
+    static Object execute(JavaObject receiver, Object[] args) {
         if (receiver.obj != null) {
             throw new IllegalStateException("Can only work on classes: " + receiver.obj);
         }
         for (int i = 0; i < args.length; i++) {
-            if (args[i] instanceof JavaInterop.JavaObject) {
-                args[i] = ((JavaInterop.JavaObject) args[i]).obj;
+            if (args[i] instanceof JavaObject) {
+                args[i] = ((JavaObject) args[i]).obj;
             }
         }
         IllegalStateException ex = new IllegalStateException("No suitable constructor found for " + receiver.clazz);
         for (Constructor<?> constructor : receiver.clazz.getConstructors()) {
             try {
                 Object ret = constructor.newInstance(args);
-                if (JavaInterop.isPrimitive(ret)) {
+                if (ToJavaNode.isPrimitive(ret)) {
                     return ret;
                 }
                 return JavaInterop.asTruffleObject(ret);

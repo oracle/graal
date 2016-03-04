@@ -37,9 +37,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class AbsoluteNode extends Node {
- *
+ * 
  *     final ConditionProfile greaterZeroProfile = ConditionProfile.create{Binary,Counting}Profile();
- *
+ * 
  *     void execute(int value) {
  *         if (greaterZeroProfile.profile(value >= 0)) {
  *             return value;
@@ -55,12 +55,14 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @see #createBinaryProfile()
  * @see #createCountingProfile()
  * @see LoopConditionProfile
+ * @since 0.10
  */
 public abstract class ConditionProfile extends Profile {
 
     ConditionProfile() {
     }
 
+    /** @since 0.10 */
     public abstract boolean profile(boolean value);
 
     /**
@@ -73,6 +75,7 @@ public abstract class ConditionProfile extends Profile {
      *
      * @see ConditionProfile
      * @see #createBinaryProfile()
+     * @since 0.10
      */
     public static ConditionProfile createCountingProfile() {
         if (Profile.isProfilingEnabled()) {
@@ -89,6 +92,7 @@ public abstract class ConditionProfile extends Profile {
      *
      * @see ConditionProfile
      * @see ConditionProfile#createCountingProfile()
+     * @since 0.10
      */
     public static ConditionProfile createBinaryProfile() {
         if (Profile.isProfilingEnabled()) {

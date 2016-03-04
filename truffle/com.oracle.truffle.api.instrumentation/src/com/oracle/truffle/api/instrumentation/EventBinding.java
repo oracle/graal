@@ -43,6 +43,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentationHandler.LanguageIns
  *
  * @param <T> represents the concrete type of the element bound. Either an implementation of
  *            {@link ExecutionEventListener} or {@link ExecutionEventNodeFactory}.
+ * @since 0.12
  */
 public final class EventBinding<T> {
 
@@ -70,6 +71,8 @@ public final class EventBinding<T> {
     /**
      * Returns the bound element, either a {@link ExecutionEventNodeFactory factory} or a
      * {@link ExecutionEventListener listener} implementation.
+     * 
+     * @since 0.12
      */
     public T getElement() {
         return element;
@@ -79,6 +82,7 @@ public final class EventBinding<T> {
      * Returns the bound filter for this binding.
      *
      * @return the filter never null
+     * @since 0.12
      */
     public SourceSectionFilter getFilter() {
         return filter;
@@ -86,6 +90,8 @@ public final class EventBinding<T> {
 
     /**
      * Returns <code>true</code> if the binding was already disposed, otherwise <code>false</code>.
+     * 
+     * @since 0.12
      */
     public boolean isDisposed() {
         return disposed;
@@ -94,6 +100,8 @@ public final class EventBinding<T> {
     /**
      * Disposes this binding. If a binding of a listener or factory is disposed then their methods
      * are not invoked again by the instrumentation framework.
+     * 
+     * @since 0.12
      */
     public void dispose() throws IllegalStateException {
         CompilerAsserts.neverPartOfCompilation();

@@ -43,18 +43,21 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * @see #createIdentityProfile()
  * @see ValueProfile
+ * @since 0.10
  */
 public abstract class ByteValueProfile extends Profile {
 
     ByteValueProfile() {
     }
 
+    /** @since 0.10 */
     public abstract byte profile(byte value);
 
     /**
      * Returns a value profile that profiles the exact value of a <code>byte</code>.
      *
      * @see ByteValueProfile
+     * @since 0.10
      */
     public static ByteValueProfile createIdentityProfile() {
         if (Profile.isProfilingEnabled()) {

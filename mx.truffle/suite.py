@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.8.0",
+  "mxversion" : "5.9.0",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -30,7 +30,7 @@ suite = {
         "https://search.maven.org/remotecontent?filepath=jline/jline/2.11/jline-2.11.jar",
       ],
       "sha1" : "9504d5e2da5d78237239c5226e8200ec21182040",
-      "sourcePath" : "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline-2.11-sources.jar",
+      "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline-2.11-sources.jar"],
       "sourceSha1" : "ef2539b992e5605be966b6db7cfc83930f0da39b",
       "maven" : {
       	"groupId" : "jline",
@@ -155,7 +155,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.vm"],
       "checkstyle" : "com.oracle.truffle.api",
-      "annotationProcessors" : ["INTERNAL_PROCESSOR"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -182,6 +182,7 @@ suite = {
         "com.oracle.truffle.api.dsl"
       ],
       "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -369,7 +370,7 @@ suite = {
         with most recent requirements of the Truffle infrastructure and tooling.""",
     },
 
-    "INTERNAL_PROCESSOR" : {
+    "TRUFFLE_DSL_PROCESSOR_INTERNAL" : {
       "internal" : True,
       "subDir" : "truffle",
       "javaCompliance" : "1.7",

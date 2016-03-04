@@ -28,7 +28,9 @@ package com.oracle.truffle.api.object;
  * This interface allows to provide a custom location for a given shape and value.
  *
  * @see DynamicObject#define(Object, Object, int, LocationFactory)
+ * @since 0.8 or earlier
  */
 public interface LocationFactory {
+    /** @since 0.8 or earlier */
     Location createLocation(Shape shape, Object value);
 }

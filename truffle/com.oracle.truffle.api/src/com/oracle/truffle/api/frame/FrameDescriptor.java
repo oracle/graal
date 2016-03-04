@@ -37,6 +37,8 @@ import com.oracle.truffle.api.Truffle;
 /**
  * Descriptor of the slots of frame objects. Multiple frame instances are associated with one such
  * descriptor.
+ * 
+ * @since 0.8 or earlier
  */
 public final class FrameDescriptor implements Cloneable {
 
@@ -50,6 +52,8 @@ public final class FrameDescriptor implements Cloneable {
 
     /**
      * Constructs empty descriptor. The {@link #getDefaultValue()} is <code>null</code>.
+     * 
+     * @since 0.8 or earlier
      */
     public FrameDescriptor() {
         this(null);
@@ -59,6 +63,7 @@ public final class FrameDescriptor implements Cloneable {
      * Constructs new descriptor with specified {@link #getDefaultValue()}.
      *
      * @param defaultValue to be returned from {@link #getDefaultValue()}
+     * @since 0.8 or earlier
      */
     public FrameDescriptor(Object defaultValue) {
         CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
@@ -73,6 +78,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @return new instance of the descriptor
      * @deprecated
+     * @since 0.8 or earlier
      */
     @Deprecated
     public static FrameDescriptor create() {
@@ -84,6 +90,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @return new instance of the descriptor
      * @deprecated
+     * @since 0.8 or earlier
      */
     @Deprecated
     public static FrameDescriptor create(Object defaultValue) {
@@ -98,6 +105,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @param identifier key for the slot
      * @return the newly created slot
+     * @since 0.8 or earlier
      */
     public FrameSlot addFrameSlot(Object identifier) {
         return addFrameSlot(identifier, null, FrameSlotKind.Illegal);
@@ -112,6 +120,7 @@ public final class FrameDescriptor implements Cloneable {
      * @param identifier key for the slot
      * @param kind the kind of the new slot
      * @return the newly created slot
+     * @since 0.8 or earlier
      */
     public FrameSlot addFrameSlot(Object identifier, FrameSlotKind kind) {
         return addFrameSlot(identifier, null, kind);
@@ -127,6 +136,7 @@ public final class FrameDescriptor implements Cloneable {
      * @param kind the kind of the new slot
      * @return the newly created slot
      * @throws IllegalArgumentException if a frame slot with the same identifier exists
+     * @since 0.8 or earlier
      */
     public FrameSlot addFrameSlot(Object identifier, Object info, FrameSlotKind kind) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
@@ -146,6 +156,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @param identifier the key of the slot to search for
      * @return the slot or <code>null</code>
+     * @since 0.8 or earlier
      */
     public FrameSlot findFrameSlot(Object identifier) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
@@ -157,6 +168,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @param identifier the key of the slot to search for
      * @return the slot
+     * @since 0.8 or earlier
      */
     public FrameSlot findOrAddFrameSlot(Object identifier) {
         FrameSlot result = findFrameSlot(identifier);
@@ -172,6 +184,7 @@ public final class FrameDescriptor implements Cloneable {
      * @param identifier the key of the slot to search for
      * @param kind the kind for the newly created slot
      * @return the found or newly created slot
+     * @since 0.8 or earlier
      */
     public FrameSlot findOrAddFrameSlot(Object identifier, FrameSlotKind kind) {
         FrameSlot result = findFrameSlot(identifier);
@@ -188,6 +201,7 @@ public final class FrameDescriptor implements Cloneable {
      * @param info info for the newly created slot
      * @param kind the kind for the newly created slot
      * @return the found or newly created slot
+     * @since 0.8 or earlier
      */
     public FrameSlot findOrAddFrameSlot(Object identifier, Object info, FrameSlotKind kind) {
         FrameSlot result = findFrameSlot(identifier);
@@ -203,6 +217,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @param identifier identifies the slot to remove
      * @throws IllegalArgumentException if no such frame slot exists
+     * @since 0.8 or earlier
      */
     public void removeFrameSlot(Object identifier) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
@@ -219,6 +234,7 @@ public final class FrameDescriptor implements Cloneable {
      * Returns number of slots in the descriptor.
      *
      * @return the same value as {@link #getSlots()}.{@link List#size()} would return
+     * @since 0.8 or earlier
      */
     public int getSize() {
         return slots.size();
@@ -228,6 +244,7 @@ public final class FrameDescriptor implements Cloneable {
      * Current set of slots in the descriptor.
      *
      * @return unmodifiable list of {@link FrameSlot}
+     * @since 0.8 or earlier
      */
     public List<? extends FrameSlot> getSlots() {
         return Collections.unmodifiableList(slots);
@@ -237,6 +254,7 @@ public final class FrameDescriptor implements Cloneable {
      * Retrieve the list of all the identifiers associated with this frame descriptor.
      *
      * @return the list of all the identifiers in this frame descriptor
+     * @since 0.8 or earlier
      */
     public Set<Object> getIdentifiers() {
         return Collections.unmodifiableSet(identifierToSlotMap.keySet());
@@ -248,6 +266,7 @@ public final class FrameDescriptor implements Cloneable {
      * but not their {@linkplain FrameSlot#getKind() kind}!
      *
      * @return new instance of a descriptor with copies of values from this one
+     * @since 0.8 or earlier
      */
     public FrameDescriptor copy() {
         FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
@@ -264,6 +283,7 @@ public final class FrameDescriptor implements Cloneable {
      * of the slots it is changed in the original as well as in the shallow copy.
      *
      * @return new instance of a descriptor with copies of values from this one
+     * @since 0.8 or earlier
      */
     public FrameDescriptor shallowCopy() {
         FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
@@ -286,6 +306,7 @@ public final class FrameDescriptor implements Cloneable {
      * associated with compiled code that depends on the internal frame layout.
      *
      * @return an assumption invalidated when a slot is added or removed, or a slot kind changed.
+     * @since 0.8 or earlier
      */
     public Assumption getVersion() {
         return version;
@@ -299,6 +320,7 @@ public final class FrameDescriptor implements Cloneable {
      * Default value for the created slots.
      *
      * @return value provided to {@link #FrameDescriptor(java.lang.Object)}
+     * @since 0.8 or earlier
      */
     public Object getDefaultValue() {
         return defaultValue;
@@ -311,6 +333,7 @@ public final class FrameDescriptor implements Cloneable {
      * @param identifier frame slot identifier
      * @return an assumption that this frame descriptor does not contain a slot with the identifier
      * @throws IllegalArgumentException if the frame descriptor contains a slot with the identifier
+     * @since 0.8 or earlier
      */
     public Assumption getNotInFrameAssumption(Object identifier) {
         if (identifierToSlotMap.containsKey(identifier)) {
@@ -340,6 +363,7 @@ public final class FrameDescriptor implements Cloneable {
         }
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

@@ -62,6 +62,8 @@ import com.oracle.truffle.api.source.SourceSection;
  *     }
  * }
  * </pre>
+ * 
+ * @since 0.12
  */
 public final class ProbeNode extends Node {
 
@@ -86,6 +88,7 @@ public final class ProbeNode extends Node {
      * Should get invoked before the node is invoked.
      *
      * @param frame the current frame of the execution.
+     * @since 0.12
      */
     public void onEnter(VirtualFrame frame) {
         if (lazyUpdate(frame)) {
@@ -98,6 +101,7 @@ public final class ProbeNode extends Node {
      *
      * @param result the result value of the operation
      * @param frame the current frame of the execution.
+     * @since 0.12
      */
     public void onReturnValue(VirtualFrame frame, Object result) {
         if (lazyUpdate(frame)) {
@@ -110,6 +114,7 @@ public final class ProbeNode extends Node {
      *
      * @param exception the exception that occured during the execution
      * @param frame the current frame of the execution.
+     * @since 0.12
      */
     public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
         if (lazyUpdate(frame)) {
@@ -217,6 +222,7 @@ public final class ProbeNode extends Node {
         exception.printStackTrace(stream);
     }
 
+    /** @since 0.12 */
     @Override
     public NodeCost getCost() {
         return NodeCost.NONE;

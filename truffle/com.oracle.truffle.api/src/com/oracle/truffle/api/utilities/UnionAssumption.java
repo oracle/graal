@@ -30,6 +30,8 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 /**
  * An assumption that combines two other assumptions. A check on this assumption checks both of the
  * child assumptions.
+ * 
+ * @since 0.8 or earlier
  */
 public class UnionAssumption implements Assumption {
 
@@ -37,33 +39,39 @@ public class UnionAssumption implements Assumption {
     private final Assumption first;
     private final Assumption second;
 
+    /** @since 0.8 or earlier */
     public UnionAssumption(String name, Assumption first, Assumption second) {
         this.name = name;
         this.first = first;
         this.second = second;
     }
 
+    /** @since 0.8 or earlier */
     public UnionAssumption(Assumption first, Assumption second) {
         this(null, first, second);
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public void check() throws InvalidAssumptionException {
         first.check();
         second.check();
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public void invalidate() {
         first.invalidate();
         second.invalidate();
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String getName() {
         return name;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public boolean isValid() {
         return first.isValid() && second.isValid();
