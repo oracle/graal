@@ -554,12 +554,11 @@ public class PolyglotEngine {
             }
         } else {
             res = invokeForeignOnExecutor(foreignNode, frame, receiver);
+            if (res instanceof TruffleObject) {
+                res = new EngineTruffleObject(this, (TruffleObject) res);
+            }
         }
-        if (res instanceof TruffleObject) {
-            return new EngineTruffleObject(this, (TruffleObject) res);
-        } else {
-            return res;
-        }
+        return res;
     }
 
     static void assertNoTruffle() {
@@ -730,11 +729,10 @@ public class PolyglotEngine {
         public Object get() throws IOException {
             assertNoTruffle();
             Object result = waitForSymbol();
-            if (result instanceof TruffleObject) {
+            if (executor != null && result instanceof TruffleObject) {
                 return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
-            } else {
-                return result;
             }
+            return result;
         }
 
         /**
