@@ -158,21 +158,36 @@ public abstract class TestSuiteBase {
         public List<TestCaseFiles> getCompiledTestCaseFiles(File toBeCompiled) {
             List<TestCaseFiles> files = new ArrayList<>();
             File dest = TestHelper.getTempLLFile(toBeCompiled, "_main");
-            if (ProgrammingLanguage.FORTRAN.isFile(toBeCompiled)) {
-                files.add(TestHelper.compileToLLVMIRWithGCC(toBeCompiled, dest));
-            } else {
-                ClangOptions builder = ClangOptions.builder().optimizationLevel(OptimizationLevel.NONE);
-                try {
+            try {
+                if (ProgrammingLanguage.FORTRAN.isFile(toBeCompiled)) {
+                    TestCaseFiles gccCompiledTestCase = TestHelper.compileToLLVMIRWithGCC(toBeCompiled, dest);
+                    files.add(gccCompiledTestCase);
+                } else if (ProgrammingLanguage.C_PLUS_PLUS.isFile(toBeCompiled)) {
+                    ClangOptions builder = ClangOptions.builder().optimizationLevel(OptimizationLevel.NONE);
+                    OptOptions options = OptOptions.builder().pass(Pass.LOWER_INVOKE).pass(Pass.PRUNE_EH).pass(Pass.SIMPLIFY_CFG);
                     TestCaseFiles compiledFiles = TestHelper.compileToLLVMIRWithClang(toBeCompiled, dest, builder);
-                    files.add(compiledFiles);
-                    files.add(optimize(compiledFiles, OptOptions.builder().pass(Pass.MEM_TO_REG).pass(Pass.ALWAYS_INLINE).pass(Pass.JUMP_THREADING).pass(Pass.SIMPLIFY_CFG), "opt"));
-                } catch (Exception e) {
-                    return Collections.emptyList();
+                    files.add(optimize(compiledFiles, options, "opt"));
+                } else {
+                    ClangOptions builder = ClangOptions.builder().optimizationLevel(OptimizationLevel.NONE);
+                    try {
+                        TestCaseFiles compiledFiles = TestHelper.compileToLLVMIRWithClang(toBeCompiled, dest, builder);
+                        files.add(compiledFiles);
+                        TestCaseFiles optimized = getOptimizedTestCase(compiledFiles);
+                        files.add(optimized);
+                    } catch (Exception e) {
+                        return Collections.emptyList();
+                    }
                 }
-
+            } catch (Exception e) {
+                return Collections.emptyList();
             }
-
             return files;
+        }
+
+        private static TestCaseFiles getOptimizedTestCase(TestCaseFiles compiledFiles) {
+            OptOptions options = OptOptions.builder().pass(Pass.MEM_TO_REG).pass(Pass.ALWAYS_INLINE).pass(Pass.JUMP_THREADING).pass(Pass.SIMPLIFY_CFG);
+            TestCaseFiles optimize = optimize(compiledFiles, options, "opt");
+            return optimize;
         }
 
         public ProgrammingLanguage[] getSupportedLanguages() {
