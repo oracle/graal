@@ -201,7 +201,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * {@codesnippet customid}
  *
- * @since 0.8 or earlier
+ * @since 0.12
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
