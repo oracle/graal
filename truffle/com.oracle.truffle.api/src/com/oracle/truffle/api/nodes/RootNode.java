@@ -24,11 +24,9 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExecutionContext;
-import com.oracle.truffle.api.LoopCountReceiver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -109,16 +107,12 @@ public abstract class RootNode extends Node {
     }
 
     /**
-     * Reports the execution count of a loop that is a child of this node. The optimization
-     * heuristics can use the loop count to guide compilation and inlining.
-     * 
      * @since 0.8 or earlier
+     * @deprecated use {@link LoopNode#reportLoopCount(Node,int)} instead
      */
-    public final void reportLoopCount(int count) {
-        CompilerAsserts.neverPartOfCompilation("do not call RootNode.reportLoopCount from compiled code");
-        if (getCallTarget() instanceof LoopCountReceiver) {
-            ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
-        }
+    @Deprecated
+    public final void reportLoopCount(int iterations) {
+        LoopNode.reportLoopCount(this, iterations);
     }
 
     /**
@@ -153,10 +147,11 @@ public abstract class RootNode extends Node {
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
      * 
-     * <pre>
      * <code>
+     * <pre>
      * rootNode.getExecutionContext().getLanguageShortName();
-     * </code> </pre>
+     * </pre>
+     * </code>
      *
      * Returns <code>null</code> by default.
      * 
