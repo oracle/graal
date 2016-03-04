@@ -36,7 +36,7 @@ public enum ProgrammingLanguage {
     ADA,
     FORTRAN("f90", "f", "f03"),
     C("c"),
-    C_PLUS_PLUS("cpp", "cc"),
+    C_PLUS_PLUS("cpp", "cc", "C"),
     OBJECTIVE_C("m"),
     LLVM("ll");
 
@@ -53,7 +53,7 @@ public enum ProgrammingLanguage {
     public boolean isFile(File f) {
         String fileName = f.getName();
         for (String ext : fileExtensions) {
-            if (fileName.toLowerCase().endsWith("." + ext)) {
+            if (fileName.endsWith("." + ext)) {
                 return true;
             }
         }

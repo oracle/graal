@@ -55,7 +55,9 @@ public class Opt {
             JUMP_THREADING("jump-threading"),
             SCALAR_REPLACEMENT_AGGREGATES("scalarrepl"),
             ALWAYS_INLINE("always-inline"),
-            GVN("gvn");
+            GVN("gvn"),
+            LOWER_INVOKE("lowerinvoke"),
+            PRUNE_EH("prune-eh");
 
             private final String option;
 
