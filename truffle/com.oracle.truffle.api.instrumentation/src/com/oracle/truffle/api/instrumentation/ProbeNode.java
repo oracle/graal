@@ -29,6 +29,8 @@ import java.io.PrintStream;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.KillException;
+import com.oracle.truffle.api.QuitException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
@@ -62,7 +64,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *     }
  * }
  * </pre>
- * 
+ *
  * @since 0.12
  */
 public final class ProbeNode extends Node {
@@ -280,6 +282,8 @@ public final class ProbeNode extends Node {
         final void onEnter(EventContext context, VirtualFrame frame) {
             try {
                 innerOnEnter(context, frame);
+            } catch (KillException | QuitException ex) {
+                throw ex;
             } catch (Throwable t) {
                 if (!seenException) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -302,6 +306,8 @@ public final class ProbeNode extends Node {
         final void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
             try {
                 innerOnReturnValue(context, frame, result);
+            } catch (KillException | QuitException ex) {
+                throw ex;
             } catch (Throwable t) {
                 if (!seenException) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -324,6 +330,8 @@ public final class ProbeNode extends Node {
         final void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
             try {
                 innerOnReturnExceptional(context, frame, exception);
+            } catch (KillException | QuitException ex) {
+                throw ex;
             } catch (Throwable t) {
                 if (!seenException) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
