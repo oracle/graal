@@ -412,7 +412,7 @@ public class ConditionalEliminationPhase extends Phase {
                 InstanceOfNode instanceOf = (InstanceOfNode) condition;
                 ValueNode object = instanceOf.getValue();
                 state.addNullness(false, object);
-                state.addType(instanceOf.type(), object);
+                state.addType(instanceOf.type().getType(), object);
             } else if (condition instanceof IsNullNode) {
                 IsNullNode nullCheck = (IsNullNode) condition;
                 state.addNullness(isTrue, nullCheck.getValue());
@@ -649,7 +649,7 @@ public class ConditionalEliminationPhase extends Phase {
                         return falseValue;
                     } else if (state.isNonNull(object)) {
                         ResolvedJavaType type = state.getNodeType(object);
-                        if (type != null && instanceOf.type().isAssignableFrom(type)) {
+                        if (type != null && instanceOf.type().getType().isAssignableFrom(type)) {
                             metricInstanceOfRemoved.increment();
                             return trueValue;
                         }
@@ -818,7 +818,7 @@ public class ConditionalEliminationPhase extends Phase {
             ValueNode object = checkCast.object();
             boolean isNull = state.isNull(object);
             ResolvedJavaType type = state.getNodeType(object);
-            if (isNull || (type != null && checkCast.type().isAssignableFrom(type))) {
+            if (isNull || (type != null && checkCast.type().getType().isAssignableFrom(type))) {
                 boolean nonNull = state.isNonNull(object);
                 // if (true)
                 // throw new RuntimeException(checkCast.toString());

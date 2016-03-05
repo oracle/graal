@@ -256,6 +256,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.compiler.common.type.CheckedJavaType;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -1126,11 +1127,11 @@ public class BytecodeParser implements GraphBuilderContext {
         lastInstr.setNext(handleException(nonNullException, bci()));
     }
 
-    protected ValueNode createCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
-        return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck, graph.getAssumptions());
+    protected ValueNode createCheckCast(CheckedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
+        return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck);
     }
 
-    protected ValueNode createInstanceOf(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
+    protected ValueNode createInstanceOf(CheckedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
         return InstanceOfNode.create(type, object, profileForTypeCheck);
     }
 
@@ -2173,25 +2174,25 @@ public class BytecodeParser implements GraphBuilderContext {
         if (graphBuilderConfig.eagerResolving()) {
             catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
         }
-        boolean initialized = (catchType instanceof ResolvedJavaType);
-        if (initialized && graphBuilderConfig.getSkippedExceptionTypes() != null) {
-            ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
-            for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
-                if (skippedType.isAssignableFrom(resolvedCatchType)) {
-                    BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
-                    ValueNode exception = frameState.stack[0];
-                    FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-                    FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                    append(new IfNode(graph.unique(InstanceOfNode.create((ResolvedJavaType) catchType, exception, null)), trueSuccessor, nextDispatch, 0));
-                    return;
+        if (catchType instanceof ResolvedJavaType) {
+            CheckedJavaType checkedCatchType = CheckedJavaType.create(graph.getAssumptions(), (ResolvedJavaType) catchType);
+
+            if (graphBuilderConfig.getSkippedExceptionTypes() != null) {
+                for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
+                    if (skippedType.isAssignableFrom(checkedCatchType.getType())) {
+                        BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
+                        ValueNode exception = frameState.stack[0];
+                        FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                        FixedNode nextDispatch = createTarget(nextBlock, frameState);
+                        append(new IfNode(graph.unique(InstanceOfNode.create(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
+                        return;
+                    }
                 }
             }
-        }
 
-        if (initialized) {
             BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
             ValueNode exception = frameState.stack[0];
-            CheckCastNode checkCast = graph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null, false));
+            CheckCastNode checkCast = graph.add(new CheckCastNode(checkedCatchType, exception, null, false));
             frameState.pop(JavaKind.Object);
             frameState.push(JavaKind.Object, checkCast);
             FixedNode catchSuccessor = createTarget(block.getSuccessor(0), frameState);
@@ -2199,7 +2200,7 @@ public class BytecodeParser implements GraphBuilderContext {
             frameState.push(JavaKind.Object, exception);
             FixedNode nextDispatch = createTarget(nextBlock, frameState);
             checkCast.setNext(catchSuccessor);
-            append(new IfNode(graph.unique(InstanceOfNode.create((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5));
+            append(new IfNode(graph.unique(InstanceOfNode.create(checkedCatchType, exception, null)), checkCast, nextDispatch, 0.5));
         } else {
             handleUnresolvedExceptionType(catchType);
         }
@@ -2933,8 +2934,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || type.isLeaf()) {
+    private JavaTypeProfile getProfileForTypeCheck(CheckedJavaType type) {
+        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || type.isExactType()) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());
@@ -2950,24 +2951,24 @@ public class BytecodeParser implements GraphBuilderContext {
             handleUnresolvedCheckCast(type, object);
             return;
         }
-        ResolvedJavaType resolvedType = (ResolvedJavaType) type;
-        JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
+        CheckedJavaType checkedType = CheckedJavaType.create(graph.getAssumptions(), (ResolvedJavaType) type);
+        JavaTypeProfile profile = getProfileForTypeCheck(checkedType);
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
-            if (plugin.handleCheckCast(this, object, resolvedType, profile)) {
+            if (plugin.handleCheckCast(this, object, checkedType.getType(), profile)) {
                 return;
             }
         }
 
         ValueNode checkCastNode = null;
         if (profile != null) {
-            if (CheckCastNode.findSynonym(resolvedType, object) == object) {
+            if (CheckCastNode.findSynonym(checkedType, object) == object) {
                 // Don't insert a profiled type check if the checkcast would simply go away
                 checkCastNode = object;
             } else if (profile.getNullSeen().isFalse()) {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
-                if (singleType != null && resolvedType.isAssignableFrom(singleType)) {
+                if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
                     LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
                     if (typeCheck.isTautology()) {
                         checkCastNode = object;
@@ -2979,7 +2980,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         if (checkCastNode == null) {
-            checkCastNode = append(createCheckCast(resolvedType, object, profile, false));
+            checkCastNode = append(createCheckCast(checkedType, object, profile, false));
         }
         frameState.push(JavaKind.Object, checkCastNode);
     }
@@ -3006,11 +3007,11 @@ public class BytecodeParser implements GraphBuilderContext {
             handleUnresolvedInstanceOf(type, object);
             return;
         }
-        ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+        CheckedJavaType resolvedType = CheckedJavaType.create(graph.getAssumptions(), (ResolvedJavaType) type);
         JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
-            if (plugin.handleInstanceOf(this, object, resolvedType, profile)) {
+            if (plugin.handleInstanceOf(this, object, resolvedType.getType(), profile)) {
                 return;
             }
         }
@@ -3025,7 +3026,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (!typeCheck.isTautology()) {
                         append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
                     }
-                    instanceOfNode = LogicConstantNode.forBoolean(resolvedType.isAssignableFrom(singleType));
+                    instanceOfNode = LogicConstantNode.forBoolean(resolvedType.getType().isAssignableFrom(singleType));
                 }
             }
         }

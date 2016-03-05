@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import com.oracle.graal.compiler.common.type.CheckedJavaType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -68,15 +68,15 @@ public final class ClassCastNode extends MacroStateSplitNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forJavaClass, ValueNode forObject) {
-        ValueNode folded = tryFold(forJavaClass, forObject, tool.getConstantReflection(), null);
+        ValueNode folded = tryFold(forJavaClass, forObject, tool.getConstantReflection());
         return folded != null ? folded : this;
     }
 
-    public static ValueNode tryFold(ValueNode javaClass, ValueNode object, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
+    public static ValueNode tryFold(ValueNode javaClass, ValueNode object, ConstantReflectionProvider constantReflection) {
         if (javaClass != null && javaClass.isConstant()) {
             ResolvedJavaType type = constantReflection.asJavaType(javaClass.asConstant());
             if (type != null && !type.isPrimitive()) {
-                return CheckCastNode.create(type, object, null, false, assumptions);
+                return CheckCastNode.create(CheckedJavaType.create(javaClass.graph().getAssumptions(), type), object, null, false);
             }
         }
         return null;
