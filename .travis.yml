@@ -23,6 +23,3 @@ env:
   - TEST_COMMAND='mx/mx canonicalizeprojects'
   - TEST_COMMAND='mx/mx checkstyle'
   - TEST_COMMAND='sh .travis.sigtest.sh'
-  
-
-
