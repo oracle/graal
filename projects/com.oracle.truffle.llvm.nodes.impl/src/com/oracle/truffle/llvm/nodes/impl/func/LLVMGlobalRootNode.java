@@ -29,10 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.func;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -41,7 +44,9 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
+import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 /**
@@ -49,27 +54,13 @@ import com.oracle.truffle.llvm.types.memory.LLVMHeap;
  */
 public class LLVMGlobalRootNode extends RootNode {
 
-    public static LLVMGlobalRootNode createNoArgumentsMain(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses) {
-        return new LLVMGlobalRootNode(context, staticInits, main, llvmAddresses);
-    }
-
-    public static LLVMGlobalRootNode createArgsCountMain(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount) {
-        return new LLVMGlobalRootNode(context, staticInits, main, llvmAddresses, argsCount);
-    }
-
-    public static LLVMGlobalRootNode createArgsMain(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount, LLVMAddress args) {
-        return new LLVMGlobalRootNode(context, staticInits, main, llvmAddresses, argsCount, args);
-    }
-
-    public static LLVMGlobalRootNode createArgsEnvMain(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, int argsCount, LLVMAddress args, LLVMAddress envp) {
-        return new LLVMGlobalRootNode(context, staticInits, main, llvmAddresses, argsCount, args, envp);
-    }
-
     @Children private final LLVMNode[] staticInits;
     private final DirectCallNode main;
     @CompilationFinal private final LLVMAddress[] llvmAddresses;
     @CompilationFinal private final Object[] arguments;
     private final LLVMContext context;
+    // FIXME instead make the option system "PE safe"
+    private final boolean printNativeStats = LLVMOptions.printNativeCallStats();
 
     public LLVMGlobalRootNode(LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, Object... arguments) {
         super(LLVMLanguage.class, null, null);
@@ -97,7 +88,27 @@ public class LLVMGlobalRootNode extends RootNode {
                 LLVMHeap.freeMemory(alloc);
             }
             context.getStack().free();
+            if (printNativeStats) {
+                printNativeCallStats(context);
+            }
         }
+    }
+
+    @TruffleBoundary
+    private static void printNativeCallStats(LLVMContext context) {
+        Map<LLVMFunction, Integer> nativeFunctionCallSites = context.getNativeFunctionLookupStats();
+        // Checkstyle: stop
+        if (!nativeFunctionCallSites.isEmpty()) {
+            System.out.println("==========================");
+            System.out.println("native function sites:");
+            System.out.println("==========================");
+            for (LLVMFunction function : nativeFunctionCallSites.keySet()) {
+                String output = String.format("%15s: %3d", function.getName(), nativeFunctionCallSites.get(function));
+                System.out.println(output);
+            }
+            System.out.println("==========================");
+        }
+        // Checkstyle: resume
     }
 
 }

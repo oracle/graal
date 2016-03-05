@@ -35,12 +35,11 @@ import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
@@ -48,13 +47,13 @@ public class LLVMContext extends ExecutionContext {
 
     private final LLVMFunctionRegistry registry;
 
-    private LLVMNode[] staticInits;
-
-    private LLVMAddress[] deallocations;
-
     private final NativeLookup nativeLookup;
 
     private final LLVMStack stack = new LLVMStack();
+
+    private Object[] mainArguments;
+
+    private Source sourceFile;
 
     public LLVMContext(NodeFactoryFacade facade, LLVMOptimizationConfiguration optimizationConfig) {
         nativeLookup = new NativeLookup(facade);
@@ -66,22 +65,9 @@ public class LLVMContext extends ExecutionContext {
         return LLVMFunctionRegistry.lookup(function);
     }
 
-    public LLVMNode[] getStaticInits() {
-        return staticInits;
-    }
-
-    public LLVMAddress[] getAllocatedGlobalAddresses() {
-        return deallocations;
-    }
-
     public LLVMFunctionRegistry getFunctionRegistry() {
         CompilerAsserts.neverPartOfCompilation();
         return registry;
-    }
-
-    public void setStaticInits(LLVMNode[] staticInits, LLVMAddress[] deallocations) {
-        this.staticInits = staticInits;
-        this.deallocations = deallocations;
     }
 
     public NativeFunctionHandle getNativeHandle(LLVMFunction function, LLVMExpressionNode[] args) {
@@ -98,6 +84,22 @@ public class LLVMContext extends ExecutionContext {
 
     public LLVMStack getStack() {
         return stack;
+    }
+
+    public void setMainArguments(Object[] mainArguments) {
+        this.mainArguments = mainArguments;
+    }
+
+    public Object[] getMainArguments() {
+        return mainArguments;
+    }
+
+    public void setSourceFile(Source sourceFile) {
+        this.sourceFile = sourceFile;
+    }
+
+    public Source getSourceFile() {
+        return sourceFile;
     }
 
 }
