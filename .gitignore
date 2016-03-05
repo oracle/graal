@@ -20,3 +20,4 @@ workingsets.xml
 findbugs.results
 .metadata/
 /eclipseformat.backup.zip
+dists/truffle-mx.jar
