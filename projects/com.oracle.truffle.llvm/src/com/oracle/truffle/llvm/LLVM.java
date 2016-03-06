@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
@@ -45,28 +43,18 @@ import com.google.inject.Injector;
 import com.intel.llvm.ireditor.LLVM_IRStandaloneSetup;
 import com.intel.llvm.ireditor.lLVM_IR.Model;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacadeImpl;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
-import com.oracle.truffle.llvm.types.LLVMIVarBit;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
-import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 /**
  * This is the main LLVM execution class.
@@ -74,8 +62,6 @@ import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 public class LLVM {
 
     static final LLVMPropertyOptimizationConfiguration OPTIMIZATION_CONFIGURATION = new LLVMPropertyOptimizationConfiguration();
-
-    private static final int THREE_ARGS = 3;
 
     static {
         LLVMLanguage.provider = getProvider();
@@ -87,7 +73,7 @@ public class LLVM {
             public CallTarget parse(Source code, Node context, String... argumentNames) {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
                 LLVMContext llvmContext = LLVMLanguage.INSTANCE.findContext0(findContext);
-                return getLLVMModuleCall(new File(code.getPath()), llvmContext);
+                return parseFile(code.getPath(), llvmContext);
             }
 
             public LLVMContext createContext(Env env) {
@@ -95,6 +81,8 @@ public class LLVM {
                 LLVMContext context = new LLVMContext(facade, OPTIMIZATION_CONFIGURATION);
                 LLVMVisitor runtime = new LLVMVisitor(context, OPTIMIZATION_CONFIGURATION);
                 facade.setParserRuntime(runtime);
+                context.setMainArguments((Object[]) env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY));
+                context.setSourceFile((Source) env.getConfig().get(LLVMLanguage.LLVM_SOURCE_FILE_KEY));
                 return context;
             }
         };
@@ -106,21 +94,12 @@ public class LLVM {
         }
         File file = new File(args[0]);
         Object[] otherArgs = new Object[args.length - 1];
-        for (int i = 1; i < args.length; i++) {
-            otherArgs[i - 1] = args[i];
-        }
+        System.arraycopy(args, 1, otherArgs, 0, otherArgs.length);
         int status = executeMain(file, otherArgs);
         System.exit(status);
     }
 
-    /**
-     * Parses the given file and registers all the functions.
-     *
-     * @param filePath the file path of the bitcode file
-     * @param context the context in which the functions should be registered
-     * @return a list of contained functions.
-     */
-    public static List<LLVMFunction> parseFile(String filePath, LLVMContext context) {
+    public static CallTarget parseFile(String filePath, LLVMContext context) {
         LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
         Injector injector = setup.createInjectorAndDoEMFRegistration();
         XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
@@ -132,8 +111,7 @@ public class LLVM {
         }
         Model model = (Model) contents.get(0);
         LLVMVisitor llvmVisitor = new LLVMVisitor(context, OPTIMIZATION_CONFIGURATION);
-        List<LLVMFunction> llvmFunctions = llvmVisitor.visit(model, new NodeFactoryFacadeImpl(llvmVisitor));
-        return llvmFunctions;
+        return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
     }
 
     public static int executeMain(File file, Object... args) {
@@ -159,147 +137,18 @@ public class LLVM {
 
     private static int evaluateFromSource(Source fileSource, Object... args) {
         Builder engineBuilder = PolyglotEngine.newBuilder();
+        engineBuilder.config(LLVMLanguage.LLVM_MIME_TYPE, LLVMLanguage.MAIN_ARGS_KEY, args);
+        engineBuilder.config(LLVMLanguage.LLVM_MIME_TYPE, LLVMLanguage.LLVM_SOURCE_FILE_KEY, fileSource);
         PolyglotEngine vm = engineBuilder.build();
         try {
-            LLVMModule module = vm.eval(fileSource).as(LLVMModule.class);
-            if (module.getMainFunction() == null) {
-                throw new RuntimeException("no @main found!");
-            }
-            RootCallTarget originalCallTarget = module.getMainFunction();
-            LLVMFunction mainSignature = module.getMainSignature();
-            int argParamCount = mainSignature.getLlvmParamTypes().length;
-            LLVMGlobalRootNode globalFunction;
-            LLVMContext context = module.getContext();
-            if (argParamCount == 0) {
-                globalFunction = LLVMGlobalRootNode.createNoArgumentsMain(context, module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses());
-            } else if (argParamCount == 1) {
-                globalFunction = LLVMGlobalRootNode.createArgsCountMain(context, module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1);
-            } else {
-                LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(fileSource, args);
-                if (argParamCount == 2) {
-                    globalFunction = LLVMGlobalRootNode.createArgsMain(context, module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1,
-                                    allocatedArgsStartAddress);
-                } else if (argParamCount == THREE_ARGS) {
-                    LLVMAddress posixEnvPointer = LLVMAddress.NULL_POINTER;
-                    globalFunction = LLVMGlobalRootNode.createArgsEnvMain(context, module.getStaticInits(), originalCallTarget, module.getAllocatedAddresses(), args.length + 1,
-                                    allocatedArgsStartAddress,
-                                    posixEnvPointer);
-                } else {
-                    throw new AssertionError(argParamCount);
-                }
-            }
-            RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(globalFunction);
-            Object result = callTarget.call(args);
-            if (LLVMOptions.printNativeCallStats()) {
-                printNativeCallStats(module);
-            }
-            // TODO: specialize instead
-            if (result instanceof Number) {
-                return ((Number) result).intValue();
-            } else if (result instanceof LLVMIVarBit) {
-                return ((LLVMIVarBit) result).getIntValue();
-            } else if (result instanceof Boolean) {
-                return ((boolean) result) ? 1 : 0;
-            } else {
-                throw new AssertionError(result);
-            }
-
+            Integer result = vm.eval(fileSource).as(Integer.class);
+            return result;
         } catch (IOException e) {
             throw new AssertionError(e);
         } finally {
             // FIXME w
             LLVMFunction.reset();
         }
-    }
-
-    private static void printNativeCallStats(LLVMModule module) {
-        Map<LLVMFunction, Integer> nativeFunctionCallSites = module.getContext().getNativeFunctionLookupStats();
-        if (!nativeFunctionCallSites.isEmpty()) {
-            System.out.println("==========================");
-            System.out.println("native function sites:");
-            System.out.println("==========================");
-            for (LLVMFunction function : nativeFunctionCallSites.keySet()) {
-                String output = String.format("%15s: %3d", function.getName(), nativeFunctionCallSites.get(function));
-                System.out.println(output);
-            }
-            System.out.println("==========================");
-        }
-    }
-
-    private static LLVMAddress getArgsAsStringArray(Source fileSource, Object... args) {
-        String[] stringArgs = getStringArgs(fileSource, args);
-        int argsMemory = stringArgs.length * LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE;
-        LLVMAddress allocatedArgsStartAddress = LLVMHeap.allocateMemory(argsMemory);
-        LLVMAddress allocatedArgs = allocatedArgsStartAddress;
-        for (int i = 0; i < stringArgs.length; i++) {
-            LLVMAddress allocatedCString = LLVMHeap.allocateCString(stringArgs[i]);
-            LLVMMemory.putAddress(allocatedArgs, allocatedCString);
-            allocatedArgs = allocatedArgs.increment(LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE);
-        }
-        return allocatedArgsStartAddress;
-    }
-
-    private static String[] getStringArgs(Source fileSource, Object... args) {
-        String[] stringArgs = new String[args.length + 1];
-        stringArgs[0] = fileSource.getName();
-        for (int i = 0; i < args.length; i++) {
-            stringArgs[i + 1] = args[i].toString();
-        }
-        return stringArgs;
-    }
-
-    static class LLVMModule implements TruffleObject {
-        private final RootCallTarget mainFunction;
-        private final LLVMNode[] staticInits;
-        private final LLVMAddress[] allocatedAddresses;
-        private final LLVMFunction mainSignature;
-        private final LLVMContext context;
-
-        LLVMModule(RootCallTarget mainFunction, LLVMFunction mainSignature, LLVMNode[] staticInits, LLVMAddress[] allocatedAddresses, LLVMContext context) {
-            this.mainFunction = mainFunction;
-            this.mainSignature = mainSignature;
-            this.staticInits = staticInits;
-            this.allocatedAddresses = allocatedAddresses;
-            this.context = context;
-        }
-
-        public RootCallTarget getMainFunction() {
-            return mainFunction;
-        }
-
-        public ForeignAccess getForeignAccess() {
-            throw new AssertionError();
-        }
-
-        public LLVMNode[] getStaticInits() {
-            return staticInits;
-        }
-
-        public LLVMFunction getMainSignature() {
-            return mainSignature;
-        }
-
-        public LLVMAddress[] getAllocatedAddresses() {
-            return allocatedAddresses;
-        }
-
-        public LLVMContext getContext() {
-            return context;
-        }
-    }
-
-    public static CallTarget getLLVMModuleCall(File file, LLVMContext context) {
-        parseFile(file.toString(), context);
-        RootCallTarget mainFunction = context.getFunction(LLVMFunction.createFromName("@main"));
-        LLVMFunction mainSignature = LLVMFunction.createFromName("@main");
-        LLVMNode[] staticInits = context.getStaticInits();
-        LLVMAddress[] allocatedAddresses = context.getAllocatedGlobalAddresses();
-        return new CallTarget() {
-
-            public Object call(Object... arguments) {
-                return new LLVMModule(mainFunction, mainSignature, staticInits, allocatedAddresses, context);
-            }
-        };
     }
 
 }

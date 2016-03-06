@@ -31,13 +31,16 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import com.intel.llvm.ireditor.types.ResolvedStructType;
 import com.intel.llvm.ireditor.types.ResolvedType;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMMainFunctionReturnValueRootNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
@@ -98,6 +101,7 @@ import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory.LLVMVect
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
 
 public final class LLVMFunctionFactory {
 
@@ -235,6 +239,24 @@ public final class LLVMFunctionFactory {
             }
         }
 
+    }
+
+    public static RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, LLVMRuntimeType returnType) {
+        switch (returnType) {
+            case I1:
+                return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnI1RootNode(mainCallTarget);
+            case I8:
+            case I16:
+            case I32:
+            case I64:
+            case FLOAT:
+            case DOUBLE:
+                return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnNumberRootNode(mainCallTarget);
+            case I_VAR_BITWIDTH:
+                return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnIVarBitRootNode(mainCallTarget);
+            default:
+                throw new AssertionError(returnType);
+        }
     }
 
 }
