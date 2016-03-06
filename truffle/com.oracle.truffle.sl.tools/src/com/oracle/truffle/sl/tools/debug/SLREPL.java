@@ -49,6 +49,8 @@ public final class SLREPL {
 
     public static void main(String[] args) {
 
+        System.setProperty("truffle.debug.trace", "false");
+        System.setProperty("truffle.instrumentation.trace", "false");
         final REPLServer server = new REPLServer("application/x-sl");
         server.start();
     }
