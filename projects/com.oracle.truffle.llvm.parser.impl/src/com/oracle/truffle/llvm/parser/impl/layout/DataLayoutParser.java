@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.impl.LLVMParserAsserts;
+
 public class DataLayoutParser {
 
     public static class DataTypeSpecification {
@@ -63,6 +65,7 @@ public class DataLayoutParser {
     public static List<DataTypeSpecification> parseDataLayout(String layout) {
         String layoutWithoutQuotes = layout.substring(1, layout.length() - 2);
         String[] layoutSpecs = layoutWithoutQuotes.split("-");
+        LLVMParserAsserts.assertNoNullElement(layoutSpecs);
         List<DataTypeSpecification> specs = new ArrayList<>();
         for (String spec : layoutSpecs) {
             if (spec.equals("e") || spec.equals("E")) {
@@ -83,6 +86,7 @@ public class DataLayoutParser {
             typeWidths = typeWidths.substring(1);
         }
         String[] components = typeWidths.split(":");
+        LLVMParserAsserts.assertNoNullElement(components);
         int[] values = new int[components.length];
         for (int i = 0; i < values.length; i++) {
             values[i] = Integer.parseInt(components[i]);
