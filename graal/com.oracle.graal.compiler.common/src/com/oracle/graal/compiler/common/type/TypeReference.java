@@ -26,9 +26,9 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * This class represents a reference to a Java type and whether this reference is refers only to the
- * represented type or also to its sub types in the class hierarchy. When creating a type reference,
- * the following options have to be considered:
+ * This class represents a reference to a Java type and whether this reference is referring only to
+ * the represented type or also to its sub types in the class hierarchy. When creating a type
+ * reference, the following options have to be considered:
  *
  * <ul>
  * <li>The reference should always only refer to the given concrete type. Use
@@ -65,16 +65,6 @@ public final class TypeReference {
             return null;
         }
         return new TypeReference(type, true);
-    }
-
-    public static TypeReference createUnchecked(Assumptions assumptions, ResolvedJavaType originalType, TypeReference checkedType) {
-        if (originalType.isInterface()) {
-            ResolvedJavaType implementor = originalType.getSingleImplementor();
-            if (checkedType == null || !checkedType.getType().equals(implementor)) {
-                return TypeReference.createTrusted(assumptions, implementor);
-            }
-        }
-        return null;
     }
 
     /**
@@ -154,6 +144,7 @@ public final class TypeReference {
                 if (componentType != null) {
                     return componentType.getArrayClass();
                 }
+                // Returns Object[].class
                 return type.getSuperclass().getArrayClass();
             }
             if (type.isInterface() && !type.isTrustedInterfaceType()) {
