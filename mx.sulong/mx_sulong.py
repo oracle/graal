@@ -143,7 +143,7 @@ def hasDragoneggGCCInstalled():
 
 # platform independent
 def pullInstallDragonEgg(args=None):
-    """downloads and installs dragonegg (assumes that GCC 4.6 is on the path)"""
+    """downloads and installs dragonegg (assumes that gcc-4.6 and g++-4.6 are installed)"""
     if hasDragoneggGCCInstalled():
         toolDir = join(_toolDir, "tools/dragonegg")
         mx.ensure_dir_exists(toolDir)
@@ -152,6 +152,8 @@ def pullInstallDragonEgg(args=None):
         tar(localPath, toolDir)
         os.remove(localPath)
         os.environ['GCC'] = 'gcc-4.6'
+        os.environ['CXX'] = 'g++-4.6'
+        os.environ['CC'] = 'gcc-4.6'
         os.environ['LLVM_CONFIG'] = _toolDir + 'tools/llvm/bin/llvm-config'
         compileCommand = ['make']
         return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
