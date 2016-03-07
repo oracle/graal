@@ -38,8 +38,8 @@ import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.ValueProxy;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.ConditionalEliminationPhase;
 import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
+import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
@@ -111,7 +111,7 @@ public class GuardEliminationCornerCasesTest extends GraalCompilerTest {
 
         Debug.dump(graph, "after manual modification");
         graph.reverseUsageOrder();
-        new ConditionalEliminationPhase().apply(graph);
+        new DominatorConditionalEliminationPhase(true).apply(graph);
         new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST).apply(graph);
     }
 }
