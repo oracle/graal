@@ -62,7 +62,7 @@ public class LLVMContext extends ExecutionContext {
     }
 
     public RootCallTarget getFunction(LLVMFunction function) {
-        return LLVMFunctionRegistry.lookup(function);
+        return registry.lookup(function);
     }
 
     public LLVMFunctionRegistry getFunctionRegistry() {

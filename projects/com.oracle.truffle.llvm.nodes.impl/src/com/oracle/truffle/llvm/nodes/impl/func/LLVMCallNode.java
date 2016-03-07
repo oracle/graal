@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -246,20 +247,25 @@ public abstract class LLVMCallNode {
         public static CallTarget getIndirectCallTarget(LLVMContext context, LLVMFunction function, LLVMExpressionNode[] args) {
             CallTarget callTarget = context.getFunction(function);
             if (callTarget == null) {
-                final NativeFunctionHandle nativeHandle = context.getNativeHandle(function, args);
-                if (nativeHandle == null) {
-                    throw new IllegalStateException("could not find function " + function.getName());
-                } else {
-                    return Truffle.getRuntime().createCallTarget(new RootNode(LLVMLanguage.class, null, null) {
-
-                        @Override
-                        public Object execute(VirtualFrame frame) {
-                            return nativeHandle.call(frame.getArguments());
-                        }
-                    });
-                }
+                return getNativeCallTarget(context, function, args);
             } else {
                 return callTarget;
+            }
+        }
+
+        @TruffleBoundary
+        private static CallTarget getNativeCallTarget(LLVMContext context, LLVMFunction function, LLVMExpressionNode[] args) {
+            final NativeFunctionHandle nativeHandle = context.getNativeHandle(function, args);
+            if (nativeHandle == null) {
+                throw new IllegalStateException("could not find function " + function.getName());
+            } else {
+                return Truffle.getRuntime().createCallTarget(new RootNode(LLVMLanguage.class, null, null) {
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return nativeHandle.call(frame.getArguments());
+                    }
+                });
             }
         }
 
@@ -273,7 +279,7 @@ public abstract class LLVMCallNode {
         @Specialization(contains = "doDirect")
         protected Object doIndirect(VirtualFrame frame, LLVMFunction function, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
-            return callNode.call(frame, context.getFunction(function), arguments);
+            return callNode.call(frame, getIndirectCallTarget(getContext(), function, getNodes()), arguments);
         }
 
         public LLVMContext getContext() {

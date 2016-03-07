@@ -166,7 +166,6 @@ public final class LLVMFunction implements TruffleObject, Comparable<LLVMFunctio
 
     private static int getFunctionIndex(LLVMAddress addr) {
         long functionAddr = addr.getVal() - FUNCTION_START_ADDR;
-        assert functionAddr >= 0 && functionAddr < getNumberRegisteredFunctions();
         return (int) functionAddr;
     }
 
@@ -185,6 +184,34 @@ public final class LLVMFunction implements TruffleObject, Comparable<LLVMFunctio
 
     public int compareTo(LLVMFunction o) {
         return getName().compareTo(o.getName());
+    }
+
+    @Override
+    public int hashCode() {
+        return getName().hashCode() + 11 * getLlvmParamTypes().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof LLVMFunction)) {
+            return false;
+        } else {
+            LLVMFunction other = (LLVMFunction) obj;
+            if (!getName().equals(other.getName())) {
+                return false;
+            } else if (!getLlvmReturnType().equals(other.getLlvmReturnType())) {
+                return false;
+            } else if (getLlvmParamTypes().length != other.getLlvmParamTypes().length) {
+                return false;
+            } else {
+                for (int i = 0; i < getLlvmParamTypes().length; i++) {
+                    if (!getLlvmParamTypes()[i].equals(other.getLlvmParamTypes()[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
     }
 
 }

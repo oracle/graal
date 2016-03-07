@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nativeint;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.WeakHashMap;
 
 import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
 import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionPointer;
@@ -51,12 +52,16 @@ import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
 
 public class NativeLookup {
 
+    static final int LOOKUP_FAILURE = 0;
+
     // TODO lazy loading
     private static final NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
 
-    static final int LOOKUP_FAILURE = 0;
+    private static final NativeLibraryHandle[] libraryHandles = getNativeFunctionHandles();
 
     private final Map<LLVMFunction, Integer> nativeFunctionLookupStats;
+
+    private final Map<LLVMFunction, NativeFunctionHandle> cachedNativeFunctions = new WeakHashMap<>();
 
     private final NodeFactoryFacade facade;
 
@@ -76,12 +81,11 @@ public class NativeLookup {
             HotSpotNativeFunctionInterface face = (HotSpotNativeFunctionInterface) nfi;
             method.setAccessible(true);
             HotSpotNativeLibraryHandle handle;
-            NativeLibraryHandle[] nativeFunctionHandles = getNativeFunctionHandles();
-            if (nativeFunctionHandles.length == 0) {
+            if (libraryHandles.length == 0) {
                 handle = new HotSpotNativeLibraryHandle("", 0);
                 return ((HotSpotNativeFunctionPointer) method.invoke(face, name, handle, false)).getRawValue();
             } else {
-                for (NativeLibraryHandle libraryHandle : nativeFunctionHandles) {
+                for (NativeLibraryHandle libraryHandle : libraryHandles) {
                     try {
                         HotSpotNativeFunctionPointer hotSpotPointer = (HotSpotNativeFunctionPointer) method.invoke(face, name, libraryHandle, false);
                         if (hotSpotPointer != null) {
@@ -113,9 +117,19 @@ public class NativeLookup {
 
     public NativeFunctionHandle getNativeHandle(LLVMFunction function, LLVMExpressionNode[] args) {
         CompilerAsserts.neverPartOfCompilation();
-        if (nfi == null) {
-            throw new IllegalStateException("want to call native function but VM does not support the native function interface!");
+        if (cachedNativeFunctions.containsKey(function)) {
+            return cachedNativeFunctions.get(function);
+        } else {
+            NativeFunctionHandle handle = uncachedGetNativeFunctionHandle(function, args);
+            // FIXME we should also cash var args!
+            if (!function.isVarArgs()) {
+                cachedNativeFunctions.put(function, handle);
+            }
+            return handle;
         }
+    }
+
+    private NativeFunctionHandle uncachedGetNativeFunctionHandle(LLVMFunction function, LLVMExpressionNode[] args) {
         Class<?> retType = getJavaClass(function.getLlvmReturnType());
         Class<?>[] paramTypes = getJavaClassses(args, function.getLlvmParamTypes());
         String functionName = function.getName().substring(1);
@@ -126,8 +140,7 @@ public class NativeLookup {
         if (LLVMOptions.getDynamicLibraryPaths() == null) {
             functionHandle = nfi.getFunctionHandle(functionName, retType, paramTypes);
         } else {
-            NativeLibraryHandle[] handles = getNativeFunctionHandles();
-            functionHandle = nfi.getFunctionHandle(handles, functionName, retType, paramTypes);
+            functionHandle = nfi.getFunctionHandle(libraryHandles, functionName, retType, paramTypes);
         }
         if (LLVMOptions.printNativeCallStats() && functionHandle != null) {
             recordNativeFunctionCallSite(function);
