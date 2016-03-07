@@ -130,6 +130,15 @@ public abstract class LLVMToDoubleNode extends LLVMDoubleNode {
         }
     }
 
+    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    public abstract static class LLVMI64ToDoubleBitNode extends LLVMToDoubleNode {
+
+        @Specialization
+        public double executeDouble(long from) {
+            return Double.longBitsToDouble(from);
+        }
+    }
+
     @NodeChild(value = "fromNode", type = LLVMFloatNode.class)
     public abstract static class LLVMFloatToDoubleNode extends LLVMToDoubleNode {
 

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.impl.cast;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
@@ -40,6 +41,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
@@ -123,6 +125,15 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         @Specialization
         public byte executeI8(LLVM80BitFloat from) {
             return from.getByteValue();
+        }
+    }
+
+    @NodeChild(value = "fromNode", type = LLVMAddressNode.class)
+    public abstract static class LLVMAddressToI8Node extends LLVMToI8Node {
+
+        @Specialization
+        public byte executeI8(LLVMAddress from) {
+            return (byte) from.getVal();
         }
     }
 
