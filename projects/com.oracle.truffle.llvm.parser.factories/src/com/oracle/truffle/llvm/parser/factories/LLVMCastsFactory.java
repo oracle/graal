@@ -425,6 +425,8 @@ public final class LLVMCastsFactory {
             switch (targetType) {
                 case DOUBLE:
                     return LLVMI64ToDoubleBitNodeGen.create(fromNode);
+                default:
+                    throw new AssertionError(targetType);
             }
         }
         throw new AssertionError(targetType + " " + conv);
