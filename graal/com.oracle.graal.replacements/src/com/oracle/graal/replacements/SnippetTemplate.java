@@ -62,6 +62,7 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -728,7 +729,7 @@ public class SnippetTemplate {
                         assert parameterCount < 10000;
                         int idx = (i + 1) * 10000 + j;
                         assert idx >= parameterCount : "collision in parameter numbering";
-                        ParameterNode local = snippetCopy.unique(new ParameterNode(idx, stamp));
+                        ParameterNode local = snippetCopy.unique(new ParameterNode(idx, StampPair.createSingle(stamp)));
                         params[j] = local;
                     }
                     parameters[i] = params;

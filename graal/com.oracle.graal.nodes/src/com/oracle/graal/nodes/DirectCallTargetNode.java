@@ -22,13 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.List;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 
@@ -37,11 +35,12 @@ public class DirectCallTargetNode extends LoweredCallTargetNode {
 
     public static final NodeClass<DirectCallTargetNode> TYPE = NodeClass.create(DirectCallTargetNode.class);
 
-    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+    public DirectCallTargetNode(ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType,
+                    InvokeKind invokeKind) {
         this(TYPE, arguments, returnStamp, signature, target, callType, invokeKind);
     }
 
-    protected DirectCallTargetNode(NodeClass<? extends DirectCallTargetNode> c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
+    protected DirectCallTargetNode(NodeClass<? extends DirectCallTargetNode> c, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target,
                     CallingConvention.Type callType, InvokeKind invokeKind) {
         super(c, arguments, returnStamp, signature, target, callType, invokeKind);
     }

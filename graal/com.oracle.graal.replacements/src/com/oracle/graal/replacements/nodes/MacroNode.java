@@ -26,8 +26,9 @@ import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.NodeClass;
@@ -74,11 +75,11 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
 
     protected final int bci;
     protected final ResolvedJavaMethod targetMethod;
-    protected final Stamp returnStamp;
+    protected final StampPair returnStamp;
     protected final InvokeKind invokeKind;
 
-    protected MacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, Stamp returnStamp, ValueNode... arguments) {
-        super(c, returnStamp);
+    protected MacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
+        super(c, returnStamp.getTrustedStamp());
         assert targetMethod.getSignature().getParameterCount(!targetMethod.isStatic()) == arguments.length;
         this.arguments = new NodeInputList<>(this, arguments);
         this.bci = bci;

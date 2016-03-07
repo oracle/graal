@@ -41,6 +41,7 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
@@ -235,7 +236,7 @@ public class TruffleGraphBuilderPlugins {
                      * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
                      * any further parsing.
                      */
-                    Stamp returnStamp = b.getInvokeReturnStamp(b.getAssumptions());
+                    StampPair returnStamp = b.getInvokeReturnStamp(b.getAssumptions());
                     CallTargetNode callTarget = b.add(new MethodCallTargetNode(InvokeKind.Static, targetMethod, new ValueNode[]{message}, returnStamp, null));
                     b.add(new InvokeNode(callTarget, b.bci()));
 

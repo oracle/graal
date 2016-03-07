@@ -67,6 +67,16 @@ public final class TypeReference {
         return new TypeReference(type, true);
     }
 
+    public static TypeReference createUnchecked(Assumptions assumptions, ResolvedJavaType originalType, TypeReference checkedType) {
+        if (originalType.isInterface()) {
+            ResolvedJavaType implementor = originalType.getSingleImplementor();
+            if (checkedType == null || !checkedType.getType().equals(implementor)) {
+                return TypeReference.createTrusted(assumptions, implementor);
+            }
+        }
+        return null;
+    }
+
     /**
      * Creates a type reference using the given type without assumptions and without trusting
      * interface types.
@@ -151,5 +161,10 @@ public final class TypeReference {
             }
         }
         return type;
+    }
+
+    @Override
+    public String toString() {
+        return (isExact() ? "#" : "") + type;
     }
 }

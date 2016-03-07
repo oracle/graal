@@ -27,7 +27,7 @@ import java.lang.invoke.MethodHandle;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -58,17 +58,19 @@ public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNo
      * Creates a call target for an invocation on a direct target derived by resolving a constant
      * {@link MethodHandle}.
      */
-    public static MethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, Stamp returnStamp, ResolvedJavaMethod originalTargetMethod,
-                    ValueNode[] originalArguments, Stamp originalReturnStamp) {
+    public static MethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp,
+                    ResolvedJavaMethod originalTargetMethod,
+                    ValueNode[] originalArguments, StampPair originalReturnStamp) {
         return new ResolvedMethodHandleCallTargetNode(invokeKind, targetMethod, arguments, returnStamp, originalTargetMethod, originalArguments, originalReturnStamp);
     }
 
     protected final ResolvedJavaMethod originalTargetMethod;
-    protected final Stamp originalReturnStamp;
+    protected final StampPair originalReturnStamp;
     @Input NodeInputList<ValueNode> originalArguments;
 
-    protected ResolvedMethodHandleCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, Stamp returnStamp, ResolvedJavaMethod originalTargetMethod,
-                    ValueNode[] originalArguments, Stamp originalReturnStamp) {
+    protected ResolvedMethodHandleCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp,
+                    ResolvedJavaMethod originalTargetMethod,
+                    ValueNode[] originalArguments, StampPair originalReturnStamp) {
         super(TYPE, invokeKind, targetMethod, arguments, returnStamp, null);
         this.originalTargetMethod = originalTargetMethod;
         this.originalReturnStamp = originalReturnStamp;

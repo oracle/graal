@@ -36,6 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.PiNode;
@@ -208,9 +209,9 @@ public interface GraphBuilderContext {
      */
     JavaType getInvokeReturnType();
 
-    default Stamp getInvokeReturnStamp(Assumptions assumptions) {
+    default StampPair getInvokeReturnStamp(Assumptions assumptions) {
         JavaType returnType = getInvokeReturnType();
-        return StampFactory.forReturnType(assumptions, returnType);
+        return StampFactory.forDeclaredType(assumptions, returnType, false);
     }
 
     /**

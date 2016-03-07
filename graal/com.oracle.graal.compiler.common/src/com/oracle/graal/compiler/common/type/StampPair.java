@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
-
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampPair;
-import com.oracle.graal.graph.IterableNodeType;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.spi.UncheckedInterfaceProvider;
+package com.oracle.graal.compiler.common.type;
 
 /**
- * The {@code Parameter} instruction is a placeholder for an incoming argument to a function call.
+ * A pair of stamp with one being the stamp that can be trusted and the other one being a guess that
+ * needs a dynamic check to be used.
  */
-@NodeInfo(nameTemplate = "P({p#index})")
-public final class ParameterNode extends AbstractLocalNode implements IterableNodeType, UncheckedInterfaceProvider {
+public final class StampPair {
 
-    public static final NodeClass<ParameterNode> TYPE = NodeClass.create(ParameterNode.class);
+    private final Stamp trustedStamp;
+    private final Stamp uncheckedStamp;
 
-    private Stamp uncheckedStamp;
-
-    public ParameterNode(int index, StampPair stamp) {
-        super(TYPE, index, stamp.getTrustedStamp());
-        this.uncheckedStamp = stamp.getUncheckedStamp();
+    private StampPair(Stamp trustedStamp, Stamp uncheckedStamp) {
+        this.trustedStamp = trustedStamp;
+        this.uncheckedStamp = uncheckedStamp;
     }
 
-    public Stamp uncheckedStamp() {
+    public static StampPair create(Stamp trustedStamp, Stamp uncheckedStamp) {
+        return new StampPair(trustedStamp, uncheckedStamp);
+    }
+
+    public static StampPair createSingle(Stamp stamp) {
+        return new StampPair(stamp, null);
+    }
+
+    public Stamp getUncheckedStamp() {
         return uncheckedStamp;
+    }
+
+    public Stamp getTrustedStamp() {
+        return trustedStamp;
     }
 }

@@ -50,9 +50,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -154,10 +153,11 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         int javaIndex = 0;
         int index = 0;
+        ResolvedJavaType originalType = method.getDeclaringClass();
         if (!method.isStatic()) {
             // add the receiver
             FloatingNode receiver = null;
-            Stamp receiverStamp = StampFactory.objectNonNull(TypeReference.create(assumptions, method.getDeclaringClass()));
+            StampPair receiverStamp = StampFactory.forDeclaredType(assumptions, originalType, true);
             for (ParameterPlugin plugin : parameterPlugins) {
                 receiver = plugin.interceptParameter(parser, index, receiverStamp);
                 if (receiver != null) {
@@ -173,19 +173,14 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
         Signature sig = method.getSignature();
         int max = sig.getParameterCount(false);
-        ResolvedJavaType accessingClass = method.getDeclaringClass();
+        ResolvedJavaType accessingClass = originalType;
         for (int i = 0; i < max; i++) {
             JavaType type = sig.getParameterType(i, accessingClass);
             if (eagerResolve) {
                 type = type.resolve(accessingClass);
             }
             JavaKind kind = type.getJavaKind();
-            Stamp stamp;
-            if (kind == JavaKind.Object && type instanceof ResolvedJavaType) {
-                stamp = StampFactory.object(TypeReference.create(assumptions, (ResolvedJavaType) type));
-            } else {
-                stamp = StampFactory.forKind(kind);
-            }
+            StampPair stamp = StampFactory.forDeclaredType(assumptions, type, false);
             FloatingNode param = null;
             for (ParameterPlugin plugin : parameterPlugins) {
                 param = plugin.interceptParameter(parser, index, stamp);

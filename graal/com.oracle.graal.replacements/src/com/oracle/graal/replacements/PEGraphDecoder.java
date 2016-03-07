@@ -46,6 +46,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.graph.Node;
@@ -663,14 +664,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         if (node instanceof ParameterNode) {
+            ParameterNode param = (ParameterNode) node;
             if (methodScope.arguments != null) {
-                Node result = methodScope.arguments[((ParameterNode) node).index()];
+                Node result = methodScope.arguments[param.index()];
                 assert result != null;
                 return result;
 
             } else if (methodScope.parameterPlugin != null) {
                 GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope, null);
-                Node result = methodScope.parameterPlugin.interceptParameter(graphBuilderContext, ((ParameterNode) node).index(), ((ParameterNode) node).stamp());
+                Node result = methodScope.parameterPlugin.interceptParameter(graphBuilderContext, param.index(),
+                                StampPair.create(param.stamp(), param.uncheckedStamp()));
                 if (result != null) {
                     return result;
                 }

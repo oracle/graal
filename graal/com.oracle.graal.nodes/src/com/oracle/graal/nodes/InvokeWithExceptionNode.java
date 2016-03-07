@@ -27,6 +27,7 @@ import java.util.Map;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
 
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
@@ -39,10 +40,11 @@ import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.nodes.spi.UncheckedInterfaceProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
-public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable {
+public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 
     private static final double EXCEPTION_PROBA = 1e-5;
@@ -59,7 +61,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     protected double exceptionProbability;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
-        super(TYPE, callTarget.returnStamp());
+        super(TYPE, callTarget.returnStamp().getTrustedStamp());
         this.exceptionEdge = exceptionEdge;
         this.bci = bci;
         this.callTarget = callTarget;
@@ -252,5 +254,9 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     @Override
     public AbstractBeginNode getPrimarySuccessor() {
         return this.next();
+    }
+
+    public Stamp uncheckedStamp() {
+        return this.callTarget.returnStamp().getUncheckedStamp();
     }
 }
