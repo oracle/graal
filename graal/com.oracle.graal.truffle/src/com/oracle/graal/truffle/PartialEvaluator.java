@@ -344,7 +344,7 @@ public class PartialEvaluator {
                         AllowAssumptions.from(graph.getAssumptions() != null), architecture) {
             @Override
             protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
-                return new DefaultTruffleCompiler.InstrumentedGraphBuilderPhase.Instance(providers.getMetaAccess(),
+                return new DefaultTruffleCompiler.TruffleGraphBuilderPhase.Instance(providers.getMetaAccess(),
                                 providers.getStampProvider(), providers.getConstantReflection(), graphBuilderConfig,
                                 optimisticOpts, initialIntrinsicContext);
             }
