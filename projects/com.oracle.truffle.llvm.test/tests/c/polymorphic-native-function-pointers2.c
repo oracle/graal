@@ -40,5 +40,5 @@ int main() {
 	for (i = 0; i < 1000; i++) {
 		sum += callFunction();
 	}
-	return sum;
+	return sum == 2000000;
 }

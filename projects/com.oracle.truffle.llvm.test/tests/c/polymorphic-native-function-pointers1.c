@@ -22,7 +22,7 @@ int callFunction() {
 	test_type func;
 	double currentVal = 2342;
 	for (i = 0; i < 1000; i++) {
-		currentVal = getFunction(i)(currentVal);
+		currentVal = getFunction(i)(currentVal) > 4353423;
 	}
 	return currentVal;	
 }
@@ -33,5 +33,5 @@ int main() {
 	for (i = 0; i < 1000; i++) {
 		sum += callFunction();
 	}
-	return sum;
+	return sum == 0;
 }
