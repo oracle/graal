@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements.test;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -120,7 +119,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
 
     class InlineAll implements InlineInvokePlugin {
         @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
             return new InlineInfo(method, false);
         }
     }

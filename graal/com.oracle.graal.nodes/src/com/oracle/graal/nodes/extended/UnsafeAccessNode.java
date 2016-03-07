@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -86,7 +87,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                 // never a valid access of an arbitrary address.
                 if (field != null && field.getJavaKind() == this.accessKind()) {
                     assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
-                    return cloneAsFieldAccess(field);
+                    return cloneAsFieldAccess(graph().getAssumptions(), field);
                 }
             }
         }
@@ -103,7 +104,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         return this;
     }
 
-    protected abstract ValueNode cloneAsFieldAccess(ResolvedJavaField field);
+    protected abstract ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field);
 
     protected abstract ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity);
 }

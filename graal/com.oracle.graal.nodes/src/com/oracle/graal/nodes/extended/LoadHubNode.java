@@ -22,20 +22,17 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.Lowerable;
@@ -43,6 +40,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
+import com.oracle.graal.nodes.type.StampTool;
 
 /**
  * Loads an object's hub. The object is not null-checked by this operation.
@@ -64,7 +62,7 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
 
     public static ValueNode create(ValueNode value, StampProvider stampProvider, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         Stamp stamp = hubStamp(stampProvider, value);
-        ValueNode synonym = findSynonym(value, stamp, null, metaAccess, constantReflection);
+        ValueNode synonym = findSynonym(value, stamp, metaAccess, constantReflection);
         if (synonym != null) {
             return synonym;
         }
@@ -89,45 +87,27 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
     public ValueNode canonical(CanonicalizerTool tool) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         ValueNode curValue = getValue();
-        ValueNode newNode = findSynonym(curValue, stamp(), graph(), metaAccess, tool.getConstantReflection());
+        ValueNode newNode = findSynonym(curValue, stamp(), metaAccess, tool.getConstantReflection());
         if (newNode != null) {
             return newNode;
         }
         return this;
     }
 
-    public static ValueNode findSynonym(ValueNode curValue, Stamp stamp, StructuredGraph graph, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        ResolvedJavaType exactType = findSynonymType(graph, metaAccess, curValue);
-        if (exactType != null) {
-            return ConstantNode.forConstant(stamp, constantReflection.asObjectHub(exactType), metaAccess);
+    public static ValueNode findSynonym(ValueNode curValue, Stamp stamp, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        TypeReference type = StampTool.typeReferenceOrNull(curValue);
+        if (type != null && type.isExact()) {
+            return ConstantNode.forConstant(stamp, constantReflection.asObjectHub(type.getType()), metaAccess);
         }
         return null;
-    }
-
-    public static ResolvedJavaType findSynonymType(StructuredGraph graph, MetaAccessProvider metaAccess, ValueNode curValue) {
-        ResolvedJavaType exactType = null;
-        if (metaAccess != null && curValue.stamp() instanceof ObjectStamp) {
-            ObjectStamp objectStamp = (ObjectStamp) curValue.stamp();
-            if (objectStamp.isExactType()) {
-                exactType = objectStamp.type();
-            } else if (objectStamp.type() != null && graph != null) {
-                Assumptions assumptions = graph.getAssumptions();
-                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
-                if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions)) {
-                    leafConcreteSubtype.recordTo(assumptions);
-                    exactType = leafConcreteSubtype.getResult();
-                }
-            }
-        }
-        return exactType;
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode alias = tool.getAlias(getValue());
-        ResolvedJavaType type = findSynonymType(graph(), tool.getMetaAccessProvider(), alias);
-        if (type != null) {
-            tool.replaceWithValue(ConstantNode.forConstant(stamp(), tool.getConstantReflectionProvider().asObjectHub(type), tool.getMetaAccessProvider(), graph()));
+        TypeReference type = StampTool.typeReferenceOrNull(alias);
+        if (type != null && type.isExact()) {
+            tool.replaceWithValue(ConstantNode.forConstant(stamp(), tool.getConstantReflectionProvider().asObjectHub(type.getType()), tool.getMetaAccessProvider(), graph()));
         }
     }
 }

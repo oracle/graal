@@ -25,16 +25,14 @@ package com.oracle.graal.nodes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.extended.GuardedNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.spi.Lowerable;
-import com.oracle.graal.nodes.spi.UncheckedInterfaceProvider;
 import com.oracle.graal.nodes.type.StampTool;
 
-public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, GuardedNode, UncheckedInterfaceProvider {
+public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, GuardedNode {
 
     FixedNode next();
 
@@ -111,13 +109,5 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
 
     default InvokeKind getInvokeKind() {
         return callTarget().invokeKind();
-    }
-
-    default Stamp uncheckedStamp() {
-        if (callTarget() instanceof MethodCallTargetNode) {
-            MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) callTarget();
-            return UncheckedInterfaceProvider.uncheckedOrNull(methodCallTargetNode.returnType(), asNode().stamp());
-        }
-        return null;
     }
 }

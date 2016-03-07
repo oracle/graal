@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.NodeList;
@@ -62,7 +63,7 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
     }
 
     protected NewMultiArrayNode(NodeClass<? extends NewMultiArrayNode> c, ResolvedJavaType type, ValueNode[] dimensions) {
-        super(c, StampFactory.exactNonNull(type));
+        super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)));
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);
         assert dimensions.length > 0 && type.isArray();

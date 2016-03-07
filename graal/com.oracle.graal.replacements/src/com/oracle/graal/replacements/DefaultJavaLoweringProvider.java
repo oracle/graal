@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.compiler.common.type.CheckedJavaType;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -328,11 +328,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         FixedWithNextNode checkCastNode = null;
         if (elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
             /* Array store check. */
-            ResolvedJavaType arrayType = StampTool.typeOrNull(array);
-            if (arrayType != null && StampTool.isExactType(array)) {
-                ResolvedJavaType elementType = arrayType.getComponentType();
+            TypeReference arrayType = StampTool.typeReferenceOrNull(array);
+            if (arrayType != null && arrayType.isExact()) {
+                ResolvedJavaType elementType = arrayType.getType().getComponentType();
                 if (!elementType.isJavaLangObject()) {
-                    ValueNode storeCheck = CheckCastNode.create(CheckedJavaType.create(storeIndexed.graph().getAssumptions(), elementType), value, null, true);
+                    ValueNode storeCheck = CheckCastNode.create(TypeReference.createTrusted(storeIndexed.graph().getAssumptions(), elementType), value, null, true);
                     if (storeCheck.graph() == null) {
                         checkCastNode = (CheckCastNode) storeCheck;
                         checkCastNode = graph.add(checkCastNode);

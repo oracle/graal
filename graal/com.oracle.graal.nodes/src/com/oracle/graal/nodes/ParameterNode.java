@@ -53,7 +53,7 @@ public final class ParameterNode extends AbstractLocalNode implements IterableNo
             } else {
                 parameterType = method.getDeclaringClass();
             }
-            return UncheckedInterfaceProvider.uncheckedOrNull(parameterType, stamp());
+            return UncheckedInterfaceProvider.uncheckedOrNull(graph().getAssumptions(), parameterType, stamp());
         }
         return null;
     }

@@ -28,7 +28,7 @@ import static jdk.vm.ci.meta.DeoptimizationReason.ArrayStoreException;
 import static jdk.vm.ci.meta.DeoptimizationReason.ClassCastException;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 
-import com.oracle.graal.compiler.common.type.CheckedJavaType;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -67,7 +67,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
 
     public static final NodeClass<CheckCastNode> TYPE = NodeClass.create(CheckCastNode.class);
     @Input protected ValueNode object;
-    protected final CheckedJavaType type;
+    protected final TypeReference type;
     protected final JavaTypeProfile profile;
 
     /**
@@ -76,12 +76,12 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
      */
     protected final boolean forStoreCheck;
 
-    public CheckCastNode(CheckedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
+    public CheckCastNode(TypeReference type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
         this(TYPE, type, object, profile, forStoreCheck);
     }
 
-    protected CheckCastNode(NodeClass<? extends CheckCastNode> c, CheckedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
-        super(c, StampFactory.declaredTrusted(type.getType()).improveWith(object.stamp()));
+    protected CheckCastNode(NodeClass<? extends CheckCastNode> c, TypeReference type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
+        super(c, StampFactory.object(type).improveWith(object.stamp()));
         assert object.stamp() instanceof ObjectStamp : object;
         assert type != null;
         this.type = type;
@@ -90,7 +90,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
         this.forStoreCheck = forStoreCheck;
     }
 
-    public static ValueNode create(CheckedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
+    public static ValueNode create(TypeReference type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
         ValueNode synonym = findSynonym(type, object);
         if (synonym != null) {
             return synonym;
@@ -131,14 +131,14 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
      */
     @Override
     public void lower(LoweringTool tool) {
-        Stamp newStamp = StampFactory.declaredTrusted(type.getType()).improveWith(object().stamp());
+        Stamp newStamp = StampFactory.object(type).improveWith(object().stamp());
         LogicNode condition;
         LogicNode innerNode = null;
         ValueNode theValue = object;
         if (newStamp.isEmpty()) {
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
-            newStamp = StampFactory.declaredTrusted(type.getType());
+            newStamp = StampFactory.object(type);
         } else if (StampTool.isPointerNonNull(object)) {
             condition = graph().addWithoutUnique(InstanceOfNode.create(type, object, profile));
             innerNode = condition;
@@ -180,7 +180,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
     @Override
     public boolean inferStamp() {
         if (object().stamp() instanceof ObjectStamp) {
-            ObjectStamp castStamp = (ObjectStamp) StampFactory.declaredTrusted(type.getType());
+            ObjectStamp castStamp = (ObjectStamp) StampFactory.object(type);
             return updateStamp(castStamp.improveWith(object().stamp()));
         }
         return false;
@@ -195,7 +195,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
         return this;
     }
 
-    public static ValueNode findSynonym(CheckedJavaType type, ValueNode object) {
+    public static ValueNode findSynonym(TypeReference type, ValueNode object) {
         ResolvedJavaType objectType = StampTool.typeOrNull(object);
         if (objectType != null && type.getType().isAssignableFrom(objectType)) {
             // we don't have to check for null types here because they will also pass the
@@ -216,7 +216,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
     /**
      * Gets the type being cast to.
      */
-    public CheckedJavaType type() {
+    public TypeReference type() {
         return type;
     }
 

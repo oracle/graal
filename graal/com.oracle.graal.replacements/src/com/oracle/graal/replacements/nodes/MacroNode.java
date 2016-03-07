@@ -25,13 +25,9 @@ package com.oracle.graal.replacements.nodes;
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.NodeClass;
@@ -78,27 +74,18 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
 
     protected final int bci;
     protected final ResolvedJavaMethod targetMethod;
-    protected final JavaType returnType;
+    protected final Stamp returnStamp;
     protected final InvokeKind invokeKind;
 
-    protected MacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
-        super(c, returnStamp(returnType));
+    protected MacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, Stamp returnStamp, ValueNode... arguments) {
+        super(c, returnStamp);
         assert targetMethod.getSignature().getParameterCount(!targetMethod.isStatic()) == arguments.length;
         this.arguments = new NodeInputList<>(this, arguments);
         this.bci = bci;
         this.targetMethod = targetMethod;
-        this.returnType = returnType;
+        this.returnStamp = returnStamp;
         this.invokeKind = invokeKind;
         assert !isPlaceholderBci(bci);
-    }
-
-    private static Stamp returnStamp(JavaType returnType) {
-        JavaKind kind = returnType.getJavaKind();
-        if (kind == JavaKind.Object) {
-            return StampFactory.declared((ResolvedJavaType) returnType);
-        } else {
-            return StampFactory.forKind(kind);
-        }
     }
 
     public int getBci() {
@@ -107,10 +94,6 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
 
     public ResolvedJavaMethod getTargetMethod() {
         return targetMethod;
-    }
-
-    public JavaType getReturnType() {
-        return returnType;
     }
 
     protected FrameState stateAfter() {
@@ -198,7 +181,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     }
 
     protected InvokeNode createInvoke() {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, arguments.toArray(new ValueNode[arguments.size()]), returnType, null));
+        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, arguments.toArray(new ValueNode[arguments.size()]), returnStamp, null));
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());

@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -89,16 +88,6 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
             if (result != null) {
                 return result;
             }
-
-            Assumptions assumptions = graph() == null ? null : graph().getAssumptions();
-            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = stampType.findLeafConcreteSubtype();
-            if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions)) {
-                result = findSynonym(type(), leafConcreteSubtype.getResult(), true, true);
-                if (result != null) {
-                    leafConcreteSubtype.recordTo(assumptions);
-                    return result;
-                }
-            }
         }
         return this;
     }
@@ -144,7 +133,7 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
         if (negated) {
             return null;
         } else {
-            return StampFactory.exactNonNull(type);
+            return StampFactory.objectNonNull(TypeReference.createExactTrusted(type));
         }
     }
 

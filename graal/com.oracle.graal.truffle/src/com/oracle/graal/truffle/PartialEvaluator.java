@@ -38,7 +38,6 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
@@ -209,7 +208,7 @@ public class PartialEvaluator {
         }
 
         @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType) {
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
             if (truffleBoundary != null) {
                 return truffleBoundary.throwsControlFlowException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION : InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
@@ -278,7 +277,7 @@ public class PartialEvaluator {
         }
 
         @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType) {
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             if (invocationPlugins.lookupInvocation(original) != null) {
                 return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             } else if (loopExplosionPlugin.shouldExplodeLoops(original)) {
@@ -446,7 +445,7 @@ public class PartialEvaluator {
         HashMap<String, ArrayList<ValueNode>> groupedByType;
         groupedByType = new HashMap<>();
         for (CheckCastNode cast : graph.getNodes().filter(CheckCastNode.class)) {
-            if (!cast.type().isExactType()) {
+            if (!cast.type().isExact()) {
                 warnings.add(cast);
                 groupedByType.putIfAbsent(cast.type().getType().getName(), new ArrayList<>());
                 groupedByType.get(cast.type().getType().getName()).add(cast);
@@ -458,7 +457,7 @@ public class PartialEvaluator {
 
         groupedByType = new HashMap<>();
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
-            if (!instanceOf.type().isExactType()) {
+            if (!instanceOf.type().isExact()) {
                 warnings.add(instanceOf);
                 groupedByType.putIfAbsent(instanceOf.type().getType().getName(), new ArrayList<>());
                 groupedByType.get(instanceOf.type().getType().getName()).add(instanceOf);

@@ -41,6 +41,7 @@ import jdk.vm.ci.meta.Signature;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.JavaMethodContext;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -253,7 +254,7 @@ public class ForeignCallStub extends Stub {
             ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(args[i]).resolve(accessingClass);
             Stamp stamp;
             if (type.getJavaKind().getStackKind() == JavaKind.Object) {
-                stamp = StampFactory.declared(type);
+                stamp = StampFactory.object(TypeReference.create(kit.getGraph().getAssumptions(), type));
             } else {
                 stamp = StampFactory.forKind(type.getJavaKind());
             }

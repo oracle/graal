@@ -127,7 +127,7 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
         if (field.getType() instanceof ResolvedJavaType && wordTypes.isWord((ResolvedJavaType) field.getType())) {
-            LoadFieldNode loadFieldNode = new LoadFieldNode(receiver, field);
+            LoadFieldNode loadFieldNode = LoadFieldNode.create(b.getAssumptions(), receiver, field);
             loadFieldNode.setStamp(wordTypes.getWordStamp((ResolvedJavaType) field.getType()));
             b.addPush(field.getJavaKind(), loadFieldNode);
             return true;
@@ -156,7 +156,7 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     }
 
     protected LoadIndexedNode createLoadIndexedNode(ValueNode array, ValueNode index) {
-        return new LoadIndexedNode(array, index, wordTypes.getWordKind());
+        return new LoadIndexedNode(null, array, index, wordTypes.getWordKind());
     }
 
     @Override

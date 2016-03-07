@@ -26,6 +26,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -43,7 +44,7 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
     private int objectId = -1;
 
     protected VirtualObjectNode(NodeClass<? extends VirtualObjectNode> c, ResolvedJavaType type, boolean hasIdentity) {
-        super(c, StampFactory.exactNonNull(type));
+        super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)));
         this.hasIdentity = hasIdentity;
     }
 
