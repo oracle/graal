@@ -148,6 +148,15 @@ public abstract class LLVMToI32Node extends LLVMI32Node {
         }
     }
 
+    @NodeChild(value = "fromNode", type = LLVMFloatNode.class)
+    public abstract static class LLVMFloatToI32BitNode extends LLVMToI32Node {
+
+        @Specialization
+        public int executeI32(float from) {
+            return Float.floatToIntBits(from);
+        }
+    }
+
     @NodeChild(value = "fromNode", type = LLVMDoubleNode.class)
     public abstract static class LLVMDoubleToI32Node extends LLVMToI32Node {
 
