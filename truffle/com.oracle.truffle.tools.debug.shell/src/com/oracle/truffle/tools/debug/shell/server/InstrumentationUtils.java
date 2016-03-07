@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.debug.shell.server;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
@@ -117,8 +118,25 @@ final class InstrumentationUtils {
          * </ul>
          */
         protected String displayTags(final Object node) {
-            if ((node instanceof Node) && ((Node) node).getSourceSection() != null) {
-                return ((Node) node).getSourceSection().toString();
+            if (node instanceof Node) {
+                final SourceSection sourceSection = ((Node) node).getSourceSection();
+                if (sourceSection != null) {
+                    try {
+                        final Field field = SourceSection.class.getDeclaredField("tags");
+                        field.setAccessible(true);
+                        final String[] tags = (String[]) field.get(sourceSection);
+                        final StringBuilder sb = new StringBuilder("[");
+                        String sep = "";
+                        for (String tag : tags) {
+                            sb.append(sep).append(tag);
+                            sep = ",";
+                        }
+                        sb.append("]");
+                        return sb.toString();
+                    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+                        return "[<error accessing tags>]";
+                    }
+                }
             }
             return "";
         }
