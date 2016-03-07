@@ -188,7 +188,7 @@ public final class LLVMFunction implements TruffleObject, Comparable<LLVMFunctio
 
     @Override
     public int hashCode() {
-        return getName().hashCode() + 11 * getLlvmParamTypes().hashCode();
+        return getName().hashCode() + 11 * getLlvmReturnType().hashCode();
     }
 
     @Override
