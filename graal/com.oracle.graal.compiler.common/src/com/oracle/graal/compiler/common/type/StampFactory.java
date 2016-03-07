@@ -312,11 +312,19 @@ public class StampFactory {
         return rawPointer;
     }
 
-    public static Stamp forReturnType(Assumptions assumptions, JavaType returnType) {
+    public static StampPair forDeclaredType(Assumptions assumptions, JavaType returnType, boolean nonNull) {
         if (returnType.getJavaKind() == JavaKind.Object && returnType instanceof ResolvedJavaType) {
-            return StampFactory.object(TypeReference.create(assumptions, (ResolvedJavaType) returnType));
+            ResolvedJavaType resolvedJavaType = (ResolvedJavaType) returnType;
+            TypeReference reference = TypeReference.create(assumptions, resolvedJavaType);
+            if (resolvedJavaType.isInterface()) {
+                TypeReference uncheckedType = TypeReference.createUnchecked(assumptions, resolvedJavaType, reference);
+                if (uncheckedType != null) {
+                    return StampPair.create(StampFactory.object(reference, nonNull), StampFactory.object(uncheckedType, nonNull));
+                }
+            }
+            return StampPair.createSingle(StampFactory.object(reference, nonNull));
         } else {
-            return StampFactory.forKind(returnType.getJavaKind());
+            return StampPair.createSingle(StampFactory.forKind(returnType.getJavaKind()));
         }
     }
 }

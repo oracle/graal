@@ -29,7 +29,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.NodeClass;
@@ -55,7 +55,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
 
     public static final NodeClass<ObjectCloneNode> TYPE = NodeClass.create(ObjectCloneNode.class);
 
-    public ObjectCloneNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, Stamp returnStamp, ValueNode receiver) {
+    public ObjectCloneNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode receiver) {
         super(TYPE, invokeKind, targetMethod, bci, returnStamp, receiver);
     }
 
@@ -85,7 +85,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                 type = getConcreteType(getObject().stamp(), tool.getMetaAccess());
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph(AllowAssumptions.from(assumptions != null));
-                    ParameterNode param = newGraph.unique(new ParameterNode(0, getObject().stamp()));
+                    ParameterNode param = newGraph.unique(new ParameterNode(0, StampPair.createSingle(getObject().stamp())));
                     NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
                     newGraph.addAfterFixed(newGraph.start(), newInstance);
                     ReturnNode returnNode = newGraph.add(new ReturnNode(newInstance));

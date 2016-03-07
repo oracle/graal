@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.List;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -32,6 +30,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
@@ -76,19 +75,14 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     @Input protected NodeInputList<ValueNode> arguments;
     protected ResolvedJavaMethod targetMethod;
     protected InvokeKind invokeKind;
+    protected final StampPair returnStamp;
 
-    protected CallTargetNode(NodeClass<? extends CallTargetNode> c, ValueNode[] arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
+    protected CallTargetNode(NodeClass<? extends CallTargetNode> c, ValueNode[] arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind, StampPair returnStamp) {
         super(c, StampFactory.forVoid());
         this.targetMethod = targetMethod;
         this.invokeKind = invokeKind;
         this.arguments = new NodeInputList<>(this, arguments);
-    }
-
-    protected CallTargetNode(NodeClass<? extends CallTargetNode> c, List<ValueNode> arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
-        super(c, StampFactory.forVoid());
-        this.targetMethod = targetMethod;
-        this.invokeKind = invokeKind;
-        this.arguments = new NodeInputList<>(this, arguments);
+        this.returnStamp = returnStamp;
     }
 
     public NodeInputList<ValueNode> arguments() {
@@ -104,7 +98,9 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
         }
     }
 
-    public abstract Stamp returnStamp();
+    public StampPair returnStamp() {
+        return this.returnStamp;
+    }
 
     /**
      * A human-readable representation of the target, used for debug printing only.

@@ -59,6 +59,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
@@ -388,7 +389,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                     AddressNode address = createOffsetAddress(graph, metaspaceMethod, methodCompiledEntryOffset);
                     ReadNode compiledEntry = graph.add(new ReadNode(address, any(), StampFactory.forKind(wordKind), BarrierType.NONE));
 
-                    loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(),
+                    loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(),
+                                    signature, callTarget.targetMethod(),
                                     HotSpotCallingConventionType.JavaCall, callTarget.invokeKind()));
 
                     graph.addBeforeFixed(invoke.asNode(), metaspaceMethod);
@@ -397,7 +399,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
 
             if (loweredCallTarget == null) {
-                loweredCallTarget = graph.add(new HotSpotDirectCallTargetNode(parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(), HotSpotCallingConventionType.JavaCall,
+                loweredCallTarget = graph.add(new HotSpotDirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(),
+                                signature, callTarget.targetMethod(),
+                                HotSpotCallingConventionType.JavaCall,
                                 callTarget.invokeKind()));
             }
             callTarget.replaceAndDelete(loweredCallTarget);
@@ -490,7 +494,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         StructuredGraph graph = osrStart.graph();
         if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
             StartNode newStart = graph.add(new StartNode());
-            ParameterNode buffer = graph.unique(new ParameterNode(0, StampFactory.forKind(runtime.getTarget().wordJavaKind)));
+            ParameterNode buffer = graph.unique(new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(runtime.getTarget().wordJavaKind))));
             ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(foreignCalls, OSR_MIGRATION_END, buffer));
             migrationEnd.setStateAfter(osrStart.stateAfter());
 

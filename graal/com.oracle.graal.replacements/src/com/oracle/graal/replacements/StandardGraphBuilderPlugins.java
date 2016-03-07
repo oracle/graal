@@ -447,7 +447,7 @@ public class StandardGraphBuilderPlugins {
                 if (folded != null) {
                     b.addPush(JavaKind.Object, folded);
                 } else {
-                    Stamp stamp = StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Class.class)));
+                    Stamp stamp = StampFactory.objectNonNull(TypeReference.createTrusted(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Class.class)));
                     b.addPush(JavaKind.Object, new GetClassNode(stamp, object));
                 }
                 return true;
@@ -742,7 +742,7 @@ public class StandardGraphBuilderPlugins {
         });
         r.register0("rootName", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new RootNameNode(b.getInvokeReturnStamp(b.getAssumptions())));
+                b.addPush(JavaKind.Object, new RootNameNode(b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp()));
                 return true;
             }
         });

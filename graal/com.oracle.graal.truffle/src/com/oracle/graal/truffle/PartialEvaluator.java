@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
@@ -187,7 +187,7 @@ public class PartialEvaluator {
             this.receiver = receiver;
         }
 
-        public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
+        public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
             if (index == 0) {
                 return ConstantNode.forConstant(snippetReflection.forObject(receiver), providers.getMetaAccess());
             }

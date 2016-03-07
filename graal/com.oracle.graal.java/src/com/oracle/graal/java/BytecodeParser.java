@@ -297,6 +297,7 @@ import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
@@ -1378,7 +1379,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
             profile = profilingInfo.getTypeProfile(bci());
         }
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, StampFactory.forReturnType(graph.getAssumptions(), returnType), profile));
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false), profile));
 
         Invoke invoke;
         if (omitInvokeExceptionEdge(callTarget, inlineInfo)) {
@@ -1659,7 +1660,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, Stamp returnStamp, JavaTypeProfile profile) {
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
         return new MethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile);
     }
 

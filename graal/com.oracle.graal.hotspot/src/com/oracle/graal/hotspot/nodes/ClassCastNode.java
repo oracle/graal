@@ -26,7 +26,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -46,7 +46,7 @@ public final class ClassCastNode extends MacroStateSplitNode implements Canonica
 
     public static final NodeClass<ClassCastNode> TYPE = NodeClass.create(ClassCastNode.class);
 
-    public ClassCastNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, Stamp returnStamp, ValueNode receiver, ValueNode object) {
+    public ClassCastNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode receiver, ValueNode object) {
         super(TYPE, invokeKind, targetMethod, bci, returnStamp, receiver, object);
     }
 

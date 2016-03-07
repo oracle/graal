@@ -32,6 +32,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -50,7 +51,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
 
     public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
 
-    public BasicObjectCloneNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, Stamp returnStamp, ValueNode... arguments) {
+    public BasicObjectCloneNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
         super(c, invokeKind, targetMethod, bci, returnStamp, arguments);
     }
 

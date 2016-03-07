@@ -24,6 +24,7 @@ package com.oracle.graal.phases.common.instrumentation;
 
 import java.util.Map;
 
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
@@ -202,7 +203,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                         continue;
                     }
                     if (!nodes.isMarked(input) && !replacements.containsKey(input)) {
-                        ParameterNode parameter = new ParameterNode(index++, ((ValueNode) input).stamp());
+                        ParameterNode parameter = new ParameterNode(index++, StampPair.createSingle(((ValueNode) input).stamp()));
                         instrumentationGraph.addWithoutUnique(parameter);
                         replacements.put(input, parameter);
                         instrumentationNode.addInput(input);
