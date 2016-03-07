@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.HashMap;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.Assumptions.LeafType;
 import jdk.vm.ci.meta.Assumptions.NoFinalizableSubclass;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -60,7 +61,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
     public static class NoFinalizerYetAAAA {
     }
 
-    public static class WithFinalizerAAAA extends NoFinalizerYetAAAA {
+    public static final class WithFinalizerAAAA extends NoFinalizerYetAAAA {
 
         @Override
         protected void finalize() throws Throwable {
@@ -90,6 +91,10 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         if (assumptions != null) {
             for (Assumption a : assumptions) {
                 if (a instanceof NoFinalizableSubclass) {
+                    noFinalizerAssumption++;
+                } else if (a instanceof LeafType) {
+                    // Need to also allow leaf type assumption instead of no finalizable subclass
+                    // assumption.
                     noFinalizerAssumption++;
                 }
             }

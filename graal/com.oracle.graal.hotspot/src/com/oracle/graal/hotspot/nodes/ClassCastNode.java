@@ -23,11 +23,11 @@
 package com.oracle.graal.hotspot.nodes;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.type.CheckedJavaType;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -46,8 +46,8 @@ public final class ClassCastNode extends MacroStateSplitNode implements Canonica
 
     public static final NodeClass<ClassCastNode> TYPE = NodeClass.create(ClassCastNode.class);
 
-    public ClassCastNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode receiver, ValueNode object) {
-        super(TYPE, invokeKind, targetMethod, bci, returnType, receiver, object);
+    public ClassCastNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, Stamp returnStamp, ValueNode receiver, ValueNode object) {
+        super(TYPE, invokeKind, targetMethod, bci, returnStamp, receiver, object);
     }
 
     private ValueNode getJavaClass() {
@@ -76,7 +76,7 @@ public final class ClassCastNode extends MacroStateSplitNode implements Canonica
         if (javaClass != null && javaClass.isConstant()) {
             ResolvedJavaType type = constantReflection.asJavaType(javaClass.asConstant());
             if (type != null && !type.isPrimitive()) {
-                return CheckCastNode.create(CheckedJavaType.create(javaClass.graph().getAssumptions(), type), object, null, false);
+                return CheckCastNode.create(TypeReference.createTrusted(javaClass.graph().getAssumptions(), type), object, null, false);
             }
         }
         return null;

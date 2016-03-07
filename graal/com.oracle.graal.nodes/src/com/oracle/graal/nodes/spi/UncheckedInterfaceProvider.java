@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 
 public interface UncheckedInterfaceProvider {
     /**
@@ -37,9 +39,9 @@ public interface UncheckedInterfaceProvider {
      */
     Stamp uncheckedStamp();
 
-    static Stamp uncheckedOrNull(JavaType type, Stamp originalStamp) {
+    static Stamp uncheckedOrNull(Assumptions assumptions, JavaType type, Stamp originalStamp) {
         if (type instanceof ResolvedJavaType && type.getJavaKind() == JavaKind.Object) {
-            Stamp unchecked = StampFactory.declaredTrusted((ResolvedJavaType) type);
+            Stamp unchecked = StampFactory.object(TypeReference.create(assumptions, (ResolvedJavaType) type));
             if (!unchecked.equals(originalStamp)) {
                 return unchecked;
             }

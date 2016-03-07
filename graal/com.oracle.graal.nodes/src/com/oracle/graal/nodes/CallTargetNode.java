@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,15 @@ package com.oracle.graal.nodes;
 
 import java.util.List;
 
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.InputType;
@@ -88,6 +93,15 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     public NodeInputList<ValueNode> arguments() {
         return arguments;
+    }
+
+    public static Stamp createReturnStamp(Assumptions assumptions, JavaType returnType) {
+        JavaKind kind = returnType.getJavaKind();
+        if (kind == JavaKind.Object && returnType instanceof ResolvedJavaType) {
+            return StampFactory.object(TypeReference.create(assumptions, (ResolvedJavaType) returnType));
+        } else {
+            return StampFactory.forKind(kind);
+        }
     }
 
     public abstract Stamp returnStamp();

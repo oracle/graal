@@ -25,11 +25,11 @@ package com.oracle.graal.hotspot.replacements;
 import java.lang.reflect.Method;
 
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.NodeClass;
@@ -55,8 +55,8 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
 
     public static final NodeClass<ObjectCloneNode> TYPE = NodeClass.create(ObjectCloneNode.class);
 
-    public ObjectCloneNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode receiver) {
-        super(TYPE, invokeKind, targetMethod, bci, returnType, receiver);
+    public ObjectCloneNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, Stamp returnStamp, ValueNode receiver) {
+        super(TYPE, invokeKind, targetMethod, bci, returnStamp, receiver);
     }
 
     @Override
@@ -82,7 +82,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                 assert false : "unhandled array type " + type.getComponentType().getJavaKind();
             } else {
                 Assumptions assumptions = graph().getAssumptions();
-                type = getConcreteType(getObject().stamp(), assumptions, tool.getMetaAccess());
+                type = getConcreteType(getObject().stamp(), tool.getMetaAccess());
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph(AllowAssumptions.from(assumptions != null));
                     ParameterNode param = newGraph.unique(new ParameterNode(0, getObject().stamp()));
@@ -92,7 +92,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                     newGraph.addAfterFixed(newInstance, returnNode);
 
                     for (ResolvedJavaField field : type.getInstanceFields(true)) {
-                        LoadFieldNode load = newGraph.add(new LoadFieldNode(param, field));
+                        LoadFieldNode load = newGraph.add(LoadFieldNode.create(newGraph.getAssumptions(), param, field));
                         newGraph.addBeforeFixed(returnNode, load);
                         newGraph.addBeforeFixed(returnNode, newGraph.add(new StoreFieldNode(newInstance, field, load)));
                     }

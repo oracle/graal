@@ -256,7 +256,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.type.CheckedJavaType;
+import com.oracle.graal.compiler.common.type.TypeReference;
+
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -626,7 +627,7 @@ public class BytecodeParser implements GraphBuilderContext {
     @SuppressWarnings("try")
     protected void buildRootMethod() {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, method, graph);
-        startFrameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins().getParameterPlugins());
+        startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins().getParameterPlugins());
 
         try (IntrinsicScope s = intrinsicContext != null ? new IntrinsicScope(this) : null) {
             build(graph.start(), startFrameState);
@@ -995,7 +996,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genLoadIndexed(ValueNode array, ValueNode index, JavaKind kind) {
-        return LoadIndexedNode.create(array, index, kind, metaAccess, constantReflection);
+        return LoadIndexedNode.create(graph.getAssumptions(), array, index, kind, metaAccess, constantReflection);
     }
 
     protected void genStoreIndexed(ValueNode array, ValueNode index, JavaKind kind, ValueNode value) {
@@ -1122,16 +1123,15 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ValueNode exception = frameState.pop(JavaKind.Object);
         FixedGuardNode nullCheck = append(new FixedGuardNode(graph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
-        PiNode nonNullException = graph.unique(new PiNode(exception, exception.stamp().join(objectNonNull())));
-        nonNullException.setGuard(nullCheck);
+        PiNode nonNullException = graph.unique(new PiNode(exception, exception.stamp().join(objectNonNull()), nullCheck));
         lastInstr.setNext(handleException(nonNullException, bci()));
     }
 
-    protected ValueNode createCheckCast(CheckedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
+    protected ValueNode createCheckCast(TypeReference type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
         return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck);
     }
 
-    protected ValueNode createInstanceOf(CheckedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
+    protected ValueNode createInstanceOf(TypeReference type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
         return InstanceOfNode.create(type, object, profileForTypeCheck);
     }
 
@@ -1152,7 +1152,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field) {
-        return new LoadFieldNode(receiver, field);
+        return LoadFieldNode.create(this.graph.getAssumptions(), receiver, field);
     }
 
     protected ValueNode emitExplicitNullCheck(ValueNode receiver) {
@@ -1161,8 +1161,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
         AbstractBeginNode falseSucc = graph.add(new BeginNode());
-        PiNode nonNullReceiver = graph.unique(new PiNode(receiver, receiver.stamp().join(objectNonNull())));
-        nonNullReceiver.setGuard(falseSucc);
+        PiNode nonNullReceiver = graph.unique(new PiNode(receiver, receiver.stamp().join(objectNonNull()), falseSucc));
         append(new IfNode(graph.unique(new IsNullNode(receiver)), exception, falseSucc, 0.01));
         lastInstr = falseSucc;
 
@@ -1365,7 +1364,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     return;
                 }
 
-                inlineInfo = tryInline(args, targetMethod, returnType);
+                inlineInfo = tryInline(args, targetMethod);
                 if (inlineInfo == SUCCESSFULLY_INLINED) {
                     return;
                 }
@@ -1379,7 +1378,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
             profile = profilingInfo.getTypeProfile(bci());
         }
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType, profile));
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, StampFactory.forReturnType(graph.getAssumptions(), returnType), profile));
 
         Invoke invoke;
         if (omitInvokeExceptionEdge(callTarget, inlineInfo)) {
@@ -1512,7 +1511,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * Otherwise, it returns the {@link InlineInfo} that lead to the decision to not inline it, or
      * {@code null} if there is no {@link InlineInfo} for this method.
      */
-    private InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, JavaType returnType) {
+    private InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
         boolean canBeInlined = forceInliningEverything || parsingIntrinsic() || targetMethod.canBeInlined();
         if (!canBeInlined) {
             return null;
@@ -1527,7 +1526,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
-            InlineInfo inlineInfo = plugin.shouldInlineInvoke(this, targetMethod, args, returnType);
+            InlineInfo inlineInfo = plugin.shouldInlineInvoke(this, targetMethod, args);
             if (inlineInfo != null) {
                 if (inlineInfo.getMethodToInline() != null) {
                     if (inline(targetMethod, inlineInfo.getMethodToInline(), inlineInfo.isIntrinsic(), args)) {
@@ -1660,8 +1659,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, JavaTypeProfile profile) {
-        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType, profile);
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, Stamp returnStamp, JavaTypeProfile profile) {
+        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile);
     }
 
     protected InvokeNode createInvoke(CallTargetNode callTarget, JavaKind resultType) {
@@ -2175,7 +2174,7 @@ public class BytecodeParser implements GraphBuilderContext {
             catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
         }
         if (catchType instanceof ResolvedJavaType) {
-            CheckedJavaType checkedCatchType = CheckedJavaType.create(graph.getAssumptions(), (ResolvedJavaType) catchType);
+            TypeReference checkedCatchType = TypeReference.createTrusted(graph.getAssumptions(), (ResolvedJavaType) catchType);
 
             if (graphBuilderConfig.getSkippedExceptionTypes() != null) {
                 for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
@@ -2934,8 +2933,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    private JavaTypeProfile getProfileForTypeCheck(CheckedJavaType type) {
-        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || type.isExactType()) {
+    private JavaTypeProfile getProfileForTypeCheck(TypeReference type) {
+        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || type.isExact()) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());
@@ -2951,7 +2950,7 @@ public class BytecodeParser implements GraphBuilderContext {
             handleUnresolvedCheckCast(type, object);
             return;
         }
-        CheckedJavaType checkedType = CheckedJavaType.create(graph.getAssumptions(), (ResolvedJavaType) type);
+        TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), (ResolvedJavaType) type);
         JavaTypeProfile profile = getProfileForTypeCheck(checkedType);
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
@@ -2974,7 +2973,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         checkCastNode = object;
                     } else {
                         FixedGuardNode fixedGuard = append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, false));
-                        checkCastNode = append(new PiNode(object, StampFactory.exactNonNull(singleType), fixedGuard));
+                        checkCastNode = append(new PiNode(object, StampFactory.objectNonNull(TypeReference.createExactTrusted(singleType)), fixedGuard));
                     }
                 }
             }
@@ -3007,7 +3006,7 @@ public class BytecodeParser implements GraphBuilderContext {
             handleUnresolvedInstanceOf(type, object);
             return;
         }
-        CheckedJavaType resolvedType = CheckedJavaType.create(graph.getAssumptions(), (ResolvedJavaType) type);
+        TypeReference resolvedType = TypeReference.createTrusted(graph.getAssumptions(), (ResolvedJavaType) type);
         JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {

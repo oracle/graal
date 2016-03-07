@@ -33,6 +33,7 @@ import org.junit.Test;
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.runtime.RuntimeProvider;
 
 public class StampFactoryTest {
@@ -45,9 +46,9 @@ public class StampFactoryTest {
     public void testParameters() throws NoSuchMethodException, SecurityException {
         Method method = StampFactoryTest.class.getMethod("test", Integer.TYPE, Object.class, Double.TYPE);
         MetaAccessProvider metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
-        Stamp[] parameterStamps = StampFactory.createParameterStamps(metaAccess.lookupJavaMethod(method));
-        Stamp[] expected = {StampFactory.declaredNonNull(metaAccess.lookupJavaType(StampFactoryTest.class)), StampFactory.forKind(JavaKind.Int),
-                        StampFactory.declared(metaAccess.lookupJavaType(Object.class)), StampFactory.forKind(JavaKind.Double)};
+        Stamp[] parameterStamps = StampFactory.createParameterStamps(null, metaAccess.lookupJavaMethod(method));
+        Stamp[] expected = {StampFactory.objectNonNull(TypeReference.createWithoutAssumptions(metaAccess.lookupJavaType(StampFactoryTest.class))), StampFactory.forKind(JavaKind.Int),
+                        StampFactory.object(TypeReference.createWithoutAssumptions(metaAccess.lookupJavaType(Object.class))), StampFactory.forKind(JavaKind.Double)};
         Assert.assertArrayEquals(expected, parameterStamps);
     }
 }

@@ -43,6 +43,7 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Or;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Node;
@@ -748,9 +749,9 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     for (int i = 0; i < typeSwitch.keyCount(); i++) {
                         if (typeSwitch.keySuccessor(i) == predecessor) {
                             if (stamp == null) {
-                                stamp = StampFactory.exactNonNull(typeSwitch.typeAt(i));
+                                stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(typeSwitch.typeAt(i)));
                             } else {
-                                stamp = stamp.meet(StampFactory.exactNonNull(typeSwitch.typeAt(i)));
+                                stamp = stamp.meet(StampFactory.objectNonNull(TypeReference.createExactTrusted(typeSwitch.typeAt(i))));
                             }
                         }
                     }

@@ -22,13 +22,9 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
@@ -71,21 +67,8 @@ public final class GetClassNode extends FloatingNode implements Lowerable, Canon
     public static ValueNode tryFold(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode object) {
         if (metaAccess != null && object != null && object.stamp() instanceof ObjectStamp) {
             ObjectStamp objectStamp = (ObjectStamp) object.stamp();
-
-            ResolvedJavaType exactType = null;
             if (objectStamp.isExactType()) {
-                exactType = objectStamp.type();
-            } else if (objectStamp.type() != null) {
-                Assumptions assumptions = object.graph().getAssumptions();
-                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
-                if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions)) {
-                    leafConcreteSubtype.recordTo(assumptions);
-                    exactType = leafConcreteSubtype.getResult();
-                }
-            }
-
-            if (exactType != null) {
-                return ConstantNode.forConstant(constantReflection.asJavaClass(exactType), metaAccess);
+                return ConstantNode.forConstant(constantReflection.asJavaClass(objectStamp.type()), metaAccess);
             }
         }
         return null;

@@ -94,7 +94,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     private static boolean isClass(ConstantNode node) {
-        ResolvedJavaType typeOrNull = StampTool.typeOrNull(node);
-        return typeOrNull != null && "Ljava/lang/Class;".equals(typeOrNull.getName());
+        ResolvedJavaType type = StampTool.typeOrNull(node);
+        return type != null && "Ljava/lang/Class;".equals(type.getName());
     }
 }

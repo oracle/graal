@@ -27,6 +27,7 @@ import java.util.Collections;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
@@ -57,7 +58,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
     }
 
     protected NewArrayNode(NodeClass<? extends NewArrayNode> c, ResolvedJavaType elementType, ValueNode length, boolean fillContents, FrameState stateBefore) {
-        super(c, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents, stateBefore);
+        super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(elementType.getArrayClass())), length, fillContents, stateBefore);
     }
 
     @NodeIntrinsic

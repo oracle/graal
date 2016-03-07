@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -34,6 +35,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -58,18 +60,22 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     public static final NodeClass<LoadFieldNode> TYPE = NodeClass.create(LoadFieldNode.class);
 
-    public LoadFieldNode(ValueNode object, ResolvedJavaField field) {
-        super(TYPE, createStamp(field), object, field);
+    protected LoadFieldNode(Assumptions assumptions, ValueNode object, ResolvedJavaField field) {
+        super(TYPE, createStamp(assumptions, field), object, field);
+    }
+
+    public static LoadFieldNode create(Assumptions assumptions, ValueNode object, ResolvedJavaField field) {
+        return new LoadFieldNode(assumptions, object, field);
     }
 
     public ValueNode getValue() {
         return object();
     }
 
-    private static Stamp createStamp(ResolvedJavaField field) {
+    private static Stamp createStamp(Assumptions assumptions, ResolvedJavaField field) {
         JavaKind kind = field.getJavaKind();
         if (kind == JavaKind.Object && field.getType() instanceof ResolvedJavaType) {
-            return StampFactory.declared((ResolvedJavaType) field.getType());
+            return StampFactory.object(TypeReference.create(assumptions, (ResolvedJavaType) field.getType()));
         } else {
             return StampFactory.forKind(kind);
         }
@@ -147,6 +153,6 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     public Stamp uncheckedStamp() {
-        return UncheckedInterfaceProvider.uncheckedOrNull(field().getType(), stamp());
+        return UncheckedInterfaceProvider.uncheckedOrNull(graph().getAssumptions(), field().getType(), stamp());
     }
 }

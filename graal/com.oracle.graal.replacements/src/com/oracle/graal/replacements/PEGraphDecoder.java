@@ -478,7 +478,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope, invokeData.invoke);
 
         for (InlineInvokePlugin plugin : methodScope.inlineInvokePlugins) {
-            InlineInfo inlineInfo = plugin.shouldInlineInvoke(graphBuilderContext, targetMethod, arguments, callTarget.returnType());
+            InlineInfo inlineInfo = plugin.shouldInlineInvoke(graphBuilderContext, targetMethod, arguments);
             if (inlineInfo != null) {
                 if (inlineInfo.getMethodToInline() == null) {
                     return false;

@@ -32,7 +32,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -209,13 +208,9 @@ public interface GraphBuilderContext {
      */
     JavaType getInvokeReturnType();
 
-    default Stamp getInvokeReturnStamp() {
+    default Stamp getInvokeReturnStamp(Assumptions assumptions) {
         JavaType returnType = getInvokeReturnType();
-        if (returnType.getJavaKind() == JavaKind.Object && returnType instanceof ResolvedJavaType) {
-            return StampFactory.declared((ResolvedJavaType) returnType);
-        } else {
-            return StampFactory.forKind(returnType.getJavaKind());
-        }
+        return StampFactory.forReturnType(assumptions, returnType);
     }
 
     /**
@@ -253,8 +248,7 @@ public interface GraphBuilderContext {
             ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
             Stamp stamp = receiverStamp.join(objectNonNull());
             FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
-            PiNode nonNullReceiver = getGraph().unique(new PiNode(value, stamp));
-            nonNullReceiver.setGuard(fixedGuard);
+            PiNode nonNullReceiver = getGraph().unique(new PiNode(value, stamp, fixedGuard));
             // TODO: Propogating the non-null into the frame state would
             // remove subsequent null-checks on the same value. However,
             // it currently causes an assertion failure when merging states.

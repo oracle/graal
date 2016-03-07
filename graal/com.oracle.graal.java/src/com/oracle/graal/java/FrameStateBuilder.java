@@ -43,6 +43,7 @@ import java.util.function.Function;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -51,6 +52,7 @@ import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -148,14 +150,14 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void initializeForMethodStart(boolean eagerResolve, ParameterPlugin[] parameterPlugins) {
+    public void initializeForMethodStart(Assumptions assumptions, boolean eagerResolve, ParameterPlugin[] parameterPlugins) {
 
         int javaIndex = 0;
         int index = 0;
         if (!method.isStatic()) {
             // add the receiver
             FloatingNode receiver = null;
-            Stamp receiverStamp = StampFactory.declaredNonNull(method.getDeclaringClass());
+            Stamp receiverStamp = StampFactory.objectNonNull(TypeReference.create(assumptions, method.getDeclaringClass()));
             for (ParameterPlugin plugin : parameterPlugins) {
                 receiver = plugin.interceptParameter(parser, index, receiverStamp);
                 if (receiver != null) {
@@ -180,7 +182,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             JavaKind kind = type.getJavaKind();
             Stamp stamp;
             if (kind == JavaKind.Object && type instanceof ResolvedJavaType) {
-                stamp = StampFactory.declared((ResolvedJavaType) type);
+                stamp = StampFactory.object(TypeReference.create(assumptions, (ResolvedJavaType) type));
             } else {
                 stamp = StampFactory.forKind(kind);
             }

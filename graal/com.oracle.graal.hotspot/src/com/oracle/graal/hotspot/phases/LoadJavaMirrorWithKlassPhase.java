@@ -39,6 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.NarrowOopStamp;
@@ -79,7 +80,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             ResolvedJavaType type = constantReflection.asJavaType(constant);
             if (type != null) {
                 MetaAccessProvider metaAccess = context.getMetaAccess();
-                Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
+                Stamp stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(Class.class)));
 
                 if (type instanceof HotSpotResolvedObjectType) {
                     ConstantNode klass = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) type).klass(), metaAccess, graph);

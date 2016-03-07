@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.compiler.common.type.CheckedJavaType;
-import com.oracle.graal.graph.Graph;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -79,7 +78,7 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
                 if (t.isPrimitive()) {
                     return LogicConstantNode.contradiction();
                 } else {
-                    return InstanceOfNode.create(CheckedJavaType.create(assumptions, t), forObject, null);
+                    return InstanceOfNode.create(TypeReference.createTrusted(assumptions, t), forObject, null);
                 }
             }
         }

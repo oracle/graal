@@ -24,8 +24,9 @@ package com.oracle.graal.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.graal.compiler.common.type.TypeReference;
+
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -93,25 +94,19 @@ public class TypeCheckHints {
      *            will be null
      * @param maxHints the maximum length of {@link #hints}
      */
-    public TypeCheckHints(ResolvedJavaType targetType, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
+    public TypeCheckHints(TypeReference targetType, JavaTypeProfile profile, Assumptions assumptions, double minHintHitProbability, int maxHints) {
         this.profile = profile;
-        if (targetType != null && targetType.isLeaf()) {
-            exact = targetType;
+        if (targetType != null && targetType.isExact()) {
+            exact = targetType.getType();
         } else {
-            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = targetType == null ? null : targetType.findLeafConcreteSubtype();
-            if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions)) {
-                leafConcreteSubtype.recordTo(assumptions);
-                exact = leafConcreteSubtype.getResult();
-            } else {
-                exact = null;
-            }
+            exact = null;
         }
         Double[] hitProbability = {null};
         this.hints = makeHints(targetType, profile, minHintHitProbability, maxHints, hitProbability);
         this.hintHitProbability = hitProbability[0];
     }
 
-    private static Hint[] makeHints(ResolvedJavaType targetType, JavaTypeProfile profile, double minHintHitProbability, int maxHints, Double[] hitProbability) {
+    private static Hint[] makeHints(TypeReference targetType, JavaTypeProfile profile, double minHintHitProbability, int maxHints, Double[] hitProbability) {
         double hitProb = 0.0d;
         Hint[] hintsBuf = NO_HINTS;
         if (profile != null) {
@@ -123,7 +118,7 @@ public class TypeCheckHints {
                 for (ProfiledType ptype : ptypes) {
                     if (targetType != null) {
                         ResolvedJavaType hintType = ptype.getType();
-                        hintsBuf[hintCount++] = new Hint(hintType, targetType.isAssignableFrom(hintType));
+                        hintsBuf[hintCount++] = new Hint(hintType, targetType.getType().isAssignableFrom(hintType));
                         hitProb += ptype.getProbability();
                     }
                     if (hintCount == maxHints) {

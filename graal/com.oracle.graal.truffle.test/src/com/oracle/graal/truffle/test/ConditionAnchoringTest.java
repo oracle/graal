@@ -27,7 +27,6 @@ import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
@@ -155,7 +154,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
 
     private static final class InlineEverythingPlugin implements InlineInvokePlugin {
         @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
             assert method.hasBytecodes();
             return new InlineInfo(method, false);
         }

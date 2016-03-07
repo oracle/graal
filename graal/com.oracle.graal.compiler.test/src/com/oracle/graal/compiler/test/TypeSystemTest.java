@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.debug.Debug;
@@ -99,6 +100,7 @@ public class TypeSystemTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore
     public void test5() {
         test("test5Snippet", "referenceSnippet5");
     }
