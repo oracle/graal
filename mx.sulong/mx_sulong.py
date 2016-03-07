@@ -4,6 +4,8 @@ from os.path import join
 import shutil
 
 import mx
+import mx_findbugs
+
 from mx_unittest import unittest
 from mx_gate import Task, add_gate_runner
 from mx_jvmci import VM, buildvms
@@ -38,6 +40,9 @@ def executeGate():
     tasks = []
     with Task('BuildHotSpotGraalServer: product', tasks) as t:
         if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
+    with VM('server', 'product'):
+        with Task('Findbugs', tasks) as t:
+            if t: mx_findbugs.findbugs([])
     with VM('server', 'product'):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()
