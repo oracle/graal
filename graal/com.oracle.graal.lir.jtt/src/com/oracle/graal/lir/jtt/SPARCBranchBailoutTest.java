@@ -46,7 +46,7 @@ public class SPARCBranchBailoutTest extends LIRTest {
     private static class BranchSpec extends LIRTestSpecification {
         private final int n;
 
-        public BranchSpec(int n) {
+        BranchSpec(int n) {
             super();
             this.n = n;
         }
@@ -58,7 +58,7 @@ public class SPARCBranchBailoutTest extends LIRTest {
         }
     }
 
-    static final BranchSpec spec = new BranchSpec(1 << 20);
+    private static final BranchSpec spec = new BranchSpec(1 << 20);
 
     @LIRIntrinsic
     public static int branch(@SuppressWarnings("unused") BranchSpec s, int a) {

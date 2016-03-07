@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1054,7 +1054,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         private int leftBits(int value) {
-            int l = SPARCAssembler.getBits(value, rightWidth + leftWidth - 1, rightWidth);
+            int l = getBits(value, rightWidth + leftWidth - 1, rightWidth);
             if (signExt) {
                 signExtend(l, leftWidth);
             }
@@ -1062,7 +1062,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         private int rightBits(int value) {
-            return SPARCAssembler.getBits(value, rightWidth - 1, 0);
+            return getBits(value, rightWidth - 1, 0);
         }
 
         @Override
@@ -1087,6 +1087,10 @@ public abstract class SPARCAssembler extends Assembler {
         private static int signExtend(int l, int bits) {
             int shiftAmt = (32 - bits);
             return (l << shiftAmt) >> shiftAmt;
+        }
+
+        private static int getBits(int inst, int hiBit, int lowBit) {
+            return (inst >> lowBit) & ((1 << (hiBit - lowBit + 1)) - 1);
         }
     }
 
@@ -1343,6 +1347,7 @@ public abstract class SPARCAssembler extends Assembler {
             inst = BitSpec.cond.setBits(inst, cf.value);
             inst = BitSpec.cc.setBits(inst, cc.value);
             inst = BitSpec.p.setBits(inst, p.flag);
+            masm.insertNopAfterCBCond();
             masm.emitInt(setDisp(inst, masm, lab));
         }
 
@@ -1378,6 +1383,7 @@ public abstract class SPARCAssembler extends Assembler {
             int inst = setBits(0);
             inst = BitSpec.cond.setBits(inst, cond.value);
             inst = BitSpec.a.setBits(inst, a.flag);
+            masm.insertNopAfterCBCond();
             masm.emitInt(setDisp(inst, masm, lab));
         }
     }
@@ -1395,6 +1401,7 @@ public abstract class SPARCAssembler extends Assembler {
             inst = BitSpec.a.setBits(inst, a.flag);
             inst = BitSpec.p.setBits(inst, p.flag);
             inst = BitSpec.rs1.setBits(inst, rs1.encoding);
+            masm.insertNopAfterCBCond();
             masm.emitInt(setDisp(inst, masm, lab));
         }
 
@@ -1435,6 +1442,7 @@ public abstract class SPARCAssembler extends Assembler {
             int inst = setBits(0, cf, cc2, rs1);
             inst = BitSpec.rs2.setBits(inst, rs2.encoding);
             inst = BitSpec.i.setBits(inst, 0);
+            masm.insertNopAfterCBCond();
             emit(masm, lab, inst);
         }
 
@@ -1849,150 +1857,15 @@ public abstract class SPARCAssembler extends Assembler {
         fmt(op3.op.value, rd.encoding, op3.value, rs1.encoding, i | simm13WithX & ((1 << 13) - 1));
     }
 
-    // @formatter:off
-    /**
-     * Branch on Integer Condition Codes.
-     * <pre>
-     * | 00  |annul| cond| 010 |               disp22                 |
-     * |31 30|29   |28 25|24 22|21                                   0|
-     * </pre>
-     */
-    // @formatter:on
-    public void bicc(ConditionFlag cond, Annul annul, Label l) {
-        bcc(Op2s.Br, cond, annul, l);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on Floating-Point Condition Codes.
-     * <pre>
-     * | 00  |annul| cond| 110 |               disp22                 |
-     * |31 30|29   |28 25|24 22|21                                   0|
-     * </pre>
-     */
-    // @formatter:on
-    public void fbcc(ConditionFlag cond, Annul annul, Label l) {
-        bcc(Op2s.Fb, cond, annul, l);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on (Integer|Floatingpoint) Condition Codes.
-     * <pre>
-     * | 00  |annul| cond| op2 |               disp22                 |
-     * |31 30|29   |28 25|24 22|21                                   0|
-     * </pre>
-     */
-    // @formatter:on
-    private void bcc(Op2s op2, ConditionFlag cond, Annul annul, Label l) {
-        insertNopAfterCBCond();
-        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
-        final int disp = 22;
-        assert isSimm(pos, disp);
-        pos &= (1 << disp) - 1;
-        int a = (annul.flag << 4) | cond.getValue();
-        fmt00(a, op2.getValue(), pos);
-    }
-
     public void insertNopAfterCBCond() {
         int pos = position() - INSTRUCTION_SIZE;
         if (pos == 0) {
             return;
         }
         int inst = getInt(pos);
-        if (isCBCond(inst)) {
+        if (CBCOND.match(inst)) {
             nop();
         }
-    }
-
-    protected static boolean isCBCond(int inst) {
-        return isOp2(Ops.BranchOp, Op2s.Bpr, inst) && getBits(inst, 28, 28) == 1;
-    }
-
-    private static boolean isOp2(Ops ops, Op2s op2s, int inst) {
-        return getOp(inst).equals(ops) && getOp2(inst).equals(op2s);
-    }
-
-    private static Ops getOp(int inst) {
-        return OPS[getBits(inst, 31, 30)];
-    }
-
-    private static Op2s getOp2(int inst) {
-        return OP2S[getBits(inst, 24, 22)];
-    }
-
-    public static int getBits(int inst, int hiBit, int lowBit) {
-        return (inst >> lowBit) & ((1 << (hiBit - lowBit + 1)) - 1);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on Integer Condition Codes with Prediction.
-     * <pre>
-     * | 00  |an|cond | 001 |cc1 2|p |           disp19               |
-     * |31 30|29|28 25|24 22|21 20|19|                               0|
-     * </pre>
-     */
-    // @formatter:on
-    public void bpcc(ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
-        bpcc(Op2s.Bp, cond, annul, l, cc, predictTaken);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on Integer Condition Codes with Prediction.
-     * <pre>
-     * | 00  |an|cond | 101 |cc1 2|p |           disp19               |
-     * |31 30|29|28 25|24 22|21 20|19|                               0|
-     * </pre>
-     */
-    // @formatter:on
-    public void fbpcc(ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
-        bpcc(Op2s.Fbp, cond, annul, l, cc, predictTaken);
-    }
-
-    // @formatter:off
-    /**
-     * Used for fbpcc (Float) and bpcc (Integer).
-     * <pre>
-     * | 00  |an|cond | op2 |cc1 2|p |           disp19               |
-     * |31 30|29|28 25|24 22|21 20|19|                               0|
-     * </pre>
-     */
-    // @formatter:on
-    private void bpcc(Op2s op2, ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
-        insertNopAfterCBCond();
-        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
-        final int disp = 19;
-        assert isSimm(pos, disp);
-        pos &= (1 << disp) - 1;
-        int a = (annul.flag << 4) | cond.getValue();
-        int b = (cc.getValue() << 20) | ((predictTaken.flag) << 19) | pos;
-        delaySlotOptimizationPoints.add(position());
-        fmt00(a, op2.getValue(), b);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on Integer Register with Prediction.
-     * <pre>
-     * | 00  |an| 0|rcond | 011 |d16hi|p | rs1 |    d16lo             |
-     * |31 30|29|28|27 25 |24 22|21 20|19|18 14|                     0|
-     * </pre>
-     */
-    // @formatter:on
-    public void bpr(RCondition cond, Annul annul, Label l, BranchPredict predictTaken, Register rs1) {
-        insertNopAfterCBCond();
-        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
-        final int disp = 16;
-        assert isSimm(pos, disp);
-        pos &= (1 << disp) - 1;
-        int a = (annul.flag << 4) | cond.getValue();
-        int d16hi = (pos >> 13) << 13;
-        int d16lo = d16hi ^ pos;
-        int b = (d16hi << 20) | (predictTaken.flag << 19) | (rs1.encoding() << 14) | d16lo;
-        delaySlotOptimizationPoints.add(position());
-        fmt00(a, Op2s.Bpr.getValue(), b);
     }
 
     protected int patchUnbound(Label label) {

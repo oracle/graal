@@ -38,6 +38,7 @@ import java.util.EnumSet;
 import java.util.function.Consumer;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.sparc.SPARC;
 
@@ -106,13 +107,13 @@ public class SPARCAssemblerTest extends GraalTest {
         try {
             doTestControlTransferOp(opCreator, minDisp - 1, maxDisp);
             fail("minDisp out of bound must not assemble correctly");
-        } catch (AssertionError e) {
+        } catch (BailoutException e) {
             // ignored
         }
         try {
             doTestControlTransferOp(opCreator, minDisp, maxDisp + 1);
             fail("maxDisp out of bound must not assemble correctly");
-        } catch (AssertionError e) {
+        } catch (BailoutException e) {
             // ignored
         }
     }

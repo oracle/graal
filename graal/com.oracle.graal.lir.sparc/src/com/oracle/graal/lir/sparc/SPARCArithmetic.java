@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BPCC;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CCR_V_SHIFT;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CCR_XCC_SHIFT;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.FBPCC;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm13;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
@@ -91,7 +93,7 @@ public class SPARCArithmetic {
             switch (opcode) {
                 case F2L:
                     masm.fcmp(Fcc0, Fcmps, asRegister(x, SINGLE), asRegister(x, SINGLE));
-                    masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
+                    FBPCC.emit(masm, Fcc0, F_Ordered, ANNUL, PREDICT_TAKEN, notOrdered);
                     masm.fstox(asRegister(x, SINGLE), asRegister(result, DOUBLE));
                     masm.fxtod(asRegister(result), asRegister(result));
                     masm.fsubd(asRegister(result, DOUBLE), asRegister(result, DOUBLE), asRegister(result, DOUBLE));
@@ -99,7 +101,7 @@ public class SPARCArithmetic {
                     break;
                 case F2I:
                     masm.fcmp(Fcc0, Fcmps, asRegister(x, SINGLE), asRegister(x, SINGLE));
-                    masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
+                    FBPCC.emit(masm, Fcc0, F_Ordered, ANNUL, PREDICT_TAKEN, notOrdered);
                     masm.fstoi(asRegister(x, SINGLE), asRegister(result, SINGLE));
                     masm.fitos(asRegister(result, SINGLE), asRegister(result, SINGLE));
                     masm.fsubs(asRegister(result, SINGLE), asRegister(result, SINGLE), asRegister(result, SINGLE));
@@ -107,7 +109,7 @@ public class SPARCArithmetic {
                     break;
                 case D2L:
                     masm.fcmp(Fcc0, Fcmpd, asRegister(x, DOUBLE), asRegister(x, DOUBLE));
-                    masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
+                    FBPCC.emit(masm, Fcc0, F_Ordered, ANNUL, PREDICT_TAKEN, notOrdered);
                     masm.fdtox(asRegister(x, DOUBLE), asRegister(result, DOUBLE));
                     masm.fxtod(asRegister(result, DOUBLE), asRegister(result, DOUBLE));
                     masm.fsubd(asRegister(result, DOUBLE), asRegister(result, DOUBLE), asRegister(result, DOUBLE));
@@ -115,7 +117,7 @@ public class SPARCArithmetic {
                     break;
                 case D2I:
                     masm.fcmp(Fcc0, Fcmpd, asRegister(x, DOUBLE), asRegister(x, DOUBLE));
-                    masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
+                    FBPCC.emit(masm, Fcc0, F_Ordered, ANNUL, PREDICT_TAKEN, notOrdered);
                     masm.fdtoi(asRegister(x, DOUBLE), asRegister(result, SINGLE));
                     masm.fitos(asRegister(result, SINGLE), asRegister(result, SINGLE));
                     masm.fsubs(asRegister(result, SINGLE), asRegister(result, SINGLE), asRegister(result, SINGLE));
@@ -288,7 +290,7 @@ public class SPARCArithmetic {
             // Now construct the lower half and compare
             masm.srax(asRegister(result, XWORD), 63, asRegister(scratch2, XWORD));
             masm.cmp(asRegister(scratch1, XWORD), asRegister(scratch2, XWORD));
-            masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
+            BPCC.emit(masm, Xcc, Equal, NOT_ANNUL, PREDICT_TAKEN, noOverflow);
             masm.nop();
             masm.wrccr(g0, 1 << (CCR_XCC_SHIFT + CCR_V_SHIFT));
             masm.bind(noOverflow);
