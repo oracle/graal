@@ -133,7 +133,6 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMMetadataNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
@@ -226,7 +225,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         visit(model, facade);
         currentContext.getFunctionRegistry();
         LLVMFunction mainFunction = LLVMFunction.createFromName("@main");
-        RootCallTarget mainCallTarget = LLVMFunctionRegistry.lookup(mainFunction);
+        RootCallTarget mainCallTarget = currentContext.getFunctionRegistry().lookup(mainFunction);
         int argParamCount = mainFunction.getLlvmParamTypes().length;
         RootNode globalFunction;
         LLVMNode[] staticInits = globalNodes.toArray(new LLVMNode[globalNodes.size()]);

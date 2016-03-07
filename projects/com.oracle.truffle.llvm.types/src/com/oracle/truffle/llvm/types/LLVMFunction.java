@@ -166,7 +166,6 @@ public final class LLVMFunction implements TruffleObject, Comparable<LLVMFunctio
 
     private static int getFunctionIndex(LLVMAddress addr) {
         long functionAddr = addr.getVal() - FUNCTION_START_ADDR;
-        assert functionAddr >= 0 && functionAddr < getNumberRegisteredFunctions();
         return (int) functionAddr;
     }
 

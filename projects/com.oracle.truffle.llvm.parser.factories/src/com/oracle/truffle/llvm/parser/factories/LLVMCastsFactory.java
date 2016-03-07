@@ -58,6 +58,7 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI16To
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI16ToDoubleZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI32ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI32ToDoubleUnsignedNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI64ToDoubleBitNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI64ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI64ToDoubleUnsignedNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI8ToDoubleNodeGen;
@@ -114,6 +115,7 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI64NodeFactory.LLVMI8ToI64Z
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI64NodeFactory.LLVMIVarToI64NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI64NodeFactory.LLVMIVarToI64ZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI8NodeFactory.LLVM80BitFloatToI8NodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI8NodeFactory.LLVMAddressToI8NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI8NodeFactory.LLVMDoubleToI8NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI8NodeFactory.LLVMFloatToI8NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI8NodeFactory.LLVMI16ToI8NodeGen;
@@ -298,6 +300,13 @@ public final class LLVMCastsFactory {
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }
+        } else if (conv == LLVMConversionType.BITCAST) {
+            switch (targetType) {
+                case I32:
+                    return LLVMFloatToI32NodeGen.create(fromNode);
+                default:
+                    throw new AssertionError(targetType);
+            }
         } else {
             throw new AssertionError(targetType + " " + conv);
         }
@@ -355,6 +364,8 @@ public final class LLVMCastsFactory {
         }
         if (hasJavaCastSemantics() || conv == LLVMConversionType.BITCAST) {
             switch (targetType) {
+                case I8:
+                    return LLVMAddressToI8NodeGen.create(fromNode);
                 case I32:
                     return LLVMAddressToI32NodeGen.create(fromNode);
                 case I64:
@@ -409,6 +420,11 @@ public final class LLVMCastsFactory {
                     return LLVMI64ToAddressNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType + " " + conv);
+            }
+        } else if (conv == LLVMConversionType.BITCAST) {
+            switch (targetType) {
+                case DOUBLE:
+                    return LLVMI64ToDoubleBitNodeGen.create(fromNode);
             }
         }
         throw new AssertionError(targetType + " " + conv);

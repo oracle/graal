@@ -61,7 +61,7 @@ public class NativeLookup {
 
     private final Map<LLVMFunction, Integer> nativeFunctionLookupStats;
 
-    private static final Map<LLVMFunction, NativeFunctionHandle> cachedNativeFunctions = new WeakHashMap<>();
+    private final Map<LLVMFunction, NativeFunctionHandle> cachedNativeFunctions = new WeakHashMap<>();
 
     private final NodeFactoryFacade facade;
 

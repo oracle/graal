@@ -117,7 +117,7 @@ public class LLVMFunctionRegistry {
     /**
      * Maps a function index (see {@link LLVMFunction#getFunctionIndex()} to a call target.
      */
-    @CompilationFinal private static RootCallTarget[] functionPtrCallTargetMap;
+    @CompilationFinal private RootCallTarget[] functionPtrCallTargetMap;
 
     /**
      * Looks up the call target for a specific function. The lookup may return <code>null</code> if
@@ -126,9 +126,14 @@ public class LLVMFunctionRegistry {
      * @param function the function
      * @return the call target, <code>null</code> if not found.
      */
-    public static RootCallTarget lookup(LLVMFunction function) {
-        RootCallTarget result = functionPtrCallTargetMap[function.getFunctionIndex()];
-        return result;
+    public RootCallTarget lookup(LLVMFunction function) {
+        int functionIndex = function.getFunctionIndex();
+        if (functionIndex >= 0 && functionIndex < functionPtrCallTargetMap.length) {
+            RootCallTarget result = functionPtrCallTargetMap[functionIndex];
+            return result;
+        } else {
+            return null;
+        }
     }
 
     public void register(Map<LLVMFunction, RootCallTarget> functionCallTargets) {
@@ -201,7 +206,7 @@ public class LLVMFunctionRegistry {
         return functionRoot;
     }
 
-    private static void addToFunctionMap(LLVMFunction function, RootCallTarget callTarget) {
+    private void addToFunctionMap(LLVMFunction function, RootCallTarget callTarget) {
         assert functionPtrCallTargetMap[function.getFunctionIndex()] == null;
         functionPtrCallTargetMap[function.getFunctionIndex()] = callTarget;
     }
