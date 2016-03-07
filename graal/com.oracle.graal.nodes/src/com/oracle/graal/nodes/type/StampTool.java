@@ -184,8 +184,8 @@ public class StampTool {
     /**
      * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#hasValues() legal}
      * Object value whose Java type is known exactly. If this method returns true then the
-     * {@linkplain ResolvedJavaType Java type} returned by {@link #typeReferenceOrNull(ValueNode)} is the
-     * concrete dynamic/runtime Java type of this value.
+     * {@linkplain ResolvedJavaType Java type} returned by {@link #typeReferenceOrNull(ValueNode)}
+     * is the concrete dynamic/runtime Java type of this value.
      *
      * @param node the node to check
      * @return true if this node represents a legal object value whose Java type is known exactly
