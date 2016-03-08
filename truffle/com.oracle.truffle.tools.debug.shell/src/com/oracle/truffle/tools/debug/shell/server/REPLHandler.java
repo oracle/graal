@@ -404,6 +404,8 @@ public abstract class REPLHandler {
             try {
                 Object returnValue = serverContext.eval(source, frameNumber, stepInto);
                 return finishReplySucceeded(reply, visualizer.displayValue(returnValue, 0));
+            } catch (UnsupportedOperationException ex) {
+                return finishReplyFailed(reply, "eval not supported by language: " + ex.getMessage());
             } catch (QuitException ex) {
                 throw ex;
             } catch (KillException ex) {

@@ -140,7 +140,7 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        return null;
+        throw new UnsupportedOperationException("InstrumentationTestingLanguage does not support eval()");
     }
 
     @Override

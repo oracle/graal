@@ -62,7 +62,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * Instance of this class is delivered via {@link SuspendedEvent#getDebugger()} and
  * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
  * is turned on}.
- * 
+ *
  * @since 0.9
  */
 public final class Debugger {
@@ -71,7 +71,7 @@ public final class Debugger {
      * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
      * where ordinary stepping should halt. The debugger will halt just <em>before</em> a code
      * location is executed that is marked with this tag.
-     * 
+     *
      * @since 0.9
      */
     public static final String HALT_TAG = "debug-HALT";
@@ -232,7 +232,7 @@ public final class Debugger {
     /**
      * Gets all existing breakpoints, whatever their status, in natural sorted order. Modification
      * save.
-     * 
+     *
      * @since 0.9
      */
     @TruffleBoundary
@@ -1067,11 +1067,12 @@ public final class Debugger {
     /**
      * Evaluates a snippet of code in a halted execution context.
      *
-     * @param ev
-     * @param code
-     * @param frameInstance
-     * @return
-     * @throws IOException
+     * @param ev description of the halted execution context
+     * @param code the code to be evaluated in the context
+     * @param frameInstance frame in the context
+     * @return any result provided by the language evaluation
+     * @throws IOException if the evaluation fails
+     * @throws UnsupportedOperationException if not supported by the language implementation
      */
     Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
         if (frameInstance == null) {

@@ -510,7 +510,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        throw new IllegalStateException("evalInContext not supported in SL");
+        throw new UnsupportedOperationException("SL only evaluates complete programs");
     }
 
     public Node createFindContextNode0() {

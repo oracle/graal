@@ -445,7 +445,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        return null;
+        throw new UnsupportedOperationException("InstrumentationTestLanguage does not support eval()");
     }
 
     @Override
