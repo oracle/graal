@@ -219,6 +219,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
         "truffle:TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes",
