@@ -188,6 +188,19 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
+    "com.oracle.truffle.api.interop.java.bench" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "TRUFFLE_API",
+        "mx:JMH",
+      ],
+      "annotationProcessors" : ["mx:JMH"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
     "com.oracle.truffle.api.interop.java.test" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
@@ -468,8 +481,9 @@ suite = {
          "com.oracle.truffle.api.interop.java.test",
          "com.oracle.truffle.api.object.dsl.test",
          "com.oracle.truffle.tools.test",
+         "com.oracle.truffle.api.interop.java.bench",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_DSL_PROCESSOR",
