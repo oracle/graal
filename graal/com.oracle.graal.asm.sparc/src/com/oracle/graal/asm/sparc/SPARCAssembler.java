@@ -898,9 +898,9 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec imm22 = new ContinousBitSpec(21, 0, "imm22");
         private static final BitSpec immAsi = new ContinousBitSpec(12, 5, "immASI");
         private static final BitSpec i = new ContinousBitSpec(13, 13, "i");
-        private static final BitSpec disp19 = new ContinousBitSpec(18, 0, true, "disp19", true);
-        private static final BitSpec disp22 = new ContinousBitSpec(21, 0, true, "disp22", true);
-        private static final BitSpec disp30 = new ContinousBitSpec(29, 0, true, "disp30", true);
+        private static final BitSpec disp19 = new ContinousBitSpec(18, 0, true, "disp19");
+        private static final BitSpec disp22 = new ContinousBitSpec(21, 0, true, "disp22");
+        private static final BitSpec disp30 = new ContinousBitSpec(29, 0, true, "disp30");
         private static final BitSpec a = new ContinousBitSpec(29, 29, "a");
         private static final BitSpec p = new ContinousBitSpec(19, 19, "p");
         private static final BitSpec x = new ContinousBitSpec(12, 12, "x");
@@ -908,9 +908,9 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec rcond = new ContinousBitSpec(27, 25, "rcond");
         private static final BitSpec cc = new ContinousBitSpec(21, 20, "cc");
         private static final BitSpec fcc = new ContinousBitSpec(26, 25, "cc");
-        private static final BitSpec d16hi = new ContinousBitSpec(21, 20, "d16hi");
         private static final BitSpec d16lo = new ContinousBitSpec(13, 0, "d16lo");
-        private static final BitSpec d16 = new CompositeBitSpec(d16hi, d16lo, true, true);
+        private static final BitSpec d16hi = new ContinousBitSpec(21, 20, true, "d16hi");
+        private static final BitSpec d16 = new CompositeBitSpec(d16hi, d16lo);
         // Movcc
         private static final BitSpec movccLo = new ContinousBitSpec(12, 11, "cc_lo");
         private static final BitSpec movccHi = new ContinousBitSpec(18, 18, "cc_hi");
@@ -920,29 +920,29 @@ public abstract class SPARCAssembler extends Assembler {
         // CBCond
         private static final BitSpec cLo = new ContinousBitSpec(27, 25, "cLo");
         private static final BitSpec cHi = new ContinousBitSpec(29, 29, "cHi");
-        private static final BitSpec c = new CompositeBitSpec(cHi, cLo, false);
+        private static final BitSpec c = new CompositeBitSpec(cHi, cLo);
         private static final BitSpec cbcond = new ContinousBitSpec(28, 28, "cbcond");
         private static final BitSpec cc2 = new ContinousBitSpec(21, 21, "cc2");
         private static final BitSpec d10Lo = new ContinousBitSpec(12, 5, "d10Lo");
-        private static final BitSpec d10Hi = new ContinousBitSpec(20, 19, "d10Hi");
-        private static final BitSpec d10 = new CompositeBitSpec(d10Hi, d10Lo, true, true);
+        private static final BitSpec d10Hi = new ContinousBitSpec(20, 19, true, "d10Hi");
+        private static final BitSpec d10 = new CompositeBitSpec(d10Hi, d10Lo);
         private static final BitSpec simm5 = new ContinousBitSpec(4, 0, true, "simm5");
 
-        protected final boolean bailoutOnOverflow;
+        protected final boolean signExtend;
 
-        public BitSpec(boolean bailoutOnOverflow) {
+        public BitSpec(boolean signExtend) {
             super();
-            this.bailoutOnOverflow = bailoutOnOverflow;
+            this.signExtend = signExtend;
         }
 
         protected void checkValue(int value) {
-            if (bailoutOnOverflow) {
-                if (!valueFits(value)) {
-                    throw new BailoutException("Value 0x%x for field %s does not fit.", value, this);
-                }
-            } else {
-                assert valueFits(value) : "Value: " + value + " does not fit in " + this;
+            if (!valueFits(value)) {
+                throw new InternalError(String.format("Value 0x%x for field %s does not fit.", value, this));
             }
+        }
+
+        public final boolean isSignExtend() {
+            return signExtend;
         }
 
         public abstract int setBits(int word, int value);
@@ -958,23 +958,17 @@ public abstract class SPARCAssembler extends Assembler {
         private final int hiBit;
         private final int lowBit;
         private final int width;
-        private final boolean signExt;
         private final int mask;
         private final String name;
 
-        public ContinousBitSpec(int hiBit, int lowBit, boolean signExt, String name) {
-            this(hiBit, lowBit, signExt, name, false);
-        }
-
         public ContinousBitSpec(int hiBit, int lowBit, String name) {
-            this(hiBit, lowBit, false, name, false);
+            this(hiBit, lowBit, false, name);
         }
 
-        public ContinousBitSpec(int hiBit, int lowBit, boolean signExt, String name, boolean bailoutOnOverflow) {
-            super(bailoutOnOverflow);
+        public ContinousBitSpec(int hiBit, int lowBit, boolean signExt, String name) {
+            super(signExt);
             this.hiBit = hiBit;
             this.lowBit = lowBit;
-            this.signExt = signExt;
             this.width = hiBit - lowBit + 1;
             mask = ((1 << width) - 1) << lowBit;
             this.name = name;
@@ -988,7 +982,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         @Override
         public int getBits(int word) {
-            if (signExt) {
+            if (signExtend) {
                 return ((word & mask) << (31 - hiBit)) >> (32 - width);
             } else {
                 return (word & mask) >>> lowBit;
@@ -1007,7 +1001,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         @Override
         public boolean valueFits(int value) {
-            if (signExt) {
+            if (signExtend) {
                 return isSimm(value, getWidth());
             } else {
                 return isImm(value, getWidth());
@@ -1020,54 +1014,43 @@ public abstract class SPARCAssembler extends Assembler {
         private final int leftWidth;
         private final BitSpec right;
         private final int rightWidth;
-        private final boolean signExt;
+        private final int width;
 
-        public CompositeBitSpec(BitSpec left, BitSpec right, boolean signExtend, boolean bailoutOnOverflow) {
-            super(bailoutOnOverflow);
+        public CompositeBitSpec(BitSpec left, BitSpec right) {
+            super(left.isSignExtend());
+            assert !right.isSignExtend() : String.format("Right field %s must not be sign extended", right);
             this.left = left;
             this.leftWidth = left.getWidth();
             this.right = right;
             this.rightWidth = right.getWidth();
-            this.signExt = signExtend;
-        }
-
-        public CompositeBitSpec(BitSpec left, BitSpec right, boolean signExtend) {
-            this(left, right, signExtend, false);
+            this.width = leftWidth + rightWidth;
         }
 
         @Override
         public int getBits(int word) {
             int l = left.getBits(word);
             int r = right.getBits(word);
-            if (signExt) {
-                l = signExtend(l, leftWidth);
-            }
-            return l << rightWidth | r;
+            return (l << rightWidth) | r;
         }
 
         @Override
         public int setBits(int word, int value) {
-            checkValue(value);
             int l = leftBits(value);
             int r = rightBits(value);
             return left.setBits(right.setBits(word, r), l);
         }
 
         private int leftBits(int value) {
-            int l = getBits(value, rightWidth + leftWidth - 1, rightWidth);
-            if (signExt) {
-                signExtend(l, leftWidth);
-            }
-            return l;
+            return getBits(value, width - 1, rightWidth, signExtend);
         }
 
         private int rightBits(int value) {
-            return getBits(value, rightWidth - 1, 0);
+            return getBits(value, rightWidth - 1, 0, false);
         }
 
         @Override
         public int getWidth() {
-            return left.getWidth() + right.getWidth();
+            return width;
         }
 
         @Override
@@ -1077,20 +1060,18 @@ public abstract class SPARCAssembler extends Assembler {
 
         @Override
         public boolean valueFits(int value) {
-            if (signExt) {
-                return isSimm(value, getWidth());
+            int l = leftBits(value);
+            int r = rightBits(value);
+            return left.valueFits(l) && right.valueFits(r);
+        }
+
+        private static int getBits(int inst, int hiBit, int lowBit, boolean signExtended) {
+            int shifted = inst >> lowBit;
+            if (signExtended) {
+                return shifted;
             } else {
-                return isImm(value, getWidth());
+                return shifted & ((1 << (hiBit - lowBit + 1)) - 1);
             }
-        }
-
-        private static int signExtend(int l, int bits) {
-            int shiftAmt = (32 - bits);
-            return (l << shiftAmt) >> shiftAmt;
-        }
-
-        private static int getBits(int inst, int hiBit, int lowBit) {
-            return (inst >> lowBit) & ((1 << (hiBit - lowBit + 1)) - 1);
         }
     }
 
@@ -1309,6 +1290,9 @@ public abstract class SPARCAssembler extends Assembler {
 
         public int setDisp(int inst, int d) {
             assert this.match(inst);
+            if (!isValidDisp(d)) {
+                throw new BailoutException("Too large displacement 0x%x in field %s in instruction %s", d, this.disp, this);
+            }
             return this.disp.setBits(inst, d);
         }
 

@@ -102,6 +102,12 @@ public class SPARCAssemblerTest extends GraalTest {
                         maxDisp - 1);
     }
 
+    @Test(expected = BailoutException.class)
+    public void testControlTransferInvalidDisp() {
+        int cbcondInstruction = 0x12f83f60;
+        CBCOND.setDisp(cbcondInstruction, 0x2ff);
+    }
+
     public void testControlTransferOp(Consumer<Label> opCreator, int minDisp, int maxDisp) {
         doTestControlTransferOp(opCreator, minDisp, maxDisp);
         try {
