@@ -72,7 +72,7 @@ final class InstrumentationHandler {
      */
     private final Map<Object, AbstractInstrumenter> instrumentations = new HashMap<>();
 
-    private boolean initialized;
+    private volatile boolean initialized;
 
     private final OutputStream out;
     private final OutputStream err;
@@ -216,7 +216,6 @@ final class InstrumentationHandler {
     private void initialize() {
         synchronized (this) {
             if (!initialized) {
-                initialized = true;
                 if (TRACE) {
                     trace("Initialize instrumentation%n");
                 }
@@ -226,6 +225,7 @@ final class InstrumentationHandler {
                 if (TRACE) {
                     trace("Initialized instrumentation%n");
                 }
+                initialized = true;
             }
         }
     }
