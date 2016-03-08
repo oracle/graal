@@ -107,11 +107,11 @@ public class TypeSystemTest extends GraalCompilerTest {
 
     public static int referenceSnippet5(Object o, Object a) {
         if (o == null) {
-            if (a == Integer.class || a == Double.class) {
+            if (a == Integer.class) {
                 return 1;
             }
         } else {
-            if (a == Double.class || a == Long.class) {
+            if (a == Double.class) {
                 return 11;
             }
         }
@@ -124,14 +124,14 @@ public class TypeSystemTest extends GraalCompilerTest {
     @SuppressWarnings("unused")
     public static int test5Snippet(Object o, Object a) {
         if (o == null) {
-            if (a == Integer.class || a == Double.class) {
+            if (a == Integer.class) {
                 if (a == null) {
                     return 10;
                 }
                 return 1;
             }
         } else {
-            if (a == Double.class || a == Long.class) {
+            if (a == Double.class) {
                 if (a != null) {
                     return 11;
                 }
@@ -140,9 +140,6 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
         if (a == Integer.class) {
             return 3;
-        }
-        if (a == Double.class) {
-            return 4;
         }
         return 5;
     }

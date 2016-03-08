@@ -97,7 +97,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private TruffleInlining inlining;
     private int cachedNonTrivialNodeCount = -1;
     private int cloneIndex;
-    private boolean initialized;
+    private volatile boolean initialized;
 
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
@@ -168,9 +168,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private void initialize() {
         synchronized (this) {
             if (!initialized) {
-                initialized = true;
                 ensureCloned();
                 ACCESSOR.initializeCallTarget(this);
+                initialized = true;
             }
         }
     }
