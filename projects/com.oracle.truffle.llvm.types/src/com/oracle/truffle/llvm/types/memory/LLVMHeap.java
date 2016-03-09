@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.types.LLVMFunction;
 
 public class LLVMHeap extends LLVMMemory {
 
-    private static NativeFunctionHandle memCopyHandle;
+    private static final NativeFunctionHandle memCopyHandle;
 
     public static LLVMAddress allocateCString(String string) {
         LLVMAddress baseAddress = LLVMHeap.allocateMemory(string.length() + 1);
