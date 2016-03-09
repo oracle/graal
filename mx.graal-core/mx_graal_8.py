@@ -315,7 +315,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
 
 graal_unit_test_runs = [
-    UnitTestRun('UnitTests', [], tags=[GraalTags.test]),
+    UnitTestRun('UnitTests', ['-G:+TruffleCompilationExceptionsAreFatal'], tags=[GraalTags.test]),
 ]
 
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
