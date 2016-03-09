@@ -219,15 +219,16 @@ public abstract class Source {
             if (source == null) {
                 source = new ClientManagedFileSource(file, fileName, path, chars);
                 nameToSource.put(path, new WeakReference<>(source));
+                return source;
             }
-        } else if (source instanceof ClientManagedFileSource) {
+        }
+        if (source instanceof ClientManagedFileSource) {
             final ClientManagedFileSource modifiableSource = (ClientManagedFileSource) source;
             modifiableSource.setCode(chars);
             return modifiableSource;
         } else {
             throw new IOException("Attempt to modify contents of a file Source");
         }
-        return source;
     }
 
     /**
@@ -1052,6 +1053,7 @@ public abstract class Source {
         }
 
         void setCode(CharSequence chars) {
+            clearTextMap();
             this.code = chars.toString();
         }
 
