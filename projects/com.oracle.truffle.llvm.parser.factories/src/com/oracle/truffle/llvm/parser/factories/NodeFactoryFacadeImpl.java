@@ -249,23 +249,24 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets) {
-        return LLVMBranchFactory.createIndirectBranch(value, labelTargets);
+    public LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMNode[] phiWrites) {
+        return LLVMBranchFactory.createIndirectBranch(value, labelTargets, phiWrites);
     }
 
     @Override
-    public LLVMStatementNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases, LLVMBaseType llvmType) {
-        return LLVMSwitchFactory.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType);
+    public LLVMStatementNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
+                    LLVMBaseType llvmType, LLVMNode[] phiWriteNodes) {
+        return LLVMSwitchFactory.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, phiWriteNodes);
     }
 
     @Override
-    public LLVMStatementNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode) {
-        return LLVMBranchFactory.createConditionalBranch(runtime, trueIndex, falseIndex, conditionNode);
+    public LLVMStatementNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMNode[] truePhiWriteNodes, LLVMNode[] falsePhiWriteNodes) {
+        return LLVMBranchFactory.createConditionalBranch(runtime, trueIndex, falseIndex, conditionNode, truePhiWriteNodes, falsePhiWriteNodes);
     }
 
     @Override
-    public LLVMStatementNode createUnconditionalBranch(int unconditionalIndex) {
-        return LLVMBranchFactory.createUnconditionalBranch(unconditionalIndex);
+    public LLVMStatementNode createUnconditionalBranch(int unconditionalIndex, LLVMNode[] phiWrites) {
+        return LLVMBranchFactory.createUnconditionalBranch(unconditionalIndex, phiWrites);
     }
 
     @Override
