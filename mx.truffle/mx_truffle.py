@@ -117,11 +117,12 @@ class TruffleArchiveParticipant:
     def __add__(self, arcname, contents):
         metainfFile = self._truffle_metainf_file(arcname)
         if metainfFile:
+            propertyRe = TruffleArchiveParticipant.PROPERTY_RE
             properties = self.settings.setdefault(metainfFile, {})
-            for line in contents.strip().split(os.linesep):
-                if not line.startswith('#'):
-                    m = TruffleArchiveParticipant.PROPERTY_RE.match(line)
-                    assert m, line
+            for line in contents.split('\n'):
+                if not line.startswith('#') and not len(line) == 0:
+                    m = propertyRe.match(line)
+                    assert m, 'line in ' + arcname + ' does not match ' + propertyRe.pattern + ': ' + line
                     enum = m.group(1)
                     prop = m.group(2)
                     properties.setdefault(enum, []).append(prop)
@@ -144,7 +145,7 @@ class TruffleArchiveParticipant:
                     lines.append(newEnum + prop)
 
             content = os.linesep.join(lines)
-            self.arc.zf.writestr(arcname, content + '\n')
+            self.arc.zf.writestr(arcname, content + os.linesep)
 
 def mx_post_parse_cmd_line(opts):
     dist = mx.distribution('TRUFFLE_TEST')
