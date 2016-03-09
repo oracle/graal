@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle.phases;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ConstantNode;
@@ -49,19 +50,24 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
     private static final Pattern METHOD_REGEX_FILTER = Pattern.compile(TruffleInstrumentBranchesFilter.getValue());
     private static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
+    private static final Field ACCESS_TABLE_JAVA_FIELD;
     public static final boolean[] ACCESS_TABLE = new boolean[ACCESS_TABLE_SIZE];
     public static BranchInstrumentation instrumentation = new BranchInstrumentation();
+
+    static {
+        Field javaField = null;
+        try {
+            javaField = InstrumentBranchesPhase.class.getField("ACCESS_TABLE");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        ACCESS_TABLE_JAVA_FIELD = javaField;
+    }
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
         if (METHOD_REGEX_FILTER.matcher(graph.method().getName()).matches()) {
-            Field javaField = null;
-            try {
-                javaField = InstrumentBranchesPhase.class.getField("ACCESS_TABLE");
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(javaField);
+            ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
             JavaConstant tableConstant = context.getConstantReflection().readConstantFieldValue(tableField, null);
             try {
                 for (IfNode n : graph.getNodes().filter(IfNode.class)) {
@@ -81,7 +87,8 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                     IfNode ifNode, BranchInstrumentation.Point p, boolean isTrue) {
         assert (tableConstant != null);
         AbstractBeginNode beginNode = (isTrue) ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
-        ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.exactNonNull((ResolvedJavaType) tableField.getType())));
+        TypeReference typeRef = TypeReference.createExactTrusted((ResolvedJavaType) tableField.getType());
+        ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.object(typeRef, true)));
         ConstantNode rawIndex = graph.unique(ConstantNode.forInt(p.getRawIndex(isTrue)));
         ConstantNode v = graph.unique(ConstantNode.forBoolean(true));
         StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, JavaKind.Boolean, v));
