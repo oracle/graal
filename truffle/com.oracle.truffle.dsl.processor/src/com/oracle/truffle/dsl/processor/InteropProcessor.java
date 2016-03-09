@@ -535,7 +535,6 @@ public final class InteropProcessor extends AbstractProcessor {
         void appendImports(Writer w) throws IOException {
             super.appendImports(w);
             w.append("import java.util.List;").append("\n");
-            w.append("import com.oracle.truffle.api.nodes.ExplodeLoop;").append("\n");
         }
 
         @Override
@@ -559,7 +558,6 @@ public final class InteropProcessor extends AbstractProcessor {
                             "Gen.create();\n");
             w.append("\n");
             w.append("        @Override\n");
-            w.append("        @ExplodeLoop\n");
             w.append("        public Object execute(VirtualFrame frame) {\n");
             w.append("            try {\n");
             w.append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
