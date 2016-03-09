@@ -47,6 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Fingerprint;
@@ -231,13 +232,14 @@ public class InliningUtil {
 
     public static void replaceInvokeCallTarget(Invoke invoke, StructuredGraph graph, InvokeKind invokeKind, ResolvedJavaMethod targetMethod) {
         MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
-        MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnType(),
+        MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnStamp(),
                         oldCallTarget.getProfile()));
         invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
 
     public static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
-        return createAnchoredReceiver(graph, anchor, receiver, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredTrustedNonNull(commonType));
+        return createAnchoredReceiver(graph, anchor, receiver,
+                        exact ? StampFactory.objectNonNull(TypeReference.createExactTrusted(commonType)) : StampFactory.objectNonNull(TypeReference.createTrusted(graph.getAssumptions(), commonType)));
     }
 
     private static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
@@ -721,7 +723,7 @@ public class InliningUtil {
         ValueNode firstParam = callTarget.arguments().get(0);
         if (firstParam.getStackKind() == JavaKind.Object) {
             Stamp paramStamp = firstParam.stamp();
-            Stamp stamp = paramStamp.join(StampFactory.declaredNonNull(callTarget.targetMethod().getDeclaringClass()));
+            Stamp stamp = paramStamp.join(StampFactory.objectNonNull(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
             if (!StampTool.isPointerNonNull(firstParam)) {
                 IsNullNode condition = graph.unique(new IsNullNode(firstParam));
                 FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));

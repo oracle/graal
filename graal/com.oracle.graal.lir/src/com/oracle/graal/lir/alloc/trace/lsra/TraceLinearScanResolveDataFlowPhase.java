@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,8 @@ import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import java.util.BitSet;
 import java.util.List;
 import java.util.ListIterator;
-
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -46,6 +42,9 @@ import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.SSIUtil;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Phase 6: resolve data flow
@@ -145,41 +144,13 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
         @SuppressWarnings("try")
         private void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, TraceLocalMoveResolver moveResolver) {
             try (Indent indent0 = Debug.logAndIndent("Edge %s -> %s", fromBlock, toBlock)) {
-                collectLSRAMappings(fromBlock, toBlock, moveResolver);
-                collectSSIMappings(fromBlock, toBlock, moveResolver);
-            }
-        }
-
-        protected void collectLSRAMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, TraceLocalMoveResolver moveResolver) {
-            assert moveResolver.checkEmpty();
-
-            int toBlockFirstInstructionId = allocator.getFirstLirInstructionId(toBlock);
-            int fromBlockLastInstructionId = allocator.getLastLirInstructionId(fromBlock) + 1;
-            int numOperands = allocator.operandSize();
-            BitSet liveAtEdge = allocator.getBlockData(toBlock).liveIn;
-
-            // visit all variables for which the liveAtEdge bit is set
-            for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {
-                assert operandNum < numOperands : "live information set for not exisiting interval";
-                assert allocator.getBlockData(fromBlock).liveOut.get(operandNum) && allocator.getBlockData(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
-
-                TraceInterval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), fromBlockLastInstructionId, LIRInstruction.OperandMode.DEF);
-                TraceInterval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
-
-                if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
-                    // need to insert move instruction
-                    moveResolver.addMapping(fromInterval, toInterval);
+                // collect all intervals that have been split between
+                // fromBlock and toBlock
+                SSIUtil.forEachValuePair(allocator.getLIR(), toBlock, fromBlock, new MappingCollector(moveResolver, toBlock, fromBlock));
+                if (moveResolver.hasMappings()) {
+                    resolveFindInsertPos(fromBlock, toBlock, moveResolver);
+                    moveResolver.resolveAndAppendMoves();
                 }
-            }
-        }
-
-        protected void collectSSIMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, TraceLocalMoveResolver moveResolver) {
-            // collect all intervals that have been split between
-            // fromBlock and toBlock
-            SSIUtil.forEachValuePair(allocator.getLIR(), toBlock, fromBlock, new MyPhiValueVisitor(moveResolver, toBlock, fromBlock));
-            if (moveResolver.hasMappings()) {
-                resolveFindInsertPos(fromBlock, toBlock, moveResolver);
-                moveResolver.resolveAndAppendMoves();
             }
         }
 
@@ -194,12 +165,12 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
         private static final DebugMetric numSSIResolutionMoves = Debug.metric("SSI LSRA[numSSIResolutionMoves]");
         private static final DebugMetric numStackToStackMoves = Debug.metric("SSI LSRA[numStackToStackMoves]");
 
-        private class MyPhiValueVisitor implements PhiValueVisitor {
+        private class MappingCollector implements PhiValueVisitor {
             final TraceLocalMoveResolver moveResolver;
             final int toId;
             final int fromId;
 
-            MyPhiValueVisitor(TraceLocalMoveResolver moveResolver, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock) {
+            MappingCollector(TraceLocalMoveResolver moveResolver, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock) {
                 this.moveResolver = moveResolver;
                 toId = allocator.getFirstLirInstructionId(toBlock);
                 fromId = allocator.getLastLirInstructionId(fromBlock);

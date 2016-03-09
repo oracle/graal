@@ -26,6 +26,7 @@ import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -47,7 +48,7 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     public static final NodeClass<ExceptionObjectNode> TYPE = NodeClass.create(ExceptionObjectNode.class);
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {
-        super(TYPE, StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class)));
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(Throwable.class))));
     }
 
     @Override

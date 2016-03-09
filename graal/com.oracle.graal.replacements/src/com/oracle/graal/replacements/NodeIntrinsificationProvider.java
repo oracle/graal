@@ -31,6 +31,7 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.nodes.graphbuilderconf.NodeIntrinsicPluginFactory.InjectionProvider;
 import com.oracle.graal.word.WordTypes;
 
@@ -56,7 +57,7 @@ public class NodeIntrinsificationProvider implements InjectionProvider {
             if (wordTypes.isWord(returnType)) {
                 return wordTypes.getWordStamp(returnType);
             } else {
-                return nonNull ? StampFactory.declaredNonNull(returnType) : StampFactory.declared(returnType);
+                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType), nonNull);
             }
         } else {
             return StampFactory.forKind(kind);

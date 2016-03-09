@@ -37,6 +37,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
@@ -60,8 +62,8 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
 
     protected final IntrinsicMethod intrinsicMethod;
 
-    public MethodHandleNode(IntrinsicMethod intrinsicMethod, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
-        super(TYPE, invokeKind, targetMethod, bci, returnType, arguments);
+    public MethodHandleNode(IntrinsicMethod intrinsicMethod, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
+        super(TYPE, invokeKind, targetMethod, bci, returnStamp, arguments);
         this.intrinsicMethod = intrinsicMethod;
     }
 
@@ -74,20 +76,20 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
      *            {@link MethodHandle}
      * @param intrinsicMethod denotes the intrinsifiable {@link MethodHandle} method being processed
      * @param bci the BCI of the original {@link MethodHandle} call
-     * @param returnType return type of the original {@link MethodHandle} call
+     * @param returnStamp return stamp of the original {@link MethodHandle} call
      * @param arguments arguments to the original {@link MethodHandle} call
      * @return a more direct invocation derived from the {@link MethodHandle} call or null
      */
     public static InvokeNode tryResolveTargetInvoke(Assumptions assumptions, MethodHandleAccessProvider methodHandleAccess, IntrinsicMethod intrinsicMethod, ResolvedJavaMethod original, int bci,
-                    JavaType returnType, ValueNode... arguments) {
+                    StampPair returnStamp, ValueNode... arguments) {
         switch (intrinsicMethod) {
             case INVOKE_BASIC:
-                return getInvokeBasicTarget(assumptions, intrinsicMethod, methodHandleAccess, original, bci, returnType, arguments);
+                return getInvokeBasicTarget(assumptions, intrinsicMethod, methodHandleAccess, original, bci, returnStamp, arguments);
             case LINK_TO_STATIC:
             case LINK_TO_SPECIAL:
             case LINK_TO_VIRTUAL:
             case LINK_TO_INTERFACE:
-                return getLinkToTarget(assumptions, intrinsicMethod, methodHandleAccess, original, bci, returnType, arguments);
+                return getLinkToTarget(assumptions, intrinsicMethod, methodHandleAccess, original, bci, returnStamp, arguments);
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
@@ -97,7 +99,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
     public void simplify(SimplifierTool tool) {
         MethodHandleAccessProvider methodHandleAccess = tool.getConstantReflection().getMethodHandleAccess();
         ValueNode[] argumentsArray = arguments.toArray(new ValueNode[arguments.size()]);
-        InvokeNode invoke = tryResolveTargetInvoke(graph().getAssumptions(), methodHandleAccess, intrinsicMethod, targetMethod, bci, returnType, argumentsArray);
+        InvokeNode invoke = tryResolveTargetInvoke(graph().getAssumptions(), methodHandleAccess, intrinsicMethod, targetMethod, bci, returnStamp, argumentsArray);
         if (invoke != null) {
             assert invoke.graph() == null;
             invoke = graph().addOrUniqueWithInputs(invoke);
@@ -134,10 +136,10 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
      * @return invoke node for the {@link java.lang.invoke.MethodHandle} target
      */
     private static InvokeNode getInvokeBasicTarget(Assumptions assumptions, IntrinsicMethod intrinsicMethod, MethodHandleAccessProvider methodHandleAccess, ResolvedJavaMethod original, int bci,
-                    JavaType returnType, ValueNode[] arguments) {
+                    StampPair returnStamp, ValueNode[] arguments) {
         ValueNode methodHandleNode = getReceiver(arguments);
         if (methodHandleNode.isConstant()) {
-            return getTargetInvokeNode(assumptions, intrinsicMethod, bci, returnType, arguments, methodHandleAccess.resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), true), original);
+            return getTargetInvokeNode(assumptions, intrinsicMethod, bci, returnStamp, arguments, methodHandleAccess.resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), true), original);
         }
         return null;
     }
@@ -151,10 +153,10 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
      * @return invoke node for the member name target
      */
     private static InvokeNode getLinkToTarget(Assumptions assumptions, IntrinsicMethod intrinsicMethod, MethodHandleAccessProvider methodHandleAccess, ResolvedJavaMethod original, int bci,
-                    JavaType returnType, ValueNode[] arguments) {
+                    StampPair returnStamp, ValueNode[] arguments) {
         ValueNode memberNameNode = getMemberName(arguments);
         if (memberNameNode.isConstant()) {
-            return getTargetInvokeNode(assumptions, intrinsicMethod, bci, returnType, arguments, methodHandleAccess.resolveLinkToTarget(memberNameNode.asJavaConstant()), original);
+            return getTargetInvokeNode(assumptions, intrinsicMethod, bci, returnStamp, arguments, methodHandleAccess.resolveLinkToTarget(memberNameNode.asJavaConstant()), original);
         }
         return null;
     }
@@ -166,7 +168,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
      * @param target the target, already loaded from the member name node
      * @return invoke node for the member name target
      */
-    private static InvokeNode getTargetInvokeNode(Assumptions assumptions, IntrinsicMethod intrinsicMethod, int bci, JavaType returnType, ValueNode[] originalArguments, ResolvedJavaMethod target,
+    private static InvokeNode getTargetInvokeNode(Assumptions assumptions, IntrinsicMethod intrinsicMethod, int bci, StampPair returnStamp, ValueNode[] originalArguments, ResolvedJavaMethod target,
                     ResolvedJavaMethod original) {
         if (target == null) {
             return null;
@@ -186,35 +188,35 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
         // Cast receiver to its type.
         if (!isStatic) {
             JavaType receiverType = target.getDeclaringClass();
-            maybeCastArgument(arguments, 0, receiverType);
+            maybeCastArgument(assumptions, arguments, 0, receiverType);
         }
 
         // Cast reference arguments to its type.
         for (int index = 0; index < signature.getParameterCount(false); index++) {
             JavaType parameterType = signature.getParameterType(index, target.getDeclaringClass());
-            maybeCastArgument(arguments, receiverSkip + index, parameterType);
+            maybeCastArgument(assumptions, arguments, receiverSkip + index, parameterType);
         }
 
         if (target.canBeStaticallyBound()) {
-            return createTargetInvokeNode(intrinsicMethod, target, original, bci, returnType, arguments);
+            return createTargetInvokeNode(assumptions, intrinsicMethod, target, original, bci, returnStamp, arguments);
         }
 
         // Try to get the most accurate receiver type
         if (intrinsicMethod == IntrinsicMethod.LINK_TO_VIRTUAL || intrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE) {
             ValueNode receiver = getReceiver(arguments);
-            ResolvedJavaType receiverType = StampTool.typeOrNull(receiver.stamp());
+            TypeReference receiverType = StampTool.typeReferenceOrNull(receiver.stamp());
             if (receiverType != null) {
-                AssumptionResult<ResolvedJavaMethod> concreteMethod = receiverType.findUniqueConcreteMethod(target);
+                AssumptionResult<ResolvedJavaMethod> concreteMethod = receiverType.getType().findUniqueConcreteMethod(target);
                 if (concreteMethod != null && concreteMethod.canRecordTo(assumptions)) {
                     concreteMethod.recordTo(assumptions);
-                    return createTargetInvokeNode(intrinsicMethod, concreteMethod.getResult(), original, bci, returnType, arguments);
+                    return createTargetInvokeNode(assumptions, intrinsicMethod, concreteMethod.getResult(), original, bci, returnStamp, arguments);
                 }
             }
         } else {
             AssumptionResult<ResolvedJavaMethod> concreteMethod = target.getDeclaringClass().findUniqueConcreteMethod(target);
             if (concreteMethod != null && concreteMethod.canRecordTo(assumptions)) {
                 concreteMethod.recordTo(assumptions);
-                return createTargetInvokeNode(intrinsicMethod, concreteMethod.getResult(), original, bci, returnType, arguments);
+                return createTargetInvokeNode(assumptions, intrinsicMethod, concreteMethod.getResult(), original, bci, returnStamp, arguments);
             }
         }
 
@@ -228,14 +230,14 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
      * @param index of the argument to be cast
      * @param type the type the argument should be cast to
      */
-    private static void maybeCastArgument(ValueNode[] arguments, int index, JavaType type) {
+    private static void maybeCastArgument(Assumptions assumptions, ValueNode[] arguments, int index, JavaType type) {
         if (type instanceof ResolvedJavaType) {
-            ResolvedJavaType targetType = (ResolvedJavaType) type;
-            if (!targetType.isPrimitive()) {
+            TypeReference targetType = TypeReference.create(assumptions, (ResolvedJavaType) type);
+            if (targetType != null && !targetType.getType().isPrimitive()) {
                 ValueNode argument = arguments[index];
                 ResolvedJavaType argumentType = StampTool.typeOrNull(argument.stamp());
-                if (argumentType == null || (argumentType.isAssignableFrom(targetType) && !argumentType.equals(targetType))) {
-                    PiNode piNode = new PiNode(argument, StampFactory.declared(targetType));
+                if (argumentType == null || (argumentType.isAssignableFrom(targetType.getType()) && !argumentType.equals(targetType.getType()))) {
+                    PiNode piNode = new PiNode(argument, StampFactory.object(targetType));
                     arguments[index] = piNode;
                 }
             }
@@ -248,7 +250,8 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
      *
      * @return invoke node for the member name target
      */
-    private static InvokeNode createTargetInvokeNode(IntrinsicMethod intrinsicMethod, ResolvedJavaMethod target, ResolvedJavaMethod original, int bci, JavaType returnType, ValueNode[] arguments) {
+    private static InvokeNode createTargetInvokeNode(Assumptions assumptions, IntrinsicMethod intrinsicMethod, ResolvedJavaMethod target, ResolvedJavaMethod original, int bci, StampPair returnStamp,
+                    ValueNode[] arguments) {
         InvokeKind targetInvokeKind = target.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         JavaType targetReturnType = target.getSignature().getReturnType(null);
 
@@ -268,15 +271,16 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
+        StampPair targetReturnStamp = StampFactory.forDeclaredType(assumptions, targetReturnType, false);
 
-        MethodCallTargetNode callTarget = ResolvedMethodHandleCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnType, original, arguments, returnType);
+        MethodCallTargetNode callTarget = ResolvedMethodHandleCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnStamp, original, arguments, returnStamp);
 
         // The call target can have a different return type than the invoker,
         // e.g. the target returns an Object but the invoker void. In this case
         // we need to use the stamp of the invoker. Note: always using the
         // invoker's stamp would be wrong because it's a less concrete type
         // (usually java.lang.Object).
-        if (returnType.getJavaKind() == JavaKind.Void) {
+        if (returnStamp.getTrustedStamp().getStackKind() == JavaKind.Void) {
             return new InvokeNode(callTarget, bci, StampFactory.forVoid());
         } else {
             return new InvokeNode(callTarget, bci);

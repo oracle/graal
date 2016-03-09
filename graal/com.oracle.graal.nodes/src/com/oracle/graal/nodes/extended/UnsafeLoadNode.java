@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -88,8 +89,8 @@ public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable,
     }
 
     @Override
-    protected ValueNode cloneAsFieldAccess(ResolvedJavaField field) {
-        return new LoadFieldNode(object(), field);
+    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field) {
+        return LoadFieldNode.create(assumptions, object(), field);
     }
 
     @Override

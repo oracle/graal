@@ -32,7 +32,6 @@ import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -40,7 +39,6 @@ import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
@@ -94,38 +92,6 @@ public final class TraceLinearScan {
     private static final TraceLinearScanResolveDataFlowPhase TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE = new TraceLinearScanResolveDataFlowPhase();
     private static final TraceLinearScanLifetimeAnalysisPhase TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE = new TraceLinearScanLifetimeAnalysisPhase();
 
-    public static class BlockData {
-
-        /**
-         * Bit map specifying which operands are live upon entry to this block. These are values
-         * used in this block or any of its successors where such value are not defined in this
-         * block. The bit index of an operand is its
-         * {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
-         */
-        public BitSet liveIn;
-
-        /**
-         * Bit map specifying which operands are live upon exit from this block. These are values
-         * used in a successor block that are either defined in this block or were live upon entry
-         * to this block. The bit index of an operand is its
-         * {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
-         */
-        public BitSet liveOut;
-
-        /**
-         * Bit map specifying which operands are used (before being defined) in this block. That is,
-         * these are the values that are live upon entry to the block. The bit index of an operand
-         * is its {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
-         */
-        public BitSet liveGen;
-
-        /**
-         * Bit map specifying which operands are defined/overwritten in this block. The bit index of
-         * an operand is its {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
-         */
-        public BitSet liveKill;
-    }
-
     public static final int DOMINATOR_SPILL_MOVE_ID = -2;
     private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
 
@@ -135,8 +101,6 @@ public final class TraceLinearScan {
     private final Register[] registers;
     private final RegisterAllocationConfig regAllocConfig;
     private final MoveFactory moveFactory;
-
-    private final BlockMap<BlockData> blockData;
 
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
@@ -198,7 +162,6 @@ public final class TraceLinearScan {
 
         this.registers = target.arch.getRegisters();
         this.fixedIntervals = new FixedInterval[registers.length];
-        this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.traceBuilderResult = traceBuilderResult;
         this.neverSpillConstants = neverSpillConstants;
     }
@@ -254,14 +217,6 @@ public final class TraceLinearScan {
      */
     int numRegisters() {
         return registers.length;
-    }
-
-    public BlockData getBlockData(AbstractBlockBase<?> block) {
-        return blockData.get(block);
-    }
-
-    void initBlockData(AbstractBlockBase<?> block) {
-        blockData.put(block, new BlockData());
     }
 
     static final IntervalPredicate IS_PRECOLORED_INTERVAL = new IntervalPredicate() {
@@ -390,15 +345,6 @@ public final class TraceLinearScan {
 
     public AbstractBlockBase<?> blockAt(int index) {
         return sortedBlocks.get(index);
-    }
-
-    /**
-     * Gets the size of the {@link BlockData#liveIn} and {@link BlockData#liveOut} sets for a basic
-     * block. These sets do not include any operands allocated as a result of creating
-     * {@linkplain #createDerivedInterval(TraceInterval) derived intervals}.
-     */
-    public int liveSetSize() {
-        return firstDerivedIntervalIndex == -1 ? operandSize() : firstDerivedIntervalIndex;
     }
 
     int numLoops() {

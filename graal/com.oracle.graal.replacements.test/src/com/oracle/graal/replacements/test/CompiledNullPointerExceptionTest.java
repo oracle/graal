@@ -39,7 +39,6 @@ import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
 
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -59,7 +58,7 @@ public class CompiledNullPointerExceptionTest extends GraalCompilerTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         GraphBuilderConfiguration ret = super.editGraphBuilderConfiguration(conf);
         ret.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
-            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
                 return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             }
         });

@@ -29,6 +29,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -64,7 +65,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
     private static Stamp computeStamp(JavaKind knownElementKind, MetaAccessProvider metaAccess) {
         if (knownElementKind != null && metaAccess != null) {
             ResolvedJavaType arrayType = metaAccess.lookupJavaType(knownElementKind == JavaKind.Object ? Object.class : knownElementKind.toJavaClass()).getArrayClass();
-            return StampFactory.declaredNonNull(arrayType);
+            return StampFactory.objectNonNull(TypeReference.createWithoutAssumptions(arrayType));
         }
         return StampFactory.objectNonNull();
     }

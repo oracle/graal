@@ -34,6 +34,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -88,7 +89,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     }
 
     public NewFrameNode(SnippetReflectionProvider snippetReflection, ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
-        this(snippetReflection, StampFactory.exactNonNull(frameType), descriptor, arguments);
+        this(snippetReflection, StampFactory.objectNonNull(TypeReference.createExactTrusted(frameType)), descriptor, arguments);
     }
 
     public ValueNode getDescriptor() {

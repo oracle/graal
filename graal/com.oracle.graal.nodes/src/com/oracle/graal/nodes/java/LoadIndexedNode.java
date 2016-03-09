@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -30,6 +31,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -58,26 +60,26 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
      * @param index the instruction producing the index
      * @param elementKind the element type
      */
-    public LoadIndexedNode(ValueNode array, ValueNode index, JavaKind elementKind) {
-        this(TYPE, createStamp(array, elementKind), array, index, elementKind);
+    public LoadIndexedNode(Assumptions assumptions, ValueNode array, ValueNode index, JavaKind elementKind) {
+        this(TYPE, createStamp(assumptions, array, elementKind), array, index, elementKind);
     }
 
-    public static ValueNode create(ValueNode array, ValueNode index, JavaKind elementKind, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    public static ValueNode create(Assumptions assumptions, ValueNode array, ValueNode index, JavaKind elementKind, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         ValueNode constant = tryConstantFold(array, index, metaAccess, constantReflection);
         if (constant != null) {
             return constant;
         }
-        return new LoadIndexedNode(array, index, elementKind);
+        return new LoadIndexedNode(assumptions, array, index, elementKind);
     }
 
     protected LoadIndexedNode(NodeClass<? extends LoadIndexedNode> c, Stamp stamp, ValueNode array, ValueNode index, JavaKind elementKind) {
         super(c, stamp, array, index, elementKind);
     }
 
-    private static Stamp createStamp(ValueNode array, JavaKind kind) {
+    private static Stamp createStamp(Assumptions assumptions, ValueNode array, JavaKind kind) {
         ResolvedJavaType type = StampTool.typeOrNull(array);
         if (kind == JavaKind.Object && type != null && type.isArray()) {
-            return StampFactory.declaredTrusted(type.getComponentType());
+            return StampFactory.object(TypeReference.createTrusted(assumptions, type.getComponentType()));
         } else {
             return StampFactory.forKind(kind);
         }
@@ -85,7 +87,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(createStamp(array(), elementKind()));
+        return updateStamp(createStamp(graph().getAssumptions(), array(), elementKind()));
     }
 
     @Override

@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -54,7 +55,7 @@ public final class BoxNode extends FixedWithNextNode implements VirtualizableAll
     private final JavaKind boxingKind;
 
     public BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
-        super(TYPE, StampFactory.exactNonNull(resultType));
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(resultType)));
         this.value = value;
         this.boxingKind = boxingKind;
     }

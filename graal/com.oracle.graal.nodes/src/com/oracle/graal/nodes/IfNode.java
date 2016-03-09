@@ -467,8 +467,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
             } else if (b instanceof InstanceOfNode) {
                 InstanceOfNode instanceOfB = (InstanceOfNode) b;
-                if (instanceOfA.getValue() == instanceOfB.getValue() && !instanceOfA.type().isInterface() && !instanceOfB.type().isInterface() &&
-                                !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
+                if (instanceOfA.getValue() == instanceOfB.getValue() && !instanceOfA.type().getType().isInterface() && !instanceOfB.type().getType().isInterface() &&
+                                !instanceOfA.type().getType().isAssignableFrom(instanceOfB.type().getType()) && !instanceOfB.type().getType().isAssignableFrom(instanceOfA.type().getType())) {
                     // Two instanceof on the same value with mutually exclusive types.
                     Debug.log("Can swap instanceof for types %s and %s", instanceOfA.type(), instanceOfB.type());
                     swapInstanceOfProfiles(probabilityA, probabilityB, instanceOfA, instanceOfB);
@@ -566,7 +566,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 for (ProfiledType profiledType : profileA.getTypes()) {
                     newProfiledTypesB.add(new MutableProfiledType(profiledType.getType(), profiledType.getProbability()));
                     totalProbabilityB += profiledType.getProbability();
-                    if (!instanceOfB.type().isAssignableFrom(profiledType.getType())) {
+                    if (!instanceOfB.type().getType().isAssignableFrom(profiledType.getType())) {
                         double typeProbabilityA = profiledType.getProbability() / (1 - probabilityB);
                         newProfiledTypesA.add(new MutableProfiledType(profiledType.getType(), typeProbabilityA));
                         totalProbabilityA += typeProbabilityA;
@@ -583,7 +583,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     double typeProbabilityB = profiledType.getProbability() * (1 - probabilityA);
                     appendOrMerge(profiledType.getType(), typeProbabilityB, searchB, newProfiledTypesB);
                     totalProbabilityB += typeProbabilityB;
-                    if (!instanceOfB.type().isAssignableFrom(profiledType.getType())) {
+                    if (!instanceOfB.type().getType().isAssignableFrom(profiledType.getType())) {
                         double typeProbabilityA = typeProbabilityB / (1 - probabilityB);
                         appendOrMerge(profiledType.getType(), typeProbabilityA, searchA, newProfiledTypesA);
                         totalProbabilityA += typeProbabilityA;

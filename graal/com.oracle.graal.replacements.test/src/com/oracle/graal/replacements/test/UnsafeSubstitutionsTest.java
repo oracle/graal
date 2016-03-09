@@ -374,7 +374,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testAllocateInstance() throws Exception {
-        System.out.println("result: " + unsafeAllocateInstance(UNSAFE));
+        unsafeAllocateInstance(UNSAFE);
         test("unsafeAllocateInstance", UNSAFE);
         test("unsafeAllocateInstance", (Object) null);
     }

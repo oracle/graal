@@ -23,11 +23,11 @@
 package com.oracle.graal.replacements;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -54,14 +54,15 @@ public class MethodHandlePlugin implements NodePlugin {
             if (invokeKind != InvokeKind.Static) {
                 args[0] = b.nullCheckedValue(args[0]);
             }
-            JavaType invokeReturnType = b.getInvokeReturnType();
-            InvokeNode invoke = MethodHandleNode.tryResolveTargetInvoke(b.getAssumptions(), b.getConstantReflection().getMethodHandleAccess(), intrinsicMethod, method, b.bci(), invokeReturnType, args);
+            StampPair invokeReturnStamp = b.getInvokeReturnStamp(b.getAssumptions());
+            InvokeNode invoke = MethodHandleNode.tryResolveTargetInvoke(b.getAssumptions(), b.getConstantReflection().getMethodHandleAccess(), intrinsicMethod, method, b.bci(), invokeReturnStamp,
+                            args);
             if (invoke == null) {
-                MethodHandleNode methodHandleNode = new MethodHandleNode(intrinsicMethod, invokeKind, method, b.bci(), invokeReturnType, args);
-                if (invokeReturnType.getJavaKind() == JavaKind.Void) {
+                MethodHandleNode methodHandleNode = new MethodHandleNode(intrinsicMethod, invokeKind, method, b.bci(), invokeReturnStamp, args);
+                if (invokeReturnStamp.getTrustedStamp().getStackKind() == JavaKind.Void) {
                     b.add(methodHandleNode);
                 } else {
-                    b.addPush(invokeReturnType.getJavaKind(), methodHandleNode);
+                    b.addPush(invokeReturnStamp.getTrustedStamp().getStackKind(), methodHandleNode);
                 }
             } else {
                 CallTargetNode callTarget = invoke.callTarget();

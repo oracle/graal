@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.nodes.test;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import org.junit.Assert;
 
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 public abstract class AbstractObjectStampTest extends GraalCompilerTest {
@@ -69,7 +68,7 @@ public abstract class AbstractObjectStampTest extends GraalCompilerTest {
         return ab;
     }
 
-    protected ResolvedJavaType getType(Class<?> clazz) {
-        return getMetaAccess().lookupJavaType(clazz);
+    protected TypeReference getType(Class<?> clazz) {
+        return TypeReference.createTrustedWithoutAssumptions(getMetaAccess().lookupJavaType(clazz));
     }
 }

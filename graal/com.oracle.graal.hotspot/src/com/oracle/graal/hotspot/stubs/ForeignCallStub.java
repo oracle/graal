@@ -29,7 +29,6 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotSignature;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LocationIdentity;
@@ -39,8 +38,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
-import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.JavaMethodContext;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -251,12 +250,7 @@ public class ForeignCallStub extends Stub {
         ResolvedJavaType accessingClass = providers.getMetaAccess().lookupJavaType(getClass());
         for (int i = 0; i < args.length; i++) {
             ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(args[i]).resolve(accessingClass);
-            Stamp stamp;
-            if (type.getJavaKind().getStackKind() == JavaKind.Object) {
-                stamp = StampFactory.declared(type);
-            } else {
-                stamp = StampFactory.forKind(type.getJavaKind());
-            }
+            StampPair stamp = StampFactory.forDeclaredType(kit.getGraph().getAssumptions(), type, false);
             ParameterNode param = kit.unique(new ParameterNode(i, stamp));
             params[i] = param;
         }

@@ -31,6 +31,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -54,7 +55,7 @@ public final class HubGetClassNode extends FloatingGuardedNode implements Lowera
     @Input protected ValueNode hub;
 
     public HubGetClassNode(@InjectedNodeParameter MetaAccessProvider metaAccess, ValueNode hub) {
-        super(TYPE, StampFactory.declaredNonNull(metaAccess.lookupJavaType(Class.class)), null);
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createWithoutAssumptions(metaAccess.lookupJavaType(Class.class))), null);
         this.hub = hub;
     }
 

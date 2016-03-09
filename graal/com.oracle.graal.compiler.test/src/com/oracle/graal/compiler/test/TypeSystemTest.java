@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.ConditionalEliminationPhase;
+import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
 import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 
@@ -105,11 +105,11 @@ public class TypeSystemTest extends GraalCompilerTest {
 
     public static int referenceSnippet5(Object o, Object a) {
         if (o == null) {
-            if (a == Integer.class || a == Double.class) {
+            if (a == Integer.class) {
                 return 1;
             }
         } else {
-            if (a == Double.class || a == Long.class) {
+            if (a == Double.class) {
                 return 11;
             }
         }
@@ -122,14 +122,14 @@ public class TypeSystemTest extends GraalCompilerTest {
     @SuppressWarnings("unused")
     public static int test5Snippet(Object o, Object a) {
         if (o == null) {
-            if (a == Integer.class || a == Double.class) {
+            if (a == Integer.class) {
                 if (a == null) {
                     return 10;
                 }
                 return 1;
             }
         } else {
-            if (a == Double.class || a == Long.class) {
+            if (a == Double.class) {
                 if (a != null) {
                     return 11;
                 }
@@ -138,9 +138,6 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
         if (a == Integer.class) {
             return 3;
-        }
-        if (a == Double.class) {
-            return 4;
         }
         return 5;
     }
@@ -187,12 +184,12 @@ public class TypeSystemTest extends GraalCompilerTest {
          * tail-duplication gets activated thus resulting in a graph with more nodes than the
          * reference graph.
          */
-        new ConditionalEliminationPhase().apply(graph, new PhaseContext(getProviders()));
+        new DominatorConditionalEliminationPhase(false).apply(graph, new PhaseContext(getProviders()));
         new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         // a second canonicalizer is needed to process nested MaterializeNodes
         new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
-        new ConditionalEliminationPhase().apply(referenceGraph, new PhaseContext(getProviders()));
+        new DominatorConditionalEliminationPhase(false).apply(referenceGraph, new PhaseContext(getProviders()));
         new CanonicalizerPhase().apply(referenceGraph, new PhaseContext(getProviders()));
         new CanonicalizerPhase().apply(referenceGraph, new PhaseContext(getProviders()));
         assertEquals(referenceGraph, graph);

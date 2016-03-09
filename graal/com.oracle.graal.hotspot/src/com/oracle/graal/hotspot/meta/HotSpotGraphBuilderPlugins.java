@@ -151,7 +151,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register1("clone", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
-                b.addPush(JavaKind.Object, new ObjectCloneNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));
+                b.addPush(JavaKind.Object, new ObjectCloneNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), object));
                 return true;
             }
 
@@ -178,11 +178,11 @@ public class HotSpotGraphBuilderPlugins {
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 ValueNode javaClass = receiver.get();
-                ValueNode folded = ClassCastNode.tryFold(GraphUtil.originalValue(javaClass), object, b.getConstantReflection(), b.getAssumptions());
+                ValueNode folded = ClassCastNode.tryFold(GraphUtil.originalValue(javaClass), object, b.getConstantReflection());
                 if (folded != null) {
                     b.addPush(JavaKind.Object, folded);
                 } else {
-                    b.addPush(JavaKind.Object, new ClassCastNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), javaClass, object));
+                    b.addPush(JavaKind.Object, new ClassCastNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), javaClass, object));
                 }
                 return true;
             }
@@ -201,7 +201,7 @@ public class HotSpotGraphBuilderPlugins {
                 if (folded != null) {
                     b.addPush(JavaKind.Object, folded);
                 } else {
-                    b.addPush(JavaKind.Object, new CallSiteTargetNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), callSite));
+                    b.addPush(JavaKind.Object, new CallSiteTargetNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), callSite));
                 }
                 return true;
             }
@@ -219,7 +219,7 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, Reflection.class);
         r.register0("getCallerClass", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new ReflectionGetCallerClassNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType()));
+                b.addPush(JavaKind.Object, new ReflectionGetCallerClassNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions())));
                 return true;
             }
 
@@ -311,7 +311,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register0("nanoTime", new ForeignCallPlugin(foreignCalls, JAVA_TIME_NANOS));
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.addPush(JavaKind.Int, new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));
+                b.addPush(JavaKind.Int, new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), object));
                 return true;
             }
 
@@ -340,7 +340,7 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode offset = b.add(ConstantNode.forLong(config.threadObjectOffset));
                 AddressNode address = b.add(new OffsetAddressNode(thread, offset));
                 ValueNode javaThread = WordOperationPlugin.readOp(b, JavaKind.Object, address, JAVA_THREAD_THREAD_OBJECT_LOCATION, BarrierType.NONE, compressible);
-                boolean exactType = compressible;
+                boolean exactType = false;
                 boolean nonNull = true;
                 b.addPush(JavaKind.Object, new PiNode(javaThread, metaAccess.lookupJavaType(Thread.class), exactType, nonNull));
                 return true;

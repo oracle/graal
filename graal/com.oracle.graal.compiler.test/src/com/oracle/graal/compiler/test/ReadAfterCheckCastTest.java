@@ -43,8 +43,8 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  *     B b = (B) a;
  *     return b.x10;
  *
- * With snippets a typecheck is performed and if it was successful, a UnsafeCastNode is created.
- * For the read node, however, there is only a dependency to the UnsafeCastNode, but not to the
+ * With snippets a typecheck is performed and if it was successful, a PiNode is created.
+ * For the read node, however, there is only a dependency to the PiNode, but not to the
  * typecheck itself. With special crafting, it's possible to get the scheduler moving the
  * FloatingReadNode before the typecheck. Assuming the object is of the wrong type (here for
  * example A), an invalid field read is done.
