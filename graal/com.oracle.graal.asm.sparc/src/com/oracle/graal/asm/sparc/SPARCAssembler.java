@@ -935,12 +935,6 @@ public abstract class SPARCAssembler extends Assembler {
             this.signExtend = signExtend;
         }
 
-        protected void checkValue(int value) {
-            if (!valueFits(value)) {
-                throw new InternalError(String.format("Value 0x%x for field %s does not fit.", value, this));
-            }
-        }
-
         public final boolean isSignExtend() {
             return signExtend;
         }
@@ -976,7 +970,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         @Override
         public int setBits(int word, int value) {
-            checkValue(value);
+            assert valueFits(value) : String.format("Value 0x%x for field %s does not fit.", value, this);
             return (word & ~mask) | ((value << lowBit) & mask);
         }
 
