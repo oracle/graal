@@ -2471,6 +2471,7 @@ public class BytecodeParser implements GraphBuilderContext {
             FixedNode trueSuccessor = createTarget(trueBlock, frameState, false, false);
             FixedNode falseSuccessor = createTarget(falseBlock, frameState, false, true);
             ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
+            postProcessIfNode(ifNode);
             append(ifNode);
             if (parsingIntrinsic()) {
                 if (x instanceof BranchProbabilityNode) {
@@ -2480,6 +2481,12 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
         }
+    }
+
+    /* Hook for subclasses of BytecodeParser to generate custom nodes before an IfNode. */
+
+    @SuppressWarnings("unused")
+    protected void postProcessIfNode(ValueNode node) {
     }
 
     private boolean tryGenConditionalForIf(BciBlock trueBlock, BciBlock falseBlock, LogicNode condition, int oldBci, int trueBlockInt, int falseBlockInt) {
@@ -2643,7 +2650,7 @@ public class BytecodeParser implements GraphBuilderContext {
         sideEffect.setStateAfter(stateAfter);
     }
 
-    private BytecodePosition createBytecodePosition() {
+    protected BytecodePosition createBytecodePosition() {
         return frameState.createBytecodePosition(bci());
     }
 
