@@ -50,6 +50,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -305,9 +306,9 @@ public class AMD64Move {
         public static final LIRInstructionClass<LeaDataOp> TYPE = LIRInstructionClass.create(LeaDataOp.class);
 
         @Def({REG}) protected AllocatableValue result;
-        private final byte[] data;
+        private final DataPointerConstant data;
 
-        public LeaDataOp(AllocatableValue result, byte[] data) {
+        public LeaDataOp(AllocatableValue result, DataPointerConstant data) {
             super(TYPE);
             this.result = result;
             this.data = data;
@@ -315,7 +316,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            masm.leaq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(data, 16));
+            masm.leaq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(data));
         }
     }
 

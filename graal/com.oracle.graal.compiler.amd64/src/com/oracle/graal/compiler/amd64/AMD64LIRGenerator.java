@@ -77,7 +77,6 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
 import com.oracle.graal.lir.amd64.AMD64Move;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
-import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.lir.amd64.AMD64PauseOp;
@@ -134,10 +133,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 // we don't support vector types, so just zap with double for all of them
                 return JavaConstant.forDouble(Double.longBitsToDouble(dead));
         }
-    }
-
-    public void emitData(AllocatableValue dst, byte[] data) {
-        append(new LeaDataOp(dst, data));
     }
 
     public AMD64AddressValue asAddressValue(Value address) {
