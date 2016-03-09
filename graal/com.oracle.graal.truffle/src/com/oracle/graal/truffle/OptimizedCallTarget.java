@@ -39,9 +39,11 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Spliterators;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -72,7 +74,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -108,7 +109,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
      * assumption. It gets invalidated when a node rewriting is performed. This ensures that all
      * compiled methods that have this call target inlined are properly invalidated.
      */
-    private final CyclicAssumption nodeRewritingAssumption;
+    private volatile Assumption nodeRewritingAssumption;
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER =
+                    AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class, Assumption.class, "nodeRewritingAssumption");
 
     private volatile Future<?> compilationTask;
 
@@ -130,7 +133,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         } else {
             this.compilationProfile = new CompilationProfile();
         }
-        this.nodeRewritingAssumption = new CyclicAssumption(!TraceTruffleAssumptions.getValue() ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
     }
 
     public final void log(String message) {
@@ -149,7 +151,34 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public Assumption getNodeRewritingAssumption() {
-        return nodeRewritingAssumption.getAssumption();
+        Assumption assumption = nodeRewritingAssumption;
+        if (assumption == null) {
+            assumption = initializeNodeRewritingAssumption();
+        }
+        return assumption;
+    }
+
+    /**
+     * @return an existing or the newly initialized node rewriting assumption.
+     */
+    private Assumption initializeNodeRewritingAssumption() {
+        Assumption newAssumption = runtime.createAssumption(!TraceTruffleAssumptions.getValue() ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
+        if (NODE_REWRITING_ASSUMPTION_UPDATER.compareAndSet(this, null, newAssumption)) {
+            return newAssumption;
+        } else {
+            // if CAS failed, assumption is already initialized; cannot be null after that.
+            return Objects.requireNonNull(nodeRewritingAssumption);
+        }
+    }
+
+    /**
+     * Invalidate node rewriting assumption iff it has been initialized.
+     */
+    private void invalidateNodeRewritingAssumption() {
+        Assumption oldAssumption = NODE_REWRITING_ASSUMPTION_UPDATER.getAndUpdate(this, prev -> prev == null ? null : runtime.createAssumption(prev.getName()));
+        if (oldAssumption != null) {
+            oldAssumption.invalidate();
+        }
     }
 
     public int getCloneIndex() {
@@ -538,7 +567,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             invalidate(newNode, reason);
         }
         /* Notify compiled method that have inlined this call target that the tree changed. */
-        nodeRewritingAssumption.invalidate();
+        invalidateNodeRewritingAssumption();
 
         compilationProfile.reportNodeReplaced();
         if (cancelInstalledTask(newNode, reason)) {
