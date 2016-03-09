@@ -31,11 +31,13 @@ import java.util.Random;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 
+@Ignore("Convert into a microbenchmark!")
 public class JavaInteropSpeedTest {
     private static final int REPEAT = 10000;
     private static int[] arr;
