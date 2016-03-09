@@ -1110,7 +1110,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genUnique(ValueNode x) {
-        return (ValueNode) graph.unique((Node & ValueNumberable) x);
+        return graph.addOrUniqueWithInputs(x);
     }
 
     protected ValueNode genIfNode(LogicNode condition, FixedNode falseSuccessor, FixedNode trueSuccessor, double d) {
@@ -2184,7 +2184,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         ValueNode exception = frameState.stack[0];
                         FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                         FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                        append(new IfNode(graph.unique(InstanceOfNode.create(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
+                        append(new IfNode(graph.addOrUniqueWithInputs(InstanceOfNode.create(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
                         return;
                     }
                 }

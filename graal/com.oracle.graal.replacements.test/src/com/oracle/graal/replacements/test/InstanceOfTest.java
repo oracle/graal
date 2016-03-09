@@ -63,7 +63,7 @@ public class InstanceOfTest extends TypeCheckTest {
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         InstanceOfNode ion = graph.getNodes().filter(InstanceOfNode.class).first();
         if (ion != null) {
-            LogicNode ionNew = graph.unique(InstanceOfNode.create(TypeReference.createTrusted(graph.getAssumptions(), ion.type().getType()), ion.getValue(), profile));
+            LogicNode ionNew = graph.addOrUniqueWithInputs(InstanceOfNode.create(TypeReference.createTrusted(graph.getAssumptions(), ion.type().getType()), ion.getValue(), profile));
             ion.replaceAtUsagesAndDelete(ionNew);
         }
     }
