@@ -41,11 +41,13 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
@@ -151,8 +153,15 @@ public final class TraceLinearScan {
     protected final TraceBuilderResult<?> traceBuilderResult;
     private final boolean neverSpillConstants;
 
+    /**
+     * Maps from {@link Variable#index} to a spill stack slot. If
+     * {@linkplain com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options#TraceRACacheStackSlots
+     * enabled} a {@link Variable} is always assigned to the same stack slot.
+     */
+    private final AllocatableValue[] cachedStackSlots;
+
     public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace,
-                    TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants) {
+                    TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -164,6 +173,7 @@ public final class TraceLinearScan {
         this.fixedIntervals = new FixedInterval[registers.length];
         this.traceBuilderResult = traceBuilderResult;
         this.neverSpillConstants = neverSpillConstants;
+        this.cachedStackSlots = cachedStackSlots;
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -251,6 +261,9 @@ public final class TraceLinearScan {
         return registerAttributes[reg.number];
     }
 
+    private static final DebugMetric globalStackSlots = Debug.metric("TraceRA[GlobalStackSlots]");
+    private static final DebugMetric allocatedStackSlots = Debug.metric("TraceRA[AllocatedStackSlots]");
+
     void assignSpillSlot(TraceInterval interval) {
         /*
          * Assign the canonical spill slot of the parent (if a part of the interval is already
@@ -261,10 +274,36 @@ public final class TraceLinearScan {
         } else if (interval.spillSlot() != null) {
             interval.assignLocation(interval.spillSlot());
         } else {
-            VirtualStackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
+            AllocatableValue slot = allocateSpillSlot(interval);
             interval.setSpillSlot(slot);
             interval.assignLocation(slot);
         }
+    }
+
+    /**
+     * Returns a new spill slot or a cached entry if there is already one for the
+     * {@linkplain TraceInterval#operand variable}.
+     */
+    private AllocatableValue allocateSpillSlot(TraceInterval interval) {
+        int variableIndex = LIRValueUtil.asVariable(interval.splitParent().operand).index;
+        if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
+            AllocatableValue cachedStackSlot = cachedStackSlots[variableIndex];
+            if (cachedStackSlot != null) {
+                if (globalStackSlots.isEnabled()) {
+                    globalStackSlots.increment();
+                }
+                assert cachedStackSlot.getLIRKind().equals(interval.kind()) : "CachedStackSlot: kind mismatch? " + interval.kind() + " vs. " + cachedStackSlot.getLIRKind();
+                return cachedStackSlot;
+            }
+        }
+        VirtualStackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
+        if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
+            cachedStackSlots[variableIndex] = slot;
+        }
+        if (allocatedStackSlots.isEnabled()) {
+            allocatedStackSlots.increment();
+        }
+        return slot;
     }
 
     /**

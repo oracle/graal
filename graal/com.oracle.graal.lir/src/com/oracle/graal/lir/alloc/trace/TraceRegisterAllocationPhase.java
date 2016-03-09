@@ -51,6 +51,7 @@ import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.StableOptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * An implementation of a Trace Register Allocator as described in <a
@@ -68,6 +69,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         public static final StableOptionValue<Boolean> TraceRAshareSpillInformation = new StableOptionValue<>(true);
         @Option(help = "Reuse spill slots for global move resolution cycle breaking.", type = OptionType.Debug)
         public static final StableOptionValue<Boolean> TraceRAreuseStackSlotsForMoveResolutionCycleBreaking = new StableOptionValue<>(true);
+        @Option(help = "Cache stack slots globally (i.e. a variable always gets the same slot in every trace).", type = OptionType.Debug)
+        public static final StableOptionValue<Boolean> TraceRACacheStackSlots = new StableOptionValue<>(true);
         // @formatter:on
     }
 
@@ -91,6 +94,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceBuilderResult<B> resultTraces = builtTraces(target, lirGenRes, codeEmittingOrder, linearScanOrder);
 
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
+        AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
         Debug.dump(lir, "Before TraceRegisterAllocation");
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
@@ -104,7 +108,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
                         TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
                     } else {
-                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
+                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false,
+                                        cachedStackSlots);
                         allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
