@@ -114,7 +114,6 @@ import com.intel.llvm.ireditor.lLVM_IR.Undef;
 import com.intel.llvm.ireditor.lLVM_IR.ValueRef;
 import com.intel.llvm.ireditor.lLVM_IR.VectorConstant;
 import com.intel.llvm.ireditor.lLVM_IR.ZeroInitializer;
-import com.intel.llvm.ireditor.lLVM_IR.impl.Instruction_brImpl;
 import com.intel.llvm.ireditor.types.ResolvedArrayType;
 import com.intel.llvm.ireditor.types.ResolvedType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
@@ -611,14 +610,13 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return getWriteNode(writeValue, frameSlot, type);
     }
 
-    private Map<String, Integer> getBlockLabelIndexMapping(FunctionDef functionDef) {
+    private static Map<String, Integer> getBlockLabelIndexMapping(FunctionDef functionDef) {
         int labelIndex = 0;
         HashMap<String, Integer> labels = new HashMap<>();
         for (BasicBlock basicBlock : functionDef.getBasicBlocks()) {
             labels.put(basicBlock.getName(), labelIndex);
             int nrInstructions = basicBlock.getInstructions().size();
-            int nrAdditionalPhiAssignments = phiRefs.get(basicBlock).size();
-            labelIndex += nrInstructions + nrAdditionalPhiAssignments;
+            labelIndex += nrInstructions;
         }
         return labels;
     }
@@ -629,10 +627,13 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     private List<LLVMNode> globalNodes;
 
+    private BasicBlock currentBasicBlock;
+
     private List<LLVMNode> visitBasicBlock(BasicBlock basicBlock) {
+        currentBasicBlock = basicBlock;
         List<LLVMNode> statements = new ArrayList<>(basicBlock.getInstructions().size());
         for (Instruction instr : basicBlock.getInstructions()) {
-            List<LLVMNode> instrInstructions = visitInstruction(basicBlock, instr);
+            List<LLVMNode> instrInstructions = visitInstruction(instr);
             for (LLVMNode instruction : instrInstructions) {
                 statements.add(instruction);
             }
@@ -640,39 +641,9 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return statements;
     }
 
-    private List<LLVMNode> visitInstruction(BasicBlock basicBlock, Instruction instr) {
+    private List<LLVMNode> visitInstruction(Instruction instr) {
         if (instr instanceof TerminatorInstruction) {
             List<LLVMNode> statements = new ArrayList<>();
-            if (!phiRefs.get(basicBlock).isEmpty()) {
-                List<Phi> phiValues = phiRefs.get(basicBlock);
-                if (isConditionalBranch(instr)) {
-                    Instruction_brImpl conditionalBranch = (Instruction_brImpl) ((TerminatorInstruction) instr).getInstruction();
-                    for (Phi valueRef : phiValues) {
-                        FrameSlot phiSlot = frameDescriptor.findOrAddFrameSlot(valueRef.getAssignTo());
-                        LLVMExpressionNode visitValueRef = visitValueRef(valueRef.getValueRef(), valueRef.getType());
-                        assert conditionalBranch.getTrue().getRef() == valueRef.getStartingInstr().eContainer() || conditionalBranch.getFalse().getRef() == valueRef.getStartingInstr().eContainer();
-                        boolean isTrueCondition = conditionalBranch.getTrue().getRef() == valueRef.getStartingInstr().eContainer();
-                        LLVMI1Node conditionNode = (LLVMI1Node) visitValueRef(conditionalBranch.getCondition().getRef(), conditionalBranch.getCondition().getType());
-                        LLVMNode phiWriteNode = getWriteNode(visitValueRef, phiSlot, valueRef.getType());
-                        LLVMNode conditionalPhiWriteNode;
-                        if (isTrueCondition) {
-                            conditionalPhiWriteNode = factoryFacade.createConditionalPhiWriteNode(conditionNode, phiWriteNode);
-                        } else {
-                            LLVMExpressionNode rightNode = factoryFacade.createLiteral(true, LLVMBaseType.I1);
-                            LLVMExpressionNode create = factoryFacade.createLogicalOperation(conditionNode, rightNode, LLVMLogicalInstructionType.XOR, LLVMBaseType.I1, null);
-                            conditionalPhiWriteNode = factoryFacade.createConditionalPhiWriteNode(create, phiWriteNode);
-                        }
-                        statements.add(conditionalPhiWriteNode);
-                    }
-                } else {
-                    for (Phi valueRef : phiValues) {
-                        FrameSlot phiSlot = frameDescriptor.findOrAddFrameSlot(valueRef.getAssignTo());
-                        LLVMExpressionNode visitValueRef = visitValueRef(valueRef.getValueRef(), valueRef.getType());
-                        LLVMNode phiWriteNode = getWriteNode(visitValueRef, phiSlot, valueRef.getType());
-                        statements.add(phiWriteNode);
-                    }
-                }
-            }
             LLVMNode visitTerminatorInstruction = visitTerminatorInstruction((TerminatorInstruction) instr);
             statements.add(visitTerminatorInstruction);
             return statements;
@@ -683,10 +654,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
         } else {
             throw new AssertionError(instr);
         }
-    }
-
-    private static boolean isConditionalBranch(Instruction instr) {
-        return ((TerminatorInstruction) instr).getInstruction() instanceof Instruction_brImpl && ((Instruction_brImpl) ((TerminatorInstruction) instr).getInstruction()).getUnconditional() == null;
     }
 
     private static LLVMNode visitStartingInstruction(@SuppressWarnings("unused") StartingInstruction instr) {
@@ -1448,7 +1415,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             labelTargets[i] = getIndexFromBasicBlock(destinations.get(i).getRef());
         }
         LLVMExpressionNode value = visitValueRef(instr.getAddress().getRef(), instr.getAddress().getType());
-        return factoryFacade.createIndirectBranch(value, labelTargets);
+        return factoryFacade.createIndirectBranch(value, labelTargets, getUnconditionalPhiWriteNodes());
     }
 
     private LLVMNode visitSwitch(Instruction_switch switchInstr) {
@@ -1464,8 +1431,9 @@ public class LLVMVisitor implements LLVMParserRuntime {
             cases[i] = visitValueRef(caseConditions.get(i).getRef(), caseConditions.get(i).getType());
         }
         LLVMParserAsserts.assertNoNullElement(cases);
+        LLVMNode[] phiWriteNodes = getUnconditionalPhiWriteNodes();
         LLVMBaseType llvmType = getLLVMType(switchInstr.getComparisonValue().getType());
-        return factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType);
+        return factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, phiWriteNodes);
     }
 
     private LLVMNode visitBr(Instruction_br brInstruction) {
@@ -1476,12 +1444,46 @@ public class LLVMVisitor implements LLVMParserRuntime {
             int trueIndex = getIndexFromBasicBlock(trueBasicBlock);
             BasicBlock falseBasicBlock = brInstruction.getFalse().getRef();
             int falseIndex = getIndexFromBasicBlock(falseBasicBlock);
-            return factoryFacade.createConditionalBranch(trueIndex, falseIndex, conditionNode);
+            List<LLVMNode> trueConditionPhiWriteNodes = new ArrayList<>();
+            List<LLVMNode> falseConditionPhiWriteNodes = new ArrayList<>();
+            if (!phiRefs.get(currentBasicBlock).isEmpty()) {
+                List<Phi> phiValues = phiRefs.get(currentBasicBlock);
+                for (Phi phi : phiValues) {
+                    FrameSlot phiSlot = frameDescriptor.findOrAddFrameSlot(phi.getAssignTo());
+                    LLVMExpressionNode phiValueNode = visitValueRef(phi.getValueRef(), phi.getType());
+                    boolean isTrueCondition = brInstruction.getTrue().getRef() == phi.getStartingInstr().eContainer();
+                    LLVMNode phiWriteNode = getWriteNode(phiValueNode, phiSlot, phi.getType());
+                    if (isTrueCondition) {
+                        trueConditionPhiWriteNodes.add(phiWriteNode);
+                    } else {
+                        falseConditionPhiWriteNodes.add(phiWriteNode);
+                    }
+                }
+            }
+            LLVMNode[] truePhiWriteNodesArr = trueConditionPhiWriteNodes.toArray(new LLVMNode[trueConditionPhiWriteNodes.size()]);
+            LLVMNode[] falsePhiWriteNodesArr = falseConditionPhiWriteNodes.toArray(new LLVMNode[falseConditionPhiWriteNodes.size()]);
+            return factoryFacade.createConditionalBranch(trueIndex, falseIndex, conditionNode, truePhiWriteNodesArr, falsePhiWriteNodesArr);
         } else {
+            LLVMNode[] unconditionalPhiWriteNodeArr = getUnconditionalPhiWriteNodes();
             BasicBlock unconditional = brInstruction.getUnconditional().getRef();
             int unconditionalIndex = getIndexFromBasicBlock(unconditional);
-            return factoryFacade.createUnconditionalBranch(unconditionalIndex);
+            return factoryFacade.createUnconditionalBranch(unconditionalIndex, unconditionalPhiWriteNodeArr);
         }
+    }
+
+    private LLVMNode[] getUnconditionalPhiWriteNodes() {
+        List<LLVMNode> unconditionalPhiWriteNode = new ArrayList<>();
+        if (!phiRefs.get(currentBasicBlock).isEmpty()) {
+            List<Phi> phiValues = phiRefs.get(currentBasicBlock);
+            for (Phi phi : phiValues) {
+                FrameSlot phiSlot = frameDescriptor.findOrAddFrameSlot(phi.getAssignTo());
+                LLVMExpressionNode phiValueNode = visitValueRef(phi.getValueRef(), phi.getType());
+                LLVMNode phiWriteNode = getWriteNode(phiValueNode, phiSlot, phi.getType());
+                unconditionalPhiWriteNode.add(phiWriteNode);
+            }
+        }
+        LLVMNode[] unconditionalPhiWriteNodeArr = unconditionalPhiWriteNode.toArray(new LLVMNode[unconditionalPhiWriteNode.size()]);
+        return unconditionalPhiWriteNodeArr;
     }
 
     private int getIndexFromBasicBlock(BasicBlock trueBasicBlock) {

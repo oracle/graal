@@ -29,17 +29,29 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.control;
 
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 
-public abstract class LLVMBrUnconditionalNode extends LLVMStatementNode {
+@NodeChild(type = LLVMI1Node.class)
+public class LLVMBrUnconditionalNode extends LLVMStatementNode {
 
-    public LLVMBrUnconditionalNode(int trueSuccessor) {
+    @Children private final LLVMNode[] phiWrites;
+
+    public LLVMBrUnconditionalNode(int trueSuccessor, LLVMNode[] phiWrites) {
         super(trueSuccessor);
+        this.phiWrites = phiWrites;
     }
 
-    @Specialization
-    public int executeGetSuccessorIndex() {
+    @ExplodeLoop
+    @Override
+    public int executeGetSuccessorIndex(VirtualFrame frame) {
+        for (LLVMNode node : phiWrites) {
+            node.executeVoid(frame);
+        }
         return DEFAULT_SUCCESSOR;
     }
 

@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.nodes.impl.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
 
@@ -37,9 +39,12 @@ public class LLVMIndirectBranchNode extends LLVMStatementNode {
 
     @Child private LLVMAddressNode address;
 
-    public LLVMIndirectBranchNode(LLVMAddressNode address, int[] indices) {
+    @Children private final LLVMNode[] writeNodes;
+
+    public LLVMIndirectBranchNode(LLVMAddressNode address, int[] indices, LLVMNode[] writeNodes) {
         super(indices);
         this.address = address;
+        this.writeNodes = writeNodes;
     }
 
     @Override
@@ -48,10 +53,18 @@ public class LLVMIndirectBranchNode extends LLVMStatementNode {
         int val = (int) address.executePointee(frame).getVal();
         for (int i = 0; i < nrSuccessors(); i++) {
             if (val == getSuccessors()[i]) {
+                executePhiWrites(frame);
                 return i;
             }
         }
         throw new AssertionError();
+    }
+
+    @ExplodeLoop
+    private void executePhiWrites(VirtualFrame frame) {
+        for (int j = 0; j < writeNodes.length; j++) {
+            writeNodes[j].executeVoid(frame);
+        }
     }
 
 }

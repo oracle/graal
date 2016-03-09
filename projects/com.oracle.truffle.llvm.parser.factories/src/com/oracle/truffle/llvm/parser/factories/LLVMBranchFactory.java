@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMBrUnconditionalNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMConditionalBranchNodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMConditionalBranchNodeFactory.LLVMBrConditionalInjectionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMIndirectBranchNode;
@@ -42,20 +42,21 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 
 public class LLVMBranchFactory {
 
-    public static LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets) {
-        return new LLVMIndirectBranchNode((LLVMAddressNode) value, labelTargets);
+    public static LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMNode[] phiWrites) {
+        return new LLVMIndirectBranchNode((LLVMAddressNode) value, labelTargets, phiWrites);
     }
 
-    public static LLVMStatementNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode) {
+    public static LLVMStatementNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMNode[] truePhiWriteNodes,
+                    LLVMNode[] falsePhiWriteNodes) {
         if (runtime.getOptimizationConfiguration().injectBranchProbabilitiesForConditionalBranch()) {
-            return LLVMBrConditionalInjectionNodeGen.create(trueIndex, falseIndex, (LLVMI1Node) conditionNode);
+            return LLVMBrConditionalInjectionNodeGen.create(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, (LLVMI1Node) conditionNode);
         } else {
-            return LLVMConditionalBranchNodeFactory.LLVMBrConditionalNodeGen.create(trueIndex, falseIndex, (LLVMI1Node) conditionNode);
+            return LLVMConditionalBranchNodeFactory.LLVMBrConditionalNodeGen.create(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, (LLVMI1Node) conditionNode);
         }
     }
 
-    public static LLVMStatementNode createUnconditionalBranch(int unconditionalIndex) {
-        return LLVMBrUnconditionalNodeGen.create(unconditionalIndex);
+    public static LLVMStatementNode createUnconditionalBranch(int unconditionalIndex, LLVMNode[] phiWrites) {
+        return new LLVMBrUnconditionalNode(unconditionalIndex, phiWrites);
     }
 
 }

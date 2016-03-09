@@ -142,13 +142,14 @@ public interface NodeFactoryFacade {
 
     LLVMNode createUnreachableNode();
 
-    LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets);
+    LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMNode[] phiWrites);
 
-    LLVMNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases, LLVMBaseType llvmType);
+    LLVMNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
+                    LLVMBaseType llvmType, LLVMNode[] phiWriteNodes);
 
-    LLVMNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode);
+    LLVMNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMNode[] truePhiWriteNodes, LLVMNode[] falsePhiWriteNodes);
 
-    LLVMNode createUnconditionalBranch(int unconditionalIndex);
+    LLVMNode createUnconditionalBranch(int unconditionalIndex, LLVMNode[] phiWrites);
 
     LLVMExpressionNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType);
 

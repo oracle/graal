@@ -32,18 +32,22 @@ package com.oracle.truffle.llvm.nodes.impl.control;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 
+// TODO remove code duplication
 public abstract class LLVMSwitchNode extends LLVMStatementNode {
 
     private static final int DEFAULT_LABEL_INDEX = 0;
     private static final int CASE_LABEL_START_INDEX = 1;
+    @Children final LLVMNode[] phiWriteNodes;
 
-    public LLVMSwitchNode(int defaultLabel, int[] successors) {
+    public LLVMSwitchNode(int defaultLabel, int[] successors, LLVMNode[] phiWriteNodes) {
         super(getLabelArray(successors, defaultLabel));
+        this.phiWriteNodes = phiWriteNodes;
     }
 
     protected static int[] getLabelArray(int[] successors, int defaultLabel) {
@@ -54,13 +58,20 @@ public abstract class LLVMSwitchNode extends LLVMStatementNode {
         return labels;
     }
 
+    @ExplodeLoop
+    void executePhiWrites(VirtualFrame frame) {
+        for (int i = 0; i < phiWriteNodes.length; i++) {
+            phiWriteNodes[i].executeVoid(frame);
+        }
+    }
+
     public static class LLVMI8SwitchNode extends LLVMSwitchNode {
 
         @Child private LLVMI8Node cond;
         @Children private final LLVMI8Node[] cases;
 
-        public LLVMI8SwitchNode(LLVMI8Node cond, LLVMI8Node[] cases, int[] successors, int defaultLabel) {
-            super(defaultLabel, successors);
+        public LLVMI8SwitchNode(LLVMI8Node cond, LLVMI8Node[] cases, int[] successors, int defaultLabel, LLVMNode[] phiWriteNodes) {
+            super(defaultLabel, successors, phiWriteNodes);
             this.cond = cond;
             this.cases = cases;
         }
@@ -72,9 +83,11 @@ public abstract class LLVMSwitchNode extends LLVMStatementNode {
             for (int i = 0; i < cases.length; i++) {
                 int caseValue = cases[i].executeI8(frame);
                 if (val == caseValue) {
+                    executePhiWrites(frame);
                     return i + CASE_LABEL_START_INDEX;
                 }
             }
+            executePhiWrites(frame);
             return DEFAULT_LABEL_INDEX;
         }
 
@@ -85,8 +98,8 @@ public abstract class LLVMSwitchNode extends LLVMStatementNode {
         @Child private LLVMI32Node cond;
         @Children private final LLVMI32Node[] cases;
 
-        public LLVMI32SwitchNode(LLVMI32Node cond, LLVMI32Node[] cases, int[] successors, int defaultLabel) {
-            super(defaultLabel, successors);
+        public LLVMI32SwitchNode(LLVMI32Node cond, LLVMI32Node[] cases, int[] successors, int defaultLabel, LLVMNode[] phiWriteNodes) {
+            super(defaultLabel, successors, phiWriteNodes);
             this.cond = cond;
             this.cases = cases;
         }
@@ -98,9 +111,11 @@ public abstract class LLVMSwitchNode extends LLVMStatementNode {
             for (int i = 0; i < cases.length; i++) {
                 int caseValue = cases[i].executeI32(frame);
                 if (val == caseValue) {
+                    executePhiWrites(frame);
                     return i + CASE_LABEL_START_INDEX;
                 }
             }
+            executePhiWrites(frame);
             return DEFAULT_LABEL_INDEX;
         }
 
@@ -111,8 +126,8 @@ public abstract class LLVMSwitchNode extends LLVMStatementNode {
         @Child private LLVMI64Node cond;
         @Children private final LLVMI64Node[] cases;
 
-        public LLVMI64SwitchNode(LLVMI64Node cond, LLVMI64Node[] cases, int[] successors, int defaultLabel) {
-            super(defaultLabel, successors);
+        public LLVMI64SwitchNode(LLVMI64Node cond, LLVMI64Node[] cases, int[] successors, int defaultLabel, LLVMNode[] phiWriteNodes) {
+            super(defaultLabel, successors, phiWriteNodes);
             this.cond = cond;
             this.cases = cases;
         }
@@ -124,9 +139,11 @@ public abstract class LLVMSwitchNode extends LLVMStatementNode {
             for (int i = 0; i < cases.length; i++) {
                 long caseValue = cases[i].executeI64(frame);
                 if (val == caseValue) {
+                    executePhiWrites(frame);
                     return i + CASE_LABEL_START_INDEX;
                 }
             }
+            executePhiWrites(frame);
             return DEFAULT_LABEL_INDEX;
         }
 
