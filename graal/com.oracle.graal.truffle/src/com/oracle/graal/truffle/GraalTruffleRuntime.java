@@ -264,7 +264,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
 
         public T visitFrame(InspectedFrame frame) {
-			if (frame.isMethod(methods.callOSRMethod)) {
+            if (frame.isMethod(methods.callOSRMethod)) {
                 // we ignore OSR frames.
                 skipFrames++;
                 return null;
