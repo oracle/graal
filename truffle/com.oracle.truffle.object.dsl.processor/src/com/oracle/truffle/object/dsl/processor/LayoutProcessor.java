@@ -22,25 +22,23 @@
  */
 package com.oracle.truffle.object.dsl.processor;
 
-import com.oracle.truffle.api.object.dsl.Layout;
-import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
-
-import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.annotation.processing.SupportedSourceVersion;
-import javax.lang.model.SourceVersion;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.tools.JavaFileObject;
-import javax.tools.Diagnostic.Kind;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Set;
 
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.lang.model.SourceVersion;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic.Kind;
+import javax.tools.JavaFileObject;
+
+import com.oracle.truffle.api.object.dsl.Layout;
+import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
+
 @SupportedAnnotationTypes("com.oracle.truffle.api.object.dsl.Layout")
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
 public class LayoutProcessor extends AbstractProcessor {
 
     @Override
@@ -50,6 +48,11 @@ public class LayoutProcessor extends AbstractProcessor {
         }
 
         return true;
+    }
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latest();
     }
 
     private void processLayout(TypeElement layoutElement) {
