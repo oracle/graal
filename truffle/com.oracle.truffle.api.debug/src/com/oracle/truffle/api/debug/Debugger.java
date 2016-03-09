@@ -62,7 +62,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * Instance of this class is delivered via {@link SuspendedEvent#getDebugger()} and
  * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
  * is turned on}.
- * 
+ *
  * @since 0.9
  */
 public final class Debugger {
@@ -71,7 +71,7 @@ public final class Debugger {
      * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
      * where ordinary stepping should halt. The debugger will halt just <em>before</em> a code
      * location is executed that is marked with this tag.
-     * 
+     *
      * @since 0.9
      */
     public static final String HALT_TAG = "debug-HALT";
@@ -232,7 +232,7 @@ public final class Debugger {
     /**
      * Gets all existing breakpoints, whatever their status, in natural sorted order. Modification
      * save.
-     * 
+     *
      * @since 0.9
      */
     @TruffleBoundary
@@ -955,19 +955,10 @@ public final class Debugger {
                 @Override
                 public FrameInstance visitFrame(FrameInstance frameInstance) {
                     if (stackIndex < contextStackDepth) {
-                        final Node callNode = frameInstance.getCallNode();
-                        if (callNode != null) {
-                            final SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
-                            if (sourceSection != null && !sourceSection.getIdentifier().equals("<unknown>")) {
-                                frames.add(frameInstance);
-                            } else if (TRACE) {
-                                contextTrace("HIDDEN frame added: " + callNode);
-                                frames.add(frameInstance);
-                            }
-                        } else if (TRACE) {
-                            contextTrace("HIDDEN frame added");
-                            frames.add(frameInstance);
+                        if (TRACE && frameInstance.getCallNode() != null) {
+                            contextTrace("including frame %d with no callNode: %s", stackIndex, frameInstance.getFrame(FrameAccess.READ_ONLY, true));
                         }
+                        frames.add(frameInstance);
                         stackIndex++;
                         return null;
                     }

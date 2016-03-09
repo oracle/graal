@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.object.dsl;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * @since 0.8 or earlier
- * @deprecated no replacement.
+ * Apply to the constructor parameter that corresponds to an object-model DSL property to mark it as
+ * being able to contain a null value. By default, properties are non-nullable.
+ *
+ * @see Layout
+ *
+ * @since 0.12
  */
-@Deprecated
-public interface LoopCountReceiver {
-    /** @since 0.8 or earlier */
-    void reportLoopCount(int count);
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.SOURCE)
+public @interface Nullable {
 }

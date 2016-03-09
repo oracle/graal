@@ -255,7 +255,7 @@ final class InstrumentationUtils {
                 estimated = true;
             }
             if (section == null) {
-                return "<error: source location>";
+                return "<unknown source location>";
             }
             return section.getShortDescription() + (estimated ? "~" : "");
         }

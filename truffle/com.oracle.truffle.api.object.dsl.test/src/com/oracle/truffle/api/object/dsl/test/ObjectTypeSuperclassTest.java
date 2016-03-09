@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.object.dsl.test;
 
-/**
- * @since 0.8 or earlier
- * @deprecated no replacement.
- */
-@Deprecated
-public interface LoopCountReceiver {
-    /** @since 0.8 or earlier */
-    void reportLoopCount(int count);
+import org.junit.Test;
+
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.dsl.Layout;
+
+import org.junit.Assert;
+
+public class ObjectTypeSuperclassTest {
+
+    public static class ObjectTypeSuperclass extends ObjectType {
+
+    }
+
+    @Layout(objectTypeSuperclass = ObjectTypeSuperclass.class)
+    public interface ObjectTypeSuperclassTestLayout {
+
+        DynamicObject createObjectTypeSuperclassTest(int value);
+
+        int getValue(DynamicObject object);
+
+        void setValue(DynamicObject object, int value);
+
+    }
+
+    private static final ObjectTypeSuperclassTestLayout LAYOUT = ObjectTypeSuperclassTestLayoutImpl.INSTANCE;
+
+    @Test
+    public void testInstanceOf() {
+        final DynamicObject object = LAYOUT.createObjectTypeSuperclassTest(14);
+        Assert.assertTrue(object.getShape().getObjectType() instanceof ObjectTypeSuperclass);
+    }
+
 }

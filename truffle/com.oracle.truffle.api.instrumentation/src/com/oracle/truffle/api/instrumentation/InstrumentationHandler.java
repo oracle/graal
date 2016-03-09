@@ -72,7 +72,7 @@ final class InstrumentationHandler {
      */
     private final Map<Object, AbstractInstrumenter> instrumentations = new HashMap<>();
 
-    private boolean initialized;
+    private volatile boolean initialized;
 
     private final OutputStream out;
     private final OutputStream err;
@@ -188,7 +188,7 @@ final class InstrumentationHandler {
         EventChainNode parent = null;
         for (int i = 0; i < bindings.size(); i++) {
             EventBinding<?> binding = bindings.get(i);
-            if (isInstrumented(probeNodeImpl, binding, sourceSection)) {
+            if (isInstrumented(null, probeNodeImpl, binding, sourceSection)) {
                 if (TRACE) {
                     trace("Found binding %s, %s%n", binding.getFilter(), binding.getElement());
                 }
@@ -216,7 +216,6 @@ final class InstrumentationHandler {
     private void initialize() {
         synchronized (this) {
             if (!initialized) {
-                initialized = true;
                 if (TRACE) {
                     trace("Initialize instrumentation%n");
                 }
@@ -226,6 +225,7 @@ final class InstrumentationHandler {
                 if (TRACE) {
                     trace("Initialized instrumentation%n");
                 }
+                initialized = true;
             }
         }
     }
@@ -326,20 +326,23 @@ final class InstrumentationHandler {
         return !(node instanceof WrapperNode) && !(node instanceof RootNode);
     }
 
-    private static boolean isInstrumented(Node node, EventBinding<?> binding, SourceSection section) {
-        return binding.getInstrumenter().isInstrumentable(node) && binding.getFilter().isInstrumented(section);
+    private static boolean isInstrumented(RootNode rootNode, Node node, EventBinding<?> binding, SourceSection section) {
+        if (isInstrumentedLeaf(binding, section)) {
+            RootNode root = rootNode == null ? node.getRootNode() : rootNode;
+            if (root == null) {
+                return false;
+            }
+            return isInstrumentedRoot(root, binding, root.getSourceSection());
+        }
+        return false;
     }
 
     private static boolean isInstrumentedRoot(RootNode node, EventBinding<?> binding, SourceSection section) {
         return binding.getInstrumenter().isInstrumentable(node) && binding.getFilter().isInstrumentedRoot(section);
     }
 
-    private static boolean isInstrumentedLeaf(Node node, EventBinding<?> binding, SourceSection section) {
-        if (binding.getFilter().isInstrumentedNode(section)) {
-            assert isInstrumented(node, binding, section);
-            return true;
-        }
-        return false;
+    private static boolean isInstrumentedLeaf(EventBinding<?> binding, SourceSection section) {
+        return binding.getFilter().isInstrumentedNode(section);
     }
 
     private static void trace(String message, Object... args) {
@@ -352,7 +355,8 @@ final class InstrumentationHandler {
             trace("Visit root %s wrappers for %s%n", visitor, root.toString());
         }
 
-        if (visitor.shouldVisit(root)) {
+        visitor.root = root;
+        if (visitor.shouldVisit()) {
             // found a filter that matched
             root.atomic(new Runnable() {
                 public void run() {
@@ -360,6 +364,7 @@ final class InstrumentationHandler {
                 }
             });
         }
+        visitor.root = null;
         if (TRACE) {
             trace("Visited root %s wrappers for %s%n", visitor, root.toString());
         }
@@ -408,7 +413,9 @@ final class InstrumentationHandler {
 
     private abstract class AbstractNodeVisitor implements NodeVisitor {
 
-        abstract boolean shouldVisit(RootNode root);
+        protected RootNode root;
+
+        abstract boolean shouldVisit();
 
     }
 
@@ -421,14 +428,14 @@ final class InstrumentationHandler {
         }
 
         @Override
-        boolean shouldVisit(RootNode root) {
+        boolean shouldVisit() {
             return isInstrumentedRoot(root, binding, root.getSourceSection());
         }
 
         public final boolean visit(Node node) {
             SourceSection sourceSection = node.getSourceSection();
             if (sourceSection != null) {
-                if (isInstrumentedLeaf(node, binding, sourceSection) && isInstrumentableNode(node)) {
+                if (isInstrumentableNode(node) && isInstrumentedLeaf(binding, sourceSection)) {
                     if (TRACE) {
                         trace("Filter hit section:%s%n", sourceSection);
                     }
@@ -451,7 +458,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        boolean shouldVisit(RootNode root) {
+        boolean shouldVisit() {
             SourceSection sourceSection = root.getSourceSection();
             for (int i = 0; i < bindings.size(); i++) {
                 EventBinding<?> binding = bindings.get(i);
@@ -468,7 +475,7 @@ final class InstrumentationHandler {
                 List<EventBinding<?>> b = bindings;
                 for (int i = 0; i < b.size(); i++) {
                     EventBinding<?> binding = b.get(i);
-                    if (isInstrumented(node, binding, sourceSection) && isInstrumentableNode(node)) {
+                    if (isInstrumentableNode(node) && isInstrumented(root, node, binding, sourceSection)) {
                         if (TRACE) {
                             trace("Filter hit section:%s", sourceSection);
                         }
