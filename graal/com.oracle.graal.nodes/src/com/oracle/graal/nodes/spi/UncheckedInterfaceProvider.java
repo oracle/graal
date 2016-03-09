@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,7 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
 
 public interface UncheckedInterfaceProvider {
     /**
@@ -36,14 +31,4 @@ public interface UncheckedInterfaceProvider {
      * this stamp.
      */
     Stamp uncheckedStamp();
-
-    static Stamp uncheckedOrNull(JavaType type, Stamp originalStamp) {
-        if (type instanceof ResolvedJavaType && type.getJavaKind() == JavaKind.Object) {
-            Stamp unchecked = StampFactory.declaredTrusted((ResolvedJavaType) type);
-            if (!unchecked.equals(originalStamp)) {
-                return unchecked;
-            }
-        }
-        return null;
-    }
 }

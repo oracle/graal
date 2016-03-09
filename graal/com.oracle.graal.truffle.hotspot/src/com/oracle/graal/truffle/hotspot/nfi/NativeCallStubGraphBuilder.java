@@ -163,7 +163,7 @@ public class NativeCallStubGraphBuilder {
             Class<?> type = argumentTypes[i];
             JavaKind kind = getKind(type);
 
-            LoadIndexedNode boxedElement = b.add(new LoadIndexedNode(argArray, idx, JavaKind.Object));
+            LoadIndexedNode boxedElement = b.add(new LoadIndexedNode(b.getAssumptions(), argArray, idx, JavaKind.Object));
             if (kind == JavaKind.Object) {
                 // array value
                 JavaKind arrayElementKind = getElementKind(type);

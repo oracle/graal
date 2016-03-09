@@ -30,6 +30,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -78,14 +79,14 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
     public Node canonical(CanonicalizerTool tool) {
         if (hub instanceof LoadHubNode) {
             ValueNode object = ((LoadHubNode) hub).getValue();
-            ResolvedJavaType type = StampTool.typeOrNull(object);
-            if (StampTool.isExactType(object)) {
-                return resolveExactMethod(tool, type);
-            }
+            TypeReference type = StampTool.typeReferenceOrNull(object);
             if (type != null) {
+                if (type.isExact()) {
+                    return resolveExactMethod(tool, type.getType());
+                }
                 Assumptions assumptions = graph().getAssumptions();
-                AssumptionResult<ResolvedJavaMethod> resolvedMethod = type.findUniqueConcreteMethod(method);
-                if (resolvedMethod != null && resolvedMethod.canRecordTo(assumptions) && !type.isInterface() && method.getDeclaringClass().isAssignableFrom(type)) {
+                AssumptionResult<ResolvedJavaMethod> resolvedMethod = type.getType().findUniqueConcreteMethod(method);
+                if (resolvedMethod != null && resolvedMethod.canRecordTo(assumptions) && !type.getType().isInterface() && method.getDeclaringClass().isAssignableFrom(type.getType())) {
                     resolvedMethod.recordTo(assumptions);
                     return ConstantNode.forConstant(stamp(), resolvedMethod.getResult().getEncoding(), tool.getMetaAccess());
                 }

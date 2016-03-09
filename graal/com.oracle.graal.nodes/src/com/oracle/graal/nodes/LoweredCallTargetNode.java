@@ -22,13 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.List;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 
@@ -36,21 +34,15 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 public abstract class LoweredCallTargetNode extends CallTargetNode {
 
     public static final NodeClass<LoweredCallTargetNode> TYPE = NodeClass.create(LoweredCallTargetNode.class);
-    protected final Stamp returnStamp;
     protected final JavaType[] signature;
     protected final CallingConvention.Type callType;
 
-    protected LoweredCallTargetNode(NodeClass<? extends LoweredCallTargetNode> c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
+    protected LoweredCallTargetNode(NodeClass<? extends LoweredCallTargetNode> c, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature,
+                    ResolvedJavaMethod target,
                     CallingConvention.Type callType, InvokeKind invokeKind) {
-        super(c, arguments, target, invokeKind);
-        this.returnStamp = returnStamp;
+        super(c, arguments, target, invokeKind, returnStamp);
         this.signature = signature;
         this.callType = callType;
-    }
-
-    @Override
-    public Stamp returnStamp() {
-        return returnStamp;
     }
 
     public JavaType[] signature() {

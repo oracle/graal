@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
@@ -122,7 +123,7 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
     }
 
     @Override
-    protected ValueNode cloneAsFieldAccess(ResolvedJavaField field) {
+    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field) {
         return new StoreFieldNode(object(), field, value(), stateAfter());
     }
 

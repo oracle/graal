@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.test;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -31,6 +30,7 @@ import org.junit.Test;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 
 public class ObjectStampMeetTest extends AbstractObjectStampTest {
 
@@ -43,82 +43,83 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
 
     @Test
     public void testMeet0() {
-        Stamp a = StampFactory.declared(getType(A.class));
-        Stamp b = StampFactory.declared(getType(B.class));
+        Stamp a = StampFactory.object(getType(A.class));
+        Stamp b = StampFactory.object(getType(B.class));
         Assert.assertEquals(a, meet(a, b));
     }
 
     @Test
     public void testMeet1() {
-        Stamp a = StampFactory.declared(getType(A.class));
-        Stamp aNonNull = StampFactory.declaredNonNull(getType(A.class));
-        Stamp b = StampFactory.declared(getType(B.class));
-        Stamp bNonNull = StampFactory.declaredNonNull(getType(B.class));
+        Stamp a = StampFactory.object(getType(A.class));
+        Stamp aNonNull = StampFactory.objectNonNull(getType(A.class));
+        Stamp b = StampFactory.object(getType(B.class));
+        Stamp bNonNull = StampFactory.objectNonNull(getType(B.class));
         Assert.assertEquals(a, meet(aNonNull, b));
         Assert.assertEquals(aNonNull, meet(aNonNull, bNonNull));
     }
 
     @Test
     public void testMeet2() {
-        Stamp a = StampFactory.declared(getType(A.class));
-        Stamp aExact = StampFactory.exactNonNull(getType(A.class));
-        Stamp b = StampFactory.declared(getType(B.class));
+        Stamp a = StampFactory.object(getType(A.class));
+        Stamp aExact = StampFactory.objectNonNull(getType(A.class).asExactReference());
+        Stamp b = StampFactory.object(getType(B.class));
         Assert.assertEquals(a, meet(aExact, b));
     }
 
     @Test
     public void testMeet3() {
-        Stamp a = StampFactory.declared(getType(A.class));
-        Stamp d = StampFactory.declared(getType(D.class));
-        Stamp c = StampFactory.declared(getType(C.class));
+        Stamp a = StampFactory.object(getType(A.class));
+        Stamp d = StampFactory.object(getType(D.class));
+        Stamp c = StampFactory.object(getType(C.class));
         Assert.assertEquals(a, meet(c, d));
     }
 
     @Test
     public void testMeet4() {
-        Stamp dExactNonNull = StampFactory.exactNonNull(getType(D.class));
-        Stamp cExactNonNull = StampFactory.exactNonNull(getType(C.class));
-        Stamp aNonNull = StampFactory.declaredNonNull(getType(A.class));
+        Stamp dExactNonNull = StampFactory.objectNonNull(getType(D.class).asExactReference());
+        Stamp cExactNonNull = StampFactory.objectNonNull(getType(C.class).asExactReference());
+        Stamp aNonNull = StampFactory.objectNonNull(getType(A.class));
         Assert.assertEquals(aNonNull, meet(cExactNonNull, dExactNonNull));
     }
 
     @Test
     public void testMeet() {
-        Stamp dExact = StampFactory.exact(getType(D.class));
-        Stamp c = StampFactory.declared(getType(C.class));
-        Stamp a = StampFactory.declared(getType(A.class));
+        Stamp dExact = StampFactory.object(getType(D.class).asExactReference());
+        Stamp c = StampFactory.object(getType(C.class));
+        Stamp a = StampFactory.object(getType(A.class));
         Assert.assertEquals(a, meet(dExact, c));
     }
 
     @Test
     public void testMeet6() {
-        Stamp dExactNonNull = StampFactory.exactNonNull(getType(D.class));
+        Stamp dExactNonNull = StampFactory.objectNonNull(getType(D.class).asExactReference());
         Stamp alwaysNull = StampFactory.alwaysNull();
-        Stamp dExact = StampFactory.exact(getType(D.class));
+        Stamp dExact = StampFactory.object(getType(D.class).asExactReference());
         Assert.assertEquals(dExact, meet(dExactNonNull, alwaysNull));
     }
 
     @Test
     public void testMeet7() {
-        Stamp aExact = StampFactory.exact(getType(A.class));
-        Stamp e = StampFactory.declared(getType(E.class));
-        Stamp a = StampFactory.declared(getType(A.class));
+        Stamp aExact = StampFactory.object(getType(A.class).asExactReference());
+        Stamp e = StampFactory.object(getType(E.class));
+        Stamp a = StampFactory.object(getType(A.class));
         Assert.assertEquals(a, meet(aExact, e));
     }
 
     @Test
     public void testMeetInterface0() {
-        Stamp a = StampFactory.declared(getType(A.class));
-        Stamp i = StampFactory.declaredTrusted(getType(I.class));
-        Assert.assertEquals(StampFactory.declared(getType(Object.class)), meet(a, i));
+        Stamp a = StampFactory.object(getType(A.class));
+        Stamp i = StampFactory.object(getType(I.class));
+        Assert.assertEquals(StampFactory.object(getType(Object.class)), meet(a, i));
     }
 
     @Test
     public void testMeetIllegal1() {
         for (Class<?> clazz : new Class<?>[]{A.class, B.class, C.class, D.class, E.class, I.class, Object.class}) {
-            ResolvedJavaType type = getType(clazz);
-            for (Stamp test : new Stamp[]{StampFactory.declared(type), StampFactory.declaredNonNull(type), StampFactory.exact(type), StampFactory.exactNonNull(type)}) {
-                if (type.isConcrete() || !((ObjectStamp) test).isExactType()) {
+            TypeReference type = getType(clazz);
+            for (Stamp test : new Stamp[]{StampFactory.object(type), StampFactory.objectNonNull(type), StampFactory.object(type.asExactReference()),
+                            StampFactory.objectNonNull(type.asExactReference())}) {
+                if (type.getType().isConcrete() || !((ObjectStamp) test).isExactType()) {
                     Assert.assertEquals("meeting empty and " + test, test, meet(StampFactory.empty(JavaKind.Object), test));
                 }
             }

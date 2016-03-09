@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
@@ -59,7 +58,8 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
         GraphBuilderConfiguration ret = super.editGraphBuilderConfiguration(conf);
         ret.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
 
-            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+            @Override
+            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
                 if (method.getName().startsWith("raiseException")) {
                     /*
                      * Make sure the raiseException* method invokes are not inlined and compiled

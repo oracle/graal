@@ -35,6 +35,8 @@ import jdk.vm.ci.meta.Signature;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
@@ -90,8 +92,8 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         int index = 0;
         if (!method.isStatic()) {
             // add the receiver
-            Stamp receiverStamp = StampFactory.declaredNonNull(method.getDeclaringClass());
-            FloatingNode receiver = graph.addWithoutUnique(new ParameterNode(javaIndex, receiverStamp));
+            Stamp receiverStamp = StampFactory.objectNonNull(TypeReference.createWithoutAssumptions(method.getDeclaringClass()));
+            FloatingNode receiver = graph.addWithoutUnique(new ParameterNode(javaIndex, StampPair.createSingle(receiverStamp)));
             arguments[index] = receiver;
             javaIndex = 1;
             index = 1;
@@ -102,11 +104,11 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
             JavaKind kind = type.getJavaKind();
             Stamp stamp;
             if (kind == JavaKind.Object && type instanceof ResolvedJavaType) {
-                stamp = StampFactory.declared((ResolvedJavaType) type);
+                stamp = StampFactory.object(TypeReference.createWithoutAssumptions((ResolvedJavaType) type));
             } else {
                 stamp = StampFactory.forKind(kind);
             }
-            FloatingNode param = graph.addWithoutUnique(new ParameterNode(index, stamp));
+            FloatingNode param = graph.addWithoutUnique(new ParameterNode(index, StampPair.createSingle(stamp)));
             arguments[index] = param;
             javaIndex += kind.getSlotCount();
             index++;

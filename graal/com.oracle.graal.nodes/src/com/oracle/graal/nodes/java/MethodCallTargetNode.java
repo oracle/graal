@@ -22,19 +22,21 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.compiler.common.type.TypeReference;
+
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -55,17 +57,15 @@ import com.oracle.graal.nodes.type.StampTool;
 @NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
     public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.create(MethodCallTargetNode.class);
-    protected final JavaType returnType;
     protected JavaTypeProfile profile;
 
-    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, JavaTypeProfile profile) {
-        this(TYPE, invokeKind, targetMethod, arguments, returnType, profile);
+    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile profile) {
+        this(TYPE, invokeKind, targetMethod, arguments, returnStamp, profile);
     }
 
-    protected MethodCallTargetNode(NodeClass<? extends MethodCallTargetNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,
+    protected MethodCallTargetNode(NodeClass<? extends MethodCallTargetNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp,
                     JavaTypeProfile profile) {
-        super(c, arguments, targetMethod, invokeKind);
-        this.returnType = returnType;
+        super(c, arguments, targetMethod, invokeKind, returnStamp);
         this.profile = profile;
     }
 
@@ -132,10 +132,11 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             return targetMethod;
         }
 
-        ResolvedJavaType type = StampTool.typeOrNull(receiver);
+        Assumptions assumptions = receiver.graph().getAssumptions();
+        TypeReference type = StampTool.typeReferenceOrNull(receiver);
         if (type == null && invokeKind == InvokeKind.Virtual) {
             // For virtual calls, we are guaranteed to receive a correct receiver type.
-            type = targetMethod.getDeclaringClass();
+            type = TypeReference.createTrusted(assumptions, targetMethod.getDeclaringClass());
         }
 
         if (type != null) {
@@ -143,22 +144,12 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
              * either the holder class is exact, or the receiver object has an exact type, or it's
              * an array type
              */
-            ResolvedJavaMethod resolvedMethod = type.resolveConcreteMethod(targetMethod, contextType);
-            if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
+            ResolvedJavaMethod resolvedMethod = type.getType().resolveConcreteMethod(targetMethod, contextType);
+            if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || type.isExact() || type.getType().isArray())) {
                 return resolvedMethod;
             }
 
-            Assumptions assumptions = receiver.graph().getAssumptions();
-            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
-            if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions)) {
-                ResolvedJavaMethod methodFromUniqueType = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
-                if (methodFromUniqueType != null) {
-                    leafConcreteSubtype.recordTo(assumptions);
-                    return methodFromUniqueType;
-                }
-            }
-
-            AssumptionResult<ResolvedJavaMethod> uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod);
+            AssumptionResult<ResolvedJavaMethod> uniqueConcreteMethod = type.getType().findUniqueConcreteMethod(targetMethod);
             if (uniqueConcreteMethod != null && uniqueConcreteMethod.canRecordTo(assumptions)) {
                 uniqueConcreteMethod.recordTo(assumptions);
                 return uniqueConcreteMethod.getResult();
@@ -184,45 +175,49 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             return;
         }
 
-        if (invokeKind().isIndirect() && invokeKind().isInterface()) {
+        Assumptions assumptions = graph().getAssumptions();
+        /*
+         * Even though we are not registering an assumption (see comment below), the optimization is
+         * only valid when speculative optimizations are enabled.
+         */
+        if (invokeKind().isIndirect() && invokeKind().isInterface() && assumptions != null) {
 
             // check if the type of the receiver can narrow the result
             ValueNode receiver = receiver();
 
             // try to turn a interface call into a virtual call
             ResolvedJavaType declaredReceiverType = targetMethod().getDeclaringClass();
+
             /*
              * We need to check the invoke kind to avoid recursive simplification for virtual
              * interface methods calls.
              */
             if (declaredReceiverType.isInterface()) {
-                tryCheckCastSingleImplementor(graph().getAssumptions(), receiver, declaredReceiverType);
+                ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
+                if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
+                    TypeReference speculatedType = TypeReference.createTrusted(assumptions, singleImplementor);
+                    if (tryCheckCastSingleImplementor(receiver, speculatedType)) {
+                        return;
+                    }
+                }
             }
 
             if (receiver instanceof UncheckedInterfaceProvider) {
                 UncheckedInterfaceProvider uncheckedInterfaceProvider = (UncheckedInterfaceProvider) receiver;
                 Stamp uncheckedStamp = uncheckedInterfaceProvider.uncheckedStamp();
                 if (uncheckedStamp != null) {
-                    ResolvedJavaType uncheckedReceiverType = StampTool.typeOrNull(uncheckedStamp);
-                    if (uncheckedReceiverType.isInterface()) {
-                        tryCheckCastSingleImplementor(graph().getAssumptions(), receiver, uncheckedReceiverType);
+                    TypeReference speculatedType = StampTool.typeReferenceOrNull(uncheckedStamp);
+                    if (speculatedType != null) {
+                        tryCheckCastSingleImplementor(receiver, speculatedType);
                     }
                 }
             }
         }
     }
 
-    private void tryCheckCastSingleImplementor(Assumptions assumptions, ValueNode receiver, ResolvedJavaType declaredReceiverType) {
-        if (assumptions == null) {
-            /*
-             * Even though we are not registering an assumption (see comment below), the
-             * optimization is only valid when speculative optimizations are enabled.
-             */
-            return;
-        }
-
-        ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
-        if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
+    private boolean tryCheckCastSingleImplementor(ValueNode receiver, TypeReference speculatedType) {
+        ResolvedJavaType singleImplementor = speculatedType.getType();
+        if (singleImplementor != null) {
             ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType());
             if (singleImplementorMethod != null) {
                 /**
@@ -236,33 +231,25 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  * an assumption but as we need an instanceof check anyway we can verify both
                  * properties by checking of the receiver is an instance of the single implementor.
                  */
-                LogicNode condition = graph().unique(InstanceOfNode.create(singleImplementor, receiver, getProfile()));
+                LogicNode condition = graph().unique(InstanceOfNode.create(speculatedType, receiver, getProfile()));
                 FixedGuardNode guard = graph().add(new FixedGuardNode(condition, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false));
                 graph().addBeforeFixed(invoke().asNode(), guard);
-                PiNode piNode = graph().unique(new PiNode(receiver, StampFactory.declaredNonNull(singleImplementor), guard));
+                PiNode piNode = graph().unique(new PiNode(receiver, StampFactory.objectNonNull(speculatedType), guard));
                 arguments().set(0, piNode);
-                setInvokeKind(InvokeKind.Virtual);
+                if (speculatedType.isExact()) {
+                    setInvokeKind(InvokeKind.Special);
+                } else {
+                    setInvokeKind(InvokeKind.Virtual);
+                }
                 setTargetMethod(singleImplementorMethod);
+                return true;
             }
         }
+        return false;
     }
 
     public JavaTypeProfile getProfile() {
         return profile;
-    }
-
-    @Override
-    public Stamp returnStamp() {
-        JavaKind returnKind = targetMethod().getSignature().getReturnKind();
-        if (returnKind == JavaKind.Object && returnType instanceof ResolvedJavaType) {
-            return StampFactory.declared((ResolvedJavaType) returnType);
-        } else {
-            return StampFactory.forKind(returnKind);
-        }
-    }
-
-    public JavaType returnType() {
-        return returnType;
     }
 
     @Override

@@ -25,10 +25,10 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -40,8 +40,8 @@ public final class IdentityHashCodeNode extends PureFunctionMacroNode {
 
     public static final NodeClass<IdentityHashCodeNode> TYPE = NodeClass.create(IdentityHashCodeNode.class);
 
-    public IdentityHashCodeNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode object) {
-        super(TYPE, invokeKind, targetMethod, bci, returnType, object);
+    public IdentityHashCodeNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode object) {
+        super(TYPE, invokeKind, targetMethod, bci, returnStamp, object);
     }
 
     @Override

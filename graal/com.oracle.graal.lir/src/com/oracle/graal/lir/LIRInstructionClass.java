@@ -37,7 +37,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
-    public static final <T extends LIRInstruction> LIRInstructionClass<T> create(Class<T> c) {
+    public static <T extends LIRInstruction> LIRInstructionClass<T> create(Class<T> c) {
         return new LIRInstructionClass<>(c);
     }
 

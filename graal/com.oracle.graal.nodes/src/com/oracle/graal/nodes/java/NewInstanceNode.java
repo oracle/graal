@@ -29,6 +29,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
@@ -56,7 +57,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
     }
 
     protected NewInstanceNode(NodeClass<? extends NewInstanceNode> c, ResolvedJavaType type, boolean fillContents, FrameState stateBefore) {
-        super(c, StampFactory.exactNonNull(type), fillContents, stateBefore);
+        super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)), fillContents, stateBefore);
         assert !type.isArray() && !type.isInterface() && !type.isPrimitive();
         this.instanceClass = type;
     }

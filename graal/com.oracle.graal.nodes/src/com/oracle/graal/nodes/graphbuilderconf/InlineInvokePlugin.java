@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.graphbuilderconf;
 
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.nodes.Invoke;
@@ -95,9 +94,8 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
      * @param b the context
      * @param method the target method of an invoke
      * @param args the arguments to the invoke
-     * @param returnType the return type derived from {@code method}'s signature
      */
-    default InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+    default InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         return null;
     }
 

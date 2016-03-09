@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ParameterNode;
@@ -109,10 +109,10 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     }
 
     @Override
-    public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
-        ResolvedJavaType type = StampTool.typeOrNull(stamp);
+    public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
+        ResolvedJavaType type = StampTool.typeOrNull(stamp.getTrustedStamp());
         if (wordTypes.isWord(type)) {
-            return new ParameterNode(index, wordTypes.getWordStamp(type));
+            return new ParameterNode(index, StampPair.createSingle(wordTypes.getWordStamp(type)));
         }
         return null;
     }
@@ -127,7 +127,7 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
         if (field.getType() instanceof ResolvedJavaType && wordTypes.isWord((ResolvedJavaType) field.getType())) {
-            LoadFieldNode loadFieldNode = new LoadFieldNode(receiver, field);
+            LoadFieldNode loadFieldNode = LoadFieldNode.create(b.getAssumptions(), receiver, field);
             loadFieldNode.setStamp(wordTypes.getWordStamp((ResolvedJavaType) field.getType()));
             b.addPush(field.getJavaKind(), loadFieldNode);
             return true;
@@ -156,7 +156,7 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     }
 
     protected LoadIndexedNode createLoadIndexedNode(ValueNode array, ValueNode index) {
-        return new LoadIndexedNode(array, index, wordTypes.getWordKind());
+        return new LoadIndexedNode(null, array, index, wordTypes.getWordKind());
     }
 
     @Override
