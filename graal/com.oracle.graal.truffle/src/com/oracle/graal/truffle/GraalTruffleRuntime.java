@@ -250,8 +250,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private static final class FrameVisitor<T> implements InspectedFrameVisitor<T> {
 
         private final FrameInstanceVisitor<T> visitor;
-        private final ResolvedJavaMethod callTargetMethod;
-        private final ResolvedJavaMethod callNodeMethod;
+        private final CallMethods methods;
 
         private boolean first = true;
         private int skipFrames;
@@ -260,13 +259,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
         FrameVisitor(FrameInstanceVisitor<T> visitor, CallMethods methods, int skip) {
             this.visitor = visitor;
-            this.callTargetMethod = methods.callTargetMethod;
-            this.callNodeMethod = methods.callNodeMethod;
+            this.methods = methods;
             this.skipFrames = skip;
         }
 
         public T visitFrame(InspectedFrame frame) {
-            if (frame.isMethod(callTargetMethod)) {
+            if (frame.isMethod(methods.callOSRMethod)) {
+                // we ignore OSR frames.
+                skipFrames++;
+                return null;
+            } else if (frame.isMethod(methods.callTargetMethod)) {
                 try {
                     if (skipFrames == 0) {
                         return visitor.visitFrame(new GraalFrameInstance(first, frame, callNodeFrame));
@@ -277,7 +279,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
                     callNodeFrame = null;
                     first = false;
                 }
-            } else if (frame.isMethod(callNodeMethod)) {
+            } else if (frame.isMethod(methods.callNodeMethod)) {
                 callNodeFrame = frame;
             }
             return null;
@@ -569,12 +571,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected static final class CallMethods {
         public final ResolvedJavaMethod callNodeMethod;
         public final ResolvedJavaMethod callTargetMethod;
+        public final ResolvedJavaMethod callOSRMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
 
         private CallMethods(MetaAccessProvider metaAccess) {
             this.callNodeMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
             this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
-            this.anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod, callTargetMethod};
+            this.callOSRMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_OSR_METHOD);
+            this.anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod, callTargetMethod, callOSRMethod};
         }
 
         public static CallMethods lookup(MetaAccessProvider metaAccess) {
