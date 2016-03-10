@@ -26,7 +26,7 @@ First download mx, which is the build tool used by Sulong:
     git clone https://github.com/graalvm/mx
     export PATH=$PWD/mx:$PATH
 
-Then, use mx to clone the Sulong project and its dependencies:
+Then, use git to clone the Sulong project and its dependencies:
 
     git clone https://github.com/graalvm/sulong
 
