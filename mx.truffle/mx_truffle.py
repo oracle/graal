@@ -118,14 +118,16 @@ class TruffleArchiveParticipant:
         metainfFile = self._truffle_metainf_file(arcname)
         if metainfFile:
             propertyRe = TruffleArchiveParticipant.PROPERTY_RE
-            properties = self.settings.setdefault(metainfFile, {})
-            for line in contents.split('\n'):
-                if not line.startswith('#') and not len(line) == 0:
+            properties = {}
+            for line in contents.strip().split('\n'):
+                if not line.startswith('#'):
                     m = propertyRe.match(line)
                     assert m, 'line in ' + arcname + ' does not match ' + propertyRe.pattern + ': ' + line
                     enum = m.group(1)
                     prop = m.group(2)
                     properties.setdefault(enum, []).append(prop)
+
+            self.settings.setdefault(metainfFile, []).append(properties)
             return True
         return False
 
@@ -133,16 +135,17 @@ class TruffleArchiveParticipant:
         return False
 
     def __closing__(self):
-        for metainfFile, properties in self.settings.iteritems():
+        for metainfFile, propertiesList in self.settings.iteritems():
             arcname = 'META-INF/truffle/' + metainfFile
             lines = []
             counter = 1
-            for enum in sorted(properties.viewkeys()):
-                assert enum.startswith(metainfFile)
-                newEnum = metainfFile + str(counter)
-                counter += 1
-                for prop in properties[enum]:
-                    lines.append(newEnum + prop)
+            for properties in propertiesList:
+                for enum in sorted(properties.viewkeys()):
+                    assert enum.startswith(metainfFile)
+                    newEnum = metainfFile + str(counter)
+                    counter += 1
+                    for prop in properties[enum]:
+                        lines.append(newEnum + prop)
 
             content = os.linesep.join(lines)
             self.arc.zf.writestr(arcname, content + os.linesep)
