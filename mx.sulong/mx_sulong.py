@@ -332,15 +332,15 @@ def runTypeTestCases(args=None):
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
 
 def getCommonOptions():
-    return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true']
+    return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true', getSearchPathOption()]
 
 # other OSs?
 def getSearchPathOption():
-    return '-Dsulong.DynamicNativeLibraryPath=libgfortran.so.3:libstdc++.so.6:libc.so.6'
+    return '-Dsulong.DynamicNativeLibraryPath=libgfortran.so.3:libstdc++.so.6:libc.so.6:libgmp.so.10'
 
 
 def getCommonUnitTestOptions():
-    return getCommonOptions() + ['-Xss56m', getSearchPathOption(), getLLVMRootOption()]
+    return getCommonOptions() + ['-Xss56m', getLLVMRootOption()]
 
 # PE does not work yet for all test cases
 def compilationSucceedsOption():
@@ -466,7 +466,7 @@ def gccBench(args=None):
     return mx.run(['./a.out'])
 
 def standardLinkerCommands(args=None):
-    return ['-lm']
+    return ['-lm', '-lgmp']
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
