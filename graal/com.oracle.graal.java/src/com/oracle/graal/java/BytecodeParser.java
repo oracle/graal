@@ -295,6 +295,7 @@ import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
@@ -2190,15 +2191,16 @@ public class BytecodeParser implements GraphBuilderContext {
 
             BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
             ValueNode exception = frameState.stack[0];
-            CheckCastNode checkCast = graph.add(new CheckCastNode(checkedCatchType, exception, null, false));
+            ObjectStamp checkedStamp = StampFactory.objectNonNull(checkedCatchType);
+            PiNode piNode = graph.addWithoutUnique(new PiNode(exception, checkedStamp));
             frameState.pop(JavaKind.Object);
-            frameState.push(JavaKind.Object, checkCast);
+            frameState.push(JavaKind.Object, piNode);
             FixedNode catchSuccessor = createTarget(block.getSuccessor(0), frameState);
             frameState.pop(JavaKind.Object);
             frameState.push(JavaKind.Object, exception);
             FixedNode nextDispatch = createTarget(nextBlock, frameState);
-            checkCast.setNext(catchSuccessor);
-            append(new IfNode(graph.unique(InstanceOfNode.create(checkedCatchType, exception, null)), checkCast, nextDispatch, 0.5));
+            IfNode ifNode = append(new IfNode(graph.unique(InstanceOfNode.create(checkedCatchType, exception, null)), catchSuccessor, nextDispatch, 0.5));
+            piNode.setGuard(ifNode.trueSuccessor());
         } else {
             handleUnresolvedExceptionType(catchType);
         }
