@@ -120,6 +120,12 @@ public class LLVMOptions {
                         PropertyCategory.TESTS),
         DYN_LIBRARY_PATHS("DynamicNativeLibraryPath", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath, PropertyCategory.GENERAL),
         PROJECT_ROOT("ProjectRoot", "Overrides the root of the project. This option exists to set the project root from mx", ".", LLVMOptions::parseString, PropertyCategory.MX),
+        OPTIMIZATIONS_DISABLE_SPECULATIVE(
+                        "DisableSpeculativeOptimizations",
+                        "Disables all speculative optimizations regardless if they would be enabled otherwise",
+                        "false",
+                        LLVMOptions::parseBoolean,
+                        PropertyCategory.PERFORMANCE),
         OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("SpecializeExpectIntrinsic", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("ValueProfileMemoryReads", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_INJECT_PROBS_SELECT("InjectProbabilitySelect", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
@@ -259,15 +265,15 @@ public class LLVMOptions {
     }
 
     public static boolean specializeForExpectIntrinsic() {
-        return getParsedProperty(Property.OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC);
+        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC);
     }
 
     public static boolean valueProfileMemoryReads() {
-        return getParsedProperty(Property.OPTIMIZATION_VALUE_PROFILE_MEMORY_READS);
+        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_VALUE_PROFILE_MEMORY_READS);
     }
 
     public static boolean injectBranchProbabilitiesForSelect() {
-        return getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_SELECT);
+        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_SELECT);
     }
 
     public static boolean intrinsifyCLibraryFunctions() {
@@ -275,11 +281,15 @@ public class LLVMOptions {
     }
 
     public static boolean injectBranchProbabilitiesForConditionalBranch() {
-        return getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_COND_BRANCH);
+        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_COND_BRANCH);
     }
 
     public static boolean printNativeCallStats() {
         return getParsedProperty(Property.NATIVE_CALL_STATS);
+    }
+
+    public static boolean disableSpeculativeOptimizations() {
+        return getParsedProperty(Property.OPTIMIZATIONS_DISABLE_SPECULATIVE);
     }
 
     public static boolean lifeTimeAnalysisEnabled() {
