@@ -432,14 +432,14 @@ def suOptBench(args=None):
     outputFile = 'test.ll'
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
-        mx.run(['clang', '-S', '-emit-llvm', '-o', outputFile, inputFile])
-        mx.run(['opt', '-S', '-o', outputFile, '-mem2reg', outputFile])
+        compileWithClang(['-S', '-emit-llvm', '-o', outputFile, inputFile])
+        opt(['-S', '-o', outputFile, '-mem2reg', outputFile])
     elif ext == '.cpp':
-        mx.run(['clang++', '-S', '-emit-llvm', '-o', outputFile, inputFile])
-        mx.run(['opt', '-S', '-o', outputFile, '-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg', outputFile])
+        compileWithClangPP(['-S', '-emit-llvm', '-o', outputFile, inputFile])
+        opt(['-S', '-o', outputFile, '-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg', outputFile])
     else:
         exit(ext + " is not supported!")
-    mx.run(['opt', '-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
+    opt(['-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
     return runLLVM([getSearchPathOption(), '-Dsulong.IntrinsifyCFunctions=false', 'test.ll'] + vmArgs)
 
 def clangBench(args=None):
