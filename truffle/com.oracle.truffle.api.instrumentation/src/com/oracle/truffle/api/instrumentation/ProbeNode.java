@@ -32,7 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.ClientInstrumenter;
+import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.source.SourceSection;
@@ -211,7 +211,7 @@ public final class ProbeNode extends Node {
 
     static void failEventForClientInstrument(EventBinding<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
-        ClientInstrumenter clientInstrumenter = (ClientInstrumenter) b.getInstrumenter();
+        InstrumentClientInstrumenter clientInstrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
         Class<?> instrumentClass = clientInstrumenter.getInstrumentClass();
 
         String message = String.format("Event %s failed for instrument class %s and listener/factory %s.", //

@@ -26,7 +26,7 @@ package com.oracle.truffle.api.instrumentation;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AbstractInstrumenter;
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.LanguageInstrumenter;
+import com.oracle.truffle.api.instrumentation.InstrumentationHandler.LanguageClientInstrumenter;
 
 /**
  * Represents a binding from a {@link SourceSectionFilter} instance for a particular
@@ -61,7 +61,7 @@ public final class EventBinding<T> {
     }
 
     boolean isLanguageBinding() {
-        return instrumenter instanceof LanguageInstrumenter;
+        return instrumenter instanceof LanguageClientInstrumenter;
     }
 
     AbstractInstrumenter getInstrumenter() {
