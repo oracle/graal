@@ -161,7 +161,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             } else {
                 // TODO (ds) replace with probability of null-seen when available
                 double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
-                LogicNode typeTest = graph().addOrUnique(InstanceOfNode.create(type, object, profile));
+                LogicNode typeTest = graph().addOrUniqueWithInputs(InstanceOfNode.create(type, object, profile));
                 innerNode = typeTest;
                 condition = LogicNode.or(graph().unique(new IsNullNode(object)), typeTest, shortCircuitProbability);
             }
