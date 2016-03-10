@@ -439,7 +439,8 @@ def suOptBench(args=None):
         mx.run(['opt', '-S', '-o', outputFile, '-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg', outputFile])
     else:
         exit(ext + " is not supported!")
-    return runLLVM([getSearchPathOption(), 'test.ll'] + vmArgs)
+    mx.run(['opt', '-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
+    return runLLVM([getSearchPathOption(), '-Dsulong.IntrinsifyCFunctions=false', 'test.ll'] + vmArgs)
 
 def clangBench(args=None):
     """ Executes a benchmark with the system default Clang"""
