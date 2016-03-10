@@ -54,6 +54,33 @@ public abstract class AbstractObjectStampTest extends GraalCompilerTest {
 
     }
 
+    protected interface OtherI {
+
+    }
+
+    protected interface SubI1 extends I {
+
+    }
+
+    protected interface SubI2 extends I {
+
+    }
+
+    protected interface SubI3 extends I {
+
+    }
+
+    protected interface SubI4 extends SubI1, SubI3 {
+
+    }
+
+    protected interface SubI5 extends OtherI, SubI3 {
+
+    }
+
+    /**
+     * Joins the two stamps and also asserts that the meet operation is commutative.
+     */
     protected static Stamp join(Stamp a, Stamp b) {
         Stamp ab = a.join(b);
         Stamp ba = b.join(a);
@@ -61,6 +88,9 @@ public abstract class AbstractObjectStampTest extends GraalCompilerTest {
         return ab;
     }
 
+    /**
+     * Meets the two stamps and also asserts that the meet operation is commutative.
+     */
     protected static Stamp meet(Stamp a, Stamp b) {
         Stamp ab = a.meet(b);
         Stamp ba = b.meet(a);
