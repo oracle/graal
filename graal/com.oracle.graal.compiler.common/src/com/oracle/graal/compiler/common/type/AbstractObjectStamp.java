@@ -266,7 +266,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
                 for (int i = 0; i < interfacesA.length; ++i) {
                     ResolvedJavaType interface1 = interfacesA[i];
                     for (int j = 0; j < interfacesB.length; ++j) {
-                        ResolvedJavaType interface2 = interfacesB[i];
+                        ResolvedJavaType interface2 = interfacesB[j];
                         ResolvedJavaType leastCommon = meetTypes(interface1, interface2);
                         if (leastCommon.isInterface()) {
                             return leastCommon;

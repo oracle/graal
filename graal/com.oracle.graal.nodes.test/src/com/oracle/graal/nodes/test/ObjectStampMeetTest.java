@@ -119,6 +119,11 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
         check(SubI4.class, SubI5.class, SubI3.class);
     }
 
+    @Test
+    public void testMeetInterface4() {
+        check(SubI4.class, SubI6.class, Object.class);
+    }
+
     private void check(Class<?> a, Class<?> b, Class<?> result) {
         Stamp aStamp = StampFactory.object(getType(a));
         Stamp bStamp = StampFactory.object(getType(b));

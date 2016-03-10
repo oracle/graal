@@ -70,11 +70,14 @@ public abstract class AbstractObjectStampTest extends GraalCompilerTest {
 
     }
 
-    protected interface SubI4 extends SubI1, SubI3 {
+    protected interface SubI4 extends SubI3, SubI1 {
+    }
+
+    protected interface SubI5 extends SubI3, OtherI {
 
     }
 
-    protected interface SubI5 extends OtherI, SubI3 {
+    protected interface SubI6 extends OtherI {
 
     }
 
