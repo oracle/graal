@@ -78,7 +78,9 @@ public class BenchmarkGameSuite extends TestSuiteBase {
         C_MANDELBROT4("mandelbrot/mandelbrot.gcc-9.gcc.c", 500),
         C_NBODY1("nbody/nbody.cint.c", 10),
         C_SPECTRALNORM1("spectralnorm/spectralnorm.cint.c", 150),
-        C_SPECTRALNORM2("spectralnorm/spectralnorm.gcc-2.gcc.c", 150);
+        C_SPECTRALNORM2("spectralnorm/spectralnorm.gcc-2.gcc.c", 150),
+        C_PIDIGTS("pidigits/pidigits.cint-4.cint.c", 10000),
+        C_PIDIGITS2("pidigits/pidigits.gcc.c", 10000);
 
         private File file;
         private String arg;
