@@ -258,7 +258,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
             return null;
         } else {
             ResolvedJavaType result = a.findLeastCommonAncestor(b);
-            if (result.getSuperclass() == null && a.isInterface() && b.isInterface()) {
+            if (result.isJavaLangObject() && a.isInterface() && b.isInterface()) {
                 // Both types are incompatible interfaces => search for first possible common
                 // ancestor match among super interfaces.
                 ResolvedJavaType[] interfacesA = a.getInterfaces();
