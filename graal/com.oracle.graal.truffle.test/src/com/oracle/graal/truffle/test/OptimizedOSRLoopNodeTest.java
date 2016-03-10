@@ -64,10 +64,8 @@ public class OptimizedOSRLoopNodeTest {
     private static final int OSR_THRESHOLD = TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue();
     private static final int OSR_INVALIDATION_REPROFILE = TruffleCompilerOptions.TruffleInvalidationReprofileCount.getValue();
 
-    @DataPoint public static final OSRLoopFactory CONFIGURED = (repeating, readFrameSlots,
-                    writtenFrameSlots) -> OptimizedOSRLoopNode.createOSRLoop(repeating, OSR_THRESHOLD,
-                    OSR_INVALIDATION_REPROFILE,
-                    readFrameSlots, writtenFrameSlots);
+    @DataPoint public static final OSRLoopFactory CONFIGURED = (repeating, readFrameSlots, writtenFrameSlots) -> OptimizedOSRLoopNode.createOSRLoop(repeating, OSR_THRESHOLD,
+                    OSR_INVALIDATION_REPROFILE, readFrameSlots, writtenFrameSlots);
 
     @DataPoint public static final OSRLoopFactory DEFAULT = (repeating, readFrameSlots,
                     writtenFrameSlots) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);
@@ -212,7 +210,7 @@ public class OptimizedOSRLoopNodeTest {
     }
 
     /*
-     * Test that if a call target is called a min invocation thresholöd times it is unlikely that it
+     * Test that if a call target is called a min invocation theshold times it is unlikely that it
      * needs OSR at all.
      */
     @Theory
@@ -501,7 +499,7 @@ public class OptimizedOSRLoopNodeTest {
         rootNode.execute(Truffle.getRuntime().createVirtualFrame(new Object[]{count}, rootNode.getFrameDescriptor()));
     }
 
-    private static interface OSRLoopFactory {
+    private interface OSRLoopFactory {
         OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, FrameSlot[] readFrameSlots, FrameSlot[] writtenframeSlots);
     }
 

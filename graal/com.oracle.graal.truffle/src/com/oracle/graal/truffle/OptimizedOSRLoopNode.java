@@ -352,7 +352,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
      */
     private static final class OptimizedDefaultOSRLoopNode extends OptimizedOSRLoopNode {
 
-        public OptimizedDefaultOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold) {
+        OptimizedDefaultOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold) {
             super(repeatableNode, osrThreshold);
         }
 
@@ -367,7 +367,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
      * Used in guest languages with Graal runtime access that require more revirtualization of local
      * variables and more configuration options.
      */
-    private static class OptimizedVirtualizingOSRLoopNode extends OptimizedOSRLoopNode {
+    private static final class OptimizedVirtualizingOSRLoopNode extends OptimizedOSRLoopNode {
 
         private final int invalidationBackoff;
         @CompilationFinal private final FrameSlot[] readFrameSlots;
