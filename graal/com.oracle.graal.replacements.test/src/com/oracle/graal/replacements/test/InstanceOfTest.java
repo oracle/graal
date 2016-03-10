@@ -44,7 +44,6 @@ import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.InstanceOfNode;
-import com.oracle.graal.nodes.java.TypeCheckNode;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth12;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth13;
@@ -63,7 +62,7 @@ public class InstanceOfTest extends TypeCheckTest {
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         InstanceOfNode ion = graph.getNodes().filter(InstanceOfNode.class).first();
         if (ion != null) {
-            LogicNode ionNew = graph.unique(InstanceOfNode.create(TypeReference.createTrusted(graph.getAssumptions(), ion.type().getType()), ion.getValue(), profile));
+            LogicNode ionNew = graph.addOrUniqueWithInputs(InstanceOfNode.create(TypeReference.createTrusted(graph.getAssumptions(), ion.type().getType()), ion.getValue(), profile));
             ion.replaceAtUsagesAndDelete(ionNew);
         }
     }
@@ -471,10 +470,6 @@ public class InstanceOfTest extends TypeCheckTest {
         return thread != null && ((Object) thread) instanceof String;
     }
 
-    /**
-     * {@link TypeCheckNode} and {@link InstanceOfNode} should be equivalently powerful when
-     * comparing disjoint types.
-     */
     @Test
     public void testTypeCheck() {
         testConstantReturn("exactlyObject", 0);

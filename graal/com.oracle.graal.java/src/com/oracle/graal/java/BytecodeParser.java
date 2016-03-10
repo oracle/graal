@@ -306,7 +306,6 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
@@ -404,7 +403,6 @@ import com.oracle.graal.nodes.java.NewMultiArrayNode;
 import com.oracle.graal.nodes.java.RegisterFinalizerNode;
 import com.oracle.graal.nodes.java.StoreFieldNode;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
-import com.oracle.graal.nodes.java.TypeCheckNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -1110,7 +1108,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genUnique(ValueNode x) {
-        return (ValueNode) graph.unique((Node & ValueNumberable) x);
+        return graph.addOrUniqueWithInputs(x);
     }
 
     protected ValueNode genIfNode(LogicNode condition, FixedNode falseSuccessor, FixedNode trueSuccessor, double d) {
@@ -2184,7 +2182,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         ValueNode exception = frameState.stack[0];
                         FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                         FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                        append(new IfNode(graph.unique(InstanceOfNode.create(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
+                        append(new IfNode(graph.addOrUniqueWithInputs(InstanceOfNode.create(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
                         return;
                     }
                 }
@@ -2976,7 +2974,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
-                    LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
+                    LogicNode typeCheck = append(InstanceOfNode.create(TypeReference.createExactTrusted(singleType), object, null));
                     if (typeCheck.isTautology()) {
                         checkCastNode = object;
                     } else {
@@ -3029,7 +3027,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
-                    LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
+                    LogicNode typeCheck = append(InstanceOfNode.create(TypeReference.createExactTrusted(singleType), object, null));
                     if (!typeCheck.isTautology()) {
                         append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
                     }

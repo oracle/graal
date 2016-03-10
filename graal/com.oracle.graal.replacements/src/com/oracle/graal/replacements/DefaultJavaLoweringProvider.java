@@ -58,7 +58,6 @@ import com.oracle.graal.nodes.ConditionAnchorNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -69,7 +68,6 @@ import com.oracle.graal.nodes.calc.IntegerConvertNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.calc.LeftShiftNode;
 import com.oracle.graal.nodes.calc.NarrowNode;
-import com.oracle.graal.nodes.calc.PointerEqualsNode;
 import com.oracle.graal.nodes.calc.RightShiftNode;
 import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.nodes.calc.SubNode;
@@ -104,7 +102,6 @@ import com.oracle.graal.nodes.java.NewInstanceNode;
 import com.oracle.graal.nodes.java.RawMonitorEnterNode;
 import com.oracle.graal.nodes.java.StoreFieldNode;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
-import com.oracle.graal.nodes.java.TypeCheckNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.ReadNode;
 import com.oracle.graal.nodes.memory.WriteNode;
@@ -184,21 +181,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             boxingSnippets.lower((BoxNode) n, tool);
         } else if (n instanceof UnboxNode) {
             boxingSnippets.lower((UnboxNode) n, tool);
-        } else if (n instanceof TypeCheckNode) {
-            lowerTypeCheckNode((TypeCheckNode) n, tool, graph);
         } else if (n instanceof VerifyHeapNode) {
             lowerVerifyHeap((VerifyHeapNode) n);
         } else {
             throw JVMCIError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
         }
-    }
-
-    private void lowerTypeCheckNode(TypeCheckNode n, LoweringTool tool, StructuredGraph graph) {
-        ValueNode hub = createReadHub(graph, n.getValue(), tool);
-        ValueNode clazz = graph.unique(ConstantNode.forConstant(tool.getStampProvider().createHubStamp((ObjectStamp) n.getValue().stamp()), tool.getConstantReflection().asObjectHub(n.type()),
-                        tool.getMetaAccess()));
-        LogicNode objectEquals = graph.unique(PointerEqualsNode.create(hub, clazz));
-        n.replaceAndDelete(objectEquals);
     }
 
     protected void lowerVerifyHeap(VerifyHeapNode n) {

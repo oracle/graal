@@ -69,7 +69,6 @@ import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.java.ClassIsAssignableFromNode;
 import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
-import com.oracle.graal.nodes.java.TypeCheckNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.InstanceOfSnippetsTemplates;
 import com.oracle.graal.replacements.Snippet;
@@ -285,16 +284,6 @@ public class InstanceOfSnippets implements Snippets {
                 if (hintInfo.hintHitProbability >= 1.0 && hintInfo.exact == null) {
                     args.addConst("nullSeen", hintInfo.profile.getNullSeen() != TriState.FALSE);
                 }
-                return args;
-
-            } else if (replacer.instanceOf instanceof TypeCheckNode) {
-                TypeCheckNode typeCheck = (TypeCheckNode) replacer.instanceOf;
-                ValueNode object = typeCheck.getValue();
-                Arguments args = new Arguments(instanceofExact, typeCheck.graph().getGuardsStage(), tool.getLoweringStage());
-                args.add("object", object);
-                args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) typeCheck.type()).klass(), providers.getMetaAccess(), typeCheck.graph()));
-                args.add("trueValue", replacer.trueValue);
-                args.add("falseValue", replacer.falseValue);
                 return args;
             } else if (replacer.instanceOf instanceof InstanceOfDynamicNode) {
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;

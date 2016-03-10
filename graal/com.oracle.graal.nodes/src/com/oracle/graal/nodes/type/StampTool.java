@@ -175,7 +175,7 @@ public class StampTool {
             if (abstractObjectStamp.isExactType()) {
                 return TypeReference.createExactTrusted(abstractObjectStamp.type());
             } else {
-                return TypeReference.createWithoutAssumptions(abstractObjectStamp.type());
+                return TypeReference.createTrustedWithoutAssumptions(abstractObjectStamp.type());
             }
         }
         return null;

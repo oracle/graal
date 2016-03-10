@@ -34,18 +34,9 @@ import com.oracle.graal.compiler.common.type.TypeReference;
 
 public class ObjectStampMeetTest extends AbstractObjectStampTest {
 
-    // class A
-    // class B extends A
-    // class C extends B implements I
-    // class D extends A
-    // abstract class E extends A
-    // interface I
-
     @Test
     public void testMeet0() {
-        Stamp a = StampFactory.object(getType(A.class));
-        Stamp b = StampFactory.object(getType(B.class));
-        Assert.assertEquals(a, meet(a, b));
+        check(A.class, B.class, A.class);
     }
 
     @Test
@@ -68,10 +59,7 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
 
     @Test
     public void testMeet3() {
-        Stamp a = StampFactory.object(getType(A.class));
-        Stamp d = StampFactory.object(getType(D.class));
-        Stamp c = StampFactory.object(getType(C.class));
-        Assert.assertEquals(a, meet(c, d));
+        check(C.class, D.class, A.class);
     }
 
     @Test
@@ -83,7 +71,7 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
     }
 
     @Test
-    public void testMeet() {
+    public void testMeet5() {
         Stamp dExact = StampFactory.object(getType(D.class).asExactReference());
         Stamp c = StampFactory.object(getType(C.class));
         Stamp a = StampFactory.object(getType(A.class));
@@ -107,10 +95,40 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
     }
 
     @Test
+    public void testMeet8() {
+        check(A.class, A.class, A.class);
+    }
+
+    @Test
     public void testMeetInterface0() {
-        Stamp a = StampFactory.object(getType(A.class));
-        Stamp i = StampFactory.object(getType(I.class));
-        Assert.assertEquals(StampFactory.object(getType(Object.class)), meet(a, i));
+        check(C.class, I.class, I.class);
+    }
+
+    @Test
+    public void testMeetInterface1() {
+        check(I.class, SubI1.class, I.class);
+    }
+
+    @Test
+    public void testMeetInterface2() {
+        check(SubI1.class, SubI2.class, I.class);
+    }
+
+    @Test
+    public void testMeetInterface3() {
+        check(SubI4.class, SubI5.class, SubI3.class);
+    }
+
+    @Test
+    public void testMeetInterface4() {
+        check(SubI4.class, SubI6.class, Object.class);
+    }
+
+    private void check(Class<?> a, Class<?> b, Class<?> result) {
+        Stamp aStamp = StampFactory.object(getType(a));
+        Stamp bStamp = StampFactory.object(getType(b));
+        ObjectStamp resultStamp = StampFactory.object(getType(result));
+        Assert.assertEquals(resultStamp, meet(aStamp, bStamp));
     }
 
     @Test

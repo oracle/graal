@@ -140,13 +140,13 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             condition = LogicConstantNode.contradiction(graph());
             newStamp = StampFactory.object(type);
         } else if (StampTool.isPointerNonNull(object)) {
-            condition = graph().addWithoutUnique(InstanceOfNode.create(type, object, profile));
+            condition = graph().addWithoutUniqueWithInputs(InstanceOfNode.create(type, object, profile));
             innerNode = condition;
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
                 FixedGuardNode nullCheck = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, InvalidateReprofile, JavaConstant.NULL_POINTER, true));
                 PiNode nullGuarded = graph().unique(new PiNode(object, object().stamp().join(StampFactory.objectNonNull()), nullCheck));
-                LogicNode typeTest = graph().addWithoutUnique(InstanceOfNode.create(type, nullGuarded, profile));
+                LogicNode typeTest = graph().addWithoutUniqueWithInputs(InstanceOfNode.create(type, nullGuarded, profile));
                 innerNode = typeTest;
                 graph().addBeforeFixed(this, nullCheck);
                 condition = typeTest;
@@ -161,7 +161,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             } else {
                 // TODO (ds) replace with probability of null-seen when available
                 double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
-                LogicNode typeTest = graph().addOrUnique(InstanceOfNode.create(type, object, profile));
+                LogicNode typeTest = graph().addOrUniqueWithInputs(InstanceOfNode.create(type, object, profile));
                 innerNode = typeTest;
                 condition = LogicNode.or(graph().unique(new IsNullNode(object)), typeTest, shortCircuitProbability);
             }
@@ -180,7 +180,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
     @Override
     public boolean inferStamp() {
         if (object().stamp() instanceof ObjectStamp) {
-            ObjectStamp castStamp = (ObjectStamp) StampFactory.object(type);
+            ObjectStamp castStamp = StampFactory.object(type);
             return updateStamp(castStamp.improveWith(object().stamp()));
         }
         return false;
