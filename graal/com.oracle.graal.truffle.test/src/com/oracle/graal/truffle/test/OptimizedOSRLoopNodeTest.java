@@ -66,8 +66,8 @@ public class OptimizedOSRLoopNodeTest {
 
     @DataPoint public static final OSRLoopFactory CONFIGURED = (repeating, readFrameSlots,
                     writtenFrameSlots) -> OptimizedOSRLoopNode.createOSRLoop(repeating, OSR_THRESHOLD,
-                                    OSR_INVALIDATION_REPROFILE,
-                                    readFrameSlots, writtenFrameSlots);
+                    OSR_INVALIDATION_REPROFILE,
+                    readFrameSlots, writtenFrameSlots);
 
     @DataPoint public static final OSRLoopFactory DEFAULT = (repeating, readFrameSlots,
                     writtenFrameSlots) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);

@@ -76,7 +76,8 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
-public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, ReplaceObserver {
+@SuppressWarnings("deprecation")
+public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
     private static final RootNode UNINITIALIZED = RootNode.createConstantNode(null);
 
     protected final GraalTruffleRuntime runtime;
@@ -489,7 +490,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return castArguments;
     }
 
-    private static Object castArrayFixedLength(Object[] args, @SuppressWarnings("unused") int length) {
+    private static Object castArrayFixedLength(Object[] args, int length) {
         return args;
     }
 
@@ -515,6 +516,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     final void onLoopCount(int count) {
+        compilationProfile.reportLoopCount(count);
+    }
+
+    /*
+     * For compatibility of Graal runtime with older Truffle runtime. Remove after 0.12.
+     */
+    public void reportLoopCount(int count) {
         compilationProfile.reportLoopCount(count);
     }
 
@@ -598,7 +606,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return DefaultCompilerOptions.INSTANCE;
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
+    @SuppressWarnings({"unchecked"})
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
     }
