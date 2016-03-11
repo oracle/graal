@@ -490,6 +490,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return castArguments;
     }
 
+    /**
+     * @param length avoid warning
+     */
     private static Object castArrayFixedLength(Object[] args, int length) {
         return args;
     }
@@ -606,6 +609,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return DefaultCompilerOptions.INSTANCE;
     }
 
+    /**
+     * @param type avoid warning
+     * @param condition avoid warning
+     * @param nonNull avoid warning
+     */
     @SuppressWarnings({"unchecked"})
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
