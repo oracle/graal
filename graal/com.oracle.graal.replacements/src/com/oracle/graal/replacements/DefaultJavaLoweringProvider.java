@@ -315,6 +315,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode value = storeIndexed.value();
         ValueNode array = storeIndexed.array();
         FixedWithNextNode checkCastNode = null;
+        LogicNode condition = null;
         if (elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
             /* Array store check. */
             TypeReference arrayType = StampTool.typeReferenceOrNull(array);
@@ -323,10 +324,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (!elementType.isJavaLangObject()) {
                     TypeReference typeReference = TypeReference.createTrusted(storeIndexed.graph().getAssumptions(), elementType);
                     LogicNode typeTest = graph.addOrUniqueWithInputs(InstanceOfNode.create(typeReference, value, null));
-                    LogicNode condition = LogicNode.or(graph.unique(new IsNullNode(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
-                    GuardingNode guard = tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
-                    PiNode piNode = graph.unique(new PiNode(value, StampFactory.object(), (ValueNode) guard));
-                    value = piNode;
+                    condition = LogicNode.or(graph.unique(new IsNullNode(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
                 }
             } else {
                 /*
@@ -337,10 +335,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 assert nullCheckReturn[0] != null || createNullCheck(array, storeIndexed, tool) == null;
                 ValueNode arrayClass = createReadHub(graph, graph.unique(new PiNode(array, (ValueNode) nullCheck)), tool);
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
-                LogicNode instanceOfNode = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value));
-                GuardingNode guard = tool.createGuard(storeIndexed, instanceOfNode, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
-                PiNode piNode = graph.unique(new PiNode(value, StampFactory.object(), (ValueNode) guard));
-                value = piNode;
+                condition = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value));
             }
         }
 
@@ -348,6 +343,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(elementKind), implicitStoreConvert(graph, elementKind, value),
                         arrayStoreBarrierType(storeIndexed.elementKind())));
         memoryWrite.setGuard(boundsCheck);
+        if (condition != null) {
+            GuardingNode storeCheckGuard = tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
+            memoryWrite.setStoreCheckGuard(storeCheckGuard);
+        }
         memoryWrite.setStateAfter(storeIndexed.stateAfter());
         graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 

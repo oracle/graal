@@ -401,7 +401,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
             private final Assumptions assumptions;
 
-            public Tool(Assumptions assumptions) {
+            Tool(Assumptions assumptions) {
                 this.assumptions = assumptions;
             }
 
