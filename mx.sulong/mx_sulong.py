@@ -62,6 +62,37 @@ def executeGate():
         with Task('TestNWCC', tasks) as t:
             if t: runNWCCTestCases()
 
+def travis1(args=None):
+    tasks = []
+    with Task('BuildHotSpotGraalServer: product', tasks) as t:
+        if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
+    with VM('server', 'product'):
+        with Task('Findbugs', tasks) as t:
+            if t: mx_findbugs.findbugs([])
+    with VM('server', 'product'):
+        with Task('TestBenchmarks', tasks) as t:
+            if t: runBenchmarkTestCases()
+    with VM('server', 'product'):
+        with Task('TestTypes', tasks) as t:
+            if t: runTypeTestCases()
+    with VM('server', 'product'):
+        with Task('TestSulong', tasks) as t:
+            if t: runTruffleTestCases()
+    with VM('server', 'product'):
+        with Task('TestLLVM', tasks) as t:
+            if t: runLLVMTestCases()
+    with VM('server', 'product'):
+        with Task('TestNWCC', tasks) as t:
+            if t: runNWCCTestCases()
+
+def travis2(args=None):
+    tasks = []
+    with Task('BuildHotSpotGraalServer: product', tasks) as t:
+        if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
+    with VM('server', 'product'):
+        with Task('TestGCC', tasks) as t:
+            if t: runGCCTestCases()
+
 def localGate(args=None):
     """executes the gate without downloading the dependencies and without building"""
     executeGate()
@@ -497,5 +528,7 @@ mx.update_commands(_suite, {
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
     'su-gcc' : [dragonEgg, ''],
-    'su-g++' : [dragonEggGPP, '']
+    'su-g++' : [dragonEggGPP, ''],
+    'su-travis1' : [travis1, ''],
+    'su-travis2' : [travis2, '']
 })
