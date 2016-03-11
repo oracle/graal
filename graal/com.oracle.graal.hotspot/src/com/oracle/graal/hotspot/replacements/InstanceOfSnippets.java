@@ -196,7 +196,7 @@ public class InstanceOfSnippets implements Snippets {
      * Type test used when the type being tested against is not known at compile time.
      */
     @Snippet
-    public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue, boolean allowNull) {
+    public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean allowNull) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
             if (allowNull) {
@@ -296,9 +296,9 @@ public class InstanceOfSnippets implements Snippets {
                 Arguments args = new Arguments(instanceofDynamic, instanceOf.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", instanceOf.getMirrorOrHub());
                 args.add("object", object);
-                args.add("allowNull", instanceOf.allowsNull());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
+                args.addConst("allowNull", instanceOf.allowsNull());
                 return args;
             } else if (replacer.instanceOf instanceof ClassIsAssignableFromNode) {
                 ClassIsAssignableFromNode isAssignable = (ClassIsAssignableFromNode) replacer.instanceOf;
