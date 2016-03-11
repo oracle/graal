@@ -187,7 +187,7 @@ public class HotSpotGraphBuilderPlugins {
                 if (condition.isTautology()) {
                     b.addPush(JavaKind.Object, object);
                 } else {
-                    FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
+                    FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
                     b.addPush(JavaKind.Object, new PiNode(object, StampFactory.object(), fixedGuard));
                 }
                 return true;

@@ -196,10 +196,14 @@ public class InstanceOfSnippets implements Snippets {
      * Type test used when the type being tested against is not known at compile time.
      */
     @Snippet
-    public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue) {
+    public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue, boolean allowNull) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
-            return falseValue;
+            if (allowNull) {
+                return trueValue;
+            } else {
+                return falseValue;
+            }
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
         KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
@@ -292,6 +296,7 @@ public class InstanceOfSnippets implements Snippets {
                 Arguments args = new Arguments(instanceofDynamic, instanceOf.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", instanceOf.getMirrorOrHub());
                 args.add("object", object);
+                args.add("allowNull", instanceOf.allowsNull());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 return args;

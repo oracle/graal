@@ -136,4 +136,8 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
         this.updateUsages(mirrorOrHub, newObject);
         this.mirrorOrHub = newObject;
     }
+
+    public boolean allowsNull() {
+        return allowNull;
+    }
 }
