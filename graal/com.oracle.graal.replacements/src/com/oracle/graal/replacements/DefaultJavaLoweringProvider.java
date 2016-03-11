@@ -47,6 +47,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
@@ -89,9 +90,9 @@ import com.oracle.graal.nodes.java.AbstractNewObjectNode;
 import com.oracle.graal.nodes.java.AccessIndexedNode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
 import com.oracle.graal.nodes.java.AtomicReadAndWriteNode;
-import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.CompareAndSwapNode;
 import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
+import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.java.LoweredAtomicReadAndWriteNode;
@@ -320,13 +321,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             if (arrayType != null && arrayType.isExact()) {
                 ResolvedJavaType elementType = arrayType.getType().getComponentType();
                 if (!elementType.isJavaLangObject()) {
-                    ValueNode storeCheck = CheckCastNode.create(TypeReference.createTrusted(storeIndexed.graph().getAssumptions(), elementType), value, null, true);
-                    if (storeCheck.graph() == null) {
-                        checkCastNode = (CheckCastNode) storeCheck;
-                        checkCastNode = graph.add(checkCastNode);
-                        graph.addBeforeFixed(storeIndexed, checkCastNode);
-                    }
-                    value = storeCheck;
+                    TypeReference typeReference = TypeReference.createTrusted(storeIndexed.graph().getAssumptions(), elementType);
+                    LogicNode typeTest = graph.addOrUniqueWithInputs(InstanceOfNode.create(typeReference, value, null));
+                    LogicNode condition = LogicNode.or(graph.unique(new IsNullNode(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
+                    GuardingNode guard = tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
+                    PiNode piNode = graph.unique(new PiNode(value, StampFactory.object(), (ValueNode) guard));
+                    value = piNode;
                 }
             } else {
                 /*
