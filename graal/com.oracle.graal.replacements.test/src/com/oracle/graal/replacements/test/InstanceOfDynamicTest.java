@@ -25,10 +25,10 @@ package com.oracle.graal.replacements.test;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
+import com.oracle.graal.nodes.java.TypeProfileNode;
 
 /**
- * Tests for {@link InstanceOfDynamicNode}.
+ * Tests for {@link TypeProfileNode}.
  */
 public class InstanceOfDynamicTest extends GraalCompilerTest {
 

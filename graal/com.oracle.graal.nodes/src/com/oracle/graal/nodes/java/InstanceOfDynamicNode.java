@@ -43,9 +43,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
 /**
- * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not
- * known at compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)}
- * .
+ * The {@code TypeProfileNode} represents a type check where the type being checked is not known at
+ * compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)} .
  */
 @NodeInfo
 public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
@@ -80,7 +79,8 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
         tool.getLowerer().lower(this, tool);
     }
 
-    private static LogicNode findSynonym(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode forMirror, ValueNode forObject, boolean allowNull) {
+    private static LogicNode findSynonym(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode forMirror, ValueNode forObject,
+                    boolean allowNull) {
         if (forMirror.isConstant()) {
             ResolvedJavaType t = constantReflection.asJavaType(forMirror.asConstant());
             if (t != null) {
@@ -118,16 +118,6 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
             return result;
         }
         return this;
-    }
-
-    @Override
-    public ValueNode getX() {
-        return getObject();
-    }
-
-    @Override
-    public ValueNode getY() {
-        return getMirrorOrHub();
     }
 
     public void setMirror(ValueNode newObject) {

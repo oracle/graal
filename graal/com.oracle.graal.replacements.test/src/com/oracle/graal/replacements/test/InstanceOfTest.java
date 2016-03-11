@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.oracle.graal.compiler.common.type.TypeReference;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.code.site.Site;
@@ -39,11 +38,10 @@ import org.junit.Test;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.java.InstanceOfNode;
+import com.oracle.graal.nodes.java.TypeProfileNode;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
 
 /**
@@ -57,11 +55,8 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Override
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
-        InstanceOfNode ion = graph.getNodes().filter(InstanceOfNode.class).first();
-        if (ion != null) {
-            LogicNode ionNew = graph.addOrUniqueWithInputs(InstanceOfNode.create(TypeReference.createTrusted(graph.getAssumptions(), ion.type().getType()), ion.getValue(), profile));
-            ion.replaceAtUsagesAndDelete(ionNew);
-        }
+        TypeProfileNode ion = graph.getNodes().filter(TypeProfileNode.class).first();
+        ion.setProfile(profile);
     }
 
     @Test
