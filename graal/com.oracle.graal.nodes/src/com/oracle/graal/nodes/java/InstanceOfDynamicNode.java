@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.BinaryOpLogicNode;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -38,6 +40,7 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not
@@ -45,11 +48,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * .
  */
 @NodeInfo
-public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
+public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
     public static final NodeClass<InstanceOfDynamicNode> TYPE = NodeClass.create(InstanceOfDynamicNode.class);
-
-    @Input ValueNode object;
-    @Input ValueNode mirrorOrHub;
 
     private final boolean allowNull;
 
@@ -62,15 +62,13 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
     }
 
     protected InstanceOfDynamicNode(ValueNode mirror, ValueNode object, boolean allowNull) {
-        super(TYPE);
-        this.mirrorOrHub = mirror;
-        this.object = object;
+        super(TYPE, mirror, object);
         this.allowNull = allowNull;
         assert mirror.getStackKind() == JavaKind.Object || mirror.getStackKind() == JavaKind.Illegal : mirror.getStackKind();
     }
 
     public boolean isMirror() {
-        return mirrorOrHub.getStackKind() == JavaKind.Object;
+        return getMirrorOrHub().getStackKind() == JavaKind.Object;
     }
 
     public boolean isHub() {
@@ -106,11 +104,11 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
     }
 
     public ValueNode getObject() {
-        return object;
+        return this.getY();
     }
 
     public ValueNode getMirrorOrHub() {
-        return mirrorOrHub;
+        return this.getX();
     }
 
     @Override
@@ -133,11 +131,26 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
     }
 
     public void setMirror(ValueNode newObject) {
-        this.updateUsages(mirrorOrHub, newObject);
-        this.mirrorOrHub = newObject;
+        this.updateUsages(x, newObject);
+        this.x = newObject;
     }
 
     public boolean allowsNull() {
         return allowNull;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        return null;
+    }
+
+    @Override
+    public TriState tryFold(Stamp xStamp, Stamp yStamp) {
+        return TriState.UNKNOWN;
     }
 }
