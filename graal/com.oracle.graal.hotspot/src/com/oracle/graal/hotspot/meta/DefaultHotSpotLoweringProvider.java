@@ -80,7 +80,6 @@ import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.NarrowOopStamp;
 import com.oracle.graal.hotspot.replacements.AssertionSnippets;
-import com.oracle.graal.hotspot.replacements.CheckCastDynamicSnippets;
 import com.oracle.graal.hotspot.replacements.ClassGetHubNode;
 import com.oracle.graal.hotspot.replacements.HubGetClassNode;
 import com.oracle.graal.hotspot.replacements.InstanceOfSnippets;
@@ -128,7 +127,6 @@ import com.oracle.graal.nodes.extended.OSRLocalNode;
 import com.oracle.graal.nodes.extended.OSRStartNode;
 import com.oracle.graal.nodes.extended.StoreHubNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
-import com.oracle.graal.nodes.java.CheckCastDynamicNode;
 import com.oracle.graal.nodes.java.ClassIsAssignableFromNode;
 import com.oracle.graal.nodes.java.DynamicNewArrayNode;
 import com.oracle.graal.nodes.java.DynamicNewInstanceNode;
@@ -163,7 +161,6 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected final HotSpotRegistersProvider registers;
     protected final HotSpotConstantReflectionProvider constantReflection;
 
-    protected CheckCastDynamicSnippets.Templates checkcastDynamicSnippets;
     protected InstanceOfSnippets.Templates instanceofSnippets;
     protected NewObjectSnippets.Templates newObjectSnippets;
     protected MonitorSnippets.Templates monitorSnippets;
@@ -187,7 +184,6 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         super.initialize(providers, providers.getSnippetReflection());
 
         assert target == providers.getCodeCache().getTarget();
-        checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(providers, target);
         instanceofSnippets = new InstanceOfSnippets.Templates(providers, target);
         newObjectSnippets = new NewObjectSnippets.Templates(providers, target);
         monitorSnippets = new MonitorSnippets.Templates(providers, target, config.useFastLocking);
@@ -215,15 +211,20 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             lowerOSRStartNode((OSRStartNode) n);
         } else if (n instanceof BytecodeExceptionNode) {
             lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
-        } else if (n instanceof CheckCastDynamicNode) {
-            checkcastDynamicSnippets.lower((CheckCastDynamicNode) n, tool);
         } else if (n instanceof InstanceOfNode) {
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower((InstanceOfNode) n, tool);
             }
         } else if (n instanceof InstanceOfDynamicNode) {
+            InstanceOfDynamicNode instanceOfDynamicNode = (InstanceOfDynamicNode) n;
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
+            } else {
+                ValueNode object = instanceOfDynamicNode.getMirrorOrHub();
+                if (object.stamp().getStackKind() == JavaKind.Object) {
+                    ClassGetHubNode classGetHub = graph.unique(new ClassGetHubNode(object));
+                    instanceOfDynamicNode.setMirror(classGetHub);
+                }
             }
         } else if (n instanceof ClassIsAssignableFromNode) {
             if (graph.getGuardsStage().areDeoptsFixed()) {

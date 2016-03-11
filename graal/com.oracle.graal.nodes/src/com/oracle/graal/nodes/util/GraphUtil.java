@@ -30,6 +30,7 @@ import java.util.Iterator;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.SourceStackTrace;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -584,11 +585,13 @@ public class GraphUtil {
         private final MetaAccessProvider metaAccess;
         private final ConstantReflectionProvider constantReflection;
         private final boolean canonicalizeReads;
+        private final Assumptions assumptions;
 
-        DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
+        DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads, Assumptions assumptions) {
             this.metaAccess = metaAccess;
             this.constantReflection = constantReflection;
             this.canonicalizeReads = canonicalizeReads;
+            this.assumptions = assumptions;
         }
 
         public MetaAccessProvider getMetaAccess() {
@@ -622,9 +625,13 @@ public class GraphUtil {
 
         public void addToWorkList(Iterable<? extends Node> nodes) {
         }
+
+        public Assumptions getAssumptions() {
+            return assumptions;
+        }
     }
 
-    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
-        return new DefaultSimplifierTool(metaAccess, constantReflection, canonicalizeReads);
+    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads, Assumptions assumptions) {
+        return new DefaultSimplifierTool(metaAccess, constantReflection, canonicalizeReads, assumptions);
     }
 }

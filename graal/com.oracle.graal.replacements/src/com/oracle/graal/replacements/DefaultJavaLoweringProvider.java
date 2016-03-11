@@ -58,6 +58,7 @@ import com.oracle.graal.nodes.ConditionAnchorNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -88,9 +89,9 @@ import com.oracle.graal.nodes.java.AbstractNewObjectNode;
 import com.oracle.graal.nodes.java.AccessIndexedNode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
 import com.oracle.graal.nodes.java.AtomicReadAndWriteNode;
-import com.oracle.graal.nodes.java.CheckCastDynamicNode;
 import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.CompareAndSwapNode;
+import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.java.LoweredAtomicReadAndWriteNode;
@@ -336,9 +337,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 assert nullCheckReturn[0] != null || createNullCheck(array, storeIndexed, tool) == null;
                 ValueNode arrayClass = createReadHub(graph, graph.unique(new PiNode(array, (ValueNode) nullCheck)), tool);
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
-                checkCastNode = graph.add(new CheckCastDynamicNode(componentHub, value, true));
-                graph.addBeforeFixed(storeIndexed, checkCastNode);
-                value = checkCastNode;
+                LogicNode instanceOfNode = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value));
+                GuardingNode guard = tool.createGuard(storeIndexed, instanceOfNode, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
+                PiNode piNode = graph.unique(new PiNode(value, StampFactory.object(), (ValueNode) guard));
+                value = piNode;
             }
         }
 

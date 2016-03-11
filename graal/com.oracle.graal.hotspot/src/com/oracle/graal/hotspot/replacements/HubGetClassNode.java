@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.hotspot.HotSpotResolvedPrimitiveType;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -106,11 +104,10 @@ public final class HubGetClassNode extends FloatingGuardedNode implements Lowera
             return c;
         }
         ResolvedJavaType type = constantReflection.asJavaType(c);
-        if (type instanceof HotSpotResolvedObjectType) {
-            return constantReflection.asObjectHub(type);
-        } else {
-            assert type instanceof HotSpotResolvedPrimitiveType;
+        if (type.isPrimitive()) {
             return JavaConstant.NULL_POINTER;
+        } else {
+            return constantReflection.asObjectHub(type);
         }
     }
 

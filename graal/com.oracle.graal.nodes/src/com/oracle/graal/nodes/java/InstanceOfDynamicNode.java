@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,10 @@ import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
-import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
+
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -48,7 +48,7 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
     public static final NodeClass<InstanceOfDynamicNode> TYPE = NodeClass.create(InstanceOfDynamicNode.class);
 
     @Input ValueNode object;
-    @Input ValueNode mirror;
+    @Input ValueNode mirrorOrHub;
 
     public static LogicNode create(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode mirror, ValueNode object) {
         LogicNode synonym = findSynonym(assumptions, constantReflection, object, mirror);
@@ -56,14 +56,21 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
             return synonym;
         }
         return new InstanceOfDynamicNode(mirror, object);
-
     }
 
-    public InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
+    protected InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
         super(TYPE);
-        this.mirror = mirror;
+        this.mirrorOrHub = mirror;
         this.object = object;
-        assert mirror.getStackKind() == JavaKind.Object : mirror.getStackKind();
+        assert mirror.getStackKind() == JavaKind.Object || mirror.getStackKind() == JavaKind.Illegal : mirror.getStackKind();
+    }
+
+    public boolean isMirror() {
+        return mirrorOrHub.getStackKind() == JavaKind.Object;
+    }
+
+    public boolean isHub() {
+        return !isMirror();
     }
 
     @Override
@@ -85,31 +92,35 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
         return null;
     }
 
+    public ValueNode getObject() {
+        return object;
+    }
+
+    public ValueNode getMirrorOrHub() {
+        return mirrorOrHub;
+    }
+
+    @Override
     public LogicNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
-        StructuredGraph graph = forObject.graph();
-        if (graph == null) {
-            graph = forMirror.graph();
+        LogicNode result = findSynonym(tool.getAssumptions(), tool.getConstantReflection(), forObject, forMirror);
+        if (result != null) {
+            return result;
         }
-        LogicNode res = findSynonym(graph.getAssumptions(), tool.getConstantReflection(), forObject, forMirror);
-        if (res == null) {
-            res = this;
-        }
-        return res;
+        return this;
     }
 
-    public ValueNode object() {
-        return object;
-    }
-
-    public ValueNode mirror() {
-        return mirror;
-    }
-
+    @Override
     public ValueNode getX() {
-        return object;
+        return getObject();
     }
 
+    @Override
     public ValueNode getY() {
-        return mirror;
+        return getMirrorOrHub();
+    }
+
+    public void setMirror(ValueNode newObject) {
+        this.updateUsages(mirrorOrHub, newObject);
+        this.mirrorOrHub = newObject;
     }
 }
