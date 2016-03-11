@@ -947,16 +947,14 @@ public final class Debugger {
 
             final List<FrameInstance> frames = new ArrayList<>();
             // Map the Truffle stack for this execution, ignore nested executions
-            // Ignore frames for which no CallNode is available.
-            // The top/current/0 frame is not produced by the iterator; reported separately
             Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
                 int stackIndex = 1;
 
                 @Override
                 public FrameInstance visitFrame(FrameInstance frameInstance) {
                     if (stackIndex < contextStackDepth) {
-                        if (TRACE && frameInstance.getCallNode() != null) {
-                            contextTrace("including frame %d with no callNode: %s", stackIndex, frameInstance.getFrame(FrameAccess.READ_ONLY, true));
+                        if (TRACE && frameInstance.getCallNode() == null) {
+                            contextTrace("frame %d null callNode: %s", stackIndex, frameInstance.getFrame(FrameAccess.READ_ONLY, true));
                         }
                         frames.add(frameInstance);
                         stackIndex++;
