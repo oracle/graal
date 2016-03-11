@@ -64,6 +64,9 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.lang.reflect.Field;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #buildNew()
@@ -107,13 +110,14 @@ public class PolyglotEngine {
     static final boolean JAVA_INTEROP_ENABLED = !TruffleOptions.AOT;
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
+    private static final AtomicBoolean DBG_INITIALIZED = new AtomicBoolean(false);
     private final Thread initThread;
     private final Executor executor;
     private final Map<String, Language> langs;
     private final InputStream in;
     private final OutputStream err;
     private final OutputStream out;
-    private final EventConsumer<?>[] handlers;
+    private final List<EventConsumer<?>> handlers;
     private final Map<String, Object> globals;
     private final Instrumenter instrumenter; // old instrumentation
     private final Object instrumentationHandler; // new instrumentation
@@ -154,7 +158,7 @@ public class PolyglotEngine {
     /**
      * Real constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, List<EventConsumer<?>> handlers, List<Object[]> config) {
         assertNoTruffle();
         this.executor = executor;
         this.out = out;
@@ -179,6 +183,28 @@ public class PolyglotEngine {
         }
         this.langs = map;
         this.instruments = createAndAutostartDescriptors(InstrumentCache.load(getClass().getClassLoader()));
+        if (!handlers.isEmpty() && !DBG_INITIALIZED.getAndSet(true)) {
+            initDebuggerAccessor();
+        }
+        initJPDADebugger();
+    }
+
+    private static void initDebuggerAccessor() {
+        // Debugger is handling the events.
+        // We need to assure that the debugger accessor is initialized.
+        try {
+            Class debuggerClass = Class.forName("com.oracle.truffle.api.debug.Debugger");
+            Field accessorField = debuggerClass.getDeclaredField("ACCESSOR");
+            accessorField.setAccessible(true);
+            accessorField.get(null);
+        } catch (ClassNotFoundException | NoSuchFieldException | SecurityException |
+                        IllegalArgumentException | IllegalAccessException ex) {
+            throw new IllegalStateException("Can not dispatch events without debugger", ex);
+        }
+    }
+
+    final void initJPDADebugger() {
+        // By a breakpoint in this method, JPDA debugger can initialize Truffle debugging
     }
 
     private Map<String, Instrument> createAndAutostartDescriptors(List<InstrumentCache> instrumentCaches) {
@@ -254,7 +280,7 @@ public class PolyglotEngine {
         private OutputStream out;
         private OutputStream err;
         private InputStream in;
-        private final List<EventConsumer<?>> handlers = new ArrayList<>();
+        private final List<EventConsumer<?>> handlers = new CopyOnWriteArrayList<>();
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
         private List<Object[]> arguments;
@@ -417,7 +443,7 @@ public class PolyglotEngine {
             if (in == null) {
                 in = System.in;
             }
-            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]), arguments);
+            return new PolyglotEngine(executor, globals, out, err, in, handlers, arguments);
         }
     }
 
@@ -659,24 +685,33 @@ public class PolyglotEngine {
         }
     }
 
+    /**
+     * Add an instance of {@link EventConsumer} into this engine.
+     *
+     * @param handler the handler to add
+     * @since 0.12
+     */
+    public void addEventConsumer(EventConsumer<?> handler) {
+        if (!DBG_INITIALIZED.getAndSet(true)) {
+            initDebuggerAccessor();
+        }
+        handlers.add(handler);
+    }
+
+    /**
+     * Remove an instance of {@link EventConsumer} from this engine.
+     *
+     * @param handler the handler to remove
+     * @since 0.12
+     */
+    public void removeEventConsumer(EventConsumer<?> handler) {
+        handlers.remove(handler);
+    }
+
     @SuppressWarnings("unchecked")
     void dispatch(Object ev) {
         Class type = ev.getClass();
-        if (type.getSimpleName().equals("SuspendedEvent")) {
-            dispatchSuspendedEvent(ev);
-        }
-        if (type.getSimpleName().equals("ExecutionEvent")) {
-            dispatchExecutionEvent(ev);
-        }
         dispatch(type, ev);
-    }
-
-    @SuppressWarnings("unused")
-    void dispatchSuspendedEvent(Object event) {
-    }
-
-    @SuppressWarnings("unused")
-    void dispatchExecutionEvent(Object event) {
     }
 
     @SuppressWarnings("unchecked")
