@@ -126,13 +126,13 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         inferStamp();
         ValueNode o = object();
 
+        // The pi node does not give any additional information => skip it.
+        if (stamp().equals(o.stamp())) {
+            return o;
+        }
+
         GuardingNode g = getGuard();
         if (g == null) {
-
-            // The pi node does not give any additional information => skip it.
-            if (stamp().equals(o.stamp())) {
-                return o;
-            }
 
             // Try to merge the pi node with a load node.
             if (o instanceof LoadFieldNode) {

@@ -113,7 +113,7 @@ public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContext {
     }
 
     public String getName() {
-        return compilable.toString().replace('.', '_').replace(' ', '_');
+        return (compilable.toString() + "").replace('.', '_').replace(' ', '_');
     }
 
     public JavaType getDeclaringClass() {

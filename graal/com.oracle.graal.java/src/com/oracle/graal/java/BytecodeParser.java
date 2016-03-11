@@ -2987,7 +2987,7 @@ public class BytecodeParser implements GraphBuilderContext {
             if (condition.isTautology()) {
                 checkCastNode = object;
             } else {
-                FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, false));
+                FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
                 checkCastNode = append(new PiNode(object, StampFactory.object(checkedType), fixedGuard));
             }
         }

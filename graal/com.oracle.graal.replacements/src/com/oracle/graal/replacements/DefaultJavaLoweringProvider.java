@@ -314,7 +314,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         ValueNode value = storeIndexed.value();
         ValueNode array = storeIndexed.array();
-        FixedWithNextNode checkCastNode = null;
         LogicNode condition = null;
         if (elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
             /* Array store check. */
@@ -349,11 +348,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         memoryWrite.setStateAfter(storeIndexed.stateAfter());
         graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
-
-        if (checkCastNode instanceof Lowerable) {
-            /* Recursive lowering of the store check node. */
-            ((Lowerable) checkCastNode).lower(tool);
-        }
     }
 
     protected void lowerArrayLengthNode(ArrayLengthNode arrayLengthNode, LoweringTool tool) {

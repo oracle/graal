@@ -66,6 +66,9 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     }
 
     public static LogicNode createAllowNull(TypeReference type, ValueNode object, JavaTypeProfile profile) {
+        if (StampTool.isPointerNonNull(object)) {
+            return create(type, object, profile);
+        }
         return createHelper(StampFactory.object(type), object, profile);
     }
 
