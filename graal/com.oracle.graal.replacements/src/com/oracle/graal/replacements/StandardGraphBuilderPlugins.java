@@ -459,7 +459,7 @@ public class StandardGraphBuilderPlugins {
         Registration r = new Registration(plugins, Class.class);
         r.register2("isInstance", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode object) {
-                LogicNode condition = b.add(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), type.get(), object));
+                LogicNode condition = b.add(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), type.get(), object, false));
                 b.push(JavaKind.Boolean, b.recursiveAppend(new ConditionalNode(condition).canonical(null)));
                 return true;
             }

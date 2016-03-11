@@ -54,6 +54,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
@@ -100,6 +101,7 @@ import com.oracle.graal.nodes.AbstractDeoptimizeNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.LoweredCallTargetNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.PiNode;
@@ -112,6 +114,7 @@ import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.calc.IntegerDivNode;
 import com.oracle.graal.nodes.calc.IntegerRemNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.calc.RemNode;
 import com.oracle.graal.nodes.calc.UnsignedDivNode;
 import com.oracle.graal.nodes.calc.UnsignedRemNode;
@@ -212,8 +215,15 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else if (n instanceof BytecodeExceptionNode) {
             lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
         } else if (n instanceof InstanceOfNode) {
+            InstanceOfNode instanceOfNode = (InstanceOfNode) n;
+            if (instanceOfNode.allowsNull()) {
+                ValueNode object = instanceOfNode.getValue();
+                LogicNode newTypeCheck = n.graph().addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.profile()));
+                LogicNode newNode = LogicNode.or(n.graph().unique(new IsNullNode(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
+                instanceOfNode.replaceAndDelete(newNode);
+            }
             if (graph.getGuardsStage().areDeoptsFixed()) {
-                instanceofSnippets.lower((InstanceOfNode) n, tool);
+                instanceofSnippets.lower(instanceOfNode, tool);
             }
         } else if (n instanceof InstanceOfDynamicNode) {
             InstanceOfDynamicNode instanceOfDynamicNode = (InstanceOfDynamicNode) n;

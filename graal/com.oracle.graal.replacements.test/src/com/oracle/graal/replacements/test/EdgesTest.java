@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.java.CheckCastNode;
+import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningPhase;
 import com.oracle.graal.phases.common.inlining.policy.InlineMethodSubstitutionsPolicy;
@@ -124,7 +124,7 @@ public class EdgesTest extends GraalCompilerTest {
         HighTierContext context = getDefaultHighTierContext();
         new InliningPhase(new InlineMethodSubstitutionsPolicy(), new CanonicalizerPhase()).apply(g, context);
         new CanonicalizerPhase().apply(g, context);
-        Assert.assertTrue(g.getNodes().filter(CheckCastNode.class).isEmpty());
+        Assert.assertTrue(g.getNodes().filter(InstanceOfNode.class).isEmpty());
     }
 
     private static Method getMethod(final String name, Class<?>... parameters) {

@@ -389,7 +389,6 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.InvocationPlugi
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
-import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.ExceptionObjectNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
@@ -1112,6 +1111,10 @@ public class BytecodeParser implements GraphBuilderContext {
         return graph.addOrUniqueWithInputs(x);
     }
 
+    protected LogicNode genUnique(LogicNode x) {
+        return graph.addOrUniqueWithInputs(x);
+    }
+
     protected ValueNode genIfNode(LogicNode condition, FixedNode falseSuccessor, FixedNode trueSuccessor, double d) {
         return new IfNode(condition, falseSuccessor, trueSuccessor, d);
     }
@@ -1125,10 +1128,6 @@ public class BytecodeParser implements GraphBuilderContext {
         FixedGuardNode nullCheck = append(new FixedGuardNode(graph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
         PiNode nonNullException = graph.unique(new PiNode(exception, exception.stamp().join(objectNonNull()), nullCheck));
         lastInstr.setNext(handleException(nonNullException, bci()));
-    }
-
-    protected ValueNode createCheckCast(TypeReference type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
-        return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck);
     }
 
     protected ValueNode createInstanceOf(TypeReference type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
@@ -2969,10 +2968,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ValueNode checkCastNode = null;
         if (profile != null) {
-            if (CheckCastNode.findSynonym(checkedType, object) == object) {
-                // Don't insert a profiled type check if the checkcast would simply go away
-                checkCastNode = object;
-            } else if (profile.getNullSeen().isFalse()) {
+            if (profile.getNullSeen().isFalse()) {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
@@ -2987,7 +2983,13 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         if (checkCastNode == null) {
-            checkCastNode = append(createCheckCast(checkedType, object, profile, false));
+            LogicNode condition = genUnique(InstanceOfNode.createAllowNull(checkedType, object, profile));
+            if (condition.isTautology()) {
+                checkCastNode = object;
+            } else {
+                FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, false));
+                checkCastNode = append(new PiNode(object, StampFactory.object(checkedType), fixedGuard));
+            }
         }
         frameState.push(JavaKind.Object, checkCastNode);
     }

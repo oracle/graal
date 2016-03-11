@@ -65,8 +65,15 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         assert checkedStamp != null;
     }
 
+    public static LogicNode createAllowNull(TypeReference type, ValueNode object, JavaTypeProfile profile) {
+        return createHelper(StampFactory.object(type), object, profile);
+    }
+
     public static LogicNode create(TypeReference type, ValueNode object, JavaTypeProfile profile) {
-        ObjectStamp checkedStamp = StampFactory.objectNonNull(type);
+        return createHelper(StampFactory.objectNonNull(type), object, profile);
+    }
+
+    public static LogicNode createHelper(ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile) {
         LogicNode synonym = findSynonym(checkedStamp, object);
         if (synonym != null) {
             return synonym;
@@ -104,10 +111,13 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
                 // checked stamp.
                 return LogicConstantNode.tautology();
             } else if (checkedStamp.type().equals(meetStamp.type()) && checkedStamp.isExactType() == meetStamp.isExactType() && checkedStamp.alwaysNull() == meetStamp.alwaysNull()) {
-                assert checkedStamp.nonNull() && !meetStamp.nonNull() && !inputStamp.nonNull();
+                assert checkedStamp.nonNull() != inputStamp.nonNull();
                 // The only difference makes the null-ness of the value => simplify the check.
-                // The instanceof is true if the input is non-null.
-                return LogicNegationNode.create(new IsNullNode(object));
+                if (checkedStamp.nonNull()) {
+                    return LogicNegationNode.create(new IsNullNode(object));
+                } else {
+                    return new IsNullNode(object);
+                }
             }
         }
 
@@ -166,5 +176,9 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
             }
         }
         return TriState.UNKNOWN;
+    }
+
+    public boolean allowsNull() {
+        return !checkedStamp.nonNull();
     }
 }

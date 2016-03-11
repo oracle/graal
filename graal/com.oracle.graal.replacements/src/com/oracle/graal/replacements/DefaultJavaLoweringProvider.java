@@ -335,7 +335,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 assert nullCheckReturn[0] != null || createNullCheck(array, storeIndexed, tool) == null;
                 ValueNode arrayClass = createReadHub(graph, graph.unique(new PiNode(array, (ValueNode) nullCheck)), tool);
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
-                condition = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value));
+                condition = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, true));
             }
         }
 

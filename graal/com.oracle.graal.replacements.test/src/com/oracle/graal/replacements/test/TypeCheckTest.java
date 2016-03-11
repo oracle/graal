@@ -32,7 +32,7 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 
 /**
- * Base class for checkcast and instanceof test classes.
+ * Base class for instanceof test classes.
  */
 public abstract class TypeCheckTest extends GraalCompilerTest {
 

@@ -45,9 +45,6 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
-import com.oracle.graal.replacements.test.CheckCastTest.Depth12;
-import com.oracle.graal.replacements.test.CheckCastTest.Depth13;
-import com.oracle.graal.replacements.test.CheckCastTest.Depth14;
 
 /**
  * Tests the implementation of instanceof, allowing profiling information to be manually specified.
@@ -499,5 +496,47 @@ public class InstanceOfTest extends TypeCheckTest {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
+    }
+
+    static class Depth1 implements Cloneable {
+    }
+
+    static class Depth2 extends Depth1 {
+    }
+
+    static class Depth3 extends Depth2 {
+    }
+
+    static class Depth4 extends Depth3 {
+    }
+
+    static class Depth5 extends Depth4 {
+    }
+
+    static class Depth6 extends Depth5 {
+    }
+
+    static class Depth7 extends Depth6 {
+    }
+
+    static class Depth8 extends Depth7 {
+    }
+
+    static class Depth9 extends Depth8 {
+    }
+
+    static class Depth10 extends Depth9 {
+    }
+
+    static class Depth11 extends Depth10 {
+    }
+
+    static class Depth12 extends Depth11 {
+    }
+
+    static class Depth13 extends Depth12 {
+    }
+
+    static class Depth14 extends Depth12 {
     }
 }

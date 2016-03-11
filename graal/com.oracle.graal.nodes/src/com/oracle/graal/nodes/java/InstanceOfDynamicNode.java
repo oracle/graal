@@ -30,6 +30,7 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
@@ -50,18 +51,21 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
     @Input ValueNode object;
     @Input ValueNode mirrorOrHub;
 
-    public static LogicNode create(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode mirror, ValueNode object) {
-        LogicNode synonym = findSynonym(assumptions, constantReflection, object, mirror);
+    private final boolean allowNull;
+
+    public static LogicNode create(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode mirror, ValueNode object, boolean allowNull) {
+        LogicNode synonym = findSynonym(assumptions, constantReflection, mirror, object, allowNull);
         if (synonym != null) {
             return synonym;
         }
-        return new InstanceOfDynamicNode(mirror, object);
+        return new InstanceOfDynamicNode(mirror, object, allowNull);
     }
 
-    protected InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
+    protected InstanceOfDynamicNode(ValueNode mirror, ValueNode object, boolean allowNull) {
         super(TYPE);
         this.mirrorOrHub = mirror;
         this.object = object;
+        this.allowNull = allowNull;
         assert mirror.getStackKind() == JavaKind.Object || mirror.getStackKind() == JavaKind.Illegal : mirror.getStackKind();
     }
 
@@ -78,14 +82,23 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
         tool.getLowerer().lower(this, tool);
     }
 
-    private static LogicNode findSynonym(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode forObject, ValueNode forMirror) {
+    private static LogicNode findSynonym(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode forMirror, ValueNode forObject, boolean allowNull) {
         if (forMirror.isConstant()) {
             ResolvedJavaType t = constantReflection.asJavaType(forMirror.asConstant());
             if (t != null) {
                 if (t.isPrimitive()) {
-                    return LogicConstantNode.contradiction();
+                    if (allowNull) {
+                        return new IsNullNode(forObject);
+                    } else {
+                        return LogicConstantNode.contradiction();
+                    }
                 } else {
-                    return InstanceOfNode.create(TypeReference.createTrusted(assumptions, t), forObject, null);
+                    TypeReference type = TypeReference.createTrusted(assumptions, t);
+                    if (allowNull) {
+                        return InstanceOfNode.createAllowNull(type, forObject, null);
+                    } else {
+                        return InstanceOfNode.create(type, forObject, null);
+                    }
                 }
             }
         }
@@ -102,7 +115,7 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
 
     @Override
     public LogicNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
-        LogicNode result = findSynonym(tool.getAssumptions(), tool.getConstantReflection(), forObject, forMirror);
+        LogicNode result = findSynonym(tool.getAssumptions(), tool.getConstantReflection(), forObject, forMirror, allowNull);
         if (result != null) {
             return result;
         }
