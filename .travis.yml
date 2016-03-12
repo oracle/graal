@@ -38,6 +38,7 @@ env:
   - TEST_COMMAND='mx/mx checkstyle'
   - TEST_COMMAND='mx/mx checkoverlap'
   - TEST_COMMAND='mx/mx canonicalizeprojects'
-  - TEST_COMMAND='mx/mx su-local-gate'
+  - TEST_COMMAND='mx/mx su-travis1'
+  - TEST_COMMAND='mx/mx su-travis2'
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
