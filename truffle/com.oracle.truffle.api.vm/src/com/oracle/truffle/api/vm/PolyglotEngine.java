@@ -102,7 +102,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@link Builder#build() created} by and checks that all subsequent calls are coming from the same
  * thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it what to
  * do.
- * 
+ *
  * @since 0.9
  */
 @SuppressWarnings("rawtypes")
@@ -273,7 +273,7 @@ public class PolyglotEngine {
      *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
      *     .{@link Builder#build() build()};
      * </pre>
-     * 
+     *
      * @since 0.9
      */
     public class Builder {
@@ -498,7 +498,7 @@ public class PolyglotEngine {
      * <p>
      * Calling any other method of this class after the dispose has been done yields an
      * {@link IllegalStateException}.
-     * 
+     *
      * @since 0.9
      */
     public void dispose() {
@@ -733,7 +733,7 @@ public class PolyglotEngine {
      * {@link Builder#executor(java.util.concurrent.Executor) asynchronous execution}, the
      * {@link Value} represents a future - i.e., it is returned immediately, leaving the execution
      * running on behind.
-     * 
+     *
      * @since 0.9
      */
     public class Value {
@@ -1015,7 +1015,7 @@ public class PolyglotEngine {
      * of supported {@link #getMimeTypes() MIME types} for each language. The actual language
      * implementation is not initialized until
      * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) a code is evaluated} in it.
-     * 
+     *
      * @since 0.9
      */
     public class Language {
