@@ -661,6 +661,7 @@ public abstract class TruffleLanguage<C> {
 class TruffleLanguageSnippets {
     class Context {
         final String[] args;
+
         Context(String[] args) {
             this.args = args;
         }
