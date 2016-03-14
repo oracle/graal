@@ -26,6 +26,7 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * <p>
@@ -134,9 +135,6 @@ public abstract class BranchProfile extends Profile {
 }
 
 class BranchProfileSnippets {
-    class Node {
-    }
-
     // BEGIN: com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile
     class BranchingNode extends Node {
         final BranchProfile errorProfile = BranchProfile.create();
