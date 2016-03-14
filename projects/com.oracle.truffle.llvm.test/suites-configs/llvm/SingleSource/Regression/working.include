@@ -7,6 +7,7 @@ test-suite-3.2.src/SingleSource/Regression/C++/2003-08-20-EnumSizeProblem.cpp
 test-suite-3.2.src/SingleSource/Regression/C++/2003-06-13-Crasher.cpp
 test-suite-3.2.src/SingleSource/Regression/C++/2008-01-29-ParamAliasesReturn.cpp
 test-suite-3.2.src/SingleSource/Regression/C++/2003-06-08-BaseType.cpp
+test-suite-3.2.src/SingleSource/Regression/C++/2003-06-08-VirtualFunctions.cpp
 test-suite-3.2.src/SingleSource/Regression/C/2005-05-06-LongLongSignedShift.c
 test-suite-3.2.src/SingleSource/Regression/C/bigstack.c
 test-suite-3.2.src/SingleSource/Regression/C/matrixTranspose.c
