@@ -388,7 +388,7 @@ public final class REPLServer {
                     event.prepareStepInto(1);
                 }
                 try {
-                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber - 1);
+                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber);
                     final Object result = event.eval(code, frame);
                     return (result instanceof Value) ? ((Value) result).get() : result;
                 } finally {
@@ -437,7 +437,7 @@ public final class REPLServer {
         }
 
         /**
-         * Provides access to the execution stack, not counting the node/frame where halted.
+         * Access to the execution stack.
          *
          * @return immutable list of stack elements
          */
