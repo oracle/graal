@@ -56,6 +56,7 @@ import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.concurrent.Callable;
 
 /**
  * Represents debugging related state of a {@link com.oracle.truffle.api.vm.PolyglotEngine}.
@@ -1072,18 +1073,29 @@ public final class Debugger {
     static final class AccessorDebug extends Accessor {
 
         @Override
-        protected Closeable executionStart(Object vm, int currentDepth, final boolean initializeDebugger, Source s) {
+        protected Closeable executionStart(Object vm, final int currentDepth, final boolean initializeDebugger, final Source s) {
             final PolyglotEngine engine = (PolyglotEngine) vm;
-            final Debugger debugger = find(engine, initializeDebugger);
-            if (debugger != null) {
-                debugger.executionStarted(currentDepth, s);
+            final Debugger[] debugger = {find(engine, initializeDebugger)};
+            if (debugger[0] != null) {
+                debugger[0].executionStarted(currentDepth, s);
+                ACCESSOR.dispatchEvent(engine, new ExecutionEvent(debugger[0]));
+            } else {
+                ACCESSOR.dispatchEvent(engine, new ExecutionEvent(new Callable<Debugger>() {
+                    @Override
+                    public Debugger call() throws Exception {
+                        if (debugger[0] == null) {
+                            debugger[0] = find(engine, true);
+                            debugger[0].executionStarted(currentDepth, s);
+                        }
+                        return debugger[0];
+                    }
+                }));
             }
-            ACCESSOR.dispatchEvent(engine, new ExecutionEvent(engine));
             return new Closeable() {
                 @Override
                 public void close() throws IOException {
-                    if (debugger != null) {
-                        debugger.executionEnded();
+                    if (debugger[0] != null) {
+                        debugger[0].executionEnded();
                     }
                 }
             };
