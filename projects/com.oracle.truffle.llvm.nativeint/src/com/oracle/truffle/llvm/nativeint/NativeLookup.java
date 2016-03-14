@@ -54,16 +54,45 @@ public class NativeLookup {
 
     static final int LOOKUP_FAILURE = 0;
 
-    // TODO lazy loading
-    private static final NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
+    private static NativeFunctionInterface nfi;
 
-    private static final NativeLibraryHandle[] libraryHandles = getNativeFunctionHandles();
+    private static NativeLibraryHandle[] libraryHandles;
 
     private final Map<LLVMFunction, Integer> nativeFunctionLookupStats;
 
     private final Map<LLVMFunction, NativeFunctionHandle> cachedNativeFunctions = new WeakHashMap<>();
 
     private final NodeFactoryFacade facade;
+
+    private static NativeFunctionInterface getNFI() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (nfi == null) {
+            nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
+            if (nfi == null) {
+                throw new AssertionError("could not get the Graal NFI!");
+            }
+        }
+        return nfi;
+    }
+
+    private static NativeLibraryHandle[] getLibraryHandles() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (libraryHandles == null) {
+            libraryHandles = getNativeFunctionHandles();
+            assert libraryHandles != null;
+        }
+        return libraryHandles;
+    }
+
+    private static NativeLibraryHandle[] getNativeFunctionHandles() {
+        String[] dynamicLibraryPaths = LLVMOptions.getDynamicLibraryPaths();
+        int i = 0;
+        NativeLibraryHandle[] handles = new NativeLibraryHandle[dynamicLibraryPaths.length];
+        for (String library : dynamicLibraryPaths) {
+            handles[i++] = getNFI().getLibraryHandle(library);
+        }
+        return handles;
+    }
 
     public NativeLookup(NodeFactoryFacade facade) {
         this.facade = facade;
@@ -78,14 +107,14 @@ public class NativeLookup {
     private static long lookupSymbol(String name) {
         try {
             Method method = HotSpotNativeFunctionInterface.class.getDeclaredMethod("lookupFunctionPointer", String.class, NativeLibraryHandle.class, boolean.class);
-            HotSpotNativeFunctionInterface face = (HotSpotNativeFunctionInterface) nfi;
+            HotSpotNativeFunctionInterface face = (HotSpotNativeFunctionInterface) getNFI();
             method.setAccessible(true);
             HotSpotNativeLibraryHandle handle;
-            if (libraryHandles.length == 0) {
+            if (getLibraryHandles().length == 0) {
                 handle = new HotSpotNativeLibraryHandle("", 0);
                 return ((HotSpotNativeFunctionPointer) method.invoke(face, name, handle, false)).getRawValue();
             } else {
-                for (NativeLibraryHandle libraryHandle : libraryHandles) {
+                for (NativeLibraryHandle libraryHandle : getLibraryHandles()) {
                     try {
                         HotSpotNativeFunctionPointer hotSpotPointer = (HotSpotNativeFunctionPointer) method.invoke(face, name, libraryHandle, false);
                         if (hotSpotPointer != null) {
@@ -121,7 +150,7 @@ public class NativeLookup {
             return cachedNativeFunctions.get(function);
         } else {
             NativeFunctionHandle handle = uncachedGetNativeFunctionHandle(function, args);
-            // FIXME we should also cash var args!
+            // FIXME we should also cache var args!
             if (!function.isVarArgs()) {
                 cachedNativeFunctions.put(function, handle);
             }
@@ -138,24 +167,14 @@ public class NativeLookup {
             throw new LLVMUnsupportedException(UnsupportedReason.MULTITHREADING);
         }
         if (LLVMOptions.getDynamicLibraryPaths() == null) {
-            functionHandle = nfi.getFunctionHandle(functionName, retType, paramTypes);
+            functionHandle = getNFI().getFunctionHandle(functionName, retType, paramTypes);
         } else {
-            functionHandle = nfi.getFunctionHandle(libraryHandles, functionName, retType, paramTypes);
+            functionHandle = getNFI().getFunctionHandle(getLibraryHandles(), functionName, retType, paramTypes);
         }
         if (LLVMOptions.printNativeCallStats() && functionHandle != null) {
             recordNativeFunctionCallSite(function);
         }
         return functionHandle;
-    }
-
-    private static NativeLibraryHandle[] getNativeFunctionHandles() {
-        String[] dynamicLibraryPaths = LLVMOptions.getDynamicLibraryPaths();
-        int i = 0;
-        NativeLibraryHandle[] handles = new NativeLibraryHandle[dynamicLibraryPaths.length];
-        for (String library : dynamicLibraryPaths) {
-            handles[i++] = nfi.getLibraryHandle(library);
-        }
-        return handles;
     }
 
     private void recordNativeFunctionCallSite(LLVMFunction function) {
