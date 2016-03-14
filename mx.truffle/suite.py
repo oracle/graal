@@ -454,6 +454,26 @@ suite = {
       ],
       "description" : "Experimental REPL server to build your debugger console for your language.",
       "allowsJavadocWarnings": True,
-     }
+     },
+
+     "TRUFFLE_TEST" : {
+       "subDir" : "truffle",
+       "javaCompliance" : "1.7",
+       "dependencies" : [
+         "com.oracle.truffle.api.test",
+         "com.oracle.truffle.api.dsl.test",
+         "com.oracle.truffle.api.instrumentation.test",
+         "com.oracle.truffle.api.debug.test",
+         "com.oracle.truffle.api.interop.java.test",
+         "com.oracle.truffle.api.object.dsl.test",
+         "com.oracle.truffle.tools.test",
+       ],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT"],
+       "distDependencies" : [
+         "TRUFFLE_API",
+         "TRUFFLE_DSL_PROCESSOR",
+         "TRUFFLE_DEBUG",
+      ],
+     },
   },
 }

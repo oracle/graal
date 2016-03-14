@@ -56,6 +56,7 @@ import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.concurrent.Callable;
 
 /**
  * Represents debugging related state of a {@link com.oracle.truffle.api.vm.PolyglotEngine}.
@@ -947,16 +948,14 @@ public final class Debugger {
 
             final List<FrameInstance> frames = new ArrayList<>();
             // Map the Truffle stack for this execution, ignore nested executions
-            // Ignore frames for which no CallNode is available.
-            // The top/current/0 frame is not produced by the iterator; reported separately
             Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
                 int stackIndex = 1;
 
                 @Override
                 public FrameInstance visitFrame(FrameInstance frameInstance) {
                     if (stackIndex < contextStackDepth) {
-                        if (TRACE && frameInstance.getCallNode() != null) {
-                            contextTrace("including frame %d with no callNode: %s", stackIndex, frameInstance.getFrame(FrameAccess.READ_ONLY, true));
+                        if (TRACE && frameInstance.getCallNode() == null) {
+                            contextTrace("frame %d null callNode: %s", stackIndex, frameInstance.getFrame(FrameAccess.READ_ONLY, true));
                         }
                         frames.add(frameInstance);
                         stackIndex++;
@@ -1044,7 +1043,6 @@ public final class Debugger {
         debugContext = new DebugExecutionContext(execSource, debugContext, depth);
         prepareContinue(depth);
         debugContext.contextTrace("START EXEC ");
-        ACCESSOR.dispatchEvent(engine, new ExecutionEvent(this));
     }
 
     void executionEnded() {
@@ -1075,20 +1073,30 @@ public final class Debugger {
     static final class AccessorDebug extends Accessor {
 
         @Override
-        protected Closeable executionStart(Object vm, int currentDepth, final boolean initializeDebugger, Source s) {
-            final Debugger debugger = find((PolyglotEngine) vm, initializeDebugger);
-            if (debugger == null) {
-                return new Closeable() {
+        protected Closeable executionStart(Object vm, final int currentDepth, final boolean initializeDebugger, final Source s) {
+            final PolyglotEngine engine = (PolyglotEngine) vm;
+            final Debugger[] debugger = {find(engine, initializeDebugger)};
+            if (debugger[0] != null) {
+                debugger[0].executionStarted(currentDepth, s);
+                ACCESSOR.dispatchEvent(engine, new ExecutionEvent(debugger[0]));
+            } else {
+                ACCESSOR.dispatchEvent(engine, new ExecutionEvent(new Callable<Debugger>() {
                     @Override
-                    public void close() throws IOException {
+                    public Debugger call() throws Exception {
+                        if (debugger[0] == null) {
+                            debugger[0] = find(engine, true);
+                            debugger[0].executionStarted(currentDepth, s);
+                        }
+                        return debugger[0];
                     }
-                };
+                }));
             }
-            debugger.executionStarted(currentDepth, s);
             return new Closeable() {
                 @Override
                 public void close() throws IOException {
-                    debugger.executionEnded();
+                    if (debugger[0] != null) {
+                        debugger[0].executionEnded();
+                    }
                 }
             };
         }
