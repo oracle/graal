@@ -190,15 +190,6 @@ public class PolyglotEngine {
         return Collections.unmodifiableMap(instr);
     }
 
-    private boolean isDebuggerOn() {
-        for (EventConsumer<?> handler : handlers) {
-            if (handler.type.getSimpleName().endsWith("ExecutionEvent")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /**
      * Creation of new Truffle virtual machine. Use the {@link Builder} methods to configure your
      * virtual machine and then create one using {@link Builder#build()}:
@@ -535,7 +526,7 @@ public class PolyglotEngine {
 
     @SuppressWarnings("try")
     private Object evalImpl(TruffleLanguage<?>[] fillLang, Source s, Language l) throws IOException {
-        try (Closeable d = SPI.executionStart(this, -1, isDebuggerOn(), s)) {
+        try (Closeable d = SPI.executionStart(this, -1, false, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
             return SPI.eval(langImpl, s, l.cache);
