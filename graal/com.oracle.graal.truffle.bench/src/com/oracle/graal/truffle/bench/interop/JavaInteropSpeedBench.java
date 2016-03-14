@@ -33,7 +33,6 @@ import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -50,7 +49,6 @@ public class JavaInteropSpeedBench {
 
     @Setup
     public static void beforeTesting() {
-        InstrumentationTestMode.set(true);
         arr = initArray(REPEAT);
     }
 
@@ -61,11 +59,6 @@ public class JavaInteropSpeedBench {
             tmp[i] = r.nextInt(100000);
         }
         return tmp;
-    }
-
-    @TearDown
-    public static void after() {
-        InstrumentationTestMode.set(false);
     }
 
     @Benchmark
