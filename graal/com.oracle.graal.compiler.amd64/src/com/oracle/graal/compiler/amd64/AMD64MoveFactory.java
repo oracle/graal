@@ -27,21 +27,25 @@ import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
+import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromConstOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
+
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Value;
 
 public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
 
@@ -81,6 +85,12 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
 
     @Override
     public AMD64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
-        return new MoveFromConstOp(dst, (JavaConstant) src);
+        if (src instanceof JavaConstant) {
+            return new MoveFromConstOp(dst, (JavaConstant) src);
+        } else if (src instanceof DataPointerConstant) {
+            return new LeaDataOp(dst, (DataPointerConstant) src);
+        } else {
+            throw JVMCIError.shouldNotReachHere(String.format("unsupported constant: %s", src));
+        }
     }
 }
