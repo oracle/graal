@@ -112,6 +112,12 @@ public class LLVMOptions {
                         null,
                         LLVMOptions::parseString,
                         PropertyCategory.TESTS),
+        REMOTE_TEST_CASES_AS_LOCAL(
+                        "LaunchRemoteTestCasesLocally",
+                        "Launches the test cases which are usually launched in a separate JVM in the currently running one.",
+                        "false",
+                        LLVMOptions::parseBoolean,
+                        PropertyCategory.TESTS),
         TEST_DISCOVERY_PATH(
                         "TestDiscoveryPath",
                         "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.",
@@ -298,6 +304,10 @@ public class LLVMOptions {
 
     public static boolean printLifeTimeAnalysis() {
         return lifeTimeAnalysisEnabled() && (boolean) getParsedProperty(Property.LIFE_TIME_ANALYSIS_STATS);
+    }
+
+    public static boolean launchRemoteTestCasesAsLocal() {
+        return getParsedProperty(Property.REMOTE_TEST_CASES_AS_LOCAL);
     }
 
 }

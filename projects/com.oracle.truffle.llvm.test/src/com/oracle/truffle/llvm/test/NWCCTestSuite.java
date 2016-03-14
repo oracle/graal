@@ -67,7 +67,7 @@ public class NWCCTestSuite extends RemoteTestSuiteBase {
             System.out.println("original file: " + tuple.getOriginalFile());
         }
         try {
-            List<String> launchRemote = launchRemote(bitCodeFile);
+            List<String> launchRemote = launchRemote(tuple);
             int sulongRetValue = parseAndRemoveReturnValue(launchRemote);
             String sulongLines = launchRemote.stream().collect(Collectors.joining());
             ProcessResult processResult = TestHelper.executeLLVMBinary(bitCodeFile);
