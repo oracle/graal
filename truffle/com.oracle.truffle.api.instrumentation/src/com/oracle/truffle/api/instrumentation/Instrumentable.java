@@ -35,10 +35,11 @@ import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * <p>
- * Marks a guest language AST node class as instrumentable which allows instrumentations to listen
- * to before and after execution events. An instrumentable node must provide a {@link SourceSection}
- * and a {@link #factory() wrapper factory} to create a wrapper for the instrumentable node. Wrapper
- * factories can be inherited by subclasses.
+ * Marks a guest language AST node class as <em>instrumentable</em>: an AST location where
+ * {@linkplain com.oracle.truffle.api.instrumentation.TruffleInstrument Truffle instruments} are
+ * permitted to listen to before and after execution events. An instrumentable node must provide a
+ * {@link SourceSection} and a {@link #factory() wrapper factory} to create a wrapper for the
+ * instrumentable node. Wrapper factories can be inherited by subclasses.
  * </p>
  * <p>
  * {@link Instrumentable} nodes must extend {@link Node}. The instrumentation framework will, when
@@ -48,7 +49,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * </p>
  * <p>
  * Wrappers can be generated automatically using an annotation processor. For that a class literal
- * named {WrappedNode}Wrapper must be used. If the referenced class was not found on the classpath
+ * named {WrappedNode}Wrapper must be used. If the referenced class was not found on the class path
  * it will get generated. If the automatically generated wrapper factory and wrapper classes are not
  * suitable for the needs of the guest language then {@link InstrumentableFactory} can also be
  * implemented manually and referenced in {@link #factory()} using a class literal.
