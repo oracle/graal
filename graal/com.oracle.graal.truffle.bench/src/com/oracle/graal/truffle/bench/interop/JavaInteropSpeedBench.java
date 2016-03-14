@@ -48,7 +48,7 @@ public class JavaInteropSpeedBench {
     private static int[] arr;
 
     @Setup
-    public static void beforeTesting() {
+    public void beforeTesting() {
         arr = initArray(REPEAT);
     }
 
