@@ -36,7 +36,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * </p>
  *
  * <p>
- * <b> Usage example: </b> {@codesnippet BranchProfileSample}
+ * <b> Usage example: </b>
+ * {@link com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile}
  *
  * {@inheritDoc}
  *
@@ -130,4 +131,23 @@ public abstract class BranchProfile extends Profile {
 
     }
 
+}
+
+class BranchProfileSnippets {
+    class Node {
+    }
+
+    // BEGIN: com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile
+    class BranchingNode extends Node {
+        final BranchProfile errorProfile = BranchProfile.create();
+
+        int execute(int value) {
+            if (value == Integer.MAX_VALUE) {
+                errorProfile.enter();
+                throw new Error("Invalid input value");
+            }
+            return value;
+        }
+    }
+    // END: com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile
 }
