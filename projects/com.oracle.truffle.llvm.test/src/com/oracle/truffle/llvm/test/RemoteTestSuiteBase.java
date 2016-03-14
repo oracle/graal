@@ -44,6 +44,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
+import com.oracle.truffle.llvm.LLVM;
+import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public class RemoteTestSuiteBase extends TestSuiteBase {
@@ -55,31 +57,50 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     protected static final Pattern RETURN_VALUE_PATTERN = Pattern.compile("exit ([-]*[0-9]*)");
 
-    // we have to launch a remote process to capture native prints
-    public List<String> launchRemote(File bitCodeFile) throws IOException, AssertionError {
-        String str = bitCodeFile.getAbsolutePath() + "\n";
-        outputStream.write(str);
-        outputStream.flush();
-        String line;
+    public List<String> launchLocal(TestCaseFiles tuple) {
+        List<String> result = new ArrayList<>();
+        if (LLVMOptions.debugEnabled()) {
+            System.out.println("current file: " + tuple.getOriginalFile().getAbsolutePath());
+        }
+        try {
+            int retValue = LLVM.executeMain(tuple.getBitCodeFile());
+            result.add("exit " + retValue);
+        } catch (Throwable t) {
+            recordError(tuple, t);
+            result.add("exit -1");
+        }
+        return result;
+    }
 
-        List<String> lines = new ArrayList<>();
-        while (true) {
-            line = reader.readLine();
-            lines.add(line);
-            if (line == null) {
-                throw new IllegalStateException();
+    // we have to launch a remote process to capture native prints
+    public List<String> launchRemote(TestCaseFiles tuple) throws IOException, AssertionError {
+        if (LLVMOptions.launchRemoteTestCasesAsLocal()) {
+            return launchLocal(tuple);
+        } else {
+            String str = tuple.getBitCodeFile().getAbsolutePath() + "\n";
+            outputStream.write(str);
+            outputStream.flush();
+            String line;
+
+            List<String> lines = new ArrayList<>();
+            while (true) {
+                line = reader.readLine();
+                lines.add(line);
+                if (line == null) {
+                    throw new IllegalStateException();
+                }
+                if (RETURN_VALUE_PATTERN.matcher(line).matches()) {
+                    break;
+                } else if (line.matches("<error>")) {
+                    readErrorAndFail(tuple.getBitCodeFile());
+                    break;
+                }
             }
-            if (RETURN_VALUE_PATTERN.matcher(line).matches()) {
-                break;
-            } else if (line.matches("<error>")) {
-                readErrorAndFail(bitCodeFile);
-                break;
+            while (reader.ready()) {
+                lines.add(reader.readLine());
             }
+            return lines;
         }
-        while (reader.ready()) {
-            lines.add(reader.readLine());
-        }
-        return lines;
     }
 
     protected static int parseAndRemoveReturnValue(List<String> expectedLines) {
@@ -93,24 +114,29 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     @AfterClass
     public static void endRemoteProcess() {
-        try {
-            outputStream.write("exit\n");
-            outputStream.flush();
-        } catch (Exception e) {
-            throw new AssertionError(e);
+        if (!LLVMOptions.launchRemoteTestCasesAsLocal()) {
+            try {
+                outputStream.write("exit\n");
+                outputStream.flush();
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
         }
+
     }
 
     @BeforeClass
     public static void startRemoteProcess() throws IOException {
-        remoteTruffleProcess = TestHelper.launchRemoteTruffle();
-        outputStream = new BufferedWriter(new OutputStreamWriter(remoteTruffleProcess.getOutputStream()));
-        reader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getInputStream()));
-        errorReader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getErrorStream()));
-        if (!remoteTruffleProcess.isAlive()) {
-            throw new IllegalStateException(ProcessUtil.readStream(remoteTruffleProcess.getErrorStream()));
+        if (!LLVMOptions.launchRemoteTestCasesAsLocal()) {
+            remoteTruffleProcess = TestHelper.launchRemoteTruffle();
+            outputStream = new BufferedWriter(new OutputStreamWriter(remoteTruffleProcess.getOutputStream()));
+            reader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getInputStream()));
+            errorReader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getErrorStream()));
+            if (!remoteTruffleProcess.isAlive()) {
+                throw new IllegalStateException(ProcessUtil.readStream(remoteTruffleProcess.getErrorStream()));
+            }
+            TestHelper.compileToLLVMIRWithClang(LLVMPaths.FLUSH_C_FILE, LLVMPaths.FLUSH_BITCODE_FILE);
         }
-        TestHelper.compileToLLVMIRWithClang(LLVMPaths.FLUSH_C_FILE, LLVMPaths.FLUSH_BITCODE_FILE);
     }
 
     private static void readErrorAndFail(File bitCodeFile) throws IOException {

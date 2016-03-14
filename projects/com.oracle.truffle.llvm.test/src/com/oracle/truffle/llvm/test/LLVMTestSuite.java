@@ -44,7 +44,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.tools.Clang;
 import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
@@ -121,27 +120,12 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
             expectedLines = new ArrayList<>();
             expectedReturnValue = 0;
         }
-        List<String> actualLines = launchRemote(bitCodeFile); // launchLocal();
+        List<String> actualLines = launchRemote(tuple);
         int actualReturnValue = parseAndRemoveReturnValue(actualLines);
         boolean pass = expectedLines.equals(actualLines) && expectedReturnValue == actualReturnValue;
         recordTestCase(tuple, pass);
         assertEquals(bitCodeFile.getAbsolutePath(), expectedLines, actualLines);
         assertEquals(bitCodeFile.getAbsolutePath(), expectedReturnValue, actualReturnValue);
-    }
-
-    public List<String> launchLocal() {
-        List<String> result = new ArrayList<>();
-        if (LLVMOptions.debugEnabled()) {
-            System.out.println("current file: " + originalFile);
-        }
-        try {
-            int retValue = LLVM.executeMain(bitCodeFile);
-            result.add("exit " + retValue);
-        } catch (Throwable t) {
-            recordError(tuple, t);
-            result.add("exit -1");
-        }
-        return result;
     }
 
 }

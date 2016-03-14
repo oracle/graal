@@ -91,3 +91,4 @@ test-suite-3.2.src/SingleSource/UnitTests/2006-01-23-UnionInit.c
 test-suite-3.2.src/SingleSource/UnitTests/2002-05-02-CastTest3.c
 test-suite-3.2.src/SingleSource/UnitTests/Integer/template2.cpp
 test-suite-3.2.src/SingleSource/UnitTests/2009-12-07-StructReturn.c
+test-suite-3.2.src/SingleSource/UnitTests/initp1.cpp
