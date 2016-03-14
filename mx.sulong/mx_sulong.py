@@ -363,7 +363,7 @@ def runTypeTestCases(args=None):
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
 
 def getCommonOptions():
-    return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true', getSearchPathOption()]
+    return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true', '-Dsulong.IntrinsifyCFunctions=false', getSearchPathOption()]
 
 # other OSs?
 def getSearchPathOption():
