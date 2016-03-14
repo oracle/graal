@@ -69,7 +69,7 @@ final class InstrumentCache {
         Set<String> classNamesUsed = new HashSet<>();
         Enumeration<URL> en;
         try {
-            en = loader.getResources("META-INF/truffle/instrumentation");
+            en = loader.getResources("META-INF/truffle/instrument");
         } catch (IOException ex) {
             throw new IllegalStateException("Cannot read list of Truffle instruments", ex);
         }

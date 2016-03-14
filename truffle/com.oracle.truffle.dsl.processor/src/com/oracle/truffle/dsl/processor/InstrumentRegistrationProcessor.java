@@ -58,7 +58,7 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
     }
 
     private void generateFile(List<TypeElement> instruments) {
-        String filename = "META-INF/truffle/instrumentation";
+        String filename = "META-INF/truffle/instrument";
         Properties p = new Properties();
 
         int cnt = 0;
