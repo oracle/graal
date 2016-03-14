@@ -542,13 +542,17 @@ public abstract class REPLRemoteCommand extends REPLCommand {
             } else {
                 Integer frameNumber = replies[0].getIntValue(REPLMessage.FRAME_NUMBER);
                 context.selectFrameNumber(frameNumber);
-                context.displayReply("Frame " + frameNumber + ":");
-                for (REPLMessage message : replies) {
-                    final StringBuilder sb = new StringBuilder();
-                    sb.append("#" + message.get(REPLMessage.SLOT_INDEX) + ": ");
-                    sb.append(message.get(REPLMessage.SLOT_ID) + " = ");
-                    sb.append(message.get(REPLMessage.SLOT_VALUE));
-                    context.displayInfo(sb.toString());
+                if (replies[0].get(REPLMessage.SLOT_INDEX) == null) {
+                    context.displayReply("Frame " + frameNumber + ": <empty");
+                } else {
+                    context.displayReply("Frame " + frameNumber + ":");
+                    for (REPLMessage message : replies) {
+                        final StringBuilder sb = new StringBuilder();
+                        sb.append("#" + message.get(REPLMessage.SLOT_INDEX) + ": ");
+                        sb.append(message.get(REPLMessage.SLOT_ID) + " = ");
+                        sb.append(message.get(REPLMessage.SLOT_VALUE));
+                        context.displayInfo(sb.toString());
+                    }
                 }
             }
         }
