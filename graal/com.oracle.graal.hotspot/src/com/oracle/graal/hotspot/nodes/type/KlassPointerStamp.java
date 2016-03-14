@@ -83,6 +83,15 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
     }
 
     @Override
+    public boolean isCompatible(Constant constant) {
+        if (constant instanceof HotSpotMetaspaceConstant) {
+            return ((HotSpotMetaspaceConstant) constant).asResolvedJavaType() != null;
+        } else {
+            return super.isCompatible(constant);
+        }
+    }
+
+    @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
         if (isCompressed()) {
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {

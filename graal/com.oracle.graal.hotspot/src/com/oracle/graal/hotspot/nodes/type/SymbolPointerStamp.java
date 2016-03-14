@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,23 +32,23 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 
-public final class MethodPointerStamp extends MetaspacePointerStamp {
+public final class SymbolPointerStamp extends MetaspacePointerStamp {
 
-    private static final MethodPointerStamp METHOD = new MethodPointerStamp(false, false);
+    private static final SymbolPointerStamp SYMBOL = new SymbolPointerStamp(false, false);
 
-    private static final MethodPointerStamp METHOD_NON_NULL = new MethodPointerStamp(true, false);
+    private static final SymbolPointerStamp SYMBOL_NON_NULL = new SymbolPointerStamp(true, false);
 
-    private static final MethodPointerStamp METHOD_ALWAYS_NULL = new MethodPointerStamp(false, true);
+    private static final SymbolPointerStamp SYMBOL_ALWAYS_NULL = new SymbolPointerStamp(false, true);
 
-    public static MethodPointerStamp method() {
-        return METHOD;
+    public static SymbolPointerStamp symbol() {
+        return SYMBOL;
     }
 
-    public static MethodPointerStamp methodNonNull() {
-        return METHOD_NON_NULL;
+    public static SymbolPointerStamp symbolNonNull() {
+        return SYMBOL_NON_NULL;
     }
 
-    private MethodPointerStamp(boolean nonNull, boolean alwaysNull) {
+    private SymbolPointerStamp(boolean nonNull, boolean alwaysNull) {
         super(nonNull, alwaysNull);
     }
 
@@ -56,11 +56,11 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
     protected AbstractPointerStamp copyWith(boolean newNonNull, boolean newAlwaysNull) {
         if (newNonNull) {
             assert !newAlwaysNull;
-            return METHOD_NON_NULL;
+            return SYMBOL_NON_NULL;
         } else if (newAlwaysNull) {
-            return METHOD_ALWAYS_NULL;
+            return SYMBOL_ALWAYS_NULL;
         } else {
-            return METHOD;
+            return SYMBOL;
         }
     }
 
@@ -69,13 +69,13 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
         if (this == otherStamp) {
             return true;
         }
-        return otherStamp instanceof MethodPointerStamp;
+        return otherStamp instanceof SymbolPointerStamp;
     }
 
     @Override
     public boolean isCompatible(Constant constant) {
         if (constant instanceof HotSpotMetaspaceConstant) {
-            return ((HotSpotMetaspaceConstant) constant).asResolvedJavaMethod() != null;
+            return ((HotSpotMetaspaceConstant) constant).asSymbol() != null;
         } else {
             return super.isCompatible(constant);
         }
@@ -84,22 +84,22 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
         if (JavaConstant.NULL_POINTER.equals(c)) {
-            return METHOD_ALWAYS_NULL;
+            return SYMBOL_ALWAYS_NULL;
         } else {
-            assert c instanceof HotSpotMetaspaceConstant;
-            return METHOD_NON_NULL;
+            assert ((HotSpotMetaspaceConstant) c).asSymbol() != null;
+            return SYMBOL_NON_NULL;
         }
     }
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
         HotSpotMemoryAccessProvider hsProvider = (HotSpotMemoryAccessProvider) provider;
-        return hsProvider.readMethodPointerConstant(base, displacement);
+        return hsProvider.readSymbolConstant(base, displacement);
     }
 
     @Override
     public String toString() {
-        StringBuilder ret = new StringBuilder("Method*");
+        StringBuilder ret = new StringBuilder("Symbol*");
         appendString(ret);
         return ret.toString();
     }

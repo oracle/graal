@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,23 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.TO_SYMBOL_POINTER;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface HotSpotOperation {
+import com.oracle.graal.word.Pointer;
 
-    enum HotspotOpcode {
-        FROM_POINTER,
-        TO_KLASS_POINTER,
-        TO_METHOD_POINTER,
-        TO_SYMBOL_POINTER,
-        POINTER_EQ,
-        POINTER_NE,
-        IS_NULL,
-        READ_KLASS_POINTER
-    }
+/**
+ * Marker type for a metaspace pointer to a symbol.
+ */
+public abstract class SymbolPointer extends MetaspacePointer {
 
-    HotspotOpcode opcode();
+    @HotSpotOperation(opcode = POINTER_EQ)
+    public abstract boolean equal(SymbolPointer other);
+
+    @HotSpotOperation(opcode = POINTER_NE)
+    public abstract boolean notEqual(SymbolPointer other);
+
+    @HotSpotOperation(opcode = TO_SYMBOL_POINTER)
+    public static native SymbolPointer fromWord(Pointer pointer);
 }
