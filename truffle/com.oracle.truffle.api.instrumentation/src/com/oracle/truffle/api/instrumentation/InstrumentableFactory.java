@@ -44,7 +44,7 @@ public interface InstrumentableFactory<T extends Node> {
      * Returns a new, never adopted, unshared {@link WrapperNode wrapper} node implementation for a
      * particular {@link Instrumentable} node of the guest language AST called its <em>delegate</em>
      * . The returned wrapper implementation must extend the same type that is annotated with
-     * {@link Instrumentable}. </p>
+     * {@link Instrumentable}.</p>
      * <p>
      * A wrapper forwards the following events concerning the delegate to the given
      * {@link ProbeNode probe} for propagation through the instrumentation framework, e.g. to
@@ -63,12 +63,7 @@ public interface InstrumentableFactory<T extends Node> {
      * </ul>
      * </p>
      * <p>
-     * A wrapper must pass through a {@link KillException} or {@link QuitException} without any
-     * further event notification. Specifically, one of these exceptions thrown from
-     * {@linkplain ProbeNode#onEnter(com.oracle.truffle.api.frame.VirtualFrame) onEnter(Frame)} is
-     * not an execution event and
-     * {@linkplain ProbeNode#onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame, Throwable)
-     * onReturnExceptional(Frame,Throwable)} should <strong>not be called</strong>.
+     * A wrapper must pass through a {@link KillException} without any further event notification.
      * </p>
      *
      * @param node the {@link Instrumentable} <em>delegate</em> to be adopted by the wrapper
