@@ -1042,7 +1042,6 @@ public final class Debugger {
         debugContext = new DebugExecutionContext(execSource, debugContext, depth);
         prepareContinue(depth);
         debugContext.contextTrace("START EXEC ");
-        ACCESSOR.dispatchEvent(engine, new ExecutionEvent(this));
     }
 
     void executionEnded() {
@@ -1074,19 +1073,18 @@ public final class Debugger {
 
         @Override
         protected Closeable executionStart(Object vm, int currentDepth, final boolean initializeDebugger, Source s) {
-            final Debugger debugger = find((PolyglotEngine) vm, initializeDebugger);
-            if (debugger == null) {
-                return new Closeable() {
-                    @Override
-                    public void close() throws IOException {
-                    }
-                };
+            final PolyglotEngine engine = (PolyglotEngine) vm;
+            final Debugger debugger = find(engine, initializeDebugger);
+            if (debugger != null) {
+                debugger.executionStarted(currentDepth, s);
             }
-            debugger.executionStarted(currentDepth, s);
+            ACCESSOR.dispatchEvent(engine, new ExecutionEvent(engine));
             return new Closeable() {
                 @Override
                 public void close() throws IOException {
-                    debugger.executionEnded();
+                    if (debugger != null) {
+                        debugger.executionEnded();
+                    }
                 }
             };
         }

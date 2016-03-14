@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.vm.PolyglotEngine;
+
 /**
  * This event is delivered to all
  * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
@@ -41,10 +43,10 @@ package com.oracle.truffle.api.debug;
  */
 @SuppressWarnings("javadoc")
 public final class ExecutionEvent {
-    private final Debugger debugger;
+    private final PolyglotEngine engine;
 
-    ExecutionEvent(Debugger prepares) {
-        this.debugger = prepares;
+    ExecutionEvent(PolyglotEngine vm) {
+        this.engine = vm;
     }
 
     /**
@@ -57,7 +59,7 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public Debugger getDebugger() {
-        return debugger;
+        return Debugger.find(engine);
     }
 
     /**
@@ -75,7 +77,7 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public void prepareContinue() {
-        debugger.prepareContinue(-1);
+        getDebugger().prepareContinue(-1);
     }
 
     /**
@@ -98,6 +100,6 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public void prepareStepInto() {
-        debugger.prepareStepInto(1);
+        getDebugger().prepareStepInto(1);
     }
 }
