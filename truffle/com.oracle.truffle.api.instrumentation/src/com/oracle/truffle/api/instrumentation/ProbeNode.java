@@ -41,7 +41,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * <p>
- * Represents an event sink for instrumentation events that is embedded in the ast using wrappers if
+ * Represents an event sink for instrumentation events that is embedded in the AST using wrappers if
  * needed. Instances of this class are provided by
  * {@link InstrumentableFactory#createWrapper(Node, ProbeNode)} to notify the instrumentation API
  * about execution events.
@@ -99,7 +99,7 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Should get invoked after the node is invoked sucessfuly.
+     * Should get invoked after the node is invoked successfully.
      *
      * @param result the result value of the operation
      * @param frame the current frame of the execution.
@@ -112,13 +112,19 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Should get invoked if the node did not complete sucessfully.
+     * Should get invoked if the node did not complete successfully.
      *
-     * @param exception the exception that occured during the execution
+     * @param exception the exception that occurred during the execution
      * @param frame the current frame of the execution.
      * @since 0.12
      */
     public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+        if (exception instanceof KillException) {
+            throw (KillException) exception;
+        }
+        if (exception instanceof QuitException) {
+            throw (QuitException) exception;
+        }
         if (lazyUpdate(frame)) {
             chain.onReturnExceptional(context, frame, exception);
         }
@@ -183,7 +189,7 @@ public final class ProbeNode extends Node {
             assert element instanceof ExecutionEventNodeFactory;
             ExecutionEventNode eventNode = createEventNode(binding, element);
             if (eventNode == null) {
-                // error occured creating the event node
+                // error occurred creating the event node
                 return null;
             }
             next = new EventProviderChainNode(binding, eventNode);
@@ -203,16 +209,27 @@ public final class ProbeNode extends Node {
                 /* Language bindings can just throw exceptions directly into the AST. */
                 throw t;
             } else {
-                /* Where as instrumentations are not allowed to do that. */
-                failEventForInstrumentation(binding, "ProbeNodeFactory.create", t);
+                /* Instruments are not allowed to disrupt program execution. */
+                exceptionEventForInstrumentation(binding, "ProbeNodeFactory.create", t);
                 return null;
             }
         }
         return eventNode;
     }
 
-    static void failEventForInstrumentation(EventBinding<?> b, String eventName, Throwable t) {
+    /**
+     * Handles exceptions from non-language instrumentation code that must not be allowed to alter
+     * guest language execution semantics. Usual response is to log and continue.
+     */
+    static void exceptionEventForInstrumentation(EventBinding<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
+        if (t instanceof KillException) {
+            // Terminates guest language execution immediately
+            throw (KillException) t;
+        } else if (t instanceof QuitException) {
+            throw (QuitException) t;
+        }
+        // Exception is a failure in (non-language) instrumentation code; log and continue
         InstrumentationInstrumenter instrumentationInstrumenter = (InstrumentationInstrumenter) b.getInstrumenter();
         Class<?> instrumentationClass = instrumentationInstrumenter.getInstrumentationClass();
 
@@ -260,8 +277,6 @@ public final class ProbeNode extends Node {
         final void onDispose(EventContext context, VirtualFrame frame) {
             try {
                 innerOnDispose(context, frame);
-            } catch (KillException | QuitException ex) {
-                throw ex;
             } catch (Throwable t) {
                 if (!seenException) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -271,7 +286,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    failEventForInstrumentation(binding, "onEnter", t);
+                    exceptionEventForInstrumentation(binding, "onEnter", t);
                 }
             }
             if (next != null) {
@@ -284,8 +299,6 @@ public final class ProbeNode extends Node {
         final void onEnter(EventContext context, VirtualFrame frame) {
             try {
                 innerOnEnter(context, frame);
-            } catch (KillException | QuitException ex) {
-                throw ex;
             } catch (Throwable t) {
                 if (!seenException) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -295,7 +308,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    failEventForInstrumentation(binding, "onEnter", t);
+                    exceptionEventForInstrumentation(binding, "onEnter", t);
                 }
             }
             if (next != null) {
@@ -308,8 +321,6 @@ public final class ProbeNode extends Node {
         final void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
             try {
                 innerOnReturnValue(context, frame, result);
-            } catch (KillException | QuitException ex) {
-                throw ex;
             } catch (Throwable t) {
                 if (!seenException) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -319,7 +330,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    failEventForInstrumentation(binding, "onReturnValue", t);
+                    exceptionEventForInstrumentation(binding, "onReturnValue", t);
                 }
             }
             if (next != null) {
@@ -332,8 +343,6 @@ public final class ProbeNode extends Node {
         final void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
             try {
                 innerOnReturnExceptional(context, frame, exception);
-            } catch (KillException | QuitException ex) {
-                throw ex;
             } catch (Throwable t) {
                 if (!seenException) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -343,7 +352,7 @@ public final class ProbeNode extends Node {
                     exception.addSuppressed(t);
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    failEventForInstrumentation(binding, "onReturnExceptional", t);
+                    exceptionEventForInstrumentation(binding, "onReturnExceptional", t);
                 }
             }
             if (next != null) {
