@@ -25,6 +25,7 @@
 package com.oracle.graal.truffle.bench.interop;
 
 import java.util.Random;
+import java.util.function.IntBinaryOperator;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
@@ -76,19 +77,19 @@ public class JavaInteropSpeedBench {
         return max;
     }
 
-    private static final TruffleObject TRUFFLE_MAX = JavaInterop.asTruffleFunction(IntBinaryOperation.class, new IntBinaryOperation() {
+    private static final TruffleObject TRUFFLE_MAX = JavaInterop.asTruffleFunction(IntBinaryOperator.class, new IntBinaryOperator() {
         @Override
-        public int compute(int a, int b) {
-            return Math.max(a, b);
+        public int applyAsInt(int left, int right) {
+            return Math.max(left, right);
         }
     });
-    private static final IntBinaryOperation MAX = JavaInterop.asJavaFunction(IntBinaryOperation.class, TRUFFLE_MAX);
+    private static final IntBinaryOperator MAX = JavaInterop.asJavaFunction(IntBinaryOperator.class, TRUFFLE_MAX);
 
     @Benchmark
     public int doMinMaxWithInterOp() {
         int max = 0;
         for (int i = 0; i < arr.length; i++) {
-            max = MAX.compute(arr[i], max);
+            max = MAX.applyAsInt(arr[i], max);
         }
         return max;
     }
