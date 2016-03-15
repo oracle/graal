@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.sparc.test;
 
-import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceRA;
+import static com.oracle.graal.compiler.common.GraalOptions.TraceRA;
 import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
 import static org.junit.Assume.assumeTrue;
 import jdk.vm.ci.sparc.SPARC;
