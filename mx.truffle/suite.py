@@ -365,6 +365,21 @@ suite = {
        "workingSets" : "Truffle,SimpleLanguage,Tools",
        "license" : "UPL",
      },
+
+    "com.oracle.truffle.examples" : {
+       "subDir" : "truffle",
+       "sourceDirs" : ["src"],
+       "dependencies" : [
+                        "TRUFFLE_API",
+                        ],
+       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+       "checkstyle" : "com.oracle.truffle.sl",
+       "javaCompliance" : "1.8",
+       "workingSets" : "Truffle",
+       "license" : "UPL",
+     },
+
+
    },
 
   "licenses" : {
@@ -476,5 +491,6 @@ suite = {
          "TRUFFLE_DEBUG",
       ],
      },
+
   },
 }
