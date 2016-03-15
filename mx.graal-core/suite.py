@@ -1054,6 +1054,21 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "com.oracle.graal.truffle.bench" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JMH",
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : [
+        "JMH",
+      ],
+      "workingSets" : "Graal,Truffle,Bench",
+    },
+
     "com.oracle.graal.truffle.test" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
