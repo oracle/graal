@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,36 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+import java.util.ArrayList;
+import java.util.List;
 
-public abstract class AllocationPhase extends LIRPhase<AllocationPhase.AllocationContext> {
+/**
+ * Allows storing of arbitrary data.
+ */
+public class GenericContext {
 
-    public static final class AllocationContext extends GenericContext {
-        public final MoveFactory spillMoveFactory;
-        public final RegisterAllocationConfig registerAllocationConfig;
+    private List<Object> context;
 
-        public AllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
-            this.spillMoveFactory = spillMoveFactory;
-            this.registerAllocationConfig = registerAllocationConfig;
-        }
+    public GenericContext() {
+        context = null;
     }
 
+    public <T> void contextAdd(T obj) {
+        if (context == null) {
+            context = new ArrayList<>();
+        }
+        context.add(obj);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T contextLookup(Class<T> clazz) {
+        if (context != null) {
+            for (Object e : context) {
+                if (clazz.isInstance(e)) {
+                    return (T) e;
+                }
+            }
+        }
+        return null;
+    }
 }

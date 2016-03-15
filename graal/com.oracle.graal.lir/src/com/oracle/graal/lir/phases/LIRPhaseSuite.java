@@ -85,7 +85,7 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
+    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
         for (LIRPhase<C> phase : phases) {
             phase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
         }
