@@ -99,7 +99,7 @@ public abstract class ValueProfile extends Profile {
      * object identity. If two identities have been seen on a single profile instance then this
      * profile will transition to a generic state with no overhead.
      * </p>
-     * 
+     *
      * @since 0.10
      */
     public static ValueProfile createIdentityProfile() {
@@ -124,7 +124,7 @@ public abstract class ValueProfile extends Profile {
      * seen on a single profile instance then this profile will transition to a generic state with
      * no overhead.
      * </p>
-     * 
+     *
      * @since 0.10
      */
     public static ValueProfile createEqualityProfile() {
@@ -327,11 +327,19 @@ public abstract class ValueProfile extends Profile {
 }
 
 class ValueProfileSnippets {
-    boolean id;
-
     // BEGIN: com.oracle.truffle.api.profiles.ValueProfileSnippets.SampleNode#profile
     class SampleNode extends Node {
-        final ValueProfile profile = id ? ValueProfile.createIdentityProfile() : ValueProfile.createClassProfile();
+        final ValueProfile profile;
+
+        SampleNode(boolean useIdentity, boolean useClass) {
+            if (useIdentity) {
+                profile = ValueProfile.createIdentityProfile();
+            } else if (useClass) {
+                profile = ValueProfile.createClassProfile();
+            } else {
+                profile = ValueProfile.createEqualityProfile();
+            }
+        }
 
         Object execute(Object input) {
             Object profiledValue = profile.profile(input);
