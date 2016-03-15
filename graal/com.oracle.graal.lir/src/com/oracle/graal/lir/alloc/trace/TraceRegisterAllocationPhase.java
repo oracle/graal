@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TRACE_DUMP_LEVEL;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
 import java.util.Collection;
@@ -38,7 +39,6 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
-import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TraceBuilderContext;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
@@ -75,9 +75,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
     private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
     private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
-    private static final TraceBuilderPhase TRACE_BUILDER_PHASE = new TraceBuilderPhase();
-
-    public static final int TRACE_DUMP_LEVEL = 3;
 
     private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
     private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
@@ -89,7 +86,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
         LIR lir = lirGenRes.getLIR();
         assert SSIVerifier.verify(lir) : "LIR not in SSI form.";
-        TraceBuilderResult<B> resultTraces = builtTraces(target, lirGenRes, codeEmittingOrder, linearScanOrder);
+        TraceBuilderResult<B> resultTraces = getTraces(context);
 
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
@@ -123,18 +120,9 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         deconstructSSIForm(lir);
     }
 
-    @SuppressWarnings("try")
-    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> builtTraces(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
-        try (Scope s = Debug.scope("TraceBuilding")) {
-            TraceBuilderContext traceBuilderContext = new TraceBuilderPhase.TraceBuilderContext();
-            TRACE_BUILDER_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceBuilderContext, false);
-
-            @SuppressWarnings("unchecked")
-            TraceBuilderResult<B> resultTraces = (TraceBuilderResult<B>) traceBuilderContext.traceBuilderResult;
-
-            Debug.dump(TRACE_DUMP_LEVEL, resultTraces, "After TraceBuilding");
-            return resultTraces;
-        }
+    @SuppressWarnings("unchecked")
+    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraces(AllocationContext context) {
+        return context.contextLookup(TraceBuilderResult.class);
     }
 
     /**

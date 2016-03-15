@@ -28,6 +28,7 @@ import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceR
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.lir.alloc.AllocationStageVerifier;
 import com.oracle.graal.lir.alloc.lsra.LinearScanPhase;
+import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
 import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase;
 import com.oracle.graal.lir.dfa.LocationMarkerPhase;
 import com.oracle.graal.lir.dfa.MarkBasePointersPhase;
@@ -59,6 +60,7 @@ public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
             }
         }
         if (TraceRA.getValue()) {
+            appendPhase(new TraceBuilderPhase());
             appendPhase(new TraceRegisterAllocationPhase());
         } else {
             appendPhase(new LinearScanPhase());

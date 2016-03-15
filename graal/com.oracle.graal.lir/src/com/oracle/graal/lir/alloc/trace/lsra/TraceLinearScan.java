@@ -52,6 +52,7 @@ import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.VirtualStackSlot;
+import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
 import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanAllocationPhase.TraceLinearScanAllocationContext;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
@@ -765,12 +766,12 @@ public final class TraceLinearScan {
 
                 // resolve intra-trace data-flow
                 TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-                Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
+                Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
 
                 // eliminate spill moves
                 if (Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
                     TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-                    Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
+                    Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
                 }
 
                 TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
@@ -786,7 +787,7 @@ public final class TraceLinearScan {
 
     @SuppressWarnings("try")
     public void printIntervals(String label) {
-        if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
+        if (Debug.isDumpEnabled(TraceBuilderPhase.TRACE_DUMP_LEVEL)) {
             if (Debug.isLogEnabled()) {
                 try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
                     for (FixedInterval interval : fixedIntervals) {
@@ -814,8 +815,8 @@ public final class TraceLinearScan {
     }
 
     public void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
-        if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
-            Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), label);
+        if (Debug.isDumpEnabled(TraceBuilderPhase.TRACE_DUMP_LEVEL)) {
+            Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), label);
         }
     }
 

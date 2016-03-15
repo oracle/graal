@@ -35,14 +35,14 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.LIRPhase;
+import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
 
-public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderContext> {
+public class TraceBuilderPhase extends AllocationPhase {
 
     public static class Options {
         // @formatter:off
@@ -51,15 +51,11 @@ public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderCo
         // @formatter:on
     }
 
-    public static final class TraceBuilderContext {
-        public TraceBuilderResult<?> traceBuilderResult;
-
-    }
-
     private static final int TRACE_LOG_LEVEL = 1;
+    public static final int TRACE_DUMP_LEVEL = 3;
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, TraceBuilderContext context) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
         B startBlock = linearScanOrder.get(0);
         LIR lir = lirGenRes.getLIR();
         assert startBlock.equals(lir.getControlFlowGraph().getStartBlock());
@@ -78,7 +74,8 @@ public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderCo
             }
         }
         TraceStatisticsPrinter.printTraceStatistics(traceBuilderResult, lirGenRes.getCompilationUnitName());
-        context.traceBuilderResult = traceBuilderResult;
+        Debug.dump(TRACE_DUMP_LEVEL, traceBuilderResult, "After TraceBuilding");
+        context.contextAdd(traceBuilderResult);
     }
 
 }
