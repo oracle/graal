@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public final class DefaultCallTarget implements RootCallTarget {
 
     private final RootNode rootNode;
-    private boolean initialized;
+    private volatile boolean initialized;
 
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
@@ -88,11 +88,11 @@ public final class DefaultCallTarget implements RootCallTarget {
     private void initialize() {
         synchronized (this) {
             if (!this.initialized) {
-                this.initialized = true;
                 Accessor accessor = Accessor.INSTRUMENTHANDLER;
                 if (accessor != null) {
                     accessor.initializeCallTarget(this);
                 }
+                this.initialized = true;
             }
         }
     }

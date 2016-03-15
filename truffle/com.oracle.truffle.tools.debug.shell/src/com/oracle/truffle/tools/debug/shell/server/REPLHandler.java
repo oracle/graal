@@ -43,7 +43,7 @@ import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrint
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.BreakpointInfo;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.Context;
-import com.oracle.truffle.tools.debug.shell.server.REPLServer.Visualizer;
+import com.oracle.truffle.tools.debug.shell.server.REPLServer.REPLVisualizer;
 
 /**
  * Server-side REPL implementation of an {@linkplain REPLMessage "op"}.
@@ -147,13 +147,17 @@ public abstract class REPLHandler {
 
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
-            final Visualizer visualizer = replServer.getCurrentContext().getVisualizer();
+            final REPLVisualizer visualizer = replServer.getCurrentContext().getVisualizer();
             final ArrayList<REPLMessage> replies = new ArrayList<>();
             final Context currentContext = replServer.getCurrentContext();
             final List<FrameInstance> stack = currentContext.getStack();
-            replies.add(btMessage(0, currentContext.getNode(), visualizer, replServer.getLocationPrinter()));
-            for (int i = 1; i <= stack.size(); i++) {
-                replies.add(btMessage(i, stack.get(i - 1).getCallNode(), visualizer, replServer.getLocationPrinter()));
+            int frameIndex = 0; // Index into list of displayed frames
+            // Iterate the real stack for the current execution
+            for (int stackIndex = 0; stackIndex < stack.size(); stackIndex++) {
+                final Node callNode = stackIndex == 0 ? currentContext.getNode() : stack.get(stackIndex).getCallNode();
+                if (callNode != null) {
+                    replies.add(btMessage(frameIndex++, callNode, visualizer, replServer.getLocationPrinter()));
+                }
             }
             if (replies.size() > 0) {
                 return replies.toArray(new REPLMessage[0]);
@@ -162,7 +166,7 @@ public abstract class REPLHandler {
         }
     };
 
-    private static REPLMessage btMessage(int index, Node node, Visualizer visualizer, LocationPrinter locationPrinter) {
+    private static REPLMessage btMessage(int index, Node node, REPLVisualizer visualizer, LocationPrinter locationPrinter) {
         final REPLMessage btMessage = new REPLMessage(REPLMessage.OP, REPLMessage.BACKTRACE);
         btMessage.put(REPLMessage.FRAME_NUMBER, Integer.toString(index));
         if (node != null) {
@@ -395,7 +399,7 @@ public abstract class REPLHandler {
             reply.put(REPLMessage.DEBUG_LEVEL, Integer.toString(serverContext.getLevel()));
 
             final String source = request.get(REPLMessage.CODE);
-            final Visualizer visualizer = replServer.getCurrentContext().getVisualizer();
+            final REPLVisualizer visualizer = replServer.getCurrentContext().getVisualizer();
             final Integer frameNumber = request.getIntValue(REPLMessage.FRAME_NUMBER);
             final boolean stepInto = REPLMessage.TRUE.equals(request.get(REPLMessage.STEP_INTO));
             try {
@@ -452,7 +456,7 @@ public abstract class REPLHandler {
             if (frameNumber < 0 || frameNumber > stack.size()) {
                 return finishReplyFailed(createReply(), "frame number " + frameNumber + " out of range");
             }
-            final Visualizer visualizer = replServer.getCurrentContext().getVisualizer();
+            final REPLVisualizer visualizer = replServer.getCurrentContext().getVisualizer();
 
             MaterializedFrame frame;
             Node node;
@@ -460,7 +464,7 @@ public abstract class REPLHandler {
                 frame = currentContext.getFrame();
                 node = currentContext.getNode();
             } else {
-                final FrameInstance instance = stack.get(frameNumber - 1);
+                final FrameInstance instance = stack.get(frameNumber);
                 frame = instance.getFrame(FrameAccess.MATERIALIZE, true).materialize();
                 node = instance.getCallNode();
             }
@@ -730,7 +734,6 @@ public abstract class REPLHandler {
             try {
                 final StringBuilder sb = new StringBuilder();
                 sb.append(replServer.getASTPrinter().displayNodeWithInstrumentation(node));
-
                 final SourceSection sourceSection = node.getSourceSection();
                 if (sourceSection != null) {
                     final String code = sourceSection.getCode();

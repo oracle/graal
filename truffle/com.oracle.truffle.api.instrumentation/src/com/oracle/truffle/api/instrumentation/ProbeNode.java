@@ -33,7 +33,7 @@ import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentationInstrumenter;
+import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.source.SourceSection;
@@ -68,7 +68,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class ProbeNode extends Node {
 
-    private final InstrumentationHandler instrumenter;
+    private final InstrumentationHandler handler;
     private final EventContext context;
 
     @Child private ProbeNode.EventChainNode chain;
@@ -79,9 +79,9 @@ public final class ProbeNode extends Node {
      */
     @CompilationFinal private Assumption version;
 
-    /** Is instantiated by the instrumentation framework. */
-    ProbeNode(InstrumentationHandler impl, SourceSection sourceSection) {
-        this.instrumenter = impl;
+    /** Instantiated by the instrumentation framework. */
+    ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
+        this.handler = handler;
         this.context = new EventContext(this, sourceSection);
     }
 
@@ -153,14 +153,14 @@ public final class ProbeNode extends Node {
     private boolean lazyUpdate(VirtualFrame frame) {
         if (version == null || !version.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            // i am allowed to pass in the virtual frame as its instances are always materialized
+            // Ok to pass in the virtual frame as its instances are always materialized
             return lazyUpdatedImpl(frame);
         }
         return true;
     }
 
     private boolean lazyUpdatedImpl(VirtualFrame frame) {
-        Node nextChain = instrumenter.installBindings(ProbeNode.this);
+        Node nextChain = handler.installBindings(ProbeNode.this);
         if (nextChain == null) {
             // chain is null -> remove wrapper;
             // Note: never set child nodes to null, can cause races
@@ -172,7 +172,7 @@ public final class ProbeNode extends Node {
             oldChain.onDispose(context, frame);
         }
         this.chain = (EventChainNode) insert(nextChain);
-        this.version = Truffle.getRuntime().createAssumption("Instrumentations unchanged");
+        this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
         return true;
     }
 
@@ -205,8 +205,11 @@ public final class ProbeNode extends Node {
                 /* Language bindings can just throw exceptions directly into the AST. */
                 throw t;
             } else {
-                /* Instruments are not allowed to disrupt program execution. */
-                exceptionEventForInstrumentation(binding, "ProbeNodeFactory.create", t);
+                /*
+                 * Client Instruments are not allowed to disrupt program execution by throwing
+                 * exceptions into the AST.
+                 */
+                exceptionEventForClientInstrument(binding, "ProbeNodeFactory.create", t);
                 return null;
             }
         }
@@ -217,21 +220,21 @@ public final class ProbeNode extends Node {
      * Handles exceptions from non-language instrumentation code that must not be allowed to alter
      * guest language execution semantics. Normal response is to log and continue.
      */
-    static void exceptionEventForInstrumentation(EventBinding<?> b, String eventName, Throwable t) {
+    static void exceptionEventForClientInstrument(EventBinding<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
         if (t instanceof KillException) {
             // Terminates guest language execution immediately
             throw (KillException) t;
         }
         // Exception is a failure in (non-language) instrumentation code; log and continue
-        InstrumentationInstrumenter instrumentationInstrumenter = (InstrumentationInstrumenter) b.getInstrumenter();
-        Class<?> instrumentationClass = instrumentationInstrumenter.getInstrumentationClass();
+        InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
+        Class<?> instrumentClass = instrumenter.getInstrumentClass();
 
-        String message = String.format("Event %s failed for instrumentation class %s and listener/factory %s.", //
-                        eventName, instrumentationClass.getName(), b.getElement());
+        String message = String.format("Event %s failed for instrument class %s and listener/factory %s.", //
+                        eventName, instrumentClass.getName(), b.getElement());
 
         Exception exception = new Exception(message, t);
-        PrintStream stream = new PrintStream(instrumentationInstrumenter.getEnv().err());
+        PrintStream stream = new PrintStream(instrumenter.getEnv().err());
         exception.printStackTrace(stream);
     }
 
@@ -280,7 +283,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    exceptionEventForInstrumentation(binding, "onEnter", t);
+                    exceptionEventForClientInstrument(binding, "onEnter", t);
                 }
             }
             if (next != null) {
@@ -302,7 +305,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    exceptionEventForInstrumentation(binding, "onEnter", t);
+                    exceptionEventForClientInstrument(binding, "onEnter", t);
                 }
             }
             if (next != null) {
@@ -324,7 +327,7 @@ public final class ProbeNode extends Node {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    exceptionEventForInstrumentation(binding, "onReturnValue", t);
+                    exceptionEventForClientInstrument(binding, "onReturnValue", t);
                 }
             }
             if (next != null) {
@@ -346,7 +349,8 @@ public final class ProbeNode extends Node {
                     exception.addSuppressed(t);
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    exceptionEventForInstrumentation(binding, "onReturnExceptional", t);
+                    exceptionEventForClientInstrument(binding, "onReturnExceptional", t);
+
                 }
             }
             if (next != null) {
