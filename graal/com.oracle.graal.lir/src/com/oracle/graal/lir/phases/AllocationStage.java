@@ -33,7 +33,7 @@ import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase;
 import com.oracle.graal.lir.dfa.LocationMarkerPhase;
 import com.oracle.graal.lir.dfa.MarkBasePointersPhase;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.ssi.FastSSIConstructionPhase;
+import com.oracle.graal.lir.ssi.SSIConstructionPhase;
 import com.oracle.graal.lir.stackslotalloc.LSStackSlotAllocator;
 import com.oracle.graal.lir.stackslotalloc.SimpleStackSlotAllocator;
 import com.oracle.graal.options.Option;
@@ -52,7 +52,7 @@ public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
     public AllocationStage() {
         appendPhase(new MarkBasePointersPhase());
         if (EnableSSIConstruction.getValue()) {
-            appendPhase(new FastSSIConstructionPhase());
+            appendPhase(new SSIConstructionPhase());
         }
         if (TraceRA.getValue()) {
             appendPhase(new TraceBuilderPhase());

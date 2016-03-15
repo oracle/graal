@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.Value;
  *
  * @see SSIUtil
  */
-public final class FastSSIConstructionPhase extends AllocationPhase {
+public final class SSIConstructionPhase extends AllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
