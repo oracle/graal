@@ -40,7 +40,7 @@ public class TwoMergesExplodedLoopTestNode extends AbstractTestNode {
         this.count = count;
     }
 
-    @ExplodeLoop(merge = false)
+    @ExplodeLoop(merge = true)
     @Override
     public int execute(VirtualFrame frame) {
         Flag flag = new Flag();
