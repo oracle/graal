@@ -62,9 +62,6 @@ public interface InstrumentableFactory<T extends Node> {
      * thrown an exception.</li>
      * </ul>
      * </p>
-     * <p>
-     * A wrapper must pass through a {@link KillException} without any further event notification.
-     * </p>
      *
      * @param node the {@link Instrumentable} <em>delegate</em> to be adopted by the wrapper
      * @param probe the {@link ProbeNode probe node} to be adopted and sent execution events by the
