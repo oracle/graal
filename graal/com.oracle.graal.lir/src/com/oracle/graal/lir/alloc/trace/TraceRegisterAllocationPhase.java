@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
+
 import java.util.Collection;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.alloc.TraceStatisticsPrinter;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -36,8 +37,6 @@ import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TraceBuilderContext;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
@@ -79,7 +78,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     private static final TraceBuilderPhase TRACE_BUILDER_PHASE = new TraceBuilderPhase();
 
     public static final int TRACE_DUMP_LEVEL = 3;
-    private static final int TRACE_LOG_LEVEL = 1;
 
     private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
     private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
@@ -134,15 +132,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
             @SuppressWarnings("unchecked")
             TraceBuilderResult<B> resultTraces = (TraceBuilderResult<B>) traceBuilderContext.traceBuilderResult;
 
-            assert TraceBuilderResult.verify(resultTraces, lirGenRes.getLIR().getControlFlowGraph().getBlocks().size());
-            if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
-                List<Trace<B>> traces = resultTraces.getTraces();
-                for (int i = 0; i < traces.size(); i++) {
-                    Trace<B> trace = traces.get(i);
-                    Debug.log(TRACE_LOG_LEVEL, "Trace %5d: %s%s", i, trace, isTrivialTrace(lirGenRes.getLIR(), trace) ? " (trivial)" : "");
-                }
-            }
-            TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
             Debug.dump(TRACE_DUMP_LEVEL, resultTraces, "After TraceBuilding");
             return resultTraces;
         }
@@ -166,22 +155,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                 SSIUtil.removeOutgoing(lir, block);
             }
         }
-    }
-
-    static boolean isTrivialTrace(LIR lir, Trace<? extends AbstractBlockBase<?>> trace) {
-        if (trace.size() != 1) {
-            return false;
-        }
-        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.getBlocks().iterator().next());
-        if (instructions.size() != 2) {
-            return false;
-        }
-        assert instructions.get(0) instanceof LabelOp : "First instruction not a LabelOp: " + instructions.get(0);
-        /*
-         * Now we need to check if the BlockEndOp has no special operand requirements (i.e.
-         * stack-slot, register). For now we just check for JumpOp because we know that it doesn't.
-         */
-        return instructions.get(1) instanceof JumpOp;
     }
 
     private static void unnumberInstructions(Collection<? extends AbstractBlockBase<?>> trace, LIR lir) {

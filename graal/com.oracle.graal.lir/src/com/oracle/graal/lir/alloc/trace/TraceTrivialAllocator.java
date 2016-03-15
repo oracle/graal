@@ -24,7 +24,7 @@ package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.isTrivialTrace;
+import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
 import java.util.List;
 
