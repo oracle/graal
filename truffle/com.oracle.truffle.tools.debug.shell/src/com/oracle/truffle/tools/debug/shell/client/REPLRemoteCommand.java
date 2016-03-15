@@ -554,29 +554,6 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
     };
 
-    public static final REPLRemoteCommand KILL_CMD = new REPLRemoteCommand("kill", null, "Stop program execution") {
-
-        @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            if (context.level() == 0) {
-                context.displayFailReply("no active execution");
-                return null;
-            }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, "kill");
-            return request;
-        }
-
-        @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            if (replies[0].get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                context.displayReply(replies[0].get(REPLMessage.DISPLAY_MSG));
-            } else {
-                context.displayFailReply(replies[0].get(REPLMessage.DISPLAY_MSG));
-            }
-        }
-    };
-
     public static final REPLRemoteCommand LOAD_CMD = new REPLRemoteCommand("load", null, "Load source") {
 
         private final String[] help = new String[]{"load : load currently selected file source", "load <file name> : load file <file name>"};

@@ -35,7 +35,6 @@ import java.util.List;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.KillException;
-import com.oracle.truffle.api.QuitException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
@@ -62,7 +61,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * Instance of this class is delivered via {@link SuspendedEvent#getDebugger()} and
  * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
  * is turned on}.
- * 
+ *
  * @since 0.9
  */
 public final class Debugger {
@@ -71,7 +70,7 @@ public final class Debugger {
      * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
      * where ordinary stepping should halt. The debugger will halt just <em>before</em> a code
      * location is executed that is marked with this tag.
-     * 
+     *
      * @since 0.9
      */
     public static final String HALT_TAG = "debug-HALT";
@@ -232,7 +231,7 @@ public final class Debugger {
     /**
      * Gets all existing breakpoints, whatever their status, in natural sorted order. Modification
      * save.
-     * 
+     *
      * @since 0.9
      */
     @TruffleBoundary
@@ -990,9 +989,6 @@ public final class Debugger {
                 running = true;
             } catch (KillException e) {
                 contextTrace("KILL");
-                throw e;
-            } catch (QuitException e) {
-                contextTrace("QUIT");
                 throw e;
             } finally {
                 haltedNode = null;

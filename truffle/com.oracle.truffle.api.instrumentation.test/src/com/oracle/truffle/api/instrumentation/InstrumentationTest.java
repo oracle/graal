@@ -31,7 +31,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.KillException;
-import com.oracle.truffle.api.QuitException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -688,20 +687,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @Test
-    public void testQuitExceptionOnEnter() throws IOException {
-        engine.getInstruments().get("testKillQuitException").setEnabled(true);
-        TestKillQuitException.exceptionOnEnter = new QuitException();
-        TestKillQuitException.exceptionOnReturnValue = null;
-        TestKillQuitException.returnExceptionalCount = 0;
-        try {
-            run("STATEMENT");
-            Assert.fail("QuitException in onEnter() cancels engine execution");
-        } catch (QuitException ex) {
-        }
-        Assert.assertEquals("QuitException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
-    }
-
-    @Test
     public void testKillExceptionOnReturnValue() throws IOException {
         engine.getInstruments().get("testKillQuitException").setEnabled(true);
         TestKillQuitException.exceptionOnEnter = null;
@@ -713,20 +698,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         } catch (KillException ex) {
         }
         Assert.assertEquals("KillException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
-    }
-
-    @Test
-    public void testQuitExceptionOnReturnValue() throws IOException {
-        engine.getInstruments().get("testKillQuitException").setEnabled(true);
-        TestKillQuitException.exceptionOnEnter = null;
-        TestKillQuitException.exceptionOnReturnValue = new QuitException();
-        TestKillQuitException.returnExceptionalCount = 0;
-        try {
-            run("STATEMENT");
-            Assert.fail("QuitException in onReturnValue() cancels engine execution");
-        } catch (QuitException ex) {
-        }
-        Assert.assertEquals("QuitException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
     }
 
     @Registration(id = "testKillQuitException")
