@@ -296,9 +296,6 @@ public final class GraalOptions {
     @Option(help = "Allow backend to match complex expressions.", type = OptionType.Debug)
     public static final OptionValue<Boolean> MatchExpressions = new OptionValue<>(true);
 
-    @Option(help = "Generate SSA LIR.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> SSA_LIR = new OptionValue<>(true);
-
     @Option(help = "Enable counters for various paths in snippets.", type = OptionType.Debug)
     public static final OptionValue<Boolean> SnippetCounters = new OptionValue<>(false);
 
@@ -321,5 +318,8 @@ public final class GraalOptions {
 
     @Option(help = "Enable Graal instrumentation")
     public static final OptionValue<Boolean> UseGraalInstrumentation = new OptionValue<>(false);
+
+    @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> TraceRA = new OptionValue<>(false);
 
 }

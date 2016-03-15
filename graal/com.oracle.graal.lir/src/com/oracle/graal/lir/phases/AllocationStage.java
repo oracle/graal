@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.lir.phases;
 
-import static com.oracle.graal.compiler.common.BackendOptions.EnableSSIConstruction;
-import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceRA;
+import static com.oracle.graal.compiler.common.GraalOptions.TraceRA;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.lir.alloc.AllocationStageVerifier;
@@ -51,10 +50,8 @@ public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
 
     public AllocationStage() {
         appendPhase(new MarkBasePointersPhase());
-        if (EnableSSIConstruction.getValue()) {
-            appendPhase(new SSIConstructionPhase());
-        }
         if (TraceRA.getValue()) {
+            appendPhase(new SSIConstructionPhase());
             appendPhase(new TraceBuilderPhase());
             appendPhase(new TraceRegisterAllocationPhase());
         } else {

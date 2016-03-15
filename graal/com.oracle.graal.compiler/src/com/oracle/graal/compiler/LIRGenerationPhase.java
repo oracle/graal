@@ -22,11 +22,7 @@
  */
 package com.oracle.graal.compiler;
 
-import static com.oracle.graal.compiler.common.BackendOptions.ConstructionSSAlirDuringLirBuilding;
-
 import java.util.List;
-
-import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
@@ -39,6 +35,8 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.TargetDescription;
 
 public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGenerationContext> {
 
@@ -66,7 +64,7 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
             emitBlock(nodeLirBuilder, lirGenRes, (Block) b, graph, schedule.getBlockToNodesMap());
         }
         context.lirGen.beforeRegisterAllocation();
-        assert !ConstructionSSAlirDuringLirBuilding.getValue() || SSAUtil.verifySSAForm(lirGenRes.getLIR());
+        assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
     }
 
     private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
