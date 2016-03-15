@@ -213,7 +213,7 @@ public class ImplicitExplicitExportTest {
 
         @Override
         protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-            return null;
+            throw new UnsupportedOperationException();
         }
 
         private Object importExport(Source code) {

@@ -101,7 +101,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
 
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        throw new IOException();
+        throw new UnsupportedOperationException();
     }
 
     private static final class MultiplyNode extends RootNode implements TruffleObject, ForeignAccess.Factory {

@@ -95,7 +95,7 @@ public class LanguageRegistrationTest {
 
         @Override
         protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-            return null;
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -150,7 +150,7 @@ public class LanguageRegistrationTest {
 
         @Override
         protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-            return null;
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -201,7 +201,7 @@ public class LanguageRegistrationTest {
 
         @Override
         protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-            return null;
+            throw new UnsupportedOperationException();
         }
 
         @Override

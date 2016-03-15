@@ -1056,11 +1056,12 @@ public final class Debugger {
     /**
      * Evaluates a snippet of code in a halted execution context.
      *
-     * @param ev
-     * @param code
-     * @param frameInstance
-     * @return
-     * @throws IOException
+     * @param ev description of the halted execution context
+     * @param code the code to be evaluated in the context
+     * @param frameInstance frame in the context
+     * @return any result provided by the language evaluation
+     * @throws IOException if the evaluation fails
+     * @throws UnsupportedOperationException if not supported by the language implementation
      */
     Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
         if (frameInstance == null) {

@@ -45,6 +45,7 @@ import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -72,7 +73,7 @@ import java.util.Set;
 public abstract class TruffleLanguage<C> {
     /**
      * Constructor to be called by subclasses.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected TruffleLanguage() {
@@ -85,7 +86,7 @@ public abstract class TruffleLanguage<C> {
      * <em>one JAR drop to the class path</em> away from your users. Once they include your JAR in
      * their application, your language will be available to the
      * {@link com.oracle.truffle.api.vm.PolyglotEngine Truffle virtual machine}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.SOURCE)
@@ -237,7 +238,7 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Gets visualization services for language-specific information.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Deprecated
@@ -250,7 +251,7 @@ public abstract class TruffleLanguage<C> {
      * {@linkplain Instrumenter#probe(Node) probing}.
      * <p>
      * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
-     * 
+     *
      * @see WrapperNode
      * @since 0.8 or earlier
      */
@@ -275,16 +276,18 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Runs source code in a halted execution context, or at top level.
+     * Runs source code in a halted execution context, or at top level. Language implementations
+     * that do no support this should return an {@link UnsupportedOperationException}.
      *
      * @param source the code to run
      * @param node node where execution halted, {@code null} if no execution context
-     * @param mFrame frame where execution halted, {@code null} if no execution context
+     * @param frame frame where execution halted, {@code null} if no execution context
      * @return result of running the code in the context, or at top level if no execution context.
      * @throws IOException if the evaluation cannot be performed
+     * @throws UnsupportedOperationException if not supported by the language implementation
      * @since 0.8 or earlier
      */
-    protected abstract Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException;
+    protected abstract Object evalInContext(Source source, Node node, MaterializedFrame frame) throws IOException;
 
     /**
      * Generates language specific textual representation of a value. Each language may have special
@@ -376,7 +379,7 @@ public abstract class TruffleLanguage<C> {
      * {@link TruffleLanguage} receives instance of the environment before any code is executed upon
      * it. The environment has knowledge of all active languages and can exchange symbols between
      * them.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final class Env {
@@ -589,6 +592,7 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
+        // TODO (mlvdv) this does not support evaluation in null context (i.e.top level)
         @Override
         protected Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
             RootNode rootNode = node.getRootNode();

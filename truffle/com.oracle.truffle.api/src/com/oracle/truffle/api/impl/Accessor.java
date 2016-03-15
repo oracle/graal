@@ -102,7 +102,7 @@ public abstract class Accessor {
 
             @Override
             protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-                return null;
+                throw new UnsupportedOperationException();
             }
         };
         lng.hashCode();
@@ -168,6 +168,16 @@ public abstract class Accessor {
         return API.eval(l, s, cache);
     }
 
+    /**
+     * @param vm
+     * @param ev
+     * @param code text to evaluate
+     * @param node node in halted context
+     * @param frame frame in halted context
+     * @return result of language evaluation
+     * @throws IOException
+     * @throws UnsupportedOperationException if not supported by the language implementation
+     */
     protected Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
         return API.evalInContext(vm, ev, code, node, frame);
     }

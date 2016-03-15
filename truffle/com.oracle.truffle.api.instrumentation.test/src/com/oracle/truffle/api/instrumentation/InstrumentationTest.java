@@ -269,7 +269,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-            return null;
+            throw new UnsupportedOperationException();
         }
 
     }

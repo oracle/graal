@@ -367,6 +367,7 @@ public final class REPLServer {
          *            halted, null = top level eval
          * @return result of the evaluation
          * @throws IOException if something goes wrong
+         * @throws UnsupportedOperationException if not supported by the language implementation
          */
         Object eval(String code, Integer frameNumber, boolean stepInto) throws IOException {
             if (event == null) {
