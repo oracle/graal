@@ -58,6 +58,7 @@ suite = {
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.instrumentation",
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
