@@ -313,7 +313,7 @@ public class PolyglotEngine {
          * {@link com.oracle.truffle.api.TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)
          * initial execution state} correctly.
          *
-         * {@codesnippet config.specify}
+         * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#initializeWithParameters}
          *
          * If the same key is specified multiple times for the same language, the previous values
          * are replaced and just the last one remains.
@@ -1277,4 +1277,22 @@ public class PolyglotEngine {
             return super.toString(language, env, obj);
         }
     } // end of SPIAccessor
+}
+
+class PolyglotEngineSnippets {
+    abstract class YourLang extends TruffleLanguage<Object> {
+        public static final String MIME_TYPE = "application/my-test-lang";
+    }
+
+    public static PolyglotEngine initializeWithParameters() {
+        // @formatter:off
+        // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#initializeWithParameters
+        String[] args = {"--kernel", "Kernel.som", "--instrument", "dyn-metrics"};
+        PolyglotEngine.Builder builder = PolyglotEngine.newBuilder();
+        builder.config(YourLang.MIME_TYPE, "CMD_ARGS", args);
+        PolyglotEngine vm = builder.build();
+        // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#initializeWithParameters
+        // @formatter:on
+        return vm;
+    }
 }

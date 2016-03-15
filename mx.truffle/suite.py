@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.9.0",
+  "mxversion" : "5.13.0",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -39,7 +39,7 @@ suite = {
       }
     },
   },
-
+  "snippetsPattern" : ".*Snippets.*",
   "projects" : {
 
     # ------------- Truffle -------------
@@ -58,6 +58,7 @@ suite = {
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.instrumentation",
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
