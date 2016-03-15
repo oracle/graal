@@ -28,6 +28,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * <p>
@@ -43,21 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <p>
  * <b> Usage example: </b>
- *
- * <pre>
- * class SampleNode extends Node {
- * 
- * final ValueProfile profile = ValueProfile.create{Identity,Class}Profile();
- * 
- *     Object execute(Object input) {
- *         Object profiledValue = profile.profile(input);
- *         // compiler may know now more about profiledValue
- *         return profieldValue;
- *     }
- * }
- * </pre>
- * <p>
- *
+ * {@link com.oracle.truffle.api.profiles.ValueProfileSnippets.SampleNode#profile}
  *
  * {@inheritDoc}
  *
@@ -337,4 +324,20 @@ public abstract class ValueProfile extends Profile {
 
     }
 
+}
+
+class ValueProfileSnippets {
+    boolean id;
+
+    // BEGIN: com.oracle.truffle.api.profiles.ValueProfileSnippets.SampleNode#profile
+    class SampleNode extends Node {
+        final ValueProfile profile = id ? ValueProfile.createIdentityProfile() : ValueProfile.createClassProfile();
+
+        Object execute(Object input) {
+            Object profiledValue = profile.profile(input);
+            // compiler may know now more about profiledValue
+            return profieldValue;
+        }
+    }
+    // END: com.oracle.truffle.api.profiles.ValueProfileSnippets.SampleNode#profile
 }
