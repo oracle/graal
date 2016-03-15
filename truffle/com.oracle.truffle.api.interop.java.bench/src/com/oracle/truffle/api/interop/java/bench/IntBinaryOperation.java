@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java.test;
+package com.oracle.truffle.api.interop.java.bench;
 
 /**
  * Binary operation on integers. Mimics "functional interface" - e.g. has just a single method, so

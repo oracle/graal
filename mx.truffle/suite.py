@@ -38,6 +38,13 @@ suite = {
     	"version" : "2.11",
       }
     },
+
+    "JMH" : {
+      "sha1" : "7e1577cf6e1f1326b78a322d206fa9412fd41ae9",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.11.2.jar"],
+      "sourceSha1" : "12a67f0dcdfe7e43218bf38c1d7fd766122a3dc7",
+      "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.11.2-sources.jar"],
+    },
   },
 
   "projects" : {
@@ -183,6 +190,19 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.interop.java.bench" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.interop.java",
+        "JMH",
+      ],
+      "annotationProcessors" : ["JMH"],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -467,8 +487,9 @@ suite = {
          "com.oracle.truffle.api.interop.java.test",
          "com.oracle.truffle.api.object.dsl.test",
          "com.oracle.truffle.tools.test",
+         "com.oracle.truffle.api.interop.java.bench",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "JMH"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_DSL_PROCESSOR",

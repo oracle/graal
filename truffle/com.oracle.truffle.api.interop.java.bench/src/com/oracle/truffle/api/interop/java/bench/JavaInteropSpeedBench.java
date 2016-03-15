@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,61 +22,51 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java.test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+package com.oracle.truffle.api.interop.java.bench;
 
 import java.util.Random;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 
-@Ignore("Convert into a microbenchmark!")
-public class JavaInteropSpeedTest {
+@Warmup(iterations = 10)
+@Measurement(iterations = 10)
+@Fork(1)
+@State(Scope.Thread)
+public class JavaInteropSpeedBench {
     private static final int REPEAT = 10000;
+    private static final long SEED = 42;
     private static int[] arr;
-    private static long javaTime;
-    private static long interopTime;
 
-    @BeforeClass
-    public static void beforeTesting() {
-        InstrumentationTestMode.set(true);
+    @Setup
+    public void beforeTesting() {
         arr = initArray(REPEAT);
-        for (int i = 0; i < 1000; i++) {
-            JavaInteropSpeedTest t = new JavaInteropSpeedTest();
-            t.doMinMaxInJava();
-            t.doMinMaxWithInterOp();
-            t.assertSame();
+    }
+
+    private static int[] initArray(int size) {
+        Random r = new Random(SEED);
+        int[] tmp = new int[size];
+        for (int i = 0; i < tmp.length; i++) {
+            tmp[i] = r.nextInt(100000);
         }
+        return tmp;
     }
 
-    @AfterClass
-    public static void after() {
-        InstrumentationTestMode.set(false);
-    }
-
-    private int mmInOp;
-    private int mmInJava;
-
-    @Test
-    public void doMinMaxInJava() {
+    @Benchmark
+    public int doMinMaxInJava() {
         int max = 0;
-        long now = System.currentTimeMillis();
         for (int i = 0; i < arr.length; i++) {
             max = Math.max(arr[i], max);
         }
-        javaTime = System.currentTimeMillis() - now;
-        mmInJava = max;
-    }
-
-    private void assertSame() {
-        assertEquals(mmInJava, mmInOp);
+        return max;
     }
 
     private static final TruffleObject TRUFFLE_MAX = JavaInterop.asTruffleFunction(IntBinaryOperation.class, new IntBinaryOperation() {
@@ -87,33 +77,12 @@ public class JavaInteropSpeedTest {
     });
     private static final IntBinaryOperation MAX = JavaInterop.asJavaFunction(IntBinaryOperation.class, TRUFFLE_MAX);
 
-    @Test
-    public void doMinMaxWithInterOp() {
+    @Benchmark
+    public int doMinMaxWithInterOp() {
         int max = 0;
-        long now = System.currentTimeMillis();
         for (int i = 0; i < arr.length; i++) {
             max = MAX.compute(arr[i], max);
         }
-        interopTime = System.currentTimeMillis() - now;
-        mmInOp = max;
-    }
-
-    @AfterClass
-    public static void nonSignificanDifference() {
-        if (javaTime < 1) {
-            javaTime = 1;
-        }
-        if (interopTime > 10 * javaTime) {
-            fail("Interop took too long: " + interopTime + " ms, while java only " + javaTime + " ms");
-        }
-    }
-
-    private static int[] initArray(int size) {
-        Random r = new Random();
-        int[] tmp = new int[size];
-        for (int i = 0; i < tmp.length; i++) {
-            tmp[i] = r.nextInt(100000);
-        }
-        return tmp;
+        return max;
     }
 }
