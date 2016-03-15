@@ -336,7 +336,7 @@ class ValueProfileSnippets {
         Object execute(Object input) {
             Object profiledValue = profile.profile(input);
             // compiler may know now more about profiledValue
-            return profieldValue;
+            return profiledValue;
         }
     }
     // END: com.oracle.truffle.api.profiles.ValueProfileSnippets.SampleNode#profile
