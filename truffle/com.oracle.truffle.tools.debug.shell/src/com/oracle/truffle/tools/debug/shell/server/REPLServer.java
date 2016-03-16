@@ -190,7 +190,6 @@ public final class REPLServer {
         add(REPLHandler.INFO_HANDLER);
         add(REPLHandler.KILL_HANDLER);
         add(REPLHandler.LOAD_HANDLER);
-        add(REPLHandler.QUIT_HANDLER);
         add(REPLHandler.SET_BREAK_CONDITION_HANDLER);
         add(REPLHandler.SET_LANGUAGE_HANDLER);
         add(REPLHandler.STEP_INTO_HANDLER);
@@ -266,7 +265,7 @@ public final class REPLServer {
             // context.
             replClient.halted(message);
         } finally {
-            // Returns when "continue" or "kill" is called in the new debugging context
+            // Returns when "kill" is called in the new debugging context
 
             // Pop the debug context, and return so that the old context will continue
             currentServerContext = currentServerContext.predecessor;

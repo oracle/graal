@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -663,6 +664,68 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                 }
+            });
+        }
+    }
+
+    /*
+     * Tests for debugger or any other clients that cancel execution while halted
+     */
+
+    @Test
+    public void testKillExceptionOnEnter() throws IOException {
+        engine.getInstruments().get("testKillQuitException").setEnabled(true);
+        TestKillQuitException.exceptionOnEnter = new KillException();
+        TestKillQuitException.exceptionOnReturnValue = null;
+        TestKillQuitException.returnExceptionalCount = 0;
+        try {
+            run("STATEMENT");
+            Assert.fail("KillException in onEnter() cancels engine execution");
+        } catch (KillException ex) {
+        }
+        Assert.assertEquals("KillException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
+    }
+
+    @Test
+    public void testKillExceptionOnReturnValue() throws IOException {
+        engine.getInstruments().get("testKillQuitException").setEnabled(true);
+        TestKillQuitException.exceptionOnEnter = null;
+        TestKillQuitException.exceptionOnReturnValue = new KillException();
+        TestKillQuitException.returnExceptionalCount = 0;
+        try {
+            run("STATEMENT");
+            Assert.fail("KillException in onReturnValue() cancels engine execution");
+        } catch (KillException ex) {
+        }
+        Assert.assertEquals("KillException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
+    }
+
+    @Registration(id = "testKillQuitException")
+    public static class TestKillQuitException extends TruffleInstrument {
+
+        static RuntimeException exceptionOnEnter = null;
+        static RuntimeException exceptionOnReturnValue = null;
+        static int returnExceptionalCount = 0;
+
+        @Override
+        protected void onCreate(final Env env) {
+            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().build(), new ExecutionEventListener() {
+                public void onEnter(EventContext context, VirtualFrame frame) {
+                    if (exceptionOnEnter != null) {
+                        throw exceptionOnEnter;
+                    }
+                }
+
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                    if (exceptionOnReturnValue != null) {
+                        throw exceptionOnReturnValue;
+                    }
+                }
+
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                    returnExceptionalCount++;
+                }
+
             });
         }
     }

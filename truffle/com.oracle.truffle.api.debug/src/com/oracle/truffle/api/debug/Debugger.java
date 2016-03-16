@@ -35,7 +35,6 @@ import java.util.List;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.KillException;
-import com.oracle.truffle.api.QuitException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
@@ -980,9 +979,6 @@ public final class Debugger {
                 running = true;
             } catch (KillException e) {
                 contextTrace("KILL");
-                throw e;
-            } catch (QuitException e) {
-                contextTrace("QUIT");
                 throw e;
             } finally {
                 haltedNode = null;
