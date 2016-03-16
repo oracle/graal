@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,6 +133,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -907,8 +908,8 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec rcond = new ContinousBitSpec(27, 25, "rcond");
         private static final BitSpec cc = new ContinousBitSpec(21, 20, "cc");
         private static final BitSpec fcc = new ContinousBitSpec(26, 25, "cc");
-        private static final BitSpec d16hi = new ContinousBitSpec(21, 20, "d16hi");
         private static final BitSpec d16lo = new ContinousBitSpec(13, 0, "d16lo");
+        private static final BitSpec d16hi = new ContinousBitSpec(21, 20, true, "d16hi");
         private static final BitSpec d16 = new CompositeBitSpec(d16hi, d16lo);
         // Movcc
         private static final BitSpec movccLo = new ContinousBitSpec(12, 11, "cc_lo");
@@ -923,9 +924,20 @@ public abstract class SPARCAssembler extends Assembler {
         private static final BitSpec cbcond = new ContinousBitSpec(28, 28, "cbcond");
         private static final BitSpec cc2 = new ContinousBitSpec(21, 21, "cc2");
         private static final BitSpec d10Lo = new ContinousBitSpec(12, 5, "d10Lo");
-        private static final BitSpec d10Hi = new ContinousBitSpec(20, 19, "d10Hi");
+        private static final BitSpec d10Hi = new ContinousBitSpec(20, 19, true, "d10Hi");
         private static final BitSpec d10 = new CompositeBitSpec(d10Hi, d10Lo);
         private static final BitSpec simm5 = new ContinousBitSpec(4, 0, true, "simm5");
+
+        protected final boolean signExtend;
+
+        public BitSpec(boolean signExtend) {
+            super();
+            this.signExtend = signExtend;
+        }
+
+        public final boolean isSignExtend() {
+            return signExtend;
+        }
 
         public abstract int setBits(int word, int value);
 
@@ -940,7 +952,6 @@ public abstract class SPARCAssembler extends Assembler {
         private final int hiBit;
         private final int lowBit;
         private final int width;
-        private final boolean signExt;
         private final int mask;
         private final String name;
 
@@ -949,10 +960,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public ContinousBitSpec(int hiBit, int lowBit, boolean signExt, String name) {
-            super();
+            super(signExt);
             this.hiBit = hiBit;
             this.lowBit = lowBit;
-            this.signExt = signExt;
             this.width = hiBit - lowBit + 1;
             mask = ((1 << width) - 1) << lowBit;
             this.name = name;
@@ -960,13 +970,13 @@ public abstract class SPARCAssembler extends Assembler {
 
         @Override
         public int setBits(int word, int value) {
-            assert valueFits(value) : "Value: " + value + " does not fit in " + this;
+            assert valueFits(value) : String.format("Value 0x%x for field %s does not fit.", value, this);
             return (word & ~mask) | ((value << lowBit) & mask);
         }
 
         @Override
         public int getBits(int word) {
-            if (signExt) {
+            if (signExtend) {
                 return ((word & mask) << (31 - hiBit)) >> (32 - width);
             } else {
                 return (word & mask) >>> lowBit;
@@ -985,7 +995,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         @Override
         public boolean valueFits(int value) {
-            if (signExt) {
+            if (signExtend) {
                 return isSimm(value, getWidth());
             } else {
                 return isImm(value, getWidth());
@@ -998,20 +1008,23 @@ public abstract class SPARCAssembler extends Assembler {
         private final int leftWidth;
         private final BitSpec right;
         private final int rightWidth;
+        private final int width;
 
         public CompositeBitSpec(BitSpec left, BitSpec right) {
-            super();
+            super(left.isSignExtend());
+            assert !right.isSignExtend() : String.format("Right field %s must not be sign extended", right);
             this.left = left;
             this.leftWidth = left.getWidth();
             this.right = right;
             this.rightWidth = right.getWidth();
+            this.width = leftWidth + rightWidth;
         }
 
         @Override
         public int getBits(int word) {
             int l = left.getBits(word);
             int r = right.getBits(word);
-            return l << rightWidth | r;
+            return (l << rightWidth) | r;
         }
 
         @Override
@@ -1022,16 +1035,16 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         private int leftBits(int value) {
-            return SPARCAssembler.getBits(value, rightWidth + leftWidth - 1, rightWidth);
+            return getBits(value, width - 1, rightWidth, signExtend);
         }
 
         private int rightBits(int value) {
-            return SPARCAssembler.getBits(value, rightWidth - 1, 0);
+            return getBits(value, rightWidth - 1, 0, false);
         }
 
         @Override
         public int getWidth() {
-            return left.getWidth() + right.getWidth();
+            return width;
         }
 
         @Override
@@ -1041,7 +1054,18 @@ public abstract class SPARCAssembler extends Assembler {
 
         @Override
         public boolean valueFits(int value) {
-            return left.valueFits(leftBits(value)) && right.valueFits(rightBits(value));
+            int l = leftBits(value);
+            int r = rightBits(value);
+            return left.valueFits(l) && right.valueFits(r);
+        }
+
+        private static int getBits(int inst, int hiBit, int lowBit, boolean signExtended) {
+            int shifted = inst >> lowBit;
+            if (signExtended) {
+                return shifted;
+            } else {
+                return shifted & ((1 << (hiBit - lowBit + 1)) - 1);
+            }
         }
     }
 
@@ -1260,6 +1284,9 @@ public abstract class SPARCAssembler extends Assembler {
 
         public int setDisp(int inst, int d) {
             assert this.match(inst);
+            if (!isValidDisp(d)) {
+                throw new BailoutException("Too large displacement 0x%x in field %s in instruction %s", d, this.disp, this);
+            }
             return this.disp.setBits(inst, d);
         }
 
@@ -1298,6 +1325,7 @@ public abstract class SPARCAssembler extends Assembler {
             inst = BitSpec.cond.setBits(inst, cf.value);
             inst = BitSpec.cc.setBits(inst, cc.value);
             inst = BitSpec.p.setBits(inst, p.flag);
+            masm.insertNopAfterCBCond();
             masm.emitInt(setDisp(inst, masm, lab));
         }
 
@@ -1328,6 +1356,14 @@ public abstract class SPARCAssembler extends Assembler {
             int cond = BitSpec.cond.getBits(inst);
             return cond != ConditionFlag.Always.value && cond != ConditionFlag.Never.value;
         }
+
+        public void emit(SPARCMacroAssembler masm, ConditionFlag cond, Annul a, Label lab) {
+            int inst = setBits(0);
+            inst = BitSpec.cond.setBits(inst, cond.value);
+            inst = BitSpec.a.setBits(inst, a.flag);
+            masm.insertNopAfterCBCond();
+            masm.emitInt(setDisp(inst, masm, lab));
+        }
     }
 
     public static final class Bpr extends ControlTransferOp {
@@ -1343,6 +1379,7 @@ public abstract class SPARCAssembler extends Assembler {
             inst = BitSpec.a.setBits(inst, a.flag);
             inst = BitSpec.p.setBits(inst, p.flag);
             inst = BitSpec.rs1.setBits(inst, rs1.encoding);
+            masm.insertNopAfterCBCond();
             masm.emitInt(setDisp(inst, masm, lab));
         }
 
@@ -1383,6 +1420,7 @@ public abstract class SPARCAssembler extends Assembler {
             int inst = setBits(0, cf, cc2, rs1);
             inst = BitSpec.rs2.setBits(inst, rs2.encoding);
             inst = BitSpec.i.setBits(inst, 0);
+            masm.insertNopAfterCBCond();
             emit(masm, lab, inst);
         }
 
@@ -1797,150 +1835,15 @@ public abstract class SPARCAssembler extends Assembler {
         fmt(op3.op.value, rd.encoding, op3.value, rs1.encoding, i | simm13WithX & ((1 << 13) - 1));
     }
 
-    // @formatter:off
-    /**
-     * Branch on Integer Condition Codes.
-     * <pre>
-     * | 00  |annul| cond| 010 |               disp22                 |
-     * |31 30|29   |28 25|24 22|21                                   0|
-     * </pre>
-     */
-    // @formatter:on
-    public void bicc(ConditionFlag cond, Annul annul, Label l) {
-        bcc(Op2s.Br, cond, annul, l);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on Floating-Point Condition Codes.
-     * <pre>
-     * | 00  |annul| cond| 110 |               disp22                 |
-     * |31 30|29   |28 25|24 22|21                                   0|
-     * </pre>
-     */
-    // @formatter:on
-    public void fbcc(ConditionFlag cond, Annul annul, Label l) {
-        bcc(Op2s.Fb, cond, annul, l);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on (Integer|Floatingpoint) Condition Codes.
-     * <pre>
-     * | 00  |annul| cond| op2 |               disp22                 |
-     * |31 30|29   |28 25|24 22|21                                   0|
-     * </pre>
-     */
-    // @formatter:on
-    private void bcc(Op2s op2, ConditionFlag cond, Annul annul, Label l) {
-        insertNopAfterCBCond();
-        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
-        final int disp = 22;
-        assert isSimm(pos, disp);
-        pos &= (1 << disp) - 1;
-        int a = (annul.flag << 4) | cond.getValue();
-        fmt00(a, op2.getValue(), pos);
-    }
-
     public void insertNopAfterCBCond() {
         int pos = position() - INSTRUCTION_SIZE;
         if (pos == 0) {
             return;
         }
         int inst = getInt(pos);
-        if (isCBCond(inst)) {
+        if (CBCOND.match(inst)) {
             nop();
         }
-    }
-
-    protected static boolean isCBCond(int inst) {
-        return isOp2(Ops.BranchOp, Op2s.Bpr, inst) && getBits(inst, 28, 28) == 1;
-    }
-
-    private static boolean isOp2(Ops ops, Op2s op2s, int inst) {
-        return getOp(inst).equals(ops) && getOp2(inst).equals(op2s);
-    }
-
-    private static Ops getOp(int inst) {
-        return OPS[getBits(inst, 31, 30)];
-    }
-
-    private static Op2s getOp2(int inst) {
-        return OP2S[getBits(inst, 24, 22)];
-    }
-
-    public static int getBits(int inst, int hiBit, int lowBit) {
-        return (inst >> lowBit) & ((1 << (hiBit - lowBit + 1)) - 1);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on Integer Condition Codes with Prediction.
-     * <pre>
-     * | 00  |an|cond | 001 |cc1 2|p |           disp19               |
-     * |31 30|29|28 25|24 22|21 20|19|                               0|
-     * </pre>
-     */
-    // @formatter:on
-    public void bpcc(ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
-        bpcc(Op2s.Bp, cond, annul, l, cc, predictTaken);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on Integer Condition Codes with Prediction.
-     * <pre>
-     * | 00  |an|cond | 101 |cc1 2|p |           disp19               |
-     * |31 30|29|28 25|24 22|21 20|19|                               0|
-     * </pre>
-     */
-    // @formatter:on
-    public void fbpcc(ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
-        bpcc(Op2s.Fbp, cond, annul, l, cc, predictTaken);
-    }
-
-    // @formatter:off
-    /**
-     * Used for fbpcc (Float) and bpcc (Integer).
-     * <pre>
-     * | 00  |an|cond | op2 |cc1 2|p |           disp19               |
-     * |31 30|29|28 25|24 22|21 20|19|                               0|
-     * </pre>
-     */
-    // @formatter:on
-    private void bpcc(Op2s op2, ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
-        insertNopAfterCBCond();
-        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
-        final int disp = 19;
-        assert isSimm(pos, disp);
-        pos &= (1 << disp) - 1;
-        int a = (annul.flag << 4) | cond.getValue();
-        int b = (cc.getValue() << 20) | ((predictTaken.flag) << 19) | pos;
-        delaySlotOptimizationPoints.add(position());
-        fmt00(a, op2.getValue(), b);
-    }
-
-    // @formatter:off
-    /**
-     * Branch on Integer Register with Prediction.
-     * <pre>
-     * | 00  |an| 0|rcond | 011 |d16hi|p | rs1 |    d16lo             |
-     * |31 30|29|28|27 25 |24 22|21 20|19|18 14|                     0|
-     * </pre>
-     */
-    // @formatter:on
-    public void bpr(RCondition cond, Annul annul, Label l, BranchPredict predictTaken, Register rs1) {
-        insertNopAfterCBCond();
-        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
-        final int disp = 16;
-        assert isSimm(pos, disp);
-        pos &= (1 << disp) - 1;
-        int a = (annul.flag << 4) | cond.getValue();
-        int d16hi = (pos >> 13) << 13;
-        int d16lo = d16hi ^ pos;
-        int b = (d16hi << 20) | (predictTaken.flag << 19) | (rs1.encoding() << 14) | d16lo;
-        delaySlotOptimizationPoints.add(position());
-        fmt00(a, Op2s.Bpr.getValue(), b);
     }
 
     protected int patchUnbound(Label label) {
