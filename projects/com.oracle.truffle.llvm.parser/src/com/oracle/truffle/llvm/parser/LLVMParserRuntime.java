@@ -33,6 +33,7 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.intel.llvm.ireditor.types.ResolvedType;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
@@ -71,4 +72,6 @@ public interface LLVMParserRuntime {
     LLVMOptimizationConfiguration getOptimizationConfiguration();
 
     int getBitAlignment(LLVMBaseType type);
+
+    FrameDescriptor getGlobalFrameDescriptor();
 }

@@ -281,12 +281,12 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment) {
-        return LLVMAllocFactory.createAlloc(llvmType, numElements, byteSize, alignment);
+        return LLVMAllocFactory.createAlloc(runtime, llvmType, numElements, byteSize, alignment);
     }
 
     @Override
     public LLVMAllocaInstruction createAlloc(int size, int alignment) {
-        return LLVMAllocFactory.createAlloc(size, alignment);
+        return LLVMAllocFactory.createAlloc(runtime, size, alignment);
     }
 
     @Override
@@ -309,10 +309,15 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return LLVMGetElementPtrFactory.createGetElementPtr((LLVMAddressNode) currentAddress, oneValueNode, currentOffset);
     }
 
-    public LLVMGlobalRootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses, Object... args) {
-        return new LLVMGlobalRootNode(LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()), staticInits, mainCallTarget, allocatedGlobalAddresses, args);
+    @Override
+    public LLVMGlobalRootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses,
+                    Object... args) {
+        return new LLVMGlobalRootNode(runtime.getStackPointerSlot(), runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()), staticInits,
+                        mainCallTarget, allocatedGlobalAddresses,
+                        args);
     }
 
+    @Override
     public RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, LLVMRuntimeType returnType) {
         return LLVMFunctionFactory.createGlobalRootNodeWrapping(mainCallTarget, returnType);
     }

@@ -29,20 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm;
 
-import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
-@NodeField(type = LLVMContext.class, name = "context")
+@NodeChild(type = LLVMAddressNode.class)
 public abstract class LLVMStackSave extends LLVMAddressNode {
 
-    abstract LLVMContext getContext();
-
     @Specialization
-    public LLVMAddress executePointee() {
-        return getContext().getStack().getStackPointer();
+    public LLVMAddress executePointee(LLVMAddress stackPointer) {
+        return stackPointer;
     }
 
 }

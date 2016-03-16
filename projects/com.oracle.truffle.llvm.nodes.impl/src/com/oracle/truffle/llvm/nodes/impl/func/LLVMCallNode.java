@@ -33,8 +33,8 @@ import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,12 +51,12 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI64NodeFactory.LLVMAddressToI64NodeGen;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNodeFactory.LLVM80BitArgConvertNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNodeFactory.LLVMFunctionCallChainNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMNativeCallConvertNode.LLVMResolvedNative80BitFloatCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMNativeCallConvertNode.LLVMResolvedNativeAddressCallNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
+import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -65,7 +65,35 @@ import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public abstract class LLVMCallNode {
 
-    public static final int ARG_START_INDEX = 0;
+    public static final int ARG_START_INDEX = 1;
+
+    protected static LLVMExpressionNode[] prepareForNative(LLVMExpressionNode[] originalArgs, LLVMContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        LLVMExpressionNode[] newNodes = new LLVMExpressionNode[originalArgs.length - LLVMCallNode.ARG_START_INDEX];
+        for (int i = 0; i < newNodes.length; i++) {
+            newNodes[i] = getArgNode(originalArgs, i + LLVMCallNode.ARG_START_INDEX, context);
+        }
+        return newNodes;
+    }
+
+    private static LLVMExpressionNode getArgNode(LLVMExpressionNode[] originalArgs, int i, LLVMContext context) {
+        if (originalArgs[i] instanceof LLVMAddressNode) {
+            return LLVMAddressToI64NodeGen.create((LLVMAddressNode) originalArgs[i]);
+        } else if (originalArgs[i] instanceof LLVM80BitFloatNode) {
+            throw new AssertionError("foreign function interface does not support 80 bit floats yet");
+        } else if (originalArgs[i] instanceof LLVMFunctionNode) {
+            LLVMFunction function = ((LLVMFunctionLiteralNode) originalArgs[i]).executeFunction();
+            String functionName = function.getName();
+            long getNativeSymbol = context.getNativeHandle(functionName);
+            if (getNativeSymbol != 0) {
+                return new LLVMI64LiteralNode(getNativeSymbol);
+            } else {
+                throw new LLVMUnsupportedException(UnsupportedReason.FUNCTION_POINTER_ESCAPES_TO_NATIVE);
+            }
+        } else {
+            return originalArgs[i];
+        }
+    }
 
     /**
      * Call node for a Sulong or native function where the target function is still unresolved.
@@ -89,7 +117,7 @@ public abstract class LLVMCallNode {
                 LLVMFunction function = functionNode.executeFunction(frame);
                 CallTarget callTarget = context.getFunction(function);
                 if (callTarget == null) {
-                    NativeFunctionHandle nativeHandle = context.getNativeHandle(function, args);
+                    NativeFunctionHandle nativeHandle = context.getNativeHandle(function, prepareForNative(args, context));
                     if (nativeHandle == null) {
                         throw new IllegalStateException("could not find function " + function.getName());
                     }
@@ -122,7 +150,7 @@ public abstract class LLVMCallNode {
         @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
             Object[] argValues = new Object[args.length];
-            for (int i = ARG_START_INDEX; i < args.length; i++) {
+            for (int i = 0; i < args.length; i++) {
                 argValues[i] = args[i].executeGeneric(frame);
             }
             return callNode.call(frame, argValues);
@@ -141,31 +169,6 @@ public abstract class LLVMCallNode {
         public LLVMResolvedDirectNativeCallNode(@SuppressWarnings("unused") LLVMFunction function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
             functionHandle = nativeFunctionHandle;
             this.args = prepareForNative(args, context);
-        }
-
-        protected static LLVMExpressionNode[] prepareForNative(LLVMExpressionNode[] originalArgs, LLVMContext context) {
-            CompilerAsserts.neverPartOfCompilation();
-            LLVMExpressionNode[] newNodes = new LLVMExpressionNode[originalArgs.length];
-            for (int i = 0; i < newNodes.length; i++) {
-                if (originalArgs[i] instanceof LLVMAddressNode) {
-                    newNodes[i] = LLVMAddressToI64NodeGen.create((LLVMAddressNode) originalArgs[i]);
-                } else if (originalArgs[i] instanceof LLVM80BitFloatNode) {
-                    newNodes[i] = LLVM80BitArgConvertNodeGen.create((LLVM80BitFloatNode) originalArgs[i]);
-                    throw new AssertionError("foreign function interface does not support 80 bit floats yet");
-                } else if (originalArgs[i] instanceof LLVMFunctionNode) {
-                    LLVMFunction function = ((LLVMFunctionLiteralNode) originalArgs[i]).executeFunction();
-                    String functionName = function.getName();
-                    long getNativeSymbol = context.getNativeHandle(functionName);
-                    if (getNativeSymbol != 0) {
-                        newNodes[i] = new LLVMI64LiteralNode(getNativeSymbol);
-                    } else {
-                        throw new LLVMUnsupportedException(UnsupportedReason.FUNCTION_POINTER_ESCAPES_TO_NATIVE);
-                    }
-                } else {
-                    newNodes[i] = originalArgs[i];
-                }
-            }
-            return newNodes;
         }
 
         @Override
@@ -220,7 +223,7 @@ public abstract class LLVMCallNode {
         @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
             Object[] argValues = new Object[args.length];
-            for (int i = ARG_START_INDEX; i < args.length; i++) {
+            for (int i = 0; i < args.length; i++) {
                 argValues[i] = args[i].executeGeneric(frame);
             }
             LLVMFunction function = functionCallNode.executeFunction(frame);
@@ -255,7 +258,12 @@ public abstract class LLVMCallNode {
 
         @TruffleBoundary
         private static CallTarget getNativeCallTarget(LLVMContext context, LLVMFunction function, LLVMExpressionNode[] args) {
-            final NativeFunctionHandle nativeHandle = context.getNativeHandle(function, args);
+            if (LLVMOptions.debugEnabled()) {
+                // Checkstyle: stop
+                System.err.println("indirectly calling a native function is expensive at the moment!");
+                // Checkstyle: resume
+            }
+            final NativeFunctionHandle nativeHandle = context.getNativeHandle(function, prepareForNative(args, context));
             if (nativeHandle == null) {
                 throw new IllegalStateException("could not find function " + function.getName());
             } else {
@@ -263,7 +271,10 @@ public abstract class LLVMCallNode {
 
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        return nativeHandle.call(frame.getArguments());
+                        Object[] arguments = frame.getArguments();
+                        Object[] newArguments = new Object[arguments.length - LLVMCallNode.ARG_START_INDEX];
+                        System.arraycopy(arguments, LLVMCallNode.ARG_START_INDEX, newArguments, 0, newArguments.length);
+                        return nativeHandle.call(newArguments);
                     }
                 });
             }

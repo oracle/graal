@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16Factory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32Factory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64Factory;
@@ -148,32 +149,35 @@ public final class LLVMIntrinsicFactory {
         NodeFactory<? extends LLVMNode> factory = factories.get(functionName);
         EList<Parameter> paramList = functionDef.getHeader().getParameters().getParameters();
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
+        LLVMAddressNode readStackPointerNode = (LLVMAddressNode) argNodes[0];
+        Object[] realArgNodes = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX];
+        System.arraycopy(argNodes, LLVMCallNode.ARG_START_INDEX, realArgNodes, 0, realArgNodes.length);
         if (factory == null) {
             if (functionName.equals("@llvm.uadd.with.overflow.i32")) {
-                return LLVMUAddWithOverflowI32NodeGen.create((LLVMI32Node) argNodes[1], (LLVMI32Node) argNodes[2], (LLVMAddressNode) argNodes[0]);
+                return LLVMUAddWithOverflowI32NodeGen.create((LLVMI32Node) realArgNodes[1], (LLVMI32Node) realArgNodes[2], (LLVMAddressNode) realArgNodes[0]);
             } else if (functionName.equals("@llvm.stacksave")) {
-                return LLVMStackSaveNodeGen.create(context);
+                return LLVMStackSaveNodeGen.create(readStackPointerNode);
             } else if (functionName.equals("@llvm.stackrestore")) {
-                return LLVMStackRestoreNodeGen.create((LLVMAddressNode) argNodes[0], context);
+                return LLVMStackRestoreNodeGen.create((LLVMAddressNode) realArgNodes[0], context, runtime.getStackPointerSlot());
             } else if (functionName.equals("@llvm.frameaddress")) {
-                return LLVMFrameAddressNodeGen.create((LLVMI32Node) argNodes[0], runtime.getStackPointerSlot());
+                return LLVMFrameAddressNodeGen.create((LLVMI32Node) realArgNodes[0], runtime.getStackPointerSlot());
             } else if (functionName.startsWith("@llvm.va_start")) {
-                return new LLVMX86_64BitVAStart(paramList.size(), (LLVMAddressNode) argNodes[0]);
+                return new LLVMX86_64BitVAStart(paramList.size(), (LLVMAddressNode) realArgNodes[0]);
             } else if (functionName.startsWith("@llvm.va_end")) {
-                return new LLVMX86_64BitVAEnd((LLVMAddressNode) argNodes[0]);
+                return new LLVMX86_64BitVAEnd((LLVMAddressNode) realArgNodes[0]);
             } else if (functionName.startsWith("@llvm.va_copy")) {
-                return LLVMX86_64BitVACopyNodeGen.create((LLVMAddressNode) argNodes[0], (LLVMAddressNode) argNodes[1], paramList.size());
+                return LLVMX86_64BitVACopyNodeGen.create((LLVMAddressNode) realArgNodes[0], (LLVMAddressNode) realArgNodes[1], paramList.size());
             } else if (functionName.equals("@llvm.eh.sjlj.longjmp") || functionName.equals("@llvm.eh.sjlj.setjmp")) {
                 throw new LLVMUnsupportedException(UnsupportedReason.SET_JMP_LONG_JMP);
             } else if (functionName.startsWith("@llvm.objectsize.i64")) {
-                return LLVMI64ObjectSizeNodeGen.create((LLVMAddressNode) argNodes[0], (LLVMI1Node) argNodes[1]);
+                return LLVMI64ObjectSizeNodeGen.create((LLVMAddressNode) realArgNodes[0], (LLVMI1Node) realArgNodes[1]);
             } else if (functionName.startsWith("@llvm.expect")) {
-                return getExpect(argNodes, functionName, runtime.getOptimizationConfiguration());
+                return getExpect(realArgNodes, functionName, runtime.getOptimizationConfiguration());
             } else {
                 throw new IllegalStateException("llvm intrinsic " + functionName + " not yet supported!");
             }
         } else {
-            return factory.createNode(argNodes);
+            return factory.createNode(realArgNodes);
         }
 
     }
