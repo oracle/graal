@@ -44,7 +44,7 @@ public abstract class LLVMDebugValue extends LLVMNode {
 
     @SuppressWarnings("unused")
     @Specialization
-    public void execute(LLVMMetadata m1, LLVMI64Node i64, LLVMMetadataNode m2) {
+    public void execute(LLVMMetadata m1, LLVMI64Node i64, LLVMMetadata m2) {
     }
 
 }
