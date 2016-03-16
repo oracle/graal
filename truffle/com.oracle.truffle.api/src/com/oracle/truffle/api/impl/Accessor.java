@@ -117,6 +117,9 @@ public abstract class Accessor {
     }
 
     protected Accessor() {
+        if (!this.getClass().getName().startsWith("com.oracle.truffle.api")) {
+            throw new IllegalStateException();
+        }
         if (this.getClass().getSimpleName().endsWith("API")) {
             if (API != null) {
                 throw new IllegalStateException();
