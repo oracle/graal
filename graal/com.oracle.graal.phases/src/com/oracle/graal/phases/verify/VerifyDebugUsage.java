@@ -60,8 +60,15 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
                                     String holder = m.getDeclaringClass().getName();
                                     if (holder.equals("Ljava/lang/StringBuilder;") || holder.equals("Ljava/lang/StringBuffer;")) {
                                         StackTraceElement e = graph.method().asStackTraceElement(invoke.bci());
-                                        throw new VerificationError(String.format("%s: parameter %d of call to %s appears to be a String concatenation expression.%n"
-                                                        + "    Use one of the multi-parameter Debug.log() methods or Debug.logv() instead.", e, argIdx, callee.format("%H.%n(%p)")));
+                                        throw new VerificationError(String.format("%s: parameter %d of call to %s appears to be a String concatenation expression.%n" +
+                                                        "    Use one of the multi-parameter Debug.log() methods or Debug.logv() instead.", e, argIdx, callee.format("%H.%n(%p)")));
+                                    }
+                                    if (m.getSignature().getParameterCount(false) == 0 && m.getSignature().getReturnType(m.getDeclaringClass()).equals(
+                                                    context.getMetaAccess().lookupJavaType(String.class))) {
+                                        StackTraceElement e = graph.method().asStackTraceElement(invoke.bci());
+                                        throw new VerificationError(String.format("%s: parameter %d of call to %s appears to be a toString call without a parameter. %n " +
+                                                        "   Calls to toString() are made by Debug.log() and should thus be avoided.", e,
+                                                        argIdx, callee.format("%H.%n(%p)")));
                                     }
                                 }
                             }
