@@ -498,22 +498,22 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(int.class, int.class));
 
         Number n = plus.execute(a, b).as(Number.class);
-        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+        assert a + b == n.intValue() : "(" + a + " + " + b + ") =  " + n.intValue();
     }
 
     /** @since 0.8 or earlier */
     @Test
     public void testPlusWithBytes() throws Exception {
-        int a = RANDOM.nextInt(100);
-        int b = RANDOM.nextInt(100);
+        int a = RANDOM.nextInt(50);
+        int b = RANDOM.nextInt(50);
         doPlusWithBytes(a, b);
     }
 
     /** @since 0.8 or earlier */
     @Test
     public void testPlusWithOneNegativeByte() throws Exception {
-        int a = -RANDOM.nextInt(100);
-        int b = RANDOM.nextInt(100);
+        int a = -RANDOM.nextInt(50);
+        int b = RANDOM.nextInt(50);
         doPlusWithBytes(a, b);
     }
 
@@ -521,7 +521,7 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(byte.class, byte.class));
 
         Number n = plus.execute((byte) a, (byte) b).as(Number.class);
-        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+        assert a + b == n.intValue() : "(" + a + " + " + b + ") =  " + n.intValue();
     }
 
     /** @since 0.8 or earlier */
@@ -544,7 +544,7 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(short.class, short.class));
 
         Number n = plus.execute((short) a, (short) b).as(Number.class);
-        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+        assert a + b == n.intValue() : "(" + a + " + " + b + ") =  " + n.intValue();
     }
 
     /** @since 0.8 or earlier */
@@ -565,7 +565,7 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(long.class, long.class));
 
         Number n = plus.execute(a, b).as(Number.class);
-        assert a + b == n.longValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.longValue();
+        assert a + b == n.longValue() : "(" + a + " + " + b + ") =  " + n.longValue();
     }
 
     /** @since 0.8 or earlier */
@@ -715,7 +715,7 @@ public abstract class TruffleTCK {
         }
 
         Number n = obj.plus(a, b);
-        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+        assert a + b == n.intValue() : "(" + a + " + " + b + ") =  " + n.intValue();
     }
 
     /** @since 0.8 or earlier */
