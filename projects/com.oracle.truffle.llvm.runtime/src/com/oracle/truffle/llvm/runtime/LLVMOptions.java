@@ -237,7 +237,9 @@ public class LLVMOptions {
         Properties allProperties = System.getProperties();
         for (String key : allProperties.stringPropertyNames()) {
             if (key.startsWith(OBSOLETE_OPTION_PREFIX)) {
+                // Checkstyle: stop
                 System.err.println("The prefix '" + OBSOLETE_OPTION_PREFIX + "' in option '" + key + "' is an obsolete option prefix and has been replaced by the prefix '" + OPTION_PREFIX + "':");
+                // Checkstyle: resume
                 printOptions();
                 System.exit(-1);
             }
