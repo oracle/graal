@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
@@ -44,7 +45,7 @@ import com.oracle.truffle.api.nodes.Node;
  * used while the handlers process the event. Then the state of the event becomes invalid and
  * subsequent calls to the event methods yield {@link IllegalStateException}. One can call
  * {@link #getDebugger()} and keep reference to it for as long as necessary.
- * 
+ *
  * @since 0.9
  */
 @SuppressWarnings("javadoc")
@@ -129,7 +130,7 @@ public final class SuspendedEvent {
      * <li>execution completes.</li>
      * </ol>
      * </ul>
-     * 
+     *
      * @since 0.9
      */
     public void prepareContinue() {
@@ -172,7 +173,7 @@ public final class SuspendedEvent {
      * <li>StepOut mode persists only through one resumption, and reverts by default to Continue
      * mode.</li>
      * </ul>
-     * 
+     *
      * @since 0.9
      */
     public void prepareStepOut() {
@@ -211,9 +212,20 @@ public final class SuspendedEvent {
      *            location.
      * @return the computed value
      * @throws IOException in case an evaluation goes wrong
+     * @throws KillException if the evaluation is killed by the debugger
      * @since 0.9
      */
     public Object eval(String code, FrameInstance frame) throws IOException {
         return debugger.evalInContext(this, code, frame);
+    }
+
+    /**
+     * Terminates the halted execution represented by this event.
+     *
+     * @since 0.12
+     */
+    @SuppressWarnings("static-method")
+    public void kill() {
+        throw new KillException();
     }
 }
