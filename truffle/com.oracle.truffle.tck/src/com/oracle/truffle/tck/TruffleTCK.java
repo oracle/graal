@@ -504,16 +504,16 @@ public abstract class TruffleTCK {
     /** @since 0.8 or earlier */
     @Test
     public void testPlusWithBytes() throws Exception {
-        int a = RANDOM.nextInt(100);
-        int b = RANDOM.nextInt(100);
+        int a = RANDOM.nextInt(50);
+        int b = RANDOM.nextInt(50);
         doPlusWithBytes(a, b);
     }
 
     /** @since 0.8 or earlier */
     @Test
     public void testPlusWithOneNegativeByte() throws Exception {
-        int a = -RANDOM.nextInt(100);
-        int b = RANDOM.nextInt(100);
+        int a = -RANDOM.nextInt(50);
+        int b = RANDOM.nextInt(50);
         doPlusWithBytes(a, b);
     }
 
