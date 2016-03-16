@@ -43,7 +43,7 @@ public abstract class LLVMDebugDeclare extends LLVMNode {
 
     @SuppressWarnings("unused")
     @Specialization
-    public void execute(LLVMMetadata m1, LLVMMetadataNode m2) {
+    public void execute(LLVMMetadata m1, LLVMMetadata m2) {
     }
 
 }
