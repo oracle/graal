@@ -121,7 +121,7 @@ public final class DataSection implements Iterable<Data> {
         private final SerializableConstant constant;
 
         public SerializableData(SerializableConstant constant) {
-            this(constant, constant.getSerializedSize());
+            this(constant, 1);
         }
 
         public SerializableData(SerializableConstant constant, int alignment) {

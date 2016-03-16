@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,7 @@ import com.oracle.graal.nodes.calc.ReinterpretNode;
 import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.nodes.calc.UnsignedRightShiftNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
-import com.oracle.graal.nodes.extended.UnsafeCastNode;
+import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.memory.Access;
 import com.oracle.graal.nodes.memory.WriteNode;
 
@@ -112,14 +112,6 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         }
     }
 
-    protected ValueNode uncast(ValueNode value) {
-        if (value instanceof UnsafeCastNode) {
-            UnsafeCastNode cast = (UnsafeCastNode) value;
-            return cast.getOriginalNode();
-        }
-        return value;
-    }
-
     protected ComplexMatchResult emitCompareBranchMemory(IfNode ifNode, CompareNode compare, ValueNode value, Access access) {
         Condition cond = compare.condition();
         AMD64Kind kind = getMemoryKind(access);
@@ -139,7 +131,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         // emitCompareBranchMemory expects the memory on the right, so mirror the condition if
         // that's not true. It might be mirrored again the actual compare is emitted but that's
         // ok.
-        Condition finalCondition = uncast(compare.getX()) == access ? cond.mirror() : cond;
+        Condition finalCondition = GraphUtil.unproxify(compare.getX()) == access ? cond.mirror() : cond;
         return new ComplexMatchResult() {
             public Value evaluate(NodeLIRBuilder builder) {
                 LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());

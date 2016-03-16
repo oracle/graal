@@ -46,15 +46,16 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
-import com.oracle.truffle.api.LoopCountReceiver;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -75,7 +76,8 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
-public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, LoopCountReceiver, ReplaceObserver {
+@SuppressWarnings("deprecation")
+public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
     private static final RootNode UNINITIALIZED = RootNode.createConstantNode(null);
 
     protected final GraalTruffleRuntime runtime;
@@ -397,9 +399,16 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             if (TruffleCompilationExceptionsAreThrown.getValue()) {
                 throw new OptimizationFailedException(t, this);
             }
-            if (TruffleCompilationExceptionsArePrinted.getValue() || TruffleCompilationExceptionsAreFatal.getValue()) {
+            /*
+             * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled
+             * but respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
+             */
+            boolean truffleCompilationExceptionsAreFatal = TruffleCompilationExceptionsAreFatal.getValue();
+            assert TruffleCompilationExceptionsAreFatal.hasBeenSet() || (truffleCompilationExceptionsAreFatal = true) == true;
+
+            if (TruffleCompilationExceptionsArePrinted.getValue() || truffleCompilationExceptionsAreFatal) {
                 printException(t);
-                if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                if (truffleCompilationExceptionsAreFatal) {
                     System.exit(-1);
                 }
             }
@@ -481,7 +490,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return castArguments;
     }
 
-    private static Object castArrayFixedLength(Object[] args, @SuppressWarnings("unused") int length) {
+    /**
+     * @param length avoid warning
+     */
+    private static Object castArrayFixedLength(Object[] args, int length) {
         return args;
     }
 
@@ -506,7 +518,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return callNodes;
     }
 
-    @Override
+    final void onLoopCount(int count) {
+        compilationProfile.reportLoopCount(count);
+    }
+
+    /*
+     * For compatibility of Graal runtime with older Truffle runtime. Remove after 0.12.
+     */
     public void reportLoopCount(int count) {
         compilationProfile.reportLoopCount(count);
     }
@@ -591,7 +609,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return DefaultCompilerOptions.INSTANCE;
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
+    /**
+     * @param type avoid warning
+     * @param condition avoid warning
+     * @param nonNull avoid warning
+     */
+    @SuppressWarnings({"unchecked"})
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
     }
@@ -625,13 +648,44 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.compilationTask = compilationTask;
     }
 
-    private static final AccessorOptimizedCallTarget ACCESSOR = new AccessorOptimizedCallTarget();
+    static final AccessorOptimizedCallTarget ACCESSOR = new AccessorOptimizedCallTarget();
 
     static final class AccessorOptimizedCallTarget extends Accessor {
+
+        @Override
+        @SuppressWarnings("rawtypes")
+        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
+            return super.findLanguage(n);
+        }
 
         @Override
         protected void initializeCallTarget(RootCallTarget target) {
             super.initializeCallTarget(target);
         }
+
+        @Override
+        protected boolean supportsOnLoopCount() {
+            return true;
+        }
+
+        @Override
+        protected void onLoopCount(Node source, int count) {
+            Node node = source;
+            Node parentNode = source != null ? source.getParent() : null;
+            while (node != null) {
+                if (node instanceof OptimizedOSRLoopNode) {
+                    ((OptimizedOSRLoopNode) node).reportChildLoopCount(count);
+                }
+                parentNode = node;
+                node = node.getParent();
+            }
+            if (parentNode != null && parentNode instanceof RootNode) {
+                CallTarget target = ((RootNode) parentNode).getCallTarget();
+                if (target instanceof OptimizedCallTarget) {
+                    ((OptimizedCallTarget) target).onLoopCount(count);
+                }
+            }
+        }
+
     }
 }

@@ -27,6 +27,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -49,7 +50,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
     @Input NodeInputList<ValueNode> arguments;
 
     public BytecodeExceptionNode(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {
-        super(TYPE, StampFactory.exactNonNull(metaAccess.lookupJavaType(exceptionClass)));
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(exceptionClass))));
         this.exceptionClass = exceptionClass;
         this.arguments = new NodeInputList<>(this, arguments);
     }

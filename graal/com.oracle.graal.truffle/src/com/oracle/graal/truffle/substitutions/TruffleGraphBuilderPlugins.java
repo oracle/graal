@@ -41,6 +41,8 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode;
@@ -228,13 +230,14 @@ public class TruffleGraphBuilderPlugins {
                      * and constant folding could still eliminate the call to bailout(). However, we
                      * also want to stop parsing, since we are sure that we will never need the
                      * graph beyond the bailout point.
-                     *
+                     * 
                      * Therefore, we manually emit the call to bailout, which will be intrinsified
                      * later when intrinsifications can no longer be delayed. The call is followed
                      * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
                      * any further parsing.
                      */
-                    CallTargetNode callTarget = b.add(new MethodCallTargetNode(InvokeKind.Static, targetMethod, new ValueNode[]{message}, targetMethod.getSignature().getReturnType(null), null));
+                    StampPair returnStamp = b.getInvokeReturnStamp(b.getAssumptions());
+                    CallTargetNode callTarget = b.add(new MethodCallTargetNode(InvokeKind.Static, targetMethod, new ValueNode[]{message}, returnStamp, null));
                     b.add(new InvokeNode(callTarget, b.bci()));
 
                     b.add(new NeverPartOfCompilationNode("intrinsification of call to bailout() will abort entire compilation"));
@@ -344,7 +347,7 @@ public class TruffleGraphBuilderPlugins {
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode descriptor, ValueNode args) {
                 Class<?> frameClass = TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue() ? FrameWithoutBoxing.class : FrameWithBoxing.class;
-                b.addPush(JavaKind.Object, new NewFrameNode(snippetReflection, StampFactory.exactNonNull(metaAccess.lookupJavaType(frameClass)), descriptor, args));
+                b.addPush(JavaKind.Object, new NewFrameNode(snippetReflection, StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(frameClass))), descriptor, args));
                 return true;
             }
         });
@@ -388,17 +391,11 @@ public class TruffleGraphBuilderPlugins {
                     if (javaType == null) {
                         b.push(JavaKind.Object, object);
                     } else {
-                        Stamp piStamp = null;
+                        TypeReference type = TypeReference.createTrusted(b.getAssumptions(), javaType);
                         if (javaType.isArray()) {
-                            if (nonNull.asJavaConstant().asInt() != 0) {
-                                piStamp = StampFactory.exactNonNull(javaType);
-                            } else {
-                                piStamp = StampFactory.exact(javaType);
-                            }
-                        } else {
-                            piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
+                            type = type.asExactReference();
                         }
-
+                        Stamp piStamp = StampFactory.object(type, nonNull.asJavaConstant().asInt() != 0);
                         ConditionAnchorNode valueAnchorNode = null;
                         if (condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
                             // Nothing to do.

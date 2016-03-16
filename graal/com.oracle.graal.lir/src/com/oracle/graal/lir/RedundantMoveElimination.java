@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,15 +31,10 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -49,10 +44,18 @@ import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.Value;
+
 /**
  * Removes move instructions, where the destination value is already in place.
  */
 public final class RedundantMoveElimination extends PostAllocationOptimizationPhase {
+
+    private static final DebugMetric deletedMoves = Debug.metric("RedundantMovesEliminated");
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
@@ -350,6 +353,9 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                                     Debug.log("delete move %s", op);
                                     instructions.set(idx, null);
                                     hasDead = true;
+                                    if (deletedMoves.isEnabled()) {
+                                        deletedMoves.increment();
+                                    }
                                 }
                             }
                             // It doesn't harm if updateState is also called for a deleted move

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.List;
-
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.StampPair;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.InputType;
@@ -71,26 +75,32 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     @Input protected NodeInputList<ValueNode> arguments;
     protected ResolvedJavaMethod targetMethod;
     protected InvokeKind invokeKind;
+    protected final StampPair returnStamp;
 
-    protected CallTargetNode(NodeClass<? extends CallTargetNode> c, ValueNode[] arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
+    protected CallTargetNode(NodeClass<? extends CallTargetNode> c, ValueNode[] arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind, StampPair returnStamp) {
         super(c, StampFactory.forVoid());
         this.targetMethod = targetMethod;
         this.invokeKind = invokeKind;
         this.arguments = new NodeInputList<>(this, arguments);
-    }
-
-    protected CallTargetNode(NodeClass<? extends CallTargetNode> c, List<ValueNode> arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
-        super(c, StampFactory.forVoid());
-        this.targetMethod = targetMethod;
-        this.invokeKind = invokeKind;
-        this.arguments = new NodeInputList<>(this, arguments);
+        this.returnStamp = returnStamp;
     }
 
     public NodeInputList<ValueNode> arguments() {
         return arguments;
     }
 
-    public abstract Stamp returnStamp();
+    public static Stamp createReturnStamp(Assumptions assumptions, JavaType returnType) {
+        JavaKind kind = returnType.getJavaKind();
+        if (kind == JavaKind.Object && returnType instanceof ResolvedJavaType) {
+            return StampFactory.object(TypeReference.create(assumptions, (ResolvedJavaType) returnType));
+        } else {
+            return StampFactory.forKind(kind);
+        }
+    }
+
+    public StampPair returnStamp() {
+        return this.returnStamp;
+    }
 
     /**
      * A human-readable representation of the target, used for debug printing only.

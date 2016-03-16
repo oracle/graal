@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.LIRKind;
  *
  * <pre>
  *   Base       Contents
- *
+ * 
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive

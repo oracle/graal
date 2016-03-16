@@ -39,7 +39,7 @@ import com.oracle.graal.lir.framemap.FrameMap;
  *
  * <pre>
  *   Base       Contents
- *
+ * 
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive

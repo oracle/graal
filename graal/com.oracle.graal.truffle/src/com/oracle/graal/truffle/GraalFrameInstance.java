@@ -27,6 +27,7 @@ import java.lang.reflect.Method;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.common.JVMCIError;
 
+import com.oracle.graal.truffle.OptimizedOSRLoopNode.OSRRootNode;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
@@ -46,11 +47,13 @@ public final class GraalFrameInstance implements FrameInstance {
 
     public static final Method CALL_TARGET_METHOD;
     public static final Method CALL_NODE_METHOD;
+    public static final Method CALL_OSR_METHOD;
 
     static {
         try {
             CALL_NODE_METHOD = OptimizedDirectCallNode.class.getDeclaredMethod("callProxy", MaterializedFrameNotify.class, CallTarget.class, VirtualFrame.class, Object[].class, boolean.class);
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
+            CALL_OSR_METHOD = OptimizedOSRLoopNode.OSRRootNode.class.getDeclaredMethod("callProxy", OSRRootNode.class, VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
             throw new JVMCIError(e);
         }

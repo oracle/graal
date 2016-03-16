@@ -399,9 +399,9 @@ public class Graph {
         return add(node);
     }
 
-    public <T extends Node> void addWithoutUniqueWithInputs(T node) {
+    public <T extends Node> T addWithoutUniqueWithInputs(T node) {
         addInputs(node);
-        addHelper(node);
+        return addHelper(node);
     }
 
     public <T extends Node> T addOrUniqueWithInputs(T node) {

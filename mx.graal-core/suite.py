@@ -39,7 +39,7 @@ suite = {
             {
                "name" : "jvmci",
                "optional" : "true",
-               "version" : "6758183dd36be0bb56d947f439c8f21822d14ff5",
+               "version" : "c1935b089c01b0d70af7cce8da9053fd631ef4c1",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -47,7 +47,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "7de96d3ba72f2d1a2a0ef39351a3db4764c74b9c",
+               "version" : "f322868c76f775a399bf96915c95e077c4f2c08c",
                "urls" : [
                     {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -1064,6 +1064,21 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Truffle",
       "jacoco" : "exclude",
+    },
+
+    "com.oracle.graal.truffle.bench" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JMH",
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : [
+        "JMH",
+      ],
+      "workingSets" : "Graal,Truffle,Bench",
     },
 
     "com.oracle.graal.truffle.test" : {

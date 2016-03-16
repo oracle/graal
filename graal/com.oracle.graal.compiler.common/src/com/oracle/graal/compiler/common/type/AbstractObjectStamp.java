@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,11 +43,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     protected AbstractObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
         super(nonNull, alwaysNull);
         this.type = type;
-        if (!exactType && type != null && type.isLeaf()) {
-            this.exactType = true;
-        } else {
-            this.exactType = exactType;
-        }
+        this.exactType = exactType;
     }
 
     protected abstract AbstractObjectStamp copyWith(ResolvedJavaType newType, boolean newExactType, boolean newNonNull, boolean newAlwaysNull);
@@ -97,7 +93,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     }
 
     public boolean isExactType() {
-        return exactType;
+        return exactType && type != null;
     }
 
     protected void appendString(StringBuilder str) {
@@ -261,7 +257,24 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         } else if (a == null || b == null) {
             return null;
         } else {
-            return a.findLeastCommonAncestor(b);
+            ResolvedJavaType result = a.findLeastCommonAncestor(b);
+            if (result.isJavaLangObject() && a.isInterface() && b.isInterface()) {
+                // Both types are incompatible interfaces => search for first possible common
+                // ancestor match among super interfaces.
+                ResolvedJavaType[] interfacesA = a.getInterfaces();
+                ResolvedJavaType[] interfacesB = b.getInterfaces();
+                for (int i = 0; i < interfacesA.length; ++i) {
+                    ResolvedJavaType interface1 = interfacesA[i];
+                    for (int j = 0; j < interfacesB.length; ++j) {
+                        ResolvedJavaType interface2 = interfacesB[j];
+                        ResolvedJavaType leastCommon = meetTypes(interface1, interface2);
+                        if (leastCommon.isInterface()) {
+                            return leastCommon;
+                        }
+                    }
+                }
+            }
+            return result;
         }
     }
 

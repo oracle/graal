@@ -53,6 +53,7 @@ import com.oracle.graal.compiler.common.calc.UnsignedMath;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeList;
@@ -162,7 +163,7 @@ public class StandardGraphBuilderPlugins {
         r.register1("getValue", String.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
-                b.addPush(JavaKind.Object, new LoadFieldNode(value, field));
+                b.addPush(JavaKind.Object, LoadFieldNode.create(b.getAssumptions(), value, field));
                 return true;
             }
         });
@@ -446,7 +447,7 @@ public class StandardGraphBuilderPlugins {
                 if (folded != null) {
                     b.addPush(JavaKind.Object, folded);
                 } else {
-                    Stamp stamp = StampFactory.declaredNonNull(b.getMetaAccess().lookupJavaType(Class.class));
+                    Stamp stamp = StampFactory.objectNonNull(TypeReference.createTrusted(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Class.class)));
                     b.addPush(JavaKind.Object, new GetClassNode(stamp, object));
                 }
                 return true;
@@ -458,7 +459,7 @@ public class StandardGraphBuilderPlugins {
         Registration r = new Registration(plugins, Class.class);
         r.register2("isInstance", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode object) {
-                LogicNode condition = b.add(InstanceOfDynamicNode.create(b.getConstantReflection(), type.get(), object));
+                LogicNode condition = b.add(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), type.get(), object));
                 b.push(JavaKind.Boolean, b.recursiveAppend(new ConditionalNode(condition).canonical(null)));
                 return true;
             }
@@ -485,7 +486,7 @@ public class StandardGraphBuilderPlugins {
             r.register2("get" + c.getSimpleName() + "Unsafe", Node.class, long.class, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset) {
                     UnsafeLoadNode value = b.add(new UnsafeLoadNode(node, offset, JavaKind.Object, LocationIdentity.any()));
-                    value.setStamp(StampFactory.declared(metaAccess.lookupJavaType(c)));
+                    value.setStamp(StampFactory.object(TypeReference.createTrusted(b.getAssumptions(), metaAccess.lookupJavaType(c))));
                     b.addPush(JavaKind.Object, value);
                     return true;
                 }
@@ -741,7 +742,7 @@ public class StandardGraphBuilderPlugins {
         });
         r.register0("rootName", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new RootNameNode(b.getInvokeReturnStamp()));
+                b.addPush(JavaKind.Object, new RootNameNode(b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp()));
                 return true;
             }
         });
@@ -805,7 +806,7 @@ public class StandardGraphBuilderPlugins {
         Registration r = new Registration(plugins, "oracle.jrockit.jfr.jdkevents.ThrowableTracer");
         r.register2("traceThrowable", Throwable.class, String.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
-                b.add(new VirtualizableInvokeMacroNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), throwable, message));
+                b.add(new VirtualizableInvokeMacroNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), throwable, message));
                 return true;
             }
         });

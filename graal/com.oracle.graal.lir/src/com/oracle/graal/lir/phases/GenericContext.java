@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra.ssi;
+package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.lir.alloc.lsra.LinearScan;
-import com.oracle.graal.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
+import java.util.ArrayList;
+import java.util.List;
 
-public class SSILinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
+/**
+ * Allows storing of arbitrary data.
+ */
+public class GenericContext {
 
-    public SSILinearScanEliminateSpillMovePhase(LinearScan allocator) {
-        super(allocator);
+    private List<Object> context;
+
+    public GenericContext() {
+        context = null;
     }
 
-    @Override
-    protected int firstInstructionOfInterest() {
-        // also look at Labels as they define PHI values
-        return 0;
+    public <T> void contextAdd(T obj) {
+        if (context == null) {
+            context = new ArrayList<>();
+        }
+        context.add(obj);
     }
 
-    @Override
-    protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
-        // TODO (je) do not eliminate spill moves yet!
-        return false;
+    @SuppressWarnings("unchecked")
+    public <T> T contextLookup(Class<T> clazz) {
+        if (context != null) {
+            for (Object e : context) {
+                if (clazz.isInstance(e)) {
+                    return (T) e;
+                }
+            }
+        }
+        return null;
     }
 }

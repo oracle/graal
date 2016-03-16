@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.nodes.ValueNode;
 
 /**
@@ -148,8 +149,17 @@ public class StampTool {
      * @param node the node to check
      * @return the Java type this value has if it is a legal Object type, null otherwise
      */
+    public static TypeReference typeReferenceOrNull(ValueNode node) {
+        return typeReferenceOrNull(node.stamp());
+    }
+
     public static ResolvedJavaType typeOrNull(ValueNode node) {
         return typeOrNull(node.stamp());
+    }
+
+    public static ResolvedJavaType typeOrNull(Stamp stamp) {
+        TypeReference type = typeReferenceOrNull(stamp);
+        return type == null ? null : type.getType();
     }
 
     /**
@@ -159,9 +169,14 @@ public class StampTool {
      * @param stamp the stamp to check
      * @return the Java type this stamp has if it is a legal Object stamp, null otherwise
      */
-    public static ResolvedJavaType typeOrNull(Stamp stamp) {
+    public static TypeReference typeReferenceOrNull(Stamp stamp) {
         if (stamp instanceof AbstractObjectStamp && stamp.hasValues()) {
-            return ((AbstractObjectStamp) stamp).type();
+            AbstractObjectStamp abstractObjectStamp = (AbstractObjectStamp) stamp;
+            if (abstractObjectStamp.isExactType()) {
+                return TypeReference.createExactTrusted(abstractObjectStamp.type());
+            } else {
+                return TypeReference.createTrustedWithoutAssumptions(abstractObjectStamp.type());
+            }
         }
         return null;
     }
@@ -169,8 +184,8 @@ public class StampTool {
     /**
      * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#hasValues() legal}
      * Object value whose Java type is known exactly. If this method returns true then the
-     * {@linkplain ResolvedJavaType Java type} returned by {@link #typeOrNull(ValueNode)} is the
-     * concrete dynamic/runtime Java type of this value.
+     * {@linkplain ResolvedJavaType Java type} returned by {@link #typeReferenceOrNull(ValueNode)}
+     * is the concrete dynamic/runtime Java type of this value.
      *
      * @param node the node to check
      * @return true if this node represents a legal object value whose Java type is known exactly
@@ -182,7 +197,7 @@ public class StampTool {
     /**
      * Checks whether this {@link Stamp} represents a {@linkplain Stamp#hasValues() legal} Object
      * stamp whose {@linkplain ResolvedJavaType Java type} is known exactly. If this method returns
-     * true then the Java type returned by {@link #typeOrNull(Stamp)} is the only concrete
+     * true then the Java type returned by {@link #typeReferenceOrNull(Stamp)} is the only concrete
      * dynamic/runtime Java type possible for values of this stamp.
      *
      * @param stamp the stamp to check

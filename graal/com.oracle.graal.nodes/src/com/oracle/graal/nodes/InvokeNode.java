@@ -41,13 +41,14 @@ import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.nodes.spi.UncheckedInterfaceProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 
 /**
  * The {@code InvokeNode} represents all kinds of method calls.
  */
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
-public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single {
+public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeNode> TYPE = NodeClass.create(InvokeNode.class);
 
     @Input(InputType.Extension) CallTargetNode callTarget;
@@ -58,7 +59,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     protected boolean useForInlining;
 
     public InvokeNode(CallTargetNode callTarget, int bci) {
-        this(callTarget, bci, callTarget.returnStamp());
+        this(callTarget, bci, callTarget.returnStamp().getTrustedStamp());
     }
 
     public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
@@ -204,5 +205,9 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     public void setGuard(GuardingNode guard) {
         updateUsagesInterface(this.guard, guard);
         this.guard = guard;
+    }
+
+    public Stamp uncheckedStamp() {
+        return this.callTarget.returnStamp().getUncheckedStamp();
     }
 }

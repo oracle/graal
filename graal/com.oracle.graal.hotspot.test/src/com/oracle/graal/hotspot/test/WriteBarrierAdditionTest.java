@@ -147,6 +147,8 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      */
     @Test
     public void test4() throws Exception {
+        // Exercise the snippet before compiling it to ensure that everything is resolved.
+        test4Snippet();
         testHelper("test4Snippet", config.useG1GC ? 5 : 2);
     }
 

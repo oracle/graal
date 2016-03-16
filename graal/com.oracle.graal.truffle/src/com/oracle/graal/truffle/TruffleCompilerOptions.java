@@ -136,7 +136,7 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleCompilationExceptionsAreFatal = new OptionValue<>(false);
 
     @Option(help = "Prints the exception stack trace for compilation exceptions", type = OptionType.Debug)
-    public static final OptionValue<Boolean> TruffleCompilationExceptionsArePrinted = new OptionValue<>(false);
+    public static final OptionValue<Boolean> TruffleCompilationExceptionsArePrinted = new OptionValue<>(true);
 
     @Option(help = "Treat compilation exceptions as thrown runtime exceptions", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleCompilationExceptionsAreThrown = new OptionValue<>(false);
@@ -173,6 +173,15 @@ public class TruffleCompilerOptions {
 
     @Option(help = "Enable/disable builtin profiles in com.oracle.truffle.api.profiles.", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleProfilingEnabled = new OptionValue<>(true);
+
+    @Option(help = "Instrument branches and output profiling information to the standard output.")
+    public static final OptionValue<Boolean> TruffleInstrumentBranches = new OptionValue<>(false);
+
+    @Option(help = "Regex filter for names of methods in which to add branch instrumentation.")
+    public static final OptionValue<String> TruffleInstrumentBranchesFilter = new OptionValue<>(".*");
+
+    @Option(help = "Maximum number of instrumentation counters available.")
+    public static final OptionValue<Integer> TruffleInstrumentBranchesCount = new OptionValue<>(10000);
 
     // @formatter:on
 }

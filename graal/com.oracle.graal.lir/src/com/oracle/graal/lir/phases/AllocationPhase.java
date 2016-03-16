@@ -27,7 +27,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 public abstract class AllocationPhase extends LIRPhase<AllocationPhase.AllocationContext> {
 
-    public static final class AllocationContext {
+    public static final class AllocationContext extends GenericContext {
         public final MoveFactory spillMoveFactory;
         public final RegisterAllocationConfig registerAllocationConfig;
 

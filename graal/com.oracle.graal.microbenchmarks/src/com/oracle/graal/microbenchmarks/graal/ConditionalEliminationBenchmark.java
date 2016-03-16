@@ -28,7 +28,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import com.oracle.graal.microbenchmarks.graal.util.GraalState;
 import com.oracle.graal.microbenchmarks.graal.util.GraphState;
 import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
-import com.oracle.graal.phases.common.ConditionalEliminationPhase;
+import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
 
 public class ConditionalEliminationBenchmark extends GraalBenchmark {
 
@@ -72,7 +72,7 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
     @Benchmark
     @Warmup(iterations = 20)
     public void nullness(Nullness s, @SuppressWarnings("unused") GraalState g) {
-        new ConditionalEliminationPhase().apply(s.graph);
+        new DominatorConditionalEliminationPhase(false).apply(s.graph);
     }
 
     @MethodSpec(declaringClass = ConditionalEliminationBenchmark.class, name = "searchSnippet")
@@ -123,6 +123,6 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void search(Search s, @SuppressWarnings("unused") GraalState g) {
-        new ConditionalEliminationPhase().apply(s.graph);
+        new DominatorConditionalEliminationPhase(false).apply(s.graph);
     }
 }

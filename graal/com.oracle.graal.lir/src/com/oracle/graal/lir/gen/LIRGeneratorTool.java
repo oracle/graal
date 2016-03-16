@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -176,14 +176,6 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
     void emitMove(AllocatableValue dst, Value src);
 
     void emitMoveConstant(AllocatableValue dst, Constant src);
-
-    /**
-     * Emits an op that loads the address of some raw data.
-     *
-     * @param dst the variable into which the address is loaded
-     * @param data the data to be installed with the generated code
-     */
-    void emitData(AllocatableValue dst, byte[] data);
 
     Variable emitAddress(AllocatableValue stackslot);
 

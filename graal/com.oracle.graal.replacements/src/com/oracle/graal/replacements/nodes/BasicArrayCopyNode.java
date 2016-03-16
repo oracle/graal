@@ -233,7 +233,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
                         return;
                     }
                     for (int i = 0; i < len; i++) {
-                        LoadIndexedNode load = new LoadIndexedNode(srcAlias, ConstantNode.forInt(i + srcPosInt, graph()), destComponentType.getJavaKind());
+                        LoadIndexedNode load = new LoadIndexedNode(graph().getAssumptions(), srcAlias, ConstantNode.forInt(i + srcPosInt, graph()), destComponentType.getJavaKind());
                         tool.addNode(load);
                         tool.setVirtualEntry(destVirtual, destPosInt + i, load, false);
                     }

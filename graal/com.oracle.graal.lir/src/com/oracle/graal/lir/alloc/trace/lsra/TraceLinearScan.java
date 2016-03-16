@@ -32,7 +32,6 @@ import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -40,18 +39,20 @@ import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.VirtualStackSlot;
+import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
 import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanAllocationPhase.TraceLinearScanAllocationContext;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
@@ -94,38 +95,6 @@ public final class TraceLinearScan {
     private static final TraceLinearScanResolveDataFlowPhase TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE = new TraceLinearScanResolveDataFlowPhase();
     private static final TraceLinearScanLifetimeAnalysisPhase TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE = new TraceLinearScanLifetimeAnalysisPhase();
 
-    public static class BlockData {
-
-        /**
-         * Bit map specifying which operands are live upon entry to this block. These are values
-         * used in this block or any of its successors where such value are not defined in this
-         * block. The bit index of an operand is its
-         * {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
-         */
-        public BitSet liveIn;
-
-        /**
-         * Bit map specifying which operands are live upon exit from this block. These are values
-         * used in a successor block that are either defined in this block or were live upon entry
-         * to this block. The bit index of an operand is its
-         * {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
-         */
-        public BitSet liveOut;
-
-        /**
-         * Bit map specifying which operands are used (before being defined) in this block. That is,
-         * these are the values that are live upon entry to the block. The bit index of an operand
-         * is its {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
-         */
-        public BitSet liveGen;
-
-        /**
-         * Bit map specifying which operands are defined/overwritten in this block. The bit index of
-         * an operand is its {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
-         */
-        public BitSet liveKill;
-    }
-
     public static final int DOMINATOR_SPILL_MOVE_ID = -2;
     private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
 
@@ -135,8 +104,6 @@ public final class TraceLinearScan {
     private final Register[] registers;
     private final RegisterAllocationConfig regAllocConfig;
     private final MoveFactory moveFactory;
-
-    private final BlockMap<BlockData> blockData;
 
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
@@ -187,8 +154,15 @@ public final class TraceLinearScan {
     protected final TraceBuilderResult<?> traceBuilderResult;
     private final boolean neverSpillConstants;
 
+    /**
+     * Maps from {@link Variable#index} to a spill stack slot. If
+     * {@linkplain com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options#TraceRACacheStackSlots
+     * enabled} a {@link Variable} is always assigned to the same stack slot.
+     */
+    private final AllocatableValue[] cachedStackSlots;
+
     public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace,
-                    TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants) {
+                    TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -198,9 +172,9 @@ public final class TraceLinearScan {
 
         this.registers = target.arch.getRegisters();
         this.fixedIntervals = new FixedInterval[registers.length];
-        this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.traceBuilderResult = traceBuilderResult;
         this.neverSpillConstants = neverSpillConstants;
+        this.cachedStackSlots = cachedStackSlots;
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -256,14 +230,6 @@ public final class TraceLinearScan {
         return registers.length;
     }
 
-    public BlockData getBlockData(AbstractBlockBase<?> block) {
-        return blockData.get(block);
-    }
-
-    void initBlockData(AbstractBlockBase<?> block) {
-        blockData.put(block, new BlockData());
-    }
-
     static final IntervalPredicate IS_PRECOLORED_INTERVAL = new IntervalPredicate() {
 
         @Override
@@ -296,6 +262,9 @@ public final class TraceLinearScan {
         return registerAttributes[reg.number];
     }
 
+    private static final DebugMetric globalStackSlots = Debug.metric("TraceRA[GlobalStackSlots]");
+    private static final DebugMetric allocatedStackSlots = Debug.metric("TraceRA[AllocatedStackSlots]");
+
     void assignSpillSlot(TraceInterval interval) {
         /*
          * Assign the canonical spill slot of the parent (if a part of the interval is already
@@ -306,10 +275,36 @@ public final class TraceLinearScan {
         } else if (interval.spillSlot() != null) {
             interval.assignLocation(interval.spillSlot());
         } else {
-            VirtualStackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
+            AllocatableValue slot = allocateSpillSlot(interval);
             interval.setSpillSlot(slot);
             interval.assignLocation(slot);
         }
+    }
+
+    /**
+     * Returns a new spill slot or a cached entry if there is already one for the
+     * {@linkplain TraceInterval#operand variable}.
+     */
+    private AllocatableValue allocateSpillSlot(TraceInterval interval) {
+        int variableIndex = LIRValueUtil.asVariable(interval.splitParent().operand).index;
+        if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
+            AllocatableValue cachedStackSlot = cachedStackSlots[variableIndex];
+            if (cachedStackSlot != null) {
+                if (globalStackSlots.isEnabled()) {
+                    globalStackSlots.increment();
+                }
+                assert cachedStackSlot.getLIRKind().equals(interval.kind()) : "CachedStackSlot: kind mismatch? " + interval.kind() + " vs. " + cachedStackSlot.getLIRKind();
+                return cachedStackSlot;
+            }
+        }
+        VirtualStackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
+        if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
+            cachedStackSlots[variableIndex] = slot;
+        }
+        if (allocatedStackSlots.isEnabled()) {
+            allocatedStackSlots.increment();
+        }
+        return slot;
     }
 
     /**
@@ -390,15 +385,6 @@ public final class TraceLinearScan {
 
     public AbstractBlockBase<?> blockAt(int index) {
         return sortedBlocks.get(index);
-    }
-
-    /**
-     * Gets the size of the {@link BlockData#liveIn} and {@link BlockData#liveOut} sets for a basic
-     * block. These sets do not include any operands allocated as a result of creating
-     * {@linkplain #createDerivedInterval(TraceInterval) derived intervals}.
-     */
-    public int liveSetSize() {
-        return firstDerivedIntervalIndex == -1 ? operandSize() : firstDerivedIntervalIndex;
     }
 
     int numLoops() {
@@ -780,12 +766,12 @@ public final class TraceLinearScan {
 
                 // resolve intra-trace data-flow
                 TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-                Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
+                Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
 
                 // eliminate spill moves
                 if (Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
                     TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-                    Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
+                    Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
                 }
 
                 TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
@@ -801,7 +787,7 @@ public final class TraceLinearScan {
 
     @SuppressWarnings("try")
     public void printIntervals(String label) {
-        if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
+        if (Debug.isDumpEnabled(TraceBuilderPhase.TRACE_DUMP_LEVEL)) {
             if (Debug.isLogEnabled()) {
                 try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
                     for (FixedInterval interval : fixedIntervals) {
@@ -829,8 +815,8 @@ public final class TraceLinearScan {
     }
 
     public void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
-        if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
-            Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), label);
+        if (Debug.isDumpEnabled(TraceBuilderPhase.TRACE_DUMP_LEVEL)) {
+            Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), label);
         }
     }
 
