@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
@@ -83,10 +84,11 @@ public class LLVMX86_64BitVAStart extends LLVMNode {
         LLVMAddress address = target.executePointee(frame);
         initOffsets(address);
         int varArgsStartIndex = numberExplicitArguments;
-        int argumentsLength = frame.getArguments().length;
+        Object[] realArguments = getRealArguments(frame);
+        int argumentsLength = realArguments.length;
         if (varArgsStartIndex != argumentsLength) {
             int nrVarArgs = argumentsLength - varArgsStartIndex;
-            LLVMRuntimeType[] types = getTypes(frame.getArguments(), varArgsStartIndex);
+            LLVMRuntimeType[] types = getTypes(realArguments, varArgsStartIndex);
             int gpOffset = 0;
             int fpOffset = X86_64BitVarArgs.MAX_GP_OFFSET;
             int overFlowOffset = 0;
@@ -96,7 +98,7 @@ public class LLVMX86_64BitVAStart extends LLVMNode {
             LLVMAddress overflowArea = savedRegs.increment(X86_64BitVarArgs.MAX_FP_OFFSET);
             LLVMMemory.putAddress(address.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), overflowArea);
             for (int i = 0; i < nrVarArgs; i++) {
-                Object object = frame.getArguments()[varArgsStartIndex + i];
+                Object object = realArguments[varArgsStartIndex + i];
                 LLVMAddress currentAddress;
                 switch (getVarArgArea(types[i])) {
                     case GP_AREA:
@@ -130,6 +132,13 @@ public class LLVMX86_64BitVAStart extends LLVMNode {
                 storeArgument(types[i], currentAddress, object);
             }
         }
+    }
+
+    private static Object[] getRealArguments(VirtualFrame frame) {
+        Object[] arguments = frame.getArguments();
+        Object[] newArguments = new Object[arguments.length - 1];
+        System.arraycopy(arguments, LLVMCallNode.ARG_START_INDEX, newArguments, 0, newArguments.length);
+        return newArguments;
     }
 
     static int getSize(LLVMRuntimeType[] types) {
@@ -213,7 +222,7 @@ public class LLVMX86_64BitVAStart extends LLVMNode {
             LLVMMemory.putAddress(address.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), stackArea);
             LLVMAddress currentAddress = stackArea;
             for (int i = nrVarArgsInRegisterArea; i < nrVarArgs; i++) {
-                storeArgument(type, currentAddress, frame.getArguments()[i + varArgsStartIndex]);
+                storeArgument(type, currentAddress, getRealArguments(frame)[i + varArgsStartIndex]);
                 currentAddress = currentAddress.increment(typeLength);
             }
         }

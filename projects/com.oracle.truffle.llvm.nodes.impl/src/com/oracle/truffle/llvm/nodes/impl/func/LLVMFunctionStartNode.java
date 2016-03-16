@@ -31,15 +31,12 @@ package com.oracle.truffle.llvm.nodes.impl.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 
 public class LLVMFunctionStartNode extends RootNode {
 
@@ -47,26 +44,19 @@ public class LLVMFunctionStartNode extends RootNode {
     @Children private final LLVMNode[] beforeFunction;
     @Children private final LLVMNode[] afterFunction;
     private final String functionName;
-    private final FrameSlot stackSlot;
-    private final LLVMContext context;
 
-    public LLVMFunctionStartNode(LLVMExpressionNode node, FrameSlot stackSlot, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName,
-                    LLVMContext context) {
+    public LLVMFunctionStartNode(LLVMExpressionNode node, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName) {
         super(LLVMLanguage.class, null, frameDescriptor);
         this.node = node;
-        this.stackSlot = stackSlot;
         this.beforeFunction = beforeFunction;
         this.afterFunction = afterFunction;
         this.functionName = functionName;
-        this.context = context;
     }
 
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(beforeFunction);
-        final LLVMAddress stackPointer = context.getStack().getStackPointer();
-        frame.setObject(stackSlot, stackPointer);
         for (LLVMNode before : beforeFunction) {
             before.executeVoid(frame);
         }
@@ -75,7 +65,6 @@ public class LLVMFunctionStartNode extends RootNode {
         for (LLVMNode after : afterFunction) {
             after.executeVoid(frame);
         }
-        context.getStack().setStackPointer(stackPointer);
         return result;
     }
 

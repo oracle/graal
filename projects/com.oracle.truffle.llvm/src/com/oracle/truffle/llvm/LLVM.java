@@ -73,7 +73,8 @@ public class LLVM {
             public CallTarget parse(Source code, Node context, String... argumentNames) {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
                 LLVMContext llvmContext = LLVMLanguage.INSTANCE.findContext0(findContext);
-                return parseFile(code.getPath(), llvmContext);
+                CallTarget parseFile = parseFile(code.getPath(), llvmContext);
+                return parseFile;
             }
 
             public LLVMContext createContext(Env env) {

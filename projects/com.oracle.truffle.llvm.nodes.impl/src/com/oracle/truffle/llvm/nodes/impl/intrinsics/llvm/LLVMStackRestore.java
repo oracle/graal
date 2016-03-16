@@ -31,21 +31,26 @@ package com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
 @NodeChild(type = LLVMAddressNode.class)
-@NodeField(type = LLVMContext.class, name = "context")
+@NodeFields({@NodeField(type = LLVMContext.class, name = "context"), @NodeField(type = FrameSlot.class, name = "stackPointerSlot")})
 public abstract class LLVMStackRestore extends LLVMNode {
 
     abstract LLVMContext getContext();
 
+    abstract FrameSlot getStackPointerSlot();
+
     @Specialization
-    public void executeVoid(LLVMAddress addr) {
-        getContext().getStack().setStackPointer(addr);
+    public void executeVoid(VirtualFrame frame, LLVMAddress addr) {
+        frame.setObject(getStackPointerSlot(), addr);
     }
 
 }

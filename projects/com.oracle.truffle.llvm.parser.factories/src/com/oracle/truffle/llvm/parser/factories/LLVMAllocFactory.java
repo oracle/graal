@@ -39,24 +39,25 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLV
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMI32AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMI64AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 
 public class LLVMAllocFactory {
 
-    public static LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment) {
+    public static LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment) {
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
         switch (llvmType) {
             case I32:
-                return LLVMI32AllocaInstructionNodeGen.create((LLVMI32Node) numElements, byteSize, alignment, context);
+                return LLVMI32AllocaInstructionNodeGen.create((LLVMI32Node) numElements, byteSize, alignment, context, runtime.getStackPointerSlot());
             case I64:
-                return LLVMI64AllocaInstructionNodeGen.create((LLVMI64Node) numElements, byteSize, alignment, context);
+                return LLVMI64AllocaInstructionNodeGen.create((LLVMI64Node) numElements, byteSize, alignment, context, runtime.getStackPointerSlot());
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    public static LLVMAllocaInstruction createAlloc(int size, int alignment) {
+    public static LLVMAllocaInstruction createAlloc(LLVMParserRuntime runtime, int size, int alignment) {
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-        return LLVMAllocaInstructionNodeGen.create(size, alignment, context);
+        return LLVMAllocaInstructionNodeGen.create(size, alignment, context, runtime.getStackPointerSlot());
     }
 
 }
