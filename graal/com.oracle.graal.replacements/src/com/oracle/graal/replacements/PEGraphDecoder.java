@@ -348,7 +348,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         } else if (loopExplosionPlugin.shouldMergeExplosions(method)) {
             return LoopExplosionKind.MERGE_EXPLODE;
         } else if (loopExplosionPlugin.shouldExplodeLoops(method)) {
-            return LoopExplosionKind.FULL_EXPLODE;
+            return LoopExplosionKind.FULL_UNROLL;
         } else {
             return LoopExplosionKind.NONE;
         }
