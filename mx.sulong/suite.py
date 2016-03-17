@@ -220,6 +220,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
+        "com.oracle.truffle.llvm.runtime",
         "truffle:TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes",
@@ -296,7 +297,6 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.nodes",
         "com.oracle.truffle.llvm.types",
-        "com.oracle.truffle.llvm.runtime",
         "LLVM_IR_PARSER",
         "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
        ],

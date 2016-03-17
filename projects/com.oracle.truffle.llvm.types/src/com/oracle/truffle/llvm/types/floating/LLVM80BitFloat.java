@@ -35,7 +35,9 @@ import java.util.Arrays;
 import javax.xml.bind.DatatypeConverter;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.LLVMOptions;
 
 public abstract class LLVM80BitFloat {
 
@@ -168,6 +170,11 @@ public abstract class LLVM80BitFloat {
         }
 
         private static RealLLVM80BitFloat fromLong(long val, boolean sign) {
+            if (CompilerDirectives.inInterpreter() && LLVMOptions.printPerformanceWarnings()) {
+                // Checkstyle: stop
+                System.err.println("constructing a 80 bit float!");
+                // Checkstyle: resume
+            }
             int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
             int exponent = EXPONENT_BIAS + (leadingOnePosition - 1);
             long fractionMask;

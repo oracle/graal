@@ -33,6 +33,7 @@ import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
@@ -238,32 +239,34 @@ public abstract class LLVMCallNode {
 
         @Children private final LLVMExpressionNode[] nodes;
 
+        private final boolean printPerformanceWarnings = LLVMOptions.printPerformanceWarnings();
+        @CompilationFinal private boolean printedNativePerformanceWarning;
+        @CompilationFinal private boolean printedExceedInlineCacheWarning;
+
+        protected static final int INLINE_CACHE_SIZE = LLVMOptions.getInlineCacheSize();
+
         public LLVMFunctionCallChain(LLVMContext context, LLVMExpressionNode[] nodes) {
             this.context = context;
             this.nodes = nodes;
         }
 
-        protected static final int INLINE_CACHE_SIZE = 2;
-
         public abstract Object executeDispatch(VirtualFrame frame, LLVMFunction function, Object[] arguments);
 
-        public static CallTarget getIndirectCallTarget(LLVMContext context, LLVMFunction function, LLVMExpressionNode[] args) {
-            CallTarget callTarget = context.getFunction(function);
+        public CallTarget getIndirectCallTarget(LLVMContext currentContext, LLVMFunction function, LLVMExpressionNode[] args) {
+            CallTarget callTarget = currentContext.getFunction(function);
             if (callTarget == null) {
-                return getNativeCallTarget(context, function, args);
+                return getNativeCallTarget(currentContext, function, args);
             } else {
                 return callTarget;
             }
         }
 
         @TruffleBoundary
-        private static CallTarget getNativeCallTarget(LLVMContext context, LLVMFunction function, LLVMExpressionNode[] args) {
-            if (LLVMOptions.debugEnabled()) {
-                // Checkstyle: stop
-                System.err.println("indirectly calling a native function is expensive at the moment!");
-                // Checkstyle: resume
+        private CallTarget getNativeCallTarget(LLVMContext currentContext, LLVMFunction function, LLVMExpressionNode[] args) {
+            if (printPerformanceWarnings && !printedNativePerformanceWarning) {
+                printIndirectNativeCallWarning(function);
             }
-            final NativeFunctionHandle nativeHandle = context.getNativeHandle(function, prepareForNative(args, context));
+            final NativeFunctionHandle nativeHandle = currentContext.getNativeHandle(function, prepareForNative(args, currentContext));
             if (nativeHandle == null) {
                 throw new IllegalStateException("could not find function " + function.getName());
             } else {
@@ -290,7 +293,26 @@ public abstract class LLVMCallNode {
         @Specialization(contains = "doDirect")
         protected Object doIndirect(VirtualFrame frame, LLVMFunction function, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
+            if (printPerformanceWarnings && !printedExceedInlineCacheWarning) {
+                printExceededInlineCacheWarning(function);
+            }
             return callNode.call(frame, getIndirectCallTarget(getContext(), function, getNodes()), arguments);
+        }
+
+        private void printIndirectNativeCallWarning(LLVMFunction function) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            printedNativePerformanceWarning = true;
+            // Checkstyle: stop
+            System.err.println("indirectly calling a native function " + function.getName() + " + is expensive at the moment!");
+            // Checkstyle: resume
+        }
+
+        private void printExceededInlineCacheWarning(LLVMFunction function) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // Checkstyle: stop
+            System.err.println("exceeded inline cache limit for function " + function);
+            // Checkstyle: resume
+            printedExceedInlineCacheWarning = true;
         }
 
         public LLVMContext getContext() {
