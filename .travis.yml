@@ -2,7 +2,7 @@ language: java
 python:
   - "2.7"
 jdk:
-  - oraclejdk8
+  - oraclejdk7
 before_install:
   - sudo pip install astroid==1.1.0
   - sudo pip install pylint==1.1.0
