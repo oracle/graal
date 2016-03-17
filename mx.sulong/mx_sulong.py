@@ -380,6 +380,9 @@ def compilationSucceedsOption():
 def getRemoteClasspathOption():
     return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Dsulong.IntrinsifyCFunctions=false -Djvmci.Compiler=graal"
 
+def getBenchmarkOptions():
+    return ['-Dgraal.TruffleBackgroundCompilation=false', '-Dsulong.IntrinsifyCFunctions=false']
+
 def getLLVMRootOption():
     return "-Dsulong.ProjectRoot=" + _root
 
@@ -453,7 +456,7 @@ def suBench(args=None):
     ensureLLVMBinariesExist()
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
-    return runLLVM(['test.ll'] + vmArgs)
+    return runLLVM(getBenchmarkOptions() + ['test.ll'] + vmArgs)
 
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
@@ -471,7 +474,7 @@ def suOptBench(args=None):
     else:
         exit(ext + " is not supported!")
     opt(['-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
-    return runLLVM([getSearchPathOption(), '-Dsulong.IntrinsifyCFunctions=false', 'test.ll'] + vmArgs)
+    return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), 'test.ll'] + vmArgs)
 
 def clangBench(args=None):
     """ Executes a benchmark with the system default Clang"""

@@ -89,7 +89,11 @@ public class LLVMGlobalRootNode extends RootNode {
         realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
         System.arraycopy(arguments, 0, realArgs, LLVMCallNode.ARG_START_INDEX, arguments.length);
         try {
-            return main.call(frame, realArgs);
+            Object result = null;
+            for (int i = 0; i < LLVMOptions.getExecutionCount(); i++) {
+                result = main.call(frame, realArgs);
+            }
+            return result;
         } catch (LLVMExitException e) {
             return e.getReturnCode();
         } finally {

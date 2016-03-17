@@ -106,6 +106,7 @@ public class LLVMOptions {
         DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+        EXECUTION_COUNT("ExecutionCount", "Execute each program for as many times as specified by this option", "1", LLVMOptions::parseInteger, PropertyCategory.DEBUG),
         /*
          * The boot classpath that should be used to execute the remote JVM when executing the LLVM
          * test suite (and other tests). These rely on comparing output sent to stdout that cannot
@@ -341,6 +342,10 @@ public class LLVMOptions {
 
     public static int getInlineCacheSize() {
         return getParsedProperty(Property.OPTIMIZATION_INLINE_CACHE_SIZE);
+    }
+
+    public static int getExecutionCount() {
+        return getParsedProperty(Property.EXECUTION_COUNT);
     }
 
 }
