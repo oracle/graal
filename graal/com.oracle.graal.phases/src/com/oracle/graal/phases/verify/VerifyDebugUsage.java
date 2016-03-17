@@ -37,12 +37,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  *
- * Verifies that callsites calling on of the methods in {@link Debug} use them correctly. Correct
+ * Verifies that callsites calling one of the methods in {@link Debug} use them correctly. Correct
  * usage of the methods in {@link Debug} requires callsites to not eagerly evaluate their arguments.
  * Additionally this phase verifies that no argument is the result of a call to
  * {@link StringBuilder#toString()} or {@link StringBuffer#toString()}. Ideally the parameters at
  * callsites of {@link Debug} are eliminated, and do not produce additional allocations, if
- * {@link Debug#isDumpEnabled()} (or {@link Debug#isLogEnabled()}, ...) is <code>false</code>.
+ * {@link Debug#isDumpEnabled()} (or {@link Debug#isLogEnabled()}, ...) is {@code false}.
  *
  * Methods in {@link Debug} checked by this phase are various different versions of
  * {@link Debug#log(String)} , {@link Debug#dump(Object, String)},
