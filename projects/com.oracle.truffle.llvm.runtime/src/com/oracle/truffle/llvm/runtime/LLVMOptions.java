@@ -100,6 +100,7 @@ public class LLVMOptions {
     public enum Property {
 
         DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+        PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         /*
          * The boot classpath that should be used to execute the remote JVM when executing the LLVM
@@ -327,6 +328,10 @@ public class LLVMOptions {
 
     public static boolean launchRemoteTestCasesAsLocal() {
         return getParsedProperty(Property.REMOTE_TEST_CASES_AS_LOCAL);
+    }
+
+    public static boolean printPerformanceWarnings() {
+        return getParsedProperty(Property.PRINT_PERFORMANCE_WARNINGS);
     }
 
 }
