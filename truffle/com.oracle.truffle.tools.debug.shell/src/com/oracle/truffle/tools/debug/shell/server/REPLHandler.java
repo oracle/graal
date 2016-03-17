@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -298,8 +297,6 @@ public abstract class REPLHandler {
             try {
                 final Object result = replServer.getCurrentContext().call(callName, stepInto, argList);
                 reply.put(REPLMessage.VALUE, result == null ? "<void>" : result.toString());
-            } catch (KillException ex) {
-                return finishReplySucceeded(reply, callName + " killed");
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex);
             }
@@ -405,8 +402,6 @@ public abstract class REPLHandler {
             try {
                 Object returnValue = serverContext.eval(source, frameNumber, stepInto);
                 return finishReplySucceeded(reply, visualizer.displayValue(returnValue, 0));
-            } catch (KillException ex) {
-                return finishReplySucceeded(reply, "eval (" + sourceName + ") killed");
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex);
             }
@@ -537,10 +532,13 @@ public abstract class REPLHandler {
 
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServer replServer) {
+            final REPLMessage reply = new REPLMessage(REPLMessage.OP, REPLMessage.KILL);
             if (replServer.getCurrentContext().getLevel() == 0) {
-                return finishReplyFailed(createReply(), "nothing to kill");
+                return finishReplyFailed(reply, "nothing to kill");
             }
-            throw new KillException();
+            replServer.getCurrentContext().kill();
+            return finishReplySucceeded(reply, "execution killed");
+
         }
     };
 
@@ -556,8 +554,6 @@ public abstract class REPLHandler {
                 replServer.getCurrentContext().eval(fileSource, stepInto);
                 reply.put(REPLMessage.FILE_PATH, fileName);
                 return finishReplySucceeded(reply, fileName + "  loaded");
-            } catch (KillException ex) {
-                return finishReplySucceeded(reply, fileName + " killed");
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex);
             }
