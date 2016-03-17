@@ -34,7 +34,7 @@ public abstract class TruffleInfo {
     static TruffleInfo DEFAULT;
     static {
         try {
-            Class.forName("com.oracle.truffle.api.impl.Accessor", true, ClassLoader.getSystemClassLoader());
+            Class.forName("com.oracle.truffle.api.impl.TruffleInfoImpl", true, ClassLoader.getSystemClassLoader());
         } catch (ClassNotFoundException ex) {
             throw new IllegalStateException(ex);
         }
