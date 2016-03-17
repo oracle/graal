@@ -70,6 +70,10 @@ public class LLVMOptions {
         return System.getProperty(prop.getKey(), prop.getDefaultValue());
     }
 
+    static int parseInteger(Property prop) {
+        return Integer.parseInt(System.getProperty(prop.getKey(), prop.getDefaultValue()));
+    }
+
     static String[] parseDynamicLibraryPath(Property prop) {
         String property = System.getProperty(prop.getKey(), prop.getDefaultValue());
         if (property == null) {
@@ -139,6 +143,7 @@ public class LLVMOptions {
         OPTIMIZATION_INJECT_PROBS_SELECT("InjectProbabilitySelect", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_INJECT_PROBS_COND_BRANCH("InjectProbabilityBr", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+        OPTIMIZATION_INLINE_CACHE_SIZE("InlineCacheSize", "Specifies the size of the polymorphic inline cache", "5", LLVMOptions::parseInteger, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_LIFE_TIME_ANALYSIS(
                         "EnableLifetimeAnalysis",
                         "Performs a lifetime analysis to set dead frame slots to null to assist the PE",
@@ -332,6 +337,10 @@ public class LLVMOptions {
 
     public static boolean printPerformanceWarnings() {
         return getParsedProperty(Property.PRINT_PERFORMANCE_WARNINGS);
+    }
+
+    public static int getInlineCacheSize() {
+        return getParsedProperty(Property.OPTIMIZATION_INLINE_CACHE_SIZE);
     }
 
 }

@@ -243,7 +243,7 @@ public abstract class LLVMCallNode {
         @CompilationFinal private boolean printedNativePerformanceWarning;
         @CompilationFinal private boolean printedExceedInlineCacheWarning;
 
-        protected static final int INLINE_CACHE_SIZE = 2;
+        protected static final int INLINE_CACHE_SIZE = LLVMOptions.getInlineCacheSize();
 
         public LLVMFunctionCallChain(LLVMContext context, LLVMExpressionNode[] nodes) {
             this.context = context;
