@@ -16,14 +16,4 @@ install:
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
   - export ECLIPSE_EXE=eclipse/eclipse
 script:
-  - $TEST_COMMAND
-env:
-  - TEST_COMMAND='mx/mx gate --strict-mode'
-  - TEST_COMMAND='mx/mx checkoverlap'
-  - TEST_COMMAND='mx/mx canonicalizeprojects'
-  - TEST_COMMAND='mx/mx checkstyle'
-  - TEST_COMMAND='sh .travis.sigtest.sh'
-  - TEST_COMMAND='mx/mx testdownstream'
-matrix:
-  allow_failures:
-    - env: TEST_COMMAND='mx/mx testdownstream'
+  - mx/mx build && mx/mx microbench -- -foe true
