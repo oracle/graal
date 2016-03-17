@@ -146,7 +146,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
                                     Debug.log("handle %s", interval);
                                     if (!interval.canMaterialize() && interval.spillState() != SpillState.StartInMemory) {
 
-                                        AllocatableValue fromLocation = interval.getSplitChildAtOpId(opId, OperandMode.DEF, allocator).location();
+                                        AllocatableValue fromLocation = interval.getSplitChildAtOpId(opId, OperandMode.DEF).location();
                                         AllocatableValue toLocation = TraceLinearScan.canonicalSpillOpr(interval);
                                         if (!fromLocation.equals(toLocation)) {
 

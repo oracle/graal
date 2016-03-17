@@ -33,5 +33,5 @@ abstract class IntervalHint {
 
     public abstract int from();
 
-    public abstract String logString(TraceLinearScan allocator);
+    public abstract String logString();
 }
