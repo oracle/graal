@@ -57,6 +57,7 @@ suite = {
     "com.oracle.truffle.api.boot" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
