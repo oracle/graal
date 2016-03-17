@@ -220,6 +220,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
+        "com.oracle.truffle.llvm.runtime",
         "truffle:TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes",
