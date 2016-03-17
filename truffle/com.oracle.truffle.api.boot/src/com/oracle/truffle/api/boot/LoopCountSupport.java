@@ -4,7 +4,8 @@ package com.oracle.truffle.api.boot;
  *
  */
 public abstract class LoopCountSupport<Node> {
-    /** Constructor for subclasses.
+    /**
+     * Constructor for subclasses.
      *
      * @param nodeClazz reference to {@link com.oracle.api.nodes.Node}
      */

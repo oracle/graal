@@ -43,7 +43,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.boot.LoopCountSupport;
-import com.oracle.truffle.api.boot.TruffleInfo;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
@@ -58,7 +57,7 @@ import com.oracle.truffle.api.source.Source;
 public abstract class Accessor {
     private static Accessor API;
     private static Accessor SPI;
-    private static Accessor NODES;
+    static Accessor NODES;
     private static Accessor INSTRUMENT;
     static Accessor INSTRUMENTHANDLER;
     private static Accessor DEBUG;
@@ -413,12 +412,12 @@ public abstract class Accessor {
         return API.toString(language, env, obj);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "rawtypes", "unchecked"})
     protected void onLoopCount(Node source, int count) {
-        LoopCountSupport OPTIMIZEDCALLTARGET = INFO.loops();
+        LoopCountSupport loopSupport = INFO.loops();
         // optimized calltarget is not existent on default runtimes
-        if (OPTIMIZEDCALLTARGET != null) {
-            OPTIMIZEDCALLTARGET.onLoopCount(source, count);
+        if (loopSupport != null) {
+            loopSupport.onLoopCount(source, count);
         } else {
             // needs an additional compatibilty check so older graal runtimes
             // still run with newer truffle versions
@@ -438,25 +437,4 @@ public abstract class Accessor {
         return languageClass.cast(language);
     }
 
-    private static class TruffleInfoImpl extends TruffleInfo {
-        public TruffleInfoImpl() {
-        }
-
-        @Override
-        public Class<?> findLanguage(Object node) {
-            return NODES.findLanguage((Node) node);
-        }
-
-        @Override
-        public void initializeCallTarget(Object target) {
-            Accessor accessor = INSTRUMENTHANDLER;
-            if (accessor != null) {
-                accessor.initializeCallTarget((RootCallTarget) target);
-            }
-        }
-
-        public LoopCountSupport<?> loops() {
-            return lookup(LoopCountSupport.class);
-        }
-    }
 }
