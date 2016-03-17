@@ -485,6 +485,10 @@ public final class REPLServer {
             event.prepareContinue();
         }
 
+        void kill() {
+            event.kill();
+        }
+
     }
 
     /**
