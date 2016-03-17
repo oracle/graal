@@ -284,7 +284,7 @@ public class GraalDebugConfig implements DebugConfig {
             // Only dump a context object once.
             if (firstSeen.add(o)) {
                 if (Options.DumpOnError.getValue()) {
-                    Debug.dump(o, "Exception: " + e.toString());
+                    Debug.dump(o, "Exception: %s", e);
                 } else {
                     Debug.log("Context obj %s", o);
                 }

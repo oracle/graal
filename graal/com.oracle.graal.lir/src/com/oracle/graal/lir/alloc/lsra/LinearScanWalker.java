@@ -849,8 +849,7 @@ class LinearScanWalker extends IntervalWalker {
                             Debug.log("retry with register priority must have register");
                             continue;
                         }
-                        String description = "cannot spill interval (" + interval + ") that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage +
-                                        ", interval.from()=" + interval.from() + "; already used candidates: " + Arrays.toString(availableRegs);
+                        String description = generateOutOfRegErrorMsg(interval, firstUsage, availableRegs);
                         /*
                          * assign a reasonable register and do a bailout in product mode to avoid
                          * errors
@@ -887,6 +886,11 @@ class LinearScanWalker extends IntervalWalker {
             splitAndSpillIntersectingIntervals(reg);
             return;
         }
+    }
+
+    private static String generateOutOfRegErrorMsg(Interval interval, int firstUsage, Register[] availableRegs) {
+        return "Cannot spill interval (" + interval + ") that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage +
+                        ", interval.from()=" + interval.from() + "; already used candidates: " + Arrays.toString(availableRegs);
     }
 
     @SuppressWarnings("try")
