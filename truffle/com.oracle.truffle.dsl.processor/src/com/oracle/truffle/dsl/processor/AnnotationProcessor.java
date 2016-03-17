@@ -56,9 +56,12 @@ class AnnotationProcessor<M extends Template> {
 
     @SuppressWarnings({"unchecked"})
     public void process(Element element, boolean callback) {
+        if (!(element instanceof TypeElement)) {
+            return;
+        }
         // since it is not guaranteed to be called only once by the compiler
         // we check for already processed elements to avoid errors when writing files.
-        if (!callback && element instanceof TypeElement) {
+        if (!callback) {
             String qualifiedName = ElementUtils.getQualifiedName((TypeElement) element);
             if (processedElements.contains(qualifiedName)) {
                 return;
