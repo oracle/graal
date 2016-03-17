@@ -22,31 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.boot;
+
+/*
+ @ApiInfo(
+ group="Virtual Machine Hooks"
+ )
+ */
 
 /**
- * Special support for {@link com.oracle.truffle.api.nodes.LoopNode loop counting nodes}.
- *
- * @param <Node> instance of {@link com.oracle.truffle.api.nodes.Node}
- * @since 0.12
+ * Not really interesting to regular users of <em>Truffle API</em>.
+ * This package contains interfaces that allow communication between the
+ * <em>Truffle API</em> internals and the virtual machine. People using
+ * <em>Truffle</em> languages and/or writing their own language can't find
+ * these interfaces useful in any way.
  */
-public abstract class LoopCountSupport<Node> {
-    /**
-     * Constructor for subclasses.
-     *
-     * @param nodeClazz reference to {@link com.oracle.truffle.api.nodes.Node}
-     * @since 0.12
-     */
-    protected LoopCountSupport(Class<Node> nodeClazz) {
-    }
+package com.oracle.truffle.api.boot;
 
-    /**
-     * Reports the execution count of a loop.
-     *
-     * @param source the Node which invoked the loop.
-     * @param iterations the number iterations to report to the runtime system
-     * @see com.oracle.truffle.api.nodes.LoopNode
-     * @since 0.12
-     */
-    public abstract void onLoopCount(Node source, int iterations);
-}

@@ -25,8 +25,10 @@
 package com.oracle.truffle.api.boot;
 
 /**
- * Provides informations about Truffle runtime to implementation of {@link TruffleServices}. Obtain
+ * Provides information about Truffle runtime to implementation of {@link TruffleServices}. Obtain
  * via {@link TruffleServices#info()}.
+ * 
+ * @since 0.12
  */
 public abstract class TruffleInfo {
     static TruffleInfo DEFAULT;
@@ -41,7 +43,8 @@ public abstract class TruffleInfo {
     /**
      * Restricted constructor. Available only to selected subclasses.
      * 
-     * @throws IllegalStateException usually throws an exception
+     * @throws IllegalStateException usually throws {@link IllegalStateException} exception
+     * @since 0.12
      */
     protected TruffleInfo() {
         if (DEFAULT != null || !getClass().getName().equals("com.oracle.truffle.api.impl.TruffleInfoImpl")) {
@@ -57,16 +60,32 @@ public abstract class TruffleInfo {
      * @param <T> the requested type
      * @param type class of the request service
      * @return instance of the requested type or <code>null</code> if none has been found
+     * @since 0.12
      */
-    @SuppressWarnings({"unchecked", "static-method"})
+    @SuppressWarnings("static-method")
     protected final <T> T lookup(Class<T> type) {
+        Object value = null;
         if (type == LoopCountSupport.class) {
-            return (T) TruffleServices.DEFAULT.loopCount();
+            value = TruffleServices.DEFAULT.loopCount();
         }
-        return null;
+        return type.cast(value);
     }
 
+    /**
+     * Finds class of a {@link com.oracle.truffle.api.TruffleLanguage language} this node belongs
+     * to.
+     *
+     * @param node instance of {@link com.oracle.truffle.api.nodes.Node}
+     * @return class of the language that created the node
+     * @since 0.12
+     */
     public abstract Class<?> findLanguage(Object node);
 
+    /**
+     * Notifies the Truffle runtime that a call target has just been initialized.
+     *
+     * @param callTarget instance of {@link com.oracle.truffle.api.CallTarget}
+     * @since 0.12
+     */
     public abstract void initializeCallTarget(Object callTarget);
 }

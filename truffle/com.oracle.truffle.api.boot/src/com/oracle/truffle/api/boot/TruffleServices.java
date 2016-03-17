@@ -25,7 +25,7 @@
 package com.oracle.truffle.api.boot;
 
 /**
- * Runtime support for the execution of Truffle interpreters. Contains various method to obtain
+ * Runtime support for the execution of Truffle interpreters. Contains various methods to obtain
  * support for specific areas. These methods may return <code>null</code> if particular feature of
  * the runtime isn't supported.
  * <p>
@@ -60,6 +60,7 @@ public abstract class TruffleServices {
      * Obtains programmatic name of this implementation.
      *
      * @return the name identifying this implementation
+     * @since 0.12
      */
     public final String getName() {
         return name;
