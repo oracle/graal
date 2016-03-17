@@ -84,6 +84,8 @@ public final class REPLServer {
         return name.substring(name.lastIndexOf('.') + 1);
     }
 
+    private static final String[] knownTags = {Debugger.HALT_TAG, Debugger.CALL_TAG};
+
     private static int nextBreakpointUID = 0;
 
     // Language-agnostic
@@ -93,9 +95,9 @@ public final class REPLServer {
     private SimpleREPLClient replClient = null;
     private String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
-    private ASTPrinter astPrinter = new InstrumentationUtils.ASTPrinter();
+    private ASTPrinter astPrinter = new REPLASTPrinter();
     private LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
-    private Visualizer visualizer = new Visualizer();
+    private REPLVisualizer visualizer = new REPLVisualizer();
 
     /** Languages sorted by name. */
     private final TreeSet<Language> engineLanguages = new TreeSet<>(new Comparator<Language>() {
@@ -188,7 +190,6 @@ public final class REPLServer {
         add(REPLHandler.INFO_HANDLER);
         add(REPLHandler.KILL_HANDLER);
         add(REPLHandler.LOAD_HANDLER);
-        add(REPLHandler.QUIT_HANDLER);
         add(REPLHandler.SET_BREAK_CONDITION_HANDLER);
         add(REPLHandler.SET_LANGUAGE_HANDLER);
         add(REPLHandler.STEP_INTO_HANDLER);
@@ -264,7 +265,7 @@ public final class REPLServer {
             // context.
             replClient.halted(message);
         } finally {
-            // Returns when "continue" or "kill" is called in the new debugging context
+            // Returns when "kill" is called in the new debugging context
 
             // Pop the debug context, and return so that the old context will continue
             currentServerContext = currentServerContext.predecessor;
@@ -320,7 +321,7 @@ public final class REPLServer {
         /**
          * Get access to display methods appropriate to the language at halted node.
          */
-        Visualizer getVisualizer() {
+        REPLVisualizer getVisualizer() {
             return visualizer;
         }
 
@@ -386,7 +387,7 @@ public final class REPLServer {
                     event.prepareStepInto(1);
                 }
                 try {
-                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber - 1);
+                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber);
                     final Object result = event.eval(code, frame);
                     return (result instanceof Value) ? ((Value) result).get() : result;
                 } finally {
@@ -435,7 +436,7 @@ public final class REPLServer {
         }
 
         /**
-         * Provides access to the execution stack, not counting the node/frame where halted.
+         * Access to the execution stack.
          *
          * @return immutable list of stack elements
          */
@@ -482,6 +483,10 @@ public final class REPLServer {
 
         void prepareContinue() {
             event.prepareContinue();
+        }
+
+        void kill() {
+            event.kill();
         }
 
     }
@@ -705,7 +710,7 @@ public final class REPLServer {
         }
     }
 
-    static class Visualizer {
+    static class REPLVisualizer {
 
         /**
          * A short description of a source location in terms of source + line number.
@@ -788,6 +793,29 @@ public final class REPLServer {
                 }
             }
             return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
+        }
+    }
+
+    private static class REPLASTPrinter extends InstrumentationUtils.ASTPrinter {
+
+        @Override
+        protected String displayTags(final Object node) {
+            if (node instanceof Node) {
+                final SourceSection sourceSection = ((Node) node).getSourceSection();
+                if (sourceSection != null) {
+                    final StringBuilder sb = new StringBuilder("[");
+                    String sep = "";
+                    for (String tag : knownTags) {
+                        if (sourceSection.hasTag(tag)) {
+                            sb.append(sep).append(tag);
+                            sep = ",";
+                        }
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                }
+            }
+            return "";
         }
     }
 }

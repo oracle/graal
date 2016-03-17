@@ -28,7 +28,17 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 
 /**
  * Controls breaking out of an execution context, such as a shell or eval.
+ * 
+ * @since 0.8 or earlier
  */
 public final class KillException extends ControlFlowException {
     private static final long serialVersionUID = -8638020836970813894L;
+
+    /**
+     * Default constructor.
+     * 
+     * @since 0.8 or earlier
+     */
+    public KillException() {
+    }
 }

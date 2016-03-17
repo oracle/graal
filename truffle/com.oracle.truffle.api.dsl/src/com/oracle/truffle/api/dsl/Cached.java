@@ -223,6 +223,7 @@ import java.lang.annotation.Target;
  * @see Specialization#contains()
  * @see Specialization#limit()
  * @see ImportStatic
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER})

@@ -25,22 +25,65 @@
 package com.oracle.truffle.api.frame;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * @since 0.8 or earlier
+ */
 public interface FrameInstance {
-
+    /** @since 0.8 or earlier */
     enum FrameAccess {
+        /** @since 0.8 or earlier */
         NONE,
+        /** @since 0.8 or earlier */
         READ_ONLY,
+        /** @since 0.8 or earlier */
         READ_WRITE,
+        /** @since 0.8 or earlier */
         MATERIALIZE
     }
 
+    /** @since 0.8 or earlier */
     Frame getFrame(FrameAccess access, boolean slowPath);
 
+    /** @since 0.8 or earlier */
     boolean isVirtualFrame();
 
+    /**
+     * Returns a node representing the callsite of the next new target on the stack.
+     *
+     * This picture indicates how {@link FrameInstance} groups the stack.
+     *
+     * <pre>
+     *                      ===============
+     *  {@link TruffleRuntime#getCurrentFrame() Current}:         ,>|  CallTarget   | FrameInstance
+     *                   |  ===============
+     *  {@link TruffleRuntime#getCallerFrame() Caller}:          '-|  CallNode     | FrameInstance
+     *                   ,>|  CallTarget   |
+     *                   |  ===============
+     *                   '-|  CallNode     | FrameInstance
+     *                     |  CallTarget   |
+     *                      ===============
+     *                           ...
+     *                      ===============
+     *                     |  CallNode     | FrameInstance
+     * Initial call:       |  CallTarget   |
+     *                      ===============
+     *
+     * </pre>
+     *
+     * @return a node representing the callsite of the next new target on the stack. Null in case
+     *         there is no upper target or if the target was not invoked using a
+     *         {@link TruffleRuntime#createDirectCallNode(CallTarget) direct} or
+     *         {@link TruffleRuntime#createDirectCallNode(CallTarget) indirect} call node.
+     *
+     * @since 0.8 or earlier
+     **/
     Node getCallNode();
 
+    /**
+     * @since 0.8 or earlier
+     **/
     CallTarget getCallTarget();
 }

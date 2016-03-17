@@ -27,8 +27,15 @@ package com.oracle.truffle.api.object;
 /**
  * Property objects represent the mapping between property identifiers (keys) and storage locations.
  * Optionally, properties may have metadata attached to them.
+ * 
+ * @since 0.8 or earlier
  */
 public abstract class Property {
+    /**
+     * Constructor for subclasses.
+     * 
+     * @since 0.8 or earlier
+     */
     protected Property() {
     }
 
@@ -39,6 +46,7 @@ public abstract class Property {
      * @param location location of the property
      * @param flags for language-specific use
      * @return new instance of the property
+     * @since 0.8 or earlier
      */
     public static Property create(Object key, Location location, int flags) {
         return Layout.getFactory().createProperty(key, location, flags);
@@ -46,11 +54,15 @@ public abstract class Property {
 
     /**
      * Get property identifier.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract Object getKey();
 
     /**
      * Get property flags, which are free for language-specific use.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract int getFlags();
 
@@ -58,6 +70,7 @@ public abstract class Property {
      * Change the property's location.
      *
      * @return a Property with the new location (or {@code this} if the location is unchanged).
+     * @since 0.8 or earlier
      */
     public abstract Property relocate(Location newLocation);
 
@@ -67,6 +80,7 @@ public abstract class Property {
      * @param store the store that this property resides in
      * @param shape the current shape of the object, which must contain this location
      * @see DynamicObject#get(Object, Object)
+     * @since 0.8 or earlier
      */
     public abstract Object get(DynamicObject store, Shape shape);
 
@@ -77,6 +91,7 @@ public abstract class Property {
      * @param condition the result of a shape check or {@code false}
      * @see DynamicObject#get(Object, Object)
      * @see #get(DynamicObject, Shape)
+     * @since 0.8 or earlier
      */
     public abstract Object get(DynamicObject store, boolean condition);
 
@@ -91,6 +106,7 @@ public abstract class Property {
      * @throws IncompatibleLocationException if the value is incompatible with the property location
      * @throws FinalLocationException if the location is final and values differ
      * @see DynamicObject#set(Object, Object)
+     * @since 0.8 or earlier
      */
     public abstract void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException;
 
@@ -100,12 +116,15 @@ public abstract class Property {
      * Automatically relocates the property if the value cannot be assigned to its current location.
      *
      * @param shape the current shape of the object or {@code null}
+     * @since 0.8 or earlier
      */
     public abstract void setGeneric(DynamicObject store, Object value, Shape shape);
 
     /**
      * Like {@link #set(DynamicObject, Object, Shape)}, but throws an {@link IllegalStateException}
      * instead.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract void setSafe(DynamicObject store, Object value, Shape shape);
 
@@ -114,6 +133,7 @@ public abstract class Property {
      *
      * @param store the store that this property resides in
      * @param value the value to assign
+     * @since 0.8 or earlier
      */
     public abstract void setInternal(DynamicObject store, Object value);
 
@@ -128,6 +148,7 @@ public abstract class Property {
      * @param oldShape the shape before the transition
      * @param newShape the shape after the transition
      * @throws IncompatibleLocationException if the value is incompatible with the property location
+     * @since 0.8 or earlier
      */
     public abstract void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException;
 
@@ -141,6 +162,7 @@ public abstract class Property {
      * @param value the value to assign
      * @param oldShape the shape before the transition
      * @param newShape the shape after the transition
+     * @since 0.8 or earlier
      */
     public abstract void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape);
 
@@ -154,16 +176,21 @@ public abstract class Property {
      * @param value the value to assign
      * @param oldShape the shape before the transition
      * @param newShape the shape after the transition
+     * @since 0.8 or earlier
      */
     public abstract void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape);
 
     /**
      * Returns {@code true} if this property and some other property have the same key and flags.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract boolean isSame(Property other);
 
     /**
      * Get the property location.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract Location getLocation();
 
@@ -171,15 +198,20 @@ public abstract class Property {
      * Is this property hidden from iteration.
      *
      * @see HiddenKey
+     * @since 0.8 or earlier
      */
     public abstract boolean isHidden();
 
+    /** @since 0.8 or earlier */
     public abstract boolean isShadow();
 
     /**
      * Create a copy of the property with the given flags.
+     * 
+     * @since 0.8 or earlier
      */
     public abstract Property copyWithFlags(int newFlags);
 
+    /** @since 0.8 or earlier */
     public abstract Property copyWithRelocatable(boolean newRelocatable);
 }

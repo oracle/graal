@@ -38,7 +38,6 @@ import java.util.TreeSet;
 
 import jline.console.ConsoleReader;
 
-import com.oracle.truffle.api.QuitException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.REPLClient;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
@@ -143,6 +142,8 @@ public class SimpleREPLClient implements REPLClient {
      */
     private Source selectedSource = null;
 
+    private boolean quitting; // User has requested to "Quit"
+
     public SimpleREPLClient(REPLServer replServer) {
         this.replServer = replServer;
         this.writer = System.out;
@@ -205,12 +206,9 @@ public class SimpleREPLClient implements REPLClient {
     public void start() {
 
         this.clientContext = new ClientContextImpl(null, null);
-        try {
-            showWelcome();
-            clientContext.startContextSession();
-        } catch (QuitException ex) {
-            clientContext.displayReply("Goodbye");
-        }
+        showWelcome();
+        clientContext.startContextSession();
+        clientContext.displayReply("Goodbye");
     }
 
     private void showWelcome() {
@@ -488,7 +486,14 @@ public class SimpleREPLClient implements REPLClient {
         }
 
         public void displayFailReply(String message) {
-            writer.println(FAIL_PREFIX + message);
+            // Suppress kill-induced failure, since kill is announced
+            if (!message.equals("KillException")) {
+                writer.println(FAIL_PREFIX + message);
+            }
+        }
+
+        public void displayKillMessage(String message) {
+            writer.println(clientContext.currentPrompt + " killed");
         }
 
         public void displayWarnings(String warnings) {
@@ -505,33 +510,52 @@ public class SimpleREPLClient implements REPLClient {
 
             while (true) {
                 try {
-                    String[] args;
-                    String line = reader.readLine(currentPrompt).trim();
-                    if (line.startsWith("eval ")) {
-                        args = new String[]{"eval", line.substring(5)};
-                    } else {
-                        args = line.split("[ \t]+");
-                    }
-                    if (args.length == 0) {
-                        break;
-                    }
-                    final String cmd = args[0];
+                    REPLCommand command = null;
+                    String[] args = NULL_ARGS;
 
-                    if (cmd.isEmpty()) {
-                        continue;
-                    }
-
-                    REPLCommand command = commandMap.get(cmd);
-                    while (command instanceof REPLIndirectCommand) {
-                        if (traceMessagesOption.getBool()) {
-                            traceMessage("Executing indirect: " + command.getCommand());
+                    if (quitting) {
+                        if (level == 0) {
+                            return;
                         }
-                        command = ((REPLIndirectCommand) command).getCommand(args);
+                        command = REPLRemoteCommand.KILL_CMD;
+                    } else {
+                        String line = reader.readLine(currentPrompt).trim();
+                        if (line.startsWith("eval ")) {
+                            args = new String[]{"eval", line.substring(5)};
+                        } else {
+                            args = line.split("[ \t]+");
+                        }
+                        if (args.length == 0) {
+                            break;
+                        }
+                        final String cmd = args[0];
+
+                        if (cmd.isEmpty()) {
+                            continue;
+                        }
+                        command = commandMap.get(cmd);
+
+                        while (command instanceof REPLIndirectCommand) {
+                            if (traceMessagesOption.getBool()) {
+                                traceMessage("Executing indirect: " + command.getCommand());
+                            }
+                            command = ((REPLIndirectCommand) command).getCommand(args);
+                        }
+
+                        if (command == quitCommand) {
+                            if (level == 0) {
+                                return;
+                            }
+                            quitting = true;
+                            command = REPLRemoteCommand.KILL_CMD;
+                        }
+
+                        if (command == null) {
+                            clientContext.displayFailReply("Unrecognized command \"" + cmd + "\"");
+                            continue;
+                        }
                     }
-                    if (command == null) {
-                        clientContext.displayFailReply("Unrecognized command \"" + cmd + "\"");
-                        continue;
-                    }
+
                     if (command instanceof REPLLocalCommand) {
                         if (traceMessagesOption.getBool()) {
                             traceMessage("Executing local: " + command.getCommand());
@@ -552,7 +576,6 @@ public class SimpleREPLClient implements REPLClient {
                         if (path != null && !path.isEmpty()) {
                             selectSource(path);
                         }
-
                     } else {
                         assert false; // Should not happen.
                     }
@@ -1056,10 +1079,8 @@ public class SimpleREPLClient implements REPLClient {
     private final REPLCommand quitCommand = new REPLRemoteCommand("quit", "q", "Quit execution and REPL") {
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.QUIT);
-            return request;
+        protected REPLMessage createRequest(REPLClientContext context, String[] args) {
+            return null;
         }
 
     };

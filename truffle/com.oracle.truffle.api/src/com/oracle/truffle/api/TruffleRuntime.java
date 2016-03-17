@@ -41,6 +41,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * Interface representing a Truffle runtime object. The runtime is responsible for creating call
  * targets and performing optimizations for them.
+ * 
+ * @since 0.8 or earlier
  */
 public interface TruffleRuntime {
 
@@ -48,6 +50,7 @@ public interface TruffleRuntime {
      * Name describing this runtime implementation for debugging purposes.
      *
      * @return the name as a String
+     * @since 0.8 or earlier
      */
     String getName();
 
@@ -58,6 +61,7 @@ public interface TruffleRuntime {
      *            {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method
      *            represents the entry point
      * @return the new call target object
+     * @since 0.8 or earlier
      */
     RootCallTarget createCallTarget(RootNode rootNode);
 
@@ -66,6 +70,7 @@ public interface TruffleRuntime {
      *
      * @param target the direct {@link CallTarget} to call
      * @return the new call node
+     * @since 0.8 or earlier
      */
     DirectCallNode createDirectCallNode(CallTarget target);
 
@@ -75,6 +80,7 @@ public interface TruffleRuntime {
      * replacement for loops.
      *
      * @see LoopNode usage example
+     * @since 0.8 or earlier
      */
     LoopNode createLoopNode(RepeatingNode body);
 
@@ -82,6 +88,7 @@ public interface TruffleRuntime {
      * Creates a new runtime specific version of {@link IndirectCallNode}.
      *
      * @return the new call node
+     * @since 0.8 or earlier
      */
     IndirectCallNode createIndirectCallNode();
 
@@ -89,6 +96,7 @@ public interface TruffleRuntime {
      * Creates a new assumption object that can be checked and invalidated.
      *
      * @return the newly created assumption object
+     * @since 0.8 or earlier
      */
     Assumption createAssumption();
 
@@ -97,6 +105,7 @@ public interface TruffleRuntime {
      *
      * @param name the name for the new assumption
      * @return the newly created assumption object
+     * @since 0.8 or earlier
      */
     Assumption createAssumption(String name);
 
@@ -105,6 +114,7 @@ public interface TruffleRuntime {
      * optimizable by the runtime.
      *
      * @return the newly created virtual frame object
+     * @since 0.8 or earlier
      */
     VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor);
 
@@ -112,6 +122,7 @@ public interface TruffleRuntime {
      * Creates a new materialized frame object that can be used to store values.
      *
      * @return the newly created materialized frame object
+     * @since 0.8 or earlier
      */
     MaterializedFrame createMaterializedFrame(Object[] arguments);
 
@@ -121,6 +132,7 @@ public interface TruffleRuntime {
      *
      * @param frameDescriptor the frame descriptor describing this frame's values
      * @return the newly created materialized frame object
+     * @since 0.8 or earlier
      */
     MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor);
 
@@ -129,6 +141,7 @@ public interface TruffleRuntime {
      * runtime.
      *
      * @return the newly created compiler options object
+     * @since 0.8 or earlier
      */
     CompilerOptions createCompilerOptions();
 
@@ -144,18 +157,23 @@ public interface TruffleRuntime {
      * @param visitor the visitor that is called for every matching frame.
      * @return the last result returned by the visitor (which is non-null to indicate that iteration
      *         should stop), or null if the whole stack was iterated.
+     * @since 0.8 or earlier
      */
     <T> T iterateFrames(FrameInstanceVisitor<T> visitor);
 
     /**
      * Accesses the caller frame. This is a convenience method that returns the first frame that is
      * passed to the visitor of {@link #iterateFrames}.
+     * 
+     * @since 0.8 or earlier
      */
     FrameInstance getCallerFrame();
 
     /**
      * Accesses the current frame, i.e., the frame of the closest {@link CallTarget}. It is
      * important to note that this {@link FrameInstance} supports only slow path access.
+     * 
+     * @since 0.8 or earlier
      */
     FrameInstance getCurrentFrame();
 
@@ -164,17 +182,22 @@ public interface TruffleRuntime {
      *
      * @param capability the type of the interface representing the capability
      * @return an implementation of the capability or {@code null} if the runtime does not offer it
+     * @since 0.8 or earlier
      */
     <T> T getCapability(Class<T> capability);
 
     /**
      * Returns a list of all still referenced {@link RootCallTarget} instances that were created
      * using {@link #createCallTarget(RootNode)}.
+     * 
+     * @since 0.8 or earlier
      */
     Collection<RootCallTarget> getCallTargets();
 
     /**
      * Internal API method. Do not use.
+     * 
+     * @since 0.8 or earlier
      */
     void notifyTransferToInterpreter();
 
@@ -184,6 +207,8 @@ public interface TruffleRuntime {
      * profiles in the {@link com.oracle.truffle.api.utilities} package are returning void
      * implementations. If it returns <code>true</code> then all implementations gather profilinig
      * information.
+     * 
+     * @since 0.8 or earlier
      */
     boolean isProfilingEnabled();
 

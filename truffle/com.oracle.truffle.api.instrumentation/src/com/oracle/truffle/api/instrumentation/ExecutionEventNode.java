@@ -34,11 +34,13 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  * language program to listen to instrumentation events. In addition to
  * {@link ExecutionEventListener listeners} event nodes allow to store state for a particular
  * {@link EventContext program location}.
+ *
+ * @since 0.12
  */
 @NodeInfo(cost = NodeCost.NONE)
 @SuppressWarnings("unused")
 public abstract class ExecutionEventNode extends Node {
-
+    /** @since 0.12 */
     protected ExecutionEventNode() {
     }
 
@@ -49,18 +51,20 @@ public abstract class ExecutionEventNode extends Node {
      * .
      *
      * @param frame the current frame used in the instrumented node
+     * @since 0.12
      */
     protected void onEnter(VirtualFrame frame) {
         // do nothing by default
     }
 
     /**
-     * Invoked immediatly after an {@link EventContext#getInstrumentedNode() instrumented node} is
+     * Invoked immediately after an {@link EventContext#getInstrumentedNode() instrumented node} is
      * successfully executed. The order in which multiple event listeners are notified matches the
      * order they are
      * {@link Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener) attached}.
      *
      * @param frame the frame that was used for executing instrumented node
+     * @since 0.12
      */
     protected void onReturnValue(VirtualFrame frame, Object result) {
         // do nothing by default
@@ -73,6 +77,7 @@ public abstract class ExecutionEventNode extends Node {
      * {@link Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener) attached}.
      *
      * @param frame the frame that was used for executing instrumented node
+     * @since 0.12
      */
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
         // do nothing by default
@@ -87,6 +92,7 @@ public abstract class ExecutionEventNode extends Node {
      * executed.
      *
      * @param frame the frame that was used for executing instrumented node
+     * @since 0.12
      */
     protected void onDispose(VirtualFrame frame) {
     }

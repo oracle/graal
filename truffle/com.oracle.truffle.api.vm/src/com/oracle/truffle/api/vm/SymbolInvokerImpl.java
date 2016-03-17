@@ -68,7 +68,7 @@ final class SymbolInvokerImpl {
         private final TruffleObject function;
 
         @SuppressWarnings("rawtypes")
-        public TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
+        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.convert = new ConvertNode();
@@ -97,7 +97,7 @@ final class SymbolInvokerImpl {
         @Child private Node isBoxed;
         @Child private Node unbox;
 
-        public ConvertNode() {
+        ConvertNode() {
             this.isNull = Message.IS_NULL.createNode();
             this.isBoxed = Message.IS_BOXED.createNode();
             this.unbox = Message.UNBOX.createNode();

@@ -37,6 +37,8 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
  * take care to only change values infrequently, or to monitor the number of times the value has
  * changed and at some point to replace the value with something more generic so that it does not
  * have to be changed and code does not have to keep being recompiled.
+ * 
+ * @since 0.8 or earlier
  */
 public class AssumedValue<T> {
 
@@ -45,10 +47,12 @@ public class AssumedValue<T> {
     @CompilationFinal private T value;
     @CompilationFinal private Assumption assumption;
 
+    /** @since 0.8 or earlier */
     public AssumedValue(T initialValue) {
         this(null, initialValue);
     }
 
+    /** @since 0.8 or earlier */
     public AssumedValue(String name, T initialValue) {
         this.name = name;
         value = initialValue;
@@ -58,6 +62,8 @@ public class AssumedValue<T> {
     /**
      * Get the current value, updating it if it has been {@link #set}. The compiler may be able to
      * make this method return a constant value, but still accommodate mutation.
+     * 
+     * @since 0.8 or earlier
      */
     public T get() {
         try {
@@ -71,6 +77,8 @@ public class AssumedValue<T> {
 
     /**
      * Set a new value, which will be picked up the next time {@link #get} is called.
+     * 
+     * @since 0.8 or earlier
      */
     public void set(T newValue) {
         CompilerDirectives.transferToInterpreter();

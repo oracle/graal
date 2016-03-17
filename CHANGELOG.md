@@ -2,25 +2,24 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-
-## `tip`
-
-#### Summary
-
+## Version 0.12
 * The Instrumentation Framework has been revised and has new APIs that are integrated into the PolyglotEngine.
 * Instrumentation support required of language implementations is specified as abstract methods on TruffleLanguage.
 * Clients access instrumentation services via an instance of Instrumenter, provided by the Polyglot framework.
 
-#### Migration Guide
-
 ## Version 0.11
 28-Jan-2016
+* Improved interop API
+* PolyglotEngine.Builder.getConfig
+* TruffleLanguage.Env.isMimeTypeSupported
 
 ## Version 0.10
 18-Dec-2015
+* Profile API classes moved into its own com.oracle.truffle.api.profiles package
 
 ## Version 0.9
 21-Oct-2015
+* Debugger API
 
 ## Version 0.8
 17-Jul-2015, [Repository Revision](http://lafo.ssw.uni-linz.ac.at/hg/truffle/shortlog/graal-0.8)

@@ -26,12 +26,15 @@ package com.oracle.truffle.api.object;
 
 /**
  * A listener to be notified of property transitions.
+ * 
+ * @since 0.8 or earlier
  */
 public interface ShapeListener {
     /**
      * Called when a property is added, removed, or replaced.
      *
      * @param key identifier of the property
+     * @since 0.8 or earlier
      */
     void onPropertyTransition(Object key);
 }

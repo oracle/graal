@@ -37,6 +37,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * as a {@link CompilationFinal compilation final}, so no peak performance overhead persists for
  * looking up the counter on the fast path.
  * </p>
+ * 
+ * @since 0.12
  */
 public interface ExecutionEventNodeFactory {
 
@@ -48,6 +50,7 @@ public interface ExecutionEventNodeFactory {
      *
      * @param context the current context where this event node should get created.
      * @return a new event node instance
+     * @since 0.12
      */
     ExecutionEventNode create(EventContext context);
 

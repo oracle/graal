@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java.test;
+package com.oracle.truffle.api.object.dsl;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Binary operation on integers. Mimics "functional interface" - e.g. has just a single method, so
- * it should be easily usable with lamdas.
+ * Apply to the constructor parameter that corresponds to an object-model DSL property to mark it as
+ * being able to contain a null value. By default, properties are non-nullable.
+ *
+ * @see Layout
+ *
+ * @since 0.12
  */
-public interface IntBinaryOperation {
-    int compute(int a, int b);
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.SOURCE)
+public @interface Nullable {
 }

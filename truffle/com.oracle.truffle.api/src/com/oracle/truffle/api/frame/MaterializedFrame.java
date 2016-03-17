@@ -28,6 +28,8 @@ package com.oracle.truffle.api.frame;
  * Represents a materialized frame containing values of local variables of the guest language. It
  * can be created using the {@link VirtualFrame#materialize()} method. Instances of this type are
  * the only frame instances that may be stored in fields or cast to {@link java.lang.Object}.
+ * 
+ * @since 0.8 or earlier
  */
 public interface MaterializedFrame extends Frame {
 
