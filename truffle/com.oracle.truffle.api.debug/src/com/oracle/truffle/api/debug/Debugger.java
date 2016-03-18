@@ -1067,7 +1067,7 @@ public final class Debugger {
                 return ACCESSOR.evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
             }
         } catch (KillException kex) {
-            throw new IOException("Killed");
+            throw new IOException("Evaluation was killed.", kex);
         }
     }
 
