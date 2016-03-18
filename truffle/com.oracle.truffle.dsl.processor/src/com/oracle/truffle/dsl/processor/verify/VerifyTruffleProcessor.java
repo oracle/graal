@@ -106,6 +106,10 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
         for (Element element : roundEnv.getElementsAnnotatedWith(TruffleBoundary.class)) {
             scope = element;
             try {
+                if (element.getKind() != ElementKind.CONSTRUCTOR &&
+                                element.getKind() != ElementKind.METHOD) {
+                    continue;
+                }
                 ExecutableElement method = (ExecutableElement) element;
 
                 for (VariableElement parameter : method.getParameters()) {
