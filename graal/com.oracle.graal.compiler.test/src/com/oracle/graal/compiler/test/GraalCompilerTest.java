@@ -411,6 +411,34 @@ public abstract class GraalCompilerTest extends GraalTest {
         return constantsLines.toString() + result.toString();
     }
 
+    /**
+     * @param graph
+     * @return a scheduled textual dump of {@code graph} .
+     */
+    protected static String getScheduledGraphString(StructuredGraph graph) {
+        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
+        schedule.apply(graph);
+        ScheduleResult scheduleResult = graph.getLastSchedule();
+
+        StringBuilder result = new StringBuilder();
+        List<Block> blocks = scheduleResult.getCFG().getBlocks();
+        for (Block block : blocks) {
+            result.append("Block " + block + " ");
+            if (block == scheduleResult.getCFG().getStartBlock()) {
+                result.append("* ");
+            }
+            result.append("-> ");
+            for (Block succ : block.getSuccessors()) {
+                result.append(succ + " ");
+            }
+            result.append("\n");
+            for (Node node : scheduleResult.getBlockToNodesMap().get(block)) {
+                result.append(String.format("%1S\n", node));
+            }
+        }
+        return result.toString();
+    }
+
     protected Backend getBackend() {
         return backend;
     }
