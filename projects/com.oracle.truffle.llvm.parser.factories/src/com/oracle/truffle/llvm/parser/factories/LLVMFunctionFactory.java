@@ -101,6 +101,7 @@ import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory.LLVMVect
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
 
 public final class LLVMFunctionFactory {
@@ -158,6 +159,15 @@ public final class LLVMFunctionFactory {
         if (argIndex < 0) {
             throw new AssertionError();
         }
+        LLVMExpressionNode argNode = createArgNode(argIndex, paramType);
+        if (LLVMOptions.valueProfileFunctionArgs()) {
+            return LLVMValueProfileFactory.createValueProfiledNode(argNode, paramType);
+        } else {
+            return argNode;
+        }
+    }
+
+    private static LLVMExpressionNode createArgNode(int argIndex, LLVMBaseType paramType) throws AssertionError {
         switch (paramType) {
             case I1:
                 return LLVMI1ArgNodeGen.create(argIndex);
