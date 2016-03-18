@@ -703,8 +703,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Registration(id = "testKillQuitException")
     public static class TestKillQuitException extends TruffleInstrument {
 
-        static RuntimeException exceptionOnEnter = null;
-        static RuntimeException exceptionOnReturnValue = null;
+        static Error exceptionOnEnter = null;
+        static Error exceptionOnReturnValue = null;
         static int returnExceptionalCount = 0;
 
         @Override
