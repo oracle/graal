@@ -77,25 +77,33 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @Override
-    @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(staticInits);
         LLVMAddress stackPointer = context.getStack().allocate();
-        frame.setObject(stackPointerSlot, stackPointer);
-        for (LLVMNode init : staticInits) {
-            init.executeVoid(frame);
+        try {
+            return executeProgram(frame, stackPointer);
+        } catch (LLVMExitException e) {
+            return e.getReturnCode();
+        } finally {
+            context.getStack().free();
         }
-        Object[] realArgs = new Object[arguments.length + LLVMCallNode.ARG_START_INDEX];
-        realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
-        System.arraycopy(arguments, 0, realArgs, LLVMCallNode.ARG_START_INDEX, arguments.length);
+    }
+
+    @ExplodeLoop
+    private Object executeProgram(VirtualFrame frame, LLVMAddress stackPointer) {
         try {
             Object result = null;
             for (int i = 0; i < LLVMOptions.getExecutionCount(); i++) {
+                frame.setObject(stackPointerSlot, stackPointer);
+                for (LLVMNode init : staticInits) {
+                    init.executeVoid(frame);
+                }
+                Object[] realArgs = new Object[arguments.length + LLVMCallNode.ARG_START_INDEX];
+                realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
+                System.arraycopy(arguments, 0, realArgs, LLVMCallNode.ARG_START_INDEX, arguments.length);
                 result = main.call(frame, realArgs);
             }
             return result;
-        } catch (LLVMExitException e) {
-            return e.getReturnCode();
         } finally {
             for (LLVMAddress alloc : llvmAddresses) {
                 LLVMHeap.freeMemory(alloc);
@@ -103,8 +111,8 @@ public class LLVMGlobalRootNode extends RootNode {
             if (printNativeStats) {
                 printNativeCallStats(context);
             }
-            context.getStack().free();
         }
+
     }
 
     @TruffleBoundary
