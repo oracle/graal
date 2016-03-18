@@ -29,7 +29,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 /**
  * Controls breaking out of all executions and ending Truffle execution.
  *
- * @since 0.8 or earlier
+ * @since 0.12
  */
 @Deprecated
 public final class QuitException extends ControlFlowException {
@@ -38,7 +38,7 @@ public final class QuitException extends ControlFlowException {
     /**
      * Default constructor.
      *
-     * @since 0.8 or earlier
+     * @since 0.12
      */
     public QuitException() {
     }
