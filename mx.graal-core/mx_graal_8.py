@@ -41,6 +41,7 @@ from mx_unittest import unittest
 from mx_graal_bench import dacapo
 import mx_gate
 import mx_unittest
+import mx_microbench
 
 _suite = mx.suite('graal-core')
 
@@ -105,64 +106,25 @@ jdkDeployedDists += [
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
-# This is different than the 'jmh' commmand in that it
-# looks for internal JMH benchmarks (i.e. those that
-# depend on the JMH library).
-def microbench(args):
-    """run JMH microbenchmark projects"""
-    parser = ArgumentParser(prog='mx microbench', description=microbench.__doc__,
-                            usage="%(prog)s [command options|VM options] [-- [JMH options]]")
-    parser.add_argument('--jar', help='Explicitly specify micro-benchmark location')
-    known_args, args = parser.parse_known_args(args)
 
-    vmArgs, jmhArgs = mx.extract_VM_args(args, useDoubleDash=True)
-    if JVMCI_VERSION < 9:
-        if isJVMCIEnabled(get_vm()) and '-XX:-UseJVMCIClassLoader' not in vmArgs:
-            vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
+class JVMCI8MicrobenchExecutor(mx_microbench.MicrobenchExecutor):
 
-    # look for -f in JMH arguments
-    forking = True
-    for i in range(len(jmhArgs)):
-        arg = jmhArgs[i]
-        if arg.startswith('-f'):
-            if arg == '-f' and (i+1) < len(jmhArgs):
-                arg += jmhArgs[i+1]
-            try:
-                if int(arg[2:]) == 0:
-                    forking = False
-            except ValueError:
-                pass
+    def parseVmArgs(self, vmArgs):
+        if JVMCI_VERSION < 9:
+            if isJVMCIEnabled(get_vm()) and '-XX:-UseJVMCIClassLoader' not in vmArgs:
+                return ['-XX:-UseJVMCIClassLoader'] + vmArgs
+        return vmArgs
 
-    if known_args.jar:
-        # use the specified jar
-        args = ['-jar', known_args.jar]
-        if not forking:
-            args += vmArgs
-    else:
-        # find all projects with a direct JMH dependency
-        jmhProjects = []
-        for p in mx.projects_opt_limit_to_suites():
-            if 'JMH' in [x.name for x in p.deps]:
-                jmhProjects.append(p.name)
-        cp = mx.classpath(jmhProjects)
-
-        # execute JMH runner
-        args = ['-cp', cp]
-        if not forking:
-            args += vmArgs
-        args += ['org.openjdk.jmh.Main']
-
-    if forking:
+    def parseForkedVmArgs(self, vmArgs):
         jdk = get_jvmci_jdk()
         jvm = get_vm()
-        def quoteSpace(s):
-            if " " in s:
-                return '"' + s + '"'
-            return s
+        return ['-' + jvm] + jdk.parseVmArgs(vmArgs)
 
-        forkedVmArgs = map(quoteSpace, jdk.parseVmArgs(vmArgs))
-        args += ['--jvmArgsPrepend', ' '.join(['-' + jvm] + forkedVmArgs)]
-    run_vm(args + jmhArgs)
+    def run_java(self, args):
+        run_vm(args)
+
+mx_microbench.set_microbenchmark_executor(JVMCI8MicrobenchExecutor())
+
 
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
@@ -252,7 +214,7 @@ class MicrobenchRun:
 
     def run(self, tasks, extraVMarguments=None):
         with Task(self.name + ': hosted-product ', tasks, tags=self.tags) as t:
-            if t: microbench(_noneAsEmptyList(extraVMarguments) + ['--'] + self.args)
+            if t: mx_microbench.get_microbenchmark_executor().microbench(_noneAsEmptyList(extraVMarguments) + ['--', '-foe', 'true'] + self.args)
 
 class GraalTags:
     test = 'test'
@@ -443,7 +405,6 @@ mx.update_commands(_suite, {
     'vm': [run_vm, '[-options] class [args...]'],
     'jdkartifactstats' : [jdkartifactstats, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
-    'microbench' : [microbench, '[VM options] [-- [JMH options]]'],
 })
 
 class GraalArchiveParticipant(JVMCIArchiveParticipant):
