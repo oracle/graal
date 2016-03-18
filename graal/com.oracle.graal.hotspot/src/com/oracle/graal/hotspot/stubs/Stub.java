@@ -220,6 +220,9 @@ public abstract class Stub {
                 ConstantReference ref = (ConstantReference) data.reference;
                 if (ref.getConstant() instanceof HotSpotMetaspaceConstant) {
                     HotSpotMetaspaceConstant c = (HotSpotMetaspaceConstant) ref.getConstant();
+                    if (c.asSymbol() != null) {
+                        continue;
+                    }
                     if (c.asResolvedJavaType() != null && c.asResolvedJavaType().getName().equals("[I")) {
                         // special handling for NewArrayStub
                         // embedding the type '[I' is safe, since it is never unloaded

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,45 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-/*
+package com.oracle.graal.hotspot.word;
+
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.TO_SYMBOL_POINTER;
+
+import com.oracle.graal.word.Pointer;
+
+/**
+ * Marker type for a metaspace pointer to a symbol.
  */
-package com.oracle.graal.jtt.except;
+public abstract class SymbolPointer extends MetaspacePointer {
 
-import org.junit.Test;
+    @HotSpotOperation(opcode = POINTER_EQ)
+    public abstract boolean equal(SymbolPointer other);
 
-import com.oracle.graal.jtt.JTTTest;
+    @HotSpotOperation(opcode = POINTER_NE)
+    public abstract boolean notEqual(SymbolPointer other);
 
-public class BC_iaload extends JTTTest {
-
-    static int[] arr = {0, -1, 4, 1000000000};
-
-    public static int test(int arg) {
-        final int[] array = arg == -2 ? null : arr;
-        return array[arg];
-    }
-
-    @Test
-    public void run0() throws Throwable {
-        runTest("test", -2);
-    }
-
-    @Test
-    public void run1() throws Throwable {
-        runTest("test", -1);
-    }
-
-    @Test
-    public void run2() throws Throwable {
-        runTest("test", 0);
-    }
-
-    @Test
-    public void run3() throws Throwable {
-        runTest("test", 4);
-    }
-
-    @Test
-    public void run4() throws Throwable {
-        runTest("test", Integer.MIN_VALUE);
-    }
+    @HotSpotOperation(opcode = TO_SYMBOL_POINTER)
+    public static native SymbolPointer fromWord(Pointer pointer);
 }

@@ -35,6 +35,7 @@ public @interface HotSpotOperation {
         FROM_POINTER,
         TO_KLASS_POINTER,
         TO_METHOD_POINTER,
+        TO_SYMBOL_POINTER,
         POINTER_EQ,
         POINTER_NE,
         IS_NULL,

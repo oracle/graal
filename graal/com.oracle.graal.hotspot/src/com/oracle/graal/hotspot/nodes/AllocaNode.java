@@ -24,9 +24,6 @@ package com.oracle.graal.hotspot.nodes;
 
 import java.util.BitSet;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.VirtualStackSlot;
@@ -34,6 +31,11 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.word.Word;
+import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Reserves a block of memory in the stack frame of a method. The block is reserved in the frame for
@@ -55,6 +57,10 @@ public final class AllocaNode extends FixedWithNextNode implements LIRLowerable 
      */
     protected final BitSet objects;
 
+    public AllocaNode(@InjectedNodeParameter WordTypes wordTypes, int slots) {
+        this(slots, wordTypes.getWordKind(), new BitSet());
+    }
+
     public AllocaNode(int slots, JavaKind wordKind, BitSet objects) {
         super(TYPE, StampFactory.forKind(wordKind));
         this.slots = slots;
@@ -67,4 +73,7 @@ public final class AllocaNode extends FixedWithNextNode implements LIRLowerable 
         Value result = gen.getLIRGeneratorTool().emitAddress(array);
         gen.setResult(this, result);
     }
+
+    @NodeIntrinsic
+    public static native Word alloca(@ConstantNodeParameter int slots);
 }
