@@ -582,7 +582,7 @@ public abstract class TruffleLanguage<C> {
             }
             try {
                 return target.call();
-            } catch (KillException ex) {
+            } catch (ThreadDeath ex) {
                 throw ex;
             } catch (Throwable ex) {
                 throw new IOException(ex);

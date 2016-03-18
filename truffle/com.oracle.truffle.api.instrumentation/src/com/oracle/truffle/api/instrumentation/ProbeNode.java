@@ -29,7 +29,6 @@ import java.io.PrintStream;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
@@ -118,8 +117,8 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-        if (exception instanceof KillException) {
-            throw (KillException) exception;
+        if (exception instanceof ThreadDeath) {
+            throw (ThreadDeath) exception;
         }
         if (lazyUpdate(frame)) {
             chain.onReturnExceptional(context, frame, exception);
@@ -222,9 +221,9 @@ public final class ProbeNode extends Node {
      */
     static void exceptionEventForClientInstrument(EventBinding<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
-        if (t instanceof KillException) {
+        if (t instanceof ThreadDeath) {
             // Terminates guest language execution immediately
-            throw (KillException) t;
+            throw (ThreadDeath) t;
         }
         // Exception is a failure in (non-language) instrumentation code; log and continue
         InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
