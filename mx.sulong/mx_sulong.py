@@ -381,7 +381,7 @@ def getRemoteClasspathOption():
     return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Dsulong.IntrinsifyCFunctions=false -Djvmci.Compiler=graal"
 
 def getBenchmarkOptions():
-    return ['-Dgraal.TruffleBackgroundCompilation=false', '-Dsulong.IntrinsifyCFunctions=false']
+    return ['-Dgraal.TruffleBackgroundCompilation=false', '-Dsulong.IntrinsifyCFunctions=false', '-Dsulong.PerformanceWarningsAreFatal=true']
 
 def getLLVMRootOption():
     return "-Dsulong.ProjectRoot=" + _root

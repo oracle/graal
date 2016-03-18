@@ -40,6 +40,9 @@ public class LLVMLogger {
             System.err.println(warning);
             // Checkstyle: resume
         }
+        if (LLVMOptions.performanceWarningsAreFatal()) {
+            throw new AssertionError(warning);
+        }
     }
 
     public static void error(String error) {
