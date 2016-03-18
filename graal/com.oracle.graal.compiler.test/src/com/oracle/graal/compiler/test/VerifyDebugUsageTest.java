@@ -29,6 +29,7 @@ import org.junit.Test;
 
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -240,6 +241,7 @@ public class VerifyDebugUsageTest {
         testDebugUsageClass(ValidDumpUsagePhase.class);
     }
 
+    @SuppressWarnings("try")
     private static void testDebugUsageClass(Class<?> c) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
@@ -253,7 +255,9 @@ public class VerifyDebugUsageTest {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                 StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
                 graphBuilderSuite.apply(graph, context);
-                new VerifyDebugUsage().apply(graph, context);
+                try (DebugConfigScope s = Debug.disableIntercept()) {
+                    new VerifyDebugUsage().apply(graph, context);
+                }
             }
         }
     }
