@@ -195,7 +195,7 @@ class MicrobenchRun:
 
     def run(self, tasks, extraVMarguments=None):
         with Task(self.name + ': hosted-product ', tasks, tags=self.tags) as t:
-            if t: mx_microbench.get_microbenchmark_executor().microbench(_noneAsEmptyList(extraVMarguments) + ['--'] + self.args)
+            if t: mx_microbench.get_microbenchmark_executor().microbench(_noneAsEmptyList(extraVMarguments) + ['--', '-foe', 'true'] + self.args)
 
 class GraalTags:
     test = 'test'
