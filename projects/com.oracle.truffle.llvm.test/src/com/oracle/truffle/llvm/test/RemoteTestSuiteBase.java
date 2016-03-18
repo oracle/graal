@@ -45,6 +45,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 
 import com.oracle.truffle.llvm.LLVM;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
@@ -59,9 +60,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     public List<String> launchLocal(TestCaseFiles tuple) {
         List<String> result = new ArrayList<>();
-        if (LLVMOptions.debugEnabled()) {
-            System.out.println("current file: " + tuple.getOriginalFile().getAbsolutePath());
-        }
+        LLVMLogger.info("current file: " + tuple.getOriginalFile().getAbsolutePath());
         try {
             int retValue = LLVM.executeMain(tuple.getBitCodeFile());
             result.add("exit " + retValue);

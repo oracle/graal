@@ -36,7 +36,7 @@ import com.intel.llvm.ireditor.lLVM_IR.FunctionAttribute;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionAttributes;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.intel.llvm.ireditor.lLVM_IR.TargetSpecificAttribute;
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class LLVMAttributeVisitor {
 
@@ -74,18 +74,14 @@ public class LLVMAttributeVisitor {
                 // ignore for the moment, investigate later
                 break;
             default:
-                if (LLVMOptions.debugEnabled()) {
-                    System.err.println(attribute + " not supported!");
-                }
+                LLVMLogger.info(attribute + " not supported!");
         }
     }
 
     private static void visitAttributeGroup(AttributeGroup attributeGroup) {
         EList<TargetSpecificAttribute> targetSpecificAttributes = attributeGroup.getTargetSpecificAttributes();
         if (targetSpecificAttributes.size() != 0) {
-            if (LLVMOptions.debugEnabled()) {
-                System.err.println("target specific attributes not yet supported");
-            }
+            LLVMLogger.info("target specific attributes not yet supported");
         }
         EList<FunctionAttribute> attributes = attributeGroup.getAttributes();
         if (attributes.size() != 0) {

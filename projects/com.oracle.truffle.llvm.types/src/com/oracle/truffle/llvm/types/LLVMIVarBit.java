@@ -36,7 +36,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.types.floating.BinaryHelper;
 
 // see https://bugs.chromium.org/p/nativeclient/issues/detail?id=3360 for use cases where variable ints arise
@@ -140,10 +140,8 @@ public abstract class LLVMIVarBit {
 
         LLVMVarBitByteArray(int bits, byte[] arr) {
             super(bits);
-            if (CompilerDirectives.inInterpreter() && LLVMOptions.printPerformanceWarnings()) {
-                // Checkstyle: stop
-                System.err.println("constructing a variable bit number!");
-                // Checkstyle: resume
+            if (CompilerDirectives.inInterpreter()) {
+                LLVMLogger.performanceWarning("constructing a variable bit number!");
             }
             // TODO: what about sign extension?
             this.arr = new byte[getByteSize()];

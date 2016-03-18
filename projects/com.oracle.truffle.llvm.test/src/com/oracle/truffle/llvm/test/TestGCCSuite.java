@@ -39,7 +39,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.llvm.LLVM;
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 
@@ -58,22 +58,16 @@ public class TestGCCSuite extends TestSuiteBase {
     public static List<TestCaseFiles[]> getTestFiles() throws IOException {
         File configFile = LLVMPaths.GCC_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.GCC_TEST_SUITE;
-        if (LLVMOptions.debugEnabled()) {
-            System.out.println("...start to read and compile files");
-        }
+        LLVMLogger.info("...start to read and compile files");
         List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl());
-        if (LLVMOptions.debugEnabled()) {
-            System.out.println("...finished reading and compiling files!");
-        }
+        LLVMLogger.info("...finished reading and compiling files!");
         return files;
     }
 
     @Test
     public void test() {
         try {
-            if (LLVMOptions.debugEnabled()) {
-                System.out.println("original file: " + tuple.getOriginalFile());
-            }
+            LLVMLogger.info("original file: " + tuple.getOriginalFile());
             int expectedResult;
             try {
                 expectedResult = TestHelper.executeLLVMBinary(byteCodeFile).getReturnValue();

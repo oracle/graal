@@ -57,6 +57,7 @@ import com.oracle.truffle.llvm.nodes.impl.func.LLVMNativeCallConvertNode.LLVMRes
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMNativeCallConvertNode.LLVMResolvedNativeAddressCallNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -239,7 +240,6 @@ public abstract class LLVMCallNode {
 
         @Children private final LLVMExpressionNode[] nodes;
 
-        private final boolean printPerformanceWarnings = LLVMOptions.printPerformanceWarnings();
         @CompilationFinal private boolean printedNativePerformanceWarning;
         @CompilationFinal private boolean printedExceedInlineCacheWarning;
 
@@ -263,7 +263,7 @@ public abstract class LLVMCallNode {
 
         @TruffleBoundary
         private CallTarget getNativeCallTarget(LLVMContext currentContext, LLVMFunction function, LLVMExpressionNode[] args) {
-            if (printPerformanceWarnings && !printedNativePerformanceWarning) {
+            if (CompilerDirectives.inInterpreter() && !printedNativePerformanceWarning) {
                 printIndirectNativeCallWarning(function);
             }
             final NativeFunctionHandle nativeHandle = currentContext.getNativeHandle(function, prepareForNative(args, currentContext));
@@ -293,7 +293,7 @@ public abstract class LLVMCallNode {
         @Specialization(contains = "doDirect")
         protected Object doIndirect(VirtualFrame frame, LLVMFunction function, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
-            if (printPerformanceWarnings && !printedExceedInlineCacheWarning) {
+            if (CompilerDirectives.inInterpreter() && !printedExceedInlineCacheWarning) {
                 printExceededInlineCacheWarning(function);
             }
             return callNode.call(frame, getIndirectCallTarget(getContext(), function, getNodes()), arguments);
@@ -302,16 +302,12 @@ public abstract class LLVMCallNode {
         private void printIndirectNativeCallWarning(LLVMFunction function) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             printedNativePerformanceWarning = true;
-            // Checkstyle: stop
-            System.err.println("indirectly calling a native function " + function.getName() + " + is expensive at the moment!");
-            // Checkstyle: resume
+            LLVMLogger.performanceWarning("indirectly calling a native function " + function.getName() + " + is expensive at the moment!");
         }
 
         private void printExceededInlineCacheWarning(LLVMFunction function) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            // Checkstyle: stop
-            System.err.println("exceeded inline cache limit for function " + function);
-            // Checkstyle: resume
+            LLVMLogger.performanceWarning("exceeded inline cache limit for function " + function);
             printedExceedInlineCacheWarning = true;
         }
 

@@ -44,7 +44,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.tools.Clang;
 import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
 import com.oracle.truffle.llvm.tools.util.PathUtil;
@@ -108,9 +108,7 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
 
     @Test(timeout = TEST_TIMEOUT_TIME)
     public void test() throws IOException {
-        if (LLVMOptions.debugEnabled()) {
-            System.out.println("current file: " + originalFile);
-        }
+        LLVMLogger.info("current file: " + originalFile);
         List<String> expectedLines;
         int expectedReturnValue;
         try {
