@@ -41,13 +41,11 @@ public class LLVMOptions {
         for (PropertyCategory category : PropertyCategory.values()) {
             List<Property> properties = category.getProperties();
             if (!properties.isEmpty()) {
-                // Checkstyle: stop
-                System.out.println(category + ":");
+                LLVMLogger.unconditionalInfo(category + ":");
                 for (Property prop : properties) {
-                    System.out.println(prop);
+                    LLVMLogger.unconditionalInfo(prop.toString());
                 }
-                System.out.println();
-                // Checkstyle: resume
+                LLVMLogger.unconditionalInfo("");
             }
 
         }
@@ -105,6 +103,7 @@ public class LLVMOptions {
 
         DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+        PERFORMANCE_WARNING_ARE_FATAL("PerformanceWarningsAreFatal", "Terminates the program after a performance issue is encountered", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         EXECUTION_COUNT("ExecutionCount", "Execute each program for as many times as specified by this option", "1", LLVMOptions::parseInteger, PropertyCategory.DEBUG),
         /*
@@ -222,16 +221,12 @@ public class LLVMOptions {
             if (key.startsWith(OPTION_PREFIX)) {
                 if (Property.fromKey(key) == null) {
                     wrongOptionName = true;
-                    // Checkstyle: stop
-                    System.err.println(key + " is an invalid option!");
-                    // Checkstyle: resume
+                    LLVMLogger.error(key + " is an invalid option!");
                 }
             }
         }
         if (wrongOptionName) {
-            // Checkstyle: stop
-            System.err.println("\nvalid options:");
-            // Checkstyle: resume
+            LLVMLogger.error("\nvalid options:");
             printOptions();
             System.exit(-1);
         }
@@ -245,9 +240,8 @@ public class LLVMOptions {
         Properties allProperties = System.getProperties();
         for (String key : allProperties.stringPropertyNames()) {
             if (key.startsWith(OBSOLETE_OPTION_PREFIX)) {
-                // Checkstyle: stop
-                System.err.println("The prefix '" + OBSOLETE_OPTION_PREFIX + "' in option '" + key + "' is an obsolete option prefix and has been replaced by the prefix '" + OPTION_PREFIX + "':");
-                // Checkstyle: resume
+                LLVMLogger.error(
+                                "The prefix '" + OBSOLETE_OPTION_PREFIX + "' in option '" + key + "' is an obsolete option prefix and has been replaced by the prefix '" + OPTION_PREFIX + "':");
                 printOptions();
                 System.exit(-1);
             }
@@ -351,6 +345,10 @@ public class LLVMOptions {
 
     public static boolean valueProfileFunctionArgs() {
         return getParsedProperty(Property.OPTIMIZATION_VALUE_PROFILE_FUNCTION_ARGS);
+    }
+
+    public static boolean performanceWarningsAreFatal() {
+        return getParsedProperty(Property.PERFORMANCE_WARNING_ARE_FATAL);
     }
 
 }

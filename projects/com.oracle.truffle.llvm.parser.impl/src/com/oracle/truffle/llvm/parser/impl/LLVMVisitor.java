@@ -171,6 +171,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMParserException;
@@ -308,9 +309,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             } else if (object instanceof TargetInfo) {
                 // already parsed
             } else if (object instanceof NamedMetadata) {
-                if (LLVMOptions.debugEnabled()) {
-                    System.err.println(object + " not supported!");
-                }
+                LLVMLogger.info(object + " not supported!");
             } else if (object instanceof FunctionDecl) {
                 // not needed for the moment
             } else if (object instanceof AttributeGroup) {
@@ -324,9 +323,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             } else if (object instanceof Alias) {
                 // do nothing, visit later when alias is referenced
             } else if (object instanceof InlineAsm) {
-                if (LLVMOptions.debugEnabled()) {
-                    System.err.println("ignoring module level inline assembler!");
-                }
+                LLVMLogger.info("ignoring module level inline assembler!");
             } else {
                 throw new AssertionError(object);
             }
