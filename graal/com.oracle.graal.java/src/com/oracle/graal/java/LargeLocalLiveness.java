@@ -111,7 +111,7 @@ public final class LargeLocalLiveness extends LocalLiveness {
             if ((tmp & 1L) == 1L) {
                 this.localsChangedInLoop[pos].set(local);
             }
-            tmp >>= 1;
+            tmp >>>= 1;
             ++pos;
         }
     }
