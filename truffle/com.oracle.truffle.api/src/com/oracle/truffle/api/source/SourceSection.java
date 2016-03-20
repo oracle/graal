@@ -26,6 +26,8 @@ package com.oracle.truffle.api.source;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.nodes.Node;
+
 /**
  * Description of contiguous section of text within a {@link Source} of program code; supports
  * multiple modes of access to the text and its location. A special
@@ -102,13 +104,10 @@ public final class SourceSection {
     }
 
     /**
-     * Returns <code>true</code> if the source section is tagged the given tag. The given tag must
-     * be interned using {@link String#intern()} an non null.
-     *
-     * @param tag the tag to search for
-     * @return <code>true</code> if tag was found else <code>false</code>
-     * @since 0.8 or earlier
+     * @deprecated tags are now determined by {@link Node#isTaggedWith(Class)}
+     * @since 0.12
      */
+    @Deprecated
     @SuppressFBWarnings("ES_COMPARING_PARAMETER_STRING_WITH_EQ")
     public boolean hasTag(String tag) {
         assert tag.intern() == tag;
@@ -261,19 +260,15 @@ public final class SourceSection {
         } else {
 
             return "source=" + source.getShortName() + " pos=" + charIndex + " len=" + charLength + " line=" + startLine + " col=" + startColumn +
-                            (identifier != null ? " identifier=" + identifier : "") + "tags=" + Arrays.toString(tags) + " code=" + getCode();
+                            (identifier != null ? " identifier=" + identifier : "") + " code=" + getCode().replaceAll("\\n", "\\\\n");
         }
     }
 
     /**
-     * Copies this source sections with a different set of source section tags. The provided tag
-     * strings must be {@link String#intern() interned}. If the set tags match the provide tags no
-     * copy will be created and just this instance is returned.
-     *
-     * @param tags source section tags
-     * @return a copy of the source section with different tags
-     * @since 0.8 or earlier
+     * @deprecated tags are now determined by {@link Node#isTaggedWith(Class)}
+     * @since 0.12
      */
+    @Deprecated
     public SourceSection withTags(@SuppressWarnings("hiding") String... tags) {
         if (sameTags(tags)) {
             // optimize copying of tags if tags are unchanged

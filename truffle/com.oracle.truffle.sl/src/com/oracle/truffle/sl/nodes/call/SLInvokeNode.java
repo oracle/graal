@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.nodes.call;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -124,4 +125,13 @@ public abstract class SLInvokeNode extends SLExpressionNode {
             return SLNull.SINGLETON;
         }
     }
+
+    @Override
+    protected boolean isTaggedWith(Class<?> tag) {
+        if (tag == Debugger.CallTag.class) {
+            return true;
+        }
+        return super.isTaggedWith(tag);
+    }
+
 }

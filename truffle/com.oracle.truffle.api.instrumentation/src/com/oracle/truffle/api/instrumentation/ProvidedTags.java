@@ -24,18 +24,34 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
+ * Specifies a set of tags that are provided by a {@link TruffleLanguage language} implementation.
+ * <p>
+ * Tags are used by guest languages to indicate that a {@link Node node} is a member of a certain
+ * category of nodes. For example a debugger
+ * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument instrument} might require a guest
+ * language to tag all nodes as halt locations that should be considered as such.
+ *
+ * @since 0.12
  */
-@Retention(RetentionPolicy.CLASS)
-@interface SuppressFBWarnings {
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE})
+public @interface ProvidedTags {
+
     /**
-     * The set of FindBugs <a
-     * href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
-     * suppressed in annotated element. The value can be a bug category, kind or pattern.
+     * @return the set of tags that are provided by the {@link TruffleLanguage language}
+     *         implementation.
+     * @see ProvidedTags class documentation for further details
+     * @since 0.12
      */
-    java.lang.String[] value();
+    Class<?>[] value();
+
 }

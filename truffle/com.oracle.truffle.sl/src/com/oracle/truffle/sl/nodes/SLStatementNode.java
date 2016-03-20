@@ -42,8 +42,7 @@ package com.oracle.truffle.sl.nodes;
 
 import java.io.File;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.nodes.Node;
@@ -59,15 +58,11 @@ import com.oracle.truffle.api.source.SourceSection;
 @Instrumentable(factory = SLStatementNodeWrapper.class)
 public abstract class SLStatementNode extends Node {
 
-    @CompilationFinal private SourceSection section;
+    private final SourceSection section;
+    private boolean isDebugHalt;
 
     public SLStatementNode(SourceSection src) {
         section = src;
-    }
-
-    public final void setSourceSection(SourceSection section) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.section = section;
     }
 
     @Override
@@ -86,6 +81,18 @@ public abstract class SLStatementNode extends Node {
 
     public SLStatementNode getNonWrapperNode() {
         return this;
+    }
+
+    public void setDebugHalt(boolean isDebugHalt) {
+        this.isDebugHalt = isDebugHalt;
+    }
+
+    @Override
+    protected boolean isTaggedWith(Class<?> tag) {
+        if (tag == Debugger.HaltTag.class) {
+            return isDebugHalt;
+        }
+        return false;
     }
 
     @Override

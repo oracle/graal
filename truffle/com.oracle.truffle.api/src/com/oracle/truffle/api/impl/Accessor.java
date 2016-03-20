@@ -308,6 +308,10 @@ public abstract class Accessor {
         return INSTRUMENTHANDLER.createInstrumentationHandler(vm, out, err, in);
     }
 
+    protected boolean isTaggedWith(Node node, Class<?> tag) {
+        return NODES.isTaggedWith(node, tag);
+    }
+
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 

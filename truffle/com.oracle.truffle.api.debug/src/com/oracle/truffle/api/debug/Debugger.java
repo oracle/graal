@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -52,9 +53,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.util.concurrent.Callable;
 
 /**
  * Represents debugging related state of a {@link com.oracle.truffle.api.vm.PolyglotEngine}.
@@ -67,30 +66,50 @@ import java.util.concurrent.Callable;
 public final class Debugger {
 
     /**
-     * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
-     * where ordinary stepping should halt. The debugger will halt just <em>before</em> a code
-     * location is executed that is marked with this tag.
+     * A {@link Node#isTaggedWith(Class) tag} used to mark program locations where ordinary stepping
+     * should halt. The debugger will halt just <em>before</em> a code location is executed that is
+     * marked with this tag.
      *
-     * @since 0.9
+     * @since 0.12
      */
-    public static final String HALT_TAG = "debug-HALT";
+    public static final class HaltTag {
+        private HaltTag() {
+            // no instances of tags
+        }
+    }
 
     /**
-     * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
-     * where <em>returning</em> or <em>stepping out</em> from a method/procedure call should halt.
-     * The debugger will halt at the code location that has just executed the call that returned.
-     *
-     * @see #HALT_TAG
      * @since 0.9
+     * @deprecated use class literal {@link HaltTag} instead for new tagging mechanism
      */
-    public static final String CALL_TAG = "debug-CALL";
+    @Deprecated public static final String HALT_TAG = "debug-HALT";
+
+    /**
+     * A {@link Node#isTaggedWith(Class) tag} used to mark program locations where
+     * <em>returning</em> or <em>stepping out</em> from a method/procedure call should halt. The
+     * debugger will halt at the code location that has just executed the call that returned.
+     *
+     * @see HaltTag
+     * @since 0.12
+     */
+    public static final class CallTag {
+        private CallTag() {
+            // no instances of tags
+        }
+    }
+
+    /**
+     * @since 0.9
+     * @deprecated use class literal {@link CallTag} instead for new tagging mechanism
+     */
+    @Deprecated public static final String CALL_TAG = "debug-CALL";
 
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
     private static final String TRACE_PREFIX = "Debug: ";
     private static final PrintStream OUT = System.out;
 
-    private static final SourceSectionFilter CALL_FILTER = SourceSectionFilter.newBuilder().tagIs(CALL_TAG).build();
-    private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(HALT_TAG).build();
+    private static final SourceSectionFilter CALL_FILTER = SourceSectionFilter.newBuilder().tagIs(CallTag.class).build();
+    private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(HaltTag.class).build();
 
     /**
      * Finds debugger associated with given engine. There is at most one debugger associated with

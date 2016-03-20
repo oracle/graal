@@ -24,9 +24,8 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleOptions;
 import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -38,6 +37,9 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates

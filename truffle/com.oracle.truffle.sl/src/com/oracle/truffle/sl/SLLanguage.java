@@ -56,12 +56,14 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -192,6 +194,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * </ul>
  */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
+@ProvidedTags({Debugger.CallTag.class, Debugger.HaltTag.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String builtinKind = "SL builtin";
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();

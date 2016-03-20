@@ -69,6 +69,7 @@ import com.oracle.truffle.api.source.Source;
  *
  * <pre>
  * &#064;Registration(name = Coverage.NAME, version = Coverage.VERSION, instrumentType = Coverage.TYPE)
+ * &#064;RequiredTags(&quot;EXPRESSION&quot;)
  * public final class Coverage extends TruffleInstrument {
  * 
  *     public static final String NAME = &quot;sample-coverage&quot;;
