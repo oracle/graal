@@ -44,6 +44,7 @@ import java.util.Spliterators;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -175,7 +176,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
      * Invalidate node rewriting assumption iff it has been initialized.
      */
     private void invalidateNodeRewritingAssumption() {
-        Assumption oldAssumption = NODE_REWRITING_ASSUMPTION_UPDATER.getAndUpdate(this, prev -> prev == null ? null : runtime.createAssumption(prev.getName()));
+        Assumption oldAssumption = NODE_REWRITING_ASSUMPTION_UPDATER.getAndUpdate(this, new UnaryOperator<Assumption>() {
+            public Assumption apply(Assumption prev) {
+                return prev == null ? null : runtime.createAssumption(prev.getName());
+            }
+        });
         if (oldAssumption != null) {
             oldAssumption.invalidate();
         }
