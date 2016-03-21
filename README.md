@@ -19,6 +19,12 @@ The project bases on the LLVM IR parser of the
 [llvm-ir-editor project](https://github.com/amishne/llvm-ir-editor)
 by Alon Mishne.
 
+External Dependencies
+---------------------
+Make sure you have GCC-4.6, G++-4.6, and GFortran-4.6 installed. For
+a full list of external dependencies on Ubuntu you can look at our
+[Travis configuration](https://github.com/graalvm/sulong/blob/master/.travis.yml).
+
 How to get started?
 -------------------
 First download mx, which is the build tool used by Sulong:
