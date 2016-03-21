@@ -40,6 +40,7 @@ import com.oracle.truffle.tools.debug.shell.server.REPLServer;
  * @see REPLServer
  * @since 0.8 or earlier
  */
+@Deprecated
 public final class REPLMessage {
     /** @since 0.8 or earlier */
     // Some standard keys and values
@@ -224,7 +225,7 @@ public final class REPLMessage {
 
     /**
      * Creates an empty REPL message.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public REPLMessage() {
@@ -233,7 +234,7 @@ public final class REPLMessage {
 
     /**
      * Creates a REPL message with an initial entry.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public REPLMessage(String key, String value) {
@@ -253,7 +254,7 @@ public final class REPLMessage {
 
     /**
      * Returns the specified key value as an integer; {@code null} if missing or non-numeric.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public Integer getIntValue(String key) {

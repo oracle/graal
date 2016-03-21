@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,10 @@
  */
 
 /**
+ * <strong>Warning:</strong> The public classes in this package have been
+ * deprecated and will be removed from the Truffle public API in a subsequent
+ * release.
+ * <p>
  * This package contains <strong>REPL*</strong>: an experimental framework for
  * building a <em>language-agnostic</em> command-line oriented debugger that:
  * <ul>

@@ -31,7 +31,7 @@ import java.util.List;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
 
-// TODO (mlvdv)  write a real command line parser
+@SuppressWarnings("deprecation")
 public abstract class REPLRemoteCommand extends REPLCommand {
 
     public REPLRemoteCommand(String command, String abbreviation, String description) {

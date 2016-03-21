@@ -26,8 +26,10 @@ package com.oracle.truffle.tools.debug.shell.client;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
+
 import java.io.IOException;
 
+@SuppressWarnings("deprecation")
 final class REPLineLocation {
 
     private final Source source;
