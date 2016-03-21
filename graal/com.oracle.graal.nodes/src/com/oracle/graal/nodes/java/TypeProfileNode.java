@@ -43,11 +43,11 @@ public final class TypeProfileNode extends FixedWithNextNode implements Canonica
         this.profile = profile;
     }
 
-    public static TypeProfileNode createWithoutProfile() {
-        return create(null);
-    }
-
     public static TypeProfileNode create(JavaTypeProfile profile) {
+        if (profile == null || profile.getNotRecordedProbability() > 0.0) {
+            return null;
+        }
+        assert profile != null;
         return new TypeProfileNode(profile);
     }
 

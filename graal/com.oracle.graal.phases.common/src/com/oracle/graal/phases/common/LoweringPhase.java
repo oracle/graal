@@ -460,7 +460,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     * 
+     *
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {

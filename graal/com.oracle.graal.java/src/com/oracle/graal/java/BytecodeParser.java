@@ -2985,7 +2985,9 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         if (checkCastNode == null) {
             TypeProfileNode anchor = TypeProfileNode.create(profile);
-            append(anchor);
+            if (anchor != null) {
+                append(anchor);
+            }
             LogicNode condition = genUnique(InstanceOfNode.createAllowNull(checkedType, object, anchor));
             if (condition.isTautology()) {
                 checkCastNode = object;
@@ -3044,7 +3046,9 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         if (instanceOfNode == null) {
             TypeProfileNode anchor = TypeProfileNode.create(profile);
-            append(anchor);
+            if (anchor != null) {
+                append(anchor);
+            }
             instanceOfNode = createInstanceOf(resolvedType, object, anchor);
         }
         frameState.push(JavaKind.Int, append(genConditional(genUnique(instanceOfNode))));
