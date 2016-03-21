@@ -30,7 +30,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -675,13 +674,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testKillExceptionOnEnter() throws IOException {
         engine.getInstruments().get("testKillQuitException").setEnabled(true);
-        TestKillQuitException.exceptionOnEnter = new KillException();
+        TestKillQuitException.exceptionOnEnter = new MyKillException();
         TestKillQuitException.exceptionOnReturnValue = null;
         TestKillQuitException.returnExceptionalCount = 0;
         try {
             run("STATEMENT");
             Assert.fail("KillException in onEnter() cancels engine execution");
-        } catch (KillException ex) {
+        } catch (MyKillException ex) {
         }
         Assert.assertEquals("KillException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
     }
@@ -690,12 +689,12 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public void testKillExceptionOnReturnValue() throws IOException {
         engine.getInstruments().get("testKillQuitException").setEnabled(true);
         TestKillQuitException.exceptionOnEnter = null;
-        TestKillQuitException.exceptionOnReturnValue = new KillException();
+        TestKillQuitException.exceptionOnReturnValue = new MyKillException();
         TestKillQuitException.returnExceptionalCount = 0;
         try {
             run("STATEMENT");
             Assert.fail("KillException in onReturnValue() cancels engine execution");
-        } catch (KillException ex) {
+        } catch (MyKillException ex) {
         }
         Assert.assertEquals("KillException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
     }
@@ -703,8 +702,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Registration(id = "testKillQuitException")
     public static class TestKillQuitException extends TruffleInstrument {
 
-        static RuntimeException exceptionOnEnter = null;
-        static RuntimeException exceptionOnReturnValue = null;
+        static Error exceptionOnEnter = null;
+        static Error exceptionOnReturnValue = null;
         static int returnExceptionalCount = 0;
 
         @Override
@@ -730,4 +729,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
     }
 
+    private static final class MyKillException extends ThreadDeath {
+        static final long serialVersionUID = 1;
+    }
 }
