@@ -24,6 +24,7 @@ package com.oracle.truffle.dsl.processor;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -103,10 +104,11 @@ public final class InteropProcessor extends AbstractProcessor {
 
             final String pkg = findPkg(e);
             String receiverTypeFullClassName = getReceiverTypeFullClassName(message);
-            final String receiverTypeSimpleClass = receiverTypeFullClassName.substring(receiverTypeFullClassName.lastIndexOf(".") + 1);
-            final String receiverTypePackage = receiverTypeFullClassName.substring(0, receiverTypeFullClassName.lastIndexOf("."));
+            String receiverTypePreparedClassName = getPreparedReceiverTypeClassName(message);
+            final String receiverTypeSimpleClass = receiverTypePreparedClassName.substring(receiverTypePreparedClassName.lastIndexOf(".") + 1);
+            final String receiverTypePackage = receiverTypePreparedClassName.substring(0, receiverTypePreparedClassName.lastIndexOf("."));
             final String factoryShortClassName = receiverTypeSimpleClass + "Foreign";
-            final String factoryFullClassName = receiverTypeFullClassName + "Foreign";
+            final String factoryFullClassName = receiverTypePreparedClassName + "Foreign";
 
             String truffleLanguageFullClazzName = getTruffleLanguageFullClassName(message);
 
@@ -114,10 +116,9 @@ public final class InteropProcessor extends AbstractProcessor {
             String fqn = pkg + "." + clazzName;
             String messageName = message.value();
 
-            // receiver type as inner class not supported
-            if (isInner(message)) {
+            if (isNonStaticInner(message)) {
                 generateErrorClass(e, pkg, fqn, clazzName, null);
-                emitError(receiverTypeFullClassName + " must not be a nested class", e);
+                emitError(receiverTypeFullClassName + " cannot be used as receiverType as it is not a static inner class.", e);
                 continue;
             }
 
@@ -239,16 +240,28 @@ public final class InteropProcessor extends AbstractProcessor {
         }
     }
 
-    private static boolean isInner(AcceptMessage message) {
+    private static boolean isNonStaticInner(AcceptMessage message) {
         try {
             Class<?> receiverType = message.receiverType();
-            return receiverType.isMemberClass();
+            if (receiverType.isMemberClass() || receiverType.isLocalClass()) {
+                return !Modifier.isStatic(receiverType.getModifiers());
+            } else {
+                return false;
+            }
         } catch (MirroredTypeException mte) {
             // This exception is thrown most of the time: use the mirrors to inspect the class
             DeclaredType type = (DeclaredType) mte.getTypeMirror();
             TypeElement element = (TypeElement) type.asElement();
-            boolean isInner = element.getNestingKind() == NestingKind.LOCAL || element.getNestingKind() == NestingKind.MEMBER;
-            return isInner;
+            if (element.getNestingKind() == NestingKind.MEMBER || element.getNestingKind() == NestingKind.LOCAL) {
+                for (javax.lang.model.element.Modifier modifier : element.getModifiers()) {
+                    if (modifier.compareTo(javax.lang.model.element.Modifier.STATIC) == 0) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
@@ -276,12 +289,37 @@ public final class InteropProcessor extends AbstractProcessor {
         return receiverTypeFullClassName;
     }
 
+    private static String getPreparedReceiverTypeClassName(AcceptMessage message) {
+        StringBuilder receiverTypeFullClassName = new StringBuilder();
+        try {
+            Class<?> receiverType = message.receiverType();
+            while (receiverType.isMemberClass() || receiverType.isLocalClass()) {
+                receiverTypeFullClassName.append(receiverType.getSimpleName());
+                receiverTypeFullClassName.insert(0, "_");
+                receiverType = receiverType.getDeclaringClass();
+            }
+            receiverTypeFullClassName.insert(0, receiverType.getName());
+        } catch (MirroredTypeException mte) {
+            // This exception is thrown most of the time: use the mirrors to inspect the class
+
+            DeclaredType type = (DeclaredType) mte.getTypeMirror();
+            TypeElement element = (TypeElement) type.asElement();
+            while (element.getNestingKind() == NestingKind.MEMBER || element.getNestingKind() == NestingKind.LOCAL) {
+                receiverTypeFullClassName.append(element.getSimpleName());
+                receiverTypeFullClassName.insert(0, "_");
+                element = (TypeElement) element.getEnclosingElement();
+            }
+            receiverTypeFullClassName.insert(0, element.getQualifiedName());
+        }
+        return receiverTypeFullClassName.toString();
+    }
+
     private static String getTruffleLanguageFullClassName(AcceptMessage message) {
         String truffleLanguageFullClazzName;
         try {
             truffleLanguageFullClazzName = message.language().getName();
         } catch (MirroredTypeException mte) {
-            // wow, annotations processors are strange
+            // This exception is thrown most of the time: use the mirrors to inspect the class
             truffleLanguageFullClazzName = mte.getTypeMirror().toString();
         }
         return truffleLanguageFullClazzName;
