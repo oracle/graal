@@ -301,6 +301,14 @@ public class SSIBuilder {
     }
 
     /**
+     * @param block
+     * @param liveIn
+     * @param liveOut
+     */
+    protected void updateBlock(AbstractBlockBase<?> block, BitSet liveIn, BitSet liveOut) {
+    }
+
+    /**
      * Performs a backward dataflow analysis to compute global live sets (i.e.
      * {@link BlockData#liveIn} and {@link BlockData#liveOut}) for each block.
      */
@@ -368,6 +376,8 @@ public class SSIBuilder {
                             liveIn.or(blockSets.liveOut);
                             liveIn.andNot(blockSets.liveKill);
                             liveIn.or(blockSets.liveGen);
+
+                            updateBlock(block, liveIn, liveOut);
 
                             if (Debug.isLogEnabled()) {
                                 Debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
