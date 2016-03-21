@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.lir.alloc.trace.lsra;
 
+import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -46,7 +48,6 @@ import com.oracle.graal.lir.ssi.SSIBuilder;
 import com.oracle.graal.lir.ssi.SSIUtil;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -80,18 +81,25 @@ final class SSIAndIntervalBuilder extends SSIBuilder {
         numberTraces();
         super.build();
         if (Debug.isDumpEnabled(INTERVAL_DUMP_LEVEL)) {
-            dumpIntervals("After SSI building");
+            dumpIntervals();
         }
         return traceMap;
     }
 
-    private void dumpIntervals(String label) {
+    @Override
+    protected void dump() {
+        dumpIntervals();
+    }
+
+    private void dumpIntervals() {
         for (Trace<?> trace : traceBuilderResult.getTraces()) {
-            IntervalData intervalData = getIntervalData(trace);
-            Debug.dump(INTERVAL_DUMP_LEVEL, intervalData.getBlocks(), label);
-            FixedInterval[] fixedIntervals = intervalData.fixedIntervals();
-            TraceInterval[] intervals = intervalData.intervals();
-            Debug.dump(INTERVAL_DUMP_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervals.length)), label);
+            if (process(trace)) {
+                IntervalData intervalData = getIntervalData(trace);
+                Debug.dump(INTERVAL_DUMP_LEVEL, intervalData.getBlocks(), "SSI building %s", trace);
+                FixedInterval[] fixedIntervals = intervalData.fixedIntervals();
+                TraceInterval[] intervals = intervalData.intervals();
+                Debug.dump(INTERVAL_DUMP_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervals.length)), "SSI building %s", trace);
+            }
         }
     }
 
@@ -189,22 +197,45 @@ final class SSIAndIntervalBuilder extends SSIBuilder {
     }
 
     @Override
-    protected void updateBlock(AbstractBlockBase<?> block, BitSet liveIn, BitSet liveOut) {
+    protected void visitIncoming(AbstractBlockBase<?> block, LIRInstruction op, Value[] incoming) {
         Trace<?> trace = traceBuilderResult.traceForBlock(block);
         if (process(trace)) {
-            LIR lir = getLIR();
-            IntervalData intervalData = getIntervalData(trace);
-            LabelOp in = SSIUtil.incoming(lir, block);
-            LIRInstruction out = SSIUtil.outgoingInst(lir, block);
-
-            for (int i = liveIn.nextSetBit(0); i >= 0; i = liveIn.nextSetBit(i + 1)) {
-                AllocatableValue var = intervalData.intervals()[i].operand;
-                visitDef(block, in, var, OperandMode.DEF, LabelOp.incomingFlags);
+            for (Value var : incoming) {
+                if (isRegister(var)) {
+                    visitDef(block, op, var, OperandMode.DEF, LabelOp.incomingFlags);
+                } else if (isVariable(var)) {
+                    IntervalData intervalData = getIntervalData(trace);
+                    TraceInterval interval = intervalData.intervalFor(var);
+                    if (interval != null) {
+                        int blockFrom = op.id();
+                        if (interval.from() > blockFrom) {
+                            interval.setFrom(blockFrom);
+                        }
+                    } else {
+                        visitDef(block, op, var, OperandMode.DEF, LabelOp.incomingFlags);
+                    }
+                }
             }
+        }
+    }
 
-            for (int i = liveOut.nextSetBit(0); i >= 0; i = liveOut.nextSetBit(i + 1)) {
-                AllocatableValue var = intervalData.intervals()[i].operand;
-                visitAlive(block, out, var, OperandMode.ALIVE, AbstractBlockEndOp.outgoingFlags);
+    @Override
+    protected void visitOutgoing(AbstractBlockBase<?> block, LIRInstruction op, Value[] outgoing) {
+        Trace<?> trace = traceBuilderResult.traceForBlock(block);
+        if (process(trace)) {
+            int blockTo = op.id() + 1;
+            for (Value var : outgoing) {
+                if (isVariable(var)) {
+                    IntervalData intervalData = getIntervalData(trace);
+                    TraceInterval interval = intervalData.intervalFor(var);
+                    if (interval != null) {
+                        if (interval.to() < blockTo) {
+                            interval.setTo(blockTo);
+                        }
+                    } else {
+                        visitAlive(block, op, var, OperandMode.ALIVE, AbstractBlockEndOp.outgoingFlags);
+                    }
+                }
             }
         }
     }

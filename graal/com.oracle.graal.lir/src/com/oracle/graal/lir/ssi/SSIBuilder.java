@@ -27,6 +27,8 @@ import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 
 import java.util.BitSet;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.ListIterator;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
@@ -91,8 +93,12 @@ public class SSIBuilder {
     protected void build() {
         init();
         computeLocalLiveSets();
+        dump();
         computeGlobalLiveSets();
         finish();
+    }
+
+    protected void dump() {
     }
 
     /**
@@ -128,6 +134,7 @@ public class SSIBuilder {
 
     private void init() {
         ValueConsumer setVariableConsumer = new ValueConsumer() {
+            @Override
             public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVariable(value)) {
                     if (operands[asVariable(value).index] == null) {
@@ -156,25 +163,30 @@ public class SSIBuilder {
         int liveSize = liveSetSize();
 
         // iterate all blocks
-        for (final AbstractBlockBase<?> block : getBlocks()) {
+        AbstractBlockBase<?>[] blocks = getBlocks();
+        for (int i = blocks.length - 1; i >= 0; i--) {
+            final AbstractBlockBase<?> block = blocks[i];
             try (Indent indent = Debug.logAndIndent("compute local live sets for block %s", block)) {
 
                 final BitSet liveGen = new BitSet(liveSize);
                 final BitSet liveKill = new BitSet(liveSize);
 
                 InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
+                    @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processLocalUse(liveGen, liveKill, operand);
+                        processLocalUse(liveGen, operand);
                         visitUse(block, op, operand, mode, flags);
                     }
                 };
                 InstructionValueConsumer aliveConsumer = new InstructionValueConsumer() {
+                    @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processLocalUse(liveGen, liveKill, operand);
+                        processLocalUse(liveGen, operand);
                         visitAlive(block, op, operand, mode, flags);
                     }
                 };
                 InstructionValueConsumer stateConsumer = new InstructionValueConsumer() {
+                    @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariable(operand)) {
                             int operandNum = operandNumber(operand);
@@ -189,27 +201,32 @@ public class SSIBuilder {
                     }
                 };
                 InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
+                    @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processLocalDef(liveKill, operand);
+                        processLocalDef(liveGen, liveKill, operand);
                         visitDef(block, op, operand, mode, flags);
                     }
                 };
                 InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
+                    @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processLocalDef(liveKill, operand);
+                        processLocalDef(liveGen, liveKill, operand);
                         visitTemp(block, op, operand, mode, flags);
                     }
                 };
 
                 // iterate all instructions of the block
-                for (LIRInstruction op : getLIR().getLIRforBlock(block)) {
+                List<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
+                ListIterator<LIRInstruction> instIt = instructions.listIterator(instructions.size());
+                while (instIt.hasPrevious()) {
+                    final LIRInstruction op = instIt.previous();
 
                     try (Indent indent2 = Debug.logAndIndent("handle op %d: %s", op.id(), op)) {
-                        op.visitEachInput(useConsumer);
-                        op.visitEachAlive(aliveConsumer);
-                        op.visitEachState(stateConsumer);
-                        op.visitEachTemp(tempConsumer);
                         op.visitEachOutput(defConsumer);
+                        op.visitEachTemp(tempConsumer);
+                        op.visitEachState(stateConsumer);
+                        op.visitEachAlive(aliveConsumer);
+                        op.visitEachInput(useConsumer);
                     }
                 } // end of instruction iteration
 
@@ -228,22 +245,21 @@ public class SSIBuilder {
         } // end of block iteration
     }
 
-    protected void processLocalUse(final BitSet liveGen, final BitSet liveKill, Value operand) {
+    protected void processLocalUse(final BitSet liveGen, Value operand) {
         if (isVariable(operand)) {
             int operandNum = operandNumber(operand);
-            if (!liveKill.get(operandNum)) {
-                liveGen.set(operandNum);
-                if (Debug.isLogEnabled()) {
-                    Debug.log("liveGen for operand %d(%s)", operandNum, operand);
-                }
+            liveGen.set(operandNum);
+            if (Debug.isLogEnabled()) {
+                Debug.log("liveGen for operand %d(%s)", operandNum, operand);
             }
         }
     }
 
-    protected void processLocalDef(final BitSet liveKill, Value operand) {
+    protected void processLocalDef(final BitSet liveGen, final BitSet liveKill, Value operand) {
         if (isVariable(operand)) {
             int operandNum = operandNumber(operand);
             liveKill.set(operandNum);
+            liveGen.clear(operandNum);
             if (Debug.isLogEnabled()) {
                 Debug.log("liveKill for operand %d(%s)", operandNum, operand);
             }
@@ -301,11 +317,19 @@ public class SSIBuilder {
     }
 
     /**
+     * @param op
      * @param block
-     * @param liveIn
-     * @param liveOut
+     * @param incoming
      */
-    protected void updateBlock(AbstractBlockBase<?> block, BitSet liveIn, BitSet liveOut) {
+    protected void visitIncoming(AbstractBlockBase<?> block, LIRInstruction op, Value[] incoming) {
+    }
+
+    /**
+     * @param op
+     * @param block
+     * @param outgoing
+     */
+    protected void visitOutgoing(AbstractBlockBase<?> block, LIRInstruction op, Value[] outgoing) {
     }
 
     /**
@@ -377,8 +401,6 @@ public class SSIBuilder {
                             liveIn.andNot(blockSets.liveKill);
                             liveIn.or(blockSets.liveGen);
 
-                            updateBlock(block, liveIn, liveOut);
-
                             if (Debug.isLogEnabled()) {
                                 Debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
                             }
@@ -404,13 +426,16 @@ public class SSIBuilder {
     @SuppressWarnings("try")
     private void finish() {
         Debug.dump(Debug.INFO_LOG_LEVEL, getLIR(), "Before SSI operands");
-        for (AbstractBlockBase<?> block : getBlocks()) {
+        // iterate all blocks in reverse order
+        AbstractBlockBase<?>[] blocks = getBlocks();
+        for (int i = blocks.length - 1; i >= 0; i--) {
+            final AbstractBlockBase<?> block = blocks[i];
             try (Indent indent = Debug.logAndIndent("Finish Block %s", block)) {
                 // set label
                 SSIBuilder.BlockData data = blockData.get(block);
                 assert data != null;
-                buildIncoming(block, data.liveIn);
                 buildOutgoing(block, data.liveOut);
+                buildIncoming(block, data.liveIn);
             }
         }
     }
@@ -434,8 +459,8 @@ public class SSIBuilder {
         for (int i = predLiveOut.nextSetBit(0); i >= 0; i = predLiveOut.nextSetBit(i + 1)) {
             values[cnt++] = liveIn.get(i) ? operands[i] : Value.ILLEGAL;
         }
-
         LabelOp label = SSIUtil.incoming(getLIR(), block);
+        visitIncoming(block, label, values);
         label.addIncomingValues(values);
     }
 
@@ -450,6 +475,7 @@ public class SSIBuilder {
             values[cnt++] = operands[i];
         }
         BlockEndOp blockEndOp = SSIUtil.outgoing(getLIR(), block);
+        visitOutgoing(block, (LIRInstruction) blockEndOp, values);
         blockEndOp.addOutgoingValues(values);
     }
 }
