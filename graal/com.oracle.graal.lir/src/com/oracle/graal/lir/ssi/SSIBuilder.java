@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -161,21 +162,18 @@ public class SSIBuilder {
                 final BitSet liveGen = new BitSet(liveSize);
                 final BitSet liveKill = new BitSet(liveSize);
 
-                ValueConsumer useConsumer = new ValueConsumer() {
-                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        if (isVariable(operand)) {
-                            int operandNum = operandNumber(operand);
-                            if (!liveKill.get(operandNum)) {
-                                liveGen.set(operandNum);
-                                if (Debug.isLogEnabled()) {
-                                    Debug.log("liveGen for operand %d(%s)", operandNum, operand);
-                                }
-                            }
-                        }
+                InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
+                    public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                        processLocalUse(liveGen, liveKill, operand);
                     }
                 };
-                ValueConsumer stateConsumer = new ValueConsumer() {
-                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                InstructionValueConsumer aliveConsumer = new InstructionValueConsumer() {
+                    public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                        processLocalUse(liveGen, liveKill, operand);
+                    }
+                };
+                InstructionValueConsumer stateConsumer = new InstructionValueConsumer() {
+                    public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariable(operand)) {
                             int operandNum = operandNumber(operand);
                             if (!liveKill.get(operandNum)) {
@@ -187,15 +185,14 @@ public class SSIBuilder {
                         }
                     }
                 };
-                ValueConsumer defConsumer = new ValueConsumer() {
-                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        if (isVariable(operand)) {
-                            int operandNum = operandNumber(operand);
-                            liveKill.set(operandNum);
-                            if (Debug.isLogEnabled()) {
-                                Debug.log("liveKill for operand %d(%s)", operandNum, operand);
-                            }
-                        }
+                InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
+                    public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                        processLocalDef(liveKill, operand);
+                    }
+                };
+                InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
+                    public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                        processLocalDef(liveKill, operand);
                     }
                 };
 
@@ -204,9 +201,9 @@ public class SSIBuilder {
 
                     try (Indent indent2 = Debug.logAndIndent("handle op %d: %s", op.id(), op)) {
                         op.visitEachInput(useConsumer);
-                        op.visitEachAlive(useConsumer);
+                        op.visitEachAlive(aliveConsumer);
                         op.visitEachState(stateConsumer);
-                        op.visitEachTemp(defConsumer);
+                        op.visitEachTemp(tempConsumer);
                         op.visitEachOutput(defConsumer);
                     }
                 } // end of instruction iteration
@@ -224,6 +221,28 @@ public class SSIBuilder {
 
             }
         } // end of block iteration
+    }
+
+    protected void processLocalUse(final BitSet liveGen, final BitSet liveKill, Value operand) {
+        if (isVariable(operand)) {
+            int operandNum = operandNumber(operand);
+            if (!liveKill.get(operandNum)) {
+                liveGen.set(operandNum);
+                if (Debug.isLogEnabled()) {
+                    Debug.log("liveGen for operand %d(%s)", operandNum, operand);
+                }
+            }
+        }
+    }
+
+    protected void processLocalDef(final BitSet liveKill, Value operand) {
+        if (isVariable(operand)) {
+            int operandNum = operandNumber(operand);
+            liveKill.set(operandNum);
+            if (Debug.isLogEnabled()) {
+                Debug.log("liveKill for operand %d(%s)", operandNum, operand);
+            }
+        }
     }
 
     /**
