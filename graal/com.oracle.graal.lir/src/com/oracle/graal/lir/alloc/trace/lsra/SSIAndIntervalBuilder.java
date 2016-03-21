@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.alloc.trace.lsra;
 
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.visitCallerSavedRegisters;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.Arrays;
@@ -199,6 +200,18 @@ final class SSIAndIntervalBuilder extends SSIBuilder {
             IntervalData intervalData = getIntervalData(trace);
             IntervalBuilderUtil.visitState(intervalData, op, operand);
         }
+    }
+
+    @Override
+    protected void visitInstruction(AbstractBlockBase<?> block, LIRInstruction op) {
+        /* Add a temp range for each register if operation destroys caller-save registers. */
+        if (op.destroysCallerSavedRegisters()) {
+            Trace<?> trace = traceBuilderResult.traceForBlock(block);
+            if (process(trace)) {
+                visitCallerSavedRegisters(getIntervalData(trace), regAllocConfig.getRegisterConfig().getCallerSaveRegisters(), op.id());
+            }
+        }
+
     }
 
     @Override

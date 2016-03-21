@@ -218,6 +218,7 @@ public class SSIBuilder {
                     final LIRInstruction op = instIt.previous();
 
                     try (Indent indent2 = Debug.logAndIndent("handle op %d: %s", op.id(), op)) {
+                        visitInstruction(block, op);
                         op.visitEachOutput(defConsumer);
                         op.visitEachTemp(tempConsumer);
                         op.visitEachState(stateConsumer);
@@ -326,6 +327,13 @@ public class SSIBuilder {
      * @param outgoing
      */
     protected void visitOutgoing(AbstractBlockBase<?> block, LIRInstruction op, Value[] outgoing) {
+    }
+
+    /**
+     * @param block
+     * @param op
+     */
+    protected void visitInstruction(AbstractBlockBase<?> block, LIRInstruction op) {
     }
 
     /**
