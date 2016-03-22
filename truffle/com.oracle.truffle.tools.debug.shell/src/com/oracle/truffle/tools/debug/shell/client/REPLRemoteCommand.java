@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.debug.shell.REPLMessage;
 
 @SuppressWarnings("deprecation")
 public abstract class REPLRemoteCommand extends REPLCommand {
@@ -38,22 +37,22 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         super(command, abbreviation, description);
     }
 
-    protected abstract REPLMessage createRequest(REPLClientContext context, String[] args);
+    protected abstract com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args);
 
-    void processReply(REPLClientContext context, REPLMessage[] replies) {
-        REPLMessage firstReply = replies[0];
+    void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+        com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
 
-        if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
-            final String result = firstReply.get(REPLMessage.DISPLAY_MSG);
+        if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.FAILED)) {
+            final String result = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG);
             context.displayFailReply(result != null ? result : firstReply.toString());
         } else {
-            final String result = firstReply.get(REPLMessage.DISPLAY_MSG);
+            final String result = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG);
             context.displayReply(result != null ? result : firstReply.toString());
         }
 
         for (int i = 1; i < replies.length; i++) {
-            REPLMessage reply = replies[i];
-            final String result = reply.get(REPLMessage.DISPLAY_MSG);
+            com.oracle.truffle.tools.debug.shell.REPLMessage reply = replies[i];
+            final String result = reply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG);
             context.displayInfo(result != null ? result : reply.toString());
         }
     }
@@ -69,10 +68,10 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             try {
                 final REPLineLocation lineLocation = REPLineLocation.parse(context, args);
-                final REPLMessage requestMessage = lineLocation.createMessage(REPLMessage.BREAK_AT_LINE);
+                final com.oracle.truffle.tools.debug.shell.REPLMessage requestMessage = lineLocation.createMessage(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAK_AT_LINE);
                 int ignoreCount = 0;
                 if (args.length > 2) {
                     final String ignoreText = args[2];
@@ -93,7 +92,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                         throw new IllegalArgumentException("Unrecognized argument \"" + ignoreText + "\"");
                     }
                 }
-                requestMessage.put(REPLMessage.BREAKPOINT_IGNORE_COUNT, Integer.toString(ignoreCount));
+                requestMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_IGNORE_COUNT, Integer.toString(ignoreCount));
                 return requestMessage;
             } catch (IllegalArgumentException ex) {
                 context.displayFailReply(ex.getMessage());
@@ -102,14 +101,14 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
 
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                final String number = firstReply.get(REPLMessage.BREAKPOINT_ID);
-                final String fileName = firstReply.get(REPLMessage.SOURCE_NAME);
-                final String lineNumber = firstReply.get(REPLMessage.LINE_NUMBER);
-                firstReply.put(REPLMessage.DISPLAY_MSG, "breakpoint " + number + " set at " + fileName + ":" + lineNumber);
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED)) {
+                final String number = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
+                final String fileName = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME);
+                final String lineNumber = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER);
+                firstReply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, "breakpoint " + number + " set at " + fileName + ":" + lineNumber);
             }
             super.processReply(context, replies);
         }
@@ -125,9 +124,9 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             try {
-                return REPLineLocation.parse(context, args).createMessage(REPLMessage.BREAK_AT_LINE_ONCE);
+                return REPLineLocation.parse(context, args).createMessage(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAK_AT_LINE_ONCE);
             } catch (IllegalArgumentException ex) {
                 context.displayFailReply(ex.getMessage());
             }
@@ -135,13 +134,13 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
 
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                final String fileName = firstReply.get(REPLMessage.SOURCE_NAME);
-                final String lineNumber = firstReply.get(REPLMessage.LINE_NUMBER);
-                firstReply.put(REPLMessage.DISPLAY_MSG, "one-shot breakpoint set at " + fileName + ":" + lineNumber);
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED)) {
+                final String fileName = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME);
+                final String lineNumber = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER);
+                firstReply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, "one-shot breakpoint set at " + fileName + ":" + lineNumber);
             }
             super.processReply(context, replies);
         }
@@ -157,33 +156,33 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (args.length == 1) {
                 context.displayFailReply("name to call not speciified");
                 return null;
             }
-            final int maxArgs = REPLMessage.ARG_NAMES.length;
+            final int maxArgs = com.oracle.truffle.tools.debug.shell.REPLMessage.ARG_NAMES.length;
             if (args.length > maxArgs + 2) {
                 context.displayFailReply("too many call arguments; no more than " + maxArgs + " supported");
                 return null;
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.CALL);
-            request.put(REPLMessage.CALL_NAME, args[1]);
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.CALL);
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.CALL_NAME, args[1]);
             for (int argIn = 2, argOut = 0; argIn < args.length; argIn++, argOut++) {
-                request.put(REPLMessage.ARG_NAMES[argOut], args[argIn]);
+                request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.ARG_NAMES[argOut], args[argIn]);
             }
             return request;
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
-                final String result = firstReply.get(REPLMessage.DISPLAY_MSG);
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.FAILED)) {
+                final String result = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG);
                 context.displayFailReply(result != null ? result : firstReply.toString());
             } else {
-                context.displayReply(firstReply.get(REPLMessage.VALUE));
+                context.displayReply(firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.VALUE));
             }
         }
     };
@@ -198,16 +197,16 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            final REPLMessage request = CALL_CMD.createRequest(context, args);
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = CALL_CMD.createRequest(context, args);
             if (request != null) {
-                request.put(REPLMessage.STEP_INTO, REPLMessage.TRUE);
+                request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_INTO, com.oracle.truffle.tools.debug.shell.REPLMessage.TRUE);
             }
             return request;
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
             CALL_CMD.processReply(context, replies);
         }
     };
@@ -222,7 +221,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (args.length == 1) {
                 context.displayFailReply("breakpoint number not speciified:  \"break <n>\"");
             } else if (args.length > 2) {
@@ -230,9 +229,9 @@ public abstract class REPLRemoteCommand extends REPLCommand {
             } else {
                 try {
                     final int breakpointNumber = Integer.parseInt(args[1]);
-                    final REPLMessage request = new REPLMessage();
-                    request.put(REPLMessage.OP, REPLMessage.CLEAR_BREAK);
-                    request.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
+                    final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.CLEAR_BREAK);
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
                     return request;
                 } catch (IllegalArgumentException ex) {
                     context.displayFailReply(ex.getMessage());
@@ -242,12 +241,12 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
 
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                final int breakpointNumber = firstReply.getIntValue(REPLMessage.BREAKPOINT_ID);
-                firstReply.put(REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " cleared");
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED)) {
+                final int breakpointNumber = firstReply.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
+                firstReply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " cleared");
             }
             super.processReply(context, replies);
         }
@@ -263,23 +262,23 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (args.length == 1) {
                 context.displayFailReply("breakpoint number not speciified:  \"cond <n>\"");
             } else {
                 try {
                     final int breakpointNumber = Integer.parseInt(args[1]);
-                    final REPLMessage request = new REPLMessage();
-                    request.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
+                    final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
                     if (args.length == 2) {
-                        request.put(REPLMessage.OP, REPLMessage.UNSET_BREAK_CONDITION);
+                        request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.UNSET_BREAK_CONDITION);
                     } else {
                         final StringBuilder exprBuilder = new StringBuilder();
                         for (int i = 2; i < args.length; i++) {
                             exprBuilder.append(args[i]).append(" ");
                         }
-                        request.put(REPLMessage.BREAKPOINT_CONDITION, exprBuilder.toString().trim());
-                        request.put(REPLMessage.OP, REPLMessage.SET_BREAK_CONDITION);
+                        request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_CONDITION, exprBuilder.toString().trim());
+                        request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.SET_BREAK_CONDITION);
                     }
                     return request;
                 } catch (IllegalArgumentException ex) {
@@ -290,15 +289,15 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                final int breakpointNumber = firstReply.getIntValue(REPLMessage.BREAKPOINT_ID);
-                final String condition = firstReply.get(REPLMessage.BREAKPOINT_CONDITION);
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED)) {
+                final int breakpointNumber = firstReply.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
+                final String condition = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_CONDITION);
                 if (condition == null) {
-                    firstReply.put(REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " condition cleared");
+                    firstReply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " condition cleared");
                 } else {
-                    firstReply.put(REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " condition=\"" + condition + "\"");
+                    firstReply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " condition=\"" + condition + "\"");
                 }
             }
             super.processReply(context, replies);
@@ -308,18 +307,18 @@ public abstract class REPLRemoteCommand extends REPLCommand {
     public static final REPLRemoteCommand CONTINUE_CMD = new REPLRemoteCommand("continue", "c", "Continue execution") {
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (context.level() == 0) {
                 context.displayFailReply("no active execution");
                 return null;
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.CONTINUE);
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.CONTINUE);
             return request;
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
 
             throw new REPLContinueException();
 
@@ -329,9 +328,9 @@ public abstract class REPLRemoteCommand extends REPLCommand {
     public static final REPLRemoteCommand DELETE_CMD = new REPLRemoteCommand("delete", "d", "Delete all breakpoints") {
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.DELETE_BREAK);
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.DELETE_BREAK);
             return request;
         }
     };
@@ -346,7 +345,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (args.length == 1) {
                 context.displayFailReply("breakpoint number not speciified:  \"disable <n>\"");
             } else if (args.length > 2) {
@@ -354,9 +353,9 @@ public abstract class REPLRemoteCommand extends REPLCommand {
             } else {
                 try {
                     final int breakpointNumber = Integer.parseInt(args[1]);
-                    final REPLMessage request = new REPLMessage();
-                    request.put(REPLMessage.OP, REPLMessage.DISABLE_BREAK);
-                    request.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
+                    final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.DISABLE_BREAK);
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
                     return request;
                 } catch (IllegalArgumentException ex) {
                     context.displayFailReply(ex.getMessage());
@@ -366,11 +365,11 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                final int breakpointNumber = firstReply.getIntValue(REPLMessage.BREAKPOINT_ID);
-                firstReply.put(REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " disabled");
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED)) {
+                final int breakpointNumber = firstReply.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
+                firstReply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " disabled");
             }
             super.processReply(context, replies);
         }
@@ -379,7 +378,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
     public static final REPLRemoteCommand DOWN_CMD = new REPLRemoteCommand("down", null, "Move down a stack frame") {
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (context.level() == 0) {
                 context.displayFailReply("no active execution");
                 return null;
@@ -395,11 +394,11 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
 
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
-                final String result = firstReply.get(REPLMessage.DISPLAY_MSG);
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.FAILED)) {
+                final String result = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG);
                 context.displayFailReply(result != null ? result : firstReply.toString());
             } else {
                 context.displayStack();
@@ -417,7 +416,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (args.length == 1) {
                 context.displayFailReply("breakpoint number not speciified:  \"enable <n>\"");
             } else if (args.length > 2) {
@@ -425,9 +424,9 @@ public abstract class REPLRemoteCommand extends REPLCommand {
             } else {
                 try {
                     final int breakpointNumber = Integer.parseInt(args[1]);
-                    final REPLMessage request = new REPLMessage();
-                    request.put(REPLMessage.OP, REPLMessage.ENABLE_BREAK);
-                    request.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
+                    final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.ENABLE_BREAK);
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
                     return request;
                 } catch (IllegalArgumentException ex) {
                     context.displayFailReply(ex.getMessage());
@@ -437,12 +436,12 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
 
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                final int breakpointNumber = firstReply.getIntValue(REPLMessage.BREAKPOINT_ID);
-                firstReply.put(REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " enabled");
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED)) {
+                final int breakpointNumber = firstReply.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
+                firstReply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, "breakpoint " + breakpointNumber + " enabled");
             }
             super.processReply(context, replies);
         }
@@ -460,20 +459,20 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (args.length > 1) {
                 final String code = args[1];
                 if (!code.isEmpty()) {
                     // Create a fake entry in the file maps and cache, based on this unique name
                     final String fakeFileName = "<eval" + ++evalCounter + ">";
                     Source.fromNamedText(fakeFileName, code);
-                    final REPLMessage request = new REPLMessage();
-                    request.put(REPLMessage.OP, REPLMessage.EVAL);
-                    request.put(REPLMessage.CODE, code);
-                    request.put(REPLMessage.SOURCE_NAME, fakeFileName);
+                    final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.EVAL);
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.CODE, code);
+                    request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, fakeFileName);
                     if (context.level() > 0) {
                         // Specify a requested execution context, if one exists; otherwise top level
-                        request.put(REPLMessage.FRAME_NUMBER, Integer.toString(context.getSelectedFrameNumber()));
+                        request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FRAME_NUMBER, Integer.toString(context.getSelectedFrameNumber()));
                     }
                     return request;
                 }
@@ -492,10 +491,10 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            final REPLMessage request = EVAL_CMD.createRequest(context, args);
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = EVAL_CMD.createRequest(context, args);
             if (request != null) {
-                request.put(REPLMessage.STEP_INTO, REPLMessage.TRUE);
+                request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_INTO, com.oracle.truffle.tools.debug.shell.REPLMessage.TRUE);
             }
             return request;
         }
@@ -511,13 +510,13 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (context.level() == 0) {
                 context.displayFailReply("no active execution");
                 return null;
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.FRAME);
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.FRAME);
 
             int frameNumber = context.getSelectedFrameNumber();
             if (args.length > 1) {
@@ -531,26 +530,26 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                     throw new IllegalArgumentException("Unrecognized argument \"" + args[2] + "\"");
                 }
             }
-            request.put(REPLMessage.FRAME_NUMBER, Integer.toString(frameNumber));
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FRAME_NUMBER, Integer.toString(frameNumber));
             return request;
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            if (replies[0].get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
-                context.displayFailReply(replies[0].get(REPLMessage.DISPLAY_MSG));
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            if (replies[0].get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.FAILED)) {
+                context.displayFailReply(replies[0].get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG));
             } else {
-                Integer frameNumber = replies[0].getIntValue(REPLMessage.FRAME_NUMBER);
+                Integer frameNumber = replies[0].getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.FRAME_NUMBER);
                 context.selectFrameNumber(frameNumber);
-                if (replies[0].get(REPLMessage.SLOT_INDEX) == null) {
+                if (replies[0].get(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_INDEX) == null) {
                     context.displayReply("Frame " + frameNumber + ": <empty");
                 } else {
                     context.displayReply("Frame " + frameNumber + ":");
-                    for (REPLMessage message : replies) {
+                    for (com.oracle.truffle.tools.debug.shell.REPLMessage message : replies) {
                         final StringBuilder sb = new StringBuilder();
-                        sb.append("#" + message.get(REPLMessage.SLOT_INDEX) + ": ");
-                        sb.append(message.get(REPLMessage.SLOT_ID) + " = ");
-                        sb.append(message.get(REPLMessage.SLOT_VALUE));
+                        sb.append("#" + message.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_INDEX) + ": ");
+                        sb.append(message.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_ID) + " = ");
+                        sb.append(message.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_VALUE));
                         context.displayInfo(sb.toString());
                     }
                 }
@@ -561,23 +560,23 @@ public abstract class REPLRemoteCommand extends REPLCommand {
     public static final REPLRemoteCommand KILL_CMD = new REPLRemoteCommand("kill", null, "Stop program execution") {
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (context.level() == 0) {
                 context.displayFailReply("no active execution");
                 return null;
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, "kill");
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, "kill");
             context.displayKillMessage(null);
             return request;
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            if (replies[0].get(REPLMessage.STATUS).equals(REPLMessage.SUCCEEDED)) {
-                context.displayReply(replies[0].get(REPLMessage.DISPLAY_MSG));
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            if (replies[0].get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED)) {
+                context.displayReply(replies[0].get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG));
             } else {
-                context.displayFailReply(replies[0].get(REPLMessage.DISPLAY_MSG));
+                context.displayFailReply(replies[0].get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG));
             }
             throw new REPLContinueException();
         }
@@ -593,7 +592,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             Source runSource = null;
             if (args.length == 1) {
                 runSource = context.getSelectedSource();
@@ -609,9 +608,9 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                     return null;
                 }
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.LOAD_SOURCE);
-            request.put(REPLMessage.SOURCE_NAME, runSource.getPath());
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.LOAD_SOURCE);
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, runSource.getPath());
             return request;
         }
     };
@@ -626,10 +625,10 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            final REPLMessage request = LOAD_CMD.createRequest(context, args);
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = LOAD_CMD.createRequest(context, args);
             if (request != null) {
-                request.put(REPLMessage.STEP_INTO, REPLMessage.TRUE);
+                request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_INTO, com.oracle.truffle.tools.debug.shell.REPLMessage.TRUE);
             }
             return request;
         }
@@ -645,18 +644,18 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
 
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.SET_LANGUAGE);
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.SET_LANGUAGE);
             if (args.length > 1) {
-                request.put(REPLMessage.LANG_NAME, args[1]);
+                request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LANG_NAME, args[1]);
             }
             return request;
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
             context.updatePrompt();
             super.processReply(context, replies);
         }
@@ -673,20 +672,20 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (context.level() == 0) {
                 context.displayFailReply("no active execution");
                 return null;
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.STEP_INTO);
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_INTO);
 
             if (args.length >= 2) {
                 final String nText = args[1];
                 try {
                     final int nSteps = Integer.parseInt(nText);
                     if (nSteps > 0) {
-                        request.put(REPLMessage.REPEAT, Integer.toString(nSteps));
+                        request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.REPEAT, Integer.toString(nSteps));
                     } else {
                         return null;
                     }
@@ -699,7 +698,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
 
             throw new REPLContinueException();
         }
@@ -708,18 +707,18 @@ public abstract class REPLRemoteCommand extends REPLCommand {
     public static final REPLRemoteCommand STEP_OUT_CMD = new REPLRemoteCommand("finish", null, "(StepOut) return from function") {
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (context.level() == 0) {
                 context.displayFailReply("no active execution");
                 return null;
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.STEP_OUT);
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_OUT);
             return request;
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
 
             throw new REPLContinueException();
         }
@@ -736,20 +735,20 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (context.level() == 0) {
                 context.displayFailReply("no active execution");
                 return null;
             }
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.STEP_OVER);
+            final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_OVER);
 
             if (args.length >= 2) {
                 final String nText = args[1];
                 try {
                     final int nSteps = Integer.parseInt(nText);
                     if (nSteps > 0) {
-                        request.put(REPLMessage.REPEAT, Integer.toString(nSteps));
+                        request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.REPEAT, Integer.toString(nSteps));
                     } else {
                         return null;
                     }
@@ -762,7 +761,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
 
             throw new REPLContinueException();
         }
@@ -771,7 +770,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
     public static final REPLRemoteCommand UP_CMD = new REPLRemoteCommand("up", null, "Move up a stack frame") {
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
+        public com.oracle.truffle.tools.debug.shell.REPLMessage createRequest(REPLClientContext context, String[] args) {
             if (context.level() == 0) {
                 context.displayFailReply("no active execution");
                 return null;
@@ -786,11 +785,11 @@ public abstract class REPLRemoteCommand extends REPLCommand {
         }
 
         @Override
-        void processReply(REPLClientContext context, REPLMessage[] replies) {
-            REPLMessage firstReply = replies[0];
+        void processReply(REPLClientContext context, com.oracle.truffle.tools.debug.shell.REPLMessage[] replies) {
+            com.oracle.truffle.tools.debug.shell.REPLMessage firstReply = replies[0];
 
-            if (firstReply.get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
-                final String result = firstReply.get(REPLMessage.DISPLAY_MSG);
+            if (firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS).equals(com.oracle.truffle.tools.debug.shell.REPLMessage.FAILED)) {
+                final String result = firstReply.get(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG);
                 context.displayFailReply(result != null ? result : firstReply.toString());
             } else {
                 context.displayStack();
