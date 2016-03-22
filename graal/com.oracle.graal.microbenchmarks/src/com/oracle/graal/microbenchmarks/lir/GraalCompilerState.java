@@ -1,5 +1,8 @@
 package com.oracle.graal.microbenchmarks.lir;
 
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Setup;
+
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.code.CompilationResult;
@@ -11,7 +14,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.microbenchmarks.graal.util.GraphState;
-import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.options.DerivedOptionValue;
 import com.oracle.graal.phases.OptimisticOptimizations;
@@ -102,17 +104,36 @@ public abstract class GraalCompilerState extends GraphState {
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
     }
 
+    private Request<CompilationResult> request;
+
+    @Setup(Level.Invocation)
+    public void prepareRequest() {
+        ResolvedJavaMethod installedCodeOwner = graph.method();
+        request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+                        graph.getProfilingInfo(), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+    }
+
     @SuppressWarnings("try")
     protected CompilationResult compile() {
-        ResolvedJavaMethod installedCodeOwner = graph.method();
-        StructuredGraph graphToCompile = graph;
-        try (Scope s = Debug.scope("Compile", graphToCompile)) {
-            Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                            graphToCompile.getProfilingInfo(), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
-            return GraalCompiler.compile(request);
+        try (Scope s = Debug.scope("Compile", graph)) {
+            assert !request.graph.isFrozen();
+            try (Scope s0 = Debug.scope("GraalCompiler", request.graph, request.providers.getCodeCache())) {
+                emitFrontEnd();
+                emitBackEnd();
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+            return request.compilationResult;
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
     }
 
+    protected void emitFrontEnd() {
+        GraalCompiler.emitFrontEnd(request.providers, request.backend, request.graph, request.graphBuilderSuite, request.optimisticOpts, request.profilingInfo, request.suites);
+    }
+
+    protected void emitBackEnd() {
+        GraalCompiler.emitBackEnd(request.graph, null, request.installedCodeOwner, request.backend, request.compilationResult, request.factory, null, request.lirSuites);
+    }
 }
