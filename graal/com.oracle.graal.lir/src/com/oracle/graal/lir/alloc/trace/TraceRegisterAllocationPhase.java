@@ -39,10 +39,13 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
+import com.oracle.graal.lir.alloc.trace.lsra.IntervalData;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceIntervalMap;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
+import com.oracle.graal.lir.phases.AllocationStage;
 import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 import com.oracle.graal.options.Option;
@@ -105,7 +108,9 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     } else {
                         TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false,
                                         cachedStackSlots);
-                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                        IntervalData intervalData = getIntervalData(context, trace);
+
+                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig, intervalData);
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }
@@ -118,6 +123,15 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
         deconstructSSIForm(lir);
+    }
+
+    private static <B extends AbstractBlockBase<B>> IntervalData getIntervalData(AllocationContext context, Trace<B> trace) {
+        if (!AllocationStage.Options.TraceRACombinedSSIConstruction.getValue()) {
+            return null;
+        }
+        TraceIntervalMap intervalMap = context.contextLookup(TraceIntervalMap.class);
+        assert intervalMap != null : "No interval map?";
+        return intervalMap.get(trace);
     }
 
     @SuppressWarnings("unchecked")

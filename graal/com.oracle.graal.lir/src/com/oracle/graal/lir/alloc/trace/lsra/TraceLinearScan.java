@@ -635,7 +635,7 @@ public final class TraceLinearScan {
 
     @SuppressWarnings("try")
     public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig) {
+                    RegisterAllocationConfig registerAllocationConfig, IntervalData intervals) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
@@ -649,6 +649,7 @@ public final class TraceLinearScan {
 
                 printLir("Before register allocation", true);
                 printIntervals("Before register allocation");
+                assert intervals == null || compareIntervalData(intervals);
 
                 sortIntervalsBeforeAllocation();
                 sortFixedIntervalsBeforeAllocation();
@@ -675,6 +676,10 @@ public final class TraceLinearScan {
                 throw Debug.handle(e);
             }
         }
+    }
+
+    private boolean compareIntervalData(IntervalData intervals) {
+        return IntervalData.verifyEquals(getIntervalData(), intervals);
     }
 
     public void printIntervals(String label) {

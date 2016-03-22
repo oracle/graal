@@ -40,6 +40,7 @@ import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.Register;
@@ -357,5 +358,100 @@ public final class IntervalData {
             }
             Debug.dump(Debug.INFO_LOG_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervalsSize)), label);
         }
+    }
+
+    public static boolean verifyEquals(IntervalData a, IntervalData b) {
+        assert compareFixed(a.fixedIntervals(), b.fixedIntervals());
+        assert compareIntervals(a.intervals(), b.intervals());
+        return true;
+    }
+
+    private static boolean compareIntervals(TraceInterval[] a, TraceInterval[] b) {
+        for (int i = 0; i < Math.max(a.length, b.length); i++) {
+            if (i >= a.length) {
+                assert b[i] == null : "missing a interval: " + i + " b: " + b[i];
+                continue;
+            }
+            if (i >= b.length) {
+                assert a[i] == null : "missing b interval: " + i + " a: " + a[i];
+                continue;
+            }
+            compareInterval(a[i], b[i]);
+        }
+        return true;
+    }
+
+    private static void compareInterval(TraceInterval a, TraceInterval b) {
+        if (a == null) {
+            assert b == null : "First interval is null but second is: " + b;
+            return;
+        }
+        assert b != null : "Second interval is null but forst is: " + a;
+        assert a.operand.equals(b.operand) : "Operand mismatch: " + a + " vs. " + b;
+        assert a.from() == b.from() : "From mismatch: " + a + " vs. " + b;
+        assert a.to() == b.to() : "To mismatch: " + a + " vs. " + b;
+        assert verifyIntervalsEquals(a, b);
+    }
+
+    private static boolean verifyIntervalsEquals(TraceInterval a, TraceInterval b) {
+        for (int i = 0; i < Math.max(a.usePosList().size(), b.usePosList().size()); i++) {
+            assert i < a.usePosList().size() : "missing a usepos: " + i + " b: " + b;
+            assert i < b.usePosList().size() : "missing b usepos: " + i + " a: " + a;
+            int aPos = a.usePosList().usePos(i);
+            int bPos = b.usePosList().usePos(i);
+            assert aPos == bPos : "Use Positions differ: " + aPos + " vs. " + bPos;
+            RegisterPriority aReg = a.usePosList().registerPriority(i);
+            RegisterPriority bReg = b.usePosList().registerPriority(i);
+            assert aReg == bReg : "Register priority differ: " + aReg + " vs. " + bReg;
+        }
+        return true;
+    }
+
+    private static boolean compareFixed(FixedInterval[] a, FixedInterval[] b) {
+        for (int i = 0; i < Math.max(a.length, b.length); i++) {
+            if (i >= a.length) {
+                assert b[i] == null : "missing a interval: " + i + " b: " + b[i];
+                continue;
+            }
+            if (i >= b.length) {
+                assert a[i] == null : "missing b interval: " + i + " a: " + a[i];
+                continue;
+            }
+            compareFixedInterval(a[i], b[i]);
+        }
+        return true;
+    }
+
+    private static void compareFixedInterval(FixedInterval a, FixedInterval b) {
+        if (a == null) {
+            assert b == null || isEmptyInterval(b) : "First interval is null but second is: " + b;
+            return;
+        }
+        if (b == null) {
+            assert isEmptyInterval(a) : "Second interval is null but first is: " + a;
+            return;
+        }
+        assert a.operand.equals(b.operand) : "Operand mismatch: " + a + " vs. " + b;
+        assert a.from() == b.from() : "From mismatch: " + a + " vs. " + b;
+        assert a.to() == b.to() : "To mismatch: " + a + " vs. " + b;
+        assert verifyFixeEquas(a, b);
+    }
+
+    private static boolean verifyFixeEquas(FixedInterval a, FixedInterval b) {
+        a.rewindRange();
+        b.rewindRange();
+        while (!a.currentAtEnd()) {
+            assert !b.currentAtEnd() : "Fixed range mismatch: " + a + " vs. " + b;
+            assert a.currentFrom() == b.currentFrom() : "From range mismatch: " + a + " vs. " + b + " from: " + a.currentFrom() + " vs. " + b.currentFrom();
+            assert a.currentTo() == b.currentTo() : "To range mismatch: " + a + " vs. " + b + " from: " + a.currentTo() + " vs. " + b.currentTo();
+            a.nextRange();
+            b.nextRange();
+        }
+        assert b.currentAtEnd() : "Fixed range mismatch: " + a + " vs. " + b;
+        return true;
+    }
+
+    private static boolean isEmptyInterval(FixedInterval fixed) {
+        return fixed.from() == -1 && fixed.to() == 0;
     }
 }

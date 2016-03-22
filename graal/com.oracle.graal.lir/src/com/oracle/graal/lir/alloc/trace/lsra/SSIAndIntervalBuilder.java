@@ -101,10 +101,11 @@ final class SSIAndIntervalBuilder extends SSIBuilder {
         for (Trace<?> trace : traceBuilderResult.getTraces()) {
             if (process(trace)) {
                 IntervalData intervalData = getIntervalData(trace);
-                Debug.dump(INTERVAL_DUMP_LEVEL, intervalData.getBlocks(), "SSI building %s", trace);
+                Debug.dump(INTERVAL_DUMP_LEVEL, intervalData.getBlocks(), "SSI building Trace%d %s", trace.getId(), trace);
                 FixedInterval[] fixedIntervals = intervalData.fixedIntervals();
                 TraceInterval[] intervals = intervalData.intervals();
-                Debug.dump(INTERVAL_DUMP_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervals.length)), "SSI building %s", trace);
+                Debug.dump(INTERVAL_DUMP_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervals.length)), "SSI building Trace%d %s",
+                                trace.getId(), trace);
             }
         }
     }
