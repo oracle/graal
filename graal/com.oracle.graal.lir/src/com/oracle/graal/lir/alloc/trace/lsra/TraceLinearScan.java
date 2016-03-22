@@ -758,13 +758,17 @@ public final class TraceLinearScan {
             TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
             TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-            printLir("Before register allocation", true);
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {
+
+                printLir("Before register allocation", true);
+                printIntervals("Before register allocation");
+
                 sortIntervalsBeforeAllocation();
                 sortFixedIntervalsBeforeAllocation();
 
                 TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                printIntervals("After register allocation");
 
                 // resolve intra-trace data-flow
                 TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
