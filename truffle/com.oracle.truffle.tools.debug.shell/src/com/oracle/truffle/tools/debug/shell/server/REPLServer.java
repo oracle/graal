@@ -93,14 +93,15 @@ public final class REPLServer {
 
     // Language-agnostic
     private final PolyglotEngine engine;
-    private Debugger db;
-    private Context currentServerContext;
-    private SimpleREPLClient replClient = null;
-    private String statusPrefix;
+    private final Debugger db;
+    private final SimpleREPLClient replClient;
+    private final String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
     private final ASTPrinter astPrinter;
-    private LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
-    private REPLVisualizer visualizer = new REPLVisualizer();
+    private final LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
+    private final REPLVisualizer visualizer = new REPLVisualizer();
+
+    private Context currentServerContext;
 
     /** Languages sorted by name. */
     private final TreeSet<Language> engineLanguages = new TreeSet<>(new Comparator<Language>() {
@@ -114,9 +115,9 @@ public final class REPLServer {
     private final Map<String, Language> nameToLanguage = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     // TODO (mlvdv) Language-specific
-    private PolyglotEngine.Language defaultLanguage;
+    private final PolyglotEngine.Language defaultLanguage = null;
 
-    private Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
+    private final Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
 
     public REPLServer(SimpleREPLClient client) {
         this.replClient = client;
@@ -129,7 +130,7 @@ public final class REPLServer {
         for (Language language : engineLanguages) {
             nameToLanguage.put(language.getName(), language);
         }
-
+        astPrinter = new REPLASTPrinter(engine);
         statusPrefix = "";
     }
 
