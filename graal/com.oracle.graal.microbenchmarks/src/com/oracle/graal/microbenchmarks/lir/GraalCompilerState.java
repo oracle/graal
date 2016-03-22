@@ -37,7 +37,11 @@ public abstract class GraalCompilerState extends GraphState {
     private final DerivedOptionValue<Suites> suites;
     private final DerivedOptionValue<LIRSuites> lirSuites;
 
-    public GraalCompilerState() {
+    /**
+     * We only allow inner classes to subclass this to ensure that the {@link Setup} methods are
+     * executed in the right order.
+     */
+    private GraalCompilerState() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = backend.getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
@@ -106,8 +110,7 @@ public abstract class GraalCompilerState extends GraphState {
 
     private Request<CompilationResult> request;
 
-    @Setup(Level.Invocation)
-    public void prepareRequest() {
+    protected void prepareRequest() {
         ResolvedJavaMethod installedCodeOwner = graph.method();
         request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                         graph.getProfilingInfo(), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
@@ -135,5 +138,33 @@ public abstract class GraalCompilerState extends GraphState {
 
     protected void emitBackEnd() {
         GraalCompiler.emitBackEnd(request.graph, null, request.installedCodeOwner, request.backend, request.compilationResult, request.factory, null, request.lirSuites);
+    }
+
+    public abstract static class Compile extends GraalCompilerState {
+        @Setup(Level.Invocation)
+        public void setup() {
+            super.prepareRequest();
+        }
+
+    }
+
+    public abstract static class FrontEndOnly extends GraalCompilerState.Compile {
+
+        @Override
+        protected void emitBackEnd() {
+            // do nothing
+        }
+    }
+
+    public abstract static class BackEndOnly extends GraalCompilerState {
+        @Setup(Level.Invocation)
+        public void prepareFrontEnd() {
+            super.prepareRequest();
+            super.emitFrontEnd();
+        }
+
+        @Override
+        public void emitFrontEnd() {
+        }
     }
 }

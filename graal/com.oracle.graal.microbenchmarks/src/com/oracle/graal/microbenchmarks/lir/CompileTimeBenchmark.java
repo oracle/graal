@@ -32,22 +32,58 @@ import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
 
 public class CompileTimeBenchmark extends GraalBenchmark {
 
+    // Checkstyle: stop method name check
     @MethodSpec(declaringClass = String.class, name = "equals")
-    public static class StringEquals extends GraalCompilerState {
+    public static class Compile_StringEquals extends GraalCompilerState.Compile {
     }
 
     @MethodSpec(declaringClass = HashMap.class, name = "computeIfAbsent")
-    public static class HashMapComputeIfAbsent extends GraalCompilerState {
+    public static class Compile_HashMapComputeIfAbsent extends GraalCompilerState.Compile {
     }
 
-    // Checkstyle: stop method name check
     @Benchmark
-    public CompilationResult compile_STRING_equals(StringEquals s) {
+    public CompilationResult compile_STRING_equals(Compile_StringEquals s) {
         return s.compile();
     }
 
     @Benchmark
-    public CompilationResult compile_HASHMAP_computeIfAbsent(HashMapComputeIfAbsent s) {
+    public CompilationResult compile_HASHMAP_computeIfAbsent(Compile_HashMapComputeIfAbsent s) {
+        return s.compile();
+    }
+
+    @MethodSpec(declaringClass = String.class, name = "equals")
+    public static class FrontEndOnly_StringEquals extends GraalCompilerState.FrontEndOnly {
+    }
+
+    @MethodSpec(declaringClass = HashMap.class, name = "computeIfAbsent")
+    public static class FrontEndOnly_HashMapComputeIfAbsent extends GraalCompilerState.FrontEndOnly {
+    }
+
+    @Benchmark
+    public CompilationResult frontend_STRING_equals(FrontEndOnly_StringEquals s) {
+        return s.compile();
+    }
+
+    @Benchmark
+    public CompilationResult frontend_HASHMAP_computeIfAbsent(FrontEndOnly_HashMapComputeIfAbsent s) {
+        return s.compile();
+    }
+
+    @MethodSpec(declaringClass = String.class, name = "equals")
+    public static class BackEndOnly_StringEquals extends GraalCompilerState.BackEndOnly {
+    }
+
+    @MethodSpec(declaringClass = HashMap.class, name = "computeIfAbsent")
+    public static class BackEndOnly_HashMapComputeIfAbsent extends GraalCompilerState.BackEndOnly {
+    }
+
+    @Benchmark
+    public CompilationResult backend_STRING_equals(BackEndOnly_StringEquals s) {
+        return s.compile();
+    }
+
+    @Benchmark
+    public CompilationResult backend_HASHMAP_computeIfAbsent(BackEndOnly_HashMapComputeIfAbsent s) {
         return s.compile();
     }
     // Checkstyle: resume method name check
