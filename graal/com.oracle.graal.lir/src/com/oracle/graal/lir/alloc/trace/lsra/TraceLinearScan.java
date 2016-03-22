@@ -677,33 +677,8 @@ public final class TraceLinearScan {
         }
     }
 
-    @SuppressWarnings("try")
     public void printIntervals(String label) {
-        if (Debug.isDumpEnabled(TraceBuilderPhase.TRACE_DUMP_LEVEL)) {
-            if (Debug.isLogEnabled()) {
-                try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
-                    for (FixedInterval interval : fixedIntervals()) {
-                        if (interval != null) {
-                            Debug.log("%s", interval.logString());
-                        }
-                    }
-
-                    for (TraceInterval interval : intervals()) {
-                        if (interval != null) {
-                            Debug.log("%s", interval.logString());
-                        }
-                    }
-
-                    try (Indent indent2 = Debug.logAndIndent("Basic Blocks")) {
-                        for (int i = 0; i < blockCount(); i++) {
-                            AbstractBlockBase<?> block = blockAt(i);
-                            Debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
-                        }
-                    }
-                }
-            }
-            Debug.dump(Debug.INFO_LOG_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals(), fixedIntervals().length), Arrays.copyOf(intervals(), intervalData.intervalsSize())), label);
-        }
+        getIntervalData().printIntervals(label);
     }
 
     public void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
