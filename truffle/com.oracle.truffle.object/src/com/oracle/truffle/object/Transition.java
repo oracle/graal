@@ -215,8 +215,4 @@ public abstract class Transition {
             return true;
         }
     }
-
-    public String getShortName() {
-        return this.getClass().getSimpleName().replaceFirst("Transition$", "").toLowerCase();
-    }
 }
