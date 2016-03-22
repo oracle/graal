@@ -287,7 +287,7 @@ final class FixedInterval extends IntervalHint {
      * Gets a single line string for logging the details of this interval to a log stream.
      */
     @Override
-    public String logString(TraceLinearScan allocator) {
+    public String logString() {
         StringBuilder buf = new StringBuilder(100);
         buf.append("fix ").append(asRegister(operand).number).append(':').append(operand).append(' ');
 

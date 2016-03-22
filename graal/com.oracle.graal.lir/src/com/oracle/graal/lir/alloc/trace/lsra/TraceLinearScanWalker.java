@@ -450,8 +450,8 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             unhandledAnyList.addToListSortedByStartAndUsePositions(splitPart);
 
             if (Debug.isLogEnabled()) {
-                Debug.log("left interval  %s: %s", moveNecessary ? "      " : "", interval.logString(allocator));
-                Debug.log("right interval %s: %s", moveNecessary ? "(move)" : "", splitPart.logString(allocator));
+                Debug.log("left interval  %s: %s", moveNecessary ? "      " : "", interval.logString());
+                Debug.log("right interval %s: %s", moveNecessary ? "(move)" : "", splitPart.logString());
             }
         }
     }
@@ -557,8 +557,8 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                     spilledPart.makeCurrentSplitChild();
 
                     if (Debug.isLogEnabled()) {
-                        Debug.log("left interval: %s", interval.logString(allocator));
-                        Debug.log("spilled interval   : %s", spilledPart.logString(allocator));
+                        Debug.log("left interval: %s", interval.logString());
+                        Debug.log("spilled interval   : %s", spilledPart.logString());
                     }
                 }
             }
@@ -1034,8 +1034,8 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             return;
         }
 
-        TraceInterval beginHint = registerHint.getSplitChildAtOpId(beginPos, LIRInstruction.OperandMode.USE, allocator);
-        TraceInterval endHint = registerHint.getSplitChildAtOpId(endPos, LIRInstruction.OperandMode.DEF, allocator);
+        TraceInterval beginHint = registerHint.getSplitChildAtOpId(beginPos, LIRInstruction.OperandMode.USE);
+        TraceInterval endHint = registerHint.getSplitChildAtOpId(endPos, LIRInstruction.OperandMode.DEF);
         if (beginHint == endHint || beginHint.to() != beginPos || endHint.from() != endPos) {
             // registerHint must be split : otherwise the re-writing of use positions does not work
             return;

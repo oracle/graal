@@ -369,13 +369,22 @@ public final class TraceLinearScan {
         if (intervalsSize == intervals.length) {
             intervals = Arrays.copyOf(intervals, intervals.length + (intervals.length >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT) + 1);
         }
-        intervalsSize++;
+        // increments intervalsSize
+        Variable variable = createVariable(source.kind());
+
         assert intervalsSize <= intervals.length;
-        Variable variable = new Variable(source.kind(), ir.nextVariable());
 
         TraceInterval interval = createInterval(variable);
         assert intervals[intervalsSize - 1] == interval;
         return interval;
+    }
+
+    /**
+     * Creates a new variable for a derived interval. Note that the variable is not
+     * {@linkplain LIR#nextVariable() managed} so it must not be inserted into the {@link LIR}.
+     */
+    private Variable createVariable(LIRKind kind) {
+        return new Variable(kind, intervalsSize++);
     }
 
     // access to block list (sorted in linear scan order)
@@ -709,8 +718,9 @@ public final class TraceLinearScan {
 
     // wrapper for Interval.splitChildAtOpId that performs a bailout in product mode
     // instead of returning null
+    @SuppressWarnings("static-method")
     public TraceInterval splitChildAtOpId(TraceInterval interval, int opId, LIRInstruction.OperandMode mode) {
-        TraceInterval result = interval.getSplitChildAtOpId(opId, mode, this);
+        TraceInterval result = interval.getSplitChildAtOpId(opId, mode);
 
         if (result != null) {
             if (Debug.isLogEnabled()) {
@@ -759,10 +769,15 @@ public final class TraceLinearScan {
             TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {
+
+                printLir("Before register allocation", true);
+                printIntervals("Before register allocation");
+
                 sortIntervalsBeforeAllocation();
                 sortFixedIntervalsBeforeAllocation();
 
                 TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                printIntervals("After register allocation");
 
                 // resolve intra-trace data-flow
                 TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
@@ -792,13 +807,13 @@ public final class TraceLinearScan {
                 try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
                     for (FixedInterval interval : fixedIntervals) {
                         if (interval != null) {
-                            Debug.log("%s", interval.logString(this));
+                            Debug.log("%s", interval.logString());
                         }
                     }
 
                     for (TraceInterval interval : intervals) {
                         if (interval != null) {
-                            Debug.log("%s", interval.logString(this));
+                            Debug.log("%s", interval.logString());
                         }
                     }
 
@@ -855,31 +870,31 @@ public final class TraceLinearScan {
 
                 if (i1.operandNumber != i) {
                     Debug.log("Interval %d is on position %d in list", i1.operandNumber, i);
-                    Debug.log(i1.logString(this));
+                    Debug.log(i1.logString());
                     throw new JVMCIError("");
                 }
 
                 if (isVariable(i1.operand) && i1.kind().equals(LIRKind.Illegal)) {
                     Debug.log("Interval %d has no type assigned", i1.operandNumber);
-                    Debug.log(i1.logString(this));
+                    Debug.log(i1.logString());
                     throw new JVMCIError("");
                 }
 
                 if (i1.location() == null) {
                     Debug.log("Interval %d has no register assigned", i1.operandNumber);
-                    Debug.log(i1.logString(this));
+                    Debug.log(i1.logString());
                     throw new JVMCIError("");
                 }
 
                 if (i1.isEmpty()) {
                     Debug.log("Interval %d has no Range", i1.operandNumber);
-                    Debug.log(i1.logString(this));
+                    Debug.log(i1.logString());
                     throw new JVMCIError("");
                 }
 
                 if (i1.from() >= i1.to()) {
                     Debug.log("Interval %d has zero length range", i1.operandNumber);
-                    Debug.log(i1.logString(this));
+                    Debug.log(i1.logString());
                     throw new JVMCIError("");
                 }
 
@@ -906,8 +921,8 @@ public final class TraceLinearScan {
                     if (intersects && !isIllegal(l1) && (l1.equals(l2))) {
                         if (DetailedAsserts.getValue()) {
                             Debug.log("Intervals %s and %s overlap and have the same register assigned", i1, i2);
-                            Debug.log(i1.logString(this));
-                            Debug.log(i2.logString(this));
+                            Debug.log(i1.logString());
+                            Debug.log(i2.logString());
                         }
                         throw new BailoutException("");
                     }
@@ -924,8 +939,8 @@ public final class TraceLinearScan {
                     if (intersects && !isIllegal(l1) && (l1.equals(l2))) {
                         if (DetailedAsserts.getValue()) {
                             Debug.log("Intervals %s and %s overlap and have the same register assigned", i1, i2);
-                            Debug.log(i1.logString(this));
-                            Debug.log(i2.logString(this));
+                            Debug.log(i1.logString());
+                            Debug.log(i2.logString());
                         }
                         throw new BailoutException("");
                     }

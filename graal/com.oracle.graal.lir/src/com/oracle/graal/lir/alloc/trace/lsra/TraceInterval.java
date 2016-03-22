@@ -668,7 +668,7 @@ final class TraceInterval extends IntervalHint {
         return null;
     }
 
-    TraceInterval getSplitChildAtOpId(int opId, LIRInstruction.OperandMode mode, TraceLinearScan allocator) {
+    TraceInterval getSplitChildAtOpId(int opId, LIRInstruction.OperandMode mode) {
         assert isSplitParent() : "can only be called for split parents";
         assert opId >= 0 : "invalid opId (method cannot be called for spill moves)";
 
@@ -699,12 +699,12 @@ final class TraceInterval extends IntervalHint {
                 }
             }
 
-            assert checkSplitChild(result, opId, allocator, toOffset, mode);
+            assert checkSplitChild(result, opId, toOffset, mode);
             return result;
         }
     }
 
-    private boolean checkSplitChild(TraceInterval result, int opId, TraceLinearScan allocator, int toOffset, LIRInstruction.OperandMode mode) {
+    private boolean checkSplitChild(TraceInterval result, int opId, int toOffset, LIRInstruction.OperandMode mode) {
         if (result == null) {
             // this is an error
             StringBuilder msg = new StringBuilder(this.toString()).append(" has no child at ").append(opId);
@@ -720,8 +720,8 @@ final class TraceInterval extends IntervalHint {
             for (TraceInterval interval : splitChildren) {
                 if (interval != result && interval.from() <= opId && opId < interval.to() + toOffset) {
                     TTY.println(String.format("two valid result intervals found for opId %d: %d and %d", opId, result.operandNumber, interval.operandNumber));
-                    TTY.println(result.logString(allocator));
-                    TTY.println(interval.logString(allocator));
+                    TTY.println(result.logString());
+                    TTY.println(interval.logString());
                     throw new BailoutException("two valid result intervals found");
                 }
             }
@@ -991,11 +991,9 @@ final class TraceInterval extends IntervalHint {
 
     /**
      * Gets a single line string for logging the details of this interval to a log stream.
-     *
-     * @param allocator the register allocator context
      */
     @Override
-    public String logString(TraceLinearScan allocator) {
+    public String logString() {
         StringBuilder buf = new StringBuilder(100);
         buf.append("any ").append(operandNumber).append(':').append(operand).append(' ');
         if (!isRegister(operand)) {
