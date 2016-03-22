@@ -369,13 +369,22 @@ public final class TraceLinearScan {
         if (intervalsSize == intervals.length) {
             intervals = Arrays.copyOf(intervals, intervals.length + (intervals.length >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT) + 1);
         }
-        intervalsSize++;
+        // increments intervalsSize
+        Variable variable = createVariable(source.kind());
+
         assert intervalsSize <= intervals.length;
-        Variable variable = new Variable(source.kind(), ir.nextVariable());
 
         TraceInterval interval = createInterval(variable);
         assert intervals[intervalsSize - 1] == interval;
         return interval;
+    }
+
+    /**
+     * Creates a new variable for a derived interval. Note that the variable is not
+     * {@linkplain LIR#nextVariable() managed} so it must not be inserted into the {@link LIR}.
+     */
+    private Variable createVariable(LIRKind kind) {
+        return new Variable(kind, intervalsSize++);
     }
 
     // access to block list (sorted in linear scan order)
