@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,6 +96,13 @@ public class SimpleREPLClient implements REPLClient {
     private static final String STACK_FRAME_FORMAT = "    %3d: at %s in %s    %s\n";
     private static final String STACK_FRAME_SELECTED_FORMAT = "==> %3d: at %s in %s    %s\n";
 
+    public static void main(String[] args) {
+        final SimpleREPLClient client = new SimpleREPLClient();
+        final REPLServer replServer = new REPLServer(client);
+        replServer.start();
+        client.start(replServer);
+    }
+
     // Top level commands
     private final Map<String, REPLCommand> commandMap = new HashMap<>();
     private final Collection<String> commandNames = new TreeSet<>();
@@ -111,7 +118,7 @@ public class SimpleREPLClient implements REPLClient {
 
     private final PrintStream writer;
 
-    private final REPLServer replServer;
+    private REPLServer replServer;
 
     private final LocalOption astDepthOption = new IntegerOption(9, "astdepth", "default depth for AST display");
 
@@ -144,8 +151,7 @@ public class SimpleREPLClient implements REPLClient {
 
     private boolean quitting; // User has requested to "Quit"
 
-    public SimpleREPLClient(REPLServer replServer) {
-        this.replServer = replServer;
+    public SimpleREPLClient() {
         this.writer = System.out;
         try {
             this.reader = new ConsoleReader();
@@ -203,12 +209,34 @@ public class SimpleREPLClient implements REPLClient {
         addOption(verboseBreakpointInfoOption);
     }
 
-    public void start() {
+    public void start(REPLServer server) {
 
-        this.clientContext = new ClientContextImpl(null, null);
+        this.replServer = server;
+        clientContext = new ClientContextImpl(null, null);
         showWelcome();
-        clientContext.startContextSession();
-        clientContext.displayReply("Goodbye");
+        try {
+            final REPLMessage[] replies = replServer.receive(infoLanguageCommand.createRequest(clientContext, NULL_ARGS));
+            if (replies.length == 0) {
+                clientContext.displayFailReply("No languages could be loaded");
+            } else if (replies.length == 1) {
+                final String[] args = new String[]{"", replies[0].get(REPLMessage.LANG_NAME)};
+                final REPLMessage[] results = replServer.receive(REPLRemoteCommand.SET_LANG_CMD.createRequest(clientContext, args));
+                if (results[0].get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
+                    final String message = results[0].get(REPLMessage.DISPLAY_MSG);
+                    clientContext.displayFailReply(message != null ? message : results[0].toString());
+                } else {
+                    clientContext.updatePrompt();
+                    clientContext.startContextSession();
+                }
+            } else {
+                clientContext.displayInfo("Languages supported (type \"lang <name>\" to set default)");
+                displayLanguages(replies);
+                clientContext.updatePrompt();
+                clientContext.startContextSession();
+            }
+        } finally {
+            clientContext.displayReply("Goodbye");
+        }
     }
 
     private void showWelcome() {
@@ -947,7 +975,7 @@ public class SimpleREPLClient implements REPLClient {
         }
     };
 
-    private final REPLCommand infoLanguageCommand = new REPLRemoteCommand("languages", "lang", "languages supported") {
+    private final REPLRemoteCommand infoLanguageCommand = new REPLRemoteCommand("languages", "lang", "languages supported") {
 
         final String[] help = {"info language:  list details about supported languages"};
 
@@ -970,16 +998,23 @@ public class SimpleREPLClient implements REPLClient {
                 clientContext.displayFailReply(replies[0].get(REPLMessage.DISPLAY_MSG));
             } else {
                 clientContext.displayReply("Languages supported:");
-                for (REPLMessage message : replies) {
-                    final StringBuilder sb = new StringBuilder();
-                    sb.append(message.get(REPLMessage.LANG_NAME));
-                    sb.append(" ver. ");
-                    sb.append(message.get(REPLMessage.LANG_VER));
-                    clientContext.displayInfo(sb.toString());
-                }
+                displayLanguages(replies);
             }
         }
     };
+
+    private void displayLanguages(REPLMessage[] replies) {
+        for (REPLMessage message : replies) {
+            final StringBuilder sb = new StringBuilder();
+            final String name = message.get(REPLMessage.LANG_NAME);
+            if (!name.equals("")) {
+                sb.append(name);
+                sb.append(" ver. ");
+                sb.append(message.get(REPLMessage.LANG_VER));
+                clientContext.displayInfo(sb.toString());
+            }
+        }
+    }
 
     private final REPLCommand infoSetCommand = new REPLLocalCommand("set", null, "info about settings") {
 
