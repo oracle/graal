@@ -190,8 +190,10 @@ public abstract class LoopNode extends Node {
      * @since 0.12
      */
     protected abstract class TVMCI {
-        /** Only useful for virtual machine implementors. 
-         * @since 0.12 
+        /**
+         * Only useful for virtual machine implementors.
+         * 
+         * @since 0.12
          */
         protected TVMCI() {
         }
@@ -207,7 +209,8 @@ public abstract class LoopNode extends Node {
          */
         protected abstract void onLoopCount(Node source, int iterations);
 
-        /** Makes sure the <code>callTarget</code> is initialized.
+        /**
+         * Makes sure the <code>callTarget</code> is initialized.
          *
          * @param callTarget
          * @since 0.12
@@ -216,7 +219,8 @@ public abstract class LoopNode extends Node {
             ACCESSOR.initializeCallTarget(callTarget);
         }
 
-        /** Finds the language associated with given root node.
+        /**
+         * Finds the language associated with given root node.
          *
          * @param root the node
          * @return the language of the node
