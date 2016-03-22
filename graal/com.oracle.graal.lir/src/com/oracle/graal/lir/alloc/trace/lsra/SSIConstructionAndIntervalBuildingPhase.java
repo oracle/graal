@@ -45,7 +45,10 @@ public final class SSIConstructionAndIntervalBuildingPhase extends AllocationPha
                     AllocationContext context) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
         TraceBuilderResult<?> traceBuilderResult = context.contextLookup(TraceBuilderResult.class);
-        TraceIntervalMap intervalMap = new SSIAndIntervalBuilder(lirGenRes.getLIR(), traceBuilderResult).buildSSIAndIntervals();
+        assert traceBuilderResult != null : "no trace builder result";
+        boolean neverSpillConstants = false;
+        TraceIntervalMap intervalMap = new SSIAndIntervalBuilder(lirGenRes.getLIR(), traceBuilderResult, target, lirGenRes, context.registerAllocationConfig, neverSpillConstants,
+                        context.spillMoveFactory).buildSSIAndIntervals();
         context.contextAdd(intervalMap);
     }
 }
