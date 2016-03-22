@@ -541,29 +541,14 @@ public abstract class Node implements NodeInterface, Cloneable {
      * This example shows how to tag a node subclass and all its subclasses as expression and
      * statement:
      *
-     * <pre>
-     * <code>
-     * &#64;{@link Override}
-     * protected boolean isTaggedWith({@link Class} tag) {
-     *    return tag == ExpressionTag.class || tag == StatementTag.class;
-     * }
-     * </code>
-     * </pre>
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode}
      *
      * <p>
      * Often it is impossible to just rely on the node's Java type to implement tagging. This
      * example shows how to use local state to implement tagging for a node.
      *
-     * <pre>
-     * <code>
-     * private boolean isDebuggerHalt;
-     * ...
-     * &#64;{@link Override}
-     * protected boolean isTaggedWith({@link Class} tag) {
-     *    return tag == Debugger.HaltTag.class && isDebuggerHalt;
-     * }
-     * </code>
-     * </pre>
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt}
+     *
      * <p>
      * The implementation of isTaggedWith method must ensure that its result is stable after the
      * parent {@link RootNode root node} was wrapped in a {@link CallTarget} using
@@ -709,4 +694,40 @@ class NodeSnippets {
         }
         // END: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
     }
+
+    private static final class Debugger {
+        static class HaltTag {
+        }
+    }
+
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
+    class StatementNode extends Node {
+        private boolean isDebuggerHalt;
+
+        @Override
+        protected boolean isTaggedWith(Class<?> tag) {
+            if (tag == Debugger.HaltTag.class) {
+                return isDebuggerHalt;
+            }
+            return super.isTaggedWith(tag);
+        }
+    }
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
+
+    static class ExpressionTag {
+    }
+
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
+    class ExpressionNode extends Node {
+
+        @Override
+        protected boolean isTaggedWith(Class<?> tag) {
+            if (tag == ExpressionTag.class) {
+                return true;
+            }
+            return super.isTaggedWith(tag);
+        }
+    }
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
+
 }
