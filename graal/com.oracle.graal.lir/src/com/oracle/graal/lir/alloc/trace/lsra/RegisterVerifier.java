@@ -218,7 +218,7 @@ final class RegisterVerifier {
                 if (TraceLinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand) && op.id() != TraceLinearScan.DOMINATOR_SPILL_MOVE_ID) {
                     TraceInterval interval = intervalAt(operand);
                     if (op.id() != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
+                        interval = interval.getSplitChildAtOpId(op.id(), mode);
                     }
 
                     assert checkState(block, op, inputState, interval.operand, interval.location(), interval.splitParent());
@@ -230,7 +230,7 @@ final class RegisterVerifier {
             if (TraceLinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
                 TraceInterval interval = intervalAt(operand);
                 if (op.id() != -1) {
-                    interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
+                    interval = interval.getSplitChildAtOpId(op.id(), mode);
                 }
 
                 statePut(inputState, interval.location(), interval.splitParent());

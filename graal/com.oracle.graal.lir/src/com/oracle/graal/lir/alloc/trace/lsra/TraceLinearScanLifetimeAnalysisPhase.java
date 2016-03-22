@@ -98,7 +98,6 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
 
         private void analyze() {
             countInstructions();
-            allocator.printLir("Before register allocation", true);
             buildIntervals();
         }
 

@@ -71,6 +71,7 @@ import static com.oracle.graal.hotspot.replacements.ThreadSubstitutions.THREAD_I
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.G1WBPOSTCALL;
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.G1WBPRECALL;
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.VALIDATE_OBJECT;
+import static com.oracle.graal.hotspot.stubs.CreateExceptionStub.THROW_AND_POST_JVMTI_EXCEPTION;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.EXCEPTION_HANDLER_FOR_PC;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.NEW_ARRAY_C;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.NEW_INSTANCE_C;
@@ -87,14 +88,6 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -102,11 +95,21 @@ import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.stubs.ExceptionHandlerStub;
 import com.oracle.graal.hotspot.stubs.NewArrayStub;
 import com.oracle.graal.hotspot.stubs.NewInstanceStub;
+import com.oracle.graal.hotspot.stubs.NullPointerExceptionStub;
+import com.oracle.graal.hotspot.stubs.OutOfBoundsExceptionStub;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub;
 import com.oracle.graal.hotspot.stubs.VerifyOopStub;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.
@@ -248,6 +251,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
          */
         registerForeignCall(UNPACK_FRAMES, c.deoptimizationUnpackFrames, NativeCall, DESTROYS_REGISTERS, LEAF, NOT_REEXECUTABLE, any());
 
+        registerForeignCall(THROW_AND_POST_JVMTI_EXCEPTION, c.throwAndPostJvmtiExceptionAddress, NativeCall, DESTROYS_REGISTERS, SAFEPOINT, REEXECUTABLE, any());
+
         /*
          * This message call is registered twice, where the second one must only be used for calls
          * that do not return, i.e., that exit the VM.
@@ -260,11 +265,11 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         link(new ExceptionHandlerStub(providers, foreignCalls.get(EXCEPTION_HANDLER)));
         link(new UnwindExceptionToCallerStub(providers, registerStubCall(UNWIND_EXCEPTION_TO_CALLER, NOT_REEXECUTABLE, SAFEPOINT, any())));
         link(new VerifyOopStub(providers, registerStubCall(VERIFY_OOP, REEXECUTABLE, LEAF_NOFP, NO_LOCATIONS)));
+        link(new NullPointerExceptionStub(providers, registerStubCall(CREATE_NULL_POINTER_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
+        link(new OutOfBoundsExceptionStub(providers, registerStubCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
 
         linkForeignCall(providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, MARK_WORD_LOCATION);
         linkForeignCall(providers, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
-        linkForeignCall(providers, CREATE_NULL_POINTER_EXCEPTION, c.createNullPointerExceptionAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
-        linkForeignCall(providers, CREATE_OUT_OF_BOUNDS_EXCEPTION, c.createOutOfBoundsExceptionAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
         linkForeignCall(providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
         linkForeignCall(providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, STACK_INSPECTABLE_LEAF, NOT_REEXECUTABLE, any());
         linkForeignCall(providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);

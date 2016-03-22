@@ -58,6 +58,7 @@ import com.oracle.graal.code.DataSection.Data;
 import com.oracle.graal.code.DataSection.RawData;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
@@ -233,6 +234,10 @@ public class CompilationResultBuilder {
         DataSectionReference reference = compilationResult.getDataSection().insertData(data);
         compilationResult.recordDataPatch(asm.position(), reference);
         return asm.getPlaceholder();
+    }
+
+    public AbstractAddress recordDataReferenceInCode(DataPointerConstant constant) {
+        return recordDataReferenceInCode(constant, constant.getAlignment());
     }
 
     public AbstractAddress recordDataReferenceInCode(Constant constant, int alignment) {

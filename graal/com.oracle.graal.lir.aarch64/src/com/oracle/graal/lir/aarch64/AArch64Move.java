@@ -42,6 +42,7 @@ import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -149,9 +150,9 @@ public class AArch64Move {
         public static final LIRInstructionClass<LoadDataOp> TYPE = LIRInstructionClass.create(LoadDataOp.class);
 
         @Def protected AllocatableValue result;
-        private final byte[] data;
+        private final DataPointerConstant data;
 
-        public LoadDataOp(AllocatableValue result, byte[] data) {
+        public LoadDataOp(AllocatableValue result, DataPointerConstant data) {
             super(TYPE);
             this.result = result;
             this.data = data;
@@ -160,8 +161,7 @@ public class AArch64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register dst = asRegister(result);
-            final int alignment = 8;
-            masm.loadAddress(dst, (AArch64Address) crb.recordDataReferenceInCode(data, alignment), alignment);
+            masm.loadAddress(dst, (AArch64Address) crb.recordDataReferenceInCode(data), data.getAlignment());
         }
     }
 

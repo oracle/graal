@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
-import static com.oracle.graal.compiler.common.BackendOptions.LinearScanVariant;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
-import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import com.oracle.graal.compiler.common.BackendOptions.LSRAVariant;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
@@ -52,8 +49,6 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
 
     @Override
     protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
-        assert isVariable(move.getResult()) || LinearScanVariant.getValue() == LSRAVariant.SSA_LSRA : "Move should not be produced in a non-SSA compilation: " + move;
-
         if (super.canEliminateSpillMove(block, move)) {
             // SSA Linear Scan might introduce moves to stack slots
             Interval curInterval = allocator.intervalFor(move.getResult());
@@ -68,7 +63,6 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
 
     @SuppressWarnings("try")
     private boolean isPhiResolutionMove(AbstractBlockBase<?> block, MoveOp move, Interval toInterval) {
-        assert LinearScanVariant.getValue() == LSRAVariant.SSA_LSRA;
         if (!toInterval.isSplitParent()) {
             return false;
         }

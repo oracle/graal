@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra.ssi;
+package com.oracle.graal.hotspot.word;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.lir.alloc.lsra.LinearScan;
-import com.oracle.graal.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.TO_SYMBOL_POINTER;
 
-public class SSILinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
+import com.oracle.graal.word.Pointer;
 
-    public SSILinearScanEliminateSpillMovePhase(LinearScan allocator) {
-        super(allocator);
-    }
+/**
+ * Marker type for a metaspace pointer to a symbol.
+ */
+public abstract class SymbolPointer extends MetaspacePointer {
 
-    @Override
-    protected int firstInstructionOfInterest() {
-        // also look at Labels as they define PHI values
-        return 0;
-    }
+    @HotSpotOperation(opcode = POINTER_EQ)
+    public abstract boolean equal(SymbolPointer other);
 
-    @Override
-    protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
-        // TODO (je) do not eliminate spill moves yet!
-        return false;
-    }
+    @HotSpotOperation(opcode = POINTER_NE)
+    public abstract boolean notEqual(SymbolPointer other);
+
+    @HotSpotOperation(opcode = TO_SYMBOL_POINTER)
+    public static native SymbolPointer fromWord(Pointer pointer);
 }

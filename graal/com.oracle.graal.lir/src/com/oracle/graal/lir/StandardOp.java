@@ -85,7 +85,7 @@ public class StandardOp {
      */
     public static final class LabelOp extends LIRInstruction {
         public static final LIRInstructionClass<LabelOp> TYPE = LIRInstructionClass.create(LabelOp.class);
-        private static final EnumSet<OperandFlag> flags = EnumSet.of(REG, STACK);
+        public static final EnumSet<OperandFlag> incomingFlags = EnumSet.of(REG, STACK);
 
         /**
          * In the LIR, every register and variable must be defined before it is used. For method
@@ -166,14 +166,14 @@ public class StandardOp {
 
         public void forEachIncomingValue(InstructionValueProcedure proc) {
             for (int i = 0; i < incomingValues.length; i++) {
-                incomingValues[i] = proc.doValue(this, incomingValues[i], OperandMode.DEF, flags);
+                incomingValues[i] = proc.doValue(this, incomingValues[i], OperandMode.DEF, incomingFlags);
             }
         }
     }
 
     public abstract static class AbstractBlockEndOp extends LIRInstruction implements BlockEndOp {
         public static final LIRInstructionClass<AbstractBlockEndOp> TYPE = LIRInstructionClass.create(AbstractBlockEndOp.class);
-        private static final EnumSet<OperandFlag> flags = EnumSet.of(REG, STACK, CONST, OUTGOING);
+        public static final EnumSet<OperandFlag> outgoingFlags = EnumSet.of(REG, STACK, CONST, OUTGOING);
 
         @Alive({REG, STACK, CONST, OUTGOING}) private Value[] outgoingValues;
         private int size;
@@ -223,7 +223,7 @@ public class StandardOp {
 
         public void forEachOutgoingValue(InstructionValueProcedure proc) {
             for (int i = 0; i < outgoingValues.length; i++) {
-                outgoingValues[i] = proc.doValue(this, outgoingValues[i], OperandMode.ALIVE, flags);
+                outgoingValues[i] = proc.doValue(this, outgoingValues[i], OperandMode.ALIVE, outgoingFlags);
             }
         }
     }

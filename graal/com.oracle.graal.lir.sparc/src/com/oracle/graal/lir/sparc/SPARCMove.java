@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,7 @@ import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -329,9 +330,9 @@ public class SPARCMove {
         public static final LIRInstructionClass<LoadDataAddressOp> TYPE = LIRInstructionClass.create(LoadDataAddressOp.class);
 
         @Def({REG}) protected AllocatableValue result;
-        private final byte[] data;
+        private final DataPointerConstant data;
 
-        public LoadDataAddressOp(AllocatableValue result, byte[] data) {
+        public LoadDataAddressOp(AllocatableValue result, DataPointerConstant data) {
             super(TYPE);
             this.result = result;
             this.data = data;
@@ -339,7 +340,7 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(data, 8);
+            SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(data);
             assert addr == masm.getPlaceholder();
             final boolean forceRelocatable = true;
             Register dstReg = asRegister(result);
@@ -348,7 +349,7 @@ public class SPARCMove {
 
         @Override
         public SizeEstimate estimateSize() {
-            return SizeEstimate.create(8, data.length);
+            return SizeEstimate.create(8, data.getSerializedSize());
         }
     }
 

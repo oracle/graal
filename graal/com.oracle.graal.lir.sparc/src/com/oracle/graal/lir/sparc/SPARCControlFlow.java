@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BPCC;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CBCOND;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.FBPCC;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.INSTRUCTION_SIZE;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm10;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm11;
@@ -32,6 +34,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Fcc0;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Icc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Always;
@@ -397,11 +400,11 @@ public class SPARCControlFlow {
             return false;
         }
         if (kind.isFloat()) {
-            masm.fbpcc(actualConditionFlag, NOT_ANNUL, actualTarget, CC.Fcc0, predictTaken);
+            FBPCC.emit(masm, Fcc0, actualConditionFlag, NOT_ANNUL, predictTaken, actualTarget);
         } else {
             assert kind.isInteger();
-            CC cc = kind.equals(SPARCKind.WORD) ? CC.Icc : CC.Xcc;
-            masm.bpcc(actualConditionFlag, NOT_ANNUL, actualTarget, cc, predictTaken);
+            CC cc = kind.equals(WORD) ? Icc : Xcc;
+            BPCC.emit(masm, cc, actualConditionFlag, NOT_ANNUL, predictTaken, actualTarget);
         }
         if (withDelayedNop) {
             masm.nop();  // delay slot
@@ -529,7 +532,7 @@ public class SPARCControlFlow {
                         const2reg(crb, masm, scratch, constantBaseRegister, (JavaConstant) keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
                         masm.cmp(keyRegister, scratchRegister);
                     }
-                    masm.bpcc(conditionFlag, ANNUL, target, conditionCode, PREDICT_TAKEN);
+                    BPCC.emit(masm, conditionCode, conditionFlag, ANNUL, PREDICT_TAKEN, target);
                     masm.nop();  // delay slot
                 }
             }
@@ -611,7 +614,7 @@ public class SPARCControlFlow {
 
                 // Jump to default target if index is not within the jump table
                 if (defaultTarget != null) {
-                    masm.bpcc(GreaterUnsigned, NOT_ANNUL, defaultTarget.label(), Icc, PREDICT_TAKEN);
+                    BPCC.emit(masm, Icc, GreaterUnsigned, NOT_ANNUL, PREDICT_TAKEN, defaultTarget.label());
                     masm.nop();  // delay slot
                 }
 
@@ -629,7 +632,7 @@ public class SPARCControlFlow {
 
             // Emit jump table entries
             for (LabelRef target : targets) {
-                masm.bpcc(Always, NOT_ANNUL, target.label(), Xcc, PREDICT_TAKEN);
+                BPCC.emit(masm, Xcc, Always, NOT_ANNUL, PREDICT_TAKEN, target.label());
                 masm.nop(); // delay slot
             }
         }

@@ -277,7 +277,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
                 barriers = graph.getNodes().filter(SerialWriteBarrier.class).count();
             }
             if (expectedBarriers != barriers) {
-                Assert.assertEquals("UseG1GC = " + config.useG1GC + " " + getCanonicalGraphString(graph, false, false), expectedBarriers, barriers);
+                Assert.assertEquals(getScheduledGraphString(graph), expectedBarriers, barriers);
             }
             for (WriteNode write : graph.getNodes().filter(WriteNode.class)) {
                 if (config.useG1GC) {

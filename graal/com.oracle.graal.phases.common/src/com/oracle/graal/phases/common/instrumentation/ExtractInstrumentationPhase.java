@@ -68,7 +68,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
             if (!instrumentation.inspectingIntrinsic()) {
                 InstrumentationNode instrumentationNode = instrumentation.createInstrumentationNode();
                 graph.addBeforeFixed(begin, instrumentationNode);
-                Debug.dump(instrumentationNode.instrumentationGraph(), "After extracted instrumentation at " + instrumentation);
+                Debug.dump(instrumentationNode.instrumentationGraph(), "After extracted instrumentation at %s", instrumentation);
             }
             instrumentation.unlink();
         }

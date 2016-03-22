@@ -22,22 +22,27 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
+
 import java.util.List;
 
-import com.oracle.graal.compiler.common.alloc.UniDirectionalTraceBuilder;
 import com.oracle.graal.compiler.common.alloc.BiDirectionalTraceBuilder;
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
+import com.oracle.graal.compiler.common.alloc.TraceStatisticsPrinter;
+import com.oracle.graal.compiler.common.alloc.UniDirectionalTraceBuilder;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.LIRPhase;
+import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
 
-public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderContext> {
+public class TraceBuilderPhase extends AllocationPhase {
 
     public static class Options {
         // @formatter:off
@@ -46,22 +51,31 @@ public class TraceBuilderPhase extends LIRPhase<TraceBuilderPhase.TraceBuilderCo
         // @formatter:on
     }
 
-    public static final class TraceBuilderContext {
-        public TraceBuilderResult<?> traceBuilderResult;
-
-    }
+    private static final int TRACE_LOG_LEVEL = 1;
+    public static final int TRACE_DUMP_LEVEL = 3;
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, TraceBuilderContext context) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
         B startBlock = linearScanOrder.get(0);
         LIR lir = lirGenRes.getLIR();
         assert startBlock.equals(lir.getControlFlowGraph().getStartBlock());
+        TraceBuilderResult<B> traceBuilderResult;
         if (Options.TraceRAbiDirectionalTraceBuilder.getValue()) {
-            context.traceBuilderResult = BiDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
+            traceBuilderResult = BiDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
         } else {
-            context.traceBuilderResult = UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
+            traceBuilderResult = UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
         }
-
+        assert TraceBuilderResult.verify(traceBuilderResult, lirGenRes.getLIR().getControlFlowGraph().getBlocks().size());
+        if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
+            List<Trace<B>> traces = traceBuilderResult.getTraces();
+            for (int i = 0; i < traces.size(); i++) {
+                Trace<B> trace = traces.get(i);
+                Debug.log(TRACE_LOG_LEVEL, "Trace %5d: %s%s", i, trace, isTrivialTrace(lirGenRes.getLIR(), trace) ? " (trivial)" : "");
+            }
+        }
+        TraceStatisticsPrinter.printTraceStatistics(traceBuilderResult, lirGenRes.getCompilationUnitName());
+        Debug.dump(TRACE_DUMP_LEVEL, traceBuilderResult, "After TraceBuilding");
+        context.contextAdd(traceBuilderResult);
     }
 
 }

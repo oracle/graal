@@ -37,9 +37,7 @@ final class TraceLinearScanRegisterAllocationPhase extends TraceLinearScanAlloca
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     TraceLinearScanAllocationContext context) {
         TraceLinearScan allocator = context.allocator;
-        allocator.printIntervals("Before register allocation");
         allocateRegisters(allocator);
-        allocator.printIntervals("After register allocation");
     }
 
     @SuppressWarnings("try")

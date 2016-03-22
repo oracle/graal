@@ -112,7 +112,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void twoMergesLoopExplosion() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new AddTestNode(new TwoMergesExplodedLoopTestNode(5), new ConstantTestNode(37));
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "nestedLoopExplosion", result));
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "twoMergesLoopExplosion", result));
     }
 
     @Test
