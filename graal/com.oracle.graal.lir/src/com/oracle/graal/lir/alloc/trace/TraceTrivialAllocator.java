@@ -60,7 +60,7 @@ final class TraceTrivialAllocator extends TraceAllocationPhase {
 
         AbstractBlockBase<?> pred = TraceUtil.getBestTraceInterPredecessor(resultTraces, block);
 
-        VariableVirtualStackValueMap<Variable, Value> variableMap = new VariableVirtualStackValueMap<>(lir.nextVariable(), 0);
+        VariableVirtualStackValueMap<Variable, Value> variableMap = new VariableVirtualStackValueMap<>(lir.numVariables(), 0);
         SSIUtil.forEachValuePair(lir, block, pred, (to, from) -> {
             if (isVariable(to)) {
                 variableMap.put(asVariable(to), from);
