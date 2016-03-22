@@ -712,6 +712,7 @@ class NodeSnippets {
             return super.isTaggedWith(tag);
         }
     }
+
     // END: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
 
     static class ExpressionTag {
