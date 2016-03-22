@@ -38,16 +38,35 @@ import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1_ALT;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import org.junit.After;
 import static org.junit.Assert.assertSame;
 
 public class EngineTest {
+    private Set<PolyglotEngine> toDispose = new HashSet<>();
+
     protected PolyglotEngine.Builder createBuilder() {
         return PolyglotEngine.newBuilder();
+    }
+
+    private PolyglotEngine register(PolyglotEngine engine) {
+        toDispose.add(engine);
+        return engine;
+    }
+
+    @After
+    public void dispose() {
+        for (PolyglotEngine engine : toDispose) {
+            engine.dispose();
+        }
     }
 
     @Test
     public void npeWhenCastingAs() throws Exception {
         PolyglotEngine tvm = createBuilder().build();
+        register(tvm);
 
         PolyglotEngine.Language language1 = tvm.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Language language2 = tvm.getLanguages().get("application/x-test-import-export-2");
@@ -61,7 +80,9 @@ public class EngineTest {
     @Test
     public void checkCachingOfNodes() throws IOException {
         PolyglotEngine vm1 = createBuilder().build();
-        PolyglotEngine vm2 = createBuilder().build();
+        register(vm1);
+        PolyglotEngine vm2 = createBuilder().executor(Executors.newSingleThreadExecutor()).build();
+        register(vm2);
 
         PolyglotEngine.Language language1 = vm1.getLanguages().get("application/x-test-hash");
         PolyglotEngine.Language language2 = vm2.getLanguages().get("application/x-test-hash");
@@ -109,6 +130,8 @@ public class EngineTest {
         Object[][] matrix = {{1, 2, 3}};
 
         PolyglotEngine tvm = createBuilder().globalSymbol("arr", new ArrayTruffleObject(matrix, forbiddenThread())).build();
+        register(tvm);
+
         PolyglotEngine.Language language1 = tvm.getLanguages().get("application/x-test-import-export-1");
         AccessArray access = language1.eval(Source.fromText("return=arr", "get the array")).as(AccessArray.class);
         assertNotNull("Array converted to list", access);
@@ -131,6 +154,7 @@ public class EngineTest {
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
         PolyglotEngine vm = builder.build();
+        register(vm);
 
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
 
@@ -159,6 +183,8 @@ public class EngineTest {
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
         PolyglotEngine vm = builder.build();
+        register(vm);
+
         PolyglotEngine.Language language1 = vm.getLanguages().get("application/x-test-import-export-1");
         Ctx ctx1 = language1.getGlobalObject().as(Ctx.class);
 
@@ -177,6 +203,7 @@ public class EngineTest {
         builder.config("application/x-test-import-export-2", "hello", "truffle");
         builder.config("application/x-test-import-export-2", "hello", "world");
         PolyglotEngine vm = builder.build();
+        register(vm);
 
         PolyglotEngine.Language language2 = vm.getLanguages().get("application/x-test-import-export-2");
         Ctx ctx2 = language2.getGlobalObject().as(Ctx.class);
@@ -189,6 +216,7 @@ public class EngineTest {
         builder.config("application/x-test-import-export-2", "hello", "world");
         builder.config("application/x-test-import-export-2", "hello", "truffle");
         PolyglotEngine vm = builder.build();
+        register(vm);
 
         PolyglotEngine.Language language2 = vm.getLanguages().get("application/x-test-import-export-2");
         Ctx ctx2 = language2.getGlobalObject().as(Ctx.class);
@@ -201,6 +229,7 @@ public class EngineTest {
         builder.config(L1, "hello", "truffle");
         builder.config(L1_ALT, "hello", "world");
         PolyglotEngine vm = builder.build();
+        register(vm);
 
         PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
         Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
@@ -213,6 +242,7 @@ public class EngineTest {
         builder.config(L1_ALT, "hello", "truffle");
         builder.config(L1, "hello", "world");
         PolyglotEngine vm = builder.build();
+        register(vm);
 
         PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
         Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
@@ -223,6 +253,7 @@ public class EngineTest {
     public void configIsNeverNull() throws IOException {
         Builder builder = createBuilder();
         PolyglotEngine vm = builder.build();
+        register(vm);
 
         PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
         Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
@@ -242,10 +273,14 @@ public class EngineTest {
         PolyglotEngine vm = builder.build();
         // @formatter:on
 
-        PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
-        Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
-        String[] read = (String[]) ctx2.env.getConfig().get("CMD_ARGS");
+        try {
+            PolyglotEngine.Language language1 = vm.getLanguages().get(L1);
+            Ctx ctx2 = language1.getGlobalObject().as(Ctx.class);
+            String[] read = (String[]) ctx2.env.getConfig().get("CMD_ARGS");
 
-        assertSame("The same array as specified is returned", args, read);
+            assertSame("The same array as specified is returned", args, read);
+        } finally {
+            vm.dispose();
+        }
     }
 }

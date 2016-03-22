@@ -59,6 +59,9 @@ import org.junit.Test;
 
 public class SLJavaInteropTest {
 
+    private PolyglotEngine engine;
+    private ByteArrayOutputStream os;
+
     @Before
     public void before() {
         InstrumentationTestMode.set(true);
@@ -69,12 +72,21 @@ public class SLJavaInteropTest {
         InstrumentationTestMode.set(false);
     }
 
+    @Before
+    public void create() {
+        os = new ByteArrayOutputStream();
+        engine = PolyglotEngine.newBuilder().setOut(os).build();
+    }
+
+    @After
+    public void dispose() {
+        engine.dispose();
+    }
+
     @Test
     public void asFunction() throws Exception {
         String scriptText = "function main() {\n" + "    println(\"Called!\");\n" + "}\n";
         Source script = Source.fromText(scriptText, "Test").withMimeType("application/x-sl");
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(os).build();
         engine.eval(script);
         PolyglotEngine.Value main = engine.findGlobalSymbol("main");
         final Object value = main.get();
