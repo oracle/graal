@@ -25,6 +25,9 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -107,6 +110,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * @since 0.8 or earlier
  */
 public abstract class LoopNode extends Node {
+    private static TVMCI SUPPORT;
+
     /**
      * Constructor for subclasses.
      * 
@@ -167,8 +172,91 @@ public abstract class LoopNode extends Node {
      */
     public static void reportLoopCount(Node source, int iterations) {
         if (CompilerDirectives.inInterpreter()) {
-            ACCESSOR.onLoopCount(source, iterations);
+            if (SUPPORT == null) {
+                final TruffleRuntime runtime = Truffle.getRuntime();
+                SUPPORT = runtime.getCapability(TVMCI.class);
+                if (SUPPORT == null) {
+                    SUPPORT = new NoOp();
+                }
+            }
+            SUPPORT.onLoopCount(source, iterations);
         }
     }
 
+    /**
+     * An interface between Truffle API and hosting virtual machine. Not interesting for regular
+     * Truffle API users. Acronym for Truffle Virtual Machine Compiler Interface.
+     * 
+     * @since 0.12
+     */
+    protected abstract class TVMCI {
+        /** Only useful for virtual machine implementors. 
+         * @since 0.12 
+         */
+        protected TVMCI() {
+        }
+
+        // the class is a member class to not be (easily) visible in Javadoc
+
+        /**
+         * Reports the execution count of a loop.
+         *
+         * @param source the Node which invoked the loop.
+         * @param iterations the number iterations to report to the runtime system
+         * @since 0.12
+         */
+        protected abstract void onLoopCount(Node source, int iterations);
+
+        /** Makes sure the <code>callTarget</code> is initialized.
+         *
+         * @param callTarget
+         * @since 0.12
+         */
+        public void initializeCallTarget(RootCallTarget callTarget) {
+            ACCESSOR.initializeCallTarget(callTarget);
+        }
+
+        /** Finds the language associated with given root node.
+         *
+         * @param root the node
+         * @return the language of the node
+         * @since 0.12
+         */
+        @SuppressWarnings("rawtypes")
+        public Class<? extends TruffleLanguage> findLanguageClass(RootNode root) {
+            return ACCESSOR.findLanguage(root);
+        }
+    }
+
+    private static final class NoOp extends TVMCI {
+        private static final LoopNode NO_OP_NODE = new LoopNode() {
+            @Override
+            public void executeLoop(VirtualFrame frame) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public RepeatingNode getRepeatingNode() {
+                throw new UnsupportedOperationException();
+            }
+        };
+
+        NoOp() {
+            NO_OP_NODE.super();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected void onLoopCount(Node source, int iterations) {
+            // needs an additional compatibilty check so older graal runtimes
+            // still run with newer truffle versions
+            RootNode root = source.getRootNode();
+            if (root != null) {
+                RootCallTarget target = root.getCallTarget();
+                if (target instanceof com.oracle.truffle.api.LoopCountReceiver) {
+                    ((com.oracle.truffle.api.LoopCountReceiver) target).reportLoopCount(iterations);
+                }
+            }
+        }
+    }
 }

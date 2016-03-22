@@ -42,7 +42,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.boot.LoopCountSupport;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
@@ -408,25 +407,6 @@ public abstract class Accessor {
 
     protected String toString(TruffleLanguage<?> language, Env env, Object obj) {
         return API.toString(language, env, obj);
-    }
-
-    @SuppressWarnings({"deprecation", "rawtypes", "unchecked"})
-    protected void onLoopCount(Node source, int count) {
-        LoopCountSupport loopSupport = TruffleInfoImpl.INFO.loops();
-        // optimized calltarget is not existent on default runtimes
-        if (loopSupport != null) {
-            loopSupport.onLoopCount(source, count);
-        } else {
-            // needs an additional compatibilty check so older graal runtimes
-            // still run with newer truffle versions
-            RootNode root = source.getRootNode();
-            if (root != null) {
-                RootCallTarget target = root.getCallTarget();
-                if (target instanceof com.oracle.truffle.api.LoopCountReceiver) {
-                    ((com.oracle.truffle.api.LoopCountReceiver) target).reportLoopCount(count);
-                }
-            }
-        }
     }
 
     static <T extends TruffleLanguage<?>> T findLanguageByClass(Object vm, Class<T> languageClass) {
