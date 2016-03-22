@@ -49,6 +49,7 @@ import com.oracle.truffle.tools.debug.shell.server.REPLServer.REPLVisualizer;
  * <p>
  * The language-agnostic handlers are implemented here.
  */
+@SuppressWarnings("deprecation")
 public abstract class REPLHandler {
 
     // TODO (mlvdv) add support for setting/using ignore count

@@ -64,6 +64,7 @@ import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.Location
  * The server side of a simple message-based protocol for a possibly remote language
  * Read-Eval-Print-Loop.
  */
+@SuppressWarnings("deprecation")
 public final class REPLServer {
 
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
@@ -586,7 +587,6 @@ public final class REPLServer {
         }
 
         @Override
-        @SuppressWarnings("deprecation")
         protected void activate() throws IOException {
             breakpoint = db.setTagBreakpoint(ignoreCount, tag, oneShot);
             // TODO (mlvdv) check if resolved
