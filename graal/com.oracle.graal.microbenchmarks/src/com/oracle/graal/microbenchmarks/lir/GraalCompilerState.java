@@ -1,9 +1,14 @@
 package com.oracle.graal.microbenchmarks.lir;
 
+import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getGraph;
+import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getMethodFromMethodSpec;
+
 import java.util.List;
 
 import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.api.test.Graal;
@@ -14,6 +19,9 @@ import com.oracle.graal.compiler.LIRGenerationPhase;
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
@@ -23,7 +31,9 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.microbenchmarks.graal.util.GraphState;
+import com.oracle.graal.microbenchmarks.graal.util.GraalState;
+import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.spi.LoweringProvider;
@@ -44,8 +54,23 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public abstract class GraalCompilerState extends GraphState {
+/**
+ * State providing a new copy of a graph for each invocation of a benchmark. Subclasses of this
+ * class are annotated with {@link MethodSpec} to specify the Java method that will be parsed to
+ * obtain the original graph.
+ */
+@State(Scope.Thread)
+public abstract class GraalCompilerState {
 
+    /**
+     * Original graph from which the per-benchmark invocation {@link #graph} is cloned.
+     */
+    private final StructuredGraph originalGraph;
+
+    /**
+     * The graph processed by the benchmark.
+     */
+    private StructuredGraph graph;
     private final Backend backend;
     private final Providers providers;
     private final DerivedOptionValue<Suites> suites;
@@ -61,6 +86,24 @@ public abstract class GraalCompilerState extends GraphState {
         this.suites = new DerivedOptionValue<>(this::createSuites);
         this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
 
+        // Ensure a debug configuration for this thread is initialized
+        if (Debug.isEnabled() && DebugScope.getConfig() == null) {
+            DebugEnvironment.initialize(System.out);
+        }
+
+        GraalState graal = new GraalState();
+        ResolvedJavaMethod method = graal.metaAccess.lookupJavaMethod(getMethodFromMethodSpec(getClass()));
+        StructuredGraph structuredGraph = null;
+        try (Debug.Scope s = Debug.scope("GraphState", method)) {
+            structuredGraph = preprocessOriginal(getGraph(graal, method));
+        } catch (Throwable t) {
+            Debug.handle(t);
+        }
+        this.originalGraph = structuredGraph;
+    }
+
+    protected StructuredGraph preprocessOriginal(StructuredGraph structuredGraph) {
+        return structuredGraph;
     }
 
     protected Suites createSuites() {
@@ -122,6 +165,21 @@ public abstract class GraalCompilerState extends GraphState {
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
     }
 
+    private LIRSuites getUpdatedLIRSuites() {
+        LIRSuites updatedLIRSuites = updateLIRSuite(request.lirSuites);
+        if (updatedLIRSuites != null) {
+            return updatedLIRSuites;
+        }
+        return request.lirSuites;
+    }
+
+    /**
+     * @param originalLIRSuites the original {@link LIRSuites suites} ({@link #getLIRSuites()}).
+     */
+    protected LIRSuites updateLIRSuite(LIRSuites originalLIRSuites) {
+        return null;
+    }
+
     private Request<CompilationResult> request;
     private LIRGenerationResult lirGenRes;
     private LIRGeneratorTool lirGenTool;
@@ -132,17 +190,11 @@ public abstract class GraalCompilerState extends GraphState {
     private List<Block> linearScanOrder;
 
     protected void prepareRequest() {
+        graph = (StructuredGraph) originalGraph.copy();
+        assert !graph.isFrozen();
         ResolvedJavaMethod installedCodeOwner = graph.method();
         request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                         graph.getProfilingInfo(), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
-    }
-
-    @SuppressWarnings("try")
-    protected CompilationResult compile() {
-        assert !request.graph.isFrozen();
-        emitFrontEnd();
-        emitBackEnd();
-        return request.compilationResult;
     }
 
     protected void emitFrontEnd() {
@@ -192,17 +244,17 @@ public abstract class GraalCompilerState extends GraphState {
 
     protected void preAllocationStage() {
         PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGenTool);
-        request.lirSuites.getPreAllocationOptimizationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
+        getUpdatedLIRSuites().getPreAllocationOptimizationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
     }
 
     protected void allocationStage() {
         AllocationContext allocContext = new AllocationContext(lirGenTool.getSpillMoveFactory(), request.backend.newRegisterAllocationConfig(registerConfig));
-        request.lirSuites.getAllocationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
+        getUpdatedLIRSuites().getAllocationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
     }
 
     protected void postAllocationStage() {
         PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext(lirGenTool);
-        request.lirSuites.getPostAllocationOptimizationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, postAllocOptContext);
+        getUpdatedLIRSuites().getPostAllocationOptimizationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, postAllocOptContext);
     }
 
     protected void emitCode() {
@@ -213,32 +265,43 @@ public abstract class GraalCompilerState extends GraphState {
     }
 
     public abstract static class Compile extends GraalCompilerState {
+
         @Setup(Level.Invocation)
         public void setup() {
-            super.prepareRequest();
+            prepareRequest();
+        }
+
+        public CompilationResult compile() {
+            emitFrontEnd();
+            emitBackEnd();
+            return super.request.compilationResult;
         }
 
     }
 
-    public abstract static class FrontEndOnly extends GraalCompilerState.Compile {
+    public abstract static class FrontEndOnly extends GraalCompilerState {
 
-        @Override
-        protected void emitBackEnd() {
-            // do nothing
+        @Setup(Level.Invocation)
+        public void setup() {
+            prepareRequest();
         }
+
+        public CompilationResult compile() {
+            emitFrontEnd();
+            return super.request.compilationResult;
+        }
+
     }
 
     public abstract static class BackEndOnly extends GraalCompilerState {
         @Setup(Level.Invocation)
         public void prepareFrontEnd() {
-            super.prepareRequest();
-            super.emitFrontEnd();
+            prepareRequest();
+            emitFrontEnd();
         }
 
-        @Override
         public CompilationResult compile() {
-            assert !super.request.graph.isFrozen();
-            super.emitBackEnd();
+            emitBackEnd();
             return super.request.compilationResult;
         }
     }
@@ -246,14 +309,12 @@ public abstract class GraalCompilerState extends GraphState {
     public abstract static class PreAllocationStage extends GraalCompilerState {
         @Setup(Level.Invocation)
         public void setup() {
-            assert !super.request.graph.isFrozen();
-            super.prepareRequest();
-            super.emitFrontEnd();
+            prepareRequest();
+            emitFrontEnd();
             prepareLIR();
             generateLIR();
         }
 
-        @Override
         public CompilationResult compile() {
             preAllocationStage();
             return super.request.compilationResult;
@@ -263,15 +324,13 @@ public abstract class GraalCompilerState extends GraphState {
     public abstract static class AllocationStage extends GraalCompilerState {
         @Setup(Level.Invocation)
         public void setup() {
-            assert !super.request.graph.isFrozen();
-            super.prepareRequest();
-            super.emitFrontEnd();
+            prepareRequest();
+            emitFrontEnd();
             prepareLIR();
             generateLIR();
             preAllocationStage();
         }
 
-        @Override
         public CompilationResult compile() {
             allocationStage();
             return super.request.compilationResult;
@@ -281,16 +340,14 @@ public abstract class GraalCompilerState extends GraphState {
     public abstract static class PostAllocationStage extends GraalCompilerState {
         @Setup(Level.Invocation)
         public void setup() {
-            assert !super.request.graph.isFrozen();
-            super.prepareRequest();
-            super.emitFrontEnd();
+            prepareRequest();
+            emitFrontEnd();
             prepareLIR();
             generateLIR();
             preAllocationStage();
             allocationStage();
         }
 
-        @Override
         public CompilationResult compile() {
             postAllocationStage();
             return super.request.compilationResult;
