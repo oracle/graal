@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.function.Consumer;
-
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -61,6 +55,11 @@ import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.options.NestedBooleanOptionValue;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Linear Scan {@link StackSlotAllocatorUtil stack slot allocator}.
@@ -143,7 +142,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
             // step 3: verify intervals
             if (Debug.isEnabled()) {
                 try (DebugCloseable t = VerifyIntervalsTimer.start()) {
-                    verifyIntervals();
+                    assert verifyIntervals();
                 }
             }
             if (Debug.isDumpEnabled()) {
@@ -208,10 +207,13 @@ public final class LSStackSlotAllocator extends AllocationPhase {
         // step 3: verify intervals
         // ====================
 
-        private void verifyIntervals() {
-            forEachInterval(interval -> {
-                assert interval.verify(maxOpId());
-            });
+        private boolean verifyIntervals() {
+            for (StackInterval interval : stackSlotMap) {
+                if (interval != null) {
+                    assert interval.verify(maxOpId());
+                }
+            }
+            return true;
         }
 
         // ====================
@@ -221,7 +223,11 @@ public final class LSStackSlotAllocator extends AllocationPhase {
         @SuppressWarnings("try")
         private void allocateStackSlots() {
             // create unhandled lists
-            forEachInterval(unhandled::add);
+            for (StackInterval interval : stackSlotMap) {
+                if (interval != null) {
+                    unhandled.add(interval);
+                }
+            }
 
             for (StackInterval current = activateNext(); current != null; current = activateNext()) {
                 try (Indent indent = Debug.logAndIndent("allocate %s", current)) {
@@ -424,14 +430,6 @@ public final class LSStackSlotAllocator extends AllocationPhase {
 
         private StackInterval get(VirtualStackSlot stackSlot) {
             return stackSlotMap[stackSlot.getId()];
-        }
-
-        private void forEachInterval(Consumer<StackInterval> proc) {
-            for (StackInterval interval : stackSlotMap) {
-                if (interval != null) {
-                    proc.accept(interval);
-                }
-            }
         }
 
         private void dumpIntervals(String label) {
