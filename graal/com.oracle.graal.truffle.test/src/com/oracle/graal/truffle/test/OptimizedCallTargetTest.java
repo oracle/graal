@@ -29,7 +29,6 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -101,8 +100,8 @@ public class OptimizedCallTargetTest {
     public void testRewriteAssumption() {
         String testName = "testRewriteAssumption";
         final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
-        assumeTrue(compilationThreshold >= 2);
-        assumeTrue(TruffleCompilerOptions.TruffleFunctionInlining.getValue());
+        assertTrue(compilationThreshold >= 2);
+        assertTrue("test only works with inlining enabled", TruffleCompilerOptions.TruffleFunctionInlining.getValue());
 
         IntStream.range(0, 8).parallel().forEach(i -> {
             OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
