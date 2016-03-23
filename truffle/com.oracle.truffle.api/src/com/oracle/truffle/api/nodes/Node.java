@@ -46,7 +46,7 @@ import com.oracle.truffle.api.utilities.JSONHelper;
 
 /**
  * Abstract base class for all Truffle nodes.
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class Node implements NodeInterface, Cloneable {
@@ -56,7 +56,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Marks array fields that are children of this node.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -66,7 +66,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Marks fields that represent child nodes of this node.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -126,7 +126,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * {@link NodeInfo#cost()} of the {@link NodeInfo} annotation declared at the subclass. If no
      * {@link NodeInfo} annotation is declared the method returns {@link NodeCost#MONOMORPHIC} as a
      * default value.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public NodeCost getCost() {
@@ -348,7 +348,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Checks if this node can be replaced by another node: tree structure & type.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public final boolean isSafelyReplaceableBy(Node newNode) {
@@ -465,7 +465,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Converts this node to a textual representation useful for debugging.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Override
@@ -526,7 +526,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Returns a user-readable description of the purpose of the Node, or "" if no description is
      * available.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public String getDescription() {
@@ -540,7 +540,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Returns a string representing the language this node has been implemented for. If the
      * language is unknown, returns "".
-     * 
+     *
      * @since 0.8 or earlier
      */
     public String getLanguage() {
@@ -602,8 +602,13 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         @Override
-        protected void installRootNode(RootNode node) {
-            super.installRootNode(node);
+        protected void onFirstExecution(RootNode node) {
+            super.onFirstExecution(node);
+        }
+
+        @Override
+        protected void onLoopCount(Node source, int iterations) {
+            super.onLoopCount(source, iterations);
         }
     }
 

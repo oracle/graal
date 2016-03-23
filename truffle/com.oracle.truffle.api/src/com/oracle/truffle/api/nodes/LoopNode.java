@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -45,29 +44,29 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * <pre>
  * <code>
  * public class WhileNode extends GuestLanguageNode {
- * 
+ *
  *     &#064;{@link Node.Child} private {@link LoopNode} loop;
- * 
+ *
  *     public WhileNode(GuestLanguageNode conditionNode, GuestLanguageNode bodyNode) {
  *         loop = Truffle.getRuntime().createLoopNode(new WhileRepeatingNode(conditionNode, bodyNode));
  *     }
- * 
+ *
  *     &#064;Override
  *     public Object execute({@link VirtualFrame} frame) {
  *         loop.executeLoop(frame);
  *         return null;
  *     }
- * 
+ *
  *     private static class WhileRepeatingNode extends {@link Node} implements {@link RepeatingNode} {
- * 
+ *
  *         &#064;{@link Node.Child} private GuestLanguageNode conditionNode;
  *         &#064;{@link Node.Child} private GuestLanguageNode bodyNode;
- * 
+ *
  *         public WhileRepeatingNode(GuestLanguageNode conditionNode, GuestLanguageNode bodyNode) {
  *             this.conditionNode = conditionNode;
  *             this.bodyNode = bodyNode;
  *         }
- * 
+ *
  *         public boolean executeRepeating({@link VirtualFrame} frame) {
  *             if ((boolean) conditionNode.execute(frame)) {
  *                 try {
@@ -86,14 +85,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *             }
  *         }
  *     }
- * 
+ *
  * }
- * 
+ *
  * // substitute with a guest language node type
  * public abstract class GuestLanguageNode extends {@link Node} {
- * 
+ *
  *     public abstract Object execute({@link VirtualFrame} frame);
- * 
+ *
  * }
  * // thrown by guest language continue statements
  * public final class ContinueException extends {@link ControlFlowException} {}
@@ -110,7 +109,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public abstract class LoopNode extends Node {
     /**
      * Constructor for subclasses.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected LoopNode() {
@@ -130,7 +129,7 @@ public abstract class LoopNode extends Node {
 
     /**
      * Returns the repeating node the loop node was created with.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract RepeatingNode getRepeatingNode();
@@ -157,7 +156,7 @@ public abstract class LoopNode extends Node {
      *         LoopNode.reportLoopCount(data.length);
      *     }
      * }
-     * 
+     *
      * </pre>
      * </code>
      * </p>
@@ -168,56 +167,7 @@ public abstract class LoopNode extends Node {
      */
     public static void reportLoopCount(Node source, int iterations) {
         if (CompilerDirectives.inInterpreter()) {
-            NodeVMSupport.onLoopCount(source, iterations);
-        }
-    }
-
-    /**
-     * An interface between Truffle API and hosting virtual machine. Not interesting for regular
-     * Truffle API users. Acronym for Truffle Virtual Machine Compiler Interface.
-     * 
-     * @since 0.12
-     */
-    protected abstract class TVMCI {
-        /**
-         * Only useful for virtual machine implementors.
-         * 
-         * @since 0.12
-         */
-        protected TVMCI() {
-        }
-
-        // the class is a member class to not be (easily) visible in Javadoc
-
-        /**
-         * Reports the execution count of a loop.
-         *
-         * @param source the Node which invoked the loop.
-         * @param iterations the number iterations to report to the runtime system
-         * @since 0.12
-         */
-        protected abstract void onLoopCount(Node source, int iterations);
-
-        /**
-         * Makes sure the <code>rootNode</code> is initialized.
-         *
-         * @param rootNode
-         * @since 0.12
-         */
-        public void installRootNode(RootNode rootNode) {
-            ACCESSOR.installRootNode(rootNode);
-        }
-
-        /**
-         * Finds the language associated with given root node.
-         *
-         * @param root the node
-         * @return the language of the node
-         * @since 0.12
-         */
-        @SuppressWarnings("rawtypes")
-        public Class<? extends TruffleLanguage> findLanguageClass(RootNode root) {
-            return ACCESSOR.findLanguage(root);
+            Node.ACCESSOR.onLoopCount(source, iterations);
         }
     }
 

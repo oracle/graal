@@ -754,7 +754,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void installRootNode(RootNode node) {
+        protected void onFirstExecution(RootNode node) {
             Object instrumentationHandler = ACCESSOR.getInstrumentationHandler(null);
             // we want to still support cases where call targets are executed without an enclosing
             // engine.

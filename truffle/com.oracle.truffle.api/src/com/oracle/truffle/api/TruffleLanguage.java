@@ -72,7 +72,7 @@ import java.util.Set;
 public abstract class TruffleLanguage<C> {
     /**
      * Constructor to be called by subclasses.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected TruffleLanguage() {
@@ -85,7 +85,7 @@ public abstract class TruffleLanguage<C> {
      * <em>one JAR drop to the class path</em> away from your users. Once they include your JAR in
      * their application, your language will be available to the
      * {@link com.oracle.truffle.api.vm.PolyglotEngine Truffle virtual machine}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.SOURCE)
@@ -237,7 +237,7 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Gets visualization services for language-specific information.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Deprecated
@@ -246,11 +246,11 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns {@code true} for a node can be "instrumented" by
-     * {@linkplain Instrumenter#probe(Node) probing}.
+     * Returns {@code true} for a node can be "instrumented" by {@linkplain Instrumenter#probe(Node)
+     * probing}.
      * <p>
      * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
-     * 
+     *
      * @see WrapperNode
      * @since 0.8 or earlier
      */
@@ -289,8 +289,7 @@ public abstract class TruffleLanguage<C> {
     /**
      * Generates language specific textual representation of a value. Each language may have special
      * formating conventions - even primitive values may not follow the traditional Java formating
-     * rules. As such when
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class)
+     * rules. As such when {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class)
      * value.as(String.class)} is requested, it consults the language that produced the value by
      * calling this method. By default this method calls {@link Objects#toString(java.lang.Object)}.
      *
@@ -376,7 +375,7 @@ public abstract class TruffleLanguage<C> {
      * {@link TruffleLanguage} receives instance of the environment before any code is executed upon
      * it. The environment has knowledge of all active languages and can exchange symbols between
      * them.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final class Env {
@@ -545,7 +544,7 @@ public abstract class TruffleLanguage<C> {
         }
     }
 
-    private static final AccessAPI API = new AccessAPI();
+    static final AccessAPI API = new AccessAPI();
 
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
