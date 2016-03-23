@@ -68,9 +68,6 @@ public class Debug {
         for (DebugInitializationParticipant p : Services.load(DebugInitializationParticipant.class)) {
             p.apply(params);
         }
-        if (!params.enable && (params.enableUnscopedMetrics || params.enableUnscopedTimers || params.enableUnscopedMemUseTrackers)) {
-            params.enable = true;
-        }
     }
 
     /**
