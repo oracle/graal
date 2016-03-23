@@ -166,35 +166,92 @@ def pullLLVMBinaries(args=None):
 
 def dragonEgg(args=None):
     """executes GCC with dragonegg"""
-    executeCommand = ["gcc-4.6", "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
+    executeCommand = [getGCC(), "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
     return mx.run(executeCommand + args)
 
 def dragonEggGPP(args=None):
     """executes G++ with dragonegg"""
-    executeCommand = ["g++-4.6", "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
+    executeCommand = [getGPP(), "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
     return mx.run(executeCommand + args)
 
-def hasDragoneggGCCInstalled():
-    return os.system('gcc-4.6 --version') == 0
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, _ = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
+def getDefaultGCC():
+    # Ubuntu
+    if which('gcc-4.6') is not None:
+        return 'gcc-4.6'
+    # Mac
+    if which('gcc46') is not None:
+        return 'gcc46'
+    return None
+
+def getDefaultGPP():
+    # Ubuntu
+    if which('g++-4.6') is not None:
+        return 'g++-4.6'
+    return None
+
+def getCommand(envVariable):
+    """gets an environment variable and checks that it is an executable program"""
+    command = os.getenv(envVariable)
+    if command is None:
+        return None
+    else:
+        if which(command) is None:
+            mx.abort(envVariable + '=' + command +' specifies an invalid command!')
+        else:
+            return command
+
+def getGCC():
+    """tries to locate a gcc version suitable to execute Dragonegg"""
+    specifiedGCC = getCommand('SULONG_GCC')
+    if specifiedGCC is not None:
+        return specifiedGCC
+    if getDefaultGCC() is not None:
+        return getDefaultGCC()
+    else:
+        mx.abort('Could not find a compatible GCC version to execute Dragonegg! Please install gcc-4.6 or another compatible version and specify it in the env file')
+
+def getGPP():
+    """tries to locate a g++ version suitable to execute Dragonegg"""
+    specifiedCPP = getCommand('SULONG_GPP')
+    if specifiedCPP is not None:
+        return specifiedCPP
+    if getDefaultGPP() is not None:
+        return getDefaultGPP()
+    else:
+        mx.abort('Could not find a compatible GCC version to execute Dragonegg! Please install g++-4.6 or another compatible version and specify it in the env file')
 
 # platform independent
 def pullInstallDragonEgg(args=None):
-    """downloads and installs dragonegg (assumes that gcc-4.6 and g++-4.6 are installed)"""
-    if hasDragoneggGCCInstalled():
-        toolDir = join(_toolDir, "tools/dragonegg")
-        mx.ensure_dir_exists(toolDir)
-        url = 'http://llvm.org/releases/3.2/dragonegg-3.2.src.tar.gz'
-        localPath = pullsuite(toolDir, [url])
-        tar(localPath, toolDir)
-        os.remove(localPath)
-        os.environ['GCC'] = 'gcc-4.6'
-        os.environ['CXX'] = 'g++-4.6'
-        os.environ['CC'] = 'gcc-4.6'
-        os.environ['LLVM_CONFIG'] = _toolDir + 'tools/llvm/bin/llvm-config'
-        compileCommand = ['make']
-        return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
-    else:
-        print 'could not find gcc-4.6, skip installing dragonegg!'
+    """downloads and installs dragonegg (assumes that compatible GCC and G++ versions are installed)"""
+    toolDir = join(_toolDir, "tools/dragonegg")
+    mx.ensure_dir_exists(toolDir)
+    url = 'http://llvm.org/releases/3.2/dragonegg-3.2.src.tar.gz'
+    localPath = pullsuite(toolDir, [url])
+    tar(localPath, toolDir)
+    os.remove(localPath)
+    os.environ['GCC'] = getGCC()
+    os.environ['CXX'] = getGPP()
+    os.environ['CC'] = getGCC()
+    os.environ['LLVM_CONFIG'] = _toolDir + 'tools/llvm/bin/llvm-config'
+    compileCommand = ['make']
+    return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
 
 # platform independent
 def pullLLVMSuite(args=None):
@@ -401,8 +458,8 @@ def compileWithClang(args=None):
 def compileWithGCC(args=None):
     """runs GCC"""
     ensureLLVMBinariesExist()
-    clangPath = _toolDir + 'tools/llvm/bin/clang'
-    return mx.run([clangPath] + args)
+    gccPath = _toolDir + 'tools/llvm/bin/gcc'
+    return mx.run([gccPath] + args)
 
 
 def opt(args=None):
