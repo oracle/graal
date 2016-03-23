@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * A FrameMapBuilder that records allocation.
  */
-public class FrameMapBuilderImpl implements FrameMapBuilderTool {
+public class FrameMapBuilderImpl extends FrameMapBuilderTool {
 
     private final RegisterConfig registerConfig;
     private final CodeCacheProvider codeCache;
@@ -69,12 +69,14 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
         this.numStackSlots = 0;
     }
 
+    @Override
     public VirtualStackSlot allocateSpillSlot(LIRKind kind) {
         SimpleVirtualStackSlot slot = new SimpleVirtualStackSlot(numStackSlots++, kind);
         stackSlots.add(slot);
         return slot;
     }
 
+    @Override
     public VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<VirtualStackSlot> outObjectStackSlots) {
         if (slots == 0) {
             return null;
@@ -87,26 +89,32 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
         return slot;
     }
 
+    @Override
     public RegisterConfig getRegisterConfig() {
         return registerConfig;
     }
 
+    @Override
     public CodeCacheProvider getCodeCache() {
         return codeCache;
     }
 
+    @Override
     public FrameMap getFrameMap() {
         return frameMap;
     }
 
+    @Override
     public int getNumberOfStackSlots() {
         return numStackSlots;
     }
 
+    @Override
     public void callsMethod(CallingConvention cc) {
         calls.add(cc);
     }
 
+    @Override
     @SuppressWarnings("try")
     public FrameMap buildFrameMap(LIRGenerationResult res) {
         if (Debug.isEnabled()) {
@@ -136,6 +144,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
         }
     }
 
+    @Override
     public List<VirtualStackSlot> getStackSlots() {
         return stackSlots;
     }
