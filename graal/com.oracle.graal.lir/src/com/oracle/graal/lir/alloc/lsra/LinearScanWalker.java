@@ -307,7 +307,7 @@ class LinearScanWalker extends IntervalWalker {
         }
 
         int minLoopDepth = maxBlock.getLoopDepth();
-        for (int i = toBlockNr - 1; i >= fromBlockNr; i--) {
+        for (int i = toBlockNr - 1; minLoopDepth > 0 && i >= fromBlockNr; i--) {
             AbstractBlockBase<?> cur = blockAt(i);
 
             if (cur.getLoopDepth() < minLoopDepth) {
