@@ -51,11 +51,12 @@ import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 
 public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     /**
-     * Don't allow probability values to be become too small as this makes frequency calculations
-     * large enough that they can overflow the range of a double. This commonly happens with
-     * infinite loops within infinite loops.
+     * Don't allow probability values to be become too small or too high as this makes frequency
+     * calculations over- or underflow the range of a double. This commonly happens with infinite
+     * loops within infinite loops.
      */
     public static final double MIN_PROBABILITY = 0.000001;
+    public static final double MAX_PROBABILITY = 1 / MIN_PROBABILITY;
 
     public final StructuredGraph graph;
 
@@ -202,8 +203,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    // Identify and connect blocks (including loop backward edges). Predecessors need to be in the
-    // order expected when iterating phi inputs.
+    /**
+     * Identify and connect blocks (including loop backward edges). Predecessors need to be in the
+     * order expected when iterating phi inputs.
+     */
     private void identifyBlocks() {
         // Find all block headers.
         int numBlocks = 0;
@@ -334,7 +337,13 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     probability *= loopBegin.loopFrequency();
                 }
             }
-            block.setProbability(probability);
+            if (probability < MIN_PROBABILITY) {
+                block.setProbability(MIN_PROBABILITY);
+            } else if (probability > MAX_PROBABILITY) {
+                block.setProbability(MAX_PROBABILITY);
+            } else {
+                block.setProbability(probability);
+            }
         }
 
     }
