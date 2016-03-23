@@ -22,24 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
-
-import com.oracle.truffle.api.nodes.ControlFlowException;
+package com.oracle.truffle.api.debug;
 
 /**
- * Controls breaking out of all executions and ending Truffle execution.
+ * Controls breaking out of an execution context, such as a shell or eval. This exception now
+ * extends {@link ThreadDeath} as that is the error that is supposed to not be ever caught. As its
+ * Javadoc puts it: <em>
+ * An application should catch instances of this class only if it must clean up
+ * after being terminated asynchronously. If {@code ThreadDeath} is caught by a
+ * method, it is important that it be re-thrown so that the thread actually dies.
+ * </em> The re-throwing is important aspect of <code>KillException</code> and as such it
+ * piggy-backs on this aspect of {@link ThreadDeath}. For code that can distinguish between
+ * classical {@link ThreadDeath} and {@link KillException}, is still OK to catch the exception and
+ * not propagate it any further.
  *
- * @since 0.8 or earlier
+ * @since 0.12
  */
-@Deprecated
-public final class QuitException extends ControlFlowException {
-    private static final long serialVersionUID = -7101931337099807445L;
+final class KillException extends ThreadDeath {
+    private static final long serialVersionUID = -8638020836970813894L;
 
     /**
      * Default constructor.
-     *
-     * @since 0.8 or earlier
+     * 
+     * @since 0.12
      */
-    public QuitException() {
+    KillException() {
     }
 }

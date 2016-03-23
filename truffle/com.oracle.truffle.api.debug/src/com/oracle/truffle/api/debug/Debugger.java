@@ -34,7 +34,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
@@ -973,13 +972,15 @@ public final class Debugger {
 
             try {
                 // Pass control to the debug client with current execution suspended
-                ACCESSOR.dispatchEvent(engine, new SuspendedEvent(Debugger.this, haltedNode, haltedFrame, contextStack, recentWarnings));
+                SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedNode, haltedFrame, contextStack, recentWarnings);
+                ACCESSOR.dispatchEvent(engine, event);
+                if (event.isKillPrepared()) {
+                    contextTrace("KILL");
+                    throw new KillException();
+                }
                 // Debug client finished normally, execution resumes
                 // Presume that the client has set a new strategy (or default to Continue)
                 running = true;
-            } catch (KillException e) {
-                contextTrace("KILL");
-                throw e;
             } finally {
                 haltedNode = null;
                 haltedFrame = null;
@@ -1059,10 +1060,14 @@ public final class Debugger {
      * @throws IOException
      */
     Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
-        if (frameInstance == null) {
-            return ACCESSOR.evalInContext(engine, ev, code, debugContext.haltedNode, debugContext.haltedFrame);
-        } else {
-            return ACCESSOR.evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
+        try {
+            if (frameInstance == null) {
+                return ACCESSOR.evalInContext(engine, ev, code, debugContext.haltedNode, debugContext.haltedFrame);
+            } else {
+                return ACCESSOR.evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
+            }
+        } catch (KillException kex) {
+            throw new IOException("Evaluation was killed.", kex);
         }
     }
 

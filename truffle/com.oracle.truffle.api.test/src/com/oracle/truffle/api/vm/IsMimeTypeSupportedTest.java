@@ -29,14 +29,26 @@ import java.io.IOException;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
+import org.junit.After;
+import org.junit.Before;
 
 public class IsMimeTypeSupportedTest {
 
     private static final String MIME_TYPE = "application/x-test-mime-type-supported";
+    private PolyglotEngine vm;
+
+    @Before
+    public void create() {
+        vm = PolyglotEngine.newBuilder().build();
+    }
+
+    @After
+    public void dispose() {
+        vm.dispose();
+    }
 
     @Test
     public void isMimeSupported() throws IOException {
-        PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         assertEquals(true, vm.eval(Source.fromText(MIME_TYPE, "supported").withMimeType(MIME_TYPE)).as(Boolean.class));
         assertEquals(false, vm.eval(Source.fromText("application/x-this-language-does-not-exist", "unsupported").withMimeType(MIME_TYPE)).as(Boolean.class));
     }

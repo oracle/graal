@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
@@ -66,6 +65,7 @@ public final class SuspendedEvent {
     private final MaterializedFrame haltedFrame;
     private final List<FrameInstance> stack;
     private final List<String> warnings;
+    private volatile boolean kill;
 
     SuspendedEvent(Debugger debugger, Node haltedNode, MaterializedFrame haltedFrame, List<FrameInstance> stack, List<String> warnings) {
         this.debugger = debugger;
@@ -220,12 +220,15 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Terminates the halted execution represented by this event.
+     * Prepare to terminate the suspended execution represented by this event.
      *
      * @since 0.12
      */
-    @SuppressWarnings("static-method")
-    public void kill() {
-        throw new KillException();
+    public void prepareKill() {
+        kill = true;
+    }
+
+    boolean isKillPrepared() {
+        return kill;
     }
 }

@@ -350,21 +350,6 @@ suite = {
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "license" : "UPL",
     },
-
-    "com.oracle.truffle.sl.tools" : {
-       "subDir" : "truffle",
-       "sourceDirs" : ["src"],
-       "dependencies" : [
-                        "com.oracle.truffle.tools.debug.shell",
-                        ],
-       "generatedDependencies" : [
-                        "com.oracle.truffle.sl",
-                        ],
-       "checkstyle" : "com.oracle.truffle.sl",
-       "javaCompliance" : "1.7",
-       "workingSets" : "Truffle,SimpleLanguage,Tools",
-       "license" : "UPL",
-     },
    },
 
   "licenses" : {
