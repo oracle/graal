@@ -27,12 +27,18 @@ a full list of external dependencies on Ubuntu you can look at our
 
 How to get started?
 -------------------
-First download mx, which is the build tool used by Sulong:
+First create a new directory, which will contain the needed GraalVM
+projects:
+
+    mkdir graalvm
+    cd graalvm
+
+Then, download mx, which is the build tool used by Sulong:
 
     git clone https://github.com/graalvm/mx
     export PATH=$PWD/mx:$PATH
 
-Then, use git to clone the Sulong project and its dependencies:
+Afterwards, use git to clone the Sulong project and its dependencies:
 
     git clone https://github.com/graalvm/sulong
 
