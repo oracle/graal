@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import java.util.List;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -55,6 +56,13 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     protected final boolean canonicalizeReads;
 
     protected class PECanonicalizerTool implements CanonicalizerTool {
+
+        private final Assumptions assumptions;
+
+        public PECanonicalizerTool(Assumptions assumptions) {
+            this.assumptions = assumptions;
+        }
+
         @Override
         public MetaAccessProvider getMetaAccess() {
             return metaAccess;
@@ -73,6 +81,10 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         @Override
         public boolean allUsagesAvailable() {
             return false;
+        }
+
+        public Assumptions getAssumptions() {
+            return assumptions;
         }
     }
 
@@ -203,7 +215,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             }
 
         } else if (node instanceof Canonicalizable) {
-            Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool());
+            Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool(methodScope.graph.getAssumptions()));
             if (canonical != node) {
                 handleCanonicalization(methodScope, loopScope, nodeOrderId, node, canonical);
             }
@@ -250,7 +262,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     @Override
     protected Node handleFloatingNodeBeforeAdd(MethodScope methodScope, LoopScope loopScope, Node node) {
         if (node instanceof Canonicalizable) {
-            Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool());
+            Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool(methodScope.graph.getAssumptions()));
             if (canonical == null) {
                 /*
                  * This is a possible return value of canonicalization. However, we might need to

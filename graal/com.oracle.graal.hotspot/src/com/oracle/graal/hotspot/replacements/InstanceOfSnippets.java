@@ -196,14 +196,18 @@ public class InstanceOfSnippets implements Snippets {
      * Type test used when the type being tested against is not known at compile time.
      */
     @Snippet
-    public static Object instanceofDynamic(Class<?> mirror, Object object, Object trueValue, Object falseValue) {
+    public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean allowNull) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
-            return falseValue;
+            if (allowNull) {
+                return trueValue;
+            } else {
+                return falseValue;
+            }
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        KlassPointer hub = ClassGetHubNode.readClass(mirror, anchorNode);
         KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
+        // The hub of a primitive type can be null => always return false in this case.
         if (hub.isNull() || !checkUnknownSubType(hub, objectHub)) {
             return falseValue;
         }
@@ -287,13 +291,14 @@ public class InstanceOfSnippets implements Snippets {
                 return args;
             } else if (replacer.instanceOf instanceof InstanceOfDynamicNode) {
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;
-                ValueNode object = instanceOf.object();
+                ValueNode object = instanceOf.getObject();
 
                 Arguments args = new Arguments(instanceofDynamic, instanceOf.graph().getGuardsStage(), tool.getLoweringStage());
-                args.add("mirror", instanceOf.mirror());
+                args.add("hub", instanceOf.getMirrorOrHub());
                 args.add("object", object);
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
+                args.addConst("allowNull", instanceOf.allowsNull());
                 return args;
             } else if (replacer.instanceOf instanceof ClassIsAssignableFromNode) {
                 ClassIsAssignableFromNode isAssignable = (ClassIsAssignableFromNode) replacer.instanceOf;
