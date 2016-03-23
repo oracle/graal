@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.function.Consumer;
-
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -62,8 +56,13 @@ import com.oracle.graal.options.NestedBooleanOptionValue;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+
 /**
- * Linear Scan {@link StackSlotAllocator}.
+ * Linear Scan {@link StackSlotAllocatorUtil stack slot allocator}.
  * <p>
  * <b>Remark:</b> The analysis works under the assumption that a stack slot is no longer live after
  * its last usage. If an {@link LIRInstruction instruction} transfers the raw address of the stack
@@ -72,7 +71,7 @@ import com.oracle.graal.options.OptionType;
  * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
  * destroyed.
  */
-public final class LSStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
+public final class LSStackSlotAllocator extends AllocationPhase {
 
     public static class Options {
         // @formatter:off
@@ -90,11 +89,12 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
-        lirGenRes.buildFrameMap(this);
+        allocateStackSlots((FrameMapBuilderTool) lirGenRes.getFrameMapBuilder(), lirGenRes);
+        lirGenRes.buildFrameMap();
     }
 
     @SuppressWarnings("try")
-    public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
+    public static void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
         if (builder.getNumberOfStackSlots() > 0) {
             try (DebugCloseable t = MainTimer.start()) {
                 new Allocator(res.getLIR(), builder).allocate();
@@ -133,7 +133,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
         private void allocate() {
             Debug.dump(lir, "After StackSlot numbering");
 
-            long currentFrameSize = StackSlotAllocator.allocatedFramesize.isEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
+            long currentFrameSize = StackSlotAllocatorUtil.allocatedFramesize.isEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
             Set<LIRInstruction> usePos;
             // step 2: build intervals
             try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals"); DebugCloseable t = BuildIntervalsTimer.start()) {
@@ -142,7 +142,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
             // step 3: verify intervals
             if (Debug.isEnabled()) {
                 try (DebugCloseable t = VerifyIntervalsTimer.start()) {
-                    verifyIntervals();
+                    assert verifyIntervals();
                 }
             }
             if (Debug.isDumpEnabled()) {
@@ -161,8 +161,8 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
                 assignStackSlots(usePos);
             }
             Debug.dump(lir, "After StackSlot assignment");
-            if (StackSlotAllocator.allocatedFramesize.isEnabled()) {
-                StackSlotAllocator.allocatedFramesize.add(frameMapBuilder.getFrameMap().currentFrameSize() - currentFrameSize);
+            if (StackSlotAllocatorUtil.allocatedFramesize.isEnabled()) {
+                StackSlotAllocatorUtil.allocatedFramesize.add(frameMapBuilder.getFrameMap().currentFrameSize() - currentFrameSize);
             }
         }
 
@@ -207,10 +207,13 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
         // step 3: verify intervals
         // ====================
 
-        private void verifyIntervals() {
-            forEachInterval(interval -> {
-                assert interval.verify(maxOpId());
-            });
+        private boolean verifyIntervals() {
+            for (StackInterval interval : stackSlotMap) {
+                if (interval != null) {
+                    assert interval.verify(maxOpId());
+                }
+            }
+            return true;
         }
 
         // ====================
@@ -220,7 +223,11 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
         @SuppressWarnings("try")
         private void allocateStackSlots() {
             // create unhandled lists
-            forEachInterval(unhandled::add);
+            for (StackInterval interval : stackSlotMap) {
+                if (interval != null) {
+                    unhandled.add(interval);
+                }
+            }
 
             for (StackInterval current = activateNext(); current != null; current = activateNext()) {
                 try (Indent indent = Debug.logAndIndent("allocate %s", current)) {
@@ -237,8 +244,8 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
                 // No reuse of ranges (yet).
                 VirtualStackSlotRange slotRange = (VirtualStackSlotRange) virtualSlot;
                 location = frameMapBuilder.getFrameMap().allocateStackSlots(slotRange.getSlots(), slotRange.getObjects());
-                StackSlotAllocator.virtualFramesize.add(frameMapBuilder.getFrameMap().spillSlotRangeSize(slotRange.getSlots()));
-                StackSlotAllocator.allocatedSlots.increment();
+                StackSlotAllocatorUtil.virtualFramesize.add(frameMapBuilder.getFrameMap().spillSlotRangeSize(slotRange.getSlots()));
+                StackSlotAllocatorUtil.allocatedSlots.increment();
             } else {
                 assert virtualSlot instanceof SimpleVirtualStackSlot : "Unexpected VirtualStackSlot type: " + virtualSlot;
                 StackSlot slot = findFreeSlot((SimpleVirtualStackSlot) virtualSlot);
@@ -248,13 +255,13 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
                      * might not match.
                      */
                     location = StackSlot.get(current.kind(), slot.getRawOffset(), slot.getRawAddFrameSize());
-                    StackSlotAllocator.reusedSlots.increment();
+                    StackSlotAllocatorUtil.reusedSlots.increment();
                     Debug.log(1, "Reuse stack slot %s (reallocated from %s) for virtual stack slot %s", location, slot, virtualSlot);
                 } else {
                     // Allocate new stack slot.
                     location = frameMapBuilder.getFrameMap().allocateSpillSlot(virtualSlot.getLIRKind());
-                    StackSlotAllocator.virtualFramesize.add(frameMapBuilder.getFrameMap().spillSlotSize(virtualSlot.getLIRKind()));
-                    StackSlotAllocator.allocatedSlots.increment();
+                    StackSlotAllocatorUtil.virtualFramesize.add(frameMapBuilder.getFrameMap().spillSlotSize(virtualSlot.getLIRKind()));
+                    StackSlotAllocatorUtil.allocatedSlots.increment();
                     Debug.log(1, "New stack slot %s for virtual stack slot %s", location, virtualSlot);
                 }
             }
@@ -423,14 +430,6 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
 
         private StackInterval get(VirtualStackSlot stackSlot) {
             return stackSlotMap[stackSlot.getId()];
-        }
-
-        private void forEachInterval(Consumer<StackInterval> proc) {
-            for (StackInterval interval : stackSlotMap) {
-                if (interval != null) {
-                    proc.accept(interval);
-                }
-            }
         }
 
         private void dumpIntervals(String label) {

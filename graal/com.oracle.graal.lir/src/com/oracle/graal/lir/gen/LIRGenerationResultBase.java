@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.vm.ci.code.CallingConvention;
-
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.stackslotalloc.StackSlotAllocator;
+
+import jdk.vm.ci.code.CallingConvention;
 
 public class LIRGenerationResultBase implements LIRGenerationResult {
     private final LIR lir;
@@ -76,9 +75,9 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
         return frameMapBuilder;
     }
 
-    public void buildFrameMap(StackSlotAllocator allocator) {
+    public void buildFrameMap() {
         assert frameMap == null : "buildFrameMap() can only be called once!";
-        frameMap = frameMapBuilder.buildFrameMap(this, allocator);
+        frameMap = frameMapBuilder.buildFrameMap(this);
     }
 
     public FrameMap getFrameMap() {
