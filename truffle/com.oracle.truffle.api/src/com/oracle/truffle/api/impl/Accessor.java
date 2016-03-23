@@ -38,7 +38,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -364,14 +363,10 @@ public abstract class Accessor {
         return NODES.isInstrumentable(rootNode);
     }
 
-    /**
-     * Invoked by OPTIMIZED_CALL_TARGET accessor or DefaultCallTarget and implemented by
-     * instrumentation.
-     */
-    protected void initializeCallTarget(RootCallTarget target) {
+    protected void installRootNode(RootNode node) {
         Accessor accessor = INSTRUMENTHANDLER;
         if (accessor != null) {
-            accessor.initializeCallTarget(target);
+            accessor.installRootNode(node);
         }
     }
 

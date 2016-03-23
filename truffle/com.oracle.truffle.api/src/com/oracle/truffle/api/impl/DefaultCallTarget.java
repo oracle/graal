@@ -90,7 +90,7 @@ public final class DefaultCallTarget implements RootCallTarget {
             if (!this.initialized) {
                 Accessor accessor = Accessor.INSTRUMENTHANDLER;
                 if (accessor != null) {
-                    accessor.initializeCallTarget(this);
+                    accessor.installRootNode(rootNode);
                 }
                 this.initialized = true;
             }

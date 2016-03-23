@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -200,13 +199,13 @@ public abstract class LoopNode extends Node {
         protected abstract void onLoopCount(Node source, int iterations);
 
         /**
-         * Makes sure the <code>callTarget</code> is initialized.
+         * Makes sure the <code>rootNode</code> is initialized.
          *
-         * @param callTarget
+         * @param rootNode
          * @since 0.12
          */
-        public void initializeCallTarget(RootCallTarget callTarget) {
-            ACCESSOR.initializeCallTarget(callTarget);
+        public void installRootNode(RootNode rootNode) {
+            ACCESSOR.installRootNode(rootNode);
         }
 
         /**
