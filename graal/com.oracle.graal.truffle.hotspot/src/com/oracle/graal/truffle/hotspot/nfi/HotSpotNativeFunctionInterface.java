@@ -138,7 +138,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
     private HotSpotNativeFunctionHandle createHandle(NativeFunctionPointer functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
         HotSpotNativeFunctionPointer hs = (HotSpotNativeFunctionPointer) functionPointer;
         if (hs != null) {
-            HotSpotNativeFunctionHandle handle = new HotSpotNativeFunctionHandle(hs, returnType, argumentTypes);
+            HotSpotNativeFunctionHandle handle = new HotSpotNativeFunctionHandle(graphBuilder, hs, returnType, argumentTypes);
             graphBuilder.installNativeFunctionStub(handle);
             return handle;
         } else {

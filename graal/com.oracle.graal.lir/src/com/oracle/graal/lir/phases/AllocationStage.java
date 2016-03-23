@@ -35,18 +35,8 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.lir.ssi.SSIConstructionPhase;
 import com.oracle.graal.lir.stackslotalloc.LSStackSlotAllocator;
 import com.oracle.graal.lir.stackslotalloc.SimpleStackSlotAllocator;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.StableOptionValue;
 
 public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Use fast SSI construction.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> LIROptFastSSIConstruction = new StableOptionValue<>(true);
-        // @formatter:on
-    }
 
     public AllocationStage() {
         appendPhase(new MarkBasePointersPhase());

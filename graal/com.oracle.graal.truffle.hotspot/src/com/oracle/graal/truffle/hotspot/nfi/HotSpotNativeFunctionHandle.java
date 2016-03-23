@@ -26,7 +26,6 @@ import java.util.Arrays;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.debug.Debug;
@@ -39,13 +38,15 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
     private final HotSpotNativeFunctionPointer pointer;
     private final Class<?> returnType;
     private final Class<?>[] argumentTypes;
+    private final NativeCallStubGraphBuilder graphBuilder;
 
     InstalledCode code;
 
-    public HotSpotNativeFunctionHandle(HotSpotNativeFunctionPointer pointer, Class<?> returnType, Class<?>... argumentTypes) {
+    public HotSpotNativeFunctionHandle(NativeCallStubGraphBuilder graphBuilder, HotSpotNativeFunctionPointer pointer, Class<?> returnType, Class<?>... argumentTypes) {
         this.pointer = pointer;
         this.returnType = returnType;
         this.argumentTypes = argumentTypes;
+        this.graphBuilder = graphBuilder;
     }
 
     HotSpotNativeFunctionPointer getPointer() {
@@ -81,18 +82,24 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
     @Override
     public Object call(Object... args) {
         assert checkArgs(args);
-        try {
-            if (CompilerDirectives.inInterpreter()) {
-                traceCall(args);
+        while (true) {
+            try {
+                if (CompilerDirectives.inInterpreter()) {
+                    traceCall(args);
+                }
+                Object res = code.executeVarargs(this, args);
+                if (CompilerDirectives.inInterpreter()) {
+                    traceResult(res);
+                }
+                return res;
+            } catch (InvalidInstalledCodeException e) {
+                CompilerDirectives.transferToInterpreter();
+                // Reinstall the stub if it has been invalidated by the VM.
+                // This can be caused by the NMethodSweeper for example.
+                // Once there is VM independent support for calling
+                // a native function, it should replace this mechanism.
+                graphBuilder.installNativeFunctionStub(this);
             }
-            Object res = code.executeVarargs(this, args);
-            if (CompilerDirectives.inInterpreter()) {
-                traceResult(res);
-            }
-            return res;
-        } catch (InvalidInstalledCodeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw JVMCIError.shouldNotReachHere("Execution of GNFI Callstub failed: " + pointer.getName());
         }
     }
 
