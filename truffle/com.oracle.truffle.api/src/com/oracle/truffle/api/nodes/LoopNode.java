@@ -26,7 +26,6 @@ package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -110,8 +109,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * @since 0.8 or earlier
  */
 public abstract class LoopNode extends Node {
-    private static TVMCI SUPPORT;
-
     /**
      * Constructor for subclasses.
      * 
@@ -172,14 +169,7 @@ public abstract class LoopNode extends Node {
      */
     public static void reportLoopCount(Node source, int iterations) {
         if (CompilerDirectives.inInterpreter()) {
-            if (SUPPORT == null) {
-                final TruffleRuntime runtime = Truffle.getRuntime();
-                SUPPORT = runtime.getCapability(TVMCI.class);
-                if (SUPPORT == null) {
-                    SUPPORT = new NoOp();
-                }
-            }
-            SUPPORT.onLoopCount(source, iterations);
+            NodeVMSupport.onLoopCount(source, iterations);
         }
     }
 
@@ -232,35 +222,4 @@ public abstract class LoopNode extends Node {
         }
     }
 
-    private static final class NoOp extends TVMCI {
-        private static final LoopNode NO_OP_NODE = new LoopNode() {
-            @Override
-            public void executeLoop(VirtualFrame frame) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public RepeatingNode getRepeatingNode() {
-                throw new UnsupportedOperationException();
-            }
-        };
-
-        NoOp() {
-            NO_OP_NODE.super();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        protected void onLoopCount(Node source, int iterations) {
-            // needs an additional compatibilty check so older graal runtimes
-            // still run with newer truffle versions
-            RootNode root = source.getRootNode();
-            if (root != null) {
-                RootCallTarget target = root.getCallTarget();
-                if (target instanceof com.oracle.truffle.api.LoopCountReceiver) {
-                    ((com.oracle.truffle.api.LoopCountReceiver) target).reportLoopCount(iterations);
-                }
-            }
-        }
-    }
 }
