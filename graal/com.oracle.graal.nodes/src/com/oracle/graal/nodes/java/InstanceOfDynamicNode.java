@@ -103,17 +103,17 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
         return null;
     }
 
-    public ValueNode getObject() {
-        return this.getY();
-    }
-
     public ValueNode getMirrorOrHub() {
         return this.getX();
     }
 
+    public ValueNode getObject() {
+        return this.getY();
+    }
+
     @Override
-    public LogicNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
-        LogicNode result = findSynonym(tool.getAssumptions(), tool.getConstantReflection(), forObject, forMirror, allowNull);
+    public LogicNode canonical(CanonicalizerTool tool, ValueNode forMirror, ValueNode forObject) {
+        LogicNode result = findSynonym(tool.getAssumptions(), tool.getConstantReflection(), forMirror, forObject, allowNull);
         if (result != null) {
             return result;
         }

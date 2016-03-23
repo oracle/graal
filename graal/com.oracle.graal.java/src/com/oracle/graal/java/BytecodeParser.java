@@ -2971,7 +2971,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        ValueNode checkCastNode = null;
+        ValueNode castNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
                 object = appendNullCheck(object);
@@ -2979,28 +2979,28 @@ public class BytecodeParser implements GraphBuilderContext {
                 if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
                     LogicNode typeCheck = append(InstanceOfNode.create(TypeReference.createExactTrusted(singleType), object, null));
                     if (typeCheck.isTautology()) {
-                        checkCastNode = object;
+                        castNode = object;
                     } else {
                         FixedGuardNode fixedGuard = append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, false));
-                        checkCastNode = append(new PiNode(object, StampFactory.objectNonNull(TypeReference.createExactTrusted(singleType)), fixedGuard));
+                        castNode = append(new PiNode(object, StampFactory.objectNonNull(TypeReference.createExactTrusted(singleType)), fixedGuard));
                     }
                 }
             }
         }
-        if (checkCastNode == null) {
+        if (castNode == null) {
             TypeProfileNode anchor = TypeProfileNode.create(profile);
             if (anchor != null) {
                 append(anchor);
             }
             LogicNode condition = genUnique(InstanceOfNode.createAllowNull(checkedType, object, anchor));
             if (condition.isTautology()) {
-                checkCastNode = object;
+                castNode = object;
             } else {
                 FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                checkCastNode = append(new PiNode(object, StampFactory.object(checkedType), fixedGuard));
+                castNode = append(new PiNode(object, StampFactory.object(checkedType), fixedGuard));
             }
         }
-        frameState.push(JavaKind.Object, checkCastNode);
+        frameState.push(JavaKind.Object, castNode);
     }
 
     private ValueNode appendNullCheck(ValueNode object) {

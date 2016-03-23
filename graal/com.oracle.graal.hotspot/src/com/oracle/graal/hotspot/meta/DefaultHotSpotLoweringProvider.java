@@ -228,7 +228,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else if (n instanceof InstanceOfDynamicNode) {
             InstanceOfDynamicNode instanceOfDynamicNode = (InstanceOfDynamicNode) n;
             if (graph.getGuardsStage().areDeoptsFixed()) {
-                instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
+                instanceofSnippets.lower(instanceOfDynamicNode, tool);
             } else {
                 ValueNode object = instanceOfDynamicNode.getMirrorOrHub();
                 if (object.stamp().getStackKind() == JavaKind.Object) {
