@@ -24,6 +24,9 @@ package com.oracle.graal.lir.stackslotalloc;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
 import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.allocatedFramesize;
+import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.allocatedSlots;
+import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.virtualFramesize;
 
 import java.util.List;
 
@@ -44,7 +47,7 @@ import com.oracle.graal.lir.framemap.VirtualStackSlotRange;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
 
-public class SimpleStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
+public class SimpleStackSlotAllocator extends AllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
