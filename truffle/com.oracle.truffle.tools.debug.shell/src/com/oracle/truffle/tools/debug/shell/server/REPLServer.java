@@ -45,7 +45,6 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.LineLocation;
@@ -532,8 +531,9 @@ public final class REPLServer {
         return info;
     }
 
+    @SuppressWarnings("deprecation")
     @Deprecated
-    BreakpointInfo setTagBreakpoint(int ignoreCount, StandardSyntaxTag tag, boolean oneShot) throws IOException {
+    BreakpointInfo setTagBreakpoint(int ignoreCount, com.oracle.truffle.api.instrument.StandardSyntaxTag tag, boolean oneShot) throws IOException {
         final BreakpointInfo info = new TagBreakpointInfo(tag, ignoreCount, oneShot);
         info.activate();
         return info;
@@ -578,15 +578,16 @@ public final class REPLServer {
     }
 
     final class TagBreakpointInfo extends BreakpointInfo {
-        private final StandardSyntaxTag tag;
+        @SuppressWarnings("deprecation") private final com.oracle.truffle.api.instrument.StandardSyntaxTag tag;
 
-        private TagBreakpointInfo(StandardSyntaxTag tag, int ignoreCount, boolean oneShot) {
+        @SuppressWarnings("deprecation")
+        private TagBreakpointInfo(com.oracle.truffle.api.instrument.StandardSyntaxTag tag, int ignoreCount, boolean oneShot) {
             super(ignoreCount, oneShot);
             this.tag = tag;
         }
 
-        @Override
         @SuppressWarnings("deprecation")
+        @Override
         protected void activate() throws IOException {
             breakpoint = db.setTagBreakpoint(ignoreCount, tag, oneShot);
             // TODO (mlvdv) check if resolved

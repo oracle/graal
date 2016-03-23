@@ -38,8 +38,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -464,20 +462,23 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     }
 
     @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    protected Visualizer getVisualizer() {
+    protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
     protected boolean isInstrumentable(Node node) {
-        // old API
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    protected WrapperNode createWrapperNode(Node node) {
-        // old API
+    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
         throw new UnsupportedOperationException();
     }
 

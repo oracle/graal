@@ -60,8 +60,6 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -488,18 +486,23 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     }
 
     @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    protected Visualizer getVisualizer() {
+    protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
     protected boolean isInstrumentable(Node node) {
         return node instanceof SLStatementNode;
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    protected WrapperNode createWrapperNode(Node node) {
+    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
         if (node instanceof SLExpressionNode) {
             return new SLExpressionWrapperNode((SLExpressionNode) node);
         }

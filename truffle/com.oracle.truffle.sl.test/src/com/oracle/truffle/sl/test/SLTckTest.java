@@ -40,33 +40,19 @@
  */
 package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.sl.test.instrument.InstrumentationTestMode;
-import com.oracle.truffle.tck.TruffleTCK;
-
-import org.junit.After;
-
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.tck.TruffleTCK;
 
 /**
  * This is the way to verify your language implementation is compatible.
  *
  */
 public class SLTckTest extends TruffleTCK {
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
-    }
 
     @Test
     public void testVerifyPresence() {

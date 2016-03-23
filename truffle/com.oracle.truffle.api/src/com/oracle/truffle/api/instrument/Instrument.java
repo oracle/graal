@@ -38,6 +38,7 @@ package com.oracle.truffle.api.instrument;
  * @see Instrumenter
  * @since 0.8 or earlier
  */
+@Deprecated
 public abstract class Instrument {
 
     /** Optional string for debugging. */
@@ -65,7 +66,7 @@ public abstract class Instrument {
 
     /**
      * Has this been detached from its source of execution events?
-     * 
+     *
      * @since 0.8 or earlier
      */
     public boolean isDisposed() {

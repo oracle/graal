@@ -45,16 +45,18 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * Notification is fully synchronous, so overrides have performance implications. Non-trivial
  * methods should be coded with Truffle guidelines and cautions in mind.
- * 
+ *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public interface StandardBeforeInstrumentListener {
 
     /**
      * Receive notification that an AST node's execute method is about to be called.
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
-     * 
+     *
      * @since 0.8 or earlier
      */
     void onEnter(Probe probe, Node node, VirtualFrame frame);

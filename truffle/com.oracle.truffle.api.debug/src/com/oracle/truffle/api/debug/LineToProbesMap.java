@@ -31,19 +31,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.ProbeListener;
-import com.oracle.truffle.api.instrument.impl.DefaultProbeListener;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * An {@linkplain Instrumenter.Tool Instrumentation-based Tool} that builds a map of every
- * {@link Probe} attached to some AST, indexed by {@link Source} and line number.
+ * An {@linkplain com.oracle.truffle.api.instrument.Instrumenter.Tool Instrumentation-based Tool}
+ * that builds a map of every {@link Probe} attached to some AST, indexed by {@link Source} and line
+ * number.
  */
-final class LineToProbesMap extends Instrumenter.Tool {
+@SuppressWarnings("deprecation")
+@Deprecated
+final class LineToProbesMap extends com.oracle.truffle.api.instrument.Instrumenter.Tool {
 
     private static final boolean TRACE = false;
     private static final PrintStream OUT = System.out;
@@ -55,13 +54,13 @@ final class LineToProbesMap extends Instrumenter.Tool {
     /**
      * Map: Source line ==> probes associated with source sections starting on the line.
      */
-    private final Map<LineLocation, Collection<Probe>> lineToProbesMap = new HashMap<>();
+    private final Map<LineLocation, Collection<com.oracle.truffle.api.instrument.Probe>> lineToProbesMap = new HashMap<>();
 
-    private final ProbeListener probeListener;
+    private final com.oracle.truffle.api.instrument.ProbeListener probeListener;
 
     /**
-     * Create a map of {@link Probe}s that collects information on all probes added to subsequently
-     * created ASTs (once installed).
+     * Create a map of {@link com.oracle.truffle.api.instrument.Probe}s that collects information on
+     * all probes added to subsequently created ASTs (once installed).
      */
     LineToProbesMap() {
         this.probeListener = new LineToProbesListener();
@@ -69,8 +68,8 @@ final class LineToProbesMap extends Instrumenter.Tool {
 
     @Override
     protected boolean internalInstall() {
-        final Instrumenter instrumenter = getInstrumenter();
-        for (Probe probe : instrumenter.findProbesTaggedAs(null)) {
+        final com.oracle.truffle.api.instrument.Instrumenter instrumenter = getInstrumenter();
+        for (com.oracle.truffle.api.instrument.Probe probe : instrumenter.findProbesTaggedAs(null)) {
             addMapEntry(probe);
         }
         instrumenter.addProbeListener(probeListener);
@@ -88,13 +87,14 @@ final class LineToProbesMap extends Instrumenter.Tool {
     }
 
     /**
-     * Returns the {@link Probe}, if any, associated with a specific line of guest language code; if
-     * more than one, return the one with the first starting character location.
+     * Returns the {@link com.oracle.truffle.api.instrument.Probe}, if any, associated with a
+     * specific line of guest language code; if more than one, return the one with the first
+     * starting character location.
      */
-    public Probe findFirstProbe(LineLocation lineLocation) {
-        Probe probe = null;
-        final Collection<Probe> probes = findProbes(lineLocation);
-        for (Probe probesOnLine : probes) {
+    public com.oracle.truffle.api.instrument.Probe findFirstProbe(LineLocation lineLocation) {
+        com.oracle.truffle.api.instrument.Probe probe = null;
+        final Collection<com.oracle.truffle.api.instrument.Probe> probes = findProbes(lineLocation);
+        for (com.oracle.truffle.api.instrument.Probe probesOnLine : probes) {
             if (probe == null) {
                 probe = probesOnLine;
             } else if (probesOnLine.getProbedSourceSection().getCharIndex() < probe.getProbedSourceSection().getCharIndex()) {
@@ -105,33 +105,33 @@ final class LineToProbesMap extends Instrumenter.Tool {
     }
 
     /**
-     * Returns all {@link Probe}s whose associated source begins at the given {@link LineLocation},
-     * an empty list if none.
+     * Returns all {@link com.oracle.truffle.api.instrument.Probe}s whose associated source begins
+     * at the given {@link LineLocation}, an empty list if none.
      */
-    public Collection<Probe> findProbes(LineLocation line) {
-        final Collection<Probe> probes = lineToProbesMap.get(line);
+    public Collection<com.oracle.truffle.api.instrument.Probe> findProbes(LineLocation line) {
+        final Collection<com.oracle.truffle.api.instrument.Probe> probes = lineToProbesMap.get(line);
         if (probes == null) {
             return Collections.emptyList();
         }
         return Collections.unmodifiableCollection(probes);
     }
 
-    private class LineToProbesListener extends DefaultProbeListener {
+    private class LineToProbesListener extends com.oracle.truffle.api.instrument.impl.DefaultProbeListener {
 
         @Override
-        public void newProbeInserted(Probe probe) {
+        public void newProbeInserted(com.oracle.truffle.api.instrument.Probe probe) {
             addMapEntry(probe);
         }
     }
 
-    private void addMapEntry(Probe probe) {
+    private void addMapEntry(com.oracle.truffle.api.instrument.Probe probe) {
         final SourceSection sourceSection = probe.getProbedSourceSection();
         if (sourceSection != null && sourceSection.getSource() != null) {
             final LineLocation lineLocation = sourceSection.getLineLocation();
             if (TRACE) {
                 trace("ADD " + lineLocation.getShortDescription() + " ==> " + probe.getShortDescription());
             }
-            Collection<Probe> probes = lineToProbesMap.get(lineLocation);
+            Collection<com.oracle.truffle.api.instrument.Probe> probes = lineToProbesMap.get(lineLocation);
             if (probes == null) {
                 probes = new ArrayList<>(2);
                 lineToProbesMap.put(lineLocation, probes);

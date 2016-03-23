@@ -30,44 +30,45 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
  * Description of a failed attempt to instrument an AST node.
- * 
+ *
  * @since 0.8 or earlier
  */
+@Deprecated
 public final class ProbeFailure {
     /** @since 0.8 or earlier */
     public enum Reason {
 
         /**
          * Node to be probed has no parent.
-         * 
+         *
          * @since 0.8 or earlier
          */
         NO_PARENT("Node to be probed has no parent"),
 
         /**
          * The node to be probed is a wrapper.
-         * 
+         *
          * @since 0.8 or earlier
          */
         WRAPPER_NODE("The node to be probed is a wrapper"),
 
         /**
          * The node to be probed does not support {@linkplain Instrumenter Instrumentation} .
-         * 
+         *
          * @since 0.8 or earlier
          */
         NOT_INSTRUMENTABLE("The node to be project is \"not instrumentable\""),
 
         /**
          * No wrapper could be created that is also a {@link Node}.
-         * 
+         *
          * @since 0.8 or earlier
          */
         NO_WRAPPER("No wrapper could be created"),
 
         /**
          * Wrapper not assignable to the parent's child field.
-         * 
+         *
          * @since 0.8 or earlier
          */
         WRAPPER_TYPE("Wrapper not assignable to parent's child field");

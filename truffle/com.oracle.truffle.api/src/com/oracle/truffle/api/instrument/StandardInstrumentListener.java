@@ -44,16 +44,18 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * Notification is fully synchronous, so overrides have performance implications. Non-trivial
  * methods should be coded with Truffle guidelines and cautions in mind.
- * 
+ *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public interface StandardInstrumentListener {
 
     /**
      * Receive notification that an AST node's execute method is about to be called.
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
-     * 
+     *
      * @since 0.8 or earlier
      */
     void onEnter(Probe probe, Node node, VirtualFrame frame);
@@ -62,7 +64,7 @@ public interface StandardInstrumentListener {
      * Receive notification that an AST Node's {@code void}-valued execute method has just returned.
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
-     * 
+     *
      * @since 0.8 or earlier
      */
     void onReturnVoid(Probe probe, Node node, VirtualFrame frame);
@@ -72,7 +74,7 @@ public interface StandardInstrumentListener {
      * primitive).
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
-     * 
+     *
      * @since 0.8 or earlier
      */
     void onReturnValue(Probe probe, Node node, VirtualFrame frame, Object result);
@@ -81,7 +83,7 @@ public interface StandardInstrumentListener {
      * Receive notification that an AST Node's execute method has just thrown an exception.
      * <p>
      * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
-     * 
+     *
      * @since 0.8 or earlier
      */
     void onReturnExceptional(Probe probe, Node node, VirtualFrame frame, Throwable exception);

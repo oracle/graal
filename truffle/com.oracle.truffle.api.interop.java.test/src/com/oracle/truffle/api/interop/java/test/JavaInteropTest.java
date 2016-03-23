@@ -31,7 +31,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,12 +71,6 @@ public class JavaInteropTest {
     public void initObjects() {
         obj = JavaInterop.asTruffleObject(this);
         xyp = JavaInterop.asJavaObject(XYPlus.class, obj);
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
     }
 
     @Test

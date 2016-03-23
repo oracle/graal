@@ -28,11 +28,12 @@ import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 
-import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
+@Deprecated
 public class InstrumentationTestMode {
 
+    @SuppressWarnings("deprecation")
     public static void set(boolean enable) {
 
         final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
@@ -40,7 +41,7 @@ public class InstrumentationTestMode {
             final Field instrumenterField = vm.getClass().getDeclaredField("instrumenter");
             instrumenterField.setAccessible(true);
             final Object instrumenter = instrumenterField.get(vm);
-            final java.lang.reflect.Field testVMField = Instrumenter.class.getDeclaredField("testVM");
+            final java.lang.reflect.Field testVMField = com.oracle.truffle.api.instrument.Instrumenter.class.getDeclaredField("testVM");
             testVMField.setAccessible(true);
             if (enable) {
                 testVMField.set(instrumenter, vm);

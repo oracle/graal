@@ -40,7 +40,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
  * root node can be used to create a call target using
  * {@link TruffleRuntime#createCallTarget(RootNode)}.
- * 
+ *
  * @since 0.8 or earlier
  */
 @SuppressWarnings("rawtypes")
@@ -146,7 +146,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Returns <code>null</code> by default.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public ExecutionContext getExecutionContext() {
@@ -155,7 +155,7 @@ public abstract class RootNode extends Node {
 
     /**
      * Get compiler options specific to this <code>RootNode</code>.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public CompilerOptions getCompilerOptions() {
@@ -169,6 +169,8 @@ public abstract class RootNode extends Node {
     }
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public final void applyInstrumentation() {
         if (isInstrumentable()) {
             Node.ACCESSOR.probeAST(this);
@@ -177,7 +179,7 @@ public abstract class RootNode extends Node {
 
     /**
      * Does this contain AST content that it is possible to instrument.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected boolean isInstrumentable() {

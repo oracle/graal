@@ -32,9 +32,10 @@ import java.io.PrintWriter;
  * details chosen to be presented.
  * <p>
  * <strong>WARNING:</strong> this interface is under development and will change substantially.
- * 
+ *
  * @since 0.8 or earlier
  */
+@Deprecated
 public interface ASTPrinter {
 
     /**
@@ -70,7 +71,7 @@ public interface ASTPrinter {
     /**
      * Creates a textual display describing a single (non-wrapper) node, including instrumentation
      * status: if Probed, and any tags.
-     * 
+     *
      * @since 0.8 or earlier
      */
     String printNodeWithInstrumentation(Node node);

@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -43,7 +44,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -54,7 +54,6 @@ import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.util.concurrent.Callable;
 
 /**
  * Represents debugging related state of a {@link com.oracle.truffle.api.vm.PolyglotEngine}.
@@ -221,10 +220,10 @@ public final class Debugger {
      * @throws IOException if the breakpoint already set
      * @since 0.9
      */
-    @SuppressWarnings("static-method")
+    @SuppressWarnings({"static-method", "deprecation"})
     @Deprecated
     @TruffleBoundary
-    public Breakpoint setTagBreakpoint(int ignoreCount, SyntaxTag tag, boolean oneShot) throws IOException {
+    public Breakpoint setTagBreakpoint(int ignoreCount, com.oracle.truffle.api.instrument.SyntaxTag tag, boolean oneShot) throws IOException {
         throw new UnsupportedOperationException();
     }
 

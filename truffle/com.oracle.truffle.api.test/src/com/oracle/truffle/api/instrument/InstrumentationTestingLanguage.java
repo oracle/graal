@@ -39,6 +39,8 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
+@Deprecated
+@SuppressWarnings("deprecation")
 @TruffleLanguage.Registration(name = "instrumentationTestLanguage", version = "0", mimeType = "text/x-instTest")
 public final class InstrumentationTestingLanguage extends TruffleLanguage<Object> {
 
@@ -119,7 +121,6 @@ public final class InstrumentationTestingLanguage extends TruffleLanguage<Object
         return false;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     protected Visualizer getVisualizer() {
         return null;

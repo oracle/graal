@@ -28,6 +28,7 @@ import static org.junit.Assert.assertNull;
 import java.io.IOException;
 import java.lang.reflect.Field;
 
+import org.junit.After;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -36,19 +37,11 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.EventHandlerNode;
-import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.junit.After;
 
 /**
  * Bug report validating test.
@@ -71,22 +64,24 @@ public class InitializationTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
+    @Deprecated
     public void accessProbeForAbstractLanguage() throws IOException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
         vm = PolyglotEngine.newBuilder().build();
 
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
-        final Instrumenter instrumenter = (Instrumenter) field.get(vm);
-        instrumenter.registerASTProber(new ASTProber() {
+        final com.oracle.truffle.api.instrument.Instrumenter instrumenter = (com.oracle.truffle.api.instrument.Instrumenter) field.get(vm);
+        instrumenter.registerASTProber(new com.oracle.truffle.api.instrument.ASTProber() {
 
-            public void probeAST(final Instrumenter inst, RootNode startNode) {
+            public void probeAST(final com.oracle.truffle.api.instrument.Instrumenter inst, RootNode startNode) {
                 startNode.accept(new NodeVisitor() {
 
                     public boolean visit(Node node) {
 
                         if (node instanceof ANode) {
-                            inst.probe(node).tagAs(StandardSyntaxTag.STATEMENT, null);
+                            inst.probe(node).tagAs(com.oracle.truffle.api.instrument.StandardSyntaxTag.STATEMENT, null);
                         }
                         return true;
                     }
@@ -134,9 +129,11 @@ public class InitializationTest {
         }
     }
 
-    private static class ANodeWrapper extends ANode implements WrapperNode {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    private static class ANodeWrapper extends ANode implements com.oracle.truffle.api.instrument.WrapperNode {
         @Child ANode child;
-        @Child private EventHandlerNode eventHandlerNode;
+        @Child private com.oracle.truffle.api.instrument.EventHandlerNode eventHandlerNode;
 
         ANodeWrapper(ANode node) {
             super(1);  // dummy
@@ -149,12 +146,12 @@ public class InitializationTest {
         }
 
         @Override
-        public Probe getProbe() {
+        public com.oracle.truffle.api.instrument.Probe getProbe() {
             return eventHandlerNode.getProbe();
         }
 
         @Override
-        public void insertEventHandlerNode(EventHandlerNode eventHandler) {
+        public void insertEventHandlerNode(com.oracle.truffle.api.instrument.EventHandlerNode eventHandler) {
             this.eventHandlerNode = eventHandler;
         }
 
@@ -203,18 +200,23 @@ public class InitializationTest {
         }
 
         @SuppressWarnings("deprecation")
+        @Deprecated
         @Override
-        public Visualizer getVisualizer() {
+        public com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
             throw new UnsupportedOperationException();
         }
 
+        @SuppressWarnings("deprecation")
+        @Deprecated
         @Override
         protected boolean isInstrumentable(Node node) {
             return node instanceof ANode;
         }
 
+        @SuppressWarnings("deprecation")
+        @Deprecated
         @Override
-        protected WrapperNode createWrapperNode(Node node) {
+        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
             return node instanceof ANode ? new ANodeWrapper((ANode) node) : null;
         }
     }

@@ -43,9 +43,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -90,13 +87,15 @@ public abstract class Accessor {
                 return null;
             }
 
+            @SuppressWarnings("deprecation")
             @Override
             protected boolean isInstrumentable(Node node) {
                 return false;
             }
 
+            @SuppressWarnings("deprecation")
             @Override
-            protected WrapperNode createWrapperNode(Node node) {
+            protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
                 return null;
             }
 
@@ -160,7 +159,9 @@ public abstract class Accessor {
         }
     }
 
-    protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> config) {
+    protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn,
+                    @SuppressWarnings("deprecation") com.oracle.truffle.api.instrument.Instrumenter instrumenter,
+                    Map<String, Object> config) {
         return API.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
     }
 
@@ -187,6 +188,7 @@ public abstract class Accessor {
     /**
      * Provided by each {@linkplain TruffleLanguage language implementation}.
      */
+    @Deprecated
     @SuppressWarnings("rawtypes")
     protected boolean isInstrumentable(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
@@ -195,6 +197,7 @@ public abstract class Accessor {
         return isInstrumentable(node, language);
     }
 
+    @Deprecated
     protected boolean isInstrumentable(Node node, TruffleLanguage<?> language) {
         return API.isInstrumentable(node, language);
     }
@@ -202,15 +205,18 @@ public abstract class Accessor {
     /**
      * Provided by each {@linkplain TruffleLanguage language implementation}.
      */
-    @SuppressWarnings("rawtypes")
-    protected WrapperNode createWrapperNode(Object vm, Node node) {
+    @Deprecated
+    @SuppressWarnings({"rawtypes", "deprecation"})
+    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
         Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
         TruffleLanguage language = findLanguageImpl(vm, languageClazz, null);
         return createWrapperNode(node, language);
     }
 
-    protected WrapperNode createWrapperNode(Node node, TruffleLanguage<?> language) {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node, TruffleLanguage<?> language) {
         return API.createWrapperNode(node, language);
     }
 
@@ -223,8 +229,9 @@ public abstract class Accessor {
         return NODES.findLanguage(n);
     }
 
-    @SuppressWarnings("rawtypes")
-    protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
+    @SuppressWarnings({"rawtypes", "deprecation"})
+    @Deprecated
+    protected Class<? extends TruffleLanguage> findLanguage(com.oracle.truffle.api.instrument.Probe probe) {
         return INSTRUMENT.findLanguage(probe);
     }
 
@@ -264,7 +271,9 @@ public abstract class Accessor {
         return SPI.findLanguageImpl(vm, languageClass, mimeType);
     }
 
-    protected Instrumenter getInstrumenter(Object known) {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    protected com.oracle.truffle.api.instrument.Instrumenter getInstrumenter(Object known) {
         Object vm;
         if (known == null) {
             vm = CURRENT_VM.get();
@@ -277,7 +286,9 @@ public abstract class Accessor {
         return SPI.getInstrumenter(vm);
     }
 
-    protected Instrumenter createInstrumenter(Object vm) {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    protected com.oracle.truffle.api.instrument.Instrumenter createInstrumenter(Object vm) {
         return INSTRUMENT.createInstrumenter(vm);
     }
 
@@ -395,6 +406,7 @@ public abstract class Accessor {
         API.dispose(impl, env);
     }
 
+    @Deprecated
     protected void probeAST(RootNode rootNode) {
         INSTRUMENT.probeAST(rootNode);
     }

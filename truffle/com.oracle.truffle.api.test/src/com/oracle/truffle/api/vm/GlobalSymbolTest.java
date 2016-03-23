@@ -32,25 +32,17 @@ import java.io.IOException;
 import java.util.List;
 
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.InstrumentationTestMode;
 
 public class GlobalSymbolTest {
 
     private PolyglotEngine vm;
 
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
     @After
     public void after() {
-        InstrumentationTestMode.set(false);
         if (vm != null) {
             vm.dispose();
         }

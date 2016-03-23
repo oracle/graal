@@ -30,9 +30,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * An observer of events related to {@link Probe}s: creation of new Probes and the addition of new
  * {@linkplain SyntaxTag SyntaxTags} to existing Probes.
- * 
+ *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public interface ProbeListener {
 
     /**
@@ -52,7 +54,7 @@ public interface ProbeListener {
      * delivered the first time {@linkplain Instrumenter#probe(Node)} is called at a particular AST
      * node. There will also be no notification when the AST to which the Probe is attached is
      * cloned.
-     * 
+     *
      * @since 0.8 or earlier
      */
     void newProbeInserted(Probe probe);

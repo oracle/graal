@@ -33,21 +33,17 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.ProbeInstrument.EvalInstrument;
-import com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument;
-import com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-
-import java.util.Map;
 
 /**
  * Client access to instrumentation services in a Truffle execution environment.
@@ -91,9 +87,11 @@ import java.util.Map;
  * {@linkplain #install(Tool) installed} for data collection, possibly providing their own services
  * with the resulting information.</li>
  * </ul>
- * 
+ *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public final class Instrumenter {
 
     private static final boolean TRACE = false;
@@ -156,7 +154,7 @@ public final class Instrumenter {
      * <li>Return modification-safe representations of the data; and</li>
      * <li>Not change the state of the data.</li>
      * </ul>
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract static class Tool {
@@ -295,13 +293,13 @@ public final class Instrumenter {
      * A global instrument that triggers notification just before executing any Node that is Probed
      * with a matching tag.
      */
-    @CompilationFinal private BeforeTagInstrument beforeTagInstrument = null;
+    @CompilationFinal private com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument beforeTagInstrument = null;
 
     /**
      * A global instrument that triggers notification just after executing any Node that is Probed
      * with a matching tag.
      */
-    @CompilationFinal private AfterTagInstrument afterTagInstrument = null;
+    @CompilationFinal private com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument afterTagInstrument = null;
 
     Instrumenter(Object vm) {
         this.vm = vm;
@@ -387,7 +385,7 @@ public final class Instrumenter {
 
     /**
      * Adds a {@link ProbeListener} to receive events.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public void addProbeListener(ProbeListener listener) {
@@ -397,7 +395,7 @@ public final class Instrumenter {
 
     /**
      * Removes a {@link ProbeListener}. Ignored if listener not found.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public void removeProbeListener(ProbeListener listener) {
@@ -427,7 +425,7 @@ public final class Instrumenter {
     /**
      * Enables instrumentation at selected nodes in all subsequently constructed ASTs. Ignored if
      * the argument is already registered, runtime error if argument is {@code null}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public void registerASTProber(ASTProber prober) {
@@ -570,7 +568,8 @@ public final class Instrumenter {
         } else {
             foundLanguageClass = languageClass;
         }
-        final EvalInstrument instrument = new EvalInstrument(foundLanguageClass, source, listener, instrumentInfo, argumentNames, parameters);
+        final com.oracle.truffle.api.instrument.ProbeInstrument.EvalInstrument instrument = new com.oracle.truffle.api.instrument.ProbeInstrument.EvalInstrument(foundLanguageClass, source, listener,
+                        instrumentInfo, argumentNames, parameters);
         probe.attach(instrument);
         return instrument;
     }
@@ -654,11 +653,11 @@ public final class Instrumenter {
         }
     }
 
-    BeforeTagInstrument getBeforeTagInstrument() {
+    com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument getBeforeTagInstrument() {
         return beforeTagInstrument;
     }
 
-    AfterTagInstrument getAfterTagInstrument() {
+    com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument getAfterTagInstrument() {
         return afterTagInstrument;
     }
 

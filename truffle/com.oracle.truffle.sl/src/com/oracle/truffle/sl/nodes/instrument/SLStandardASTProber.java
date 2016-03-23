@@ -40,14 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes.instrument;
 
-import static com.oracle.truffle.api.instrument.StandardSyntaxTag.ASSIGNMENT;
-import static com.oracle.truffle.api.instrument.StandardSyntaxTag.START_LOOP;
-import static com.oracle.truffle.api.instrument.StandardSyntaxTag.STATEMENT;
-
-import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.InstrumentationNode;
-import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -63,14 +55,16 @@ import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
  * A visitor which traverses a completely parsed Simple AST (presumed not yet executed) and enables
  * {@linkplain Instrumenter Instrumentation} at a few standard kinds of nodes.
  */
-public class SLStandardASTProber implements ASTProber {
+@Deprecated
+@SuppressWarnings("deprecation")
+public class SLStandardASTProber implements com.oracle.truffle.api.instrument.ASTProber {
 
-    public void probeAST(final Instrumenter instrumenter, RootNode startNode) {
+    public void probeAST(final com.oracle.truffle.api.instrument.Instrumenter instrumenter, RootNode startNode) {
         startNode.accept(new NodeVisitor() {
 
             public boolean visit(Node node) {
 
-                if (!(node instanceof InstrumentationNode) && node instanceof SLStatementNode && node.getParent() != null && node.getSourceSection() != null) {
+                if (!(node instanceof com.oracle.truffle.api.instrument.InstrumentationNode) && node instanceof SLStatementNode && node.getParent() != null && node.getSourceSection() != null) {
 
                     // Skip nodes that don't really correspond to statements
                     if (node instanceof SLFunctionBodyNode || node instanceof SLBlockNode || node instanceof SLReadArgumentNode) {
@@ -86,18 +80,18 @@ public class SLStandardASTProber implements ASTProber {
                     }
                     if (node instanceof SLExpressionNode) {
                         SLExpressionNode expressionNode = (SLExpressionNode) node;
-                        final Probe probe = instrumenter.probe(expressionNode);
+                        final com.oracle.truffle.api.instrument.Probe probe = instrumenter.probe(expressionNode);
                         if (node instanceof SLWriteLocalVariableNode) {
-                            probe.tagAs(STATEMENT, null);
-                            probe.tagAs(ASSIGNMENT, null);
+                            probe.tagAs(com.oracle.truffle.api.instrument.StandardSyntaxTag.STATEMENT, null);
+                            probe.tagAs(com.oracle.truffle.api.instrument.StandardSyntaxTag.ASSIGNMENT, null);
                         }
                     } else {
                         if (!(node.getParent() instanceof SLFunctionBodyNode)) {
                             SLStatementNode statementNode = (SLStatementNode) node;
-                            final Probe probe = instrumenter.probe(statementNode);
-                            probe.tagAs(STATEMENT, null);
+                            final com.oracle.truffle.api.instrument.Probe probe = instrumenter.probe(statementNode);
+                            probe.tagAs(com.oracle.truffle.api.instrument.StandardSyntaxTag.STATEMENT, null);
                             if (node instanceof SLWhileNode) {
-                                probe.tagAs(START_LOOP, null);
+                                probe.tagAs(com.oracle.truffle.api.instrument.StandardSyntaxTag.START_LOOP, null);
                             }
                         }
                     }

@@ -37,14 +37,10 @@ import java.util.Objects;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
-import com.oracle.truffle.api.instrument.ASTProber;
-import com.oracle.truffle.api.instrument.Instrumenter;
-import com.oracle.truffle.api.instrument.SyntaxTag;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -55,13 +51,6 @@ import java.util.Set;
  * polyglot execution engine} - all they will need to do is to include your JAR into their
  * application and all the Truffle goodies (multi-language support, multitenant hosting, debugging,
  * etc.) will be made available to them.
- * <p>
- * The use of {@linkplain Instrumenter Instrument-based services} requires that the language
- * {@linkplain Instrumenter#registerASTProber(com.oracle.truffle.api.instrument.ASTProber) register}
- * an instance of {@link ASTProber} suitable for the language implementation that can be applied to
- * "mark up" each newly created AST with {@link SyntaxTag "tags"} that identify standard syntactic
- * constructs in order to configure tool behavior. See also {@linkplain #createContext(Env)
- * createContext(Env)}.
  *
  * @param <C> internal state of the language associated with every thread that is executing program
  *            {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)
@@ -131,15 +120,6 @@ public abstract class TruffleLanguage<C> {
      * insert it into own AST hierarchy - use {@link #createFindContextNode()} to obtain the
      * {@link Node findNode} and later {@link #findContext(com.oracle.truffle.api.nodes.Node)
      * findContext(findNode)} to get back your language context.
-     *
-     * If it is expected that any {@linkplain Instrumenter Instrumentation Services} or tools that
-     * depend on those services (e.g. the {@link com.oracle.truffle.api.debug.Debugger}, then part
-     * of the preparation in the new context is to
-     * {@linkplain Instrumenter#registerASTProber(com.oracle.truffle.api.instrument.ASTProber)
-     * register} a "default" {@link ASTProber} for the language implementation. Instrumentation
-     * requires that this be available to "mark up" each newly created AST with
-     * {@linkplain SyntaxTag "tags"} that identify standard syntactic constructs in order to
-     * configure tool behavior.
      *
      * @param env the environment the language is supposed to operate in
      * @return internal data of the language in given environment
@@ -240,20 +220,22 @@ public abstract class TruffleLanguage<C> {
      *
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated
-    protected Visualizer getVisualizer() {
+    protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
         return null;
     }
 
     /**
      * Returns {@code true} for a node can be "instrumented" by
-     * {@linkplain Instrumenter#probe(Node) probing}.
+     * {@linkplain com.oracle.truffle.api.instrument.Instrumenter#probe(Node) probing}.
      * <p>
-     * <b>Note:</b> instrumentation requires a appropriate {@link WrapperNode}
+     * <b>Note:</b> instrumentation requires a appropriate
+     * {@link com.oracle.truffle.api.instrument.WrapperNode}
      *
-     * @see WrapperNode
      * @since 0.8 or earlier
      */
+    @Deprecated
     protected boolean isInstrumentable(@SuppressWarnings("unused") Node node) {
         return false;
     }
@@ -262,15 +244,17 @@ public abstract class TruffleLanguage<C> {
      * For nodes in this language that are <em>instrumentable</em>, this method returns an
      * {@linkplain Node AST node} that:
      * <ol>
-     * <li>implements {@link WrapperNode};</li>
+     * <li>implements {@link com.oracle.truffle.api.instrument.WrapperNode};</li>
      * <li>has the node argument as it's child; and</li>
      * <li>whose type is safe for replacement of the node in the parent.</li>
      * </ol>
      *
-     * @return an appropriately typed {@link WrapperNode}
+     * @return an appropriately typed {@link com.oracle.truffle.api.instrument.WrapperNode}
      * @since 0.8 or earlier
      */
-    protected WrapperNode createWrapperNode(@SuppressWarnings("unused") Node node) {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(@SuppressWarnings("unused") Node node) {
         throw new UnsupportedOperationException();
     }
 
@@ -387,10 +371,11 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream err;
         private final OutputStream out;
         private final Object[] services;
-        private final Instrumenter instrumenter;
+        @SuppressWarnings("deprecation") private final com.oracle.truffle.api.instrument.Instrumenter instrumenter;
         private final Map<String, Object> config;
 
-        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Instrumenter instrumenter, Map<String, Object> config) {
+        @SuppressWarnings("deprecation")
+        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, com.oracle.truffle.api.instrument.Instrumenter instrumenter, Map<String, Object> config) {
             this.vm = vm;
             this.in = in;
             this.err = err;
@@ -486,7 +471,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         /** @since 0.8 or earlier */
-        public Instrumenter instrumenter() {
+        @SuppressWarnings("deprecation")
+        @Deprecated
+        public com.oracle.truffle.api.instrument.Instrumenter instrumenter() {
             return instrumenter;
         }
 
@@ -550,7 +537,9 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> config) {
+        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn,
+                        @SuppressWarnings("deprecation") com.oracle.truffle.api.instrument.Instrumenter instrumenter,
+                        Map<String, Object> config) {
             Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
             return env;
         }
@@ -634,13 +623,17 @@ public abstract class TruffleLanguage<C> {
             return env.langCtx.ctx;
         }
 
+        @SuppressWarnings("deprecation")
+        @Deprecated
         @Override
         protected boolean isInstrumentable(Node node, TruffleLanguage language) {
             return language.isInstrumentable(node);
         }
 
+        @SuppressWarnings("deprecation")
+        @Deprecated
         @Override
-        protected WrapperNode createWrapperNode(Node node, TruffleLanguage language) {
+        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node, TruffleLanguage language) {
             return language.createWrapperNode(node);
         }
 
