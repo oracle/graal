@@ -90,7 +90,8 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
-        lirGenRes.buildFrameMap(this);
+        allocateStackSlots((FrameMapBuilderTool) lirGenRes.getFrameMapBuilder(), lirGenRes);
+        lirGenRes.buildFrameMap();
     }
 
     @SuppressWarnings("try")

@@ -48,7 +48,8 @@ public class SimpleStackSlotAllocator extends AllocationPhase implements StackSl
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
-        lirGenRes.buildFrameMap(this);
+        allocateStackSlots((FrameMapBuilderTool) lirGenRes.getFrameMapBuilder(), lirGenRes);
+        lirGenRes.buildFrameMap();
     }
 
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {

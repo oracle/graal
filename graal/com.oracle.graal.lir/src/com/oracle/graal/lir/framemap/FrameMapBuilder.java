@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,13 @@ package com.oracle.graal.lir.framemap;
 import java.util.BitSet;
 import java.util.List;
 
+import com.oracle.graal.lir.VirtualStackSlot;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.LIRKind;
-
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.stackslotalloc.StackSlotAllocator;
 
 /**
  * A {@link FrameMapBuilder} is used to collect all information necessary to
@@ -81,5 +80,5 @@ public interface FrameMapBuilder {
      * Creates a {@linkplain FrameMap} based on the information collected by this
      * {@linkplain FrameMapBuilder}.
      */
-    FrameMap buildFrameMap(LIRGenerationResult result, StackSlotAllocator allocator);
+    FrameMap buildFrameMap(LIRGenerationResult result);
 }

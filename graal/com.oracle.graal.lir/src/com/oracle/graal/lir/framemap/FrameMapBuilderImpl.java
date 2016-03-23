@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,16 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.lir.InstructionValueConsumer;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.VirtualStackSlot;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
+
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -36,18 +46,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.lir.InstructionValueConsumer;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.stackslotalloc.StackSlotAllocator;
 
 /**
  * A FrameMapBuilder that records allocation.
@@ -110,12 +108,9 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
     }
 
     @SuppressWarnings("try")
-    public FrameMap buildFrameMap(LIRGenerationResult res, StackSlotAllocator allocator) {
-        try (Scope s = Debug.scope("StackSlotAllocation")) {
-            allocator.allocateStackSlots(this, res);
-            if (Debug.isEnabled()) {
-                verifyStackSlotAllocation(res);
-            }
+    public FrameMap buildFrameMap(LIRGenerationResult res) {
+        if (Debug.isEnabled()) {
+            verifyStackSlotAllocation(res);
         }
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);

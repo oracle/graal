@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.vm.ci.code.CallingConvention;
-
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.stackslotalloc.StackSlotAllocator;
+
+import jdk.vm.ci.code.CallingConvention;
 
 public interface LIRGenerationResult {
 
-    /** Returns the incoming calling convention for the parameters of the method that is compiled. */
+    /**
+     * Returns the incoming calling convention for the parameters of the method that is compiled.
+     */
     CallingConvention getCallingConvention();
 
     /**
@@ -48,7 +49,7 @@ public interface LIRGenerationResult {
      *
      * @see FrameMapBuilder#buildFrameMap
      */
-    void buildFrameMap(StackSlotAllocator allocator);
+    void buildFrameMap();
 
     /**
      * Returns the {@link FrameMap} associated with this {@link LIRGenerationResult}.
