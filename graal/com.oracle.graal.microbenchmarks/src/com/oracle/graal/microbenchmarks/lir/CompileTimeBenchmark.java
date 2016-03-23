@@ -29,6 +29,7 @@ import org.openjdk.jmh.annotations.Benchmark;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
 import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
+import com.oracle.graal.nodes.StructuredGraph;
 
 public class CompileTimeBenchmark extends GraalBenchmark {
 
@@ -60,12 +61,12 @@ public class CompileTimeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    public CompilationResult frontend_STRING_equals(FrontEndOnly_StringEquals s) {
+    public StructuredGraph frontend_STRING_equals(FrontEndOnly_StringEquals s) {
         return s.compile();
     }
 
     @Benchmark
-    public CompilationResult frontend_HASHMAP_computeIfAbsent(FrontEndOnly_HashMapComputeIfAbsent s) {
+    public StructuredGraph frontend_HASHMAP_computeIfAbsent(FrontEndOnly_HashMapComputeIfAbsent s) {
         return s.compile();
     }
 
