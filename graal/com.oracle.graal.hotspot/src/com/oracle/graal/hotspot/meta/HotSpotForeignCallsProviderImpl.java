@@ -45,6 +45,7 @@ import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.stubs.ForeignCallStub;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.word.Word;
+import com.oracle.graal.word.WordTypes;
 
 /**
  * HotSpot implementation of {@link HotSpotForeignCallsProvider}.
@@ -64,12 +65,15 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     protected final Map<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = new HashMap<>();
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
+    protected final WordTypes wordTypes;
 
-    public HotSpotForeignCallsProviderImpl(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
+    public HotSpotForeignCallsProviderImpl(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
+                    WordTypes wordTypes) {
         this.jvmciRuntime = jvmciRuntime;
         this.runtime = runtime;
         this.metaAccess = metaAccess;
         this.codeCache = codeCache;
+        this.wordTypes = wordTypes;
     }
 
     /**
@@ -92,7 +96,8 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      * @param killedLocations the memory locations killed by the stub call
      */
     public HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor, boolean reexecutable, Transition transition, LocationIdentity... killedLocations) {
-        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, wordTypes, this, descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable,
+                        killedLocations));
     }
 
     /**
@@ -114,7 +119,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         Class<?> resultType = descriptor.getResultType();
         assert address != 0;
         assert transition != SAFEPOINT || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
-        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, this, descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkageImpl.create(metaAccess, codeCache, wordTypes, this, descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
     }
 
     /**
