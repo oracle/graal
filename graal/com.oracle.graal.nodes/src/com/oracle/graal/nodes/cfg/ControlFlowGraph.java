@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 
 import jdk.vm.ci.common.JVMCIError;
 
@@ -37,15 +36,15 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.LoopExitNode;
-import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -61,7 +60,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     public final StructuredGraph graph;
 
     private NodeMap<Block> nodeToBlock;
-    private List<Block> reversePostOrder;
+    private Block[] reversePostOrder;
     private List<Loop<Block>> loops;
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
@@ -90,44 +89,16 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         this.nodeToBlock = graph.createNodeMap();
     }
 
-    public List<Block> getBlocks() {
+    public Block[] getBlocks() {
         return reversePostOrder;
     }
 
     public Block getStartBlock() {
-        return reversePostOrder.get(0);
+        return reversePostOrder[0];
     }
 
-    public Iterable<Block> reversePostOrder() {
+    public Block[] reversePostOrder() {
         return reversePostOrder;
-    }
-
-    public Iterable<Block> postOrder() {
-        return new Iterable<Block>() {
-
-            @Override
-            public Iterator<Block> iterator() {
-                return new Iterator<Block>() {
-
-                    private ListIterator<Block> it = reversePostOrder.listIterator(reversePostOrder.size());
-
-                    @Override
-                    public boolean hasNext() {
-                        return it.hasPrevious();
-                    }
-
-                    @Override
-                    public Block next() {
-                        return it.previous();
-                    }
-
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-                };
-            }
-        };
     }
 
     public NodeMap<Block> getNodeToBlock() {
@@ -147,22 +118,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     private void identifyBlock(Block block) {
-        AbstractBeginNode start = block.getBeginNode();
-
-        // assign proxies of a loop exit to this block
-        if (start instanceof LoopExitNode) {
-            for (Node usage : start.usages()) {
-                if (usage instanceof ProxyNode) {
-                    nodeToBlock.set(usage, block);
-                }
-            }
-        } else if (start instanceof AbstractMergeNode) {
-            for (PhiNode phi : ((AbstractMergeNode) start).phis()) {
-                nodeToBlock.set(phi, block);
-            }
-        }
-
-        FixedWithNextNode cur = start;
+        FixedWithNextNode cur = block.getBeginNode();
         while (true) {
             assert !cur.isDeleted();
             assert nodeToBlock.get(cur) == null;
@@ -186,46 +142,57 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         int numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             Block block = new Block(begin);
-            numBlocks++;
             identifyBlock(block);
+            numBlocks++;
         }
 
         // Compute postorder.
-        ArrayList<Block> postOrder = new ArrayList<>(numBlocks);
-        ArrayList<Block> stack = new ArrayList<>();
-        stack.add(blockFor(graph.start()));
-
+        int count = 0;
+        NodeMap<Block> nodeMap = this.nodeToBlock;
+        Block[] stack = new Block[numBlocks];
+        int tos = 0;
+        stack[0] = blockFor(graph.start());
         do {
-            Block block = stack.get(stack.size() - 1);
-            if (block.getId() == BLOCK_ID_INITIAL) {
+            Block block = stack[tos];
+            int id = block.getId();
+            if (id == BLOCK_ID_INITIAL) {
                 // First time we see this block: push all successors.
-                for (Node suxNode : block.getEndNode().cfgSuccessors()) {
-                    Block suxBlock = blockFor(suxNode);
-                    assert suxBlock != null : suxNode;
+                FixedNode last = block.getEndNode();
+                if (last instanceof EndNode) {
+                    EndNode endNode = (EndNode) last;
+                    Block suxBlock = nodeMap.get(endNode.merge());
                     if (suxBlock.getId() == BLOCK_ID_INITIAL) {
-                        stack.add(suxBlock);
+                        stack[++tos] = suxBlock;
+                    }
+                } else if (last instanceof IfNode) {
+                    IfNode ifNode = (IfNode) last;
+                    stack[++tos] = nodeMap.get(ifNode.trueSuccessor());
+                    stack[++tos] = nodeMap.get(ifNode.falseSuccessor());
+                } else if (last instanceof LoopEndNode) {
+                    // Nothing to do.
+                } else {
+                    assert !(last instanceof AbstractEndNode) : "Algorithm only supports EndNode and LoopEndNode.";
+                    for (Node suxNode : last.successors()) {
+                        stack[++tos] = nodeMap.get(suxNode);
                     }
                 }
                 block.setId(BLOCK_ID_VISITED);
-            } else if (block.getId() == BLOCK_ID_VISITED) {
+            } else if (id == BLOCK_ID_VISITED) {
                 // Second time we see this block: All successors have been processed, so add block
-                // to postorder list.
-                stack.remove(stack.size() - 1);
-                postOrder.add(block);
+                // to result list. Can safely reuse the stack for this.
+                --tos;
+                count++;
+                int index = numBlocks - count;
+                stack[index] = block;
+                block.setId(index);
             } else {
                 throw JVMCIError.shouldNotReachHere();
             }
-        } while (!stack.isEmpty());
+        } while (tos != -1);
 
         // Compute reverse postorder and number blocks.
-        assert postOrder.size() <= numBlocks : "some blocks originally created can be unreachable, so actual block list can be shorter";
-        numBlocks = postOrder.size();
-        reversePostOrder = new ArrayList<>(numBlocks);
-        for (int i = 0; i < numBlocks; i++) {
-            Block block = postOrder.get(numBlocks - i - 1);
-            block.setId(i);
-            reversePostOrder.add(block);
-        }
+        assert count == numBlocks : "all blocks must be reachable";
+        this.reversePostOrder = stack;
     }
 
     // Connect blocks (including loop backward edges), but ignoring dead code (blocks with id < 0).
@@ -379,7 +346,11 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     public void computePostdominators() {
-        outer: for (Block block : postOrder()) {
+
+        Block[] reversePostOrderTmp = this.reversePostOrder;
+
+        outer: for (int j = reversePostOrderTmp.length - 1; j >= 0; --j) {
+            Block block = reversePostOrderTmp[j];
             if (block.isLoopEnd()) {
                 // We do not want the loop header registered as the postdominator of the loop end.
                 continue;

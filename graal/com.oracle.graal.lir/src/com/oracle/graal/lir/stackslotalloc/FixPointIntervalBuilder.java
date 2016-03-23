@@ -79,8 +79,9 @@ final class FixPointIntervalBuilder {
      */
     Set<LIRInstruction> build() {
         Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
-        for (int i = lir.getControlFlowGraph().getBlocks().size() - 1; i >= 0; i--) {
-            worklist.add(lir.getControlFlowGraph().getBlocks().get(i));
+        AbstractBlockBase<?>[] blocks = lir.getControlFlowGraph().getBlocks();
+        for (int i = blocks.length - 1; i >= 0; i--) {
+            worklist.add(blocks[i]);
         }
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, new BitSet(stackSlotMap.length));

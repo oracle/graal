@@ -30,6 +30,7 @@ import static com.oracle.graal.graph.Edges.Type.Successors;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -171,7 +172,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         ControlFlowGraph cfg = scheduleResult == null ? null : scheduleResult.getCFG();
         BlockMap<List<Node>> blockToNodes = scheduleResult == null ? null : scheduleResult.getBlockToNodesMap();
         NodeMap<Block> nodeToBlocks = scheduleResult == null ? null : scheduleResult.getNodeToBlockMap();
-        List<Block> blocks = cfg == null ? null : cfg.getBlocks();
+        List<Block> blocks = cfg == null ? null : Arrays.asList(cfg.getBlocks());
         writeNodes(graph, nodeToBlocks, cfg);
         writeBlocks(blocks, blockToNodes);
     }

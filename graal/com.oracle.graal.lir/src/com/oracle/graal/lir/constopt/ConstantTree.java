@@ -193,7 +193,7 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
     }
 
     public int size() {
-        return getBlocks().size();
+        return getBlocks().length;
     }
 
     public void traverseTreeWhileTrue(AbstractBlockBase<?> block, Predicate<AbstractBlockBase<?>> action) {

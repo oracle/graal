@@ -69,9 +69,10 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
 
     @SuppressWarnings("unchecked")
     void build() {
-        UniqueWorkList<T> worklist = new UniqueWorkList<>(lir.getControlFlowGraph().getBlocks().size());
-        for (int i = lir.getControlFlowGraph().getBlocks().size() - 1; i >= 0; i--) {
-            worklist.add((T) lir.getControlFlowGraph().getBlocks().get(i));
+        AbstractBlockBase<?>[] blocks = lir.getControlFlowGraph().getBlocks();
+        UniqueWorkList<T> worklist = new UniqueWorkList<>(blocks.length);
+        for (int i = blocks.length - 1; i >= 0; i--) {
+            worklist.add((T) blocks[i]);
         }
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, newLiveValueSet());

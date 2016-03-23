@@ -41,7 +41,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      *
      * @see CFGVerifier
      */
-    List<T> getBlocks();
+    T[] getBlocks();
 
     Collection<Loop<T>> getLoops();
 
@@ -52,10 +52,10 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      */
     @SuppressWarnings("unchecked")
     static <T extends AbstractBlockBase<T>> void computeDominators(AbstractControlFlowGraph<T> cfg) {
-        List<T> reversePostOrder = cfg.getBlocks();
-        assert reversePostOrder.get(0).getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
-        for (int i = 1; i < reversePostOrder.size(); i++) {
-            T block = reversePostOrder.get(i);
+        AbstractBlockBase<?>[] reversePostOrder = cfg.getBlocks();
+        assert reversePostOrder[0].getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
+        for (int i = 1; i < reversePostOrder.length; i++) {
+            T block = (T) reversePostOrder[i];
             assert block.getPredecessorCount() > 0;
             T dominator = null;
             for (T pred : block.getPredecessors()) {
