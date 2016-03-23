@@ -41,13 +41,14 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.word.WordBase;
+import com.oracle.graal.word.WordTypes;
 
 /**
  * The details required to link a HotSpot runtime or stub call.
@@ -106,10 +107,11 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
      *            re-executed.
      * @param killedLocations the memory locations killed by the call
      */
-    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, HotSpotForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor,
-                    long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, boolean reexecutable, LocationIdentity... killedLocations) {
-        CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, descriptor, outgoingCcType);
-        CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, descriptor, incomingCcType);
+    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, HotSpotForeignCallsProvider foreignCalls,
+                    ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, boolean reexecutable,
+                    LocationIdentity... killedLocations) {
+        CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, wordTypes, descriptor, outgoingCcType);
+        CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, wordTypes, descriptor, incomingCcType);
         HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
         if (outgoingCcType == HotSpotCallingConventionType.NativeCall) {
             linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
@@ -120,25 +122,25 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     /**
      * Gets a calling convention for a given descriptor and call type.
      */
-    public static CallingConvention createCallingConvention(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ForeignCallDescriptor descriptor, Type ccType) {
+    public static CallingConvention createCallingConvention(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, ForeignCallDescriptor descriptor, Type ccType) {
         assert ccType != null;
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
         for (int i = 0; i < parameterTypes.length; ++i) {
-            parameterTypes[i] = asJavaType(argumentTypes[i], metaAccess, codeCache);
+            parameterTypes[i] = asJavaType(argumentTypes[i], metaAccess, wordTypes);
         }
         TargetDescription target = codeCache.getTarget();
-        JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess, codeCache);
+        JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess, wordTypes);
         RegisterConfig regConfig = codeCache.getRegisterConfig();
         return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target);
     }
 
-    private static JavaType asJavaType(Class<?> type, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
-        if (WordBase.class.isAssignableFrom(type)) {
-            return metaAccess.lookupJavaType(codeCache.getTarget().wordJavaKind.toJavaClass());
-        } else {
-            return metaAccess.lookupJavaType(type);
+    private static JavaType asJavaType(Class<?> type, MetaAccessProvider metaAccess, WordTypes wordTypes) {
+        ResolvedJavaType javaType = metaAccess.lookupJavaType(type);
+        if (wordTypes.isWord(javaType)) {
+            javaType = metaAccess.lookupJavaType(wordTypes.getWordKind().toJavaClass());
         }
+        return javaType;
     }
 
     public HotSpotForeignCallLinkageImpl(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention outgoingCallingConvention,

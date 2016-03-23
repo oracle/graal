@@ -102,6 +102,7 @@ import com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub;
 import com.oracle.graal.hotspot.stubs.VerifyOopStub;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.word.Word;
+import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.common.JVMCIError;
@@ -116,8 +117,9 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl {
 
-    public HotSpotHostForeignCallsProvider(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
-        super(jvmciRuntime, runtime, metaAccess, codeCache);
+    public HotSpotHostForeignCallsProvider(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
+                    WordTypes wordTypes) {
+        super(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes);
     }
 
     protected static void link(Stub stub) {

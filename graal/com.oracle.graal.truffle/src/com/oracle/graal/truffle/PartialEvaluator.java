@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.LoopExplosionPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
-import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
@@ -459,7 +458,7 @@ public class PartialEvaluator {
 
         HashMap<String, ArrayList<ValueNode>> groupedByType;
         groupedByType = new HashMap<>();
-        for (CheckCastNode cast : graph.getNodes().filter(CheckCastNode.class)) {
+        for (InstanceOfNode cast : graph.getNodes().filter(InstanceOfNode.class)) {
             if (!cast.type().isExact()) {
                 warnings.add(cast);
                 groupedByType.putIfAbsent(cast.type().getType().getName(), new ArrayList<>());

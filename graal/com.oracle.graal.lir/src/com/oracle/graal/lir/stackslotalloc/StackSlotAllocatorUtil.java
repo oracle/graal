@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,32 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import jdk.vm.ci.code.StackSlot;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
+import jdk.vm.ci.code.StackSlot;
+
 /**
- * A {@link StackSlotAllocator} is responsible for translating {@link VirtualStackSlot virtual}
- * stack slots into {@link StackSlot real} stack slots. This includes changing all occurrences of
+ * A stack slot allocator is responsible for translating {@link VirtualStackSlot virtual} stack
+ * slots into {@link StackSlot real} stack slots. This includes changing all occurrences of
  * {@link VirtualStackSlot} in the {@link LIRGenerationResult#getLIR() LIR} to {@link StackSlot}.
  */
-public interface StackSlotAllocator {
+public final class StackSlotAllocatorUtil {
     /**
      * The number of allocated stack slots.
      */
-    DebugMetric allocatedSlots = Debug.metric("StackSlotAllocator[allocatedSlots]");
+    public static DebugMetric allocatedSlots = Debug.metric("StackSlotAllocator[allocatedSlots]");
     /**
      * The number of reused stack slots.
      */
-    DebugMetric reusedSlots = Debug.metric("StackSlotAllocator[reusedSlots]");
+    public static DebugMetric reusedSlots = Debug.metric("StackSlotAllocator[reusedSlots]");
     /**
      * The size (in bytes) required for all allocated stack slots. Note that this number corresponds
      * to the actual frame size and might include alignment.
      */
-    DebugMetric allocatedFramesize = Debug.metric("StackSlotAllocator[AllocatedFramesize]");
+    public static DebugMetric allocatedFramesize = Debug.metric("StackSlotAllocator[AllocatedFramesize]");
     /** The size (in bytes) required for all virtual stack slots. */
-    DebugMetric virtualFramesize = Debug.metric("StackSlotAllocator[VirtualFramesize]");
-
-    void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res);
+    public static DebugMetric virtualFramesize = Debug.metric("StackSlotAllocator[VirtualFramesize]");
 }

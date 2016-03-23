@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.MaximumEscapeAnalysi
 
 import java.util.List;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -45,11 +46,13 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
     private final PartialEscapeClosure<?> closure;
+    private final Assumptions assumptions;
 
-    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, PartialEscapeClosure<?> closure) {
+    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, PartialEscapeClosure<?> closure, Assumptions assumptions) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.closure = closure;
+        this.assumptions = assumptions;
     }
 
     private boolean deleted;
@@ -214,5 +217,9 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     @Override
     public boolean allUsagesAvailable() {
         return true;
+    }
+
+    public Assumptions getAssumptions() {
+        return assumptions;
     }
 }
