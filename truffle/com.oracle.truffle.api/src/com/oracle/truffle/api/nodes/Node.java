@@ -704,6 +704,10 @@ class NodeSnippets {
     class StatementNode extends Node {
         private boolean isDebuggerHalt;
 
+        public void setDebuggerHalt(boolean isDebuggerHalt) {
+            this.isDebuggerHalt = isDebuggerHalt;
+        }
+
         @Override
         protected boolean isTaggedWith(Class<?> tag) {
             if (tag == Debugger.HaltTag.class) {
