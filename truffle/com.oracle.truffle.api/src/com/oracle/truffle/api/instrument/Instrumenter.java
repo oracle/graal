@@ -506,7 +506,6 @@ public final class Instrumenter {
      * @since 0.8 or earlier
      */
     @Deprecated
-    @SuppressWarnings("rawtypes")
     public ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo) {
         return attach(probe, languageClass, source, listener, instrumentInfo, new String[0], new Object[0]);
     }
@@ -556,7 +555,6 @@ public final class Instrumenter {
         return attach(probe, null, source, listener, instrumentInfo, names, params);
     }
 
-    @SuppressWarnings("rawtypes")
     private ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo, String[] argumentNames,
                     Object[] parameters) {
         assert probe.getInstrumenter() == this;
