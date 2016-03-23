@@ -56,8 +56,9 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
- * An implementation of a Trace Register Allocator as described in <a
- * href="http://dx.doi.org/10.1145/2814189.2814199">"Trace Register Allocation"</a> by Josef Eisl.
+ * An implementation of a Trace Register Allocator as described in
+ * <a href="http://dx.doi.org/10.1145/2814189.2814199">"Trace Register Allocation"</a> by Josef
+ * Eisl.
  */
 public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
@@ -95,6 +96,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
+        TraceIntervalMap intervalMap = getIntervalMap(context);
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
             for (Trace<B> trace : resultTraces.getTraces()) {
                 try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
@@ -108,7 +110,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     } else {
                         TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false,
                                         cachedStackSlots);
-                        IntervalData intervalData = getIntervalData(context, trace);
+                        IntervalData intervalData = intervalMap == null ? null : intervalMap.get(trace);
 
                         allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig, intervalData);
                     }
@@ -125,13 +127,11 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         deconstructSSIForm(lir);
     }
 
-    private static <B extends AbstractBlockBase<B>> IntervalData getIntervalData(AllocationContext context, Trace<B> trace) {
+    private static TraceIntervalMap getIntervalMap(AllocationContext context) {
         if (!AllocationStage.Options.TraceRACombinedSSIConstruction.getValue()) {
             return null;
         }
-        TraceIntervalMap intervalMap = context.contextLookup(TraceIntervalMap.class);
-        assert intervalMap != null : "No interval map?";
-        return intervalMap.get(trace);
+        return context.contextLookup(TraceIntervalMap.class);
     }
 
     @SuppressWarnings("unchecked")
