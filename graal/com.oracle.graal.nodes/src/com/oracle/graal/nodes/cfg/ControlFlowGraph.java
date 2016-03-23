@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -216,7 +215,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             } else {
                 throw JVMCIError.shouldNotReachHere();
             }
-        } while (tos != -1);
+        } while (tos >= 0);
 
         // Compute reverse postorder and number blocks.
         assert count == numBlocks : "all blocks must be reachable";
@@ -270,38 +269,42 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     private void computeLoopInformation() {
         loops = new ArrayList<>();
-        for (Block block : reversePostOrder) {
-            AbstractBeginNode beginNode = block.getBeginNode();
-            if (beginNode instanceof LoopBeginNode) {
-                Loop<Block> loop = new HIRLoop(block.getLoop(), loops.size(), block);
-                loops.add(loop);
+        if (graph.hasLoops()) {
+            Block[] stack = new Block[this.reversePostOrder.length];
+            for (Block block : reversePostOrder) {
+                AbstractBeginNode beginNode = block.getBeginNode();
+                if (beginNode instanceof LoopBeginNode) {
+                    Loop<Block> loop = new HIRLoop(block.getLoop(), loops.size(), block);
+                    loops.add(loop);
+                    block.loop = loop;
+                    loop.getBlocks().add(block);
 
-                LoopBeginNode loopBegin = (LoopBeginNode) beginNode;
-                for (LoopEndNode end : loopBegin.loopEnds()) {
-                    Block endBlock = nodeToBlock.get(end);
-                    computeLoopBlocks(endBlock, loop);
-                }
-
-                if (graph.getGuardsStage() != GuardsStage.AFTER_FSA) {
-                    for (LoopExitNode exit : loopBegin.loopExits()) {
-                        Block exitBlock = nodeToBlock.get(exit);
-                        assert exitBlock.getPredecessorCount() == 1;
-                        computeLoopBlocks(exitBlock.getFirstPredecessor(), loop);
-                        loop.getExits().add(exitBlock);
+                    LoopBeginNode loopBegin = (LoopBeginNode) beginNode;
+                    for (LoopEndNode end : loopBegin.loopEnds()) {
+                        Block endBlock = nodeToBlock.get(end);
+                        computeLoopBlocks(endBlock, loop, stack, true);
                     }
-                }
 
-                if (graph.getGuardsStage() != GuardsStage.AFTER_FSA) {
-                    // The following loop can add new blocks to the end of the loop's block list.
-                    int size = loop.getBlocks().size();
-                    for (int i = 0; i < size; ++i) {
-                        Block b = loop.getBlocks().get(i);
-                        for (Block sux : b.getSuccessors()) {
-                            if (sux.loop != loop) {
-                                AbstractBeginNode begin = sux.getBeginNode();
-                                if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
-                                    Debug.log(3, "Unexpected loop exit with %s, including whole branch in the loop", sux);
-                                    addBranchToLoop(loop, sux);
+                    if (graph.getGuardsStage() != GuardsStage.AFTER_FSA) {
+                        for (LoopExitNode exit : loopBegin.loopExits()) {
+                            Block exitBlock = nodeToBlock.get(exit);
+                            assert exitBlock.getPredecessorCount() == 1;
+                            computeLoopBlocks(exitBlock.getFirstPredecessor(), loop, stack, true);
+                            loop.getExits().add(exitBlock);
+                        }
+
+                        // The following loop can add new blocks to the end of the loop's block
+                        // list.
+                        int size = loop.getBlocks().size();
+                        for (int i = 0; i < size; ++i) {
+                            Block b = loop.getBlocks().get(i);
+                            for (Block sux : b.getSuccessors()) {
+                                if (sux.loop != loop) {
+                                    AbstractBeginNode begin = sux.getBeginNode();
+                                    if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
+                                        Debug.log(3, "Unexpected loop exit with %s, including whole branch in the loop", sux);
+                                        computeLoopBlocks(sux, loop, stack, false);
+                                    }
                                 }
                             }
                         }
@@ -311,64 +314,24 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    private static void addBranchToLoop(Loop<Block> l, Block b) {
-        if (b.loop == l) {
-            return;
-        }
-        assert !(l.getBlocks().contains(b));
-        l.getBlocks().add(b);
-        b.loop = l;
-        for (Block sux : b.getSuccessors()) {
-            addBranchToLoop(l, sux);
-        }
-    }
+    private static void computeLoopBlocks(Block start, Loop<Block> loop, Block[] stack, boolean usePred) {
+        if (start.loop != loop) {
+            start.loop = loop;
+            stack[0] = start;
+            loop.getBlocks().add(start);
+            int tos = 0;
+            do {
+                Block block = stack[tos--];
 
-    private static void computeLoopBlocks(Block ablock, Loop<Block> aloop) {
-        final int process = 0;
-        final int stepOut = 1;
-        class Frame {
-            final Iterator<Block> blocks;
-            final Loop<Block> loop;
-            final Frame parent;
-
-            Frame(Iterator<Block> blocks, Loop<Block> loop, Frame parent) {
-                this.blocks = blocks;
-                this.loop = loop;
-                this.parent = parent;
-            }
-        }
-        int state = process;
-        Frame c = new Frame(Arrays.asList(ablock).iterator(), aloop, null);
-        while (c != null) {
-            int nextState = state;
-            if (state == process) {
-                Loop<Block> loop = c.loop;
-                Block block = c.blocks.next();
-                if (block.getLoop() == loop) {
-                    nextState = stepOut;
-                } else {
-                    assert block.loop == loop.getParent() : block;
-                    block.loop = c.loop;
-
-                    assert !c.loop.getBlocks().contains(block);
-                    c.loop.getBlocks().add(block);
-
-                    if (block != c.loop.getHeader()) {
-                        c = new Frame(Arrays.asList(block.getPredecessors()).iterator(), loop, c);
-                    } else {
-                        nextState = stepOut;
+                // Add predecessors or successors to the loop.
+                for (Block b : (usePred ? block.getPredecessors() : block.getSuccessors())) {
+                    if (b.loop != loop) {
+                        stack[++tos] = b;
+                        b.loop = loop;
+                        loop.getBlocks().add(b);
                     }
                 }
-            } else if (state == stepOut) {
-                if (c.blocks.hasNext()) {
-                    nextState = process;
-                } else {
-                    c = c.parent;
-                }
-            } else {
-                JVMCIError.shouldNotReachHere();
-            }
-            state = nextState;
+            } while (tos >= 0);
         }
     }
 

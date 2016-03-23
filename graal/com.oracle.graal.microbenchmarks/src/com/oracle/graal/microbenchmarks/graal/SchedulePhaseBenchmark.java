@@ -46,12 +46,12 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void cfgCompute1(StringEquals s) {
-        ControlFlowGraph.compute(s.graph, false, false, false, false);
+        ControlFlowGraph.compute(s.graph, true, false, false, false);
     }
 
     @Benchmark
     public void cfgCompute2(StringEquals s) {
-        ControlFlowGraph.compute(s.graph, true, false, false, false);
+        ControlFlowGraph.compute(s.graph, true, true, false, false);
     }
 
     public static int[] intersectionSnippet(int[] in1, int[] in2) {
