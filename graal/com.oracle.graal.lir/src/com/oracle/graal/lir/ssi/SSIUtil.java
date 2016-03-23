@@ -148,10 +148,11 @@ public final class SSIUtil {
      * the incoming value to the merge block.
      */
     public static void forEachValuePair(LIR lir, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock, PhiValueVisitor visitor) {
-        assert Arrays.asList(toBlock.getPredecessors()).contains(fromBlock) : String.format("%s not in predecessor list: %s", fromBlock, toBlock.getPredecessors());
+        assert Arrays.asList(toBlock.getPredecessors()).contains(fromBlock) : String.format("%s not in predecessor list: %s", fromBlock, Arrays.toString(toBlock.getPredecessors()));
         assert fromBlock.getSuccessorCount() == 1 || toBlock.getPredecessorCount() == 1 : String.format("Critical Edge? %s has %d successors and %s has %d predecessors", fromBlock,
                         fromBlock.getSuccessorCount(), toBlock, toBlock.getPredecessorCount());
-        assert Arrays.asList(fromBlock.getSuccessors()).contains(toBlock) : String.format("Predecessor block %s has wrong successor: %s, should contain: %s", fromBlock, fromBlock.getSuccessors(),
+        assert Arrays.asList(fromBlock.getSuccessors()).contains(toBlock) : String.format("Predecessor block %s has wrong successor: %s, should contain: %s", fromBlock,
+                        Arrays.toString(fromBlock.getSuccessors()),
                         toBlock);
 
         BlockEndOp blockEnd = outgoing(lir, fromBlock);

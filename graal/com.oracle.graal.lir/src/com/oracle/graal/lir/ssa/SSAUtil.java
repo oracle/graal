@@ -58,14 +58,14 @@ import com.oracle.graal.lir.ValueConsumer;
  *   v0|i = ...
  *   JUMP ~[v0|i, int[0|0x0]] destination: B0 -> B1
  * ________________________________________________
- *
+ * 
  * B2 -> B1
  *   ...
  *   v1|i = ...
  *   v2|i = ...
  *   JUMP ~[v1|i, v2|i] destination: B2 -> B1
  * ________________________________________________
- *
+ * 
  * B1 <- B0,B2
  *   [v3|i, v4|i] = LABEL
  *   ...
@@ -89,8 +89,8 @@ public final class SSAUtil {
         if (merge.getPredecessorCount() < 2) {
             return;
         }
-        assert Arrays.asList(merge.getPredecessors()).contains(pred) : String.format("%s not in predecessor list: %s", pred, merge.getPredecessors());
-        assert pred.getSuccessorCount() == 1 : String.format("Merge predecessor block %s has more than one successor? %s", pred, pred.getSuccessors());
+        assert Arrays.asList(merge.getPredecessors()).contains(pred) : String.format("%s not in predecessor list: %s", pred, Arrays.toString(merge.getPredecessors()));
+        assert pred.getSuccessorCount() == 1 : String.format("Merge predecessor block %s has more than one successor? %s", pred, Arrays.toString(pred.getSuccessors()));
         assert pred.getSuccessors()[0] == merge : String.format("Predecessor block %s has wrong successor: %s, should be: %s", pred, pred.getSuccessors()[0], merge);
 
         JumpOp jump = phiOut(lir, pred);

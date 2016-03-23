@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -48,7 +49,7 @@ import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 
-public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
+public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     /**
      * Don't allow probability values to be become too small as this makes frequency calculations
      * large enough that they can overflow the range of a double. This commonly happens with
@@ -71,7 +72,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             cfg.computeLoopInformation();
         }
         if (computeDominators) {
-            AbstractControlFlowGraph.computeDominators(cfg);
+            cfg.computeDominators();
         }
         if (computePostdominators) {
             cfg.computePostdominators();
@@ -81,9 +82,80 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return cfg;
     }
 
-    protected ControlFlowGraph(StructuredGraph graph) {
+    private ControlFlowGraph(StructuredGraph graph) {
         this.graph = graph;
         this.nodeToBlock = graph.createNodeMap();
+    }
+
+    private void computeDominators() {
+        assert reversePostOrder[0].getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
+        Block[] blocks = reversePostOrder;
+        for (int i = 1; i < blocks.length; i++) {
+            Block block = blocks[i];
+            assert block.getPredecessorCount() > 0;
+            Block dominator = null;
+            for (Block pred : block.getPredecessors()) {
+                if (!pred.isLoopEnd()) {
+                    dominator = ((dominator == null) ? pred : commonDominatorRaw(dominator, pred));
+                }
+            }
+            // set dominator
+            block.setDominator(dominator);
+            if (dominator.getDominated().equals(Collections.emptyList())) {
+                dominator.setDominated(new ArrayList<>());
+            }
+            dominator.getDominated().add(block);
+        }
+        calcDominatorRanges(getStartBlock(), reversePostOrder.length);
+    }
+
+    private static void calcDominatorRanges(Block block, int size) {
+        Block[] stack = new Block[size];
+        stack[0] = block;
+        int tos = 0;
+        int myNumber = 0;
+
+        do {
+            Block cur = stack[tos];
+            List<Block> dominated = cur.getDominated();
+
+            if (cur.getDominatorNumber() == -1) {
+                cur.setDominatorNumber(myNumber);
+                if (dominated.size() > 0) {
+                    // Push children onto stack.
+                    for (Block b : dominated) {
+                        stack[++tos] = b;
+                    }
+                } else {
+                    cur.setMaxChildDomNumber(myNumber);
+                    --tos;
+                }
+                ++myNumber;
+            } else {
+                cur.setMaxChildDomNumber(dominated.get(0).getMaxChildDominatorNumber());
+                --tos;
+            }
+        } while (tos >= 0);
+    }
+
+    private static Block commonDominatorRaw(Block a, Block b) {
+        int aDomDepth = a.getDominatorDepth();
+        int bDomDepth = b.getDominatorDepth();
+        if (aDomDepth > bDomDepth) {
+            return commonDominatorRawSameDepth(a.getDominator(aDomDepth - bDomDepth), b);
+        } else {
+            return commonDominatorRawSameDepth(a, b.getDominator(bDomDepth - aDomDepth));
+        }
+    }
+
+    private static Block commonDominatorRawSameDepth(Block a, Block b) {
+        Block iterA = a;
+        Block iterB = b;
+        while (iterA != iterB) {
+            iterA = iterA.getDominator();
+            iterB = iterB.getDominator();
+        }
+        return iterA;
     }
 
     public Block[] getBlocks() {

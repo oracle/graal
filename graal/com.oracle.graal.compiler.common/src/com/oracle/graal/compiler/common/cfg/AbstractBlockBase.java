@@ -44,10 +44,15 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     protected AbstractBlockBase() {
         this.id = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
         this.linearScanNumber = -1;
+        this.domNumber = -1;
+        this.maxChildDomNumber = -1;
     }
 
-    public void setDominatorNumbers(int domNumber, int maxChildDomNumber) {
+    public void setDominatorNumber(int domNumber) {
         this.domNumber = domNumber;
+    }
+
+    public void setMaxChildDomNumber(int maxChildDomNumber) {
         this.maxChildDomNumber = maxChildDomNumber;
     }
 
