@@ -132,7 +132,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
                 assert blocks.get(blocks.size() - 1).equals(toBlock);
                 if (toBlock.isLoopEnd()) {
                     assert toBlock.getSuccessorCount() == 1;
-                    AbstractBlockBase<?> loopHeader = toBlock.getSuccessors().get(0);
+                    AbstractBlockBase<?> loopHeader = toBlock.getSuccessors()[0];
                     if (containedInTrace(loopHeader)) {
                         resolveCollectMappings(toBlock, loopHeader, moveResolver);
                     }

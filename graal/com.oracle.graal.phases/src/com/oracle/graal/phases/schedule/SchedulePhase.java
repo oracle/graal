@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.OptScheduleOutOfLoop
 import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.strictlyDominates;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Formatter;
 import java.util.List;
@@ -505,7 +506,7 @@ public final class SchedulePhase extends Phase {
                 Block mergeBlock = currentNodeMap.get(merge);
                 for (int i = 0; i < phi.valueCount(); ++i) {
                     if (phi.valueAt(i) == node) {
-                        Block otherBlock = mergeBlock.getPredecessors().get(i);
+                        Block otherBlock = mergeBlock.getPredecessors()[i];
                         currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                     }
                 }
@@ -799,8 +800,8 @@ public final class SchedulePhase extends Phase {
             for (Block b : getCFG().getBlocks()) {
                 buf.format("==== b: %s (loopDepth: %s). ", b, b.getLoopDepth());
                 buf.format("dom: %s. ", b.getDominator());
-                buf.format("preds: %s. ", b.getPredecessors());
-                buf.format("succs: %s ====%n", b.getSuccessors());
+                buf.format("preds: %s. ", Arrays.toString(b.getPredecessors()));
+                buf.format("succs: %s ====%n", Arrays.toString(b.getSuccessors()));
 
                 if (blockToNodesMap.get(b) != null) {
                     for (Node n : nodesFor(b)) {

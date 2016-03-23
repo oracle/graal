@@ -24,6 +24,7 @@ package com.oracle.graal.printer;
 
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
@@ -689,12 +690,12 @@ class CFGPrinter extends CompilationPrinter {
 
         if (block.getPredecessorCount() > 0) {
             out.print("<- ");
-            printBlockListWithTrace(block.getPredecessors(), traceBuilderResult);
+            printBlockListWithTrace(Arrays.asList(block.getPredecessors()), traceBuilderResult);
             out.print(" ");
         }
         if (block.getSuccessorCount() > 0) {
             out.print("-> ");
-            printBlockListWithTrace(block.getSuccessors(), traceBuilderResult);
+            printBlockListWithTrace(Arrays.asList(block.getSuccessors()), traceBuilderResult);
         }
 
         out.print(COLUMN_END);

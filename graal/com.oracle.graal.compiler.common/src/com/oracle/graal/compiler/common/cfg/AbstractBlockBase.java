@@ -30,8 +30,8 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     protected int id;
     protected int domDepth;
 
-    protected List<T> predecessors;
-    protected List<T> successors;
+    protected T[] predecessors;
+    protected T[] successors;
 
     private T dominator;
     private List<T> dominated;
@@ -67,19 +67,19 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         this.id = id;
     }
 
-    public List<T> getPredecessors() {
+    public T[] getPredecessors() {
         return predecessors;
     }
 
-    public void setPredecessors(List<T> predecessors) {
+    public void setPredecessors(T[] predecessors) {
         this.predecessors = predecessors;
     }
 
-    public List<T> getSuccessors() {
+    public T[] getSuccessors() {
         return successors;
     }
 
-    public void setSuccessors(List<T> successors) {
+    public void setSuccessors(T[] successors) {
         this.successors = successors;
     }
 
@@ -113,11 +113,11 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public int getPredecessorCount() {
-        return getPredecessors().size();
+        return getPredecessors().length;
     }
 
     public int getSuccessorCount() {
-        return getSuccessors().size();
+        return getSuccessors().length;
     }
 
     public int getLinearScanNumber() {
@@ -141,6 +141,8 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public abstract Loop<T> getLoop();
 
     public abstract int getLoopDepth();
+
+    public abstract void delete();
 
     public abstract boolean isLoopEnd();
 

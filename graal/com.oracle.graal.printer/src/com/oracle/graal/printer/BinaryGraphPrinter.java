@@ -569,7 +569,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 for (Node node : extraNodes) {
                     writeInt(getNodeId(node));
                 }
-                writeInt(block.getSuccessors().size());
+                writeInt(block.getSuccessors().length);
                 for (Block sux : block.getSuccessors()) {
                     writeInt(sux.getId());
                 }

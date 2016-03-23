@@ -70,7 +70,7 @@ public final class LabelRef {
     }
 
     public AbstractBlockBase<?> getTargetBlock() {
-        return block.getSuccessors().get(suxIndex);
+        return block.getSuccessors()[suxIndex];
     }
 
     public Label label() {
@@ -79,6 +79,6 @@ public final class LabelRef {
 
     @Override
     public String toString() {
-        return getSourceBlock() + " -> " + (suxIndex < block.getSuccessors().size() ? getTargetBlock() : "?");
+        return getSourceBlock() + " -> " + (suxIndex < block.getSuccessors().length ? getTargetBlock() : "?");
     }
 }

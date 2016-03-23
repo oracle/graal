@@ -220,8 +220,8 @@ public class GraphDumper extends AbstractMethodScopeDumper {
                     nodeList.add(getNodeId(node));
                 }
 
-                List<Block> successors = block.getSuccessors();
-                if (successors != null && !successors.isEmpty()) {
+                Block[] successors = block.getSuccessors();
+                if (successors != null && successors.length > 0) {
                     DataList successorList = new DataList();
                     blockDict.put("successors", successorList);
                     for (Block successor : successors) {

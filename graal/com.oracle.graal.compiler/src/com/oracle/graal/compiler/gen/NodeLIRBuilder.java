@@ -37,6 +37,7 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.match.ComplexMatchValue;
@@ -218,11 +219,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public LabelRef getLIRBlock(FixedNode b) {
         assert gen.getResult().getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
         Block result = ((ControlFlowGraph) gen.getResult().getLIR().getControlFlowGraph()).blockFor(b);
-        int suxIndex = gen.getCurrentBlock().getSuccessors().indexOf(result);
-        assert suxIndex != -1 : "Block not in successor list of current block";
-
-        assert gen.getCurrentBlock() instanceof Block;
-        return LabelRef.forSuccessor(gen.getResult().getLIR(), gen.getCurrentBlock(), suxIndex);
+        int suxIndex = 0;
+        for (AbstractBlockBase<?> succ : gen.getCurrentBlock().getSuccessors()) {
+            if (succ == result) {
+                assert gen.getCurrentBlock() instanceof Block;
+                return LabelRef.forSuccessor(gen.getResult().getLIR(), gen.getCurrentBlock(), suxIndex);
+            }
+            suxIndex++;
+        }
+        throw JVMCIError.shouldNotReachHere("Block not in successor list of current block");
     }
 
     public final void append(LIRInstruction op) {

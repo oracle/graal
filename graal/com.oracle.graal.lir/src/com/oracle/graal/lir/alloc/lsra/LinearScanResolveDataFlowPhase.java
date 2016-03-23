@@ -58,7 +58,7 @@ public class LinearScanResolveDataFlowPhase extends AllocationPhase {
     protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
         assert moveResolver.checkEmpty();
         assert midBlock == null ||
-                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessors().get(0).equals(fromBlock) && midBlock.getSuccessors().get(0).equals(
+                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessors()[0].equals(fromBlock) && midBlock.getSuccessors()[0].equals(
                                         toBlock));
 
         int toBlockFirstInstructionId = allocator.getFirstLirInstructionId(toBlock);
@@ -147,8 +147,8 @@ public class LinearScanResolveDataFlowPhase extends AllocationPhase {
 
                 // check if block is empty (only label and branch)
                 if (instructions.size() == 2) {
-                    AbstractBlockBase<?> pred = block.getPredecessors().iterator().next();
-                    AbstractBlockBase<?> sux = block.getSuccessors().iterator().next();
+                    AbstractBlockBase<?> pred = block.getPredecessors()[0];
+                    AbstractBlockBase<?> sux = block.getSuccessors()[0];
 
                     // prevent optimization of two consecutive blocks
                     if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {

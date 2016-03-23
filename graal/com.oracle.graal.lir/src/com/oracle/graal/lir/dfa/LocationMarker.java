@@ -112,7 +112,9 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
                 }
                 liveInMap.put(block, currentSet);
                 currentSet = null;
-                worklist.addAll(block.getPredecessors());
+                for (T b : block.getPredecessors()) {
+                    worklist.add(b);
+                }
             }
         }
     }
