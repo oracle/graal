@@ -72,8 +72,6 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  *
  */
 public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
-    private SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, false);
-
     private static AbstractBeginNode findBeginNode(FixedNode startNode) {
         return GraphUtil.predecessorIterable(startNode).filter(AbstractBeginNode.class).first();
     }
@@ -129,7 +127,8 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    private void processFixedGuardAndMerge(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi, AbstractMergeNode merge) {
+    private void processFixedGuardAndMerge(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi,
+                    AbstractMergeNode merge) {
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         for (int i = 0; i < mergePredecessors.size(); ++i) {
             AbstractEndNode mergePredecessor = mergePredecessors.get(i);
@@ -198,6 +197,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
             FixedNode next = pred.next();
             pred.setNext(guard);
             guard.setNext(next);
+            SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, false, graph.getAssumptions());
             survivingSuccessor.simplify(simplifierTool);
             return;
         }

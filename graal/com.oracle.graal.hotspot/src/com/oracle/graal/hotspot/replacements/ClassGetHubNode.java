@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.hotspot.HotSpotResolvedPrimitiveType;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -80,12 +78,10 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
                 MetaAccessProvider metaAccess = tool.getMetaAccess();
                 if (metaAccess != null) {
                     ResolvedJavaType exactType = tool.getConstantReflection().asJavaType(clazz.asJavaConstant());
-                    if (exactType instanceof HotSpotResolvedObjectType) {
-                        HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) exactType;
-                        ConstantNode cn = ConstantNode.forConstant(stamp(), tool.getConstantReflection().asObjectHub(objectType), metaAccess);
-                        return cn;
-                    } else if (exactType instanceof HotSpotResolvedPrimitiveType) {
+                    if (exactType.isPrimitive()) {
                         return ConstantNode.forConstant(stamp(), JavaConstant.NULL_POINTER, metaAccess);
+                    } else {
+                        return ConstantNode.forConstant(stamp(), tool.getConstantReflection().asObjectHub(exactType), metaAccess);
                     }
                 }
             }
@@ -119,12 +115,10 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
     @Override
     public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
         ResolvedJavaType exactType = constantReflection.asJavaType(c);
-        if (exactType instanceof HotSpotResolvedObjectType) {
-            HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) exactType;
-            return constantReflection.asObjectHub(objectType);
-        } else {
-            assert exactType instanceof HotSpotResolvedPrimitiveType;
+        if (exactType.isPrimitive()) {
             return JavaConstant.NULL_POINTER;
+        } else {
+            return constantReflection.asObjectHub(exactType);
         }
     }
 
@@ -143,7 +137,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
     public boolean preservesOrder(Condition op, Constant value, ConstantReflectionProvider constantReflection) {
         assert op == Condition.EQ || op == Condition.NE;
         ResolvedJavaType exactType = constantReflection.asJavaType(value);
-        return exactType instanceof HotSpotResolvedObjectType;
+        return !exactType.isPrimitive();
     }
 
 }

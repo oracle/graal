@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -173,7 +174,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (!wholeGraph) {
                 workList.addAll(graph.getNewNodes(newNodesMark));
             }
-            tool = new Tool();
+            tool = new Tool(graph.getAssumptions());
             processWorkSet(graph);
         }
 
@@ -398,6 +399,12 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         private final class Tool implements SimplifierTool {
 
+            private final Assumptions assumptions;
+
+            Tool(Assumptions assumptions) {
+                this.assumptions = assumptions;
+            }
+
             @Override
             public void deleteBranch(Node branch) {
                 branch.predecessor().replaceFirstSuccessor(branch, null);
@@ -436,6 +443,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             @Override
             public boolean allUsagesAvailable() {
                 return true;
+            }
+
+            public Assumptions getAssumptions() {
+                return assumptions;
             }
         }
     }

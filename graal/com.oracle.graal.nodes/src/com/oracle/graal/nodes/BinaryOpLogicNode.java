@@ -50,14 +50,13 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
 
     public BinaryOpLogicNode(NodeClass<? extends BinaryOpLogicNode> c, ValueNode x, ValueNode y) {
         super(c);
-        assert x != null && y != null && x.getStackKind() == y.getStackKind();
+        assert x != null && y != null;
         this.x = x;
         this.y = y;
     }
 
     @Override
     public boolean verify() {
-        assertTrue(x.stamp().isCompatible(y.stamp()), "stamps not compatible: %s, %s", x.stamp(), y.stamp());
         return super.verify();
     }
 
