@@ -27,7 +27,6 @@ package com.oracle.truffle.api.instrument;
 import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -464,87 +463,6 @@ public abstract class ProbeInstrument extends Instrument {
     public interface TruffleOptListener {
         /** @since 0.8 or earlier */
         void notifyIsCompiled(boolean isCompiled);
-    }
-
-    private static final class TruffleOptInstrument extends ProbeInstrument {
-
-        private final TruffleOptListener toolOptListener;
-
-        private TruffleOptInstrument(TruffleOptListener listener, String instrumentInfo) {
-            super(instrumentInfo);
-            this.toolOptListener = listener;
-        }
-
-        @Override
-        AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode) {
-            return new TruffleOptInstrumentNode(nextNode);
-        }
-
-        @Override
-        AbstractInstrumentNode removeFromChain(AbstractInstrumentNode instrumentNode) {
-            boolean found = false;
-            if (instrumentNode != null) {
-                if (instrumentNode.getInstrument() == this) {
-                    // Found the match at the head of the chain
-                    return instrumentNode.nextInstrumentNode;
-                }
-                // Match not at the head of the chain; remove it.
-                found = instrumentNode.removeFromChain(TruffleOptInstrument.this);
-            }
-            if (!found) {
-                throw new IllegalStateException("Couldn't find instrument node to remove: " + this);
-            }
-            return instrumentNode;
-        }
-
-        @NodeInfo(cost = NodeCost.NONE)
-        private final class TruffleOptInstrumentNode extends AbstractInstrumentNode {
-
-            private boolean isCompiled;
-
-            private TruffleOptInstrumentNode(AbstractInstrumentNode nextNode) {
-                super(nextNode);
-                this.isCompiled = CompilerDirectives.inCompiledCode();
-            }
-
-            @Override
-            public void enter(Node node, VirtualFrame frame) {
-                if (this.isCompiled != CompilerDirectives.inCompiledCode()) {
-                    this.isCompiled = CompilerDirectives.inCompiledCode();
-                    TruffleOptInstrument.this.toolOptListener.notifyIsCompiled(this.isCompiled);
-                }
-                if (nextInstrumentNode != null) {
-                    nextInstrumentNode.enter(node, frame);
-                }
-            }
-
-            @Override
-            public void returnVoid(Node node, VirtualFrame frame) {
-                if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnVoid(node, frame);
-                }
-            }
-
-            @Override
-            public void returnValue(Node node, VirtualFrame frame, Object result) {
-                if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnValue(node, frame, result);
-                }
-            }
-
-            @Override
-            public void returnExceptional(Node node, VirtualFrame frame, Throwable exception) {
-                if (nextInstrumentNode != null) {
-                    nextInstrumentNode.returnExceptional(node, frame, exception);
-                }
-            }
-
-            @Override
-            public String instrumentationInfo() {
-                final String info = getInstrumentInfo();
-                return info != null ? info : toolOptListener.getClass().getSimpleName();
-            }
-        }
     }
 
     @NodeInfo(cost = NodeCost.NONE)

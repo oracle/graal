@@ -104,8 +104,6 @@ import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
 import com.oracle.truffle.sl.nodes.expression.SLMulNode;
 import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNode;
-import com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode;
-import com.oracle.truffle.sl.nodes.instrument.SLStatementWrapperNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.parser.Parser;
@@ -504,10 +502,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
         if (node instanceof SLExpressionNode) {
-            return new SLExpressionWrapperNode((SLExpressionNode) node);
+            return new com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode((SLExpressionNode) node);
         }
         if (node instanceof SLStatementNode) {
-            return new SLStatementWrapperNode((SLStatementNode) node);
+            return new com.oracle.truffle.sl.nodes.instrument.SLStatementWrapperNode((SLStatementNode) node);
         }
         return null;
     }
