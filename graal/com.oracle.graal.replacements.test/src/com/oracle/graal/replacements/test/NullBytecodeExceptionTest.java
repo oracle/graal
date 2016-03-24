@@ -20,33 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package com.oracle.graal.replacements.test;
 
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.replacements.Snippet;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import org.junit.Test;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 
-/**
- * Stub to allocate a {@link NullPointerException} thrown by a bytecode.
- */
-public class NullPointerExceptionStub extends CreateExceptionStub {
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-    public NullPointerExceptionStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super("createNullPointerException", providers, linkage);
+public class NullBytecodeExceptionTest extends BytecodeExceptionTest {
+
+    private static class Exceptions {
+
+        private static Object obj = null;
+
+        public static void throwNull() {
+            obj.toString();
+        }
     }
 
     @Override
-    protected Object getConstantParameterValue(int index, String name) {
-        JVMCIError.guarantee(index == 0, "unknown parameter %s at index %d", name, index);
-        return providers.getRegisters().getThreadRegister();
+    protected void registerPlugin(InvocationPlugins plugins) {
+        plugins.register(new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return throwBytecodeException(b, NullPointerException.class);
+            }
+        }, Exceptions.class, "throwNull");
     }
 
-    @Snippet
-    private static Object createNullPointerException(@ConstantParameter Register threadRegister) {
-        return createException(threadRegister, NullPointerException.class);
+    public static void nullSnippet() {
+        Exceptions.throwNull();
+    }
+
+    @Test
+    public void testNullPointerException() {
+        test("nullSnippet");
     }
 }

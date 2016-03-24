@@ -22,8 +22,12 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.replacements.nodes.CStringConstant.cstring;
+
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
+import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 
@@ -31,22 +35,22 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.common.JVMCIError;
 
 /**
- * Stub to allocate a {@link NullPointerException} thrown by a bytecode.
  */
-public class NullPointerExceptionStub extends CreateExceptionStub {
+public class ClassCastExceptionStub extends CreateExceptionStub {
 
-    public NullPointerExceptionStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super("createNullPointerException", providers, linkage);
+    public ClassCastExceptionStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("createClassCastException", providers, linkage);
     }
 
     @Override
     protected Object getConstantParameterValue(int index, String name) {
-        JVMCIError.guarantee(index == 0, "unknown parameter %s at index %d", name, index);
+        JVMCIError.guarantee(index == 2, "unknown parameter %s at index %d", name, index);
         return providers.getRegisters().getThreadRegister();
     }
 
     @Snippet
-    private static Object createNullPointerException(@ConstantParameter Register threadRegister) {
-        return createException(threadRegister, NullPointerException.class);
+    private static Object createClassCastException(Object object, KlassPointer targetKlass, @ConstantParameter Register threadRegister) {
+        KlassPointer objKlass = HotSpotReplacementsUtil.loadHub(object);
+        return createException(threadRegister, ClassCastException.class, objKlass, cstring(" cannot be cast to "), targetKlass);
     }
 }
