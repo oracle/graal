@@ -45,7 +45,7 @@ public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
     public static class Options {
         // @formatter:off
         @Option(help = "Construct SSI and lifetime intervals in a single combined pass.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRACombinedSSIConstruction = new StableOptionValue<>(false);
+        public static final StableOptionValue<Boolean> TraceRACombinedSSIConstruction = new StableOptionValue<>(true);
         // @formatter:on
     }
 
