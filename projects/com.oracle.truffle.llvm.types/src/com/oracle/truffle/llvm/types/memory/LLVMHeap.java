@@ -64,6 +64,7 @@ public class LLVMHeap extends LLVMMemory {
     public static void memCopy(LLVMAddress target, LLVMAddress source, long length) {
         long targetAddress = extractAddrNullPointerAllowed(target);
         long sourceAddress = extractAddrNullPointerAllowed(source);
+        assert length == 0 || targetAddress != 0 && sourceAddress != 0;
         UNSAFE.copyMemory(sourceAddress, targetAddress, length);
     }
 
