@@ -80,10 +80,15 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
     public static <T extends AbstractBlockBase<T>> boolean verify(TraceBuilderResult<T> traceBuilderResult, int expectedLength) {
         ArrayList<Trace<T>> traces = traceBuilderResult.getTraces();
         assert verifyAllBlocksScheduled(traceBuilderResult, expectedLength) : "Not all blocks assigned to traces!";
-        for (Trace<T> trace : traces) {
+        for (int i = 0; i < traces.size(); i++) {
+            Trace<T> trace = traces.get(i);
+            assert trace.getId() == i : "Trace number mismatch: " + trace.getId() + " vs. " + i;
+
             T last = null;
             int blockNumber = 0;
             for (T current : trace.getBlocks()) {
+                T block = current;
+                assert traceBuilderResult.getTraceForBlock(block) == i : "Trace number mismatch for block " + block + ": " + traceBuilderResult.getTraceForBlock(block) + " vs. " + i;
                 assert last == null || Arrays.asList(current.getPredecessors()).contains(last) : "Last block (" + last + ") not a predecessor of " + current;
                 assert current.getLinearScanNumber() == blockNumber : "Blocks not numbered correctly: " + current.getLinearScanNumber() + " vs. " + blockNumber;
                 last = current;
