@@ -96,6 +96,7 @@ import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopySlowPathNode;
 import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopySnippets;
 import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyUnrollNode;
 import com.oracle.graal.hotspot.replacements.arraycopy.UnsafeArrayCopySnippets;
+import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractDeoptimizeNode;
 import com.oracle.graal.nodes.ConstantNode;
@@ -543,6 +544,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     public static final class RuntimeCalls {
         public static final ForeignCallDescriptor CREATE_ARRAY_STORE_EXCEPTION = new ForeignCallDescriptor("createArrayStoreException", ArrayStoreException.class, Object.class);
+        public static final ForeignCallDescriptor CREATE_CLASS_CAST_EXCEPTION = new ForeignCallDescriptor("createClassCastException", ClassCastException.class, Object.class, KlassPointer.class);
         public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", NullPointerException.class);
         public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class);
     }
@@ -577,6 +579,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
         } else if (node.getExceptionClass() == ArrayStoreException.class) {
             descriptor = RuntimeCalls.CREATE_ARRAY_STORE_EXCEPTION;
+        } else if (node.getExceptionClass() == ClassCastException.class) {
+            descriptor = RuntimeCalls.CREATE_CLASS_CAST_EXCEPTION;
         } else {
             throw JVMCIError.shouldNotReachHere();
         }
