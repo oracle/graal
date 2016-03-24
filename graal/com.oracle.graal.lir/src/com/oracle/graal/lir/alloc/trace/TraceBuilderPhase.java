@@ -65,7 +65,7 @@ public class TraceBuilderPhase extends AllocationPhase {
         } else {
             traceBuilderResult = UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
         }
-        assert TraceBuilderResult.verify(traceBuilderResult, lirGenRes.getLIR().getControlFlowGraph().getBlocks().size());
+        assert TraceBuilderResult.verify(traceBuilderResult, lirGenRes.getLIR().getControlFlowGraph().getBlocks().length);
         if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
             List<Trace<B>> traces = traceBuilderResult.getTraces();
             for (int i = 0; i < traces.size(); i++) {

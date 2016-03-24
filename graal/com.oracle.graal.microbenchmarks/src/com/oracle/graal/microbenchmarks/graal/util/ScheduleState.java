@@ -36,7 +36,7 @@ public class ScheduleState extends GraphState {
     }
 
     public ScheduleState() {
-        this(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
+        this(SchedulingStrategy.EARLIEST);
     }
 
     @Override

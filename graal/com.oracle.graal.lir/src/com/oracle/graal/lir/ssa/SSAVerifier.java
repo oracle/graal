@@ -61,7 +61,7 @@ final class SSAVerifier {
 
     SSAVerifier(LIR lir) {
         this.lir = lir;
-        this.visited = new BitSet(lir.getControlFlowGraph().getBlocks().size());
+        this.visited = new BitSet(lir.getControlFlowGraph().getBlocks().length);
         this.defined = new HashMap<>();
     }
 

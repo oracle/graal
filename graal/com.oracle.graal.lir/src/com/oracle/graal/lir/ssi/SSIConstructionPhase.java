@@ -25,6 +25,7 @@ package com.oracle.graal.lir.ssi;
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
@@ -126,7 +127,7 @@ public final class SSIConstructionPhase extends AllocationPhase {
         }
 
         private List<? extends AbstractBlockBase<?>> getBlocks() {
-            return lir.getControlFlowGraph().getBlocks();
+            return Arrays.asList(lir.getControlFlowGraph().getBlocks());
         }
 
         private LIR getLIR() {
@@ -310,7 +311,7 @@ public final class SSIConstructionPhase extends AllocationPhase {
                                 /*
                                  * liveIn(block) is the union of liveGen(block) with (liveOut(block)
                                  * & !liveKill(block)).
-                                 * 
+                                 *
                                  * Note: liveIn has to be computed only in first iteration or if
                                  * liveOut has changed!
                                  */

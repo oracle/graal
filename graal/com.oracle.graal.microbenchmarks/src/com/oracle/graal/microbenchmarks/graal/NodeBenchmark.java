@@ -29,6 +29,8 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeBitMap;
+import com.oracle.graal.microbenchmarks.graal.util.GraalState;
 import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
 import com.oracle.graal.microbenchmarks.graal.util.NodesState;
 import com.oracle.graal.microbenchmarks.graal.util.NodesState.NodePair;
@@ -63,6 +65,22 @@ public class NodeBenchmark extends GraalBenchmark {
         for (Node n : s.nodes) {
             for (Node input : n.usages()) {
                 bh.consume(input);
+            }
+        }
+    }
+
+    @Benchmark
+    @Warmup(iterations = 20)
+    public void nodeBitmap(StringEquals s, @SuppressWarnings("unused") GraalState g) {
+        NodeBitMap bitMap = s.graph.createNodeBitMap();
+        for (Node node : s.graph.getNodes()) {
+            if (!bitMap.isMarked(node)) {
+                bitMap.mark(node);
+            }
+        }
+        for (Node node : s.graph.getNodes()) {
+            if (bitMap.isMarked(node)) {
+                bitMap.clear(node);
             }
         }
     }

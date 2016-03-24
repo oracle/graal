@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.graph;
 
-public class NodeStack {
+public final class NodeStack {
 
     private static final int INITIAL_SIZE = 8;
 
     protected Node[] values;
-    protected int tos;
+    public int tos;
 
     public NodeStack() {
         values = new Node[INITIAL_SIZE];
@@ -37,11 +37,16 @@ public class NodeStack {
         int newIndex = tos++;
         int valuesLength = values.length;
         if (newIndex >= valuesLength) {
-            Node[] newValues = new Node[valuesLength << 1];
-            System.arraycopy(values, 0, newValues, 0, valuesLength);
-            values = newValues;
+            grow();
         }
         values[newIndex] = n;
+    }
+
+    private void grow() {
+        int valuesLength = values.length;
+        Node[] newValues = new Node[valuesLength << 1];
+        System.arraycopy(values, 0, newValues, 0, valuesLength);
+        values = newValues;
     }
 
     public Node pop() {

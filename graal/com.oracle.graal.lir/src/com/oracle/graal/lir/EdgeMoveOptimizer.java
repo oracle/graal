@@ -143,7 +143,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
                     return;
                 }
 
-                assert pred.getSuccessors().iterator().next() == block : "invalid control flow";
+                assert pred.getSuccessors()[0] == block : "invalid control flow";
                 assert predInstructions.get(predInstructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
 
                 if (predInstructions.get(predInstructions.size() - 1).hasState()) {
@@ -227,7 +227,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
                     // the same blocks.
                     return;
                 }
-                assert sux.getPredecessors().iterator().next() == block : "invalid control flow";
+                assert sux.getPredecessors()[0] == block : "invalid control flow";
 
                 // ignore the label at the beginning of the block
                 List<LIRInstruction> seq = suxInstructions.subList(1, suxInstructions.size());

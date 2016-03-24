@@ -22,11 +22,7 @@
  */
 package com.oracle.graal.compiler.common.cfg;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
 
 public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
 
@@ -41,70 +37,11 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      *
      * @see CFGVerifier
      */
-    List<T> getBlocks();
+    T[] getBlocks();
 
     Collection<Loop<T>> getLoops();
 
     T getStartBlock();
-
-    /**
-     * Computes the dominators of control flow graph.
-     */
-    @SuppressWarnings("unchecked")
-    static <T extends AbstractBlockBase<T>> void computeDominators(AbstractControlFlowGraph<T> cfg) {
-        List<T> reversePostOrder = cfg.getBlocks();
-        assert reversePostOrder.get(0).getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
-        for (int i = 1; i < reversePostOrder.size(); i++) {
-            T block = reversePostOrder.get(i);
-            assert block.getPredecessorCount() > 0;
-            T dominator = null;
-            for (T pred : block.getPredecessors()) {
-                if (!pred.isLoopEnd()) {
-                    dominator = (T) ((dominator == null) ? pred : commonDominatorRaw(dominator, pred));
-                }
-            }
-            // set dominator
-            block.setDominator(dominator);
-            if (dominator.getDominated().equals(Collections.emptyList())) {
-                dominator.setDominated(new ArrayList<>());
-            }
-            dominator.getDominated().add(block);
-        }
-        calcDominatorRanges(cfg.getStartBlock());
-    }
-
-    static <T extends AbstractBlockBase<T>> void calcDominatorRanges(T block) {
-        final class Frame {
-            int myNumber;
-            int maxNumber;
-            T block;
-            Iterator<T> dominated;
-            Frame parent;
-
-            Frame(int myNumber, T block, Iterator<T> dominated, Frame parent) {
-                super();
-                this.myNumber = myNumber;
-                this.maxNumber = myNumber;
-                this.block = block;
-                this.dominated = dominated;
-                this.parent = parent;
-            }
-        }
-        Frame f = new Frame(0, block, block.getDominated().iterator(), null);
-        while (f != null) {
-            if (!f.dominated.hasNext()) { // Retreat
-                f.block.setDominatorNumbers(f.myNumber, f.maxNumber);
-                if (f.parent != null) {
-                    f.parent.maxNumber = f.maxNumber;
-                }
-                f = f.parent;
-            } else {
-                T d = f.dominated.next();
-                List<T> dd = d.getDominated();
-                f = new Frame(f.maxNumber + 1, d, dd.iterator(), f);
-            }
-        }
-    }
 
     /**
      * True if block {@code a} is dominated by block {@code b}.
@@ -170,26 +107,6 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
             result = result.getDominator();
         }
         return result;
-    }
-
-    static AbstractBlockBase<?> commonDominatorRaw(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
-        int aDomDepth = a.getDominatorDepth();
-        int bDomDepth = b.getDominatorDepth();
-        if (aDomDepth > bDomDepth) {
-            return commonDominatorRawSameDepth(a.getDominator(aDomDepth - bDomDepth), b);
-        } else {
-            return commonDominatorRawSameDepth(a, b.getDominator(bDomDepth - aDomDepth));
-        }
-    }
-
-    static AbstractBlockBase<?> commonDominatorRawSameDepth(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
-        AbstractBlockBase<?> iterA = a;
-        AbstractBlockBase<?> iterB = b;
-        while (iterA != iterB) {
-            iterA = iterA.getDominator();
-            iterB = iterB.getDominator();
-        }
-        return iterA;
     }
 
     /**

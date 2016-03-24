@@ -108,7 +108,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
         private final StackInterval[] stackSlotMap;
         private final PriorityQueue<StackInterval> unhandled;
         private final PriorityQueue<StackInterval> active;
-        private final List<? extends AbstractBlockBase<?>> sortedBlocks;
+        private final AbstractBlockBase<?>[] sortedBlocks;
         private final int maxOpId;
 
         @SuppressWarnings("try")
@@ -175,7 +175,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
          *
          * @return The id of the last operation.
          */
-        private static int numberInstructions(LIR lir, List<? extends AbstractBlockBase<?>> sortedBlocks) {
+        private static int numberInstructions(LIR lir, AbstractBlockBase<?>[] sortedBlocks) {
             int opId = 0;
             int index = 0;
             for (AbstractBlockBase<?> block : sortedBlocks) {

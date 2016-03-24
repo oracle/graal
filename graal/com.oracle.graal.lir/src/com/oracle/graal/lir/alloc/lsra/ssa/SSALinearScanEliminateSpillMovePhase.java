@@ -79,7 +79,7 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
         }
         AbstractBlockBase<?> intStartBlock = allocator.blockForId(toInterval.from());
         assert allocator.getLIR().getLIRforBlock(intStartBlock).get(0).equals(op);
-        if (!block.getSuccessors().get(0).equals(intStartBlock)) {
+        if (!block.getSuccessors()[0].equals(intStartBlock)) {
             return false;
         }
         try (Indent indet = Debug.indent()) {

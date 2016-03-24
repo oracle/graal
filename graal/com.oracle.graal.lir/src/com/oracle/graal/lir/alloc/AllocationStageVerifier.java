@@ -51,7 +51,7 @@ public class AllocationStageVerifier extends AllocationPhase {
     }
 
     protected void verifyLIR(LIR lir) {
-        for (AbstractBlockBase<?> block : (List<? extends AbstractBlockBase<?>>) lir.getControlFlowGraph().getBlocks()) {
+        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             verifyBlock(lir, block);
         }
     }

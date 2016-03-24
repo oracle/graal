@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.PrintGraphProbabilit
 import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphSchedule;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -132,7 +133,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         if (scheduleResult != null) {
             ControlFlowGraph cfg = scheduleResult.getCFG();
             if (cfg != null) {
-                List<Block> blocks = cfg.getBlocks();
+                List<Block> blocks = Arrays.asList(cfg.getBlocks());
                 processBlocks(graphDict, blocks, scheduleResult);
             }
         }
@@ -219,8 +220,8 @@ public class GraphDumper extends AbstractMethodScopeDumper {
                     nodeList.add(getNodeId(node));
                 }
 
-                List<Block> successors = block.getSuccessors();
-                if (successors != null && !successors.isEmpty()) {
+                Block[] successors = block.getSuccessors();
+                if (successors != null && successors.length > 0) {
                     DataList successorList = new DataList();
                     blockDict.put("successors", successorList);
                     for (Block successor : successors) {

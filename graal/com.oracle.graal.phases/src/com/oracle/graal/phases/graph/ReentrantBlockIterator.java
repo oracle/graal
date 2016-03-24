@@ -70,10 +70,10 @@ public final class ReentrantBlockIterator {
     public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<Block> loop, StateT initialState) {
         Map<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, block -> !(block.getLoop() == loop || block.isLoopHeader()));
 
-        List<Block> predecessors = loop.getHeader().getPredecessors();
-        LoopInfo<StateT> info = new LoopInfo<>(predecessors.size() - 1, loop.getExits().size());
-        for (int i = 1; i < predecessors.size(); i++) {
-            StateT endState = blockEndStates.get(predecessors.get(i).getEndNode());
+        Block[] predecessors = loop.getHeader().getPredecessors();
+        LoopInfo<StateT> info = new LoopInfo<>(predecessors.length - 1, loop.getExits().size());
+        for (int i = 1; i < predecessors.length; i++) {
+            StateT endState = blockEndStates.get(predecessors[i].getEndNode());
             // make sure all end states are unique objects
             info.endStates.add(closure.cloneState(endState));
         }
@@ -108,11 +108,11 @@ public final class ReentrantBlockIterator {
             } else {
                 state = closure.processBlock(current, state);
 
-                List<Block> successors = current.getSuccessors();
-                if (successors.isEmpty()) {
+                Block[] successors = current.getSuccessors();
+                if (successors.length == 0) {
                     // nothing to do...
-                } else if (successors.size() == 1) {
-                    Block successor = successors.get(0);
+                } else if (successors.length == 1) {
+                    Block successor = successors[0];
                     if (successor.isLoopHeader()) {
                         if (current.isLoopEnd()) {
                             // nothing to do... loop ends only lead to loop begins we've already
@@ -165,14 +165,14 @@ public final class ReentrantBlockIterator {
         return true;
     }
 
-    private static <StateT> Block processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<Block> blockQueue, Map<FixedNode, StateT> states, StateT state, List<Block> successors) {
-        assert successors.size() > 1;
-        for (int i = 1; i < successors.size(); i++) {
-            Block successor = successors.get(i);
+    private static <StateT> Block processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<Block> blockQueue, Map<FixedNode, StateT> states, StateT state, Block[] successors) {
+        assert successors.length > 1;
+        for (int i = 1; i < successors.length; i++) {
+            Block successor = successors[i];
             blockQueue.addFirst(successor);
             states.put(successor.getBeginNode(), closure.cloneState(state));
         }
-        return successors.get(0);
+        return successors[0];
     }
 
     private static <StateT> ArrayList<StateT> mergeStates(Map<FixedNode, StateT> states, StateT state, Block current, Block successor, AbstractMergeNode merge) {
