@@ -63,6 +63,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import org.junit.After;
 
 public class SLDebugTest {
     private Debugger debugger;
@@ -82,6 +83,7 @@ public class SLDebugTest {
             @Override
             protected void on(ExecutionEvent event) {
                 executionEvent = event;
+                debugger = executionEvent.getDebugger();
                 performWork();
                 executionEvent = null;
             }
@@ -93,9 +95,14 @@ public class SLDebugTest {
                 suspendedEvent = null;
             }
         }).build();
-        debugger = Debugger.find(engine);
-        assertNotNull("Debugger found", debugger);
         run.clear();
+    }
+
+    @After
+    public void dispose() {
+        if (engine != null) {
+            engine.dispose();
+        }
     }
 
     private static Source createFactorial() {

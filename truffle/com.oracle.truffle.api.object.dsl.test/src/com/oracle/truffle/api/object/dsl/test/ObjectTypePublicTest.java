@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,37 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.vm;
+package com.oracle.truffle.api.object.dsl.test;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.source.Source;
-import org.junit.After;
-import org.junit.Before;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.dsl.test.alternate_package.ObjectTypePublicTest.ObjectTypePublicTestLayout;
+import com.oracle.truffle.api.object.dsl.test.alternate_package.ObjectTypePublicTestLayoutImpl;
 
-public class IsMimeTypeSupportedTest {
+public class ObjectTypePublicTest {
 
-    private static final String MIME_TYPE = "application/x-test-mime-type-supported";
-    private PolyglotEngine vm;
-
-    @Before
-    public void create() {
-        vm = PolyglotEngine.newBuilder().build();
-    }
-
-    @After
-    public void dispose() {
-        vm.dispose();
-    }
+    private static final ObjectTypePublicTestLayout LAYOUT = ObjectTypePublicTestLayoutImpl.INSTANCE;
 
     @Test
-    public void isMimeSupported() throws IOException {
-        assertEquals(true, vm.eval(Source.fromText(MIME_TYPE, "supported").withMimeType(MIME_TYPE)).as(Boolean.class));
-        assertEquals(false, vm.eval(Source.fromText("application/x-this-language-does-not-exist", "unsupported").withMimeType(MIME_TYPE)).as(Boolean.class));
+    public void testIsPublic() {
+        final DynamicObject instance = LAYOUT.createObjectTypePublicTest(14);
+        assertTrue(ObjectTypePublicTestLayoutImpl.ObjectTypePublicTestType.class.isAssignableFrom(instance.getShape().getObjectType().getClass()));
     }
 
 }

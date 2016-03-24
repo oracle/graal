@@ -99,6 +99,9 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             ProcessorContext.setThreadLocalInstance(context);
 
             for (Element element : roundEnv.getElementsAnnotatedWith(Instrumentable.class)) {
+                if (!element.getKind().isClass() && !element.getKind().isInterface()) {
+                    continue;
+                }
                 try {
                     if (element.getKind() != ElementKind.CLASS) {
                         emitError(element, String.format("Only classes can be annotated with %s.", Instrumentable.class.getSimpleName()));

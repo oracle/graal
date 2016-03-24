@@ -84,6 +84,8 @@ public final class REPLServer {
         return name.substring(name.lastIndexOf('.') + 1);
     }
 
+    private static final String[] knownTags = {Debugger.HALT_TAG, Debugger.CALL_TAG};
+
     private static int nextBreakpointUID = 0;
 
     // Language-agnostic
@@ -93,9 +95,9 @@ public final class REPLServer {
     private SimpleREPLClient replClient = null;
     private String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
-    private ASTPrinter astPrinter = new InstrumentationUtils.ASTPrinter();
+    private ASTPrinter astPrinter = new REPLASTPrinter();
     private LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
-    private Visualizer visualizer = new Visualizer();
+    private REPLVisualizer visualizer = new REPLVisualizer();
 
     /** Languages sorted by name. */
     private final TreeSet<Language> engineLanguages = new TreeSet<>(new Comparator<Language>() {
@@ -113,26 +115,17 @@ public final class REPLServer {
 
     private Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
 
-    public REPLServer(String defaultMIMEType) {
+    public REPLServer(SimpleREPLClient client) {
+        this.replClient = client;
         this.engine = PolyglotEngine.newBuilder().onEvent(onHalted).onEvent(onExec).build();
         this.db = Debugger.find(this.engine);
         engineLanguages.addAll(engine.getLanguages().values());
-        if (engineLanguages.size() == 0) {
-            throw new RuntimeException("No language implementations installed");
-        }
+
         for (Language language : engineLanguages) {
             nameToLanguage.put(language.getName(), language);
         }
 
-        if (defaultMIMEType == null) {
-            defaultLanguage = engineLanguages.iterator().next();
-        } else {
-            this.defaultLanguage = engine.getLanguages().get(defaultMIMEType);
-            if (defaultLanguage == null) {
-                throw new RuntimeException("Implementation not found for \"" + defaultMIMEType + "\"");
-            }
-        }
-        statusPrefix = languageName(defaultLanguage);
+        statusPrefix = "";
     }
 
     private final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
@@ -168,7 +161,7 @@ public final class REPLServer {
     }
 
     /**
-     * Starts up a server; status returned in a message.
+     * Start sever: load commands, generate initial context.
      */
     public void start() {
 
@@ -188,7 +181,6 @@ public final class REPLServer {
         add(REPLHandler.INFO_HANDLER);
         add(REPLHandler.KILL_HANDLER);
         add(REPLHandler.LOAD_HANDLER);
-        add(REPLHandler.QUIT_HANDLER);
         add(REPLHandler.SET_BREAK_CONDITION_HANDLER);
         add(REPLHandler.SET_LANGUAGE_HANDLER);
         add(REPLHandler.STEP_INTO_HANDLER);
@@ -197,14 +189,13 @@ public final class REPLServer {
         add(REPLHandler.TRUFFLE_HANDLER);
         add(REPLHandler.TRUFFLE_NODE_HANDLER);
         add(REPLHandler.UNSET_BREAK_CONDITION_HANDLER);
-        this.replClient = new SimpleREPLClient(this);
+
         this.currentServerContext = new Context(null, null, defaultLanguage);
-        replClient.start();
     }
 
     @SuppressWarnings("static-method")
     public String getWelcome() {
-        return "GraalVM MultiLanguage Debugger 0.9\n" + "Copyright (c) 2013-5, Oracle and/or its affiliates";
+        return "GraalVM Polyglot Debugger 0.9\n" + "Copyright (c) 2013-6, Oracle and/or its affiliates";
     }
 
     public ASTPrinter getASTPrinter() {
@@ -264,7 +255,7 @@ public final class REPLServer {
             // context.
             replClient.halted(message);
         } finally {
-            // Returns when "continue" or "kill" is called in the new debugging context
+            // Returns when "kill" is called in the new debugging context
 
             // Pop the debug context, and return so that the old context will continue
             currentServerContext = currentServerContext.predecessor;
@@ -296,7 +287,6 @@ public final class REPLServer {
         private boolean steppingInto = false;  // Only true during a "stepInto" engine call
 
         Context(Context predecessor, SuspendedEvent event, Language language) {
-            assert language != null;
             this.level = predecessor == null ? 0 : predecessor.getLevel() + 1;
             this.predecessor = predecessor;
             this.event = event;
@@ -320,7 +310,7 @@ public final class REPLServer {
         /**
          * Get access to display methods appropriate to the language at halted node.
          */
-        Visualizer getVisualizer() {
+        REPLVisualizer getVisualizer() {
             return visualizer;
         }
 
@@ -371,6 +361,9 @@ public final class REPLServer {
                 if (frameNumber != null) {
                     throw new IllegalStateException("Frame number requires a halted execution");
                 }
+                if (currentLanguage == null) {
+                    throw new IOException("No language set");
+                }
                 this.steppingInto = stepInto;
                 final String mimeType = defaultMIME(currentLanguage);
                 try {
@@ -386,7 +379,7 @@ public final class REPLServer {
                     event.prepareStepInto(1);
                 }
                 try {
-                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber - 1);
+                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber);
                     final Object result = event.eval(code, frame);
                     return (result instanceof Value) ? ((Value) result).get() : result;
                 } finally {
@@ -435,7 +428,7 @@ public final class REPLServer {
         }
 
         /**
-         * Provides access to the execution stack, not counting the node/frame where halted.
+         * Access to the execution stack.
          *
          * @return immutable list of stack elements
          */
@@ -444,7 +437,7 @@ public final class REPLServer {
         }
 
         public String getLanguageName() {
-            return currentLanguage.getName();
+            return currentLanguage == null ? null : currentLanguage.getName();
         }
 
         /**
@@ -456,7 +449,7 @@ public final class REPLServer {
             assert name != null;
             final Language language = nameToLanguage.get(name);
             if (language == null) {
-                throw new IOException("Language \" + name + \" not supported");
+                throw new IOException("Language \"" + name + "\" not supported");
             }
             if (language == currentLanguage) {
                 return currentLanguage.getName();
@@ -482,6 +475,10 @@ public final class REPLServer {
 
         void prepareContinue() {
             event.prepareContinue();
+        }
+
+        void kill() {
+            event.prepareKill();
         }
 
     }
@@ -705,7 +702,7 @@ public final class REPLServer {
         }
     }
 
-    static class Visualizer {
+    static class REPLVisualizer {
 
         /**
          * A short description of a source location in terms of source + line number.
@@ -788,6 +785,29 @@ public final class REPLServer {
                 }
             }
             return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
+        }
+    }
+
+    private static class REPLASTPrinter extends InstrumentationUtils.ASTPrinter {
+
+        @Override
+        protected String displayTags(final Object node) {
+            if (node instanceof Node) {
+                final SourceSection sourceSection = ((Node) node).getSourceSection();
+                if (sourceSection != null) {
+                    final StringBuilder sb = new StringBuilder("[");
+                    String sep = "";
+                    for (String tag : knownTags) {
+                        if (sourceSection.hasTag(tag)) {
+                            sb.append(sep).append(tag);
+                            sep = ",";
+                        }
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                }
+            }
+            return "";
         }
     }
 }

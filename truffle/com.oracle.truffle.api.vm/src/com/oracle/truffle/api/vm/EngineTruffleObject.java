@@ -40,7 +40,7 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
     private final PolyglotEngine engine;
     private final TruffleObject delegate;
 
-    public EngineTruffleObject(PolyglotEngine engine, TruffleObject obj) {
+    EngineTruffleObject(PolyglotEngine engine, TruffleObject obj) {
         this.engine = engine;
         this.delegate = obj;
     }
@@ -93,7 +93,7 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
         @Child private Node foreignAccess;
 
         @SuppressWarnings("rawtypes")
-        public WrappingRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess) {
+        WrappingRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
         }

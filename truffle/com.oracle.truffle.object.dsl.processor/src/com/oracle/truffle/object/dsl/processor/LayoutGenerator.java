@@ -196,7 +196,7 @@ public class LayoutGenerator {
             typeSuperclass = layout.getSuperLayout().getName() + "LayoutImpl." + layout.getSuperLayout().getName() + "Type";
         }
 
-        stream.printf("    protected static class %sType extends %s {%n", layout.getName(), typeSuperclass);
+        stream.printf("    public static class %sType extends %s {%n", layout.getName(), typeSuperclass);
 
         if (layout.hasShapeProperties()) {
             stream.println("        ");

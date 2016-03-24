@@ -113,6 +113,11 @@ public abstract class Accessor {
         } catch (ClassNotFoundException ex) {
             throw new IllegalStateException(ex);
         }
+        try {
+            Class.forName("com.oracle.truffle.api.debug.Debugger", true, Accessor.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     protected Accessor() {
@@ -273,12 +278,12 @@ public abstract class Accessor {
         return INSTRUMENT.createInstrumenter(vm);
     }
 
-    protected void addInstrumentation(Object instrumentationHandler, Object key, Class<?> instrumentationClass) {
-        INSTRUMENTHANDLER.addInstrumentation(instrumentationHandler, key, instrumentationClass);
+    protected void addInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass) {
+        INSTRUMENTHANDLER.addInstrument(instrumentationHandler, key, instrumentClass);
     }
 
-    protected void disposeInstrumentation(Object instrumentationHandler, Object key, boolean cleanupRequired) {
-        INSTRUMENTHANDLER.disposeInstrumentation(instrumentationHandler, key, cleanupRequired);
+    protected void disposeInstrument(Object instrumentationHandler, Object key, boolean cleanupRequired) {
+        INSTRUMENTHANDLER.disposeInstrument(instrumentationHandler, key, cleanupRequired);
     }
 
     protected Object getInstrumentationHandler(Object known) {
@@ -375,8 +380,8 @@ public abstract class Accessor {
         INSTRUMENTHANDLER.collectEnvServices(collectTo, vm, impl, context);
     }
 
-    protected void detachFromInstrumentation(Object vm, Env context) {
-        INSTRUMENTHANDLER.detachFromInstrumentation(vm, context);
+    protected void detachLanguageFromInstrumentation(Object vm, Env context) {
+        INSTRUMENTHANDLER.detachLanguageFromInstrumentation(vm, context);
     }
 
     protected void dispose(TruffleLanguage<?> impl, Env env) {

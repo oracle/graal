@@ -70,6 +70,9 @@ public class ImplicitExplicitExportTest {
     @After
     public void cleanThread() {
         mainThread = null;
+        if (vm != null) {
+            vm.dispose();
+        }
     }
 
     @Test
@@ -276,16 +279,6 @@ public class ImplicitExplicitExportTest {
         public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage1();
 
         public ExportImportLanguage1() {
-        }
-
-        @SuppressWarnings("unused")
-        // BEGIN: config.read
-        @Override
-        protected Ctx createContext(Env env) {
-            String[] args = (String[]) env.getConfig().get("CMD_ARGS");
-            // FINISH: config.read
-
-            return super.createContext(env);
         }
 
         @Override

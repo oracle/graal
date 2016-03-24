@@ -96,15 +96,12 @@ final class InstrumentationUtils {
             final StringBuilder sb = new StringBuilder();
             sb.append(displayNodeName(node));
             sb.append("(");
-            sb.append(displaySourceInfo(node));
             sb.append(displayTags(node));
-            sb.append(")");
-            final Node parent = node.getParent();
-            if (parent instanceof WrapperNode) {
-                final WrapperNode wrapper = (WrapperNode) parent;
-                sb.append(" Probed");
-                sb.append(displayTags(wrapper));
+            if (node.getParent() instanceof WrapperNode) {
+                sb.append(",Probed");
             }
+            sb.append(") ");
+            sb.append(displaySourceInfo(node));
             return sb.toString();
         }
 
@@ -128,38 +125,18 @@ final class InstrumentationUtils {
                 p.print("null");
                 return;
             }
-
-            p.print(displayNodeName(node));
-
-            p.print("(");
-
-            if (!(node instanceof WrapperNode)) {
-                p.print(displaySourceInfo(node));
-                p.print(displayTags(node));
+            if (node instanceof WrapperNode) {
+                p.print("WRAPPER(" + node.getClass().getSimpleName() + ")");
+            } else {
+                p.print(displayNodeWithInstrumentation(node));
             }
-
-            ArrayList<NodeFieldAccessor> childFields = new ArrayList<>();
-
-            for (NodeFieldAccessor field : NodeClass.get(node).getFields()) {
-                if (field.getKind() == NodeFieldKind.CHILD || field.getKind() == NodeFieldKind.CHILDREN) {
-                    childFields.add(field);
-                } else if (field.getKind() == NodeFieldKind.DATA) {
-                    // p.print(sep);
-                    // sep = ", ";
-                    //
-                    // final String fieldName = field.getName();
-                    // switch (fieldName) {
-                    //
-                    // }
-                    // p.print(fieldName);
-                    // p.print(" = ");
-                    // p.print(field.loadValue(node));
-                }
-            }
-            p.print(")");
-
             if (level <= maxDepth) {
-
+                ArrayList<NodeFieldAccessor> childFields = new ArrayList<>();
+                for (NodeFieldAccessor field : NodeClass.get(node).getFields()) {
+                    if (field.getKind() == NodeFieldKind.CHILD || field.getKind() == NodeFieldKind.CHILDREN) {
+                        childFields.add(field);
+                    }
+                }
                 if (childFields.size() != 0) {
                     p.print(" {");
                     for (NodeFieldAccessor field : childFields) {

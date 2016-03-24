@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,12 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java.test;
+package com.oracle.truffle.api.dsl.test.interop;
 
-/**
- * Binary operation on integers. Mimics "functional interface" - e.g. has just a single method, so
- * it should be easily usable with lamdas.
- */
-public interface IntBinaryOperation {
-    int compute(int a, int b);
+import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObjectC.Nested2TruffleObject;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.AcceptMessage;
+
+@AcceptMessage(value = "READ", receiverType = Nested2TruffleObject.class, language = TestTruffleLanguage.class)
+public final class ReadNode9 extends BaseReadNode9 {
+
+    @Override
+    protected Object access(VirtualFrame frame, Object receiver, Object name) {
+        return 0;
+    }
 }

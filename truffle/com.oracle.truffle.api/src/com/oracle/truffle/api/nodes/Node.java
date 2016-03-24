@@ -158,12 +158,12 @@ public abstract class Node implements NodeInterface, Cloneable {
      * To define node with <em>fixed</em> {@link SourceSection} that doesn't change after node
      * construction use:
      *
-     * {@codesnippet NodeWithFixedSourceSection}
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section}
      *
      * To create a node which can associate and change the {@link SourceSection} later at any point
      * of time use:
      *
-     * {@codesnippet MutableSourceSectionNode}
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section}
      *
      * @return the source code represented by this Node
      * @since 0.8 or earlier
@@ -614,4 +614,37 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     // registers into Accessor.NODES
     static final AccessorNodes ACCESSOR = new AccessorNodes();
+}
+
+class NodeSnippets {
+    static class NodeWithFixedSourceSection extends Node {
+        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section
+        private final SourceSection section;
+
+        NodeWithFixedSourceSection(SourceSection section) {
+            this.section = section;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return section;
+        }
+        // END: com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section
+    }
+
+    static class MutableSourceSectionNode extends Node {
+        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
+        @CompilerDirectives.CompilationFinal private SourceSection section;
+
+        final void changeSourceSection(SourceSection sourceSection) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.section = sourceSection;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return section;
+        }
+        // END: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
+    }
 }

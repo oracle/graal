@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  * language program to listen to instrumentation events. In addition to
  * {@link ExecutionEventListener listeners} event nodes allow to store state for a particular
  * {@link EventContext program location}.
- * 
+ *
  * @since 0.12
  */
 @NodeInfo(cost = NodeCost.NONE)
@@ -58,7 +58,7 @@ public abstract class ExecutionEventNode extends Node {
     }
 
     /**
-     * Invoked immediatly after an {@link EventContext#getInstrumentedNode() instrumented node} is
+     * Invoked immediately after an {@link EventContext#getInstrumentedNode() instrumented node} is
      * successfully executed. The order in which multiple event listeners are notified matches the
      * order they are
      * {@link Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener) attached}.

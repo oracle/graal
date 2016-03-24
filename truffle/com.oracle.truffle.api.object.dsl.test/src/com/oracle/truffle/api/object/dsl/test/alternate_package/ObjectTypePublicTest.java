@@ -22,23 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.object.dsl.test.alternate_package;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.dsl.Layout;
 
-/**
- * Controls breaking out of all executions and ending Truffle execution.
- * 
- * @since 0.8 or earlier
- */
-public final class QuitException extends ControlFlowException {
-    private static final long serialVersionUID = -7101931337099807445L;
+public class ObjectTypePublicTest {
 
-    /**
-     * Default constructor.
-     * 
-     * @since 0.8 or earlier
-     */
-    public QuitException() {
+    @Layout
+    public interface ObjectTypePublicTestLayout {
+
+        DynamicObject createObjectTypePublicTest(int value);
+
+        int getValue(DynamicObject object);
+
+        void setValue(DynamicObject object, int value);
+
     }
+
 }

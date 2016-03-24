@@ -20,37 +20,47 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.vm;
+package com.oracle.truffle.api.dsl.test.interop;
 
-import static org.junit.Assert.assertEquals;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-import java.io.IOException;
+public class ValidTruffleObjectC {
 
-import org.junit.Test;
+    public static class NestedTruffleObject implements TruffleObject {
 
-import com.oracle.truffle.api.source.Source;
-import org.junit.After;
-import org.junit.Before;
+        public ForeignAccess getForeignAccess() {
+            return null;
+        }
 
-public class IsMimeTypeSupportedTest {
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof ValidTruffleObject;
+        }
 
-    private static final String MIME_TYPE = "application/x-test-mime-type-supported";
-    private PolyglotEngine vm;
-
-    @Before
-    public void create() {
-        vm = PolyglotEngine.newBuilder().build();
     }
 
-    @After
-    public void dispose() {
-        vm.dispose();
+    public static class Nested2TruffleObject implements TruffleObject {
+
+        public ForeignAccess getForeignAccess() {
+            return null;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof ValidTruffleObject;
+        }
+
     }
 
-    @Test
-    public void isMimeSupported() throws IOException {
-        assertEquals(true, vm.eval(Source.fromText(MIME_TYPE, "supported").withMimeType(MIME_TYPE)).as(Boolean.class));
-        assertEquals(false, vm.eval(Source.fromText("application/x-this-language-does-not-exist", "unsupported").withMimeType(MIME_TYPE)).as(Boolean.class));
+    public class Nested3TruffleObject implements TruffleObject {
+
+        public ForeignAccess getForeignAccess() {
+            return null;
+        }
+
+        public boolean isInstance(TruffleObject obj) {
+            return obj instanceof ValidTruffleObject;
+        }
+
     }
 
 }

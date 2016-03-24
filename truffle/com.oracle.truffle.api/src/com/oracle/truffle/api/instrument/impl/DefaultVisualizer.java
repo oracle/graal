@@ -32,6 +32,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
+@SuppressWarnings("deprecation")
 public class DefaultVisualizer implements Visualizer {
 
     private final ASTPrinter astPrinter;
@@ -40,12 +41,10 @@ public class DefaultVisualizer implements Visualizer {
         this.astPrinter = new DefaultASTPrinter();
     }
 
-    @SuppressWarnings("deprecation")
     public ASTPrinter getASTPrinter() {
         return astPrinter;
     }
 
-    @SuppressWarnings("deprecation")
     public String displaySourceLocation(Node node) {
         if (node == null) {
             return "<unknown>";
@@ -62,7 +61,6 @@ public class DefaultVisualizer implements Visualizer {
         return section.getShortDescription() + (estimated ? "~" : "");
     }
 
-    @SuppressWarnings("deprecation")
     public String displayMethodName(Node node) {
         if (node == null) {
             return null;
@@ -74,12 +72,10 @@ public class DefaultVisualizer implements Visualizer {
         return root.getCallTarget().toString();
     }
 
-    @SuppressWarnings("deprecation")
     public String displayCallTargetName(CallTarget callTarget) {
         return callTarget.toString();
     }
 
-    @SuppressWarnings("deprecation")
     public String displayValue(Object value, int trim) {
         if (value == null) {
             return "<empty>";
@@ -87,7 +83,6 @@ public class DefaultVisualizer implements Visualizer {
         return trim(value.toString(), trim);
     }
 
-    @SuppressWarnings("deprecation")
     public String displayIdentifier(FrameSlot slot) {
         return slot.getIdentifier().toString();
     }

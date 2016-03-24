@@ -90,8 +90,8 @@ public class TruffleProfiler extends TruffleInstrument {
             }
         });
         /*
-         * ensure even if the runtime is not disposed that instrumentations are disposed shouldn't
-         * PolylgotEngine ensure that instrumentations are always disposed
+         * ensure even if the runtime is not disposed that instruments are disposed shouldn't
+         * PolylgotEngine ensure that instruments are always disposed
          */
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {

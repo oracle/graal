@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.util.concurrent.Callable;
+
 /**
  * This event is delivered to all
  * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
@@ -41,10 +43,14 @@ package com.oracle.truffle.api.debug;
  */
 @SuppressWarnings("javadoc")
 public final class ExecutionEvent {
-    private final Debugger debugger;
+    private Object debugger;
 
-    ExecutionEvent(Debugger prepares) {
-        this.debugger = prepares;
+    ExecutionEvent(Debugger debugger) {
+        this.debugger = debugger;
+    }
+
+    ExecutionEvent(Callable<Debugger> debugger) {
+        this.debugger = debugger;
     }
 
     /**
@@ -57,7 +63,15 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public Debugger getDebugger() {
-        return debugger;
+        if (debugger instanceof Debugger) {
+            return (Debugger) debugger;
+        }
+        try {
+            debugger = ((Callable<?>) debugger).call();
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
+        return (Debugger) debugger;
     }
 
     /**
@@ -75,7 +89,7 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public void prepareContinue() {
-        debugger.prepareContinue(-1);
+        getDebugger().prepareContinue(-1);
     }
 
     /**
@@ -98,6 +112,6 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public void prepareStepInto() {
-        debugger.prepareStepInto(1);
+        getDebugger().prepareStepInto(1);
     }
 }

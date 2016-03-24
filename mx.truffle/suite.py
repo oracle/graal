@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.9.0",
+  "mxversion" : "5.13.0",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -39,7 +39,7 @@ suite = {
       }
     },
   },
-
+  "snippetsPattern" : ".*Snippets.*",
   "projects" : {
 
     # ------------- Truffle -------------
@@ -60,6 +60,7 @@ suite = {
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.instrumentation",
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -351,21 +352,6 @@ suite = {
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "license" : "UPL",
     },
-
-    "com.oracle.truffle.sl.tools" : {
-       "subDir" : "truffle",
-       "sourceDirs" : ["src"],
-       "dependencies" : [
-                        "com.oracle.truffle.tools.debug.shell",
-                        ],
-       "generatedDependencies" : [
-                        "com.oracle.truffle.sl",
-                        ],
-       "checkstyle" : "com.oracle.truffle.sl",
-       "javaCompliance" : "1.7",
-       "workingSets" : "Truffle,SimpleLanguage,Tools",
-       "license" : "UPL",
-     },
    },
 
   "licenses" : {

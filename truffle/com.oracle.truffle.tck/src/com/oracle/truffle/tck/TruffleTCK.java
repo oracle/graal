@@ -46,7 +46,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
+import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.tck.Schema.Type;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+import java.util.concurrent.Executors;
+import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
@@ -116,6 +121,7 @@ import static org.junit.Assert.fail;
  */
 public abstract class TruffleTCK {
     private static final Random RANDOM = new Random();
+    private static Reference<PolyglotEngine> previousVMReference = new WeakReference<>(null);
     private PolyglotEngine tckVM;
 
     /** @since 0.8 or earlier */
@@ -123,7 +129,28 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * This methods is called before first test is executed. It's purpose is to set a
+     * Disposes {@link PolyglotEngine} used during the test execution.
+     * 
+     * @since 0.12
+     */
+    @AfterClass
+    public static final void disposePreviousVM() {
+        replacePreviousVM(null);
+    }
+
+    private static void replacePreviousVM(PolyglotEngine newVM) {
+        PolyglotEngine vm = previousVMReference.get();
+        if (vm == newVM) {
+            return;
+        }
+        if (vm != null) {
+            vm.dispose();
+        }
+        previousVMReference = new WeakReference<>(newVM);
+    }
+
+    /**
+     * This methods is called before each test is executed. It's purpose is to set a
      * {@link PolyglotEngine} with your language up, so it is ready for testing.
      * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) Execute} any scripts you
      * need, and prepare global symbols with proper names. The symbols will then be looked up by the
@@ -134,7 +161,26 @@ public abstract class TruffleTCK {
      * @throws java.lang.Exception thrown when the VM preparation fails
      * @since 0.8 or earlier
      */
-    protected abstract PolyglotEngine prepareVM() throws Exception;
+    protected PolyglotEngine prepareVM() throws Exception {
+        return prepareVM(PolyglotEngine.newBuilder());
+    }
+
+    /**
+     * Configure your language inside of provided builder. The method should do the same operations
+     * like {@link #prepareVM()}, but rather than doing them from scratch, it is supposed to do the
+     * changes in provided builder. The builder may be pre-configured by the TCK - for example
+     * {@link Builder#executor(java.util.concurrent.Executor)} may be provided or
+     * {@link Builder#globalSymbol(java.lang.String, java.lang.Object) global symbols} specified,
+     * etc.
+     *
+     * @param preparedBuilder the builder to use to construct the engine
+     * @return initialized Truffle virtual machine
+     * @throws java.lang.Exception thrown when the VM preparation fails
+     * @since 0.12
+     */
+    protected PolyglotEngine prepareVM(PolyglotEngine.Builder preparedBuilder) throws Exception {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * MIME type associated with your language. The MIME type will be passed to
@@ -415,6 +461,7 @@ public abstract class TruffleTCK {
     private PolyglotEngine vm() throws Exception {
         if (tckVM == null) {
             tckVM = prepareVM();
+            replacePreviousVM(tckVM);
         }
         return tckVM;
     }
@@ -498,22 +545,22 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(int.class, int.class));
 
         Number n = plus.execute(a, b).as(Number.class);
-        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+        assert a + b == n.intValue() : "(" + a + " + " + b + ") =  " + n.intValue();
     }
 
     /** @since 0.8 or earlier */
     @Test
     public void testPlusWithBytes() throws Exception {
-        int a = RANDOM.nextInt(100);
-        int b = RANDOM.nextInt(100);
+        int a = RANDOM.nextInt(50);
+        int b = RANDOM.nextInt(50);
         doPlusWithBytes(a, b);
     }
 
     /** @since 0.8 or earlier */
     @Test
     public void testPlusWithOneNegativeByte() throws Exception {
-        int a = -RANDOM.nextInt(100);
-        int b = RANDOM.nextInt(100);
+        int a = -RANDOM.nextInt(50);
+        int b = RANDOM.nextInt(50);
         doPlusWithBytes(a, b);
     }
 
@@ -521,7 +568,7 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(byte.class, byte.class));
 
         Number n = plus.execute((byte) a, (byte) b).as(Number.class);
-        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+        assert a + b == n.intValue() : "(" + a + " + " + b + ") =  " + n.intValue();
     }
 
     /** @since 0.8 or earlier */
@@ -544,7 +591,7 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(short.class, short.class));
 
         Number n = plus.execute((short) a, (short) b).as(Number.class);
-        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+        assert a + b == n.intValue() : "(" + a + " + " + b + ") =  " + n.intValue();
     }
 
     /** @since 0.8 or earlier */
@@ -565,7 +612,7 @@ public abstract class TruffleTCK {
         PolyglotEngine.Value plus = findGlobalSymbol(plus(long.class, long.class));
 
         Number n = plus.execute(a, b).as(Number.class);
-        assert a + b == n.longValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.longValue();
+        assert a + b == n.longValue() : "(" + a + " + " + b + ") =  " + n.longValue();
     }
 
     /** @since 0.8 or earlier */
@@ -715,7 +762,7 @@ public abstract class TruffleTCK {
         }
 
         Number n = obj.plus(a, b);
-        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+        assert a + b == n.intValue() : "(" + a + " + " + b + ") =  " + n.intValue();
     }
 
     /** @since 0.8 or earlier */
@@ -1068,33 +1115,38 @@ public abstract class TruffleTCK {
     @Test
     public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
         final String countMethod = countInvocations();
-        PolyglotEngine.Value count1 = findGlobalSymbol(countMethod);
-        PolyglotEngine vm1 = tckVM;
-        tckVM = null; // clean-up
-        PolyglotEngine.Value count2 = findGlobalSymbol(countMethod);
-        PolyglotEngine vm2 = tckVM;
+        PolyglotEngine.Builder builder = PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor());
+        PolyglotEngine vm2 = prepareVM(builder);
+        try {
+            PolyglotEngine.Value count2 = vm2.findGlobalSymbol(countMethod);
 
-        assertNotSame("Two virtual machines allocated", vm1, vm2);
+            PolyglotEngine.Value count1 = findGlobalSymbol(countMethod);
+            PolyglotEngine vm1 = tckVM;
 
-        int prev1 = 0;
-        int prev2 = 0;
-        StringBuilder log = new StringBuilder();
-        for (int i = 0; i < 10; i++) {
-            int quantum = RANDOM.nextInt(10);
-            log.append("quantum" + i + " is " + quantum + "\n");
-            for (int j = 0; j < quantum; j++) {
-                Object res = count1.execute().get();
-                assert res instanceof Number : "expecting number: " + res + "\n" + log;
-                ++prev1;
-                assert ((Number) res).intValue() == prev1 : "expecting " + prev1 + " but was " + res + "\n" + log;
+            assertNotSame("Two virtual machines allocated", vm1, vm2);
+
+            int prev1 = 0;
+            int prev2 = 0;
+            StringBuilder log = new StringBuilder();
+            for (int i = 0; i < 10; i++) {
+                int quantum = RANDOM.nextInt(10);
+                log.append("quantum" + i + " is " + quantum + "\n");
+                for (int j = 0; j < quantum; j++) {
+                    Object res = count1.execute().get();
+                    assert res instanceof Number : "expecting number: " + res + "\n" + log;
+                    ++prev1;
+                    assert ((Number) res).intValue() == prev1 : "expecting " + prev1 + " but was " + res + "\n" + log;
+                }
+                for (int j = 0; j < quantum; j++) {
+                    Object res = count2.execute().get();
+                    assert res instanceof Number : "expecting number: " + res + "\n" + log;
+                    ++prev2;
+                    assert ((Number) res).intValue() == prev2 : "expecting " + prev2 + " but was " + res + "\n" + log;
+                }
+                assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2 + "\n" + log;
             }
-            for (int j = 0; j < quantum; j++) {
-                Object res = count2.execute().get();
-                assert res instanceof Number : "expecting number: " + res + "\n" + log;
-                ++prev2;
-                assert ((Number) res).intValue() == prev2 : "expecting " + prev2 + " but was " + res + "\n" + log;
-            }
-            assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2 + "\n" + log;
+        } finally {
+            vm2.dispose();
         }
     }
 

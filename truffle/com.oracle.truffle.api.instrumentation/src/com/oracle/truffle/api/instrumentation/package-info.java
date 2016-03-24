@@ -49,7 +49,7 @@
  * languages may be used to implement guest language features that require meta-programming
  * capabilities.
  *
- * Instrumentations can get enabled/disabled using PolyglotEngine.
+ * Instruments can be enabled/disabled using PolyglotEngine.
  *
  * @see com.oracle.truffle.api.instrumentation.TruffleInstrument
  * @see com.oracle.truffle.api.instrumentation.Instrumentable
