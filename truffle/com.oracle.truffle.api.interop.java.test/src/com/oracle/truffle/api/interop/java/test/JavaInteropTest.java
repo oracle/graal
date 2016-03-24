@@ -149,8 +149,8 @@ public class JavaInteropTest {
     public void objectsAsMap() {
         data.x = 10;
         data.y = 33.3;
-        data.map = this;
-        Map<String,Object> map = xyp.map();
+        data.map = data;
+        Map<String, Object> map = xyp.map();
 
         assertEquals("x", map.get("x"), 10);
         assertEquals("y", map.get("y"), 33.3);
@@ -173,7 +173,7 @@ public class JavaInteropTest {
     public interface XYPlus {
         List<String> arr();
 
-        Map<String,Object> map();
+        Map<String, Object> map();
 
         int x();
 

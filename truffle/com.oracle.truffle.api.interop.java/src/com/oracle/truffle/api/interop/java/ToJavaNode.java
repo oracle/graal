@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.Map;
 
 final class ToJavaNode extends Node {
     private static final Object[] EMPTY = {};
@@ -112,6 +113,20 @@ final class ToJavaNode extends Node {
                     }
                 }
                 obj = TruffleList.create(elementType, foreignObject);
+            } else if (clazz == Map.class) {
+                Class<?> keyType = Object.class;
+                Class<?> valueType = Object.class;
+                if (type instanceof ParameterizedType) {
+                    ParameterizedType parametrizedType = (ParameterizedType) type;
+                    final Type[] arr = parametrizedType.getActualTypeArguments();
+                    if (arr.length == 2 && arr[0] instanceof Class) {
+                        keyType = (Class<?>) arr[0];
+                    }
+                    if (arr.length == 2 && arr[1] instanceof Class) {
+                        valueType = (Class<?>) arr[1];
+                    }
+                }
+                obj = TruffleMap.create(keyType, valueType, foreignObject);
             } else {
                 obj = Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new TruffleHandler(foreignObject));
             }
