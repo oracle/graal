@@ -45,8 +45,6 @@ public abstract class TVMCI {
         assert getClass().getPackage().getName().equals("com.oracle.graal.truffle") || getClass().getPackage().getName().equals("com.oracle.truffle.api.impl");
     }
 
-    // the class is a member class to not be (easily) visible in Javadoc
-
     /**
      * Reports the execution count of a loop.
      *
