@@ -68,6 +68,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -118,9 +119,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected CallMethods callMethods;
 
     private final Supplier<GraalRuntime> graalRuntime;
+    private final GraalTVMCI tvmci = new GraalTVMCI();
 
     public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
         this.graalRuntime = graalRuntime;
+    }
+
+    GraalTVMCI getTvmci() {
+        return tvmci;
     }
 
     public abstract TruffleCompiler getTruffleCompiler();
@@ -305,7 +311,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return iterateImpl(frame -> frame, 0);
     }
 
+    @Override
     public <T> T getCapability(Class<T> capability) {
+        if (capability.isAssignableFrom(TVMCI.class)) {
+            return capability.cast(tvmci);
+        }
         return null;
     }
 

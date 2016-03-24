@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.OptScheduleOutOfLoop
 import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.strictlyDominates;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Formatter;
 import java.util.List;
@@ -173,7 +174,9 @@ public final class SchedulePhase extends Phase {
         private BlockMap<ArrayList<FloatingReadNode>> calcLatestBlocks(SchedulingStrategy strategy, NodeMap<Block> currentNodeMap, BlockMap<List<Node>> earliestBlockToNodesMap, NodeBitMap visited,
                         BlockMap<List<Node>> latestBlockToNodesMap, boolean immutableGraph) {
             BlockMap<ArrayList<FloatingReadNode>> watchListMap = new BlockMap<>(cfg);
-            for (Block currentBlock : cfg.postOrder()) {
+            Block[] reversePostOrder = cfg.reversePostOrder();
+            for (int j = reversePostOrder.length - 1; j >= 0; --j) {
+                Block currentBlock = reversePostOrder[j];
                 List<Node> blockToNodes = earliestBlockToNodesMap.get(currentBlock);
                 LocationSet killed = null;
                 int previousIndex = blockToNodes.size();
@@ -503,7 +506,7 @@ public final class SchedulePhase extends Phase {
                 Block mergeBlock = currentNodeMap.get(merge);
                 for (int i = 0; i < phi.valueCount(); ++i) {
                     if (phi.valueAt(i) == node) {
-                        Block otherBlock = mergeBlock.getPredecessors().get(i);
+                        Block otherBlock = mergeBlock.getPredecessors()[i];
                         currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                     }
                 }
@@ -525,7 +528,7 @@ public final class SchedulePhase extends Phase {
 
         private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph, boolean immutableGraph) {
 
-            BitSet floatingReads = new BitSet(cfg.getBlocks().size());
+            BitSet floatingReads = new BitSet(cfg.getBlocks().length);
 
             // Add begin nodes as the first entry and set the block for phi nodes.
             for (Block b : cfg.getBlocks()) {
@@ -551,7 +554,9 @@ public final class SchedulePhase extends Phase {
             NodeStack stack = new NodeStack();
 
             // Start analysis with control flow ends.
-            for (Block b : cfg.postOrder()) {
+            Block[] reversePostOrder = cfg.reversePostOrder();
+            for (int j = reversePostOrder.length - 1; j >= 0; --j) {
+                Block b = reversePostOrder[j];
                 FixedNode endNode = b.getEndNode();
                 if (isFixedEnd(endNode)) {
                     stack.push(endNode);
@@ -706,36 +711,16 @@ public final class SchedulePhase extends Phase {
                     }
 
                     if (current instanceof PhiNode) {
-                        PhiNode phiNode = (PhiNode) current;
-                        AbstractMergeNode merge = phiNode.merge();
-                        for (int i = 0; i < merge.forwardEndCount(); ++i) {
-                            Node input = phiNode.valueAt(i);
-                            if (input != null) {
-                                stack.push(input);
-                            }
-                        }
+                        processStackPhi(stack, (PhiNode) current);
                     } else if (current instanceof ProxyNode) {
-                        ProxyNode proxyNode = (ProxyNode) current;
-                        for (Node input : proxyNode.inputs()) {
-                            if (input != proxyNode.proxyPoint()) {
-                                stack.push(input);
-                            }
-                        }
+                        processStackProxy(stack, (ProxyNode) current);
                     } else if (current instanceof FrameState) {
-                        for (Node input : current.inputs()) {
-                            if (input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
-                                // Ignore the cycle.
-                            } else {
-                                stack.push(input);
-                            }
-                        }
+                        processStackFrameState(stack, current);
                     } else {
                         current.pushInputs(stack);
                     }
                 } else {
-
                     stack.pop();
-
                     if (nodeToBlock.get(current) == null) {
                         Block curBlock = cfg.blockFor(current);
                         if (curBlock == null) {
@@ -780,14 +765,43 @@ public final class SchedulePhase extends Phase {
             }
         }
 
+        private static void processStackFrameState(NodeStack stack, Node current) {
+            for (Node input : current.inputs()) {
+                if (input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
+                    // Ignore the cycle.
+                } else {
+                    stack.push(input);
+                }
+            }
+        }
+
+        private static void processStackProxy(NodeStack stack, ProxyNode proxyNode) {
+            LoopExitNode proxyPoint = proxyNode.proxyPoint();
+            for (Node input : proxyNode.inputs()) {
+                if (input != proxyPoint) {
+                    stack.push(input);
+                }
+            }
+        }
+
+        private static void processStackPhi(NodeStack stack, PhiNode phiNode) {
+            AbstractMergeNode merge = phiNode.merge();
+            for (int i = 0; i < merge.forwardEndCount(); ++i) {
+                Node input = phiNode.valueAt(i);
+                if (input != null) {
+                    stack.push(input);
+                }
+            }
+        }
+
         public String printScheduleHelper(String desc) {
             Formatter buf = new Formatter();
             buf.format("=== %s / %s ===%n", getCFG().getStartBlock().getBeginNode().graph(), desc);
             for (Block b : getCFG().getBlocks()) {
                 buf.format("==== b: %s (loopDepth: %s). ", b, b.getLoopDepth());
                 buf.format("dom: %s. ", b.getDominator());
-                buf.format("preds: %s. ", b.getPredecessors());
-                buf.format("succs: %s ====%n", b.getSuccessors());
+                buf.format("preds: %s. ", Arrays.toString(b.getPredecessors()));
+                buf.format("succs: %s ====%n", Arrays.toString(b.getSuccessors()));
 
                 if (blockToNodesMap.get(b) != null) {
                     for (Node n : nodesFor(b)) {

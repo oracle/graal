@@ -261,7 +261,7 @@ public class GraalCompiler {
                     T compilationResult) {
         try (Scope ds = Debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start()) {
             ScheduleResult schedule = graph.getLastSchedule();
-            List<Block> blocks = schedule.getCFG().getBlocks();
+            Block[] blocks = schedule.getCFG().getBlocks();
             Block startBlock = schedule.getCFG().getStartBlock();
             assert startBlock != null;
             assert startBlock.getPredecessorCount() == 0;
@@ -270,8 +270,8 @@ public class GraalCompiler {
             List<Block> codeEmittingOrder = null;
             List<Block> linearScanOrder = null;
             try (Scope s = Debug.scope("ComputeLinearScanOrder", lir)) {
-                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.size(), startBlock);
-                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.size(), startBlock);
+                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
+                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
 
                 lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder);
                 Debug.dump(lir, "After linear scan order");

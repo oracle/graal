@@ -35,6 +35,7 @@ import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodes.StructuredGraph;
 
 /**
  * State providing the nodes in a graph. Subclasses of this class are annotated with
@@ -44,7 +45,8 @@ import com.oracle.graal.graph.NodeClass;
 public abstract class NodesState {
 
     public NodesState() {
-        this.nodes = getNodes(getGraphFromMethodSpec(getClass()));
+        this.graph = getGraphFromMethodSpec(getClass());
+        this.nodes = getNodes(graph);
         this.originalNodes = nodes.clone();
         List<Node> vnln = new ArrayList<>(nodes.length);
         List<NodePair> list2 = new ArrayList<>(nodes.length);
@@ -74,6 +76,7 @@ public abstract class NodesState {
      * The nodes processed by the benchmark. These arrays must be treated as read-only within the
      * benchmark method.
      */
+    public final StructuredGraph graph;
     public final Node[] nodes;
     public final Node[] valueNumberableLeafNodes;
     public final NodePair[] valueEqualsNodePairs;

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.common.cfg;
 
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -39,7 +39,7 @@ import java.util.stream.Stream;
  */
 public abstract class DominatorOptimizationProblem<E extends Enum<E>, C> {
 
-    private List<? extends AbstractBlockBase<?>> blocks;
+    private AbstractBlockBase<?>[] blocks;
     private EnumMap<E, BitSet> flags;
     private BlockMap<C> costs;
 
@@ -50,9 +50,9 @@ public abstract class DominatorOptimizationProblem<E extends Enum<E>, C> {
         assert verify(blocks);
     }
 
-    private static boolean verify(List<? extends AbstractBlockBase<?>> blocks) {
-        for (int i = 0; i < blocks.size(); i++) {
-            AbstractBlockBase<?> block = blocks.get(i);
+    private static boolean verify(AbstractBlockBase<?>[] blocks) {
+        for (int i = 0; i < blocks.length; i++) {
+            AbstractBlockBase<?> block = blocks[i];
             if (i != block.getId()) {
                 assert false : String.format("Id index mismatch @ %d vs. %s.getId()==%d", i, block, block.getId());
                 return false;
@@ -61,12 +61,12 @@ public abstract class DominatorOptimizationProblem<E extends Enum<E>, C> {
         return true;
     }
 
-    public final List<? extends AbstractBlockBase<?>> getBlocks() {
+    public final AbstractBlockBase<?>[] getBlocks() {
         return blocks;
     }
 
     public final AbstractBlockBase<?> getBlockForId(int id) {
-        AbstractBlockBase<?> block = blocks.get(id);
+        AbstractBlockBase<?> block = blocks[id];
         assert block.getId() == id : "wrong block-to-id mapping";
         return block;
     }
@@ -77,7 +77,7 @@ public abstract class DominatorOptimizationProblem<E extends Enum<E>, C> {
     public final void set(E flag, AbstractBlockBase<?> block) {
         BitSet bitSet = flags.get(flag);
         if (bitSet == null) {
-            bitSet = new BitSet(blocks.size());
+            bitSet = new BitSet(blocks.length);
             flags.put(flag, bitSet);
         }
         bitSet.set(block.getId());
@@ -95,7 +95,7 @@ public abstract class DominatorOptimizationProblem<E extends Enum<E>, C> {
      * Returns a {@linkplain Stream} of blocks for which {@code flag} is set.
      */
     public final Stream<? extends AbstractBlockBase<?>> stream(E flag) {
-        return getBlocks().stream().filter(block -> get(flag, block));
+        return Arrays.asList(getBlocks()).stream().filter(block -> get(flag, block));
     }
 
     /**
@@ -120,7 +120,7 @@ public abstract class DominatorOptimizationProblem<E extends Enum<E>, C> {
     public final void setDominatorPath(E flag, AbstractBlockBase<?> block) {
         BitSet bitSet = flags.get(flag);
         if (bitSet == null) {
-            bitSet = new BitSet(blocks.size());
+            bitSet = new BitSet(blocks.length);
             flags.put(flag, bitSet);
         }
         for (AbstractBlockBase<?> b = block; b != null && !bitSet.get(b.getId()); b = b.getDominator()) {

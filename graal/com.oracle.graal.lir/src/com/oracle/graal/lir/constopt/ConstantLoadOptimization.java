@@ -114,7 +114,9 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             try (Indent indent = Debug.logAndIndent("ConstantLoadOptimization")) {
                 try (Scope s = Debug.scope("BuildDefUseTree")) {
                     // build DefUseTree
-                    lir.getControlFlowGraph().getBlocks().forEach(this::analyzeBlock);
+                    for (AbstractBlockBase<?> b : lir.getControlFlowGraph().getBlocks()) {
+                        this.analyzeBlock(b);
+                    }
                     // remove all with only one use
                     map.filter(t -> {
                         if (t.usageCount() > 1) {
@@ -135,7 +137,9 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                     map.forEach(this::createConstantTree);
 
                     // insert moves, delete null instructions and reset instruction ids
-                    lir.getControlFlowGraph().getBlocks().forEach(this::rewriteBlock);
+                    for (AbstractBlockBase<?> b : lir.getControlFlowGraph().getBlocks()) {
+                        this.rewriteBlock(b);
+                    }
 
                     assert verifyStates();
                 } catch (Throwable e) {

@@ -24,7 +24,6 @@ package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIR.verifyBlocks;
 
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -69,7 +68,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
          * @return whether the block can be deleted
          */
         private boolean canDeleteBlock(B block) {
-            if (block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessors().iterator().next() == block) {
+            if (block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessors()[0] == block) {
                 return false;
             }
 
@@ -78,7 +77,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             assert instructions.size() >= 2 : "block must have label and branch";
             assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
             assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "last instruction must always be a branch";
-            assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.getLIRforBlock(block.getSuccessors().iterator().next()).get(0)).getLabel() : "branch target must be the successor";
+            assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.getLIRforBlock(block.getSuccessors()[0]).get(0)).getLabel() : "branch target must be the successor";
 
             // Block must have exactly one successor.
             return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();
@@ -100,20 +99,10 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             while (iterator.hasNext()) {
                 B block = iterator.next();
                 if (canDeleteBlock(block)) {
-                    // adjust successor and predecessor lists
-                    B other = block.getSuccessors().iterator().next();
-                    for (AbstractBlockBase<B> pred : block.getPredecessors()) {
-                        Collections.replaceAll(pred.getSuccessors(), block, other);
-                    }
-                    for (int i = 0; i < other.getPredecessorCount(); i++) {
-                        if (other.getPredecessors().get(i) == block) {
-                            other.getPredecessors().remove(i);
-                            other.getPredecessors().addAll(i, block.getPredecessors());
-                        }
-                    }
-                    block.getSuccessors().clear();
-                    block.getPredecessors().clear();
 
+                    block.delete();
+                    // adjust successor and predecessor lists
+                    B other = block.getSuccessors()[0];
                     if (block.isAligned()) {
                         alignBlock(other);
                     }

@@ -75,7 +75,7 @@ public class SchedulingTest2 extends GraphScheduleTest {
         ScheduleResult schedule = graph.getLastSchedule();
         BlockMap<List<Node>> blockToNodesMap = schedule.getBlockToNodesMap();
         NodeMap<Block> nodeToBlock = schedule.getNodeToBlockMap();
-        assertDeepEquals(2, schedule.getCFG().getBlocks().size());
+        assertDeepEquals(2, schedule.getCFG().getBlocks().length);
         for (BinaryArithmeticNode<?> node : graph.getNodes().filter(BinaryArithmeticNode.class)) {
             if (node instanceof AddNode) {
                 assertTrue(node.toString() + " expected: " + nodeToBlock.get(beginNode) + " but was: " + nodeToBlock.get(node), nodeToBlock.get(node) != nodeToBlock.get(beginNode));

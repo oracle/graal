@@ -121,8 +121,7 @@ public final class UniDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
     }
 
     private boolean checkPredecessorsProcessed(T block) {
-        List<T> predecessors = block.getPredecessors();
-        for (T pred : predecessors) {
+        for (T pred : block.getPredecessors()) {
             if (!processed(pred)) {
                 assert false : "Predecessor unscheduled: " + pred;
                 return false;
