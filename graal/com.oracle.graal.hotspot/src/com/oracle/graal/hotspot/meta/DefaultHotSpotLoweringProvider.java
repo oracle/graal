@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -542,37 +542,48 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     public static final class RuntimeCalls {
+        public static final ForeignCallDescriptor CREATE_ARRAY_STORE_EXCEPTION = new ForeignCallDescriptor("createArrayStoreException", ArrayStoreException.class, Object.class);
         public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", NullPointerException.class);
         public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class);
     }
 
-    private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
-        StructuredGraph graph = node.graph();
-        if (OmitHotExceptionStacktrace.getValue()) {
-            Throwable exception;
-            if (node.getExceptionClass() == NullPointerException.class) {
-                exception = Exceptions.cachedNullPointerException;
-            } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
-                exception = Exceptions.cachedArrayIndexOutOfBoundsException;
-            } else {
-                throw JVMCIError.shouldNotReachHere();
-            }
-            FloatingNode exceptionNode = ConstantNode.forConstant(constantReflection.forObject(exception), metaAccess, graph);
-            graph.replaceFixedWithFloating(node, exceptionNode);
-
+    private boolean throwCachedException(BytecodeExceptionNode node) {
+        Throwable exception;
+        if (node.getExceptionClass() == NullPointerException.class) {
+            exception = Exceptions.cachedNullPointerException;
+        } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
+            exception = Exceptions.cachedArrayIndexOutOfBoundsException;
         } else {
-            ForeignCallDescriptor descriptor;
-            if (node.getExceptionClass() == NullPointerException.class) {
-                descriptor = RuntimeCalls.CREATE_NULL_POINTER_EXCEPTION;
-            } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
-                descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
-            } else {
-                throw JVMCIError.shouldNotReachHere();
-            }
-
-            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(), node.getArguments()));
-            graph.replaceFixedWithFixed(node, foreignCallNode);
+            return false;
         }
+
+        StructuredGraph graph = node.graph();
+        FloatingNode exceptionNode = ConstantNode.forConstant(constantReflection.forObject(exception), metaAccess, graph);
+        graph.replaceFixedWithFloating(node, exceptionNode);
+        return true;
+    }
+
+    private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
+        if (OmitHotExceptionStacktrace.getValue()) {
+            if (throwCachedException(node)) {
+                return;
+            }
+        }
+
+        ForeignCallDescriptor descriptor;
+        if (node.getExceptionClass() == NullPointerException.class) {
+            descriptor = RuntimeCalls.CREATE_NULL_POINTER_EXCEPTION;
+        } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
+            descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
+        } else if (node.getExceptionClass() == ArrayStoreException.class) {
+            descriptor = RuntimeCalls.CREATE_ARRAY_STORE_EXCEPTION;
+        } else {
+            throw JVMCIError.shouldNotReachHere();
+        }
+
+        StructuredGraph graph = node.graph();
+        ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(), node.getArguments()));
+        graph.replaceFixedWithFixed(node, foreignCallNode);
     }
 
     private static boolean addReadBarrier(UnsafeLoadNode load) {
