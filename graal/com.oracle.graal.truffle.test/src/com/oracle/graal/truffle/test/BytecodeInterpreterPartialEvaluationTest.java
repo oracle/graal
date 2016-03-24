@@ -30,6 +30,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -83,10 +84,18 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                     CompilerDirectives.transferToInterpreter();
                 }
             }
+            if (result > 100) {
+                /* Dead branch, just to have exception-throwing calls during partial evaluation. */
+                boundary();
+            }
             return result;
         } else {
             return x;
         }
+    }
+
+    @TruffleBoundary(throwsControlFlowException = true)
+    static void boundary() {
     }
 
     public static class Program extends RootNode {
