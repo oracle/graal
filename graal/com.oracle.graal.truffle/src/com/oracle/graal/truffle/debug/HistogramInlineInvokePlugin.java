@@ -89,12 +89,12 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
     }
 
     public void print(OptimizedCallTarget target) {
-        target.log(String.format("Truffle expansion histogram for %s", target));
-        target.log("  Invocations = Number of expanded invocations");
-        target.log("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
-        target.log("  Calls = Number of not expanded calls created for this method during partial evaluation.");
-        target.log(String.format(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg"));
-        histogram.values().stream().filter(statistics -> statistics.shallowCount.getSum() > 0).sorted().forEach(statistics -> statistics.print(target));
+        OptimizedCallTarget.log(String.format("Truffle expansion histogram for %s", target));
+        OptimizedCallTarget.log("  Invocations = Number of expanded invocations");
+        OptimizedCallTarget.log("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
+        OptimizedCallTarget.log("  Calls = Number of not expanded calls created for this method during partial evaluation.");
+        OptimizedCallTarget.log(String.format(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg"));
+        histogram.values().stream().filter(statistics -> statistics.shallowCount.getSum() > 0).sorted().forEach(statistics -> statistics.print());
     }
 
     private static class MethodStatistics implements Comparable<MethodStatistics> {
@@ -109,8 +109,8 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
             this.method = method;
         }
 
-        public void print(OptimizedCallTarget target) {
-            target.log(String.format(" %11d |      %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s", //
+        public void print() {
+            OptimizedCallTarget.log(String.format(" %11d |      %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s", //
                             count, shallowCount.getSum(), shallowCount.getMin(), shallowCount.getMax(), //
                             shallowCount.getAverage(), callCount.getSum(), callCount.getMin(), callCount.getMax(), //
                             callCount.getAverage(), method.format("%h.%n(%p)")));

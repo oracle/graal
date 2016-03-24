@@ -551,6 +551,6 @@ public class PartialEvaluator {
     }
 
     private static void logPerformanceWarning(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
-        AbstractDebugCompilationListener.log(target, 0, msg, String.format("%-60s|%s", target, details), properties);
+        AbstractDebugCompilationListener.log(0, msg, String.format("%-60s|%s", target, details), properties);
     }
 }

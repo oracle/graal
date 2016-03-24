@@ -135,7 +135,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
-    public final void log(String message) {
+    public static final void log(String message) {
         runtime().log(message);
     }
 
@@ -450,7 +450,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
     }
 
-    private void printException(Throwable e) {
+    private static void printException(Throwable e) {
         StringWriter string = new StringWriter();
         e.printStackTrace(new PrintWriter(string));
         log(string.toString());

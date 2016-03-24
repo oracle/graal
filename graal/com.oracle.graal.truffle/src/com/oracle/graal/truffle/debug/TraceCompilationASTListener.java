@@ -46,7 +46,7 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
 
     @Override
     public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
-        log(target, 0, "opt AST", target.toString(), target.getDebugProperties());
+        log(0, "opt AST", target.toString(), target.getDebugProperties());
         printCompactTree(target);
     }
 
@@ -65,7 +65,7 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
                 Node parent = node.getParent();
 
                 if (parent == null) {
-                    target.log(String.format("%s%s", indent, node.getClass().getSimpleName()));
+                    OptimizedCallTarget.log(String.format("%s%s", indent, node.getClass().getSimpleName()));
                 } else {
                     String fieldName = "unknownField";
                     NodeFieldAccessor[] fields = NodeClass.get(parent).getFields();
@@ -85,7 +85,7 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
                             }
                         }
                     }
-                    target.log(String.format("%s%s = %s", indent, fieldName, node.getClass().getSimpleName()));
+                    OptimizedCallTarget.log(String.format("%s%s = %s", indent, fieldName, node.getClass().getSimpleName()));
                 }
                 return true;
             }
