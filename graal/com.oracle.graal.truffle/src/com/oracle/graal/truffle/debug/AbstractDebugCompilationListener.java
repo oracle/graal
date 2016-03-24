@@ -67,7 +67,7 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     public void notifyStartup(GraalTruffleRuntime runtime) {
     }
 
-    public static void log(OptimizedCallTarget target, int indent, String msg, String details, Map<String, Object> properties) {
+    public static void log(int indent, String msg, String details, Map<String, Object> properties) {
         int spaceIndent = indent * 2;
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("[truffle] %-16s ", msg));
@@ -97,7 +97,7 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
                 sb.append(String.format(" %" + length + "s ", propertyBuilder.toString()));
             }
         }
-        target.log(sb.toString());
+        OptimizedCallTarget.log(sb.toString());
     }
 
     public static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {

@@ -52,7 +52,7 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
 
     @Override
     public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
-        log(target, 0, "opt call tree", target.toString(), target.getDebugProperties());
+        log(0, "opt call tree", target.toString(), target.getDebugProperties());
         logTruffleCallTree(target);
     }
 
@@ -71,10 +71,10 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
                     Map<String, Object> properties = new LinkedHashMap<>();
                     addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
-                    log(compilable, depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
+                    log(depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
-                    log(compilable, depth, "opt call tree", "<indirect>", new LinkedHashMap<String, Object>());
+                    log(depth, "opt call tree", "<indirect>", new LinkedHashMap<String, Object>());
                 }
                 return true;
             }
