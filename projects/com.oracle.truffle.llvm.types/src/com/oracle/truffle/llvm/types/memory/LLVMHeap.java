@@ -29,15 +29,10 @@
  */
 package com.oracle.truffle.llvm.types.memory;
 
-import com.oracle.nfi.NativeFunctionInterfaceRuntime;
-import com.oracle.nfi.api.NativeFunctionHandle;
-import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 
 public class LLVMHeap extends LLVMMemory {
-
-    private static final NativeFunctionHandle memCopyHandle;
 
     public static LLVMAddress allocateCString(String string) {
         LLVMAddress baseAddress = LLVMHeap.allocateMemory(string.length() + 1);
@@ -66,22 +61,10 @@ public class LLVMHeap extends LLVMMemory {
         UNSAFE.freeMemory(extractAddrNullPointerAllowed(addr));
     }
 
-    // setters
-
     public static void memCopy(LLVMAddress target, LLVMAddress source, long length) {
         long targetAddress = extractAddrNullPointerAllowed(target);
         long sourceAddress = extractAddrNullPointerAllowed(source);
-        unsafeMemoryCopy(length, targetAddress, sourceAddress);
-    }
-
-    static {
-        final NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
-        memCopyHandle = nfi.getFunctionHandle("memcpy", void.class, long.class, long.class, long.class);
-    }
-
-    // FIXME PE still fails for unintrinsified native methods
-    private static void unsafeMemoryCopy(long length, long targetAddress, long sourceAddress) {
-        memCopyHandle.call(targetAddress, sourceAddress, length);
+        UNSAFE.copyMemory(sourceAddress, targetAddress, length);
     }
 
     public static void memCopy(LLVMAddress target, LLVMAddress source, long length, @SuppressWarnings("unused") int align, @SuppressWarnings("unused") boolean isVolatile) {
