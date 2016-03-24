@@ -211,18 +211,22 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         });
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private OSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
-        @SuppressWarnings("rawtypes")
-        Class<? extends TruffleLanguage> truffleLanguage;
+        Class truffleLanguage;
         FrameDescriptor frameDescriptor;
         if (root != null) {
-            truffleLanguage = OptimizedCallTarget.ACCESSOR.findLanguage(root);
+            truffleLanguage = runtime().getTvmci().findLanguage(root);
             frameDescriptor = root.getFrameDescriptor();
         } else {
             truffleLanguage = TruffleLanguage.class;
             frameDescriptor = new FrameDescriptor();
         }
         return createRootNode(truffleLanguage, frameDescriptor, frameClass);
+    }
+
+    private static GraalTruffleRuntime runtime() {
+        return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
     private OptimizedCallTarget compileImpl(VirtualFrame frame) {
@@ -580,4 +584,5 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
 
     }
+
 }
