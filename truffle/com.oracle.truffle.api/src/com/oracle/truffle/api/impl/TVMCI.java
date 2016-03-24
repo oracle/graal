@@ -63,7 +63,10 @@ public abstract class TVMCI {
      * @since 0.12
      */
     protected void onFirstExecution(RootNode rootNode) {
-        Accessor.SPI.onFirstExecution(rootNode);
+        final Accessor accessor = Accessor.SPI;
+        if (accessor != null) {
+            accessor.onFirstExecution(rootNode);
+        }
     }
 
     /**
