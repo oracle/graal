@@ -29,6 +29,7 @@ import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -113,7 +114,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
          * that have been split.
          */
         @SuppressWarnings("try")
-        private void resolveDataFlow(List<? extends AbstractBlockBase<?>> blocks) {
+        private void resolveDataFlow(ArrayList<? extends AbstractBlockBase<?>> blocks) {
             if (blocks.size() < 2) {
                 // no resolution necessary
                 return;

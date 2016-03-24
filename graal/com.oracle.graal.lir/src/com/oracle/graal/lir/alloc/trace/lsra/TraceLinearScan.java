@@ -30,6 +30,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -105,7 +106,7 @@ public final class TraceLinearScan {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    private final List<? extends AbstractBlockBase<?>> sortedBlocks;
+    private final ArrayList<? extends AbstractBlockBase<?>> sortedBlocks;
 
     /**
      * Intervals sorted by {@link TraceInterval#from()}.
@@ -884,7 +885,7 @@ public final class TraceLinearScan {
         return frameMapBuilder;
     }
 
-    public List<? extends AbstractBlockBase<?>> sortedBlocks() {
+    public ArrayList<? extends AbstractBlockBase<?>> sortedBlocks() {
         return sortedBlocks;
     }
 

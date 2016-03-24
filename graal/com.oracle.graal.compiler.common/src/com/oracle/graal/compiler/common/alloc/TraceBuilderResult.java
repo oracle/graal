@@ -22,18 +22,18 @@
  */
 package com.oracle.graal.compiler.common.alloc;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
-import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 
 public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
-    private final List<Trace<T>> traces;
+    private final ArrayList<Trace<T>> traces;
     private final int[] blockToTrace;
 
-    TraceBuilderResult(List<Trace<T>> traces, int[] blockToTrace) {
+    TraceBuilderResult(ArrayList<Trace<T>> traces, int[] blockToTrace) {
         this.traces = traces;
         this.blockToTrace = blockToTrace;
     }
@@ -46,7 +46,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         return getTraces().get(blockToTrace[block.getId()]);
     }
 
-    public List<Trace<T>> getTraces() {
+    public ArrayList<Trace<T>> getTraces() {
         return traces;
     }
 
@@ -78,7 +78,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
     }
 
     public static <T extends AbstractBlockBase<T>> boolean verify(TraceBuilderResult<T> traceBuilderResult, int expectedLength) {
-        List<Trace<T>> traces = traceBuilderResult.getTraces();
+        ArrayList<Trace<T>> traces = traceBuilderResult.getTraces();
         assert verifyAllBlocksScheduled(traceBuilderResult, expectedLength) : "Not all blocks assigned to traces!";
         for (Trace<T> trace : traces) {
             T last = null;
@@ -94,7 +94,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
     }
 
     private static <T extends AbstractBlockBase<T>> boolean verifyAllBlocksScheduled(TraceBuilderResult<T> traceBuilderResult, int expectedLength) {
-        List<Trace<T>> traces = traceBuilderResult.getTraces();
+        ArrayList<Trace<T>> traces = traceBuilderResult.getTraces();
         BitSet handled = new BitSet(expectedLength);
         for (Trace<T> trace : traces) {
             for (T block : trace.getBlocks()) {
