@@ -47,6 +47,6 @@ public class NullPointerExceptionStub extends CreateExceptionStub {
 
     @Snippet
     private static Object createNullPointerException(@ConstantParameter Register threadRegister) {
-        return createException(threadRegister, NullPointerException.class, null);
+        return createException(threadRegister, NullPointerException.class);
     }
 }

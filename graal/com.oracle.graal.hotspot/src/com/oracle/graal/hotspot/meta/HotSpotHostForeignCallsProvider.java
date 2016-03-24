@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,7 +71,6 @@ import static com.oracle.graal.hotspot.replacements.ThreadSubstitutions.THREAD_I
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.G1WBPOSTCALL;
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.G1WBPRECALL;
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.VALIDATE_OBJECT;
-import static com.oracle.graal.hotspot.stubs.CreateExceptionStub.THROW_AND_POST_JVMTI_EXCEPTION;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.EXCEPTION_HANDLER_FOR_PC;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.NEW_ARRAY_C;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.NEW_INSTANCE_C;
@@ -92,6 +91,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.stubs.CreateExceptionStub;
 import com.oracle.graal.hotspot.stubs.ExceptionHandlerStub;
 import com.oracle.graal.hotspot.stubs.NewArrayStub;
 import com.oracle.graal.hotspot.stubs.NewInstanceStub;
@@ -253,7 +253,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
          */
         registerForeignCall(UNPACK_FRAMES, c.deoptimizationUnpackFrames, NativeCall, DESTROYS_REGISTERS, LEAF, NOT_REEXECUTABLE, any());
 
-        registerForeignCall(THROW_AND_POST_JVMTI_EXCEPTION, c.throwAndPostJvmtiExceptionAddress, NativeCall, DESTROYS_REGISTERS, SAFEPOINT, REEXECUTABLE, any());
+        CreateExceptionStub.registerForeignCalls(c, this);
 
         /*
          * This message call is registered twice, where the second one must only be used for calls
