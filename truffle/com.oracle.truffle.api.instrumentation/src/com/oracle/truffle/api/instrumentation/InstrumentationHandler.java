@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
@@ -758,12 +757,12 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void initializeCallTarget(RootCallTarget target) {
+        protected void onFirstExecution(RootNode node) {
             Object instrumentationHandler = ACCESSOR.getInstrumentationHandler(null);
             // we want to still support cases where call targets are executed without an enclosing
             // engine.
             if (instrumentationHandler != null) {
-                ((InstrumentationHandler) instrumentationHandler).installRootNode(target.getRootNode());
+                ((InstrumentationHandler) instrumentationHandler).installRootNode(node);
             }
         }
     }

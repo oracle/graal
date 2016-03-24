@@ -545,7 +545,7 @@ public abstract class TruffleLanguage<C> {
         }
     }
 
-    private static final AccessAPI API = new AccessAPI();
+    static final AccessAPI API = new AccessAPI();
 
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
