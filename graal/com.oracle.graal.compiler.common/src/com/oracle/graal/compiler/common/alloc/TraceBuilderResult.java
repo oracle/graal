@@ -35,6 +35,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
     private final int[] blockToTrace;
 
     static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> create(List<T> blocks, ArrayList<Trace<T>> traces, int[] blockToTrace) {
+        connect(traces, blockToTrace);
         TraceBuilderResult<T> traceBuilderResult = new TraceBuilderResult<>(traces, blockToTrace);
         traceBuilderResult.numberTraces(blocks);
         return traceBuilderResult;
@@ -96,6 +97,12 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
             Trace<T> trace = traces.get(i);
             assert trace.getId() == i : "Trace number mismatch: " + trace.getId() + " vs. " + i;
 
+            BitSet suxTraces = new BitSet(traces.size());
+            for (Trace<T> suxTrace : trace.getSuccessors()) {
+                assert !suxTraces.get(suxTrace.getId()) : "Trace twice successors " + suxTrace;
+                suxTraces.set(suxTrace.getId());
+            }
+
             T last = null;
             int blockNumber = 0;
             for (T current : trace.getBlocks()) {
@@ -105,6 +112,10 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
                 assert current.getLinearScanNumber() == blockNumber : "Blocks not numbered correctly: " + current.getLinearScanNumber() + " vs. " + blockNumber;
                 last = current;
                 blockNumber++;
+                for (T sux : block.getSuccessors()) {
+                    Trace<T> suxTrace = traceBuilderResult.getTraceForBlock(sux);
+                    assert suxTraces.get(suxTrace.getId()) : "Successor Trace " + suxTrace + " for block " + sux + " not in successor traces of " + trace;
+                }
             }
         }
         return true;
@@ -128,4 +139,25 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         }
         assert verify(this, blocks.size());
     }
+
+    private static <T extends AbstractBlockBase<T>> void connect(ArrayList<Trace<T>> traces, int[] blockToTrace) {
+        int numTraces = traces.size();
+        for (Trace<T> trace : traces) {
+            BitSet added = new BitSet(numTraces);
+            ArrayList<Trace<T>> successors = trace.getSuccessors();
+            assert successors.size() == 0 : "Can only connect traces once!";
+
+            for (T block : trace.getBlocks()) {
+                for (T succ : block.getSuccessors()) {
+                    int succId = blockToTrace[succ.getId()];
+                    Trace<T> succTrace = traces.get(succId);
+                    if (!added.get(succId)) {
+                        added.set(succId);
+                        successors.add(succTrace);
+                    }
+                }
+            }
+        }
+    }
+
 }
