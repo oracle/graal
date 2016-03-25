@@ -217,24 +217,33 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
         } else if (n instanceof InstanceOfNode) {
             InstanceOfNode instanceOfNode = (InstanceOfNode) n;
-            if (instanceOfNode.allowsNull()) {
-                ValueNode object = instanceOfNode.getValue();
-                LogicNode newTypeCheck = n.graph().addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.getAnchor()));
-                LogicNode newNode = LogicNode.or(n.graph().unique(new IsNullNode(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
-                instanceOfNode.replaceAndDelete(newNode);
-            }
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower(instanceOfNode, tool);
+            } else {
+                if (instanceOfNode.allowsNull()) {
+                    ValueNode object = instanceOfNode.getValue();
+                    LogicNode newTypeCheck = graph.addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.getAnchor()));
+                    LogicNode newNode = LogicNode.or(graph.unique(new IsNullNode(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
+                    instanceOfNode.replaceAndDelete(newNode);
+                }
             }
         } else if (n instanceof InstanceOfDynamicNode) {
             InstanceOfDynamicNode instanceOfDynamicNode = (InstanceOfDynamicNode) n;
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower(instanceOfDynamicNode, tool);
             } else {
-                ValueNode object = instanceOfDynamicNode.getMirrorOrHub();
-                if (object.stamp().getStackKind() == JavaKind.Object) {
-                    ClassGetHubNode classGetHub = graph.unique(new ClassGetHubNode(object));
+                ValueNode mirror = instanceOfDynamicNode.getMirrorOrHub();
+                if (mirror.stamp().getStackKind() == JavaKind.Object) {
+                    ClassGetHubNode classGetHub = graph.unique(new ClassGetHubNode(mirror));
                     instanceOfDynamicNode.setMirror(classGetHub);
+                }
+
+                if (instanceOfDynamicNode.allowsNull()) {
+                    ValueNode object = instanceOfDynamicNode.getObject();
+                    LogicNode newTypeCheck = graph.addOrUniqueWithInputs(
+                                    InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), instanceOfDynamicNode.getMirrorOrHub(), object, false));
+                    LogicNode newNode = LogicNode.or(graph.unique(new IsNullNode(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
+                    instanceOfDynamicNode.replaceAndDelete(newNode);
                 }
             }
         } else if (n instanceof ClassIsAssignableFromNode) {
