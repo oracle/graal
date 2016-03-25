@@ -447,6 +447,10 @@ public abstract class GraalCompilerState {
                         request.installedCodeOwner, request.factory);
     }
 
+    protected StructuredGraph graph() {
+        return graph;
+    }
+
     public abstract static class Compile extends GraalCompilerState {
 
         @Setup(Level.Trial)
