@@ -881,7 +881,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void onFirstExecution(RootCallTarget target) {
+        protected void onFirstExecution(RootNode node) {
             Object instrumentationHandler = ACCESSOR.getInstrumentationHandler(null);
             // we want to still support cases where call targets are executed without an enclosing
             // engine.
@@ -889,6 +889,7 @@ final class InstrumentationHandler {
                 ((InstrumentationHandler) instrumentationHandler).installRootNode(node);
             }
         }
+
     }
 
 }

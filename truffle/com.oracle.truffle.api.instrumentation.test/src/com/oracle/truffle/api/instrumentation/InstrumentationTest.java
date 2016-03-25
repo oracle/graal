@@ -177,7 +177,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @TruffleLanguage.Registration(name = "", version = "", mimeType = "testLanguageInstrumentation")
-    @ProvidedTags({InstrumentationTestLanguage.ExpressionNode.class, InstrumentationTestLanguage.StatementNode.class})
+    @ProvidedTags({InstrumentationTestLanguage.ExpressionNode.class, StandardTags.StatementTag.class})
     public static class TestLanguageInstrumentationLanguage extends TruffleLanguage<Void> {
 
         public static final TestLanguageInstrumentationLanguage INSTANCE = new TestLanguageInstrumentationLanguage();
@@ -847,7 +847,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @TruffleLanguage.Registration(name = "", version = "", mimeType = "testIsNodeTaggedWith1")
-    @ProvidedTags({InstrumentationTestLanguage.ExpressionNode.class, InstrumentationTestLanguage.StatementNode.class})
+    @ProvidedTags({InstrumentationTestLanguage.ExpressionNode.class, StandardTags.StatementTag.class})
     public static class TestIsNodeTaggedWith1Language extends TruffleLanguage<Void> {
 
         public static final TestIsNodeTaggedWith1Language INSTANCE = new TestIsNodeTaggedWith1Language();

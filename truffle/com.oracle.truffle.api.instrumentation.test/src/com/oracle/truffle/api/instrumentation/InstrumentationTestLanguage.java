@@ -40,11 +40,8 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.BlockNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.CallNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.DefineNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.ExpressionNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.InstrumentableRootNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.StatementNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -52,7 +49,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.TruffleProfiler;
 
 /**
  * <p>
@@ -86,7 +82,7 @@ import com.oracle.truffle.tools.TruffleProfiler;
  */
 @Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "Test language for instrumentation", version = "1.0")
 @ProvidedTags({ExpressionNode.class, DefineNode.class, LoopNode.class,
-                StatementNode.class, CallNode.class, InstrumentableRootNode.class, BlockNode.class, TruffleProfiler.RootTag.class})
+                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, CallTarget>> {
 
     public static final String MIME_TYPE = "instrumentation-test-language";
@@ -95,9 +91,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     public static final Class<?> EXPRESSION = ExpressionNode.class;
     public static final Class<?> DEFINE = DefineNode.class;
     public static final Class<?> LOOP = LoopNode.class;
-    public static final Class<?> STATEMENT = StatementNode.class;
-    public static final Class<?> CALL = CallNode.class;
-    public static final Class<?> ROOT = InstrumentableRootNode.class;
+    public static final Class<?> STATEMENT = StandardTags.StatementTag.class;
+    public static final Class<?> CALL = StandardTags.CallTag.class;
+    public static final Class<?> ROOT = StandardTags.RootTag.class;
     public static final Class<?> BLOCK = BlockNode.class;
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
@@ -337,8 +333,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
         @Override
         protected final boolean isTaggedWith(Class<?> tag) {
-            if (tag == TruffleProfiler.RootTag.class) {
+            if (tag == StandardTags.RootTag.class) {
                 return this instanceof InstrumentableRootNode;
+            } else if (tag == StandardTags.CallTag.class) {
+                return this instanceof CallNode;
+            } else if (tag == StandardTags.StatementTag.class) {
+                return this instanceof StatementNode;
             }
             return getClass() == tag;
         }
@@ -353,7 +353,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     }
 
-    static final class InstrumentableRootNode extends InstrumentedNode {
+    private static final class InstrumentableRootNode extends InstrumentedNode {
 
         InstrumentableRootNode(BaseNode[] children) {
             super(children);
@@ -361,7 +361,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     }
 
-    static final class StatementNode extends InstrumentedNode {
+    private static final class StatementNode extends InstrumentedNode {
 
         StatementNode(BaseNode[] children) {
             super(children);
@@ -401,7 +401,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     }
 
-    static class CallNode extends InstrumentedNode {
+    private static class CallNode extends InstrumentedNode {
 
         @Child private DirectCallNode callNode;
         @Child private Node contextNode;

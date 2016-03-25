@@ -41,11 +41,11 @@
 package com.oracle.truffle.sl.nodes.call;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -128,7 +128,7 @@ public abstract class SLInvokeNode extends SLExpressionNode {
 
     @Override
     protected boolean isTaggedWith(Class<?> tag) {
-        if (tag == Debugger.CallTag.class) {
+        if (tag == StandardTags.CallTag.class) {
             return true;
         }
         return super.isTaggedWith(tag);
