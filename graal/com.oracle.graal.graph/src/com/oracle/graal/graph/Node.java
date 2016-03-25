@@ -786,7 +786,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    void maybeNotifyZeroUsages(Node node) {
+    public void maybeNotifyZeroUsages(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
             NodeEventListener listener = graph.nodeEventListener;

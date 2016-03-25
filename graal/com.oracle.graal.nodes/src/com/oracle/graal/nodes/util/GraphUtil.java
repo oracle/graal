@@ -176,6 +176,9 @@ public class GraphUtil {
         outer: for (Node in : node.inputs()) {
             if (in.isAlive()) {
                 in.removeUsage(node);
+                if (in.hasNoUsages()) {
+                    node.maybeNotifyZeroUsages(in);
+                }
                 if (!(in instanceof FixedNode)) {
                     if (in.hasNoUsages()) {
                         killWithUnusedFloatingInputs(in);
