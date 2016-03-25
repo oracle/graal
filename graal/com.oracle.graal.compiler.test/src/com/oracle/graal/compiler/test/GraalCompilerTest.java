@@ -83,6 +83,7 @@ import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.InfopointNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.ReturnNode;
@@ -381,7 +382,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode || node instanceof InfopointNode)) {
                         if (node instanceof ConstantNode) {
                             String name = checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
-                            String str = name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n");
+                            String str = name + (excludeVirtual ? "\n" : "    (" + filteredUsageCount(node) + ")\n");
                             constantsLines.add(str);
                         } else {
                             int id;
@@ -392,7 +393,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                                 canonicalId.set(node, id);
                             }
                             String name = node.getClass().getSimpleName();
-                            String str = "  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n");
+                            String str = "  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + filteredUsageCount(node) + ")\n");
                             result.append(str);
                         }
                     }
@@ -409,6 +410,13 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
 
         return constantsLines.toString() + result.toString();
+    }
+
+    /**
+     * @return usage count excluding {@link FrameState} usages
+     */
+    private static int filteredUsageCount(Node node) {
+        return node.usages().filter(n -> !(n instanceof FrameState)).count();
     }
 
     /**
