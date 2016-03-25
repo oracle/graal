@@ -75,7 +75,9 @@ public class GraphUtil {
              * while processing one branch.
              */
             for (Node successor : node.successors()) {
-                killCFG(successor, tool);
+                if (successor != null) {
+                    killCFG(successor, tool);
+                }
             }
         }
         node.replaceAtPredecessor(null);
@@ -133,14 +135,14 @@ public class GraphUtil {
         if (node != null && node.isAlive()) {
             node.markDeleted();
 
-            node.acceptInputs((n, in) -> {
+            for (Node in : node.inputs()) {
                 if (in.isAlive()) {
-                    in.removeUsage(n);
+                    in.removeUsage(node);
                     if (in.hasNoUsages() && !(in instanceof FixedNode)) {
                         killWithUnusedFloatingInputs(in);
                     }
                 }
-            });
+            }
 
             ArrayList<Node> usageToKill = null;
             for (Node usage : node.usages()) {
@@ -155,8 +157,9 @@ public class GraphUtil {
                 for (Node usage : usageToKill) {
                     if (usage.isAlive()) {
                         if (usage instanceof PhiNode) {
+                            PhiNode phiNode = (PhiNode) usage;
                             usage.replaceFirstInput(node, null);
-                            if (!((PhiNode) usage).hasValidInput()) {
+                            if (phiNode.merge() == null || !phiNode.hasValidInput()) {
                                 propagateKill(usage);
                             }
                         } else {
@@ -170,7 +173,7 @@ public class GraphUtil {
 
     public static void killWithUnusedFloatingInputs(Node node) {
         node.safeDelete();
-        node.acceptInputs((n, in) -> {
+        for (Node in : node.inputs()) {
             if (in.isAlive() && !(in instanceof FixedNode)) {
                 if (in.hasNoUsages()) {
                     killWithUnusedFloatingInputs(in);
@@ -184,7 +187,7 @@ public class GraphUtil {
                     killWithUnusedFloatingInputs(in);
                 }
             }
-        });
+        }
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {

@@ -72,7 +72,6 @@ import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopsData;
@@ -1244,9 +1243,7 @@ public class SnippetTemplate {
 
             LocationIdentity location = getLocationIdentity(usage);
             if (location != null) {
-                NodePosIterator iter = usage.inputs().iterator();
-                while (iter.hasNext()) {
-                    Position pos = iter.nextPosition();
+                for (Position pos : usage.inputPositions()) {
                     if (pos.getInputType() == InputType.Memory && pos.get(usage) == node) {
                         MemoryNode replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {

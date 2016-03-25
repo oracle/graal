@@ -505,9 +505,17 @@ class GraphComparison {
     private static void verifyNodesEqual(NodeIterable<Node> expectedNodes, NodeIterable<Node> actualNodes, NodeMap<Node> nodeMapping, Deque<Pair<Node, Node>> workList, boolean ignoreEndNode) {
         Iterator<Node> actualIter = actualNodes.iterator();
         for (Node expectedNode : expectedNodes) {
-            verifyNodeEqual(expectedNode, actualIter.next(), nodeMapping, workList, ignoreEndNode);
+            if (expectedNode != null) {
+                Node nextNode = actualIter.next();
+                while (nextNode == null) {
+                    nextNode = actualIter.next();
+                }
+                verifyNodeEqual(expectedNode, nextNode, nodeMapping, workList, ignoreEndNode);
+            }
         }
-        assert !actualIter.hasNext();
+        while (actualIter.hasNext()) {
+            assert actualIter.next() == null;
+        }
     }
 
     protected static void verifyNodeEqual(Node expectedNode, Node actualNode, NodeMap<Node> nodeMapping, Deque<Pair<Node, Node>> workList, boolean ignoreEndNode) {

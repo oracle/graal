@@ -25,19 +25,13 @@ package com.oracle.graal.graph;
 import com.oracle.graal.graph.iterators.NodeIterable;
 
 /**
- * The iterator returned by this iterable can be used to access {@link Position positions} during
- * iteration using {@link NodePosIterator#nextPosition()}.
+ *
  */
 public interface NodeClassIterable extends NodeIterable<Node> {
 
     /**
-     * Returns an iterator that produces all non-null values.
+     * Returns an iterator that can also produce null values.
      */
     @Override
     NodePosIterator iterator();
-
-    /**
-     * Returns an iterator that produces all values, including null values.
-     */
-    NodePosIterator withNullIterator();
 }

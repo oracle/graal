@@ -52,11 +52,46 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
+    public void dataEquals(StringEquals s, Blackhole bh) {
+        for (Node n : s.nodes) {
+            bh.consume(n.getNodeClass().dataEquals(n, n));
+        }
+    }
+
+    @Benchmark
+    public void replaceFirstInput(StringEquals s, Blackhole bh) {
+        for (Node n : s.nodes) {
+            bh.consume(n.getNodeClass().replaceFirstInput(n, n, n));
+        }
+    }
+
+    @Benchmark
+    public void inputsEquals(StringEquals s, Blackhole bh) {
+        for (Node n : s.nodes) {
+            bh.consume(n.getNodeClass().equalInputs(n, n));
+        }
+    }
+
+    @Benchmark
     public void inputs(StringEquals s, Blackhole bh) {
         for (Node n : s.nodes) {
             for (Node input : n.inputs()) {
                 bh.consume(input);
             }
+        }
+    }
+
+    @Benchmark
+    public void acceptInputs(StringEquals s, Blackhole bh) {
+        Node.EdgeVisitor consumer = new Node.EdgeVisitor() {
+            @Override
+            public Node apply(Node t, Node u) {
+                bh.consume(u);
+                return u;
+            }
+        };
+        for (Node n : s.nodes) {
+            n.applyInputs(consumer);
         }
     }
 

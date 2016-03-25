@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
@@ -445,7 +444,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                          * limit it to the original node and constants.
                          */
                         InputFilter v = new InputFilter(original);
-                        thisGuard.getCondition().acceptInputs(v);
+                        thisGuard.getCondition().applyInputs(v);
                         if (v.ok && foldGuard(thisGuard, pending.guard, rewireGuardFunction)) {
                             return true;
                         }
@@ -766,7 +765,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
     /**
      * Checks for safe nodes when moving pending tests up.
      */
-    static class InputFilter implements BiConsumer<Node, Node> {
+    static class InputFilter extends Node.EdgeVisitor {
         boolean ok;
         private ValueNode value;
 
@@ -775,20 +774,22 @@ public class DominatorConditionalEliminationPhase extends Phase {
             this.ok = true;
         }
 
-        public void accept(Node node, Node curNode) {
+        @Override
+        public Node apply(Node node, Node curNode) {
             if (!(curNode instanceof ValueNode)) {
                 ok = false;
-                return;
+                return curNode;
             }
             ValueNode curValue = (ValueNode) curNode;
             if (curValue.isConstant() || curValue == value || curValue instanceof ParameterNode) {
-                return;
+                return curNode;
             }
             if (curValue instanceof BinaryNode || curValue instanceof UnaryNode) {
-                curValue.acceptInputs(this);
+                curValue.applyInputs(this);
             } else {
                 ok = false;
             }
+            return curNode;
         }
     }
 

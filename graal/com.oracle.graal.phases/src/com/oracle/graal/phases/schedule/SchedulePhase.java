@@ -453,7 +453,7 @@ public final class SchedulePhase extends Phase {
             }
 
             for (Node input : n.inputs()) {
-                if (nodeMap.get(input) == b && unprocessed.isMarked(input) && input != excludeNode) {
+                if (input != null && nodeMap.get(input) == b && unprocessed.isMarked(input) && input != excludeNode) {
                     sortIntoList(input, b, result, nodeMap, unprocessed, excludeNode);
                 }
             }

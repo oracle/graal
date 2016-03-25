@@ -27,9 +27,7 @@ import static com.oracle.graal.graph.Node.NOT_ITERABLE;
 import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
 
 import java.util.ArrayList;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.function.BiConsumer;
+import java.util.Iterator;
 
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.FieldsScanner;
@@ -52,10 +50,31 @@ public abstract class Edges extends Fields {
     private final int directCount;
     private final Type type;
 
+    public final long iterationInitMask;
+
     public Edges(Type type, int directCount, ArrayList<? extends FieldsScanner.FieldInfo> edges) {
         super(edges);
         this.type = type;
         this.directCount = directCount;
+
+        long mask = 0;
+        assert edges.size() <= 8 : "too many edges!";
+
+        for (int i = edges.size() - 1; i >= 0; i--) {
+            FieldsScanner.FieldInfo f = edges.get(i);
+            assert ((f.offset & 0xFF) == f.offset) : "field offset too large!";
+            mask <<= 8;
+            mask |= f.offset;
+            if (i >= directCount) {
+                mask |= 0x3;
+            }
+        }
+
+        this.iterationInitMask = mask;
+    }
+
+    public final long getIterationInitMask() {
+        return iterationInitMask;
     }
 
     public static void translateInto(Edges edges, ArrayList<EdgeInfo> infos) {
@@ -64,12 +83,12 @@ public abstract class Edges extends Fields {
         }
     }
 
-    private static Node getNodeUnsafe(Node node, long offset) {
+    public static Node getNodeUnsafe(Node node, long offset) {
         return (Node) UNSAFE.getObject(node, offset);
     }
 
     @SuppressWarnings("unchecked")
-    private static NodeList<Node> getNodeListUnsafe(Node node, long offset) {
+    public static NodeList<Node> getNodeListUnsafe(Node node, long offset) {
         return (NodeList<Node>) UNSAFE.getObject(node, offset);
     }
 
@@ -195,41 +214,6 @@ public abstract class Edges extends Fields {
         }
     }
 
-    /**
-     * Searches for the first edge in a given node matching {@code key} and if found, replaces it
-     * with {@code replacement}.
-     *
-     * @param node the node whose edges are to be searched
-     * @param key the edge to search for
-     * @param replacement the replacement for {@code key}
-     * @return true if a replacement was made
-     */
-    public boolean replaceFirst(Node node, Node key, Node replacement) {
-        int index = 0;
-        final long[] curOffsets = this.getOffsets();
-        int curDirectCount = getDirectCount();
-        while (index < curDirectCount) {
-            Node edge = getNode(node, curOffsets, index);
-            if (edge == key) {
-                assert replacement == null || getType(index).isAssignableFrom(replacement.getClass()) : "Can not assign " + replacement.getClass() + " to " + getType(index) + " in " + node;
-                initializeNode(node, curOffsets, index, replacement);
-                return true;
-            }
-            index++;
-        }
-        int curCount = getCount();
-        while (index < curCount) {
-            NodeList<Node> list = getNodeList(node, curOffsets, index);
-            if (list != null) {
-                if (list.replaceFirst(key, replacement)) {
-                    return true;
-                }
-            }
-            index++;
-        }
-        return false;
-    }
-
     @Override
     public void set(Object node, int index, Object value) {
         throw new IllegalArgumentException("Cannot call set on " + this);
@@ -285,44 +269,18 @@ public abstract class Edges extends Fields {
     }
 
     /**
-     * Determines if the edges of two given nodes are the same.
-     */
-    public boolean areEqualIn(Node node, Node other) {
-        assert node.getNodeClass().getClazz() == other.getNodeClass().getClazz();
-        int index = 0;
-        final long[] curOffsets = this.offsets;
-        while (index < directCount) {
-            if (getNode(other, curOffsets, index) != getNode(node, curOffsets, index)) {
-                return false;
-            }
-            index++;
-        }
-        while (index < getCount()) {
-            NodeList<Node> list = getNodeList(other, curOffsets, index);
-            if (!Objects.equals(list, getNodeList(node, curOffsets, index))) {
-                return false;
-            }
-            index++;
-        }
-        return true;
-    }
-
-    /**
      * An iterator that will iterate over edges.
      *
      * An iterator of this type will not return null values, unless edges are modified concurrently.
      * Concurrent modifications are detected by an assertion on a best-effort basis.
      */
-    private static class EdgesIterator implements NodePosIterator {
+    private static class EdgesIterator implements Iterator<Position> {
         protected final Node node;
         protected final Edges edges;
         protected int index;
         protected int subIndex;
-        NodeList<Node> list;
         protected boolean needsForward;
-        protected Node nextElement;
         protected final int directCount;
-        protected final int count;
         protected final long[] offsets;
 
         /**
@@ -336,20 +294,13 @@ public abstract class Edges extends Fields {
             needsForward = true;
             this.directCount = edges.getDirectCount();
             this.offsets = edges.getOffsets();
-            this.count = edges.getCount();
         }
 
         void forward() {
             needsForward = false;
             if (index < directCount) {
                 index++;
-                while (index < directCount) {
-                    nextElement = Edges.getNode(node, offsets, index);
-                    if (nextElement != null) {
-                        return;
-                    }
-                    index++;
-                }
+                return;
             } else {
                 subIndex++;
             }
@@ -360,32 +311,15 @@ public abstract class Edges extends Fields {
 
         private void forwardNodeList() {
             do {
-                if (subIndex == 0) {
-                    list = Edges.getNodeList(node, offsets, index);
-                }
+                NodeList<?> list = Edges.getNodeList(node, offsets, index);
                 if (list != null) {
-                    while (subIndex < list.size()) {
-                        nextElement = list.get(subIndex);
-                        if (nextElement != null) {
-                            return;
-                        }
-                        subIndex++;
+                    if (subIndex < list.size()) {
+                        return;
                     }
                 }
                 subIndex = 0;
                 index++;
             } while (index < edges.getCount());
-        }
-
-        private Node nextElement() {
-            if (needsForward) {
-                forward();
-            }
-            needsForward = true;
-            if (index < count) {
-                return nextElement;
-            }
-            throw new NoSuchElementException();
         }
 
         @Override
@@ -397,11 +331,7 @@ public abstract class Edges extends Fields {
         }
 
         @Override
-        public Node next() {
-            return nextElement();
-        }
-
-        public Position nextPosition() {
+        public Position next() {
             if (needsForward) {
                 forward();
             }
@@ -416,40 +346,6 @@ public abstract class Edges extends Fields {
         @Override
         public void remove() {
             throw new UnsupportedOperationException();
-        }
-    }
-
-    private static class AllEdgesIterator extends EdgesIterator {
-
-        AllEdgesIterator(Node node, Edges edges) {
-            super(node, edges);
-        }
-
-        @Override
-        void forward() {
-            needsForward = false;
-            if (index < directCount) {
-                index++;
-                if (index < edges.getDirectCount()) {
-                    nextElement = Edges.getNode(node, edges.getOffsets(), index);
-                    return;
-                }
-            } else {
-                subIndex++;
-            }
-            while (index < edges.getCount()) {
-                if (subIndex == 0) {
-                    list = Edges.getNodeList(node, edges.getOffsets(), index);
-                }
-                if (list != null) {
-                    if (subIndex < list.size()) {
-                        nextElement = list.get(subIndex);
-                        return;
-                    }
-                }
-                subIndex = 0;
-                index++;
-            }
         }
     }
 
@@ -472,111 +368,30 @@ public abstract class Edges extends Fields {
         }
 
         @Override
-        public Node next() {
+        public Position next() {
             try {
                 return super.next();
             } finally {
                 assert modCount == node.modCount() : "must not be modified";
             }
         }
-
-        @Override
-        public Position nextPosition() {
-            try {
-                return super.nextPosition();
-            } finally {
-                assert modCount == node.modCount();
-            }
-        }
     }
 
-    static int cnt1;
-    static int cnt2;
-
-    public NodeClassIterable getIterable(final Node node) {
-        return new NodeClassIterable() {
+    public Iterable<Position> getPositionsIterable(final Node node) {
+        return new Iterable<Position>() {
 
             @Override
-            public EdgesIterator iterator() {
+            public Iterator<Position> iterator() {
                 if (MODIFICATION_COUNTS_ENABLED) {
                     return new EdgesWithModCountIterator(node, Edges.this);
                 } else {
                     return new EdgesIterator(node, Edges.this);
                 }
             }
-
-            public EdgesIterator withNullIterator() {
-                return new AllEdgesIterator(node, Edges.this);
-            }
-
-            @Override
-            public boolean contains(Node other) {
-                return Edges.this.contains(node, other);
-            }
         };
     }
 
     public Type type() {
         return type;
-    }
-
-    public void accept(Node node, BiConsumer<Node, Node> consumer) {
-        int index = 0;
-        int curDirectCount = this.directCount;
-        final long[] curOffsets = this.offsets;
-        while (index < curDirectCount) {
-            Node curNode = getNode(node, curOffsets, index);
-            if (curNode != null) {
-                consumer.accept(node, curNode);
-            }
-            index++;
-        }
-        int count = curOffsets.length;
-        while (index < count) {
-            NodeList<Node> list = getNodeList(node, curOffsets, index);
-            acceptHelper(node, consumer, list);
-            index++;
-        }
-    }
-
-    private static void acceptHelper(Node node, BiConsumer<Node, Node> consumer, NodeList<Node> list) {
-        if (list != null) {
-            for (int i = 0; i < list.size(); ++i) {
-                Node curNode = list.get(i);
-                if (curNode != null) {
-                    consumer.accept(node, curNode);
-                }
-            }
-        }
-    }
-
-    public void pushAll(Node node, NodeStack stack) {
-        int index = 0;
-        int curDirectCount = this.directCount;
-        final long[] curOffsets = this.offsets;
-        while (index < curDirectCount) {
-            Node curNode = getNode(node, curOffsets, index);
-            if (curNode != null) {
-                stack.push(curNode);
-            }
-            index++;
-        }
-        int count = curOffsets.length;
-        while (index < count) {
-            NodeList<Node> list = getNodeList(node, curOffsets, index);
-            pushAllHelper(stack, list);
-            index++;
-        }
-    }
-
-    private static void pushAllHelper(NodeStack stack, NodeList<Node> list) {
-        if (list != null) {
-            for (int i = 0; i < list.size(); ++i) {
-                Node curNode = list.get(i);
-                if (curNode != null) {
-                    stack.push(curNode);
-                }
-            }
-        }
     }
 }

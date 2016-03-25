@@ -305,7 +305,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (nodeClass.getInputEdges().areEqualIn(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
+                    if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
                         GraphUtil.unlinkFixedNode(trueNext);
@@ -591,7 +591,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         AbstractBeginNode trueBegin = trueSuccessor();
         graph().removeSplitPropagate(this, trueBegin, tool);
         tool.addToWorkList(trueBegin);
-        if (condition().isAlive() && condition().hasNoUsages()) {
+        if (condition() != null && condition().isAlive() && condition().hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(condition());
         }
     }
@@ -994,7 +994,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (trueEnds.isEmpty()) {
             GraphUtil.killCFG(oldTrueSuccessor);
         }
-
         GraphUtil.killCFG(merge);
 
         assert !merge.isAlive() : merge;

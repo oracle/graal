@@ -28,5 +28,4 @@ import java.util.Iterator;
  * Describes an edge slot for a {@link NodeClass}.
  */
 public interface NodePosIterator extends Iterator<Node> {
-    Position nextPosition();
 }

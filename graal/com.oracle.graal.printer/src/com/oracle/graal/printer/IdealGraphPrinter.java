@@ -37,7 +37,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.java.BytecodeDisassembler;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -231,9 +230,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
 
             // successors
             int fromIndex = 0;
-            NodePosIterator succIter = node.successors().iterator();
-            while (succIter.hasNext()) {
-                Position position = succIter.nextPosition();
+            for (Position position : node.successorPositions()) {
                 Node successor = position.get(node);
                 if (successor != null) {
                     edges.add(new Edge(node.toString(Verbosity.Id), fromIndex, successor.toString(Verbosity.Id), 0, position.getName()));
@@ -243,9 +240,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
 
             // inputs
             int toIndex = 1;
-            NodePosIterator inputIter = node.inputs().iterator();
-            while (inputIter.hasNext()) {
-                Position position = inputIter.nextPosition();
+            for (Position position : node.inputPositions()) {
                 Node input = position.get(node);
                 if (input != null) {
                     edges.add(new Edge(input.toString(Verbosity.Id), input.successors().count(), node.toString(Verbosity.Id), toIndex, position.getName()));

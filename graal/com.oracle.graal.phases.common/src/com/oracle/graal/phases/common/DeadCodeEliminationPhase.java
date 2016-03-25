@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.util.function.BiConsumer;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Node;
@@ -93,32 +91,40 @@ public class DeadCodeEliminationPhase extends Phase {
     }
 
     private static void iterateSuccessorsAndInputs(NodeFlood flood) {
-        BiConsumer<Node, Node> consumer = (n, succOrInput) -> {
-            assert succOrInput.isAlive() : "dead successor or input " + succOrInput + " in " + n;
-            flood.add(succOrInput);
+        Node.EdgeVisitor consumer = new Node.EdgeVisitor() {
+            @Override
+            public Node apply(Node n, Node succOrInput) {
+                assert succOrInput.isAlive() : "dead successor or input " + succOrInput + " in " + n;
+                flood.add(succOrInput);
+                return succOrInput;
+            }
         };
         for (Node current : flood) {
             if (current instanceof AbstractEndNode) {
                 AbstractEndNode end = (AbstractEndNode) current;
                 flood.add(end.merge());
             } else {
-                current.acceptSuccessors(consumer);
-                current.acceptInputs(consumer);
+                current.applySuccessors(consumer);
+                current.applyInputs(consumer);
             }
         }
     }
 
     private static void deleteNodes(NodeFlood flood, StructuredGraph graph) {
-        BiConsumer<Node, Node> consumer = (n, input) -> {
-            if (input.isAlive() && flood.isMarked(input)) {
-                input.removeUsage(n);
+        Node.EdgeVisitor consumer = new Node.EdgeVisitor() {
+            @Override
+            public Node apply(Node n, Node input) {
+                if (input.isAlive() && flood.isMarked(input)) {
+                    input.removeUsage(n);
+                }
+                return input;
             }
         };
 
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
                 node.markDeleted();
-                node.acceptInputs(consumer);
+                node.applyInputs(consumer);
                 metricNodesRemoved.increment();
             }
         }
