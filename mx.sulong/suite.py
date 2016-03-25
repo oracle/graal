@@ -6,7 +6,7 @@ suite = {
     "suites" : [
         {
            "name" : "graal-core",
-           "version" : "466c7dd66e9d6700a2963ff1f5bd5599928376b2",
+           "version" : "95ff8c420850dc4f02bc11599505244bbea771ec",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
             ]
@@ -219,7 +219,6 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
         "com.oracle.truffle.llvm.runtime",
         "truffle:TRUFFLE_API",
       ],
