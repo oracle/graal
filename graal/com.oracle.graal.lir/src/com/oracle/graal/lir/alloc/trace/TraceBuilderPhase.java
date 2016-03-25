@@ -29,6 +29,7 @@ import java.util.List;
 import com.oracle.graal.compiler.common.alloc.BiDirectionalTraceBuilder;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
+import com.oracle.graal.compiler.common.alloc.TraceBuilderResult.TrivialTracePredicate;
 import com.oracle.graal.compiler.common.alloc.TraceStatisticsPrinter;
 import com.oracle.graal.compiler.common.alloc.UniDirectionalTraceBuilder;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -48,6 +49,8 @@ public class TraceBuilderPhase extends AllocationPhase {
         // @formatter:off
         @Option(help = "Use bidirectional trace builder.", type = OptionType.Debug)
         public static final OptionValue<Boolean> TraceRAbiDirectionalTraceBuilder = new OptionValue<>(false);
+        @Option(help = "Schedule trivial traces as early as possible.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> TraceRAScheduleTrivialTracesEarly = new OptionValue<>(false);
         // @formatter:on
     }
 
@@ -59,12 +62,8 @@ public class TraceBuilderPhase extends AllocationPhase {
         B startBlock = linearScanOrder.get(0);
         LIR lir = lirGenRes.getLIR();
         assert startBlock.equals(lir.getControlFlowGraph().getStartBlock());
-        TraceBuilderResult<B> traceBuilderResult;
-        if (Options.TraceRAbiDirectionalTraceBuilder.getValue()) {
-            traceBuilderResult = BiDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
-        } else {
-            traceBuilderResult = UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
-        }
+
+        final TraceBuilderResult<B> traceBuilderResult = getTraceBuilderResult(lir, startBlock, linearScanOrder);
 
         if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
             List<Trace<B>> traces = traceBuilderResult.getTraces();
@@ -78,4 +77,17 @@ public class TraceBuilderPhase extends AllocationPhase {
         context.contextAdd(traceBuilderResult);
     }
 
+    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraceBuilderResult(LIR lir, B startBlock, List<B> blocks) {
+        TraceBuilderResult.TrivialTracePredicate pred = !Options.TraceRAScheduleTrivialTracesEarly.getValue() ? null : new TrivialTracePredicate() {
+            @Override
+            public <T extends AbstractBlockBase<T>> boolean isTrivialTrace(Trace<T> trace) {
+                return TraceUtil.isTrivialTrace(lir, trace);
+            }
+        };
+
+        if (Options.TraceRAbiDirectionalTraceBuilder.getValue()) {
+            return BiDirectionalTraceBuilder.computeTraces(startBlock, blocks, pred);
+        }
+        return UniDirectionalTraceBuilder.computeTraces(startBlock, blocks, pred);
+    }
 }

@@ -29,15 +29,24 @@ import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Indent;
 
 public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
+
+    public abstract static class TrivialTracePredicate {
+        public abstract <T extends AbstractBlockBase<T>> boolean isTrivialTrace(Trace<T> trace);
+    }
+
     private final ArrayList<Trace<T>> traces;
     private final int[] blockToTrace;
 
-    static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> create(List<T> blocks, ArrayList<Trace<T>> traces, int[] blockToTrace) {
+    static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> create(List<T> blocks, ArrayList<Trace<T>> traces, int[] blockToTrace, TrivialTracePredicate pred) {
         connect(traces, blockToTrace);
-        TraceBuilderResult<T> traceBuilderResult = new TraceBuilderResult<>(traces, blockToTrace);
-        traceBuilderResult.numberTraces(blocks);
+        ArrayList<Trace<T>> newTraces = reorderTraces(traces, blockToTrace, pred);
+        TraceBuilderResult<T> traceBuilderResult = new TraceBuilderResult<>(newTraces, blockToTrace);
+        traceBuilderResult.numberTraces();
+        assert verify(traceBuilderResult, blocks.size());
         return traceBuilderResult;
     }
 
@@ -133,11 +142,14 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         return handled.cardinality() == expectedLength;
     }
 
-    private void numberTraces(List<T> blocks) {
+    private void numberTraces() {
         for (int i = 0; i < traces.size(); i++) {
-            traces.get(i).setId(i);
+            Trace<T> trace = traces.get(i);
+            trace.setId(i);
+            for (T block : trace.getBlocks()) {
+                blockToTrace[block.getId()] = i;
+            }
         }
-        assert verify(this, blocks.size());
     }
 
     private static <T extends AbstractBlockBase<T>> void connect(ArrayList<Trace<T>> traces, int[] blockToTrace) {
@@ -158,6 +170,41 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
                 }
             }
         }
+    }
+
+    @SuppressWarnings("try")
+    private static <T extends AbstractBlockBase<T>> ArrayList<Trace<T>> reorderTraces(ArrayList<Trace<T>> traces, int[] blockToTrace, TrivialTracePredicate pred) {
+        if (pred == null) {
+            return traces;
+        }
+        try (Indent indent = Debug.logAndIndent("ReorderTrace")) {
+            ArrayList<Trace<T>> newTraces = new ArrayList<>(traces.size());
+            for (Trace<T> currentTrace : traces) {
+                if (currentTrace != null) {
+                    // add current trace
+                    newTraces.add(currentTrace);
+                    for (Trace<T> succTrace : currentTrace.getSuccessors()) {
+                        int succTraceIndex = getTraceIndex(succTrace, blockToTrace);
+                        if (getTraceIndex(currentTrace, blockToTrace) < succTraceIndex && pred.isTrivialTrace(succTrace)) {
+                            //
+                            int oldTraceId = succTraceIndex;
+                            int newTraceId = newTraces.size();
+                            Debug.log("Moving trivial trace from %d to %d", oldTraceId, newTraceId);
+                            //
+                            succTrace.setId(newTraceId);
+                            newTraces.add(succTrace);
+                            traces.set(oldTraceId, null);
+                        }
+                    }
+                }
+            }
+            assert newTraces.size() == traces.size() : "Lost traces?";
+            return newTraces;
+        }
+    }
+
+    private static <T extends AbstractBlockBase<T>> int getTraceIndex(Trace<T> trace, int[] blockToTrace) {
+        return blockToTrace[trace.getBlocks().get(0).getId()];
     }
 
 }

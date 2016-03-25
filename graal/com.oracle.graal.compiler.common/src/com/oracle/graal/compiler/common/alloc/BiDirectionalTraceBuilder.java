@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.alloc.TraceBuilderResult.TrivialTracePredicate;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
@@ -41,7 +42,11 @@ import com.oracle.graal.debug.Indent;
 public final class BiDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
 
     public static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> computeTraces(T startBlock, List<T> blocks) {
-        return new BiDirectionalTraceBuilder<>(blocks).build(startBlock, blocks);
+        return computeTraces(startBlock, blocks, null);
+    }
+
+    public static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> computeTraces(T startBlock, List<T> blocks, TrivialTracePredicate pred) {
+        return new BiDirectionalTraceBuilder<>(blocks).build(startBlock, blocks, pred);
     }
 
     private final Deque<T> worklist;
@@ -69,10 +74,10 @@ public final class BiDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
     }
 
     @SuppressWarnings("try")
-    private TraceBuilderResult<T> build(T startBlock, List<T> blocks) {
+    private TraceBuilderResult<T> build(T startBlock, List<T> blocks, TrivialTracePredicate pred) {
         try (Indent indent = Debug.logAndIndent("start trace building: %s", startBlock)) {
             ArrayList<Trace<T>> traces = buildTraces(startBlock);
-            return TraceBuilderResult.create(blocks, traces, blockToTrace);
+            return TraceBuilderResult.create(blocks, traces, blockToTrace, pred);
         }
     }
 
