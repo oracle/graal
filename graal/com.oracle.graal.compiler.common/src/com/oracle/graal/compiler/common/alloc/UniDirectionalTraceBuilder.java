@@ -37,9 +37,7 @@ import com.oracle.graal.debug.Indent;
 public final class UniDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
 
     public static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> computeTraces(T startBlock, List<T> blocks) {
-        TraceBuilderResult<T> traceBuilderResult = new UniDirectionalTraceBuilder<>(blocks).build(startBlock);
-        traceBuilderResult.numberTraces();
-        return traceBuilderResult;
+        return new UniDirectionalTraceBuilder<>(blocks).build(startBlock, blocks);
     }
 
     private final PriorityQueue<T> worklist;
@@ -77,10 +75,10 @@ public final class UniDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
     }
 
     @SuppressWarnings("try")
-    private TraceBuilderResult<T> build(T startBlock) {
+    private TraceBuilderResult<T> build(T startBlock, List<T> blocks) {
         try (Indent indent = Debug.logAndIndent("start trace building: %s", startBlock)) {
             ArrayList<Trace<T>> traces = buildTraces(startBlock);
-            return new TraceBuilderResult<>(traces, blockToTrace);
+            return TraceBuilderResult.create(blocks, traces, blockToTrace);
         }
     }
 
