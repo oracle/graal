@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.replacements.nodes.CStringConstant.cstring;
-
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
@@ -51,6 +49,6 @@ public class ClassCastExceptionStub extends CreateExceptionStub {
     @Snippet
     private static Object createClassCastException(Object object, KlassPointer targetKlass, @ConstantParameter Register threadRegister) {
         KlassPointer objKlass = HotSpotReplacementsUtil.loadHub(object);
-        return createException(threadRegister, ClassCastException.class, objKlass, cstring(" cannot be cast to "), targetKlass);
+        return createException(threadRegister, ClassCastException.class, objKlass, targetKlass);
     }
 }
