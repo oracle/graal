@@ -52,6 +52,7 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     public IsNullNode(ValueNode object) {
         super(TYPE, object);
+        assert object != null;
     }
 
     @Override
