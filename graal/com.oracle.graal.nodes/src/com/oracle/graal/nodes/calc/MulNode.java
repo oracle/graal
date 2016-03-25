@@ -100,7 +100,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         Value op1 = nodeValueMap.operand(getX());
         Value op2 = nodeValueMap.operand(getY());
-        if (!getY().isConstant() && !BinaryArithmeticNode.livesLonger(this, getY(), nodeValueMap)) {
+        if (shouldSwapInputs(nodeValueMap)) {
             Value tmp = op1;
             op1 = op2;
             op2 = tmp;

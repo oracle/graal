@@ -32,6 +32,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodePredicate;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.spi.NodeValueMap;
 
 /**
  * This class represents a value within the graph, including local variables, phis, and all other
@@ -161,4 +162,21 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node {
             return super.isAllowedUsageType(type);
         }
     }
+
+    /**
+     * Checks if this node has usages other than the given node {@code node}.
+     *
+     * @param node node which is ignored when searching for usages
+     * @param nodeValueMap
+     * @return true if this node has other usages, false otherwise
+     */
+    public boolean hasUsagesOtherThan(ValueNode node, NodeValueMap nodeValueMap) {
+        for (Node usage : usages()) {
+            if (usage != node && usage instanceof ValueNode && nodeValueMap.hasOperand(usage)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

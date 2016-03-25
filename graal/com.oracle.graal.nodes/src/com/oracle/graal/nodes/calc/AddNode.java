@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Add;
@@ -37,6 +34,9 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
 
 @NodeInfo(shortName = "+")
 public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArithmeticNode, BinaryCommutative<ValueNode> {
@@ -116,7 +116,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         Value op1 = nodeValueMap.operand(getX());
         assert op1 != null : getX() + ", this=" + this;
         Value op2 = nodeValueMap.operand(getY());
-        if (!getY().isConstant() && !BinaryArithmeticNode.livesLonger(this, getY(), nodeValueMap)) {
+        if (shouldSwapInputs(nodeValueMap)) {
             Value tmp = op1;
             op1 = op2;
             op2 = tmp;

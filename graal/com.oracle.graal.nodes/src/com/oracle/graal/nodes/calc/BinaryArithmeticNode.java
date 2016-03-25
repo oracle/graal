@@ -25,9 +25,6 @@ package com.oracle.graal.nodes.calc;
 import java.io.Serializable;
 import java.util.function.Function;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Constant;
-
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -42,8 +39,12 @@ import com.oracle.graal.nodes.ArithmeticOperation;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeValueMap;
+
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
 
 @NodeInfo
 public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticOperation, ArithmeticLIRLowerable, Canonicalizable.Binary<ValueNode> {
@@ -258,15 +259,6 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         }
     }
 
-    protected static boolean livesLonger(ValueNode after, ValueNode value, NodeValueMap nodeValueMap) {
-        for (Node usage : value.usages()) {
-            if (usage != after && usage instanceof ValueNode && nodeValueMap.hasOperand(usage)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /**
      * Ensure a canonical ordering of inputs for commutative nodes to improve GVN results. Order the
      * inputs by increasing {@link Node#id} and call {@link Graph#findDuplicate(Node)} on the node
@@ -292,4 +284,28 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         }
         return this;
     }
+
+    /**
+     * Determines if it would be better to swap the inputs in order to produce better assembly code.
+     * First we try to pick a value which is dead after this use. If both values are dead at this
+     * use then we try pick an induction variable phi to encourage the phi to live in a single
+     * register.
+     *
+     * @param nodeValueMap
+     * @return true if inputs should be swapped, false otherwise
+     */
+    protected boolean shouldSwapInputs(NodeValueMap nodeValueMap) {
+        final boolean xHasOtherUsages = getX().hasUsagesOtherThan(this, nodeValueMap);
+        final boolean yHasOtherUsages = getY().hasUsagesOtherThan(this, nodeValueMap);
+
+        if (!getY().isConstant() && !yHasOtherUsages) {
+            if (xHasOtherUsages == yHasOtherUsages) {
+                return getY() instanceof ValuePhiNode && getY().inputs().contains(this);
+            } else {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
