@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -156,10 +157,10 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
         }
 
         private boolean containedInTrace(AbstractBlockBase<?> block) {
-            return currentTrace() == traceBuilderResult.getTraceForBlock(block);
+            return currentTrace().getId() == traceBuilderResult.getTraceForBlock(block).getId();
         }
 
-        private int currentTrace() {
+        private Trace<?> currentTrace() {
             return traceBuilderResult.getTraceForBlock(allocator.sortedBlocks().get(0));
         }
 

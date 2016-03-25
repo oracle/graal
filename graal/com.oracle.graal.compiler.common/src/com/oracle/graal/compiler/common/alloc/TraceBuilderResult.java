@@ -45,8 +45,11 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         this.blockToTrace = blockToTrace;
     }
 
-    public int getTraceForBlock(AbstractBlockBase<?> block) {
-        return blockToTrace[block.getId()];
+    public Trace<T> getTraceForBlock(AbstractBlockBase<?> block) {
+        int traceNr = blockToTrace[block.getId()];
+        Trace<T> trace = traces.get(traceNr);
+        assert traceNr == trace.getId() : "Trace number mismatch: " + traceNr + " vs. " + trace.getId();
+        return trace;
     }
 
     public Trace<T> traceForBlock(AbstractBlockBase<?> block) {
@@ -57,12 +60,14 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         return traces;
     }
 
-    public boolean incomingEdges(int traceNr) {
+    public boolean incomingEdges(Trace<?> trace) {
+        int traceNr = trace.getId();
         Iterator<T> traceIt = getTraces().get(traceNr).getBlocks().iterator();
         return incomingEdges(traceNr, traceIt);
     }
 
-    public boolean incomingSideEdges(int traceNr) {
+    public boolean incomingSideEdges(Trace<?> trace) {
+        int traceNr = trace.getId();
         Iterator<T> traceIt = getTraces().get(traceNr).getBlocks().iterator();
         if (!traceIt.hasNext()) {
             return false;
@@ -76,7 +81,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         while (trace.hasNext()) {
             T block = trace.next();
             for (T pred : block.getPredecessors()) {
-                if (getTraceForBlock(pred) != traceNr) {
+                if (getTraceForBlock(pred).getId() != traceNr) {
                     return true;
                 }
             }
@@ -95,7 +100,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
             int blockNumber = 0;
             for (T current : trace.getBlocks()) {
                 T block = current;
-                assert traceBuilderResult.getTraceForBlock(block) == i : "Trace number mismatch for block " + block + ": " + traceBuilderResult.getTraceForBlock(block) + " vs. " + i;
+                assert traceBuilderResult.getTraceForBlock(block).getId() == i : "Trace number mismatch for block " + block + ": " + traceBuilderResult.getTraceForBlock(block) + " vs. " + i;
                 assert last == null || Arrays.asList(current.getPredecessors()).contains(last) : "Last block (" + last + ") not a predecessor of " + current;
                 assert current.getLinearScanNumber() == blockNumber : "Blocks not numbered correctly: " + current.getLinearScanNumber() + " vs. " + blockNumber;
                 last = current;
