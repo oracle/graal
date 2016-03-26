@@ -143,6 +143,15 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
     }
 
+    private void verifyAfterExceptionState() {
+        if (this.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            assert this.outerFrameState == null;
+            for (int i = 0; i < this.localsSize; i++) {
+                assertTrue(this.values.get(i) == null, "locals should be null in AFTER_EXCEPTION_BCI state");
+            }
+        }
+    }
+
     public FrameState(int bci) {
         this(null, null, bci, 0, 0, 0, false, false, null, Collections.<EscapeObjectState> emptyList());
         assert bci == BytecodeFrame.BEFORE_BCI || bci == BytecodeFrame.AFTER_BCI || bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNKNOWN_BCI ||
@@ -558,6 +567,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
             assertTrue(value == null || value instanceof VirtualObjectNode || (value.getStackKind() != JavaKind.Void), "unexpected value: %s", value);
         }
+        verifyAfterExceptionState();
         return super.verify();
     }
 
