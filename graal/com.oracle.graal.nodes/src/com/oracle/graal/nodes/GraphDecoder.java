@@ -289,7 +289,7 @@ public class GraphDecoder {
      * that the value is defined in the loop, but used outside the loop.
      */
     @NodeInfo
-    protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable {
+    protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable, Node.ValueNumberable {
         public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
 
         @Input ValueNode value;
@@ -1326,7 +1326,7 @@ public class GraphDecoder {
                  * loop iteration. This is mostly the state that we want, we only need to tweak it a
                  * little bit: we need to insert the appropriate ProxyNodes for all values that are
                  * created inside the loop and that flow out of the loop.
-                 *
+                 * 
                  * In some cases, we did not create a FrameState during graph decoding: when there
                  * was no LoopExit in the original loop that we exploded. This happens for code
                  * paths that lead immediately to a DeoptimizeNode. Since the BytecodeParser does

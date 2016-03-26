@@ -67,7 +67,6 @@ import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import com.oracle.graal.nodes.java.MonitorIdNode;
@@ -156,7 +155,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         ResolvedJavaType originalType = method.getDeclaringClass();
         if (!method.isStatic()) {
             // add the receiver
-            FloatingNode receiver = null;
+            ValueNode receiver = null;
             StampPair receiverStamp = StampFactory.forDeclaredType(assumptions, originalType, true);
             for (ParameterPlugin plugin : parameterPlugins) {
                 receiver = plugin.interceptParameter(parser, index, receiverStamp);
@@ -167,7 +166,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             if (receiver == null) {
                 receiver = new ParameterNode(javaIndex, receiverStamp);
             }
-            locals[javaIndex] = graph.unique(receiver);
+            locals[javaIndex] = graph.addWithoutUnique(receiver);
             javaIndex = 1;
             index = 1;
         }
@@ -181,7 +180,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             }
             JavaKind kind = type.getJavaKind();
             StampPair stamp = StampFactory.forDeclaredType(assumptions, type, false);
-            FloatingNode param = null;
+            ValueNode param = null;
             for (ParameterPlugin plugin : parameterPlugins) {
                 param = plugin.interceptParameter(parser, index, stamp);
                 if (param != null) {
@@ -191,7 +190,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             if (param == null) {
                 param = new ParameterNode(index, stamp);
             }
-            locals[javaIndex] = graph.unique(param);
+            locals[javaIndex] = graph.addWithoutUnique(param);
             javaIndex++;
             if (kind.needsTwoSlots()) {
                 locals[javaIndex] = TWO_SLOT_MARKER;

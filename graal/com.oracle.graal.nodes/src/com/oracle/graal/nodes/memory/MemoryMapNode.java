@@ -34,6 +34,7 @@ import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.InputType;
@@ -45,7 +46,7 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(allowedUsageTypes = {InputType.Extension, InputType.Memory})
-public final class MemoryMapNode extends FloatingNode implements MemoryMap, MemoryNode, LIRLowerable {
+public final class MemoryMapNode extends FloatingNode implements MemoryMap, MemoryNode, LIRLowerable, Node.ValueNumberable {
 
     public static final NodeClass<MemoryMapNode> TYPE = NodeClass.create(MemoryMapNode.class);
     protected final List<LocationIdentity> locationIdentities;

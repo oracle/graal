@@ -471,7 +471,7 @@ public class SnippetTemplate {
     }
 
     @NodeInfo
-    static final class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider {
+    static final class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider, Node.ValueNumberable {
 
         public static final NodeClass<VarargsPlaceholderNode> TYPE = NodeClass.create(VarargsPlaceholderNode.class);
         protected final Varargs varargs;
@@ -728,7 +728,7 @@ public class SnippetTemplate {
                         assert parameterCount < 10000;
                         int idx = (i + 1) * 10000 + j;
                         assert idx >= parameterCount : "collision in parameter numbering";
-                        ParameterNode local = snippetCopy.unique(new ParameterNode(idx, StampPair.createSingle(stamp)));
+                        ParameterNode local = snippetCopy.add(new ParameterNode(idx, StampPair.createSingle(stamp)));
                         params[j] = local;
                     }
                     parameters[i] = params;

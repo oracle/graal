@@ -45,7 +45,7 @@ import com.oracle.graal.nodes.calc.FloatingNode;
  * {@link LoopEndNode}s.
  */
 @NodeInfo
-public abstract class PhiNode extends FloatingNode implements Canonicalizable {
+public abstract class PhiNode extends FloatingNode implements Canonicalizable, Node.ValueNumberable {
 
     public static final NodeClass<PhiNode> TYPE = NodeClass.create(PhiNode.class);
     @Input(InputType.Association) protected AbstractMergeNode merge;

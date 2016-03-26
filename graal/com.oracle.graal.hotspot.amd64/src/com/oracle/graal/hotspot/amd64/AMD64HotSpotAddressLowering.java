@@ -32,6 +32,7 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.AMD64AddressLowering;
 import com.oracle.graal.compiler.amd64.AMD64AddressNode;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
@@ -47,7 +48,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
     private final Register heapBaseRegister;
 
     @NodeInfo
-    public static class HeapBaseNode extends FloatingNode implements LIRLowerable {
+    public static class HeapBaseNode extends FloatingNode implements LIRLowerable, Node.ValueNumberable {
 
         public static final NodeClass<HeapBaseNode> TYPE = NodeClass.create(HeapBaseNode.class);
 

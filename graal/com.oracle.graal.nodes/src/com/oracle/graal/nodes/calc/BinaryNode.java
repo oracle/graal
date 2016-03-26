@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -32,7 +33,7 @@ import com.oracle.graal.nodes.ValueNode;
  * The {@code BinaryNode} class is the base of arithmetic and logic operations with two inputs.
  */
 @NodeInfo
-public abstract class BinaryNode extends FloatingNode implements Canonicalizable.Binary<ValueNode> {
+public abstract class BinaryNode extends FloatingNode implements Canonicalizable.Binary<ValueNode>, Node.ValueNumberable {
 
     public static final NodeClass<BinaryNode> TYPE = NodeClass.create(BinaryNode.class);
     @Input protected ValueNode x;

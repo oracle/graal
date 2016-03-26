@@ -34,7 +34,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
@@ -70,7 +69,7 @@ public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
     }
 
     @Override
-    public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
+    public ValueNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
         if (b.parsingIntrinsic()) {
             return wordOperationPlugin.interceptParameter(b, index, stamp);
         }

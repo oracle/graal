@@ -34,6 +34,7 @@ import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -67,7 +68,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
     }
 
     @NodeInfo(allowedUsageTypes = {Guard})
-    static class TestGuard extends FloatingNode implements GuardingNode {
+    static class TestGuard extends FloatingNode implements GuardingNode, Node.ValueNumberable {
         private static final NodeClass<TestGuard> TYPE = NodeClass.create(TestGuard.class);
 
         @Input(Memory) MemoryNode memory;
@@ -82,7 +83,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
     }
 
     @NodeInfo
-    static class TestValue extends FloatingNode {
+    static class TestValue extends FloatingNode implements Node.ValueNumberable {
         private static final NodeClass<TestValue> TYPE = NodeClass.create(TestValue.class);
 
         @Input(Guard) GuardingNode guard;
