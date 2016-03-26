@@ -364,8 +364,15 @@ def runDebugLLVM(args=None):
 
 def runLLVM(args=None):
     """uses Sulong to execute a LLVM IR file"""
-    vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    return mx.run_java(getCommonOptions() + vmArgs + ['-XX:-UseJVMCIClassLoader', '-cp', mx.classpath(['com.oracle.truffle.llvm']), "com.oracle.truffle.llvm.LLVM"] + sulongArgs, jdk=mx.get_jdk(tag='jvmci'))
+    vmArgs, sulongArgsWithLibs = truffle_extract_VM_args(args)
+    sulongArgs = []
+    libNames = []
+    for arg in sulongArgsWithLibs:
+        if arg.startswith('-l'):
+            libNames.append(arg)
+        else:
+            sulongArgs.append(arg)
+    return mx.run_java(getCommonOptions(libNames) + vmArgs + ['-XX:-UseJVMCIClassLoader', '-cp', mx.classpath(['com.oracle.truffle.llvm']), "com.oracle.truffle.llvm.LLVM"] + sulongArgs, jdk=mx.get_jdk(tag='jvmci'))
 
 def runTests(args=None):
     """runs all the test cases"""
@@ -419,13 +426,31 @@ def runTypeTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
 
-def getCommonOptions():
-    return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true', '-Dsulong.IntrinsifyCFunctions=false', getSearchPathOption()]
+def getCommonOptions(lib_args=None):
+    return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true', '-Dsulong.IntrinsifyCFunctions=false', getSearchPathOption(lib_args)]
 
-# other OSs?
-def getSearchPathOption():
-    return '-Dsulong.DynamicNativeLibraryPath=libgfortran.so.3:libstdc++.so.6:libc.so.6:libgmp.so.10'
+def getSearchPathOption(lib_args=None):
+    if lib_args is None:
+        lib_args = ['-lgmp', '-lgfortran']
 
+    lib_names = []
+
+    lib_aliases = {
+        '-lc': ['libc.so.6', 'libc.dylib'],
+        '-lstdc++': ['libstdc++.so.6', 'libstdc++.6.dylib'],
+        '-lgmp': ['libgmp.so.10', 'libgmp.10.dylib'],
+        '-lgfortran': ['libgfortran.so.3', 'libgfortran.3.dylib']
+    }
+
+    osStr = mx.get_os()
+    index = {'linux': 0, 'darwin': 1}[mx.get_os()]
+    if index is None:
+        print osStr, "not supported!"
+
+    for lib_arg in ['-lc', '-lstdc++'] + lib_args:
+        lib_names.append(lib_aliases[lib_arg][index])
+
+    return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
 def getCommonUnitTestOptions():
     return getCommonOptions() + ['-Xss56m', getLLVMRootOption()]
