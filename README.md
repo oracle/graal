@@ -25,6 +25,20 @@ Make sure you have GCC-4.6, G++-4.6, and GFortran-4.6 installed. For
 a full list of external dependencies on Ubuntu you can look at our
 [Travis configuration](https://github.com/graalvm/sulong/blob/master/.travis.yml).
 
+On the Mac you can use Homebrew. GCC 4.6 may fail to install, so we'll use
+GCC 4.8 instead.
+
+    brew tap homebrew/versions
+    brew install gcc48 --with-fortran
+    brew install gmp4
+
+However you install GCC on the Mac, you may then need to manually link the
+libraries we use into a location where they can be found, as
+`DYLD_LIBRARY_PATH` cannot normally be set on the Mac.
+
+    ln -s /usr/local/Cellar/gcc48/4.8.5/lib/gcc/4.8/libgfortran.3.dylib /usr/local/lib
+    ln -s /usr/local/Cellar/gmp/6.1.0/lib/libgmp.10.dylib /usr/local/lib
+
 How to get started?
 -------------------
 First create a new directory, which will contain the needed GraalVM
