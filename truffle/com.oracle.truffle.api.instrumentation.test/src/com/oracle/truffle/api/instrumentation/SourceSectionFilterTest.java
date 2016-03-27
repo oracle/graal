@@ -151,6 +151,54 @@ public class SourceSectionFilterTest {
     }
 
     @Test
+    public void testLineStartIn() {
+        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        SourceSection root = sampleSource.createSection(null, 0, 23);
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineStartsIn(IndexRange.byLength(2, 1)).build(),
+                        root, sampleSource.createSection(null, 6, 15, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineStartsIn(IndexRange.byLength(2, 1)).build(),
+                        root, sampleSource.createSection(null, 0, 15, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineStartsIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 0, 15, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineStartsIn(IndexRange.byLength(1, 2)).build(),
+                        root, sampleSource.createSection(null, 0, 15, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineStartsIn(IndexRange.byLength(1, 2)).build(),
+                        root, sampleSource.createSection(null, 6, 15, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineStartsIn(IndexRange.byLength(1, 2)).build(),
+                        root, sampleSource.createSection(null, 12, 6, tags())));
+    }
+
+    @Test
+    public void testLineEndsIn() {
+        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        SourceSection root = sampleSource.createSection(null, 0, 23);
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineEndsIn(IndexRange.byLength(2, 1)).build(),
+                        root, sampleSource.createSection(null, 6, 6, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineEndsIn(IndexRange.byLength(2, 1)).build(),
+                        root, sampleSource.createSection(null, 0, 6, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineEndsIn(IndexRange.byLength(2, 2)).build(),
+                        root, sampleSource.createSection(null, 0, 6, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineEndsIn(IndexRange.byLength(1, 2)).build(),
+                        root, sampleSource.createSection(null, 0, 6, tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineEndsIn(IndexRange.byLength(1, 2)).build(),
+                        root, sampleSource.createSection(null, 6, 6, tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineEndsIn(IndexRange.byLength(1, 2)).build(),
+                        root, sampleSource.createSection(null, 12, 6, tags())));
+    }
+
+    @Test
     public void testLineNotIn() {
         Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
         SourceSection root = sampleSource.createSection(null, 0, 23);
@@ -544,10 +592,10 @@ public class SourceSectionFilterTest {
         SourceSection root = sampleSource1.createSection(null, 0, 23);
 
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.DEFINE).//
-        tagIsNot(InstrumentationTestLanguage.DEFINE, InstrumentationTestLanguage.ROOT).//
-        indexIn(0, 3).//
-        sourceIs(sampleSource1).sourceSectionEquals(sampleSource1.createSection(null, 0, 5)).//
-        lineIn(1, 1).lineIs(1).mimeTypeIs("mime1", "mime2").build();
+                        tagIsNot(InstrumentationTestLanguage.DEFINE, InstrumentationTestLanguage.ROOT).//
+                        indexIn(0, 3).//
+                        sourceIs(sampleSource1).sourceSectionEquals(sampleSource1.createSection(null, 0, 5)).//
+                        lineIn(1, 1).lineIs(1).mimeTypeIs("mime1", "mime2").build();
 
         Assert.assertFalse(isInstrumented(filter, root, source()));
         Assert.assertTrue(isInstrumentedRoot(filter, null));
