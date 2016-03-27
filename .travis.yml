@@ -3,23 +3,22 @@ python:
   - "2.7"
 jdk:
   - oraclejdk8
+addons:
+  apt:
+    sources:
+    - deadsnakes
+    packages:
+    - python2.7
+    - gcc-4.6
+    - g++-4.6
+    - gfortran-4.6
+    - libgmp3-dev
+    - llvm-3.3
+    - gobjc++-4.6
+    - gcc-4.6-plugin-dev
 install:
-  - sudo add-apt-repository -y ppa:mercurial-ppa/releases
-  - sudo add-apt-repository -y ppa:fkrull/deadsnakes
-  - sudo apt-get -y update
-  - sudo apt-get install python2.7
-  - sudo apt-get install mercurial
-  - sudo apt-get install gcc-4.6
-  - sudo apt-get install gcc-4.6-plugin-dev
-  - sudo apt-get install gobjc++-4.6
-  - sudo apt-get install g++-4.6
-  - sudo apt-get install gfortran-4.6
-  - sudo apt-get install libgmp3-dev
-  - sudo apt-get install llvm-3.3
   - sudo pip install astroid==1.1.0
   - sudo pip install pylint==1.1.0
-  - pylint --version
-  - hg --version
   - git clone https://github.com/graalvm/mx
   - wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar
   - mv ecj-4.5.1.jar mx/ecj.jar
