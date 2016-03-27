@@ -271,6 +271,13 @@ def pullInstallDragonEgg(args=None):
     localPath = pullsuite(toolDir, [url])
     tar(localPath, toolDir)
     os.remove(localPath)
+    if mx.get_os() == 'darwin':
+        gccToolDir = join(_toolDir, "tools/gcc")
+        url = 'http://ftpmirror.gnu.org/gcc/gcc-4.6.4/gcc-4.6.4.tar.gz'
+        localPath = pullsuite(gccToolDir, [url])
+        tar(localPath, gccToolDir)
+        os.remove(localPath)
+        mx.run(['patch', '-p1', _toolDir + 'tools/dragonegg/dragonegg-3.2.src/Makefile', 'mx.sulong/dragonegg-mac.patch'])
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
