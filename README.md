@@ -25,18 +25,23 @@ Make sure you have GCC-4.6, G++-4.6, and GFortran-4.6 installed. For
 a full list of external dependencies on Ubuntu you can look at our
 [Travis configuration](https://github.com/graalvm/sulong/blob/master/.travis.yml).
 
-On the Mac you can use Homebrew. GCC 4.6 may fail to install, so we'll use
-GCC 4.8 instead.
+On the Mac you can use Homebrew:
 
     brew tap homebrew/versions
-    brew install gcc48 --with-fortran
+    brew install gcc46 --with-fortran
     brew install gmp4
+
+On some versions of Mac OS X, `gcc46` may fail to install with a segmentation
+fault (https://github.com/Homebrew/homebrew-versions/issues/515). A fix for this
+is to `brew edit gcc46` and replace the patch `p0` with
+https://gist.githubusercontent.com/chrisseaton/7008085997269e3478e1/raw/46bff773d37914d6e66d0d8e1cab0d50d77e7280/patch-10.10.diff,
+shasum `51814a0d79a9f21344c76f2d4235b59d9a4bc1601117e8ca5bfabdb82305aad0`.
 
 However you install GCC on the Mac, you may then need to manually link the
 libraries we use into a location where they can be found, as
 `DYLD_LIBRARY_PATH` cannot normally be set on the Mac.
 
-    ln -s /usr/local/Cellar/gcc48/4.8.5/lib/gcc/4.8/libgfortran.3.dylib /usr/local/lib
+    ln -s /usr/local/Cellar/gcc46/4.6.4/lib/gcc/4.6/libgfortran.3.dylib /usr/local/lib
     ln -s /usr/local/Cellar/gmp/6.1.0/lib/libgmp.10.dylib /usr/local/lib
 
 How to get started?

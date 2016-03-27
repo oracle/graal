@@ -169,6 +169,11 @@ def dragonEgg(args=None):
     executeCommand = [getGCC(), "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
     return mx.run(executeCommand + args)
 
+def dragonEggGFortran(args=None):
+    """executes GCC Fortran with dragonegg"""
+    executeCommand = [getGFortran(), "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
+    return mx.run(executeCommand + args)
+
 def dragonEggGPP(args=None):
     """executes G++ with dragonegg"""
     executeCommand = [getGPP(), "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
@@ -200,6 +205,15 @@ def getDefaultGCC():
         return 'gcc46'
     return None
 
+def getDefaultGFortran():
+    # Ubuntu
+    if which('gfortran-4.6') is not None:
+        return 'gfortran-4.6'
+    # Mac
+    if which('gfortran46') is not None:
+        return 'gfortran46'
+    return None
+
 def getDefaultGPP():
     # Ubuntu
     if which('g++-4.6') is not None:
@@ -227,6 +241,17 @@ def getGCC():
     else:
         mx.abort('Could not find a compatible GCC version to execute Dragonegg! Please install gcc-4.6 or another compatible version and specify it in the env file')
 
+def getGFortran():
+    """tries to locate a gfortran version suitable to execute Dragonegg"""
+    specifiedGFortran = getCommand('SULONG_GFORTRAN')
+    if specifiedGFortran is not None:
+        return specifiedGFortran
+    if getDefaultGFortran() is not None:
+        return getDefaultGFortran()
+    else:
+        mx.abort('Could not find a compatible GFortran version to execute Dragonegg! Please install gfortran-4.6 or another compatible version and specify it in the env file')
+
+
 def getGPP():
     """tries to locate a g++ version suitable to execute Dragonegg"""
     specifiedCPP = getCommand('SULONG_GPP')
@@ -246,6 +271,13 @@ def pullInstallDragonEgg(args=None):
     localPath = pullsuite(toolDir, [url])
     tar(localPath, toolDir)
     os.remove(localPath)
+    if mx.get_os() == 'darwin':
+        gccToolDir = join(_toolDir, "tools/gcc")
+        url = 'http://ftpmirror.gnu.org/gcc/gcc-4.6.4/gcc-4.6.4.tar.gz'
+        localPath = pullsuite(gccToolDir, [url])
+        tar(localPath, gccToolDir)
+        os.remove(localPath)
+        mx.run(['patch', '-p1', _toolDir + 'tools/dragonegg/dragonegg-3.2.src/Makefile', 'mx.sulong/dragonegg-mac.patch'])
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
@@ -613,6 +645,7 @@ mx.update_commands(_suite, {
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
     'su-gcc' : [dragonEgg, ''],
+    'su-gfortran' : [dragonEggGFortran, ''],
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, '']
