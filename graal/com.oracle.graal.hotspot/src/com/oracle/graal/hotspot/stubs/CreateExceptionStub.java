@@ -71,9 +71,9 @@ public class CreateExceptionStub extends SnippetStub {
         return clearPendingException(thread);
     }
 
-    protected static Object createException(Register threadRegister, Class<? extends Throwable> exception, KlassPointer objKlass, Word message, KlassPointer targetKlass) {
+    protected static Object createException(Register threadRegister, Class<? extends Throwable> exception, KlassPointer objKlass, KlassPointer targetKlass) {
         Word thread = registerAsWord(threadRegister);
-        throwClassCastException(THROW_CLASS_CAST_EXCEPTION, thread, vmSymbol(exception), objKlass, targetKlass, message);
+        throwClassCastException(THROW_CLASS_CAST_EXCEPTION, thread, vmSymbol(exception), objKlass, targetKlass);
         return clearPendingException(thread);
     }
 
@@ -81,7 +81,7 @@ public class CreateExceptionStub extends SnippetStub {
     private static final ForeignCallDescriptor THROW_KLASS_EXTERNAL_NAME_EXCEPTION = new ForeignCallDescriptor("throw_klass_external_name_exception", void.class, Word.class, SymbolPointer.class,
                     KlassPointer.class);
     private static final ForeignCallDescriptor THROW_CLASS_CAST_EXCEPTION = new ForeignCallDescriptor("throw_class_cast_exception", void.class, Word.class, SymbolPointer.class, KlassPointer.class,
-                    KlassPointer.class, Word.class);
+                    KlassPointer.class);
 
     @NodeIntrinsic(StubForeignCallNode.class)
     private static native void throwAndPostJvmtiException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, SymbolPointer type, Word message);
@@ -90,7 +90,7 @@ public class CreateExceptionStub extends SnippetStub {
     private static native void throwKlassExternalNameException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, SymbolPointer type, KlassPointer klass);
 
     @NodeIntrinsic(StubForeignCallNode.class)
-    private static native void throwClassCastException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, SymbolPointer type, KlassPointer objKlass, KlassPointer targetKlass, Word desc);
+    private static native void throwClassCastException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, SymbolPointer type, KlassPointer objKlass, KlassPointer targetKlass);
 
     public static void registerForeignCalls(HotSpotVMConfig c, HotSpotForeignCallsProviderImpl foreignCalls) {
         foreignCalls.registerForeignCall(THROW_AND_POST_JVMTI_EXCEPTION, c.throwAndPostJvmtiExceptionAddress, NativeCall, DESTROYS_REGISTERS, SAFEPOINT, REEXECUTABLE, any());

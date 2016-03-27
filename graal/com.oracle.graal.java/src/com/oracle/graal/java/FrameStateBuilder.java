@@ -290,6 +290,10 @@ public final class FrameStateBuilder implements SideEffectsState {
             stackSize = stackSizeToRestore;
             return res;
         } else {
+            if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+                assert outerFrameState == null;
+                clearLocals();
+            }
             return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
         }
     }
