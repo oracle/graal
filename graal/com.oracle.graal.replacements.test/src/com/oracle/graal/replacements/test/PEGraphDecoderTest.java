@@ -136,7 +136,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
 
             targetGraph = new StructuredGraph(testMethod, AllowAssumptions.YES);
             decoder.decode(targetGraph, testMethod, null, null, new InlineInvokePlugin[]{new InlineAll()}, null);
-            Debug.dump(targetGraph, "Target Graph");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, targetGraph, "Target Graph");
             targetGraph.verify();
 
             PhaseContext context = new PhaseContext(getProviders());
@@ -145,7 +145,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
 
         } catch (Throwable ex) {
             if (targetGraph != null) {
-                Debug.dump(targetGraph, ex.toString());
+                Debug.dump(Debug.BASIC_LOG_LEVEL, targetGraph, ex.toString());
             }
             Debug.handle(ex);
         }

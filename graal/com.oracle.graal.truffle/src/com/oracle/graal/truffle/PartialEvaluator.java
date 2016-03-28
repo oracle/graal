@@ -151,7 +151,7 @@ public class PartialEvaluator {
     @SuppressWarnings("try")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, AllowAssumptions allowAssumptions) {
         try (Scope c = Debug.scope("TruffleTree")) {
-            Debug.dump(callTarget, "%s", callTarget);
+            Debug.dump(Debug.INFO_LOG_LEVEL, callTarget, "%s", callTarget);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -403,7 +403,7 @@ public class PartialEvaluator {
     @SuppressWarnings({"try", "unused"})
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         doGraphPE(callTarget, graph, tierContext);
-        Debug.dump(graph, "After FastPE");
+        Debug.dump(Debug.INFO_LOG_LEVEL, graph, "After FastPE");
 
         graph.maybeCompress();
 
@@ -483,7 +483,7 @@ public class PartialEvaluator {
 
         if (Debug.isEnabled() && !warnings.isEmpty()) {
             try (Scope s = Debug.scope("TrufflePerformanceWarnings", graph)) {
-                Debug.dump(graph, "performance warnings %s", warnings);
+                Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "performance warnings %s", warnings);
             } catch (Throwable t) {
                 Debug.handle(t);
             }

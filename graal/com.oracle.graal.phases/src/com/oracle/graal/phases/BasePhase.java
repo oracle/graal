@@ -41,9 +41,6 @@ import com.oracle.graal.nodes.StructuredGraph;
  */
 public abstract class BasePhase<C> {
 
-    public static final int PHASE_DUMP_LEVEL = 1;
-    public static final int BEFORE_PHASE_DUMP_LEVEL = 3;
-
     private CharSequence name;
 
     /**
@@ -139,14 +136,14 @@ public abstract class BasePhase<C> {
     @SuppressWarnings("try")
     protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         try (DebugCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start()) {
-            if (dumpGraph && Debug.isDumpEnabled(BEFORE_PHASE_DUMP_LEVEL)) {
-                Debug.dump(BEFORE_PHASE_DUMP_LEVEL, graph, "Before phase %s", getName());
+            if (dumpGraph && Debug.isDumpEnabled(Debug.VERBOSE_LOG_LEVEL)) {
+                Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "Before phase %s", getName());
             }
             inputNodesCount.add(graph.getNodeCount());
             this.run(graph, context);
             executionCount.increment();
-            if (dumpGraph && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
-                Debug.dump(PHASE_DUMP_LEVEL, graph, "%s", getName());
+            if (dumpGraph && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
+                Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "%s", getName());
             }
             if (Fingerprint.ENABLED) {
                 String graphDesc = graph.method() == null ? graph.name : graph.method().format("%H.%n(%p)");

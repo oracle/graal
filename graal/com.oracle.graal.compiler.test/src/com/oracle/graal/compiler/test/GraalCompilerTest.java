@@ -300,13 +300,13 @@ public abstract class GraalCompilerTest extends GraalTest {
         String mismatchString = compareGraphStrings(expected, expectedString, graph, actualString);
 
         if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(graph)) {
-            Debug.dump(expected, "Node count not matching - expected");
-            Debug.dump(graph, "Node count not matching - actual");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, expected, "Node count not matching - expected");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "Node count not matching - actual");
             Assert.fail("Graphs do not have the same number of nodes: " + expected.getNodeCount() + " vs. " + graph.getNodeCount() + "\n" + mismatchString);
         }
         if (!expectedString.equals(actualString)) {
-            Debug.dump(expected, "mismatching graphs - expected");
-            Debug.dump(graph, "mismatching graphs - actual");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, expected, "mismatching graphs - expected");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "mismatching graphs - actual");
             Assert.fail(mismatchString);
         }
     }

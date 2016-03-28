@@ -219,7 +219,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
                 n.replaceFirstInput(param, constant);
             }
         }
-        Debug.dump(graph, "Graph");
+        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "Graph");
         new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         for (FrameState fs : param.usages().filter(FrameState.class).snapshot()) {
             fs.replaceFirstInput(param, null);

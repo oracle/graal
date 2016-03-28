@@ -52,8 +52,6 @@ public abstract class LIRPhase<C> {
         // @formatter:on
     }
 
-    private static final int PHASE_DUMP_LEVEL = 2;
-
     private CharSequence name;
 
     /**
@@ -123,8 +121,8 @@ public abstract class LIRPhase<C> {
         try (Scope s = Debug.scope(getName(), this)) {
             try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
                 run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
-                if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
-                    Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "%s", getName());
+                if (dumpLIR && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
+                    Debug.dump(Debug.BASIC_LOG_LEVEL, lirGenRes.getLIR(), "%s", getName());
                 }
             }
         } catch (Throwable e) {

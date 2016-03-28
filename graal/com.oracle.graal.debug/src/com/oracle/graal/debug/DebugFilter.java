@@ -42,28 +42,28 @@ import com.oracle.graal.debug.internal.DebugScope;
  * {@code  <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character.
  * Otherwise, it is interpreted as a substring. If {@code <pattern>} is empty, it matches every
  * scope. If {@code :
- * <level>} is omitted, it defaults to {@link Debug#DEFAULT_LOG_LEVEL}. The term {@code ~<pattern>}
- * is a shorthand for {@code <pattern>:0} to disable a debug facility for a pattern.
+ * <level>} is omitted, it defaults to {@link Debug#BASIC_LOG_LEVEL}. The term {@code ~<pattern>} is
+ * a shorthand for {@code <pattern>:0} to disable a debug facility for a pattern.
  * <p>
  * The resulting log level of a scope is determined by the <em>last</em> matching term. If no term
  * matches, the log level is 0 (disabled). A filter with no terms matches every scope with a log
- * level of {@link Debug#DEFAULT_LOG_LEVEL}.
+ * level of {@link Debug#BASIC_LOG_LEVEL}.
  *
  * <h2>Examples of filters</h2>
  *
  * <ul>
  * <li>(empty string)<br>
- * Matches any scope with log level {@link Debug#DEFAULT_LOG_LEVEL}.
+ * Matches any scope with log level {@link Debug#BASIC_LOG_LEVEL}.
  *
  * <li>{@code :1}<br>
  * Matches any scope with log level 1.
  *
  * <li>{@code *}<br>
- * Matches any scope with log level {@link Debug#DEFAULT_LOG_LEVEL}.
+ * Matches any scope with log level {@link Debug#BASIC_LOG_LEVEL}.
  *
  * <li>{@code CodeGen,CodeInstall}<br>
  * Matches scopes containing "CodeGen" or "CodeInstall", both with log level
- * {@link Debug#DEFAULT_LOG_LEVEL}.
+ * {@link Debug#BASIC_LOG_LEVEL}.
  *
  * <li>{@code CodeGen:2,CodeInstall:1}<br>
  * Matches scopes containing "CodeGen" with log level 2, or "CodeInstall" with log level 1.
@@ -75,10 +75,10 @@ import com.oracle.graal.debug.internal.DebugScope;
  * Matches all scopes with log level 1, except those containing "Dead".
  *
  * <li>{@code Code*}<br>
- * Matches scopes starting with "Code" with log level {@link Debug#DEFAULT_LOG_LEVEL}.
+ * Matches scopes starting with "Code" with log level {@link Debug#BASIC_LOG_LEVEL}.
  *
  * <li>{@code Code,~Dead}<br>
- * Matches scopes containing "Code" but not "Dead", with log level {@link Debug#DEFAULT_LOG_LEVEL}.
+ * Matches scopes containing "Code" but not "Dead", with log level {@link Debug#BASIC_LOG_LEVEL}.
  * </ul>
  */
 final class DebugFilter {
@@ -109,14 +109,32 @@ final class DebugFilter {
                         level = 0;
                     } else {
                         pattern = t;
-                        level = Debug.DEFAULT_LOG_LEVEL;
+                        level = Debug.BASIC_LOG_LEVEL;
                     }
                 } else {
                     pattern = t.substring(0, idx);
                     if (idx + 1 < t.length()) {
-                        level = Integer.parseInt(t.substring(idx + 1));
+                        String levelString = t.substring(idx + 1);
+                        try {
+                            level = Integer.parseInt(levelString);
+                        } catch (NumberFormatException e) {
+                            switch (levelString) {
+                                case "basic":
+                                    level = Debug.BASIC_LOG_LEVEL;
+                                    break;
+                                case "info":
+                                    level = Debug.INFO_LOG_LEVEL;
+                                    break;
+                                case "verbose":
+                                    level = Debug.VERBOSE_LOG_LEVEL;
+                                    break;
+                                default:
+                                    throw new IllegalArgumentException("Unknown dump level: \"" + levelString + "\" expected basic, info, verbose or an integer");
+                            }
+                        }
+
                     } else {
-                        level = Debug.DEFAULT_LOG_LEVEL;
+                        level = Debug.BASIC_LOG_LEVEL;
                     }
                 }
 
@@ -130,7 +148,7 @@ final class DebugFilter {
      */
     public int matchLevel(String input) {
         if (terms == null) {
-            return Debug.DEFAULT_LOG_LEVEL;
+            return Debug.BASIC_LOG_LEVEL;
         } else {
             int level = 0;
             for (Term t : terms) {

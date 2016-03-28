@@ -1042,8 +1042,8 @@ public final class BciBlockMapping {
     public static BciBlockMapping create(BytecodeStream stream, ResolvedJavaMethod method) {
         BciBlockMapping map = new BciBlockMapping(method);
         map.build(stream);
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(map, method.format("After block building %f %R %H.%n(%P)"));
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, map, method.format("After block building %f %R %H.%n(%P)"));
         }
 
         return map;

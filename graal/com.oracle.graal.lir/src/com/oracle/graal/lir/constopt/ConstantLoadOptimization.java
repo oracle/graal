@@ -215,7 +215,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                                     phiConstantsSkipped.increment();
                                 }
                                 phiConstants.set(var.index);
-                                Debug.log(3, "Removing phi variable: %s", var);
+                                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Removing phi variable: %s", var);
                             }
                         } else {
                             assert defined.get(var.index) : "phi but not defined? " + var;
@@ -292,7 +292,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                 // no better solution found
                 materializeAtDefinitionSkipped.increment();
             }
-            Debug.dump(constTree, "ConstantTree for %s", tree.getVariable());
+            Debug.dump(Debug.INFO_LOG_LEVEL, constTree, "ConstantTree for %s", tree.getVariable());
         }
 
         private void createLoads(DefUseTree tree, ConstantTree constTree, AbstractBlockBase<?> startBlock) {

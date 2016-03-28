@@ -825,7 +825,7 @@ public final class TraceLinearScan {
                     }
                 }
             }
-            Debug.dump(new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervalsSize)), label);
+            Debug.dump(Debug.INFO_LOG_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervalsSize)), label);
         }
     }
 
