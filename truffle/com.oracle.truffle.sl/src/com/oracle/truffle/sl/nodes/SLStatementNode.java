@@ -62,6 +62,9 @@ public abstract class SLStatementNode extends Node {
     private static final int ROOT_BIT = 1;
 
     private final SourceSection section;
+    /*
+     * Bitmask 0bSR, S = node is tagged as statement, R = node is tagged as root
+     */
     private byte tags;
 
     public SLStatementNode(SourceSection src) {
@@ -75,6 +78,14 @@ public abstract class SLStatementNode extends Node {
 
     protected SLStatementNode(SLStatementNode delegate) {
         this(delegate.getSourceSection());
+        tags = delegate.tags;
+    }
+
+    @Override
+    public Node copy() {
+        SLStatementNode statementNode = (SLStatementNode) super.copy();
+        statementNode.tags = tags;
+        return statementNode;
     }
 
     /**
