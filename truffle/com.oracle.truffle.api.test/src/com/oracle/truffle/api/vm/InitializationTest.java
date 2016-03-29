@@ -48,6 +48,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.junit.After;
 
 /**
  * Bug report validating test.
@@ -61,9 +62,18 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public class InitializationTest {
 
+    private PolyglotEngine vm;
+
+    @After
+    public void dispose() {
+        if (vm != null) {
+            vm.dispose();
+        }
+    }
+
     @Test
     public void accessProbeForAbstractLanguage() throws IOException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        PolyglotEngine vm = PolyglotEngine.newBuilder().build();
+        vm = PolyglotEngine.newBuilder().build();
 
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
         field.setAccessible(true);
@@ -89,6 +99,7 @@ public class InitializationTest {
         assertEquals(vm.eval(source).get(), 1);
 
         vm.dispose();
+        vm = null;
     }
 
     private static final class MMRootNode extends RootNode {

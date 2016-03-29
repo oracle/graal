@@ -72,11 +72,12 @@ public class SLTckTest extends TruffleTCK {
     public void testVerifyPresence() {
         PolyglotEngine vm = PolyglotEngine.newBuilder().build();
         assertTrue("Our language is present", vm.getLanguages().containsKey("application/x-sl"));
+        vm.dispose();
     }
 
     @Override
-    protected PolyglotEngine prepareVM() throws Exception {
-        PolyglotEngine vm = PolyglotEngine.newBuilder().build();
+    protected PolyglotEngine prepareVM(PolyglotEngine.Builder builder) throws Exception {
+        PolyglotEngine vm = builder.build();
         // @formatter:off
         vm.eval(
             Source.fromText(

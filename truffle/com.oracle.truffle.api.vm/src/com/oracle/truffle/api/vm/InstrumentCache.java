@@ -142,7 +142,7 @@ final class InstrumentCache {
         return version;
     }
 
-    Class<?> getInstrumentClass() {
+    Class<?> getInstrumentationClass() {
         if (!PRELOAD && instrumentClass == null) {
             loadClass();
         }

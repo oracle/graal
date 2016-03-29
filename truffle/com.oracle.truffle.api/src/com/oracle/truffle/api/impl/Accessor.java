@@ -55,12 +55,11 @@ import com.oracle.truffle.api.source.Source;
  */
 public abstract class Accessor {
     private static Accessor API;
-    private static Accessor SPI;
-    private static Accessor NODES;
+    static Accessor SPI;
+    static Accessor NODES;
     private static Accessor INSTRUMENT;
     static Accessor INSTRUMENTHANDLER;
     private static Accessor DEBUG;
-    private static Accessor OPTIMIZEDCALLTARGET;
     private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
 
     static {
@@ -122,6 +121,9 @@ public abstract class Accessor {
     }
 
     protected Accessor() {
+        if (!this.getClass().getName().startsWith("com.oracle.truffle.api")) {
+            throw new IllegalStateException();
+        }
         if (this.getClass().getSimpleName().endsWith("API")) {
             if (API != null) {
                 throw new IllegalStateException();
@@ -147,11 +149,6 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             DEBUG = this;
-        } else if (this.getClass().getSimpleName().endsWith("OptimizedCallTarget")) {
-            if (OPTIMIZEDCALLTARGET != null) {
-                throw new IllegalStateException();
-            }
-            OPTIMIZEDCALLTARGET = this;
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
@@ -311,6 +308,10 @@ public abstract class Accessor {
         return INSTRUMENTHANDLER.createInstrumentationHandler(vm, out, err, in);
     }
 
+    protected boolean isTaggedWith(Node node, Class<?> tag) {
+        return NODES.isTaggedWith(node, tag);
+    }
+
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
@@ -372,14 +373,10 @@ public abstract class Accessor {
         return NODES.isInstrumentable(rootNode);
     }
 
-    /**
-     * Invoked by OPTIMIZED_CALL_TARGET accessor or DefaultCallTarget and implemented by
-     * instrumentation.
-     */
-    protected void initializeCallTarget(RootCallTarget target) {
+    protected void onFirstExecution(RootNode node) {
         Accessor accessor = INSTRUMENTHANDLER;
         if (accessor != null) {
-            accessor.initializeCallTarget(target);
+            accessor.onFirstExecution(node);
         }
     }
 
@@ -417,25 +414,20 @@ public abstract class Accessor {
         return API.toString(language, env, obj);
     }
 
-    protected boolean supportsOnLoopCount() {
-        return false;
-    }
+    private static final TVMCI SUPPORT = Truffle.getRuntime().getCapability(TVMCI.class);
 
     @SuppressWarnings("deprecation")
-    protected void onLoopCount(Node source, int count) {
-        // optimized calltarget is not existent on default runtimes
-        if (OPTIMIZEDCALLTARGET != null) {
-            if (OPTIMIZEDCALLTARGET.supportsOnLoopCount()) {
-                OPTIMIZEDCALLTARGET.onLoopCount(source, count);
-            } else {
-                // needs an additional compatibilty check so older graal runtimes
-                // still run with newer truffle versions
-                RootNode root = source.getRootNode();
-                if (root != null) {
-                    RootCallTarget target = root.getCallTarget();
-                    if (target instanceof com.oracle.truffle.api.LoopCountReceiver) {
-                        ((com.oracle.truffle.api.LoopCountReceiver) target).reportLoopCount(count);
-                    }
+    protected void onLoopCount(Node source, int iterations) {
+        if (SUPPORT != null) {
+            SUPPORT.onLoopCount(source, iterations);
+        } else {
+            // needs an additional compatibility check so older graal runtimes
+            // still run with newer truffle versions
+            RootNode root = source.getRootNode();
+            if (root != null) {
+                RootCallTarget target = root.getCallTarget();
+                if (target instanceof com.oracle.truffle.api.LoopCountReceiver) {
+                    ((com.oracle.truffle.api.LoopCountReceiver) target).reportLoopCount(iterations);
                 }
             }
         }
@@ -446,4 +438,5 @@ public abstract class Accessor {
         TruffleLanguage<?> language = API.findLanguage(env);
         return languageClass.cast(language);
     }
+
 }

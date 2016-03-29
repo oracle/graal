@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,24 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObjectC.Nested3TruffleObject;
+import com.oracle.truffle.api.interop.AcceptMessage;
 
-/**
- * Controls breaking out of all executions and ending Truffle execution.
- *
- * @since 0.8 or earlier
- */
-@Deprecated
-public final class QuitException extends ControlFlowException {
-    private static final long serialVersionUID = -7101931337099807445L;
+@ExpectError({"com.oracle.truffle.api.dsl.test.interop.ValidTruffleObjectC.Nested3TruffleObject cannot be used as receiverType as it is not a static inner class."})
+@AcceptMessage(value = "READ", receiverType = Nested3TruffleObject.class, language = TestTruffleLanguage.class)
+public final class ReadNode10 extends BaseReadNode10 {
 
-    /**
-     * Default constructor.
-     *
-     * @since 0.8 or earlier
-     */
-    public QuitException() {
-    }
 }

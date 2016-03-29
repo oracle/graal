@@ -145,14 +145,6 @@ public abstract class RootNode extends Node {
      * so also for a {@link RootCallTarget} and a {@link FrameInstance} obtained from the call
      * stack) without prior knowledge of the language it has come from.
      *
-     * Used for instance to determine the language of a <code>RootNode<code>:
-     * 
-     * <code>
-     * <pre>
-     * rootNode.getExecutionContext().getLanguageShortName();
-     * </pre>
-     * </code>
-     *
      * Returns <code>null</code> by default.
      * 
      * @since 0.8 or earlier

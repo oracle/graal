@@ -60,8 +60,13 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     private final ThreadLocal<LinkedList<FrameInstance>> stackTraces = new ThreadLocal<>();
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
+    private final DefaultTVMCI tvmci = new DefaultTVMCI();
 
     public DefaultTruffleRuntime() {
+    }
+
+    public DefaultTVMCI getTvmci() {
+        return tvmci;
     }
 
     @Override

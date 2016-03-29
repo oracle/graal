@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,20 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.dsl.test.interop;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObjectC.Nested2TruffleObject;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.AcceptMessage;
 
-/**
- * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
- */
-@Retention(RetentionPolicy.CLASS)
-@interface SuppressFBWarnings {
-    /**
-     * The set of FindBugs <a
-     * href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
-     * suppressed in annotated element. The value can be a bug category, kind or pattern.
-     */
-    java.lang.String[] value();
+@AcceptMessage(value = "READ", receiverType = Nested2TruffleObject.class, language = TestTruffleLanguage.class)
+public final class ReadNode9 extends BaseReadNode9 {
+
+    @Override
+    protected Object access(VirtualFrame frame, Object receiver, Object name) {
+        return 0;
+    }
 }

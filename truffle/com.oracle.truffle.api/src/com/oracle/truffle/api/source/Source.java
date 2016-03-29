@@ -55,6 +55,7 @@ import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Representation of a guest language source code unit and its contents. Sources originate in
@@ -108,7 +109,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
  * reload.</li>
  * </ol>
  * <p>
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class Source {
@@ -128,7 +129,7 @@ public abstract class Source {
 
     /**
      * Locates an existing instance by the name under which it was indexed.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static Source find(String name) {
@@ -390,7 +391,7 @@ public abstract class Source {
     /**
      * Enables/disables caching of file contents, <em>disabled</em> by default. Caching of sources
      * created from literal text or readers is always enabled.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static void setFileCaching(boolean enabled) {
@@ -445,7 +446,7 @@ public abstract class Source {
 
     /**
      * The normalized, canonical name if the source is a file.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract String getPath();
@@ -460,14 +461,14 @@ public abstract class Source {
 
     /**
      * Access to the source contents.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Reader getReader();
 
     /**
      * Access to the source contents.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public final InputStream getInputStream() {
@@ -476,7 +477,7 @@ public abstract class Source {
 
     /**
      * Gets the number of characters in the source.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public final int getLength() {
@@ -485,14 +486,14 @@ public abstract class Source {
 
     /**
      * Returns the complete text of the code.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract String getCode();
 
     /**
      * Returns a subsection of the code test.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public String getCode(int charIndex, int charLength) {
@@ -501,7 +502,7 @@ public abstract class Source {
 
     /**
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public final String getCode(int lineNumber) {
@@ -513,7 +514,7 @@ public abstract class Source {
     /**
      * The number of text lines in the source, including empty lines; characters at the end of the
      * source without a terminating newline count as a line.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public final int getLineCount() {
@@ -595,23 +596,11 @@ public abstract class Source {
     }
 
     /**
-     * Creates a representation of a contiguous region of text in the source.
-     * <p>
-     * This method performs no checks on the validity of the arguments.
-     * <p>
-     * The resulting representation defines hash/equality around equivalent location, presuming that
-     * {@link Source} representations are canonical.
-     *
-     * @param identifier terse description of the region
-     * @param startLine 1-based line number of the first character in the section
-     * @param startColumn 1-based column number of the first character in the section
-     * @param charIndex the 0-based index of the first character of the section
-     * @param length the number of characters in the section
-     * @param tags the tags associated with this section. Tags must be non-null and
-     *            {@link String#intern() interned}.
-     * @return newly created object representing the specified region
-     * @since 0.8 or earlier
+     * @deprecated tags are now determined by {@link Node#isTaggedWith(Class)}. Use
+     *             {@link #createSection(String, int, int, int, int)} instead.
+     * @since 0.12
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length, String... tags) {
         checkRange(charIndex, length);
         return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
@@ -673,27 +662,11 @@ public abstract class Source {
     }
 
     /**
-     * Creates a representation of a contiguous region of text in the source. Computes the
-     * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
-     * source.
-     * <p>
-     * Checks the position arguments for consistency with the source.
-     * <p>
-     * The resulting representation defines hash/equality around equivalent location, presuming that
-     * {@link Source} representations are canonical.
-     *
-     *
-     * @param identifier terse description of the region
-     * @param charIndex 0-based position of the first character in the section
-     * @param length the number of characters in the section
-     * @param tags the tags associated with this section. Tags must be non-null and
-     *            {@link String#intern() interned}.
-     * @return newly created object representing the specified region
-     * @throws IllegalArgumentException if either of the arguments are outside the text of the
-     *             source
-     * @throws IllegalStateException if the source is one of the "null" instances
-     * @since 0.8 or earlier
+     * @deprecated tags are now determined by {@link Node#isTaggedWith(Class)}. Use
+     *             {@link #createSection(String, int, int)} instead.
+     * @since 0.12
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int charIndex, int length, String... tags) throws IllegalArgumentException {
         checkRange(charIndex, length);
         final int startLine = getLineNumber(charIndex);

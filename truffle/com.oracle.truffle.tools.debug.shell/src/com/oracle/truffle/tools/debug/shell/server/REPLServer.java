@@ -46,6 +46,9 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.LineLocation;
@@ -66,6 +69,8 @@ import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.Location
  */
 public final class REPLServer {
 
+    private static final String REPL_SERVER_INSTRUMENT = "REPLServer";
+
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
     private static final String TRACE_PREFIX = "REPLSrv: ";
     private static final PrintStream OUT = System.out;
@@ -76,20 +81,19 @@ public final class REPLServer {
         }
     }
 
-    private static final String[] knownTags = {Debugger.HALT_TAG, Debugger.CALL_TAG};
-
     private static int nextBreakpointUID = 0;
 
     // Language-agnostic
     private final PolyglotEngine engine;
-    private Debugger db;
-    private Context currentServerContext;
-    private SimpleREPLClient replClient = null;
-    private String statusPrefix;
+    private final Debugger db;
+    private final SimpleREPLClient replClient;
+    private final String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
-    private ASTPrinter astPrinter = new REPLASTPrinter();
-    private LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
-    private REPLVisualizer visualizer = new REPLVisualizer();
+    private final ASTPrinter astPrinter;
+    private final LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
+    private final REPLVisualizer visualizer = new REPLVisualizer();
+
+    private Context currentServerContext;
 
     /** Languages sorted by name. */
     private final TreeSet<Language> engineLanguages = new TreeSet<>(new Comparator<Language>() {
@@ -103,30 +107,23 @@ public final class REPLServer {
     private final Map<String, Language> nameToLanguage = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     // TODO (mlvdv) Language-specific
-    private PolyglotEngine.Language defaultLanguage;
+    private final PolyglotEngine.Language defaultLanguage = null;
 
-    private Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
+    private final Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
 
-    public REPLServer(String defaultMIMEType) {
+    public REPLServer(SimpleREPLClient client) {
+        this.replClient = client;
         this.engine = PolyglotEngine.newBuilder().onEvent(onHalted).onEvent(onExec).build();
+        this.engine.getInstruments().get(REPL_SERVER_INSTRUMENT).setEnabled(true);
+
         this.db = Debugger.find(this.engine);
         engineLanguages.addAll(engine.getLanguages().values());
-        if (engineLanguages.size() == 0) {
-            throw new RuntimeException("No language implementations installed");
-        }
+
         for (Language language : engineLanguages) {
             nameToLanguage.put(language.getName(), language);
         }
-
-        if (defaultMIMEType == null) {
-            defaultLanguage = engineLanguages.iterator().next();
-        } else {
-            this.defaultLanguage = engine.getLanguages().get(defaultMIMEType);
-            if (defaultLanguage == null) {
-                throw new RuntimeException("Implementation not found for \"" + defaultMIMEType + "\"");
-            }
-        }
-        statusPrefix = languageName(defaultLanguage);
+        astPrinter = new REPLASTPrinter(engine);
+        statusPrefix = "";
     }
 
     private final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
@@ -162,7 +159,7 @@ public final class REPLServer {
     }
 
     /**
-     * Starts up a server; status returned in a message.
+     * Start sever: load commands, generate initial context.
      */
     public void start() {
 
@@ -190,14 +187,13 @@ public final class REPLServer {
         add(REPLHandler.TRUFFLE_HANDLER);
         add(REPLHandler.TRUFFLE_NODE_HANDLER);
         add(REPLHandler.UNSET_BREAK_CONDITION_HANDLER);
-        this.replClient = new SimpleREPLClient(this);
+
         this.currentServerContext = new Context(null, null, defaultLanguage);
-        replClient.start();
     }
 
     @SuppressWarnings("static-method")
     public String getWelcome() {
-        return "GraalVM MultiLanguage Debugger 0.9\n" + "Copyright (c) 2013-5, Oracle and/or its affiliates";
+        return "GraalVM Polyglot Debugger 0.9\n" + "Copyright (c) 2013-6, Oracle and/or its affiliates";
     }
 
     public ASTPrinter getASTPrinter() {
@@ -289,7 +285,6 @@ public final class REPLServer {
         private boolean steppingInto = false;  // Only true during a "stepInto" engine call
 
         Context(Context predecessor, SuspendedEvent event, Language language) {
-            assert language != null;
             this.level = predecessor == null ? 0 : predecessor.getLevel() + 1;
             this.predecessor = predecessor;
             this.event = event;
@@ -364,6 +359,9 @@ public final class REPLServer {
                 if (frameNumber != null) {
                     throw new IllegalStateException("Frame number requires a halted execution");
                 }
+                if (currentLanguage == null) {
+                    throw new IOException("No language set");
+                }
                 this.steppingInto = stepInto;
                 final String mimeType = defaultMIME(currentLanguage);
                 try {
@@ -437,7 +435,7 @@ public final class REPLServer {
         }
 
         public String getLanguageName() {
-            return currentLanguage.getName();
+            return currentLanguage == null ? null : currentLanguage.getName();
         }
 
         /**
@@ -449,7 +447,7 @@ public final class REPLServer {
             assert name != null;
             final Language language = nameToLanguage.get(name);
             if (language == null) {
-                throw new IOException("Language \" + name + \" not supported");
+                throw new IOException("Language \"" + name + "\" not supported");
             }
             if (language == currentLanguage) {
                 return currentLanguage.getName();
@@ -478,7 +476,7 @@ public final class REPLServer {
         }
 
         void kill() {
-            event.kill();
+            event.prepareKill();
         }
 
     }
@@ -549,6 +547,15 @@ public final class REPLServer {
     Collection<BreakpointInfo> getBreakpoints() {
         // TODO (mlvdv) check if each is currently resolved
         return new ArrayList<>(breakpoints.values());
+    }
+
+    @Registration(id = "REPLServer")
+    public static final class REPLServerInstrument extends TruffleInstrument {
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(env.getInstrumenter());
+        }
     }
 
     final class LineBreakpointInfo extends BreakpointInfo {
@@ -790,18 +797,23 @@ public final class REPLServer {
 
     private static class REPLASTPrinter extends InstrumentationUtils.ASTPrinter {
 
+        private final Instrumenter instrumenter;
+
+        REPLASTPrinter(PolyglotEngine engine) {
+            this.instrumenter = engine.getInstruments().get(REPL_SERVER_INSTRUMENT).lookup(Instrumenter.class);
+        }
+
         @Override
-        protected String displayTags(final Object node) {
-            if (node instanceof Node) {
-                final SourceSection sourceSection = ((Node) node).getSourceSection();
+        protected String displayTags(final Object objectNode) {
+            if (objectNode instanceof Node) {
+                Node node = (Node) objectNode;
+                final SourceSection sourceSection = node.getSourceSection();
                 if (sourceSection != null) {
                     final StringBuilder sb = new StringBuilder("[");
                     String sep = "";
-                    for (String tag : knownTags) {
-                        if (sourceSection.hasTag(tag)) {
-                            sb.append(sep).append(tag);
-                            sep = ",";
-                        }
+                    for (Class<?> tag : instrumenter.queryTags(node)) {
+                        sb.append(sep).append(tag.getSimpleName());
+                        sep = ",";
                     }
                     sb.append("]");
                     return sb.toString();

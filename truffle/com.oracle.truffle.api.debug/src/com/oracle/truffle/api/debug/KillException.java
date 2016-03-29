@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java.test;
+package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.io.IOException;
-import org.junit.After;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
+/**
+ * Controls breaking out of an execution context, such as a shell or eval. This exception now
+ * extends {@link ThreadDeath} as that is the error that is supposed to not be ever caught. As its
+ * Javadoc puts it: <em>
+ * An application should catch instances of this class only if it must clean up
+ * after being terminated asynchronously. If {@code ThreadDeath} is caught by a
+ * method, it is important that it be re-thrown so that the thread actually dies.
+ * </em> The re-throwing is important aspect of <code>KillException</code> and as such it
+ * piggy-backs on this aspect of {@link ThreadDeath}. For code that can distinguish between
+ * classical {@link ThreadDeath} and {@link KillException}, is still OK to catch the exception and
+ * not propagate it any further.
+ *
+ * @since 0.12
+ */
+final class KillException extends ThreadDeath {
+    private static final long serialVersionUID = -8638020836970813894L;
 
-public class JavaFunctionTest {
-    private PolyglotEngine engine;
-
-    @Test
-    public void invokeRunnable() throws IOException {
-        final boolean[] called = {false};
-
-        engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Runnable.class, new Runnable() {
-            @Override
-            public void run() {
-                called[0] = true;
-            }
-        })).build();
-        engine.findGlobalSymbol("test").execute();
-
-        assertTrue("Runnable has been called", called[0]);
-    }
-
-    @After
-    public void dispose() {
-        if (engine != null) {
-            engine.dispose();
-        }
+    /**
+     * Default constructor.
+     * 
+     * @since 0.12
+     */
+    KillException() {
     }
 }

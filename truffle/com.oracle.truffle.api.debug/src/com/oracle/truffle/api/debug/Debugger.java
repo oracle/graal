@@ -31,10 +31,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.KillException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
@@ -50,12 +50,12 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.util.concurrent.Callable;
 
 /**
  * Represents debugging related state of a {@link PolyglotEngine}.
@@ -72,30 +72,23 @@ import java.util.concurrent.Callable;
 public final class Debugger {
 
     /**
-     * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
-     * where ordinary stepping should halt. The debugger will halt just <em>before</em> a code
-     * location is executed that is marked with this tag.
-     *
      * @since 0.9
+     * @deprecated use class literal {@link StatementTag} instead for tagging
      */
-    public static final String HALT_TAG = "debug-HALT";
+    @Deprecated public static final String HALT_TAG = "debug-HALT";
 
     /**
-     * A {@link SourceSection#withTags(java.lang.String...) tag} used to mark program locations
-     * where <em>returning</em> or <em>stepping out</em> from a method/procedure call should halt.
-     * The debugger will halt at the code location that has just executed the call that returned.
-     *
-     * @see #HALT_TAG
      * @since 0.9
+     * @deprecated use class literal {@link CallTag} instead for tagging
      */
-    public static final String CALL_TAG = "debug-CALL";
+    @Deprecated public static final String CALL_TAG = "debug-CALL";
 
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
     private static final String TRACE_PREFIX = "Debug";
     private static final PrintStream OUT = System.out;
 
-    private static final SourceSectionFilter CALL_FILTER = SourceSectionFilter.newBuilder().tagIs(CALL_TAG).build();
-    private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(HALT_TAG).build();
+    private static final SourceSectionFilter CALL_FILTER = SourceSectionFilter.newBuilder().tagIs(CallTag.class).build();
+    private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build();
 
     /** Counter for externally requested step actions. */
     private static int nextActionID = 0;
@@ -878,17 +871,19 @@ public final class Debugger {
 
             try {
                 // Pass control to the debug client with current execution suspended
-                ACCESSOR.dispatchEvent(engine, new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedFrame, contextStack, recentWarnings));
+                SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedFrame, contextStack, recentWarnings);
+                ACCESSOR.dispatchEvent(engine, event);
+                if (event.isKillPrepared()) {
+                    trace("KILL");
+                    throw new KillException();
+                }
                 // Debug client finished normally, execution resumes
                 // Presume that the client has set a new strategy (or default to Continue)
                 running = true;
-                if (TRACE) {
+		 if (TRACE) {
                     final String reason = haltReason == null ? "" : haltReason;
                     trace("RESUME %s : (%s) stack base=%d", haltedPosition.toString(), reason, contextStackBase);
                 }
-            } catch (KillException e) {
-                trace("KILL");
-                throw e;
             } finally {
                 haltedEventContext = null;
                 haltedFrame = null;
@@ -973,10 +968,14 @@ public final class Debugger {
      * @throws IOException
      */
     Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
-        if (frameInstance == null) {
-            return ACCESSOR.evalInContext(engine, ev, code, currentDebugContext.haltedEventContext.getInstrumentedNode(), currentDebugContext.haltedFrame);
-        } else {
-            return ACCESSOR.evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
+        try {
+            if (frameInstance == null) {
+                return ACCESSOR.evalInContext(engine, ev, code, currentDebugContext.haltedEventContext.getInstrumentedNode(), currentDebugContext.haltedFrame);
+            } else {
+                return ACCESSOR.evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
+            }
+        } catch (KillException kex) {
+            throw new IOException("Evaluation was killed.", kex);
         }
     }
 

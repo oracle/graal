@@ -29,16 +29,18 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
@@ -59,7 +61,7 @@ final class InstrumentationHandler {
     /* Enable trace output to stdout. */
     private static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
 
-    /* All roots that have been initialized (executed at least once) */
+    /* All roots that were initialized (executed at least once) */
     private final Map<RootNode, Void> roots = Collections.synchronizedMap(new WeakHashMap<RootNode, Void>());
 
     /* All bindings that have been globally created by instrumenter instances. */
@@ -79,6 +81,7 @@ final class InstrumentationHandler {
     private final OutputStream out;
     private final OutputStream err;
     private final InputStream in;
+    private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new HashMap<>();
 
     private InstrumentationHandler(OutputStream out, OutputStream err, InputStream in) {
         this.out = out;
@@ -103,7 +106,7 @@ final class InstrumentationHandler {
 
     void disposeInstrumenter(Object key, boolean cleanupRequired) {
         if (TRACE) {
-            trace("Dispose instrumenter %n", key);
+            trace("BEGIN: Dispose instrumenter %n", key);
         }
         AbstractInstrumenter disposedInstrumenter = instrumenterMap.get(key);
         List<EventBinding<?>> disposedBindings = new ArrayList<>();
@@ -125,7 +128,7 @@ final class InstrumentationHandler {
         }
 
         if (TRACE) {
-            trace("Disposed instrumenter %n", key);
+            trace("END: Disposed instrumenter %n", key);
         }
     }
 
@@ -145,7 +148,7 @@ final class InstrumentationHandler {
 
     <T> EventBinding<T> addBinding(EventBinding<T> binding) {
         if (TRACE) {
-            trace("Adding binding %s, %s%n", binding.getFilter(), binding.getElement());
+            trace("BEGIN: Adding binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
         this.bindings.add(binding);
@@ -158,7 +161,7 @@ final class InstrumentationHandler {
         }
 
         if (TRACE) {
-            trace("Added binding %s, %s%n", binding.getFilter(), binding.getElement());
+            trace("END: Added binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
         return binding;
@@ -166,7 +169,7 @@ final class InstrumentationHandler {
 
     void disposeBinding(EventBinding<?> binding) {
         if (TRACE) {
-            trace("Dispose binding %s, %s%n", binding.getFilter(), binding.getElement());
+            trace("BEGIN: Dispose binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
         this.bindings.remove(binding);
@@ -176,7 +179,7 @@ final class InstrumentationHandler {
         }
 
         if (TRACE) {
-            trace("Disposed binding %s, %s%n", binding.getFilter(), binding.getElement());
+            trace("END: Disposed binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
     }
 
@@ -184,15 +187,19 @@ final class InstrumentationHandler {
         EventContext context = probeNodeImpl.getContext();
         SourceSection sourceSection = context.getInstrumentedSourceSection();
         if (TRACE) {
-            trace("Lazy update for %s%n", sourceSection);
+            trace("BEGIN: Lazy update for %s%n", sourceSection);
         }
+
+        RootNode rootNode = probeNodeImpl.getRootNode();
+        Node instrumentedNode = probeNodeImpl.findWrapper().getDelegateNode();
+        Set<Class<?>> providedTags = getProvidedTags(rootNode);
         EventChainNode root = null;
         EventChainNode parent = null;
         for (int i = 0; i < bindings.size(); i++) {
             EventBinding<?> binding = bindings.get(i);
-            if (isInstrumented(null, probeNodeImpl, binding, sourceSection)) {
+            if (binding.isInstrumentedFull(providedTags, rootNode, instrumentedNode, sourceSection)) {
                 if (TRACE) {
-                    trace("Found binding %s, %s%n", binding.getFilter(), binding.getElement());
+                    trace("  Found binding %s, %s%n", binding.getFilter(), binding.getElement());
                 }
                 EventChainNode next = probeNodeImpl.createEventChainCallback(binding);
                 if (next == null) {
@@ -210,7 +217,7 @@ final class InstrumentationHandler {
         }
 
         if (TRACE) {
-            trace("Lazy updated for %s%n", sourceSection);
+            trace("END: Lazy updated for %s%n", sourceSection);
         }
         return root;
     }
@@ -219,13 +226,13 @@ final class InstrumentationHandler {
         synchronized (this) {
             if (!instrumentationInitialized) {
                 if (TRACE) {
-                    trace("Initialize instrumentation%n");
+                    trace("BEGIN: Initialize instrumentation%n");
                 }
                 for (AbstractInstrumenter instrumenter : instrumenterMap.values()) {
                     instrumenter.initialize();
                 }
                 if (TRACE) {
-                    trace("Initialized instrumentation%n");
+                    trace("END: Initialized instrumentation%n");
                 }
                 instrumentationInitialized = true;
             }
@@ -324,27 +331,28 @@ final class InstrumentationHandler {
         return addBinding(new EventBinding<>(instrumenter, filter, listener));
     }
 
-    private static boolean isInstrumentableNode(Node node) {
-        return !(node instanceof WrapperNode) && !(node instanceof RootNode);
-    }
-
-    private static boolean isInstrumented(RootNode rootNode, Node node, EventBinding<?> binding, SourceSection section) {
-        if (isInstrumentedLeaf(binding, section)) {
-            RootNode root = rootNode == null ? node.getRootNode() : rootNode;
-            if (root == null) {
-                return false;
-            }
-            return isInstrumentedRoot(root, binding, root.getSourceSection());
+    Set<Class<?>> getProvidedTags(Class<?> language) {
+        Set<Class<?>> tags = cachedProvidedTags.get(language);
+        if (tags == null) {
+            ProvidedTags languageTags = language.getAnnotation(ProvidedTags.class);
+            List<Class<?>> languageTagsList = languageTags != null ? Arrays.asList(languageTags.value()) : Collections.<Class<?>> emptyList();
+            tags = Collections.unmodifiableSet(new HashSet<>(languageTagsList));
+            cachedProvidedTags.put(language, tags);
         }
-        return false;
+        return tags;
     }
 
-    private static boolean isInstrumentedRoot(RootNode node, EventBinding<?> binding, SourceSection section) {
-        return binding.getInstrumenter().isInstrumentable(node) && binding.getFilter().isInstrumentedRoot(section);
+    Set<Class<?>> getProvidedTags(RootNode root) {
+        Class<?> language = ACCESSOR.findLanguage(root);
+        if (language != null) {
+            return getProvidedTags(language);
+        } else {
+            return Collections.emptySet();
+        }
     }
 
-    private static boolean isInstrumentedLeaf(EventBinding<?> binding, SourceSection section) {
-        return binding.getFilter().isInstrumentedNode(section);
+    private static boolean isInstrumentableNode(Node node, SourceSection sourceSection) {
+        return !(node instanceof WrapperNode) && !(node instanceof RootNode) && sourceSection != null;
     }
 
     private static void trace(String message, Object... args) {
@@ -352,23 +360,34 @@ final class InstrumentationHandler {
         out.printf(message, args);
     }
 
-    private static void visitRoot(final RootNode root, final AbstractNodeVisitor visitor) {
+    private void visitRoot(final RootNode root, final AbstractNodeVisitor visitor) {
         if (TRACE) {
-            trace("Visit root %s wrappers for %s%n", visitor, root.toString());
+            trace("BEGIN: Visit root %s wrappers for %s%n", visitor, root.toString());
         }
 
         visitor.root = root;
-        if (visitor.shouldVisit()) {
-            // found a filter that matched
-            root.atomic(new Runnable() {
-                public void run() {
-                    root.accept(visitor);
+        visitor.providedTags = getProvidedTags(root);
+        try {
+            if (visitor.shouldVisit()) {
+                if (TRACE) {
+                    trace("BEGIN: Traverse root %s wrappers for %s%n", visitor, root.toString());
                 }
-            });
-        }
-        visitor.root = null;
-        if (TRACE) {
-            trace("Visited root %s wrappers for %s%n", visitor, root.toString());
+                // found a filter that matched
+                root.atomic(new Runnable() {
+                    public void run() {
+                        root.accept(visitor);
+                    }
+                });
+                if (TRACE) {
+                    trace("END: Traverse root %s wrappers for %s%n", visitor, root.toString());
+                }
+            }
+            if (TRACE) {
+                trace("END: Visited root %s wrappers for %s%n", visitor, root.toString());
+            }
+        } finally {
+            visitor.root = null;
+            visitor.providedTags = null;
         }
     }
 
@@ -400,6 +419,13 @@ final class InstrumentationHandler {
         }
     }
 
+    static boolean hasTagImpl(Set<Class<?>> providedTags, Node node, Class<?> tag) {
+        if (providedTags.contains(tag)) {
+            return ACCESSOR.isTaggedWith(node, tag);
+        }
+        return false;
+    }
+
     static Instrumentable getInstrumentable(Node node) {
         Instrumentable instrumentable = node.getClass().getAnnotation(Instrumentable.class);
         if (instrumentable != null && !(node instanceof WrapperNode)) {
@@ -413,9 +439,10 @@ final class InstrumentationHandler {
         return value == null ? null : value.lookup(this, type);
     }
 
-    private abstract class AbstractNodeVisitor implements NodeVisitor {
+    private abstract static class AbstractNodeVisitor implements NodeVisitor {
 
-        protected RootNode root;
+        RootNode root;
+        Set<Class<?>> providedTags;
 
         abstract boolean shouldVisit();
 
@@ -431,24 +458,38 @@ final class InstrumentationHandler {
 
         @Override
         boolean shouldVisit() {
-            return isInstrumentedRoot(root, binding, root.getSourceSection());
+            return binding.isInstrumentedRoot(providedTags, root, root.getSourceSection());
         }
 
         public final boolean visit(Node node) {
             SourceSection sourceSection = node.getSourceSection();
-            if (sourceSection != null) {
-                if (isInstrumentableNode(node) && isInstrumentedLeaf(binding, sourceSection)) {
+            if (isInstrumentableNode(node, sourceSection)) {
+                if (binding.isInstrumentedLeaf(providedTags, node, sourceSection)) {
                     if (TRACE) {
-                        trace("Filter hit section:%s%n", sourceSection);
+                        traceFilterCheck("hit", providedTags, binding, node, sourceSection);
                     }
                     visitInstrumented(node, sourceSection);
+                } else {
+                    if (TRACE) {
+                        traceFilterCheck("miss", providedTags, binding, node, sourceSection);
+                    }
                 }
             }
             return true;
         }
 
         protected abstract void visitInstrumented(Node node, SourceSection section);
+    }
 
+    private static void traceFilterCheck(String result, Set<Class<?>> providedTags, EventBinding<?> binding, Node node, SourceSection sourceSection) {
+        Set<Class<?>> tags = binding.getFilter().getReferencedTags();
+        Set<Class<?>> containedTags = new HashSet<>();
+        for (Class<?> tag : tags) {
+            if (hasTagImpl(providedTags, node, tag)) {
+                containedTags.add(tag);
+            }
+        }
+        trace("  Filter %4s %s section:%s tags:%s%n", result, binding.getFilter(), sourceSection, containedTags);
     }
 
     private abstract class AbstractBindingsVisitor extends AbstractNodeVisitor {
@@ -464,7 +505,7 @@ final class InstrumentationHandler {
             SourceSection sourceSection = root.getSourceSection();
             for (int i = 0; i < bindings.size(); i++) {
                 EventBinding<?> binding = bindings.get(i);
-                if (isInstrumentedRoot(root, binding, sourceSection)) {
+                if (binding.isInstrumentedRoot(providedTags, root, sourceSection)) {
                     return true;
                 }
             }
@@ -473,16 +514,20 @@ final class InstrumentationHandler {
 
         public final boolean visit(Node node) {
             SourceSection sourceSection = node.getSourceSection();
-            if (sourceSection != null) {
+            if (isInstrumentableNode(node, sourceSection)) {
                 List<EventBinding<?>> b = bindings;
                 for (int i = 0; i < b.size(); i++) {
                     EventBinding<?> binding = b.get(i);
-                    if (isInstrumentableNode(node) && isInstrumented(root, node, binding, sourceSection)) {
+                    if (binding.isInstrumentedFull(providedTags, root, node, sourceSection)) {
                         if (TRACE) {
-                            trace("Filter hit section:%s", sourceSection);
+                            traceFilterCheck("hit", providedTags, binding, node, sourceSection);
                         }
                         visitInstrumented(node, sourceSection);
                         break;
+                    } else {
+                        if (TRACE) {
+                            traceFilterCheck("miss", providedTags, binding, node, sourceSection);
+                        }
                     }
                 }
             }
@@ -561,8 +606,17 @@ final class InstrumentationHandler {
         }
 
         @Override
-        boolean isInstrumentable(Node rootNode) {
+        boolean isInstrumentableRoot(RootNode rootNode) {
             return true;
+        }
+
+        @Override
+        public Set<Class<?>> queryTags(Node node) {
+            return queryTagsImpl(node, null);
+        }
+
+        @Override
+        void verifyFilter(SourceSectionFilter filter) {
         }
 
         Class<?> getInstrumentClass() {
@@ -648,12 +702,42 @@ final class InstrumentationHandler {
         }
 
         @Override
-        boolean isInstrumentable(Node node) {
+        boolean isInstrumentableRoot(RootNode node) {
             if (ACCESSOR.findLanguage(node.getRootNode()) != language.getClass()) {
                 return false;
             }
             // TODO (chumer) check for the context instance
             return true;
+        }
+
+        @Override
+        public Set<Class<?>> queryTags(Node node) {
+            return queryTagsImpl(node, language.getClass());
+        }
+
+        @Override
+        void verifyFilter(SourceSectionFilter filter) {
+            Set<Class<?>> providedTags = getProvidedTags(language.getClass());
+            // filters must not reference tags not declared in @RequiredTags
+            Set<Class<?>> referencedTags = filter.getReferencedTags();
+            if (!providedTags.containsAll(referencedTags)) {
+                Set<Class<?>> missingTags = new HashSet<>(referencedTags);
+                missingTags.removeAll(providedTags);
+                Set<Class<?>> allTags = new LinkedHashSet<>(providedTags);
+                allTags.addAll(missingTags);
+                StringBuilder builder = new StringBuilder("{");
+                String sep = "";
+                for (Class<?> tag : allTags) {
+                    builder.append(sep);
+                    builder.append(tag.getSimpleName());
+                    sep = ", ";
+                }
+                builder.append("}");
+
+                throw new IllegalArgumentException(String.format("The attached filter %s references the following tags %s which are not declared as provided by the language. " +
+                                "To fix this annotate the language class %s with @%s(%s).",
+                                filter, missingTags, language.getClass().getName(), ProvidedTags.class.getSimpleName(), builder));
+            }
         }
 
         @Override
@@ -670,6 +754,7 @@ final class InstrumentationHandler {
         <S> S lookup(InstrumentationHandler handler, Class<S> type) {
             return null;
         }
+
     }
 
     /**
@@ -688,17 +773,50 @@ final class InstrumentationHandler {
             InstrumentationHandler.this.disposeBinding(binding);
         }
 
-        abstract boolean isInstrumentable(Node rootNode);
+        abstract boolean isInstrumentableRoot(RootNode rootNode);
+
+        final Set<Class<?>> queryTagsImpl(Node node, Class<?> onlyLanguage) {
+            SourceSection sourceSection = node.getSourceSection();
+            if (!InstrumentationHandler.isInstrumentableNode(node, sourceSection)) {
+                return Collections.emptySet();
+            }
+
+            RootNode root = node.getRootNode();
+            if (root == null) {
+                return Collections.emptySet();
+            }
+
+            Class<?> language = ACCESSOR.findLanguage(root);
+            if (onlyLanguage != null && language != onlyLanguage) {
+                throw new IllegalArgumentException("The language instrumenter cannot query tags of nodes of other languages.");
+            }
+            Set<Class<?>> providedTags = getProvidedTags(root);
+            if (providedTags.isEmpty()) {
+                return Collections.emptySet();
+            }
+
+            Set<Class<?>> tags = new HashSet<>();
+            for (Class<?> providedTag : providedTags) {
+                if (hasTagImpl(providedTags, node, providedTag)) {
+                    tags.add(providedTag);
+                }
+            }
+            return Collections.unmodifiableSet(tags);
+        }
 
         @Override
         public final <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(SourceSectionFilter filter, T factory) {
+            verifyFilter(filter);
             return InstrumentationHandler.this.attachFactory(this, filter, factory);
         }
 
         @Override
         public final <T extends ExecutionEventListener> EventBinding<T> attachListener(SourceSectionFilter filter, T listener) {
+            verifyFilter(filter);
             return InstrumentationHandler.this.attachListener(this, filter, listener);
         }
+
+        abstract void verifyFilter(SourceSectionFilter filter);
 
     }
 
@@ -758,14 +876,20 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void initializeCallTarget(RootCallTarget target) {
+        public boolean isTaggedWith(Node node, Class<?> tag) {
+            return super.isTaggedWith(node, tag);
+        }
+
+        @Override
+        protected void onFirstExecution(RootNode node) {
             Object instrumentationHandler = ACCESSOR.getInstrumentationHandler(null);
             // we want to still support cases where call targets are executed without an enclosing
             // engine.
             if (instrumentationHandler != null) {
-                ((InstrumentationHandler) instrumentationHandler).installRootNode(target.getRootNode());
+                ((InstrumentationHandler) instrumentationHandler).installRootNode(node);
             }
         }
+
     }
 
 }
