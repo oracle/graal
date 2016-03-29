@@ -80,14 +80,6 @@ public final class REPLServer {
         }
     }
 
-    private static String describeObject(Object obj) {
-        if (obj == null) {
-            return "null";
-        }
-        String name = obj.toString();
-        return name.substring(name.lastIndexOf('.') + 1);
-    }
-
     private static int nextBreakpointUID = 0;
 
     // Language-agnostic
@@ -137,11 +129,11 @@ public final class REPLServer {
         @Override
         protected void on(SuspendedEvent ev) {
             if (TRACE) {
-                trace(" on %s", describeObject(ev));
+                trace("BEGIN onSuspendedEvent()");
             }
             REPLServer.this.haltedAt(ev);
             if (TRACE) {
-                trace("END on %s", describeObject(ev));
+                trace("END onSuspendedEvent()");
             }
         }
     };
@@ -150,13 +142,13 @@ public final class REPLServer {
         @Override
         protected void on(ExecutionEvent event) {
             if (TRACE) {
-                trace("BEGIN on %s debugger=%s", describeObject(event), describeObject(db));
+                trace("BEGIN onExecutionEvent()");
             }
             if (currentServerContext.steppingInto) {
                 event.prepareStepInto();
             }
             if (TRACE) {
-                trace("END on %s debugger=%s", describeObject(event), describeObject(db));
+                trace("END onExecutionEvent()");
             }
         }
     };

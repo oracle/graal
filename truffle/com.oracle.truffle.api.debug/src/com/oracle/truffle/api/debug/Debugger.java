@@ -57,10 +57,14 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
- * Represents debugging related state of a {@link com.oracle.truffle.api.vm.PolyglotEngine}.
- * Instance of this class is delivered via {@link SuspendedEvent#getDebugger()} and
- * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
- * is turned on}.
+ * Represents debugging related state of a {@link PolyglotEngine}.
+ * <p>
+ * Access to the (singleton) instance in an engine, once enabled, is available via:
+ * <ul>
+ * <li>{@link Debugger#find(PolyglotEngine)}</li>
+ * <li>{@link SuspendedEvent#getDebugger()} and</li>
+ * <li>{@link ExecutionEvent#getDebugger()} events.</li>
+ * </ul>
  *
  * @since 0.9
  */
@@ -79,11 +83,23 @@ public final class Debugger {
     @Deprecated public static final String CALL_TAG = "debug-CALL";
 
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
-    private static final String TRACE_PREFIX = "Debug: ";
+    private static final String TRACE_PREFIX = "Debug";
     private static final PrintStream OUT = System.out;
 
     private static final SourceSectionFilter CALL_FILTER = SourceSectionFilter.newBuilder().tagIs(CallTag.class).build();
     private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build();
+
+    /** Counter for externally requested step actions. */
+    private static int nextActionID = 0;
+
+    // TODO (mlvdv) export this information to SuspendedEvent for client use
+    /**
+     * Describes where an execution is halted relative to the instrumented node.
+     */
+    private enum HaltPosition {
+        BEFORE,
+        AFTER;
+    }
 
     /**
      * Finds debugger associated with given engine. There is at most one debugger associated with
@@ -125,12 +141,6 @@ public final class Debugger {
         return debugInstrument.getDebugger(engine, create ? FACTORY : null);
     }
 
-    private static void trace(String format, Object... args) {
-        if (TRACE) {
-            OUT.println(TRACE_PREFIX + String.format(format, args));
-        }
-    }
-
     private final PolyglotEngine engine;
     private final Instrumenter instrumenter;
     private final BreakpointFactory breakpoints;
@@ -148,7 +158,7 @@ public final class Debugger {
         /**
          * Passes control to the debugger with execution suspended.
          */
-        void haltedAt(Node astNode, MaterializedFrame mFrame, String haltReason);
+        void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason);
     }
 
     interface WarningLog {
@@ -162,9 +172,9 @@ public final class Debugger {
     private final BreakpointCallback breakpointCallback = new BreakpointCallback() {
 
         @TruffleBoundary
-        public void haltedAt(Node astNode, MaterializedFrame mFrame, String haltReason) {
-            if (debugContext != null) {
-                debugContext.halt(astNode, mFrame, true, haltReason);
+        public void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason) {
+            if (currentDebugContext != null) {
+                currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
             }
         }
     };
@@ -172,15 +182,15 @@ public final class Debugger {
     private WarningLog warningLog = new WarningLog() {
 
         public void addWarning(String warning) {
-            assert debugContext != null;
-            debugContext.logWarning(warning);
+            assert currentDebugContext != null;
+            currentDebugContext.logWarning(warning);
         }
     };
 
     /**
      * Head of the stack of executions.
      */
-    private DebugExecutionContext debugContext;
+    private DebugExecutionContext currentDebugContext;
 
     /**
      * Sets a breakpoint to halt at a source line.
@@ -233,8 +243,7 @@ public final class Debugger {
     }
 
     /**
-     * Prepare to execute in Continue mode when guest language program execution resumes. In this
-     * mode:
+     * Prepare to <em>Continue</em> when guest language program execution resumes. In this mode:
      * <ul>
      * <li>Execution will continue until either:
      * <ol>
@@ -246,12 +255,11 @@ public final class Debugger {
      */
     @TruffleBoundary
     void prepareContinue(int depth) {
-        debugContext.setStrategy(depth, new Continue());
+        currentDebugContext.setAction(depth, new Continue());
     }
 
     /**
-     * Prepare to execute in StepInto mode when guest language program execution resumes. In this
-     * mode:
+     * Prepare to <em>StepInto</em> when guest language program execution resumes. In this mode:
      * <ul>
      * <li>User breakpoints are disabled.</li>
      * <li>Execution will continue until either:
@@ -271,12 +279,11 @@ public final class Debugger {
         if (stepCount <= 0) {
             throw new IllegalArgumentException();
         }
-        debugContext.setStrategy(new StepInto(stepCount));
+        currentDebugContext.setAction(new StepInto(stepCount));
     }
 
     /**
-     * Prepare to execute in StepOut mode when guest language program execution resumes. In this
-     * mode:
+     * Prepare to <em>StepOut</em> when guest language program execution resumes. In this mode:
      * <ul>
      * <li>User breakpoints are enabled.</li>
      * <li>Execution will continue until either:
@@ -290,12 +297,11 @@ public final class Debugger {
      */
     @TruffleBoundary
     void prepareStepOut() {
-        debugContext.setStrategy(new StepOut());
+        currentDebugContext.setAction(new StepOut());
     }
 
     /**
-     * Prepare to execute in StepOver mode when guest language program execution resumes. In this
-     * mode:
+     * Prepare to <em>StepOver</em> when guest language program execution resumes. In this mode:
      * <ul>
      * <li>Execution will continue until either:
      * <ol>
@@ -317,7 +323,7 @@ public final class Debugger {
         if (stepCount <= 0) {
             throw new IllegalArgumentException();
         }
-        debugContext.setStrategy(new StepOver(stepCount));
+        currentDebugContext.setAction(new StepOver(stepCount));
     }
 
     Instrumenter getInstrumenter() {
@@ -325,20 +331,20 @@ public final class Debugger {
     }
 
     /**
-     * A mode of user navigation from a current code location to another, e.g "step in" vs.
-     * "step over".
+     * Implementation of a strategy for a debugger <em>action</em> that allows execution to continue
+     * until it reaches another location e.g "step in" vs. "step over". Instances are numbered and
+     * usable exactly once.
      */
     private abstract class StepStrategy {
 
-        private DebugExecutionContext context;
-        protected final String strategyName;
+        private final String name;
+        private final int actionID;
+        private DebugExecutionContext debugContext;
+        private boolean disposed;
 
         protected StepStrategy() {
-            this.strategyName = getClass().getSimpleName();
-        }
-
-        final String getName() {
-            return strategyName;
+            this.name = getClass().getSimpleName();
+            this.actionID = nextActionID++;
         }
 
         /**
@@ -346,31 +352,35 @@ public final class Debugger {
          * location specified by this strategy.
          */
         final void enable(DebugExecutionContext c, int stackDepth) {
-            this.context = c;
+            if (disposed) {
+                throw new IllegalStateException("Debugger strategies are single-use");
+            }
+            this.debugContext = c;
             setStrategy(stackDepth);
         }
 
         /**
-         * Return the debugger to the default navigation mode.
+         * Return the debugger to the default navigation strategy.
          */
         final void disable() {
             unsetStrategy();
+            disposed = true;
         }
 
         @TruffleBoundary
-        final void halt(Node astNode, MaterializedFrame mFrame, boolean before) {
-            context.halt(astNode, mFrame, before, this.getClass().getSimpleName());
+        protected final void halt(EventContext eventContext, MaterializedFrame mFrame, HaltPosition haltPosition) {
+            debugContext.halt(eventContext, mFrame, haltPosition, description());
         }
 
         @TruffleBoundary
-        final void replaceStrategy(StepStrategy newStrategy) {
-            context.setStrategy(newStrategy);
+        protected final void replaceStrategy(StepStrategy newStrategy) {
+            debugContext.setAction(newStrategy);
         }
 
         @TruffleBoundary
-        protected final void strategyTrace(String action, String format, Object... args) {
+        protected final void traceAction(String action, int startStackDepth, int unfinishedStepCount) {
             if (TRACE) {
-                context.contextTrace("%s (%s) %s", action, strategyName, String.format(format, args));
+                debugContext.trace("%s (%s) stack=%d,%d unfinished=%d", action, description(), startStackDepth, computeStackDepth(), unfinishedStepCount);
             }
         }
 
@@ -385,15 +395,18 @@ public final class Debugger {
         }
 
         /**
-         * Reconfigure the debugger so that when execution continues, it will do so using this mode
-         * of navigation.
+         * Reconfigures debugger so that this strategy will be in effect when execution continues.
          */
         protected abstract void setStrategy(int stackDepth);
 
         /**
-         * Return to the debugger to the default mode of navigation.
+         * Restores debugger to default configuration.
          */
         protected abstract void unsetStrategy();
+
+        private String description() {
+            return name + "<" + actionID + ">";
+        }
     }
 
     /**
@@ -434,8 +447,8 @@ public final class Debugger {
      * @see Debugger#prepareStepInto(int)
      */
     private final class StepInto extends StepStrategy {
-        private int unfinishedStepCount;
         private int startStackDepth;
+        private int unfinishedStepCount;
         private EventBinding<?> beforeHaltBinding;
         private EventBinding<?> afterCallBinding;
 
@@ -447,63 +460,56 @@ public final class Debugger {
         @Override
         protected void setStrategy(final int startStackDepth) {
             this.startStackDepth = startStackDepth;
-            strategyTrace("STRATEGY", "repeat=%d stack=%d", unfinishedStepCount, startStackDepth);
+            traceAction("SET ACTION", startStackDepth, unfinishedStepCount);
             beforeHaltBinding = instrumenter.attachListener(HALT_FILTER, new ExecutionEventListener() {
 
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                    // HALT: just before {@link #HALT_TAG}
-                    --unfinishedStepCount;
-                    if (TRACE) {
-                        strategyTrace("HALT BEFORE", "stack=%d,%d unfinished=%d", startStackDepth, currentStackDepth(), unfinishedStepCount);
+                public void onEnter(EventContext eventContext, VirtualFrame frame) {
+                    // Normal step, "before" halt location
+                    traceAction("BEGIN onEnter()", startStackDepth, unfinishedStepCount);
+                    if (--unfinishedStepCount <= 0) {
+                        halt(eventContext, frame.materialize(), HaltPosition.BEFORE);
                     }
-                    // Should run in fast path
-                    if (unfinishedStepCount <= 0) {
-                        halt(context.getInstrumentedNode(), frame.materialize(), true);
-                    }
-                    if (TRACE) {
-                        strategyTrace("RESUME BEFORE", "stack=%d,%d", startStackDepth, currentStackDepth());
-                    }
+                    traceAction("END onEnter()", startStackDepth, unfinishedStepCount);
                 }
 
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                public void onReturnValue(EventContext eventContext, VirtualFrame frame, Object result) {
                 }
 
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                public void onReturnExceptional(EventContext eventContext, VirtualFrame frame, Throwable exception) {
                 }
             });
-            // When stepping causes a return, expected behavior is to halt again at the call
             afterCallBinding = instrumenter.attachListener(CALL_FILTER, new ExecutionEventListener() {
 
-                public void onEnter(EventContext context, VirtualFrame frame) {
+                public void onEnter(EventContext eventContext, VirtualFrame frame) {
                 }
 
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                    haltAfter(context, frame.materialize());
+                public void onReturnValue(EventContext eventContext, VirtualFrame frame, Object result) {
+                    // Stepped out, "after" call location
+                    traceAction("BEGIN onReturnValue()", startStackDepth, unfinishedStepCount);
+                    if (computeStackDepth() < startStackDepth) {
+                        if (--unfinishedStepCount <= 0) {
+                            halt(eventContext, frame.materialize(), HaltPosition.AFTER);
+                        }
+                    }
+                    traceAction("END onReturnValue()", startStackDepth, unfinishedStepCount);
                 }
 
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                public void onReturnExceptional(EventContext eventContext, VirtualFrame frame, Throwable exception) {
+                    // Program exception, "after" call location
+                    traceAction("BEGIN onReturnExceptional()", startStackDepth, unfinishedStepCount);
+                    if (computeStackDepth() < startStackDepth) {
+                        if (--unfinishedStepCount <= 0) {
+                            halt(eventContext, frame.materialize(), HaltPosition.AFTER);
+                        }
+                    }
+                    traceAction("END onReturnExceptional()", startStackDepth, unfinishedStepCount);
                 }
             });
-        }
-
-        @TruffleBoundary
-        private void haltAfter(EventContext context, MaterializedFrame frame) {
-            --unfinishedStepCount;
-            final int currentStackDepth = currentStackDepth();
-            strategyTrace(null, "HALT AFTER stack=%d,%d unfinished=%d", startStackDepth, currentStackDepth, unfinishedStepCount);
-            if (currentStackDepth < startStackDepth) {
-                // HALT: just "stepped out"
-                if (unfinishedStepCount <= 0) {
-                    halt(context.getInstrumentedNode(), frame, false);
-                }
-            }
-            if (TRACE) {
-                strategyTrace("RESUME AFTER", "stack=%d,%d", startStackDepth, currentStackDepth());
-            }
         }
 
         @Override
         protected void unsetStrategy() {
+            traceAction("CLEAR ACTION", startStackDepth, unfinishedStepCount);
             beforeHaltBinding.dispose();
             afterCallBinding.dispose();
         }
@@ -527,7 +533,6 @@ public final class Debugger {
     private final class StepOut extends StepStrategy {
 
         private int unfinishedStepCount;
-        private int startStackDepth;
         private EventBinding<?> afterCallBinding;
 
         StepOut() {
@@ -544,37 +549,34 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int startStackDepth) {
-            this.startStackDepth = startStackDepth;
-            strategyTrace("STRATEGY", "repeat=%d stack=%d", unfinishedStepCount, startStackDepth);
+            traceAction("SET STRATEGY", startStackDepth, unfinishedStepCount);
             afterCallBinding = instrumenter.attachListener(CALL_FILTER, new ExecutionEventListener() {
 
-                public void onEnter(EventContext context, VirtualFrame frame) {
+                public void onEnter(EventContext eventContext, VirtualFrame frame) {
                 }
 
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                    haltAfter(context, frame.materialize());
+                public void onReturnValue(EventContext eventContext, VirtualFrame frame, Object result) {
+                    // Stepped out, "after" call location
+                    traceAction("BEGIN onReturnValue()", startStackDepth, unfinishedStepCount);
+                    if (computeStackDepth() < startStackDepth) {
+                        if (--unfinishedStepCount <= 0) {
+                            halt(eventContext, frame.materialize(), HaltPosition.AFTER);
+                        }
+                    }
+                    traceAction("END onReturnValue()", startStackDepth, unfinishedStepCount);
                 }
 
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                    haltAfter(context, frame.materialize());
+                public void onReturnExceptional(EventContext eventContext, VirtualFrame frame, Throwable exception) {
+                    // Program exception, "after" call location
+                    traceAction("BEGIN onReturnExceptional()", startStackDepth, unfinishedStepCount);
+                    if (computeStackDepth() < startStackDepth) {
+                        if (--unfinishedStepCount <= 0) {
+                            halt(eventContext, frame.materialize(), HaltPosition.AFTER);
+                        }
+                    }
+                    traceAction("END onReturnExceptional()", startStackDepth, unfinishedStepCount);
                 }
             });
-        }
-
-        @TruffleBoundary
-        private void haltAfter(EventContext context, MaterializedFrame frame) {
-            --unfinishedStepCount;
-            final int currentStackDepth = currentStackDepth();
-            strategyTrace(null, "HALT AFTER stack=%d,%d unfinished=%d", startStackDepth, currentStackDepth, unfinishedStepCount);
-            if (currentStackDepth < startStackDepth) {
-                // HALT: just "stepped out"
-                if (unfinishedStepCount <= 0) {
-                    halt(context.getInstrumentedNode(), frame, false);
-                }
-            }
-            if (TRACE) {
-                strategyTrace("RESUME AFTER", "stack=%d,%d", startStackDepth, currentStackDepth());
-            }
         }
 
         @Override
@@ -598,7 +600,6 @@ public final class Debugger {
      */
     private final class StepOver extends StepStrategy {
         private int unfinishedStepCount;
-        @SuppressWarnings("unused") private int startStackDepth;
         private EventBinding<?> beforeHaltBinding;
         private EventBinding<?> afterCallBinding;
 
@@ -608,62 +609,52 @@ public final class Debugger {
 
         @Override
         protected void setStrategy(final int startStackDepth) {
-            this.startStackDepth = startStackDepth;
-            strategyTrace("STRATEGY", "repeat=%d stack=%d", unfinishedStepCount, startStackDepth);
+            traceAction("SET STRATEGY", startStackDepth, unfinishedStepCount);
             beforeHaltBinding = instrumenter.attachListener(HALT_FILTER, new ExecutionEventListener() {
 
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                    final int currentStackDepth = currentStackDepth();
-                    if (currentStackDepth <= startStackDepth) {
-                        // HALT: stack depth unchanged or smaller; treat like StepInto
-                        --unfinishedStepCount;
-                        if (TRACE) {
-                            strategyTrace("HALT BEFORE", "stack=%d,%d unfinished=%d", startStackDepth, currentStackDepth(), unfinishedStepCount);
+                public void onEnter(EventContext eventContext, VirtualFrame frame) {
+                    // "before" halt location
+                    if (computeStackDepth() <= startStackDepth) {
+                        traceAction("BEGIN onEnter()", startStackDepth, unfinishedStepCount);
+                        // stack depth unchanged or smaller; treat like StepInto
+                        if (--unfinishedStepCount <= 0) {
+                            halt(eventContext, frame.materialize(), HaltPosition.BEFORE);
                         }
-                        // Test should run in fast path
-                        if (unfinishedStepCount <= 0) {
-                            halt(context.getInstrumentedNode(), frame.materialize(), true);
-                        }
+                        traceAction("END onEnter()", startStackDepth, unfinishedStepCount);
                     } else {
-                        // CONTINUE: Stack depth increased; don't count as a step
-                        if (TRACE) {
-                            strategyTrace("STEP INTO CALL", "stack=%d,%d unfinished=%d", startStackDepth, currentStackDepth(), unfinishedStepCount);
-                        }
+                        // Stack depth increased; don't count as a step
+                        traceAction("BEGIN onEnter() STEPPPED INTO CALL", startStackDepth, unfinishedStepCount);
                         // Stop treating like StepInto, start treating like StepOut
                         replaceStrategy(new StepOverNested(unfinishedStepCount, startStackDepth));
+                        traceAction("END onEnter() STEPPPED INTO CALL", startStackDepth, unfinishedStepCount);
                     }
-                    strategyTrace("RESUME BEFORE", "");
                 }
 
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                public void onReturnValue(EventContext eventContext, VirtualFrame frame, Object result) {
                 }
 
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                public void onReturnExceptional(EventContext eventContext, VirtualFrame frame, Throwable exception) {
                 }
 
             });
             afterCallBinding = instrumenter.attachListener(CALL_FILTER, new ExecutionEventListener() {
 
-                public void onEnter(EventContext context, VirtualFrame frame) {
+                public void onEnter(EventContext eventContext, VirtualFrame frame) {
                 }
 
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                    final int currentStackDepth = currentStackDepth();
-                    strategyTrace(null, "HALT AFTER stack=%d,%d unfinished=%d", startStackDepth, currentStackDepth, unfinishedStepCount);
-                    if (currentStackDepth < startStackDepth) {
-                        // HALT: just "stepped out"
+                public void onReturnValue(EventContext eventContext, VirtualFrame frame, Object result) {
+                    // Stepped out, "after" call location
+                    traceAction("BEGIN onReturnValue()", startStackDepth, unfinishedStepCount);
+                    if (computeStackDepth() < startStackDepth) {
                         --unfinishedStepCount;
                     }
-                    // Test should run in fast path
                     if (unfinishedStepCount <= 0) {
-                        halt(context.getInstrumentedNode(), frame.materialize(), false);
+                        halt(eventContext, frame.materialize(), HaltPosition.AFTER);
                     }
-                    if (TRACE) {
-                        strategyTrace("RESUME AFTER", "stack=%d,%d", startStackDepth, currentStackDepth());
-                    }
+                    traceAction("END onReturnValue()", startStackDepth, unfinishedStepCount);
                 }
 
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                public void onReturnExceptional(EventContext eventContext, VirtualFrame frame, Throwable exception) {
                 }
             });
 
@@ -675,68 +666,6 @@ public final class Debugger {
             afterCallBinding.dispose();
         }
     }
-
-    // beforeTagInstrument = instrumenter.attach(STEPPING_TAG, new
-    // StandardBeforeInstrumentListener() {
-    //
-    // @TruffleBoundary
-    // @Override
-    // public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
-    // final int currentStackDepth = currentStackDepth();
-    // if (currentStackDepth <= stackDepth) {
-    // // HALT: stack depth unchanged or smaller; treat like StepInto
-    // --unfinishedStepCount;
-    // if (TRACE) {
-    // strategyTrace("HALT BEFORE", "unfinished steps=%d stackDepth start=%d current=%d",
-    // unfinishedStepCount, stackDepth, currentStackDepth);
-    // }
-    // // Test should run in fast path
-    // if (unfinishedStepCount <= 0) {
-    // halt(node, vFrame.materialize(), true);
-    // }
-    // } else {
-    // // CONTINUE: Stack depth increased; don't count as a step
-    // strategyTrace("STEP INTO", "unfinished steps=%d stackDepth start=%d current=%d",
-    // unfinishedStepCount, stackDepth, currentStackDepth);
-    // // Stop treating like StepInto, start treating like StepOut
-    // replaceStrategy(new StepOverNested(unfinishedStepCount, stackDepth));
-    // }
-    // strategyTrace("RESUME BEFORE", "");
-    // }
-    // }, "Debugger StepOver");
-
-    // afterTagInstrument = instrumenter.attach(CALL_TAG, new StandardAfterInstrumentListener() {
-    //
-    // public void onReturnVoid(Probe probe, Node node, VirtualFrame vFrame) {
-    // doHalt(node, vFrame.materialize());
-    // }
-    //
-    // public void onReturnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
-    // doHalt(node, vFrame.materialize());
-    // }
-    //
-    // public void onReturnExceptional(Probe probe, Node node, VirtualFrame vFrame, Throwable
-    // exception)
-    // {
-    // doHalt(node, vFrame.materialize());
-    // }
-    //
-    // @TruffleBoundary
-    // private void doHalt(Node node, MaterializedFrame mFrame) {
-    // final int currentStackDepth = currentStackDepth();
-    // if (currentStackDepth < stackDepth) {
-    // // HALT: just "stepped out"
-    // --unfinishedStepCount;
-    // strategyTrace("HALT AFTER", "unfinished steps=%d stackDepth: start=%d current=%d",
-    // unfinishedStepCount, stackDepth, currentStackDepth);
-    // // Should run in fast path
-    // if (unfinishedStepCount <= 0) {
-    // halt(node, mFrame, false);
-    // }
-    // strategyTrace("RESUME AFTER", "");
-    // }
-    // }
-    // }, "Debugger StepOver");
 
     /**
      * Strategy: per-{@link #HALT_TAG} stepping, not into method calls, in effect while at increased
@@ -752,42 +681,37 @@ public final class Debugger {
      * </ul>
      */
     private final class StepOverNested extends StepStrategy {
-        private int unfinishedStepCount;
         private final int startStackDepth;
+        private int unfinishedStepCount;
         private EventBinding<?> beforeHaltBinding;
 
-        StepOverNested(int stepCount, final int startStackDepth) {
-            this.unfinishedStepCount = stepCount;
+        StepOverNested(int stepCount, int startStackDepth) {
             this.startStackDepth = startStackDepth;
+            this.unfinishedStepCount = stepCount;
         }
 
         @Override
         protected void setStrategy(final int stackDepth) {
-            strategyTrace("STRATEGY", "repeat=%d stack=%d", unfinishedStepCount, startStackDepth);
+            traceAction("SET STRATEGY", startStackDepth, unfinishedStepCount);
             beforeHaltBinding = instrumenter.attachListener(HALT_FILTER, new ExecutionEventListener() {
 
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                    final int currentStackDepth = currentStackDepth();
-                    if (currentStackDepth <= startStackDepth) {
+                public void onEnter(EventContext eventContext, VirtualFrame frame) {
+                    // Normal step, "before" halt location
+                    traceAction("BEGIN onEnter()", startStackDepth, unfinishedStepCount);
+                    if (computeStackDepth() <= startStackDepth) {
                         // At original step depth (or smaller) after being nested
-                        --unfinishedStepCount;
-                        if (TRACE) {
-                            strategyTrace("HALT BEFORE", "stack=%d,%d unfinished=%d", startStackDepth, currentStackDepth(), unfinishedStepCount);
-                        }
-                        if (unfinishedStepCount <= 0) {
-                            halt(context.getInstrumentedNode(), frame.materialize(), true);
+                        if (--unfinishedStepCount <= 0) {
+                            halt(eventContext, frame.materialize(), HaltPosition.BEFORE);
                         }
                         // TODO (mlvdv) fixme for multiple steps
                     }
-                    if (TRACE) {
-                        strategyTrace("RESUME BEFORE", "stack=%d,%d", startStackDepth, currentStackDepth());
-                    }
+                    traceAction("END onEnter()", startStackDepth, unfinishedStepCount);
                 }
 
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                public void onReturnValue(EventContext eventContext, VirtualFrame frame, Object result) {
                 }
 
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                public void onReturnExceptional(EventContext eventContext, VirtualFrame frame, Throwable exception) {
                 }
 
             });
@@ -799,26 +723,6 @@ public final class Debugger {
         }
     }
 
-    // beforeTagInstrument = instrumenter.attach(STEPPING_TAG, new
-    // StandardBeforeInstrumentListener() {
-    // @TruffleBoundary
-    // @Override
-    // public void onEnter(Probe probe, Node node, VirtualFrame vFrame) {
-    // final int currentStackDepth = currentStackDepth();
-    // if (currentStackDepth <= startStackDepth) {
-    // // At original step depth (or smaller) after being nested
-    // --unfinishedStepCount;
-    // strategyTrace("HALT AFTER", "unfinished steps=%d stackDepth start=%d current=%d",
-    // unfinishedStepCount, stackDepth, currentStackDepth);
-    // if (unfinishedStepCount <= 0) {
-    // halt(node, vFrame.materialize(), false);
-    // }
-    // // TODO (mlvdv) fixme for multiple steps
-    // strategyTrace("RESUME BEFORE", "");
-    // }
-    // }
-    // }, "Debugger StepOverNested");
-
     /**
      * Information and debugging state for a single Truffle execution (which make take place over
      * one or more suspended executions). This holds interaction state, for example what is
@@ -826,6 +730,8 @@ public final class Debugger {
      * "continuing"). When not running, this holds a cache of the Truffle stack for this particular
      * execution, effectively hiding the Truffle stack for any currently suspended executions (down
      * the stack).
+     * <p>
+     * Each instance is single-use.
      */
     private final class DebugExecutionContext {
 
@@ -838,27 +744,22 @@ public final class Debugger {
         private final int contextStackBase;  // Where the stack for this execution starts
         private final List<String> warnings = new ArrayList<>();
 
+        private boolean disposed;
         private boolean running;
 
-        /**
-         * The stepping strategy currently configured in the debugger.
-         */
+        /** Currently configured strategy. */
         private StepStrategy strategy;
 
-        /**
-         * Where halted; null if running.
-         */
-        private Node haltedNode;
+        /** Static context where halted; null if running. */
+        private EventContext haltedEventContext;
 
-        /**
-         * Where halted; null if running.
-         */
+        /** Frame where halted; null if running. */
         private MaterializedFrame haltedFrame;
 
-        /**
-         * Subset of the Truffle stack corresponding to the current execution, not including the
-         * current frame.
-         */
+        /** Where halted relative to the instrumented node. */
+        private HaltPosition haltedPosition;
+
+        /** Subset of the Truffle stack corresponding to the current execution. */
         private List<FrameInstance> contextStack;
 
         private DebugExecutionContext(Source executionSource, DebugExecutionContext previousContext) {
@@ -871,72 +772,77 @@ public final class Debugger {
             this.level = previousContext == null ? 0 : previousContext.level + 1;
 
             // "Base" is the number of stack frames for all nested (halted) executions.
-            this.contextStackBase = depth == -1 ? currentStackDepth() : depth;
+            this.contextStackBase = depth == -1 ? computeStackDepth() : depth;
             this.running = true;
-            contextTrace("NEW CONTEXT");
+            if (TRACE) {
+                trace("NEW DEBUG CONTEXT level=" + level);
+            }
         }
 
         /**
-         * Sets up a strategy for the next resumption of execution.
+         * Sets up the action for the next resumption of execution.
          *
          * @param stepStrategy
          */
-        void setStrategy(StepStrategy stepStrategy) {
-            setStrategy(currentStackDepth(), stepStrategy);
+        private void setAction(StepStrategy stepStrategy) {
+            setAction(computeStackDepth(), stepStrategy);
         }
 
-        void setStrategy(int depth, StepStrategy stepStrategy) {
+        private void setAction(int depth, StepStrategy newStrategy) {
+            if (disposed) {
+                throw new IllegalStateException("DebugExecutionContexts are single-use.");
+            }
+            assert newStrategy != null;
             if (this.strategy == null) {
-                this.strategy = stepStrategy;
-                this.strategy.enable(this, depth);
-                if (TRACE) {
-                    contextTrace("SET MODE <none>-->" + stepStrategy.getName());
-                }
+                strategy = newStrategy;
+                strategy.enable(this, depth);
+
             } else {
                 strategy.disable();
-                strategy = stepStrategy;
-                strategy.enable(this, currentStackDepth());
-                contextTrace("SWITCH MODE %s-->%s", strategy.getName(), stepStrategy.getName());
+                strategy = newStrategy;
+                strategy.enable(this, computeStackDepth());
             }
         }
 
-        void clearStrategy() {
+        private void clearAction() {
             if (strategy != null) {
-                final StepStrategy oldStrategy = strategy;
                 strategy.disable();
                 strategy = null;
-                contextTrace("CLEAR MODE %s--><none>", oldStrategy.getName());
+
             }
         }
 
         /**
-         * Handle a program halt, caused by a breakpoint, stepping strategy, or other cause.
+         * Handle a program halt, caused by a breakpoint, stepping action, or other cause.
          *
          * @param astNode the guest language node at which execution is halted
          * @param mFrame the current execution frame where execution is halted
-         * @param before {@code true} if halted <em>before</em> the node, else <em>after</em>.
+         * @param haltPosition execution position relative to the instrumented node where halted
+         * @param haltReason what caused the halt
          */
         @TruffleBoundary
-        void halt(Node astNode, MaterializedFrame mFrame, boolean before, String haltReason) {
+        private void halt(EventContext eventContext, MaterializedFrame mFrame, HaltPosition haltPosition, String haltReason) {
+            if (disposed) {
+                throw new IllegalStateException("DebugExecutionContexts are single-use.");
+            }
             assert running;
-            assert haltedNode == null;
+            assert haltedEventContext == null;
             assert haltedFrame == null;
 
-            haltedNode = astNode;
+            haltedEventContext = eventContext;
             haltedFrame = mFrame;
+            haltedPosition = haltPosition;
             running = false;
 
-            clearStrategy();
+            clearAction();
 
             // Clean up, just in cased the one-shot breakpoints got confused
             breakpoints.disposeOneShots();
 
-            // Includes the "caller" frame (not iterated)
-            final int contextStackDepth = (currentStackDepth() - contextStackBase) + 1;
-
             final List<String> recentWarnings = new ArrayList<>(warnings);
             warnings.clear();
 
+            final int contextStackDepth = (computeStackDepth() - contextStackBase) + 1;
             final List<FrameInstance> frames = new ArrayList<>();
             // Map the Truffle stack for this execution, ignore nested executions
             Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
@@ -946,7 +852,7 @@ public final class Debugger {
                 public FrameInstance visitFrame(FrameInstance frameInstance) {
                     if (stackIndex < contextStackDepth) {
                         if (TRACE && frameInstance.getCallNode() == null) {
-                            contextTrace("frame %d null callNode: %s", stackIndex, frameInstance.getFrame(FrameAccess.READ_ONLY, true));
+                            trace("frame %d null callNode: %s", stackIndex, frameInstance.getFrame(FrameAccess.READ_ONLY, true));
                         }
                         frames.add(frameInstance);
                         stackIndex++;
@@ -958,47 +864,57 @@ public final class Debugger {
             contextStack = Collections.unmodifiableList(frames);
 
             if (TRACE) {
-                final String reason = haltReason == null ? "" : haltReason + "";
-                final String where = before ? "BEFORE" : "AFTER";
-                contextTrace("HALT %s : (%s) stack base=%d", where, reason, contextStackBase);
+                final String reason = haltReason == null ? "" : haltReason;
+                trace("HALT %s: (%s) stack base=%d", haltedPosition.toString(), reason, contextStackBase);
             }
 
             try {
                 // Pass control to the debug client with current execution suspended
-                SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedNode, haltedFrame, contextStack, recentWarnings);
+                SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedFrame, contextStack, recentWarnings);
                 ACCESSOR.dispatchEvent(engine, event);
                 if (event.isKillPrepared()) {
-                    contextTrace("KILL");
+                    trace("KILL");
                     throw new KillException();
                 }
                 // Debug client finished normally, execution resumes
                 // Presume that the client has set a new strategy (or default to Continue)
                 running = true;
+                if (TRACE) {
+                    final String reason = haltReason == null ? "" : haltReason;
+                    trace("RESUME %s : (%s) stack base=%d", haltedPosition.toString(), reason, contextStackBase);
+                }
             } finally {
-                haltedNode = null;
+                haltedEventContext = null;
                 haltedFrame = null;
+                haltedPosition = null;
             }
-
         }
 
-        void logWarning(String warning) {
+        private void dispose() {
+            breakpoints.disposeOneShots();
+            clearAction();
+            disposed = true;
+            if (TRACE) {
+                trace("DISPOSE DEBUG CONTEXT level=" + level);
+            }
+        }
+
+        private void logWarning(String warning) {
             warnings.add(warning);
         }
 
-        /*
-         * private void printStack(PrintStream stream) { getFrames(); if (frames == null) {
-         * stream.println("<empty stack>"); } else { final Visualizer visualizer =
-         * provider.getVisualizer(); for (FrameDebugDescription frameDesc : frames) { final
-         * StringBuilder sb = new StringBuilder("    frame " + Integer.toString(frameDesc.index()));
-         * sb.append(":at " + visualizer.displaySourceLocation(frameDesc.node())); sb.append(":in '"
-         * + visualizer.displayMethodName(frameDesc.node()) + "'"); stream.println(sb.toString()); }
-         * } }
-         */
-
-        void contextTrace(String format, Object... args) {
+        private void trace(String format, Object... args) {
             if (TRACE) {
-                final String srcName = (source != null) ? source.getName() : "no source";
-                Debugger.trace("<%d> %s (%s)", level, String.format(format, args), srcName);
+                String location = "";
+                if (haltedEventContext != null && haltedEventContext.getInstrumentedNode().getSourceSection() != null) {
+                    location = haltedEventContext.getInstrumentedNode().getSourceSection().getShortDescription();
+                } else if (source != null) {
+                    location = source.getShortName();
+                } else {
+                    location = "no source";
+                }
+                final String message = String.format(format, args);
+                Debugger.OUT.println(String.format("%s<%d>: %s [%s]", Debugger.TRACE_PREFIX, level, message, location));
             }
         }
     }
@@ -1009,7 +925,7 @@ public final class Debugger {
      * which the standard iterator does not count: {@code 0} if no executions.
      */
     @TruffleBoundary
-    private static int currentStackDepth() {
+    private static int computeStackDepth() {
         final int[] count = {0};
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
             @Override
@@ -1019,10 +935,9 @@ public final class Debugger {
             }
         });
         return count[0] == 0 ? 0 : count[0] + 1;
-
     }
 
-    void executionStarted(int depth, Source source) {
+    private void executionStarted(int depth, Source source) {
         Source execSource = source;
         if (execSource == null) {
             execSource = lastSource;
@@ -1030,32 +945,31 @@ public final class Debugger {
             lastSource = execSource;
         }
         // Push a new execution context onto stack
-        debugContext = new DebugExecutionContext(execSource, debugContext, depth);
+        currentDebugContext = new DebugExecutionContext(execSource, currentDebugContext, depth);
         prepareContinue(depth);
-        debugContext.contextTrace("START EXEC ");
+        currentDebugContext.trace("BEGIN EXECUTION");
     }
 
-    void executionEnded() {
-        breakpoints.disposeOneShots();
-        debugContext.clearStrategy();
-        debugContext.contextTrace("END EXEC ");
+    private void executionEnded() {
+        currentDebugContext.trace("END EXECUTION");
+        currentDebugContext.dispose();
         // Pop the stack of execution contexts.
-        debugContext = debugContext.predecessor;
+        currentDebugContext = currentDebugContext.predecessor;
     }
 
     /**
      * Evaluates a snippet of code in a halted execution context.
      *
-     * @param ev
-     * @param code
-     * @param frameInstance
+     * @param ev event notification where execution is halted
+     * @param code text of the code to be executed
+     * @param frameInstance frame where execution is halted
      * @return
      * @throws IOException
      */
     Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
         try {
             if (frameInstance == null) {
-                return ACCESSOR.evalInContext(engine, ev, code, debugContext.haltedNode, debugContext.haltedFrame);
+                return ACCESSOR.evalInContext(engine, ev, code, currentDebugContext.haltedEventContext.getInstrumentedNode(), currentDebugContext.haltedFrame);
             } else {
                 return ACCESSOR.evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
             }
