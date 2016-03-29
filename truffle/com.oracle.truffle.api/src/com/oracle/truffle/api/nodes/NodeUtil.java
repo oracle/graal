@@ -46,13 +46,23 @@ import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Utility class that manages the special access methods for node instances.
+ * 
+ * @since 0.8 or earlier
  */
 public final class NodeUtil {
+    /**
+     * @deprecated accidentally public - don't use
+     * @since 0.8 or earlier
+     */
+    @Deprecated
+    public NodeUtil() {
+    }
 
     static Iterator<Node> makeIterator(Node node) {
         return node.getNodeClass().makeIterator(node);
     }
 
+    /** @since 0.8 or earlier */
     public static Iterator<Node> makeRecursiveIterator(Node node) {
         return new RecursiveNodeIterator(node);
     }
@@ -121,6 +131,7 @@ public final class NodeUtil {
         }
     }
 
+    /** @since 0.8 or earlier */
     @SuppressWarnings("unchecked")
     public static <T extends Node> T cloneNode(T orig) {
         return (T) orig.deepCopy();
@@ -165,6 +176,7 @@ public final class NodeUtil {
         return clone;
     }
 
+    /** @since 0.8 or earlier */
     public static List<Node> findNodeChildren(Node node) {
         CompilerAsserts.neverPartOfCompilation("do not call Node.findNodeChildren from compiled code");
         List<Node> nodes = new ArrayList<>();
@@ -190,11 +202,13 @@ public final class NodeUtil {
         return nodes;
     }
 
+    /** @since 0.8 or earlier */
     public static <T extends Node> T nonAtomicReplace(Node oldNode, T newNode, CharSequence reason) {
         oldNode.replaceHelper(newNode, reason);
         return newNode;
     }
 
+    /** @since 0.8 or earlier */
     public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
         return replaceChild(parent, oldChild, newChild, false);
     }
@@ -260,6 +274,7 @@ public final class NodeUtil {
      * Finds the field in a parent node, if any, that holds a specified child node.
      *
      * @return the field (possibly an array) holding the child, {@code null} if not found.
+     * @since 0.8 or earlier
      */
     public static NodeFieldAccessor findChildField(Node parent, Node child) {
         assert child != null;
@@ -287,6 +302,8 @@ public final class NodeUtil {
 
     /**
      * Determines whether a proposed child replacement would be safe: structurally and type.
+     * 
+     * @since 0.8 or earlier
      */
     public static boolean isReplacementSafe(Node parent, Node oldChild, Node newChild) {
         assert newChild != null;
@@ -310,6 +327,7 @@ public final class NodeUtil {
      * Executes a closure for every non-null child of the parent node.
      *
      * @return {@code true} if all children were visited, {@code false} otherwise
+     * @since 0.8 or earlier
      */
     public static boolean forEachChild(Node parent, NodeVisitor visitor) {
         CompilerAsserts.neverPartOfCompilation("do not iterate over Node children from compiled code");
@@ -381,6 +399,7 @@ public final class NodeUtil {
         return true;
     }
 
+    /** @since 0.8 or earlier */
     public static <T> T[] concat(T[] first, T[] second) {
         T[] result = Arrays.copyOf(first, first.length + second.length);
         System.arraycopy(second, 0, result, first.length, second.length);
@@ -390,6 +409,8 @@ public final class NodeUtil {
     /**
      * Get the nth parent of a node, where the 0th parent is the node itself. Returns null if there
      * are less than n ancestors.
+     * 
+     * @since 0.8 or earlier
      */
     public static Node getNthParent(Node node, int n) {
         Node parent = node;
@@ -405,7 +426,11 @@ public final class NodeUtil {
         return parent;
     }
 
-    /** find annotation in class/interface hierarchy. */
+    /**
+     * Find annotation in class/interface hierarchy.
+     * 
+     * @since 0.8 or earlier
+     */
     public static <T extends Annotation> T findAnnotation(Class<?> clazz, Class<T> annotationClass) {
         if (clazz.getAnnotation(annotationClass) != null) {
             return clazz.getAnnotation(annotationClass);
@@ -424,6 +449,7 @@ public final class NodeUtil {
         return null;
     }
 
+    /** @since 0.8 or earlier */
     public static <T> T findParent(Node start, Class<T> clazz) {
         Node parent = start.getParent();
         if (parent == null) {
@@ -435,6 +461,7 @@ public final class NodeUtil {
         }
     }
 
+    /** @since 0.8 or earlier */
     public static <T> List<T> findAllParents(Node start, Class<T> clazz) {
         List<T> parents = new ArrayList<>();
         T parent = findParent(start, clazz);
@@ -445,6 +472,7 @@ public final class NodeUtil {
         return parents;
     }
 
+    /** @since 0.8 or earlier */
     public static List<Node> collectNodes(Node parent, Node child) {
         List<Node> nodes = new ArrayList<>();
         Node current = child;
@@ -458,6 +486,7 @@ public final class NodeUtil {
         throw new IllegalArgumentException("Node " + parent + " is not a parent of " + child + ".");
     }
 
+    /** @since 0.8 or earlier */
     public static <T> T findFirstNodeInstance(Node root, Class<T> clazz) {
         if (clazz.isInstance(root)) {
             return clazz.cast(root);
@@ -471,6 +500,7 @@ public final class NodeUtil {
         return null;
     }
 
+    /** @since 0.8 or earlier */
     public static <T> List<T> findAllNodeInstances(final Node root, final Class<T> clazz) {
         final List<T> nodeList = new ArrayList<>();
         root.accept(new NodeVisitor() {
@@ -484,18 +514,21 @@ public final class NodeUtil {
         return nodeList;
     }
 
+    /** @since 0.8 or earlier */
     public static int countNodes(Node root) {
         return countNodes(root, NodeCountFilter.NO_FILTER);
     }
 
+    /** @since 0.8 or earlier */
     public static int countNodes(Node root, NodeCountFilter filter) {
         NodeCounter counter = new NodeCounter(filter);
         root.accept(counter);
         return counter.count;
     }
 
+    /** @since 0.8 or earlier */
     public interface NodeCountFilter {
-
+        /** @since 0.8 or earlier */
         NodeCountFilter NO_FILTER = new NodeCountFilter() {
 
             public boolean isCounted(Node node) {
@@ -503,16 +536,19 @@ public final class NodeUtil {
             }
         };
 
+        /** @since 0.8 or earlier */
         boolean isCounted(Node node);
 
     }
 
+    /** @since 0.8 or earlier */
     public static String printCompactTreeToString(Node node) {
         StringWriter out = new StringWriter();
         printCompactTree(new PrintWriter(out), null, node, 1);
         return out.toString();
     }
 
+    /** @since 0.8 or earlier */
     public static void printCompactTree(OutputStream out, Node node) {
         printCompactTree(new PrintWriter(out), null, node, 1);
     }
@@ -538,16 +574,19 @@ public final class NodeUtil {
         p.flush();
     }
 
+    /** @since 0.8 or earlier */
     public static String printSourceAttributionTree(Node node) {
         StringWriter out = new StringWriter();
         printSourceAttributionTree(new PrintWriter(out), null, node, 1);
         return out.toString();
     }
 
+    /** @since 0.8 or earlier */
     public static void printSourceAttributionTree(OutputStream out, Node node) {
         printSourceAttributionTree(new PrintWriter(out), null, node, 1);
     }
 
+    /** @since 0.8 or earlier */
     public static void printSourceAttributionTree(PrintWriter out, Node node) {
         printSourceAttributionTree(out, null, node, 1);
     }
@@ -615,6 +654,8 @@ public final class NodeUtil {
      * <li>"[]" if the node supports tags, but none are present; and</li>
      * <li>"" if the node does not support tags.</li>
      * </ul>
+     * 
+     * @since 0.8 or earlier
      */
     public static String printSyntaxTags(final Object node) {
         if ((node instanceof Node) && ((Node) node).getSourceSection() != null) {
@@ -629,17 +670,20 @@ public final class NodeUtil {
      *
      * @param out the stream to print to.
      * @param node the root node to write
+     * @since 0.8 or earlier
      */
     public static void printTree(OutputStream out, Node node) {
         printTree(new PrintWriter(out), node);
     }
 
+    /** @since 0.8 or earlier */
     public static String printTreeToString(Node node) {
         StringWriter out = new StringWriter();
         printTree(new PrintWriter(out), node);
         return out.toString();
     }
 
+    /** @since 0.8 or earlier */
     public static void printTree(PrintWriter p, Node node) {
         printTree(p, node, 1);
         p.println();
@@ -734,6 +778,7 @@ public final class NodeUtil {
         return "";
     }
 
+    /** @since 0.8 or earlier */
     public static boolean verify(Node root) {
         Iterable<Node> children = root.getChildren();
         for (Node child : children) {

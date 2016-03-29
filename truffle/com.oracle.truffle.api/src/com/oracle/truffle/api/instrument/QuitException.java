@@ -28,9 +28,14 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 
 /**
  * Controls breaking out of all executions and ending Truffle execution.
+ * 
+ * @since 0.8 or earlier
  */
 @Deprecated
 public final class QuitException extends ControlFlowException {
-
     private static final long serialVersionUID = -4301115629772778413L;
+
+    /** @since 0.8 or earlier */
+    public QuitException() {
+    }
 }

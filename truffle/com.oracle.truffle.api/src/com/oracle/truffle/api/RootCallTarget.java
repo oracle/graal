@@ -29,8 +29,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * Represents the target of a call to a {@link RootNode}, i.e., to another tree of nodes. Instances
  * of this class can be created using {@link TruffleRuntime#createCallTarget(RootNode)}.
+ * 
+ * @since 0.8 or earlier
  */
 public interface RootCallTarget extends CallTarget {
-
+    /** @since 0.8 or earlier */
     RootNode getRootNode();
 }

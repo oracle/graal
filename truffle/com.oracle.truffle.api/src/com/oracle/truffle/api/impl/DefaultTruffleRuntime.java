@@ -24,12 +24,19 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.WeakHashMap;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -41,11 +48,6 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.WeakHashMap;
 
 /**
  * Default implementation of the Truffle runtime if the virtual machine does not provide a better
@@ -58,8 +60,13 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     private final ThreadLocal<LinkedList<FrameInstance>> stackTraces = new ThreadLocal<>();
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
+    private final DefaultTVMCI tvmci = new DefaultTVMCI();
 
     public DefaultTruffleRuntime() {
+    }
+
+    public DefaultTVMCI getTvmci() {
+        return tvmci;
     }
 
     @Override
@@ -156,12 +163,30 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         return result;
     }
 
-    void pushFrame(FrameInstance frame) {
-        getThreadLocalStackTrace().addFirst(frame);
+    void pushFrame(VirtualFrame frame, CallTarget target) {
+        LinkedList<FrameInstance> threadLocalStackTrace = getThreadLocalStackTrace();
+        threadLocalStackTrace.addFirst(new DefaultFrameInstance(frame, target, null));
+    }
+
+    void pushFrame(VirtualFrame frame, CallTarget target, Node parentCallNode) {
+        LinkedList<FrameInstance> threadLocalStackTrace = getThreadLocalStackTrace();
+        // we need to ensure that frame instances are immutable so we need to recreate the parent
+        // frame
+        if (threadLocalStackTrace.size() > 0) {
+            DefaultFrameInstance oldInstance = (DefaultFrameInstance) threadLocalStackTrace.removeFirst();
+            threadLocalStackTrace.addFirst(new DefaultFrameInstance(oldInstance.getFrame(), oldInstance.getCallTarget(), parentCallNode));
+        }
+        threadLocalStackTrace.addFirst(new DefaultFrameInstance(frame, target, null));
     }
 
     void popFrame() {
-        getThreadLocalStackTrace().removeFirst();
+        LinkedList<FrameInstance> threadLocalStackTrace = getThreadLocalStackTrace();
+        threadLocalStackTrace.removeFirst();
+
+        if (threadLocalStackTrace.size() > 0) {
+            DefaultFrameInstance parent = (DefaultFrameInstance) threadLocalStackTrace.removeFirst();
+            threadLocalStackTrace.addFirst(new DefaultFrameInstance(parent.getFrame(), parent.getCallTarget(), null));
+        }
     }
 
     public <T> T getCapability(Class<T> capability) {
@@ -180,5 +205,45 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     public boolean isProfilingEnabled() {
         return false;
+    }
+
+    private static class DefaultFrameInstance implements FrameInstance {
+
+        private final CallTarget target;
+        private final VirtualFrame frame;
+        private final Node callNode;
+
+        DefaultFrameInstance(VirtualFrame frame, CallTarget target, Node callNode) {
+            this.target = target;
+            this.frame = frame;
+            this.callNode = callNode;
+        }
+
+        public final Frame getFrame(FrameAccess access, boolean slowPath) {
+            if (access == FrameAccess.NONE) {
+                return null;
+            }
+            if (access == FrameAccess.MATERIALIZE) {
+                return frame.materialize();
+            }
+            return frame;
+        }
+
+        final VirtualFrame getFrame() {
+            return frame;
+        }
+
+        public final boolean isVirtualFrame() {
+            return false;
+        }
+
+        public final CallTarget getCallTarget() {
+            return target;
+        }
+
+        public Node getCallNode() {
+            return callNode;
+        }
+
     }
 }

@@ -31,6 +31,8 @@ import java.util.Iterator;
 /**
  * Information about a {@link Node} class. A single instance of this class is allocated for every
  * subclass of {@link Node} that is used.
+ * 
+ * @since 0.8 or earlier
  */
 public abstract class NodeClass {
     private static final ClassValue<NodeClass> nodeClasses = new ClassValue<NodeClass>() {
@@ -46,30 +48,40 @@ public abstract class NodeClass {
         }
     };
 
+    /** @since 0.8 or earlier */
     public static NodeClass get(Class<? extends Node> clazz) {
         return nodeClasses.get(clazz);
     }
 
+    /** @since 0.8 or earlier */
     public static NodeClass get(Node node) {
         return node.getNodeClass();
     }
 
+    /** @since 0.8 or earlier */
     @SuppressWarnings("unused")
     public NodeClass(Class<? extends Node> clazz) {
     }
 
+    /** @since 0.8 or earlier */
     public abstract NodeFieldAccessor getNodeClassField();
 
+    /** @since 0.8 or earlier */
     public abstract NodeFieldAccessor[] getCloneableFields();
 
+    /** @since 0.8 or earlier */
     public abstract NodeFieldAccessor[] getFields();
 
+    /** @since 0.8 or earlier */
     public abstract NodeFieldAccessor getParentField();
 
+    /** @since 0.8 or earlier */
     public abstract NodeFieldAccessor[] getChildFields();
 
+    /** @since 0.8 or earlier */
     public abstract NodeFieldAccessor[] getChildrenFields();
 
+    /** @since 0.8 or earlier */
     public abstract Iterator<Node> makeIterator(Node node);
 
     /**
@@ -77,6 +89,7 @@ public abstract class NodeClass {
      * created for}.
      * 
      * @return the clazz of node this <code>NodeClass</code> describes
+     * @since 0.8 or earlier
      */
     public abstract Class<? extends Node> getType();
 }

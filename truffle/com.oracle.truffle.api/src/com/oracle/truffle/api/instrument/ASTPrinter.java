@@ -32,6 +32,8 @@ import java.io.PrintWriter;
  * details chosen to be presented.
  * <p>
  * <strong>WARNING:</strong> this interface is under development and will change substantially.
+ * 
+ * @since 0.8 or earlier
  */
 public interface ASTPrinter {
 
@@ -42,6 +44,7 @@ public interface ASTPrinter {
      * @param node the root node of the display.
      * @param maxDepth the maximum number of levels to print below the root
      * @param markNode a node to mark with a textual arrow prefix, if present.
+     * @since 0.8 or earlier
      */
     void printTree(PrintWriter p, Node node, int maxDepth, Node markNode);
 
@@ -51,6 +54,7 @@ public interface ASTPrinter {
      * @param node the root node of the display.
      * @param maxDepth the maximum number of levels to print below the root
      * @param markNode a node to mark with a textual arrow prefix, if present.
+     * @since 0.8 or earlier
      */
     String printTreeToString(Node node, int maxDepth, Node markNode);
 
@@ -59,12 +63,15 @@ public interface ASTPrinter {
      *
      * @param node the root node of the display.
      * @param maxDepth the maximum number of levels to print below the root
+     * @since 0.8 or earlier
      */
     String printTreeToString(Node node, int maxDepth);
 
     /**
      * Creates a textual display describing a single (non-wrapper) node, including instrumentation
      * status: if Probed, and any tags.
+     * 
+     * @since 0.8 or earlier
      */
     String printNodeWithInstrumentation(Node node);
 }

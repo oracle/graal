@@ -33,23 +33,35 @@ import java.util.Map;
 
 /**
  * Helper function that allows to dump the AST during creation to a JSON format.
+ * 
+ * @since 0.8 or earlier
  */
 public class JSONHelper {
+    /**
+     * @deprecated accidentally public - to be removed.
+     * @since 0.8 or earlier
+     */
+    @Deprecated
+    public JSONHelper() {
+    }
 
     private static StringBuilder AstJsonDumpBuilder = new StringBuilder();
 
+    /** @since 0.8 or earlier */
     public static void dumpNewChild(Node parentNode, Node childNode) {
         if (AstJsonDumpBuilder != null) {
             AstJsonDumpBuilder.append("{ \"action\": \"insertNode\", \"parentId\": \"" + getID(parentNode) + "\", \"newId\": \"" + getID(childNode) + "\" },\n");
         }
     }
 
+    /** @since 0.8 or earlier */
     public static void dumpReplaceChild(Node oldNode, Node newNode, CharSequence reason) {
         if (AstJsonDumpBuilder != null) {
             AstJsonDumpBuilder.append("{ \"action\": \"replaceNode\", \"oldId\": \"" + getID(oldNode) + "\", \"newId\": \"" + getID(newNode) + "\", \"reason\": " + quote(reason) + " },\n");
         }
     }
 
+    /** @since 0.8 or earlier */
     public static void dumpNewNode(Node newNode) {
         if (AstJsonDumpBuilder != null) {
             AstJsonDumpBuilder.append("{ \"action\": \"createNode\", \"newId\": \"" + getID(newNode) + "\", \"type\": \"" + getType(newNode) + "\", \"description\": \"" + newNode.getDescription() +
@@ -66,6 +78,7 @@ public class JSONHelper {
         }
     }
 
+    /** @since 0.8 or earlier */
     public static String getResult() {
         return AstJsonDumpBuilder.toString();
     }
@@ -120,19 +133,34 @@ public class JSONHelper {
         return builder.toString();
     }
 
+    /** @since 0.8 or earlier */
     public static void restart() {
         AstJsonDumpBuilder = new StringBuilder();
     }
 
+    /** @since 0.8 or earlier */
     public static JSONObjectBuilder object() {
         return new JSONObjectBuilder();
     }
 
+    /** @since 0.8 or earlier */
     public static JSONArrayBuilder array() {
         return new JSONArrayBuilder();
     }
 
+    /**
+     * @since 0.8 or earlier
+     */
     public abstract static class JSONStringBuilder {
+        /**
+         * @deprecated accidentally public - don't use
+         * @since 0.8 or earlier
+         */
+        @Deprecated
+        protected JSONStringBuilder() {
+        }
+
+        /** @since 0.8 or earlier */
         @Override
         public final String toString() {
             StringBuilder sb = new StringBuilder();
@@ -140,8 +168,10 @@ public class JSONHelper {
             return sb.toString();
         }
 
+        /** @since 0.8 or earlier */
         protected abstract void appendTo(StringBuilder sb);
 
+        /** @since 0.8 or earlier */
         protected static void appendValue(StringBuilder sb, Object value) {
             if (value instanceof JSONStringBuilder) {
                 ((JSONStringBuilder) value).appendTo(sb);
@@ -153,32 +183,38 @@ public class JSONHelper {
         }
     }
 
+    /** @since 0.8 or earlier */
     public static final class JSONObjectBuilder extends JSONStringBuilder {
         private final Map<String, Object> contents = new LinkedHashMap<>();
 
         private JSONObjectBuilder() {
         }
 
+        /** @since 0.8 or earlier */
         public JSONObjectBuilder add(String key, String value) {
             contents.put(key, value);
             return this;
         }
 
+        /** @since 0.8 or earlier */
         public JSONObjectBuilder add(String key, Number value) {
             contents.put(key, value);
             return this;
         }
 
+        /** @since 0.8 or earlier */
         public JSONObjectBuilder add(String key, Boolean value) {
             contents.put(key, value);
             return this;
         }
 
+        /** @since 0.8 or earlier */
         public JSONObjectBuilder add(String key, JSONStringBuilder value) {
             contents.put(key, value);
             return this;
         }
 
+        /** @since 0.8 or earlier */
         @Override
         protected void appendTo(StringBuilder sb) {
             sb.append("{");
@@ -196,32 +232,38 @@ public class JSONHelper {
         }
     }
 
+    /** @since 0.8 or earlier */
     public static final class JSONArrayBuilder extends JSONStringBuilder {
         private final List<Object> contents = new ArrayList<>();
 
         private JSONArrayBuilder() {
         }
 
+        /** @since 0.8 or earlier */
         public JSONArrayBuilder add(String value) {
             contents.add(value);
             return this;
         }
 
+        /** @since 0.8 or earlier */
         public JSONArrayBuilder add(Number value) {
             contents.add(value);
             return this;
         }
 
+        /** @since 0.8 or earlier */
         public JSONArrayBuilder add(Boolean value) {
             contents.add(value);
             return this;
         }
 
+        /** @since 0.8 or earlier */
         public JSONArrayBuilder add(JSONStringBuilder value) {
             contents.add(value);
             return this;
         }
 
+        /** @since 0.8 or earlier */
         @Override
         protected void appendTo(StringBuilder sb) {
             sb.append("[");

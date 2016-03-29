@@ -24,6 +24,7 @@ package com.oracle.truffle.dsl.processor;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,9 +41,11 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.NestingKind;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -61,6 +64,7 @@ public final class InteropProcessor extends AbstractProcessor {
 
     private static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{Message.READ, Message.WRITE, Message.IS_NULL, Message.IS_EXECUTABLE, Message.IS_BOXED, Message.HAS_SIZE,
                     Message.GET_SIZE, Message.UNBOX, Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
+    private final Map<String, FactoryGenerator> factoryGenerators = new HashMap<>();
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -77,10 +81,12 @@ public final class InteropProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
+            for (FactoryGenerator fg : factoryGenerators.values()) {
+                fg.generate();
+            }
             return false;
         }
 
-        Map<String, FactoryGenerator> factoryGenerators = new HashMap<>();
         List<String> generatedClasses = new LinkedList<>();
 
         top: for (Element e : roundEnv.getElementsAnnotatedWith(AcceptMessage.class)) {
@@ -98,16 +104,23 @@ public final class InteropProcessor extends AbstractProcessor {
 
             final String pkg = findPkg(e);
             String receiverTypeFullClassName = getReceiverTypeFullClassName(message);
-            final String receiverTypeSimpleClass = receiverTypeFullClassName.substring(receiverTypeFullClassName.lastIndexOf(".") + 1);
-            final String receiverTypePackage = receiverTypeFullClassName.substring(0, receiverTypeFullClassName.lastIndexOf("."));
+            String receiverTypePreparedClassName = getPreparedReceiverTypeClassName(message);
+            final String receiverTypeSimpleClass = receiverTypePreparedClassName.substring(receiverTypePreparedClassName.lastIndexOf(".") + 1);
+            final String receiverTypePackage = receiverTypePreparedClassName.substring(0, receiverTypePreparedClassName.lastIndexOf("."));
             final String factoryShortClassName = receiverTypeSimpleClass + "Foreign";
-            final String factoryFullClassName = receiverTypeFullClassName + "Foreign";
+            final String factoryFullClassName = receiverTypePreparedClassName + "Foreign";
 
             String truffleLanguageFullClazzName = getTruffleLanguageFullClassName(message);
 
             final String clazzName = extending.toString();
             String fqn = pkg + "." + clazzName;
             String messageName = message.value();
+
+            if (isNonStaticInner(message)) {
+                generateErrorClass(e, pkg, fqn, clazzName, null);
+                emitError(receiverTypeFullClassName + " cannot be used as receiverType as it is not a static inner class.", e);
+                continue;
+            }
 
             MessageGenerator currentGenerator = null;
             Object currentMessage = null;
@@ -204,10 +217,6 @@ public final class InteropProcessor extends AbstractProcessor {
             factoryGenerator.addMessageHandler(currentMessage, currentGenerator.getRootNodeFactoryInvokation());
         }
 
-        for (FactoryGenerator fg : factoryGenerators.values()) {
-            fg.generate();
-        }
-
         return true;
     }
 
@@ -231,6 +240,31 @@ public final class InteropProcessor extends AbstractProcessor {
         }
     }
 
+    private static boolean isNonStaticInner(AcceptMessage message) {
+        try {
+            Class<?> receiverType = message.receiverType();
+            if (receiverType.isMemberClass() || receiverType.isLocalClass()) {
+                return !Modifier.isStatic(receiverType.getModifiers());
+            } else {
+                return false;
+            }
+        } catch (MirroredTypeException mte) {
+            // This exception is thrown most of the time: use the mirrors to inspect the class
+            DeclaredType type = (DeclaredType) mte.getTypeMirror();
+            TypeElement element = (TypeElement) type.asElement();
+            if (element.getNestingKind() == NestingKind.MEMBER || element.getNestingKind() == NestingKind.LOCAL) {
+                for (javax.lang.model.element.Modifier modifier : element.getModifiers()) {
+                    if (modifier.compareTo(javax.lang.model.element.Modifier.STATIC) == 0) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
     private boolean isInstanceMissing(String receiverTypeFullClassName) {
         for (Element elem : this.processingEnv.getElementUtils().getTypeElement(receiverTypeFullClassName).getEnclosedElements()) {
             if (elem.getKind().equals(ElementKind.METHOD)) {
@@ -249,10 +283,35 @@ public final class InteropProcessor extends AbstractProcessor {
         try {
             receiverTypeFullClassName = message.receiverType().getName();
         } catch (MirroredTypeException mte) {
-            // wow, annotations processors are strange
+            // This exception is thrown most of the time: use the mirrors to inspect the class
             receiverTypeFullClassName = mte.getTypeMirror().toString();
         }
         return receiverTypeFullClassName;
+    }
+
+    private static String getPreparedReceiverTypeClassName(AcceptMessage message) {
+        StringBuilder receiverTypeFullClassName = new StringBuilder();
+        try {
+            Class<?> receiverType = message.receiverType();
+            while (receiverType.isMemberClass() || receiverType.isLocalClass()) {
+                receiverTypeFullClassName.append(receiverType.getSimpleName());
+                receiverTypeFullClassName.insert(0, "_");
+                receiverType = receiverType.getDeclaringClass();
+            }
+            receiverTypeFullClassName.insert(0, receiverType.getName());
+        } catch (MirroredTypeException mte) {
+            // This exception is thrown most of the time: use the mirrors to inspect the class
+
+            DeclaredType type = (DeclaredType) mte.getTypeMirror();
+            TypeElement element = (TypeElement) type.asElement();
+            while (element.getNestingKind() == NestingKind.MEMBER || element.getNestingKind() == NestingKind.LOCAL) {
+                receiverTypeFullClassName.append(element.getSimpleName());
+                receiverTypeFullClassName.insert(0, "_");
+                element = (TypeElement) element.getEnclosingElement();
+            }
+            receiverTypeFullClassName.insert(0, element.getQualifiedName());
+        }
+        return receiverTypeFullClassName.toString();
     }
 
     private static String getTruffleLanguageFullClassName(AcceptMessage message) {
@@ -260,7 +319,7 @@ public final class InteropProcessor extends AbstractProcessor {
         try {
             truffleLanguageFullClazzName = message.language().getName();
         } catch (MirroredTypeException mte) {
-            // wow, annotations processors are strange
+            // This exception is thrown most of the time: use the mirrors to inspect the class
             truffleLanguageFullClazzName = mte.getTypeMirror().toString();
         }
         return truffleLanguageFullClazzName;
@@ -535,7 +594,6 @@ public final class InteropProcessor extends AbstractProcessor {
         void appendImports(Writer w) throws IOException {
             super.appendImports(w);
             w.append("import java.util.List;").append("\n");
-            w.append("import com.oracle.truffle.api.nodes.ExplodeLoop;").append("\n");
         }
 
         @Override
@@ -559,7 +617,6 @@ public final class InteropProcessor extends AbstractProcessor {
                             "Gen.create();\n");
             w.append("\n");
             w.append("        @Override\n");
-            w.append("        @ExplodeLoop\n");
             w.append("        public Object execute(VirtualFrame frame) {\n");
             w.append("            try {\n");
             w.append("              Object receiver = ForeignAccess.getReceiver(frame);\n");

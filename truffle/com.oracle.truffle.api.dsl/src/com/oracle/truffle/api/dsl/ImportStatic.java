@@ -37,6 +37,7 @@ import java.lang.annotation.Target;
  * @see Specialization#assumptions()
  * @see Specialization#limit()
  * @see Cached
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})

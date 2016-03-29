@@ -30,11 +30,14 @@ import com.oracle.truffle.api.nodes.RootNode;
  * Allows options to be set to control the compilation of a specific {@link RootNode}, without
  * creating a dependency on the specific compiler used. Options can be tested for support before
  * setting.
+ * 
+ * @since 0.8 or earlier
  */
 public interface CompilerOptions {
-
+    /** @since 0.8 or earlier */
     boolean supportsOption(String name);
 
+    /** @since 0.8 or earlier */
     void setOption(String name, Object value);
 
 }

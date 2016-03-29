@@ -37,6 +37,7 @@ import java.util.Arrays;
  * @see Source#createSection(String, int, int)
  * @see Source#createSection(String, int)
  * @see #createUnavailable
+ * @since 0.8 or earlier
  */
 public final class SourceSection {
 
@@ -106,6 +107,7 @@ public final class SourceSection {
      *
      * @param tag the tag to search for
      * @return <code>true</code> if tag was found else <code>false</code>
+     * @since 0.8 or earlier
      */
     @SuppressFBWarnings("ES_COMPARING_PARAMETER_STRING_WITH_EQ")
     public boolean hasTag(String tag) {
@@ -122,6 +124,7 @@ public final class SourceSection {
      * Representation of the source program that contains this section.
      *
      * @return the source object
+     * @since 0.8 or earlier
      */
     public Source getSource() {
         return source;
@@ -131,6 +134,7 @@ public final class SourceSection {
      * Returns 1-based line number of the first character in this section (inclusive).
      *
      * @return the starting line number
+     * @since 0.8 or earlier
      */
     public int getStartLine() {
         return startLine;
@@ -140,6 +144,7 @@ public final class SourceSection {
      * Gets a representation of the first line of the section, suitable for a hash key.
      *
      * @return first line of the section
+     * @since 0.8 or earlier
      */
     public LineLocation getLineLocation() {
         return source.createLineLocation(startLine);
@@ -149,6 +154,7 @@ public final class SourceSection {
      * Returns the 1-based column number of the first character in this section (inclusive).
      *
      * @return the starting column number
+     * @since 0.8 or earlier
      */
     public int getStartColumn() {
         return startColumn;
@@ -158,6 +164,7 @@ public final class SourceSection {
      * Returns 1-based line number of the last character in this section (inclusive).
      *
      * @return the starting line number
+     * @since 0.8 or earlier
      */
     public int getEndLine() {
         return source.getLineNumber(charIndex + charLength - 1);
@@ -167,6 +174,7 @@ public final class SourceSection {
      * Returns the 1-based column number of the last character in this section (inclusive).
      *
      * @return the starting column number
+     * @since 0.8 or earlier
      */
     public int getEndColumn() {
         return source.getColumnNumber(charIndex + charLength - 1);
@@ -176,6 +184,7 @@ public final class SourceSection {
      * Returns the 0-based index of the first character in this section.
      *
      * @return the starting character index
+     * @since 0.8 or earlier
      */
     public int getCharIndex() {
         return charIndex;
@@ -185,6 +194,7 @@ public final class SourceSection {
      * Returns the length of this section in characters.
      *
      * @return the number of characters in the section
+     * @since 0.8 or earlier
      */
     public int getCharLength() {
         return charLength;
@@ -195,6 +205,7 @@ public final class SourceSection {
      * section.
      *
      * @return the end position of the section
+     * @since 0.8 or earlier
      */
     public int getCharEndIndex() {
         return charIndex + charLength;
@@ -204,6 +215,7 @@ public final class SourceSection {
      * Returns terse text describing this source section, typically used for printing the section.
      *
      * @return the identifier of the section
+     * @since 0.8 or earlier
      */
     public String getIdentifier() {
         return identifier;
@@ -214,6 +226,7 @@ public final class SourceSection {
      *
      * @return the code as a string, or {@code "<unavailable>"} if the SourceSection was created
      *         using {@link #createUnavailable}.
+     * @since 0.8 or earlier
      */
     public String getCode() {
         return source == null ? "<unavailable>" : source.getCode(charIndex, charLength);
@@ -224,6 +237,7 @@ public final class SourceSection {
      * full path.
      *
      * @return a short description of the source section formatted as {@code <filename>:<line>}.
+     * @since 0.8 or earlier
      */
     public String getShortDescription() {
         if (source == null) {
@@ -238,6 +252,7 @@ public final class SourceSection {
      *
      * @see #getCode()
      * @see #getShortDescription()
+     * @since 0.8 or earlier
      */
     @Override
     public String toString() {
@@ -257,6 +272,7 @@ public final class SourceSection {
      *
      * @param tags source section tags
      * @return a copy of the source section with different tags
+     * @since 0.8 or earlier
      */
     public SourceSection withTags(@SuppressWarnings("hiding") String... tags) {
         if (sameTags(tags)) {
@@ -279,6 +295,7 @@ public final class SourceSection {
         return false;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -293,6 +310,7 @@ public final class SourceSection {
         return result;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
     public boolean equals(Object obj) {
@@ -355,6 +373,7 @@ public final class SourceSection {
      * @param kind the general category, e.g. "JS builtin"
      * @param name specific name for this section
      * @return source section which is mostly <em>empty</em>
+     * @since 0.8 or earlier
      */
     public static SourceSection createUnavailable(String kind, String name) {
         return new SourceSection(kind, null, name == null ? "<unknown>" : name, -1, -1, -1, -1, EMTPY_TAGS);

@@ -26,6 +26,8 @@ package com.oracle.truffle.api.nodes;
 
 /**
  * Visitor for trees of nodes.
+ * 
+ * @since 0.8 or earlier
  */
 public interface NodeVisitor {
 
@@ -35,6 +37,7 @@ public interface NodeVisitor {
      *
      * @param node the node that is currently visited
      * @return {@code true} if the children should be visited too, {@code false} otherwise
+     * @since 0.8 or earlier
      */
     boolean visit(Node node);
 }

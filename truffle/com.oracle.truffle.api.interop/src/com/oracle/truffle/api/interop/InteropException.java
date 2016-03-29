@@ -27,6 +27,8 @@ package com.oracle.truffle.api.interop;
 /**
  * Common super class for exceptions that can occur when sending {@link Message interop messages}.
  * This super class is used to catch any kind of these exceptions.
+ * 
+ * @since 0.11
  */
 public abstract class InteropException extends Exception {
 

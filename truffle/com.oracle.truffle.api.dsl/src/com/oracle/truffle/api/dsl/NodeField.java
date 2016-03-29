@@ -35,6 +35,8 @@ import java.lang.annotation.Target;
  * contains multiple {@link NodeFields} specified in linear declaration order. The field can be
  * accessed by declaring an abstract getter named
  * <code>"get" + firstLetterUpperCase({@link #name()})()</code>.
+ * 
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})

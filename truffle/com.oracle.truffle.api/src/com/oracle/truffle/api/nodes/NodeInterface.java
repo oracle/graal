@@ -28,6 +28,7 @@ package com.oracle.truffle.api.nodes;
  * Common base interface for all Truffle nodes.
  *
  * @see Node
+ * @since 0.8 or earlier
  */
 public interface NodeInterface {
 }

@@ -30,6 +30,7 @@ import com.oracle.truffle.api.nodes.NodeCloneable;
 
 /**
  * @deprecated use {@link com.oracle.truffle.api.profiles.BranchProfile} instead
+ * @since 0.8 or earlier
  */
 @Deprecated
 public final class BranchProfile extends NodeCloneable {
@@ -39,6 +40,7 @@ public final class BranchProfile extends NodeCloneable {
     private BranchProfile() {
     }
 
+    /** @since 0.8 or earlier */
     public void enter() {
         if (!visited) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -46,18 +48,21 @@ public final class BranchProfile extends NodeCloneable {
         }
     }
 
+    /** @since 0.8 or earlier */
     public boolean isVisited() {
         return visited;
     }
 
     /**
      * @deprecated use {@link com.oracle.truffle.api.profiles.BranchProfile#create()} instead
+     * @since 0.8 or earlier
      */
     @Deprecated
     public static BranchProfile create() {
         return new BranchProfile();
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String toString() {
         return String.format("%s(%s)@%x", getClass().getSimpleName(), visited ? "visited" : "not-visited", hashCode());

@@ -28,6 +28,8 @@ package com.oracle.truffle.api.source;
  * A specification for a location in guest language source, expressed as a line number in a specific
  * instance of {@link Source}, suitable for hash table keys with equality defined in terms of
  * content.
+ * 
+ * @since 0.8 or earlier
  */
 public final class LineLocation implements Comparable<LineLocation> {
     private final Source source;
@@ -39,6 +41,7 @@ public final class LineLocation implements Comparable<LineLocation> {
         this.line = line;
     }
 
+    /** @since 0.8 or earlier */
     public Source getSource() {
         return source;
     }
@@ -47,20 +50,24 @@ public final class LineLocation implements Comparable<LineLocation> {
      * Gets the 1-based number of a line in the source.
      *
      * @return value from 1 to infinity
+     * @since 0.8 or earlier
      */
     public int getLineNumber() {
         return line;
     }
 
+    /** @since 0.8 or earlier */
     public String getShortDescription() {
         return source.getShortName() + ":" + line;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String toString() {
         return "Line[" + getShortDescription() + "]";
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -70,6 +77,7 @@ public final class LineLocation implements Comparable<LineLocation> {
         return result;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -88,6 +96,7 @@ public final class LineLocation implements Comparable<LineLocation> {
         return source.getHashKey().equals(other.source.getHashKey());
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public int compareTo(LineLocation o) {
         int sourceResult = 0;

@@ -30,6 +30,7 @@ package com.oracle.truffle.api;
  * code generation and the Truffle compiler produces for failing assertions a stack trace that
  * identifies the code position of the assertion in the context of the current compilation.
  *
+ * @since 0.8 or earlier
  */
 public final class CompilerAsserts {
     private CompilerAsserts() {
@@ -40,6 +41,8 @@ public final class CompilerAsserts {
      * for exceptional code paths or rare code paths that should never be included in a compilation
      * unit. See {@link CompilerDirectives#transferToInterpreter()} for the corresponding compiler
      * directive.
+     * 
+     * @since 0.8 or earlier
      */
     public static void neverPartOfCompilation() {
     }
@@ -51,6 +54,7 @@ public final class CompilerAsserts {
      * directive.
      *
      * @param message text associated with the bailout exception
+     * @since 0.8 or earlier
      */
     public static void neverPartOfCompilation(String message) {
     }
@@ -59,6 +63,7 @@ public final class CompilerAsserts {
      * Assertion that the corresponding value is reduced to a constant during compilation.
      *
      * @param value the value that must be constant during compilation
+     * @since 0.8 or earlier
      */
     public static <T> void compilationConstant(Object value) {
         if (!CompilerDirectives.isCompilationConstant(value)) {
@@ -71,6 +76,7 @@ public final class CompilerAsserts {
      * evaluation phase.
      *
      * @param value the value that must be constant during compilation
+     * @since 0.8 or earlier
      */
     public static <T> void partialEvaluationConstant(Object value) {
     }

@@ -24,11 +24,9 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExecutionContext;
-import com.oracle.truffle.api.LoopCountReceiver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -42,6 +40,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
  * root node can be used to create a call target using
  * {@link TruffleRuntime#createCallTarget(RootNode)}.
+ * 
+ * @since 0.8 or earlier
  */
 @SuppressWarnings("rawtypes")
 public abstract class RootNode extends Node {
@@ -61,6 +61,7 @@ public abstract class RootNode extends Node {
      * @param language the language of the node, <b>cannot be</b> <code>null</code>
      * @param sourceSection a part of source associated with this node, can be <code>null</code>
      * @param frameDescriptor descriptor of slots, can be <code>null</code>
+     * @since 0.8 or earlier
      */
     protected RootNode(Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
         this(language, sourceSection, frameDescriptor, true);
@@ -82,6 +83,7 @@ public abstract class RootNode extends Node {
         }
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public Node copy() {
         RootNode root = (RootNode) super.copy();
@@ -98,20 +100,19 @@ public abstract class RootNode extends Node {
      * .
      *
      * @return <code>true</code> if cloning is allowed else <code>false</code>.
+     * @since 0.8 or earlier
      */
     public boolean isCloningAllowed() {
         return false;
     }
 
     /**
-     * Reports the execution count of a loop that is a child of this node. The optimization
-     * heuristics can use the loop count to guide compilation and inlining.
+     * @since 0.8 or earlier
+     * @deprecated use {@link LoopNode#reportLoopCount(Node,int)} instead
      */
-    public final void reportLoopCount(int count) {
-        CompilerAsserts.neverPartOfCompilation("do not call RootNode.reportLoopCount from compiled code");
-        if (getCallTarget() instanceof LoopCountReceiver) {
-            ((LoopCountReceiver) getCallTarget()).reportLoopCount(count);
-        }
+    @Deprecated
+    public final void reportLoopCount(int iterations) {
+        LoopNode.reportLoopCount(this, iterations);
     }
 
     /**
@@ -119,17 +120,21 @@ public abstract class RootNode extends Node {
      *
      * @param frame the frame of the currently executing guest language method
      * @return the value of the execution
+     * @since 0.8 or earlier
      */
     public abstract Object execute(VirtualFrame frame);
 
+    /** @since 0.8 or earlier */
     public final RootCallTarget getCallTarget() {
         return callTarget;
     }
 
+    /** @since 0.8 or earlier */
     public final FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
     }
 
+    /** @since 0.8 or earlier */
     public final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
     }
@@ -140,14 +145,9 @@ public abstract class RootNode extends Node {
      * so also for a {@link RootCallTarget} and a {@link FrameInstance} obtained from the call
      * stack) without prior knowledge of the language it has come from.
      *
-     * Used for instance to determine the language of a <code>RootNode<code>:
-     * 
-     * <pre>
-     * <code>
-     * rootNode.getExecutionContext().getLanguageShortName();
-     * </code> </pre>
-     *
      * Returns <code>null</code> by default.
+     * 
+     * @since 0.8 or earlier
      */
     public ExecutionContext getExecutionContext() {
         return null;
@@ -155,6 +155,8 @@ public abstract class RootNode extends Node {
 
     /**
      * Get compiler options specific to this <code>RootNode</code>.
+     * 
+     * @since 0.8 or earlier
      */
     public CompilerOptions getCompilerOptions() {
         final ExecutionContext context = getExecutionContext();
@@ -166,6 +168,7 @@ public abstract class RootNode extends Node {
         }
     }
 
+    /** @since 0.8 or earlier */
     public final void applyInstrumentation() {
         if (isInstrumentable()) {
             Node.ACCESSOR.probeAST(this);
@@ -174,6 +177,8 @@ public abstract class RootNode extends Node {
 
     /**
      * Does this contain AST content that it is possible to instrument.
+     * 
+     * @since 0.8 or earlier
      */
     protected boolean isInstrumentable() {
         return true;
@@ -187,6 +192,7 @@ public abstract class RootNode extends Node {
      *
      * @param constant the constant to return
      * @return root node returning the constant
+     * @since 0.8 or earlier
      */
     public static RootNode createConstantNode(Object constant) {
         return new Constant(constant);

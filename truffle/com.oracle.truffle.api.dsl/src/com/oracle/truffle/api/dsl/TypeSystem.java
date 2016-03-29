@@ -63,12 +63,12 @@ import java.lang.annotation.Target;
  *
  * {@literal @}TypeSystem(types = {boolean.class, int.class, double.class})
  * public abstract class ExampleTypeSystem {
- *
+ * 
  *     {@literal @}TypeCheck
  *     public boolean isInteger(Object value) {
  *         return value instanceof Integer || value instanceof Double;
  *     }
- *
+ * 
  *     {@literal @}TypeCast
  *     public double asInteger(Object value) {
  *         return ((Number)value).doubleValue();
@@ -79,6 +79,7 @@ import java.lang.annotation.Target;
  *
  * @see TypeCast
  * @see TypeCheck
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})

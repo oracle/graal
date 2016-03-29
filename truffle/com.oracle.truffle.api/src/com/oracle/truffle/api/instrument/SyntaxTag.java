@@ -38,17 +38,22 @@ package com.oracle.truffle.api.instrument;
  *
  * @see Probe
  * @see StandardSyntaxTag
+ * @since 0.8 or earlier
  */
 public interface SyntaxTag {
 
     /**
      * Human-friendly name of guest language program elements belonging to the category, e.g.
      * "statement".
+     * 
+     * @since 0.8 or earlier
      */
     String name();
 
     /**
      * Criteria and example uses for the tag.
+     * 
+     * @since 0.8 or earlier
      */
     String getDescription();
 

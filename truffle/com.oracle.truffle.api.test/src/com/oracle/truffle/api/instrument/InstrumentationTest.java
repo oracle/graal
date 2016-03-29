@@ -29,6 +29,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.lang.reflect.Field;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -63,6 +64,7 @@ public class InstrumentationTest {
     }
 
     @Test
+    @Ignore
     public void testProbing() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
         vm = PolyglotEngine.newBuilder().build();
         final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
@@ -104,6 +106,7 @@ public class InstrumentationTest {
     }
 
     @Test
+    @Ignore
     public void testTagging() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, IOException {
 
         vm = PolyglotEngine.newBuilder().build();

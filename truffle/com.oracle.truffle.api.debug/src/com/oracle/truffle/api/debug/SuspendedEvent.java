@@ -44,6 +44,8 @@ import com.oracle.truffle.api.nodes.Node;
  * used while the handlers process the event. Then the state of the event becomes invalid and
  * subsequent calls to the event methods yield {@link IllegalStateException}. One can call
  * {@link #getDebugger()} and keep reference to it for as long as necessary.
+ *
+ * @since 0.9
  */
 @SuppressWarnings("javadoc")
 public final class SuspendedEvent {
@@ -63,6 +65,7 @@ public final class SuspendedEvent {
     private final MaterializedFrame haltedFrame;
     private final List<FrameInstance> stack;
     private final List<String> warnings;
+    private volatile boolean kill;
 
     SuspendedEvent(Debugger debugger, Node haltedNode, MaterializedFrame haltedFrame, List<FrameInstance> stack, List<String> warnings) {
         this.debugger = debugger;
@@ -82,19 +85,23 @@ public final class SuspendedEvent {
      *
      * @return instance of debugger associated with the just suspended execution and any subsequent
      *         ones in the same {@link com.oracle.truffle.api.vm.PolyglotEngine}.
+     * @since 0.9
      */
     public Debugger getDebugger() {
         return debugger;
     }
 
+    /** @since 0.9 */
     public Node getNode() {
         return haltedNode;
     }
 
+    /** @since 0.9 */
     public MaterializedFrame getFrame() {
         return haltedFrame;
     }
 
+    /** @since 0.9 */
     public List<String> getRecentWarnings() {
         return Collections.unmodifiableList(warnings);
     }
@@ -105,6 +112,7 @@ public final class SuspendedEvent {
      * where halted.
      *
      * @return list of stack frames
+     * @since 0.9
      */
     @CompilerDirectives.TruffleBoundary
     public List<FrameInstance> getStack() {
@@ -122,6 +130,8 @@ public final class SuspendedEvent {
      * <li>execution completes.</li>
      * </ol>
      * </ul>
+     *
+     * @since 0.9
      */
     public void prepareContinue() {
         debugger.prepareContinue(-1);
@@ -144,6 +154,7 @@ public final class SuspendedEvent {
      *
      * @param stepCount the number of times to perform StepInto before halting
      * @throws IllegalArgumentException if the specified number is {@code <= 0}
+     * @since 0.9
      */
     public void prepareStepInto(int stepCount) {
         debugger.prepareStepInto(stepCount);
@@ -162,6 +173,8 @@ public final class SuspendedEvent {
      * <li>StepOut mode persists only through one resumption, and reverts by default to Continue
      * mode.</li>
      * </ul>
+     *
+     * @since 0.9
      */
     public void prepareStepOut() {
         debugger.prepareStepOut();
@@ -185,6 +198,7 @@ public final class SuspendedEvent {
      *
      * @param stepCount the number of times to perform StepInto before halting
      * @throws IllegalArgumentException if the specified number is {@code <= 0}
+     * @since 0.9
      */
     public void prepareStepOver(int stepCount) {
         debugger.prepareStepOver(stepCount);
@@ -198,8 +212,23 @@ public final class SuspendedEvent {
      *            location.
      * @return the computed value
      * @throws IOException in case an evaluation goes wrong
+     * @throws KillException if the evaluation is killed by the debugger
+     * @since 0.9
      */
     public Object eval(String code, FrameInstance frame) throws IOException {
         return debugger.evalInContext(this, code, frame);
+    }
+
+    /**
+     * Prepare to terminate the suspended execution represented by this event.
+     *
+     * @since 0.12
+     */
+    public void prepareKill() {
+        kill = true;
+    }
+
+    boolean isKillPrepared() {
+        return kill;
     }
 }

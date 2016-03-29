@@ -267,12 +267,10 @@ public class EngineTest {
     @Test
     public void exampleOfConfiguration() throws IOException {
         // @formatter:off
-        // BEGIN: config.specify
         String[] args = {"--kernel", "Kernel.som", "--instrument", "dyn-metrics"};
         Builder builder = PolyglotEngine.newBuilder();
         builder.config(YourLang.MIME_TYPE, "CMD_ARGS", args);
         PolyglotEngine vm = builder.build();
-        // END: config.specify
         // @formatter:on
 
         try {

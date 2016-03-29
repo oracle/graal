@@ -91,6 +91,8 @@ import java.util.Map;
  * {@linkplain #install(Tool) installed} for data collection, possibly providing their own services
  * with the resulting information.</li>
  * </ul>
+ * 
+ * @since 0.8 or earlier
  */
 public final class Instrumenter {
 
@@ -154,6 +156,8 @@ public final class Instrumenter {
      * <li>Return modification-safe representations of the data; and</li>
      * <li>Not change the state of the data.</li>
      * </ul>
+     * 
+     * @since 0.8 or earlier
      */
     public abstract static class Tool {
 
@@ -161,6 +165,7 @@ public final class Instrumenter {
 
         private Instrumenter instrumenter;
 
+        /** @since 0.8 or earlier */
         protected Tool() {
         }
 
@@ -176,6 +181,7 @@ public final class Instrumenter {
 
         /**
          * @return whether the tool is currently collecting data.
+         * @since 0.8 or earlier
          */
         public final boolean isEnabled() {
             return toolState == ToolState.ENABLED;
@@ -186,6 +192,7 @@ public final class Instrumenter {
          * collecting data, but keeping data already collected).
          *
          * @throws IllegalStateException if not yet installed or disposed.
+         * @since 0.8 or earlier
          */
         public final void setEnabled(boolean isEnabled) {
             checkInstalled();
@@ -197,6 +204,7 @@ public final class Instrumenter {
          * Clears any data already collected, but otherwise does not change the state of the tool.
          *
          * @throws IllegalStateException if not yet installed or disposed.
+         * @since 0.8 or earlier
          */
         public final void reset() {
             checkInstalled();
@@ -208,6 +216,7 @@ public final class Instrumenter {
          * already collected.
          *
          * @throws IllegalStateException if not yet installed or disposed.
+         * @since 0.8 or earlier
          */
         public final void dispose() {
             checkInstalled();
@@ -218,6 +227,7 @@ public final class Instrumenter {
 
         /**
          * @return whether the installation succeeded.
+         * @since 0.8 or earlier
          */
         protected abstract boolean internalInstall();
 
@@ -225,14 +235,18 @@ public final class Instrumenter {
          * No subclass action required.
          *
          * @param isEnabled
+         * @since 0.8 or earlier
          */
         protected void internalSetEnabled(boolean isEnabled) {
         }
 
+        /** @since 0.8 or earlier */
         protected abstract void internalReset();
 
+        /** @since 0.8 or earlier */
         protected abstract void internalDispose();
 
+        /** @since 0.8 or earlier */
         protected final Instrumenter getInstrumenter() {
             return instrumenter;
         }
@@ -310,6 +324,7 @@ public final class Instrumenter {
      *
      * @return a (possibly newly created) {@link Probe} associated with this node.
      * @throws ProbeException (unchecked) when a Probe cannot be created, leaving the AST unchanged
+     * @since 0.8 or earlier
      */
     @SuppressWarnings("rawtypes")
     public Probe probe(Node node) {
@@ -372,6 +387,8 @@ public final class Instrumenter {
 
     /**
      * Adds a {@link ProbeListener} to receive events.
+     * 
+     * @since 0.8 or earlier
      */
     public void addProbeListener(ProbeListener listener) {
         assert listener != null;
@@ -380,6 +397,8 @@ public final class Instrumenter {
 
     /**
      * Removes a {@link ProbeListener}. Ignored if listener not found.
+     * 
+     * @since 0.8 or earlier
      */
     public void removeProbeListener(ProbeListener listener) {
         probeListeners.remove(listener);
@@ -390,6 +409,7 @@ public final class Instrumenter {
      * probes if the specified tag is {@code null}.
      *
      * @return A collection of probes containing the given tag.
+     * @since 0.8 or earlier
      */
     public Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
         final List<Probe> taggedProbes = new ArrayList<>();
@@ -407,6 +427,8 @@ public final class Instrumenter {
     /**
      * Enables instrumentation at selected nodes in all subsequently constructed ASTs. Ignored if
      * the argument is already registered, runtime error if argument is {@code null}.
+     * 
+     * @since 0.8 or earlier
      */
     public void registerASTProber(ASTProber prober) {
         if (prober == null) {
@@ -415,6 +437,7 @@ public final class Instrumenter {
         astProbers.add(prober);
     }
 
+    /** @since 0.8 or earlier */
     public void unregisterASTProber(ASTProber prober) {
         astProbers.remove(prober);
     }
@@ -430,6 +453,7 @@ public final class Instrumenter {
      * @param listener receiver of execution events
      * @param instrumentInfo optional documentation about the Instrument
      * @return a handle for access to the binding
+     * @since 0.8 or earlier
      */
     public ProbeInstrument attach(Probe probe, SimpleInstrumentListener listener, String instrumentInfo) {
         assert probe.getInstrumenter() == this;
@@ -449,6 +473,7 @@ public final class Instrumenter {
      * @param listener receiver of execution events
      * @param instrumentInfo optional documentation about the Instrument
      * @return a handle for access to the binding
+     * @since 0.8 or earlier
      */
     public ProbeInstrument attach(Probe probe, StandardInstrumentListener listener, String instrumentInfo) {
         assert probe.getInstrumenter() == this;
@@ -480,6 +505,7 @@ public final class Instrumenter {
      * @param instrumentInfo instrumentInfo optional documentation about the Instrument
      * @return a handle for access to the binding
      * @deprecated
+     * @since 0.8 or earlier
      */
     @Deprecated
     @SuppressWarnings("rawtypes")
@@ -515,6 +541,7 @@ public final class Instrumenter {
      *            {@link CallTarget#call(java.lang.Object...)} returned from the <code>parse</code>
      *            method; the value can be <code>null</code>
      * @return a handle for access to the binding
+     * @since 0.8 or earlier
      */
     public ProbeInstrument attach(Probe probe, Source source, EvalInstrumentListener listener, String instrumentInfo, Map<String, Object> parameters) {
         final int size = parameters == null ? 0 : parameters.size();
@@ -562,6 +589,7 @@ public final class Instrumenter {
      * @param instrumentInfo optional, mainly for debugging.
      * @return a newly created, active Instrument
      * @throws IllegalStateException if called when a <em>before</em> Instrument is active.
+     * @since 0.8 or earlier
      */
     public TagInstrument attach(SyntaxTag tag, StandardBeforeInstrumentListener listener, String instrumentInfo) {
         if (beforeTagInstrument != null) {
@@ -586,6 +614,7 @@ public final class Instrumenter {
      * @param instrumentInfo optional, mainly for debugging.
      * @return a newly created, active Instrument
      * @throws IllegalStateException if called when a <em>after</em> Instrument is active.
+     * @since 0.8 or earlier
      */
     public TagInstrument attach(SyntaxTag tag, StandardAfterInstrumentListener listener, String instrumentInfo) {
         if (afterTagInstrument != null) {
@@ -601,6 +630,7 @@ public final class Instrumenter {
      *
      * @return the tool
      * @throws IllegalStateException if the tool has previously been installed or has been disposed.
+     * @since 0.8 or earlier
      */
     public Tool install(Tool tool) {
         tool.install(this);

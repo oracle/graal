@@ -31,6 +31,8 @@ import java.lang.annotation.Target;
 
 /**
  * Annotation for providing additional information on nodes.
+ * 
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

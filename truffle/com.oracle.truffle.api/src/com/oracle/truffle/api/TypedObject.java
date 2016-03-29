@@ -24,8 +24,9 @@
  */
 package com.oracle.truffle.api;
 
+/** @since 0.8 or earlier */
 public interface TypedObject {
-
+    /** @since 0.8 or earlier */
     Object getTypeIdentifier();
 
 }

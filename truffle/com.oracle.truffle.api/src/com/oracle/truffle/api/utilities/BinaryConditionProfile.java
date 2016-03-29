@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 /**
  * @deprecated package name renamed to {@link com.oracle.truffle.api.profiles.ConditionProfile}
  *             instead
+ * @since 0.8 or earlier
  */
 @SuppressWarnings("deprecation")
 @Deprecated
@@ -42,6 +43,7 @@ public final class BinaryConditionProfile extends ConditionProfile {
         /* package protected constructor */
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public boolean profile(boolean value) {
         if (value) {
@@ -59,14 +61,17 @@ public final class BinaryConditionProfile extends ConditionProfile {
         }
     }
 
+    /** @since 0.8 or earlier */
     public boolean wasTrue() {
         return wasTrue;
     }
 
+    /** @since 0.8 or earlier */
     public boolean wasFalse() {
         return wasFalse;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String toString() {
         return String.format("%s(wasTrue=%s, wasFalse=%s)@%x", getClass().getSimpleName(), wasTrue, wasFalse, hashCode());

@@ -30,6 +30,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * An observer of events related to {@link Probe}s: creation of new Probes and the addition of new
  * {@linkplain SyntaxTag SyntaxTags} to existing Probes.
+ * 
+ * @since 0.8 or earlier
  */
 public interface ProbeListener {
 
@@ -38,6 +40,7 @@ public interface ProbeListener {
      * constructed AST.
      *
      * @param rootNode parent of the newly created AST
+     * @since 0.8 or earlier
      */
     void startASTProbing(RootNode rootNode);
 
@@ -49,6 +52,8 @@ public interface ProbeListener {
      * delivered the first time {@linkplain Instrumenter#probe(Node)} is called at a particular AST
      * node. There will also be no notification when the AST to which the Probe is attached is
      * cloned.
+     * 
+     * @since 0.8 or earlier
      */
     void newProbeInserted(Probe probe);
 
@@ -68,6 +73,7 @@ public interface ProbeListener {
      * @param tag the tag that has been newly added (subsequent additions of the tag are
      *            unreported).
      * @param tagValue an optional value associated with the tag for the purposes of reporting.
+     * @since 0.8 or earlier
      */
     void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue);
 
@@ -76,6 +82,7 @@ public interface ProbeListener {
      * has completed.
      *
      * @param rootNode parent of the newly created AST
+     * @since 0.8 or earlier
      */
     void endASTProbing(RootNode rootNode);
 

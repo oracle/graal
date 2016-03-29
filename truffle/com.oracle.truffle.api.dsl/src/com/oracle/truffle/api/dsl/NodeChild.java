@@ -33,6 +33,8 @@ import java.lang.annotation.Target;
 /**
  * A {@link NodeChild} element defines an executable child for the enclosing {@link Node}. A
  * {@link Node} contains multiple {@link NodeChildren} specified in linear execution order.
+ * 
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})

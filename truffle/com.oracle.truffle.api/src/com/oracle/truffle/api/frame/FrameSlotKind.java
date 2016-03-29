@@ -24,18 +24,28 @@
  */
 package com.oracle.truffle.api.frame;
 
+/** @since 0.8 or earlier */
 public enum FrameSlotKind {
+    /** @since 0.8 or earlier */
     Object,
+    /** @since 0.8 or earlier */
     Illegal,
+    /** @since 0.8 or earlier */
     Long,
+    /** @since 0.8 or earlier */
     Int,
+    /** @since 0.8 or earlier */
     Double,
+    /** @since 0.8 or earlier */
     Float,
+    /** @since 0.8 or earlier */
     Boolean,
+    /** @since 0.8 or earlier */
     Byte;
-
+    /** @since 0.8 or earlier */
     public final byte tag;
 
+    /** @since 0.8 or earlier */
     FrameSlotKind() {
         this.tag = (byte) ordinal();
     }

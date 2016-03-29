@@ -28,9 +28,18 @@ package com.oracle.truffle.api.nodes;
  * An exception that should be thrown if an assumption is checked and the check fails. The Truffle
  * optimizer has special knowledge of this exception class and will never compile a catch block that
  * catches this exception type.
+ * 
+ * @since 0.8 or earlier
  */
 public final class InvalidAssumptionException extends SlowPathException {
 
     private static final long serialVersionUID = -6801338218909717979L;
 
+    /**
+     * Default constructor.
+     * 
+     * @since 0.8 or earlier
+     */
+    public InvalidAssumptionException() {
+    }
 }

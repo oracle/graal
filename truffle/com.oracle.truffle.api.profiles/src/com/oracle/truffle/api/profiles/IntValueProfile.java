@@ -41,9 +41,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class SampleNode extends Node {
- *
+ * 
  *     final IntValueProfile profile = IntValueProfile.createIdentityProfile();
- *
+ * 
  *     int execute(int input) {
  *         int profiledValue = profile.profile(input);
  *         // compiler may know now more about profiledValue
@@ -58,18 +58,21 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * @see #createIdentityProfile()
  * @see ValueProfile
+ * @since 0.10
  */
 public abstract class IntValueProfile extends Profile {
 
     IntValueProfile() {
     }
 
+    /** @since 0.10 */
     public abstract int profile(int value);
 
     /**
      * Returns a value profile that profiles the exact value of an <code>int</code>.
      *
      * @see IntValueProfile
+     * @since 0.10
      */
     public static IntValueProfile createIdentityProfile() {
         if (Profile.isProfilingEnabled()) {

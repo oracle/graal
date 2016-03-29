@@ -38,6 +38,7 @@ import com.oracle.truffle.api.source.Source;
  * methods should be coded with Truffle guidelines and cautions in mind.
  *
  * @see Instrumenter
+ * @since 0.8 or earlier
  */
 public interface EvalInstrumentListener {
 
@@ -53,6 +54,7 @@ public interface EvalInstrumentListener {
      * @param node the guest language AST node at which the expression was evaluated
      * @param frame execution frame at the guest-language AST node
      * @param result expression evaluation
+     * @since 0.8 or earlier
      */
     void onExecution(Node node, VirtualFrame frame, Object result);
 
@@ -70,6 +72,7 @@ public interface EvalInstrumentListener {
      *            attached
      * @param frame execution frame at the guest-language AST node
      * @param ex the exception
+     * @since 0.8 or earlier
      */
     void onFailure(Node node, VirtualFrame frame, Exception ex);
 

@@ -30,6 +30,8 @@ import com.oracle.truffle.api.CompilerDirectives;
  * An exception that should be thrown if the return value cannot be represented as a value of the
  * return type. The Truffle optimizer has special knowledge of this exception class and will never
  * compile a catch block that catches this exception type.
+ * 
+ * @since 0.8 or earlier
  */
 public final class UnexpectedResultException extends SlowPathException {
 
@@ -41,6 +43,7 @@ public final class UnexpectedResultException extends SlowPathException {
      * the return type.
      *
      * @param result the alternative result
+     * @since 0.8 or earlier
      */
     public UnexpectedResultException(Object result) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -49,6 +52,7 @@ public final class UnexpectedResultException extends SlowPathException {
 
     /**
      * @return the unexpected result
+     * @since 0.8 or earlier
      */
     public Object getResult() {
         return result;

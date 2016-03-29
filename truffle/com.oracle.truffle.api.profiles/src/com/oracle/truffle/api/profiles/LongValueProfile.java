@@ -41,9 +41,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class SampleNode extends Node {
- *
+ * 
  *     final LongValueProfile profile = LongValueProfile.createIdentityProfile();
- *
+ * 
  *     long execute(long input) {
  *         long profiledValue = profile.profile(input);
  *         // compiler may know now more about profiledValue
@@ -57,18 +57,21 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * @see #createIdentityProfile()
  * @see ValueProfile
+ * @since 0.10
  */
 public abstract class LongValueProfile extends Profile {
 
     LongValueProfile() {
     }
 
+    /** @since 0.10 */
     public abstract long profile(long value);
 
     /**
      * Returns a value profile that profiles the exact value of an <code>long</code>.
      *
      * @see LongValueProfile
+     * @since 0.10
      */
     public static LongValueProfile createIdentityProfile() {
         if (Profile.isProfilingEnabled()) {

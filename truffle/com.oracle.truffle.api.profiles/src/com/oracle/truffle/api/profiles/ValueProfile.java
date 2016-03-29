@@ -46,9 +46,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class SampleNode extends Node {
- *
+ * 
  * final ValueProfile profile = ValueProfile.create{Identity,Class}Profile();
- *
+ * 
  *     Object execute(Object input) {
  *         Object profiledValue = profile.profile(input);
  *         // compiler may know now more about profiledValue
@@ -63,12 +63,14 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * @see #createIdentityProfile()
  * @see #createClassProfile()
+ * @since 0.10
  */
 public abstract class ValueProfile extends Profile {
 
     ValueProfile() {
     }
 
+    /** @since 0.10 */
     public abstract <T> T profile(T value);
 
     /**
@@ -89,6 +91,7 @@ public abstract class ValueProfile extends Profile {
      * </P>
      *
      * @see ValueProfile usage example
+     * @since 0.10
      */
     public static ValueProfile createClassProfile() {
         if (Profile.isProfilingEnabled()) {
@@ -109,6 +112,8 @@ public abstract class ValueProfile extends Profile {
      * object identity. If two identities have been seen on a single profile instance then this
      * profile will transition to a generic state with no overhead.
      * </p>
+     * 
+     * @since 0.10
      */
     public static ValueProfile createIdentityProfile() {
         if (Profile.isProfilingEnabled()) {
@@ -132,6 +137,8 @@ public abstract class ValueProfile extends Profile {
      * seen on a single profile instance then this profile will transition to a generic state with
      * no overhead.
      * </p>
+     * 
+     * @since 0.10
      */
     public static ValueProfile createEqualityProfile() {
         if (Profile.isProfilingEnabled()) {

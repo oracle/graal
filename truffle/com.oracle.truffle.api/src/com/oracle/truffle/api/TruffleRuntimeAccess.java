@@ -26,11 +26,15 @@ package com.oracle.truffle.api;
 
 /**
  * A service that provides access to a {@link TruffleRuntime} implementation.
+ * 
+ * @since 0.8 or earlier
  */
 public interface TruffleRuntimeAccess {
 
     /**
      * Gets the {@link TruffleRuntime} implementation available via this access object.
+     * 
+     * @since 0.8 or earlier
      */
     TruffleRuntime getRuntime();
 }

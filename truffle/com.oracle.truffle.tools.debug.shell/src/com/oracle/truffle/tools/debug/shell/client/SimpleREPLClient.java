@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import java.util.TreeSet;
 
 import jline.console.ConsoleReader;
 
-import com.oracle.truffle.api.QuitException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.REPLClient;
 import com.oracle.truffle.tools.debug.shell.REPLMessage;
@@ -97,6 +96,13 @@ public class SimpleREPLClient implements REPLClient {
     private static final String STACK_FRAME_FORMAT = "    %3d: at %s in %s    %s\n";
     private static final String STACK_FRAME_SELECTED_FORMAT = "==> %3d: at %s in %s    %s\n";
 
+    public static void main(String[] args) {
+        final SimpleREPLClient client = new SimpleREPLClient();
+        final REPLServer replServer = new REPLServer(client);
+        replServer.start();
+        client.start(replServer);
+    }
+
     // Top level commands
     private final Map<String, REPLCommand> commandMap = new HashMap<>();
     private final Collection<String> commandNames = new TreeSet<>();
@@ -112,7 +118,7 @@ public class SimpleREPLClient implements REPLClient {
 
     private final PrintStream writer;
 
-    private final REPLServer replServer;
+    private REPLServer replServer;
 
     private final LocalOption astDepthOption = new IntegerOption(9, "astdepth", "default depth for AST display");
 
@@ -143,8 +149,9 @@ public class SimpleREPLClient implements REPLClient {
      */
     private Source selectedSource = null;
 
-    public SimpleREPLClient(REPLServer replServer) {
-        this.replServer = replServer;
+    private boolean quitting; // User has requested to "Quit"
+
+    public SimpleREPLClient() {
         this.writer = System.out;
         try {
             this.reader = new ConsoleReader();
@@ -202,13 +209,32 @@ public class SimpleREPLClient implements REPLClient {
         addOption(verboseBreakpointInfoOption);
     }
 
-    public void start() {
+    public void start(REPLServer server) {
 
-        this.clientContext = new ClientContextImpl(null, null);
+        this.replServer = server;
+        clientContext = new ClientContextImpl(null, null);
+        showWelcome();
         try {
-            showWelcome();
-            clientContext.startContextSession();
-        } catch (QuitException ex) {
+            final REPLMessage[] replies = replServer.receive(infoLanguageCommand.createRequest(clientContext, NULL_ARGS));
+            if (replies.length == 0) {
+                clientContext.displayFailReply("No languages could be loaded");
+            } else if (replies.length == 1) {
+                final String[] args = new String[]{"", replies[0].get(REPLMessage.LANG_NAME)};
+                final REPLMessage[] results = replServer.receive(REPLRemoteCommand.SET_LANG_CMD.createRequest(clientContext, args));
+                if (results[0].get(REPLMessage.STATUS).equals(REPLMessage.FAILED)) {
+                    final String message = results[0].get(REPLMessage.DISPLAY_MSG);
+                    clientContext.displayFailReply(message != null ? message : results[0].toString());
+                } else {
+                    clientContext.updatePrompt();
+                    clientContext.startContextSession();
+                }
+            } else {
+                clientContext.displayInfo("Languages supported (type \"lang <name>\" to set default)");
+                displayLanguages(replies);
+                clientContext.updatePrompt();
+                clientContext.startContextSession();
+            }
+        } finally {
             clientContext.displayReply("Goodbye");
         }
     }
@@ -488,7 +514,14 @@ public class SimpleREPLClient implements REPLClient {
         }
 
         public void displayFailReply(String message) {
-            writer.println(FAIL_PREFIX + message);
+            // Suppress kill-induced failure, since kill is announced
+            if (!message.equals("KillException")) {
+                writer.println(FAIL_PREFIX + message);
+            }
+        }
+
+        public void displayKillMessage(String message) {
+            writer.println(clientContext.currentPrompt + " killed");
         }
 
         public void displayWarnings(String warnings) {
@@ -505,33 +538,52 @@ public class SimpleREPLClient implements REPLClient {
 
             while (true) {
                 try {
-                    String[] args;
-                    String line = reader.readLine(currentPrompt).trim();
-                    if (line.startsWith("eval ")) {
-                        args = new String[]{"eval", line.substring(5)};
-                    } else {
-                        args = line.split("[ \t]+");
-                    }
-                    if (args.length == 0) {
-                        break;
-                    }
-                    final String cmd = args[0];
+                    REPLCommand command = null;
+                    String[] args = NULL_ARGS;
 
-                    if (cmd.isEmpty()) {
-                        continue;
-                    }
-
-                    REPLCommand command = commandMap.get(cmd);
-                    while (command instanceof REPLIndirectCommand) {
-                        if (traceMessagesOption.getBool()) {
-                            traceMessage("Executing indirect: " + command.getCommand());
+                    if (quitting) {
+                        if (level == 0) {
+                            return;
                         }
-                        command = ((REPLIndirectCommand) command).getCommand(args);
+                        command = REPLRemoteCommand.KILL_CMD;
+                    } else {
+                        String line = reader.readLine(currentPrompt).trim();
+                        if (line.startsWith("eval ")) {
+                            args = new String[]{"eval", line.substring(5)};
+                        } else {
+                            args = line.split("[ \t]+");
+                        }
+                        if (args.length == 0) {
+                            break;
+                        }
+                        final String cmd = args[0];
+
+                        if (cmd.isEmpty()) {
+                            continue;
+                        }
+                        command = commandMap.get(cmd);
+
+                        while (command instanceof REPLIndirectCommand) {
+                            if (traceMessagesOption.getBool()) {
+                                traceMessage("Executing indirect: " + command.getCommand());
+                            }
+                            command = ((REPLIndirectCommand) command).getCommand(args);
+                        }
+
+                        if (command == quitCommand) {
+                            if (level == 0) {
+                                return;
+                            }
+                            quitting = true;
+                            command = REPLRemoteCommand.KILL_CMD;
+                        }
+
+                        if (command == null) {
+                            clientContext.displayFailReply("Unrecognized command \"" + cmd + "\"");
+                            continue;
+                        }
                     }
-                    if (command == null) {
-                        clientContext.displayFailReply("Unrecognized command \"" + cmd + "\"");
-                        continue;
-                    }
+
                     if (command instanceof REPLLocalCommand) {
                         if (traceMessagesOption.getBool()) {
                             traceMessage("Executing local: " + command.getCommand());
@@ -552,7 +604,6 @@ public class SimpleREPLClient implements REPLClient {
                         if (path != null && !path.isEmpty()) {
                             selectSource(path);
                         }
-
                     } else {
                         assert false; // Should not happen.
                     }
@@ -924,7 +975,7 @@ public class SimpleREPLClient implements REPLClient {
         }
     };
 
-    private final REPLCommand infoLanguageCommand = new REPLRemoteCommand("languages", "lang", "languages supported") {
+    private final REPLRemoteCommand infoLanguageCommand = new REPLRemoteCommand("languages", "lang", "languages supported") {
 
         final String[] help = {"info language:  list details about supported languages"};
 
@@ -947,16 +998,23 @@ public class SimpleREPLClient implements REPLClient {
                 clientContext.displayFailReply(replies[0].get(REPLMessage.DISPLAY_MSG));
             } else {
                 clientContext.displayReply("Languages supported:");
-                for (REPLMessage message : replies) {
-                    final StringBuilder sb = new StringBuilder();
-                    sb.append(message.get(REPLMessage.LANG_NAME));
-                    sb.append(" ver. ");
-                    sb.append(message.get(REPLMessage.LANG_VER));
-                    clientContext.displayInfo(sb.toString());
-                }
+                displayLanguages(replies);
             }
         }
     };
+
+    private void displayLanguages(REPLMessage[] replies) {
+        for (REPLMessage message : replies) {
+            final StringBuilder sb = new StringBuilder();
+            final String name = message.get(REPLMessage.LANG_NAME);
+            if (!name.equals("")) {
+                sb.append(name);
+                sb.append(" ver. ");
+                sb.append(message.get(REPLMessage.LANG_VER));
+                clientContext.displayInfo(sb.toString());
+            }
+        }
+    }
 
     private final REPLCommand infoSetCommand = new REPLLocalCommand("set", null, "info about settings") {
 
@@ -1056,10 +1114,8 @@ public class SimpleREPLClient implements REPLClient {
     private final REPLCommand quitCommand = new REPLRemoteCommand("quit", "q", "Quit execution and REPL") {
 
         @Override
-        public REPLMessage createRequest(REPLClientContext context, String[] args) {
-            final REPLMessage request = new REPLMessage();
-            request.put(REPLMessage.OP, REPLMessage.QUIT);
-            return request;
+        protected REPLMessage createRequest(REPLClientContext context, String[] args) {
+            return null;
         }
 
     };

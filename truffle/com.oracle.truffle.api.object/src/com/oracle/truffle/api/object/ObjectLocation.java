@@ -24,11 +24,15 @@
  */
 package com.oracle.truffle.api.object;
 
+/** @since 0.8 or earlier */
 public interface ObjectLocation extends TypedLocation {
+    /** @since 0.8 or earlier */
     Class<? extends Object> getType();
 
     /**
      * If {@code true}, this location does not accept {@code null} values.
+     * 
+     * @since 0.8 or earlier
      */
     boolean isNonNull();
 }

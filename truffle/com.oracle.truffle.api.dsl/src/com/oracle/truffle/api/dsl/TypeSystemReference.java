@@ -36,6 +36,7 @@ import java.lang.annotation.Target;
  *
  * @see TypeSystem
  * @see Node
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})

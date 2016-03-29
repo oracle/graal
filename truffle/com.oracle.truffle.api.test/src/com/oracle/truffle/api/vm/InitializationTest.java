@@ -99,6 +99,7 @@ public class InitializationTest {
         assertEquals(vm.eval(source).get(), 1);
 
         vm.dispose();
+        vm = null;
     }
 
     private static final class MMRootNode extends RootNode {

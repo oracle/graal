@@ -48,6 +48,7 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * @see TypeCheck
+ * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})

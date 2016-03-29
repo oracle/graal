@@ -32,6 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.AcceptMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
 @AcceptMessage(value = "EXECUTE", receiverType = JavaFunctionObject.class, language = JavaInteropLanguage.class)
@@ -63,44 +64,70 @@ final class ExecuteNode extends JavaFunctionBaseNode {
             return toJava.length;
         }
 
+        @ExplodeLoop
         Object execute(VirtualFrame frame, Method method, Object obj, Object[] args) {
+            Object[] convertedArguments = new Object[toJava.length];
+            Class<?>[] types = getTypes(method, toJava.length);
+            for (int i = 0; i < toJava.length; i++) {
+                convertedArguments[i] = toJava[i].convert(frame, args[i], types[i]);
+            }
+            return doInvoke(method, obj, convertedArguments);
+        }
+
+        @TruffleBoundary
+        private static Class<?>[] getTypes(Method method, int expectedTypeCount) {
+            Class<?>[] argumentTypes = method.getParameterTypes();
+            if (method.isVarArgs()) {
+                Class<?>[] types = new Class<?>[expectedTypeCount];
+                for (int i = 0; i < expectedTypeCount; i++) {
+                    if (i < argumentTypes.length - 1) {
+                        types[i] = argumentTypes[i];
+                    } else {
+                        types[i] = argumentTypes[argumentTypes.length - 1].getComponentType();
+                    }
+                }
+                return types;
+            } else {
+                assert expectedTypeCount == argumentTypes.length;
+                return argumentTypes;
+            }
+        }
+
+        @TruffleBoundary
+        private static Object doInvoke(Method method, Object obj, Object[] args) {
             try {
                 int numberOfArguments = method.getParameterTypes().length;
                 Class<?>[] argumentTypes = method.getParameterTypes();
                 Object[] arguments = new Object[numberOfArguments];
                 if (method.isVarArgs()) {
                     for (int i = 0; i < numberOfArguments - 1; i++) {
-                        arguments[i] = convert(frame, args[i], toJava[i], argumentTypes[i]);
+                        arguments[i] = args[i];
                     }
                     Class<?> varArgsType = argumentTypes[numberOfArguments - 1].getComponentType();
                     Object varArgs = Array.newInstance(varArgsType, args.length - numberOfArguments + 1);
                     for (int i = numberOfArguments - 1, j = 0; i < args.length; i++, j++) {
-                        Array.set(varArgs, j, convert(frame, args[i], toJava[i], varArgsType));
+                        Array.set(varArgs, j, args[i]);
                     }
                     arguments[numberOfArguments - 1] = varArgs;
                 } else {
                     for (int i = 0; i < args.length; i++) {
-                        arguments[i] = convert(frame, args[i], toJava[i], argumentTypes[i]);
+                        arguments[i] = args[i];
                     }
                 }
-                return invoke(method, obj, arguments);
+                return reflectiveInvoke(method, obj, arguments);
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                 throw new IllegalStateException(ex);
             }
         }
 
         @TruffleBoundary
-        private static Object invoke(Method method, Object obj, Object[] arguments) throws IllegalAccessException, InvocationTargetException {
+        private static Object reflectiveInvoke(Method method, Object obj, Object[] arguments) throws IllegalAccessException, InvocationTargetException {
             method.setAccessible(true);
             Object ret = method.invoke(obj, arguments);
             if (ToJavaNode.isPrimitive(ret)) {
                 return ret;
             }
             return JavaInterop.asTruffleObject(ret);
-        }
-
-        private static Object convert(VirtualFrame frame, Object value, ToJavaNode toJava, Class<?> type) {
-            return toJava.convert(frame, value, type);
         }
     }
 

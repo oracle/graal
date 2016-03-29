@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *
  * @see LoopNode
  * @see TruffleRuntime#createLoopNode(RepeatingNode)
+ * @since 0.8 or earlier
  */
 public interface RepeatingNode extends NodeInterface {
 
@@ -46,6 +47,7 @@ public interface RepeatingNode extends NodeInterface {
      * @param frame the current execution frame passed through the interpreter
      * @return <code>true</code> if the method should be executed again to complete the loop and
      *         <code>false</code> if it must not.
+     * @since 0.8 or earlier
      */
     boolean executeRepeating(VirtualFrame frame);
 

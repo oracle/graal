@@ -31,13 +31,24 @@ import java.security.PrivilegedAction;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.
+ * 
+ * @since 0.8 or earlier
  */
 public class Truffle {
+    /**
+     * @deprecated Accidentally public - don't use.
+     * @since 0.8 or earlier
+     */
+    @Deprecated
+    public Truffle() {
+    }
 
     private static final TruffleRuntime RUNTIME = initRuntime();
 
     /**
      * Gets the singleton {@link TruffleRuntime} object.
+     * 
+     * @since 0.8 or earlier
      */
     public static TruffleRuntime getRuntime() {
         return RUNTIME;

@@ -97,7 +97,12 @@ and then it is possible to include the artifacts as dependencies to a `pom.xml`:
 ## Contributing
 
 You can contact the Truffle developers at graal-dev@openjdk.java.net mailing
-list.
+list. To contribute a change, verify it using
+```bash
+$ mx gate
+```
+and start a [pull request](https://help.github.com/articles/using-pull-requests/).
+Detailed info can be found in the [contributing document](CONTRIBUTING.md).
 
 ## License
 

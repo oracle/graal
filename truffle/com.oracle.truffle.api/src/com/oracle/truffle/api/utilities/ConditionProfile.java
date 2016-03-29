@@ -28,18 +28,21 @@ import com.oracle.truffle.api.nodes.NodeCloneable;
 
 /**
  * @deprecated use {@link com.oracle.truffle.api.profiles.ConditionProfile} instead
+ * @since 0.8 or earlier
  */
 @Deprecated
 public abstract class ConditionProfile extends NodeCloneable {
     ConditionProfile() {
     }
 
+    /** @since 0.8 or earlier */
     public abstract boolean profile(boolean value);
 
     /**
      * @deprecated use
      *             {@link com.oracle.truffle.api.profiles.ConditionProfile#createCountingProfile()}
      *             instead
+     * @since 0.8 or earlier
      */
     @SuppressWarnings("deprecation")
     @Deprecated
@@ -51,6 +54,7 @@ public abstract class ConditionProfile extends NodeCloneable {
      * @deprecated use
      *             {@link com.oracle.truffle.api.profiles.ConditionProfile#createBinaryProfile()}
      *             instead
+     * @since 0.8 or earlier
      */
     @Deprecated
     @SuppressWarnings("deprecation")

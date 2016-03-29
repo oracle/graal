@@ -31,12 +31,15 @@ import com.oracle.truffle.api.CompilerDirectives;
  * systems or guest languages to implement heuristics based on Truffle ASTs.
  *
  * @see Node#getCost()
+ * @since 0.8 or earlier
  */
 public enum NodeCost {
 
     /**
      * This node has literally no costs and should be ignored for heuristics. This is particularly
      * useful for wrapper and profiling nodes which should not influence the heuristics.
+     * 
+     * @since 0.8 or earlier
      */
     NONE,
 
@@ -44,11 +47,15 @@ public enum NodeCost {
      * This node has a {@link CompilerDirectives#transferToInterpreter()} or
      * {@link CompilerDirectives#transferToInterpreterAndInvalidate()} as its first unconditional
      * statement.
+     * 
+     * @since 0.8 or earlier
      */
     UNINITIALIZED,
 
     /**
      * This node represents a specialized monomorphic version of an operation.
+     * 
+     * @since 0.8 or earlier
      */
     MONOMORPHIC,
 
@@ -56,6 +63,8 @@ public enum NodeCost {
      * This node represents a polymorphic version of an operation. For multiple chained polymorphic
      * nodes the first may return {@link #MONOMORPHIC} and all additional nodes should return
      * {@link #POLYMORPHIC}.
+     * 
+     * @since 0.8 or earlier
      */
     POLYMORPHIC,
 
@@ -63,11 +72,13 @@ public enum NodeCost {
      * This node represents a megamorphic version of an operation. This value should only be used if
      * the operation implementation supports monomorphism and polymorphism otherwise
      * {@link #MONOMORPHIC} should be used instead.
+     * 
+     * @since 0.8 or earlier
      */
     MEGAMORPHIC;
 
+    /** @since 0.8 or earlier */
     public boolean isTrivial() {
         return this == NONE || this == UNINITIALIZED;
     }
-
 }

@@ -27,7 +27,7 @@ package com.oracle.truffle.api.vm;
 final class ArgumentsMishmashException extends IllegalArgumentException {
     static final long serialVersionUID = 1L;
 
-    public ArgumentsMishmashException() {
+    ArgumentsMishmashException() {
     }
 
     @Override

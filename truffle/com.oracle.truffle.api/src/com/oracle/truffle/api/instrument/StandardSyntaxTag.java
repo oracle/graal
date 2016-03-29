@@ -32,36 +32,49 @@ package com.oracle.truffle.api.instrument;
  * (for example for mostly expression-oriented languages) or even for specific languages.
  *
  * @see Probe
+ * @since 0.8 or earlier
  */
 public enum StandardSyntaxTag implements SyntaxTag {
 
     /**
      * Marker for a variable assignment.
+     * 
+     * @since 0.8 or earlier
      */
     ASSIGNMENT("assignment", "a variable assignment"),
 
     /**
      * Marker for a call site.
+     * 
+     * @since 0.8 or earlier
      */
     CALL("call", "a method/procedure call site"),
 
     /**
      * Marker for a location where a guest language exception is about to be thrown.
+     * 
+     * @since 0.8 or earlier
      */
     THROW("throw", "creator of an exception"),
 
     /**
      * Marker for a location where ordinary "stepping" should halt.
+     * 
+     * @since 0.8 or earlier
      */
     STATEMENT("statement", "basic unit of the language, suitable for \"stepping\" in a debugger"),
 
     /**
      * Marker for the start of the body of a method.
+     * 
+     * @since 0.8 or earlier
      */
     START_METHOD("start-method", "start of the body of a method"),
 
     /**
      * Marker for the start of the body of a loop.
+     * 
+     * @since 0.8 or earlier
      */
     START_LOOP("start-loop", "start of the body of a loop"),
 
@@ -69,6 +82,8 @@ public enum StandardSyntaxTag implements SyntaxTag {
      * Marker that is attached to some arbitrary locations that appear often-enough in an AST so
      * that a location with this tag is regularly executed. Could be the start of method and loop
      * bodies. May be used to implement some kind of safepoint functionality.
+     * 
+     * @since 0.8 or earlier
      */
     PERIODIC("periodic", "arbitrary locations that appear often-enough in an AST so that a location with this tag is regularly executed");
 
@@ -80,10 +95,12 @@ public enum StandardSyntaxTag implements SyntaxTag {
         this.description = description;
     }
 
+    /** @since 0.8 or earlier */
     public String getName() {
         return name;
     }
 
+    /** @since 0.8 or earlier */
     public String getDescription() {
         return description;
     }

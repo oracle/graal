@@ -26,6 +26,7 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * <p>
@@ -36,11 +37,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * </p>
  *
  * <p>
- * <b> Usage example: </b> {@codesnippet BranchProfileSample}
+ * <b> Usage example: </b>
+ * {@link com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile}
  *
  * {@inheritDoc}
  *
  * @see BranchProfile#enter()
+ * @since 0.10
  */
 public abstract class BranchProfile extends Profile {
 
@@ -49,17 +52,22 @@ public abstract class BranchProfile extends Profile {
 
     /**
      * Call when an unlikely branch is entered.
+     * 
+     * @since 0.10
      */
     public abstract void enter();
 
     /**
      * @deprecated it is not reliable when profiling is turned off.
+     * @since 0.10
      */
     @Deprecated
     public abstract boolean isVisited();
 
     /**
      * Call to create a new instance of a branch profile.
+     * 
+     * @since 0.10
      */
     public static BranchProfile create() {
         if (Profile.isProfilingEnabled()) {
@@ -124,4 +132,20 @@ public abstract class BranchProfile extends Profile {
 
     }
 
+}
+
+class BranchProfileSnippets {
+    // BEGIN: com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile
+    class BranchingNode extends Node {
+        final BranchProfile errorProfile = BranchProfile.create();
+
+        int execute(int value) {
+            if (value == Integer.MAX_VALUE) {
+                errorProfile.enter();
+                throw new Error("Invalid input value");
+            }
+            return value;
+        }
+    }
+    // END: com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile
 }

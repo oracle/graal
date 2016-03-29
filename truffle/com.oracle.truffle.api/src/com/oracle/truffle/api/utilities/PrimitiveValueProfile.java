@@ -31,6 +31,7 @@ import java.util.Objects;
 
 /**
  * @deprecated use {@link com.oracle.truffle.api.profiles.PrimitiveValueProfile} instead
+ * @since 0.8 or earlier
  */
 @Deprecated
 @SuppressWarnings("deprecation")
@@ -44,6 +45,7 @@ public class PrimitiveValueProfile extends ValueProfile {
     PrimitiveValueProfile() {
     }
 
+    /** @since 0.8 or earlier */
     @SuppressWarnings("unchecked")
     @Override
     public <T> T profile(T v) {
@@ -90,6 +92,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return (T) value;
     }
 
+    /** @since 0.8 or earlier */
     public byte profile(byte value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
@@ -102,6 +105,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return value;
     }
 
+    /** @since 0.8 or earlier */
     public short profile(short value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
@@ -114,6 +118,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return value;
     }
 
+    /** @since 0.8 or earlier */
     public int profile(int value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
@@ -126,6 +131,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return value;
     }
 
+    /** @since 0.8 or earlier */
     public long profile(long value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
@@ -138,6 +144,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return value;
     }
 
+    /** @since 0.8 or earlier */
     public float profile(float value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
@@ -150,6 +157,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return value;
     }
 
+    /** @since 0.8 or earlier */
     public double profile(double value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
@@ -162,6 +170,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return value;
     }
 
+    /** @since 0.8 or earlier */
     public boolean profile(boolean value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
@@ -174,6 +183,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return value;
     }
 
+    /** @since 0.8 or earlier */
     public char profile(char value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
@@ -186,18 +196,22 @@ public class PrimitiveValueProfile extends ValueProfile {
         return value;
     }
 
+    /** @since 0.8 or earlier */
     public boolean isGeneric() {
         return cachedValue == GENERIC;
     }
 
+    /** @since 0.8 or earlier */
     public boolean isUninitialized() {
         return cachedValue == UNINITIALIZED;
     }
 
+    /** @since 0.8 or earlier */
     public Object getCachedValue() {
         return cachedValue;
     }
 
+    /** @since 0.8 or earlier */
     @Override
     public String toString() {
         return String.format("%s(%s)@%x", getClass().getSimpleName(), formatValue(), hashCode());
@@ -213,6 +227,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         }
     }
 
+    /** @since 0.8 or earlier */
     public static boolean exactCompare(float a, float b) {
         /*
          * -0.0 == 0.0, but you can tell the difference through other means, so we need to
@@ -221,6 +236,7 @@ public class PrimitiveValueProfile extends ValueProfile {
         return Float.floatToRawIntBits(a) == Float.floatToRawIntBits(b);
     }
 
+    /** @since 0.8 or earlier */
     public static boolean exactCompare(double a, double b) {
         /*
          * -0.0 == 0.0, but you can tell the difference through other means, so we need to

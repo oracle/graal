@@ -64,6 +64,7 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * @see ASTProber
  * @see ProbeListener
  * @see SyntaxTag
+ * @since 0.8 or earlier
  */
 @SuppressWarnings("rawtypes")
 public final class Probe {
@@ -160,6 +161,8 @@ public final class Probe {
     /**
      * Adds a {@linkplain SyntaxTag tag} to the set of tags associated with this {@link Probe};
      * {@code no-op} if already in the set.
+     * 
+     * @since 0.8 or earlier
      */
     public void tagAs(SyntaxTag tag, Object tagValue) {
         assert tag != null;
@@ -191,6 +194,8 @@ public final class Probe {
     /**
      * Is the <em>Probed node</em> tagged as belonging to a particular human-sensible category of
      * language constructs?
+     * 
+     * @since 0.8 or earlier
      */
     public boolean isTaggedAs(SyntaxTag tag) {
         assert tag != null;
@@ -200,6 +205,8 @@ public final class Probe {
     /**
      * In which user-sensible categories has the <em>Probed node</em> been tagged (
      * <em>empty set</em> if none).
+     * 
+     * @since 0.8 or earlier
      */
     public Collection<SyntaxTag> getSyntaxTags() {
         return Collections.unmodifiableCollection(tags);
@@ -231,11 +238,14 @@ public final class Probe {
     /**
      * Gets the {@link SourceSection} associated with the <en>Probed AST node</em>, possibly
      * {@code null}.
+     * 
+     * @since 0.8 or earlier
      */
     public SourceSection getProbedSourceSection() {
         return sourceSection;
     }
 
+    /** @since 0.8 or earlier */
     public String getShortDescription() {
         final String location = sourceSection == null ? "<unknown>" : sourceSection.getShortDescription();
         return "Probe@" + location + getTagsDescription();

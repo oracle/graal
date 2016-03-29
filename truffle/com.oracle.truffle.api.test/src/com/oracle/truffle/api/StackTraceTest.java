@@ -76,9 +76,9 @@ public class StackTraceTest {
         assertInvariants(stack);
         Assert.assertEquals(2, stack.frames.size());
         Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
-        Assert.assertSame(findCallNode(call), stack.currentFrame.getCallNode());
+        Assert.assertNull(stack.currentFrame.getCallNode());
         Assert.assertSame(call, stack.callerFrame.getCallTarget());
-        Assert.assertNull(stack.callerFrame.getCallNode());
+        Assert.assertSame(findCallNode(call), stack.callerFrame.getCallNode());
     }
 
     @Test
@@ -89,9 +89,9 @@ public class StackTraceTest {
 
         Assert.assertEquals(2, stack.frames.size());
         Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
-        Assert.assertSame(findCallNode(call), stack.currentFrame.getCallNode());
+        Assert.assertNull(stack.currentFrame.getCallNode());
         Assert.assertSame(call, stack.callerFrame.getCallTarget());
-        Assert.assertNull(stack.callerFrame.getCallNode());
+        Assert.assertSame(findCallNode(call), stack.callerFrame.getCallNode());
         assertInvariants(stack);
     }
 
@@ -123,13 +123,13 @@ public class StackTraceTest {
         Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
         Assert.assertNull(stack.currentFrame.getCallNode());
         Assert.assertSame(callTarget, stack.callerFrame.getCallTarget());
-        Assert.assertSame(findCallNode(indirect), stack.callerFrame.getCallNode());
+        Assert.assertNull(stack.callerFrame.getCallNode());
 
         Assert.assertSame(indirect, stack.frames.get(2).getCallTarget());
-        Assert.assertSame(findCallNode(direct), stack.frames.get(2).getCallNode());
+        Assert.assertSame(findCallNode(indirect), stack.frames.get(2).getCallNode());
 
         Assert.assertSame(direct, stack.frames.get(3).getCallTarget());
-        Assert.assertNull(stack.frames.get(3).getCallNode());
+        Assert.assertSame(findCallNode(direct), stack.frames.get(3).getCallNode());
     }
 
     @Test
@@ -230,13 +230,13 @@ public class StackTraceTest {
                             Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
                             Assert.assertNull(stack.currentFrame.getCallNode());
                             Assert.assertSame(callTarget, stack.callerFrame.getCallTarget());
-                            Assert.assertSame(findCallNode(indirect), stack.callerFrame.getCallNode());
+                            Assert.assertNull(stack.callerFrame.getCallNode());
 
                             Assert.assertSame(indirect, stack.frames.get(2).getCallTarget());
-                            Assert.assertSame(findCallNode(direct), stack.frames.get(2).getCallNode());
+                            Assert.assertSame(findCallNode(indirect), stack.frames.get(2).getCallNode());
 
                             Assert.assertSame(direct, stack.frames.get(3).getCallTarget());
-                            Assert.assertNull(stack.frames.get(3).getCallNode());
+                            Assert.assertSame(findCallNode(direct), stack.frames.get(3).getCallNode());
                         }
                         return null;
                     }

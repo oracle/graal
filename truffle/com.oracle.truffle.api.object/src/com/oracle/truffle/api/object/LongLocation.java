@@ -24,31 +24,38 @@
  */
 package com.oracle.truffle.api.object;
 
+/** @since 0.8 or earlier */
 public interface LongLocation extends TypedLocation {
     /**
      * @see #get(DynamicObject, Shape)
+     * @since 0.8 or earlier
      */
     long getLong(DynamicObject store, Shape shape);
 
     /**
      * @see #get(DynamicObject, boolean)
+     * @since 0.8 or earlier
      */
     long getLong(DynamicObject store, boolean condition);
 
     /**
      * @see #set(DynamicObject, Object)
+     * @since 0.8 or earlier
      */
     void setLong(DynamicObject store, long value) throws FinalLocationException;
 
     /**
      * @see #set(DynamicObject, Object, Shape)
+     * @since 0.8 or earlier
      */
     void setLong(DynamicObject store, long value, Shape shape) throws FinalLocationException;
 
     /**
      * @see #set(DynamicObject, Object, Shape, Shape)
+     * @since 0.8 or earlier
      */
     void setLong(DynamicObject store, long value, Shape oldShape, Shape newShape);
 
+    /** @since 0.8 or earlier */
     Class<Long> getType();
 }

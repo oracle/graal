@@ -36,6 +36,8 @@ import com.oracle.truffle.api.Truffle;
  * an assumption that may be recreated can have a final reference to an object of this class. Note
  * that you should be careful that repeated invalidations do not cause a deoptimization loop in that
  * same way that you would with any other assumption.
+ * 
+ * @since 0.8 or earlier
  */
 public class CyclicAssumption {
 
@@ -44,11 +46,13 @@ public class CyclicAssumption {
 
     private static final AtomicReferenceFieldUpdater<CyclicAssumption, Assumption> ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(CyclicAssumption.class, Assumption.class, "assumption");
 
+    /** @since 0.8 or earlier */
     public CyclicAssumption(String name) {
         this.name = name;
         this.assumption = Truffle.getRuntime().createAssumption(name);
     }
 
+    /** @since 0.8 or earlier */
     @TruffleBoundary
     public void invalidate() {
         Assumption newAssumption = Truffle.getRuntime().createAssumption(name);
@@ -56,6 +60,7 @@ public class CyclicAssumption {
         oldAssumption.invalidate();
     }
 
+    /** @since 0.8 or earlier */
     public Assumption getAssumption() {
         return assumption;
     }

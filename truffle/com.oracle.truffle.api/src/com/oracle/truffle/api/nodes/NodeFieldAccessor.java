@@ -33,19 +33,41 @@ import com.oracle.truffle.api.nodes.Node.Children;
 
 /**
  * Information about a field in a {@link Node} class.
+ * 
+ * @since 0.8 or earlier
  */
 public abstract class NodeFieldAccessor {
-
+    /** @since 0.8 or earlier */
     public enum NodeFieldKind {
-        /** The reference to the {@link NodeClass}. */
+        /**
+         * The reference to the {@link NodeClass}.
+         * 
+         * @since 0.8 or earlier
+         */
         NODE_CLASS,
-        /** The single {@link Node#getParent() parent} field. */
+        /**
+         * The single {@link Node#getParent() parent} field.
+         * 
+         * @since 0.8 or earlier
+         */
         PARENT,
-        /** A field annotated with {@link Child}. */
+        /**
+         * A field annotated with {@link Child}.
+         * 
+         * @since 0.8 or earlier
+         */
         CHILD,
-        /** A field annotated with {@link Children}. */
+        /**
+         * A field annotated with {@link Children}.
+         * 
+         * @since 0.8 or earlier
+         */
         CHILDREN,
-        /** A normal non-child data field of the node. */
+        /**
+         * A normal non-child data field of the node.
+         * 
+         * @since 0.8 or earlier
+         */
         DATA
     }
 
@@ -54,15 +76,19 @@ public abstract class NodeFieldAccessor {
     private final NodeFieldKind kind;
     private final Class<?> declaringClass;
     private final String name;
+    /** @since 0.8 or earlier */
     protected final Class<?> type;
 
+    /** @since 0.8 or earlier */
     protected NodeFieldAccessor(NodeFieldKind kind, Class<?> declaringClass, String name, Class<?> type) {
         this.kind = kind;
         this.declaringClass = declaringClass;
         this.name = name;
+        /** @since 0.8 or earlier */
         this.type = type;
     }
 
+    /** @since 0.8 or earlier */
     protected static NodeFieldAccessor create(NodeFieldKind kind, Field field) {
         if (USE_UNSAFE) {
             return new UnsafeNodeField(kind, field);
@@ -71,40 +97,50 @@ public abstract class NodeFieldAccessor {
         }
     }
 
+    /** @since 0.8 or earlier */
     public NodeFieldKind getKind() {
         return kind;
     }
 
+    /** @since 0.8 or earlier */
     public Class<?> getType() {
         return type;
     }
 
+    /** @since 0.8 or earlier */
     public Class<?> getDeclaringClass() {
         return declaringClass;
     }
 
+    /** @since 0.8 or earlier */
     public String getName() {
         return name;
     }
 
     /**
      * @deprecated The visibility of this method will be reduced to protected. Do not use.
+     * @since 0.8 or earlier
      */
     @Deprecated
     public abstract void putObject(Node receiver, Object value);
 
+    /** @since 0.8 or earlier */
     public abstract Object getObject(Node receiver);
 
+    /** @since 0.8 or earlier */
     public abstract Object loadValue(Node node);
 
+    /** @since 0.8 or earlier */
     public abstract static class AbstractUnsafeNodeFieldAccessor extends NodeFieldAccessor {
-
+        /** @since 0.8 or earlier */
         protected AbstractUnsafeNodeFieldAccessor(NodeFieldKind kind, Class<?> declaringClass, String name, Class<?> type) {
             super(kind, declaringClass, name, type);
         }
 
+        /** @since 0.8 or earlier */
         public abstract long getOffset();
 
+        /** @since 0.8 or earlier */
         @SuppressWarnings("deprecation")
         @Override
         public void putObject(Node receiver, Object value) {
@@ -115,6 +151,7 @@ public abstract class NodeFieldAccessor {
             }
         }
 
+        /** @since 0.8 or earlier */
         @Override
         public Object getObject(Node receiver) {
             if (!type.isPrimitive()) {
@@ -124,6 +161,7 @@ public abstract class NodeFieldAccessor {
             }
         }
 
+        /** @since 0.8 or earlier */
         @Override
         public Object loadValue(Node node) {
             if (type == boolean.class) {
