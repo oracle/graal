@@ -604,10 +604,14 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         @Override
+        protected void onFirstExecution(RootNode node) {
+            super.onFirstExecution(node);
+        }
+
+        @Override
         protected void onLoopCount(Node source, int iterations) {
             super.onLoopCount(source, iterations);
         }
-
     }
 
     // registers into Accessor.NODES

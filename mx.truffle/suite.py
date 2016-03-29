@@ -47,6 +47,8 @@ suite = {
     "com.oracle.truffle.api" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },

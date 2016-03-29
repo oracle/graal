@@ -22,12 +22,15 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.dsl.test.ExpectError;
-import com.oracle.truffle.api.dsl.test.interop.InvalidTruffleObject2.NestedInvalidTruffleObject;
+import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObjectC.NestedTruffleObject;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.AcceptMessage;
 
-@ExpectError({"com.oracle.truffle.api.dsl.test.interop.InvalidTruffleObject2.NestedInvalidTruffleObject must not be a nested class"})
-@AcceptMessage(value = "READ", receiverType = NestedInvalidTruffleObject.class, language = TestTruffleLanguage.class)
+@AcceptMessage(value = "READ", receiverType = NestedTruffleObject.class, language = TestTruffleLanguage.class)
 public final class ReadNode8 extends BaseReadNode8 {
 
+    @Override
+    protected Object access(VirtualFrame frame, Object receiver, Object name) {
+        return 0;
+    }
 }
