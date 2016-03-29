@@ -505,9 +505,8 @@ public final class Instrumenter {
      * @deprecated
      * @since 0.8 or earlier
      */
-    @SuppressWarnings("rawtypes")
     @Deprecated
-    public ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo) {
+    public ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage<?>> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo) {
         return attach(probe, languageClass, source, listener, instrumentInfo, new String[0], new Object[0]);
     }
 
@@ -556,14 +555,14 @@ public final class Instrumenter {
         return attach(probe, null, source, listener, instrumentInfo, names, params);
     }
 
-    @SuppressWarnings("rawtypes")
-    private ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo, String[] argumentNames,
+    @SuppressWarnings("unchecked")
+    private ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage<?>> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo, String[] argumentNames,
                     Object[] parameters) {
         assert probe.getInstrumenter() == this;
-        Class<? extends TruffleLanguage> foundLanguageClass = null;
+        Class<? extends TruffleLanguage<?>> foundLanguageClass = null;
         if (languageClass == null) {
             if (source.getMimeType() == null) {
-                foundLanguageClass = ACCESSOR.findLanguage(probe);
+                foundLanguageClass = (Class<? extends TruffleLanguage<?>>) ACCESSOR.findLanguage(probe);
             }
         } else {
             foundLanguageClass = languageClass;
