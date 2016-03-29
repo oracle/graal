@@ -55,6 +55,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.FindEngineNode;
 import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrument.Probe;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -63,6 +64,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -95,15 +100,19 @@ import com.oracle.truffle.api.source.Source;
  * appropriate engine (if found), is initialized. Once an engine gets initialized, it remains so,
  * until the virtual machine isn't garbage collected.
  * <p>
- * The engine is single-threaded and tries to enforce that. It records the thread it has been
- * {@link Builder#build() created} by and checks that all subsequent calls are coming from the same
- * thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it what to
- * do.
+ * The engine is single-threaded and does its best to enforce that. It records the thread it has
+ * been {@link Builder#build() created} by and checks that all subsequent calls are coming from the
+ * same thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it
+ * what to do. Each thread can be associated with at most one {@link PolyglotEngine} using another
+ * one from the same thread yields an exception - unless the previous engine is {@link #dispose()
+ * properly disposed} - then the thread is free for being used by another engine.
  *
  * @since 0.9
  */
 @SuppressWarnings("rawtypes")
 public class PolyglotEngine {
+    private static final Shape LANGUAGE_CONTEXT_SHAPE = Layout.createLayout().createShape(new ObjectType());
+    static final FindEngineNodeImpl FIND_ENGINE_NODE = new FindEngineNodeImpl();
     static final boolean JAVA_INTEROP_ENABLED = !TruffleOptions.AOT;
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
@@ -119,7 +128,7 @@ public class PolyglotEngine {
     private final Object instrumentationHandler; // new instrumentation
     private final Map<String, Instrument> instruments;
     private final List<Object[]> config;
-    // private final Object debugger;
+    private final DynamicObject languagesContext;
     private boolean disposed;
 
     static {
@@ -149,6 +158,7 @@ public class PolyglotEngine {
         this.instrumentationHandler = null;
         this.instruments = null;
         this.config = null;
+        this.languagesContext = null;
     }
 
     /**
@@ -179,6 +189,7 @@ public class PolyglotEngine {
         }
         this.langs = map;
         this.instruments = createAndAutostartDescriptors(InstrumentCache.load(getClass().getClassLoader()));
+        this.languagesContext = LANGUAGE_CONTEXT_SHAPE.newInstance();
     }
 
     private Map<String, Instrument> createAndAutostartDescriptors(List<InstrumentCache> instrumentCaches) {
@@ -225,6 +236,10 @@ public class PolyglotEngine {
     @Deprecated
     public static PolyglotEngine.Builder buildNew() {
         return newBuilder();
+    }
+
+    DynamicObject getLanguagesContext() {
+        return languagesContext;
     }
 
     /**
@@ -468,9 +483,13 @@ public class PolyglotEngine {
      * @since 0.9
      */
     public void dispose() {
+        if (disposed) {
+            return;
+        }
         checkThread();
         assertNoTruffle();
         disposed = true;
+        FIND_ENGINE_NODE.disposeEngine(Thread.currentThread(), this);
         ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
             @Override
             protected Void compute() throws IOException {
@@ -546,12 +565,11 @@ public class PolyglotEngine {
             }
         } else {
             res = invokeForeignOnExecutor(foreignNode, frame, receiver);
+            if (res instanceof TruffleObject) {
+                res = new EngineTruffleObject(this, (TruffleObject) res);
+            }
         }
-        if (res instanceof TruffleObject) {
-            return new EngineTruffleObject(this, (TruffleObject) res);
-        } else {
-            return res;
-        }
+        return res;
     }
 
     static void assertNoTruffle() {
@@ -726,11 +744,10 @@ public class PolyglotEngine {
         public Object get() throws IOException {
             assertNoTruffle();
             Object result = waitForSymbol();
-            if (result instanceof TruffleObject) {
+            if (executor != null && result instanceof TruffleObject) {
                 return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
-            } else {
-                return result;
             }
+            return result;
         }
 
         /**
@@ -1125,6 +1142,27 @@ public class PolyglotEngine {
         throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
     }
 
+    static final class FindContextForEngineNode<L> extends Node {
+        private final TruffleLanguage<L> key;
+
+        public FindContextForEngineNode(TruffleLanguage<L> key) {
+            this.key = key;
+        }
+
+        @SuppressWarnings("unchecked")
+        public L executeFindContext(Object raw) {
+            PolyglotEngine engine = (PolyglotEngine) raw;
+            DynamicObject obj = engine.getLanguagesContext();
+            Object value = obj.get(key);
+            if (value == null) {
+                Env env = engine.findEnv(key.getClass());
+                value = SPI.findContext(env);
+                obj.set(key, value);
+            }
+            return (L) value;
+        }
+    }
+
     private static class SPIAccessor extends Accessor {
         @Override
         public Object importSymbol(Object vmObj, TruffleLanguage<?> ownLang, String globalName) {
@@ -1257,8 +1295,31 @@ public class PolyglotEngine {
 
         @Override
         protected Closeable executionStart(Object obj, int currentDepth, boolean initializeDebugger, Source s) {
-            PolyglotEngine vm = (PolyglotEngine) obj;
-            return super.executionStart(vm, -1, initializeDebugger, s);
+            final PolyglotEngine vm = (PolyglotEngine) obj;
+            FIND_ENGINE_NODE.registerEngine(Thread.currentThread(), vm);
+            final Closeable c = super.executionStart(vm, -1, initializeDebugger, s);
+            return new Closeable() {
+                @Override
+                public void close() throws IOException {
+                    FIND_ENGINE_NODE.unregisterEngine(Thread.currentThread(), vm);
+                    c.close();
+                }
+            };
+        }
+
+        @Override
+        protected Node createFindContextNode(TruffleLanguage<?> language) {
+            return FindContextNodeImpl.create(language);
+        }
+
+        @Override
+        protected FindEngineNode createFindEngineNode() {
+            return FIND_ENGINE_NODE;
+        }
+
+        @Override
+        protected Object findContext(Env env) {
+            return super.findContext(env);
         }
 
         @Override

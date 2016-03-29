@@ -79,11 +79,6 @@ public class ExceptionDuringParsingTest {
         } catch (IllegalStateException ex) {
             assertTrue(ex.getMessage(), ex.getMessage().contains("disposed"));
         }
-        try {
-            vm.dispose();
-            fail("Should throw an exception");
-        } catch (IllegalStateException ex) {
-            assertTrue(ex.getMessage(), ex.getMessage().contains("disposed"));
-        }
+        vm.dispose();
     }
 }

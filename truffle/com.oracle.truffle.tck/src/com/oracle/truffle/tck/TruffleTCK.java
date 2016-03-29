@@ -28,7 +28,6 @@ import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
@@ -166,7 +165,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Configure your language inside of provided builder. The method should do the same operations
+     * Configure your language insided of provided builder. The method should do the same operation
      * like {@link #prepareVM()}, but rather than doing them from scratch, it is supposed to do the
      * changes in provided builder. The builder may be pre-configured by the TCK - for example
      * {@link Builder#executor(java.util.concurrent.Executor)} may be provided or
@@ -460,6 +459,7 @@ public abstract class TruffleTCK {
 
     private PolyglotEngine vm() throws Exception {
         if (tckVM == null) {
+            replacePreviousVM(null);
             tckVM = prepareVM();
             replacePreviousVM(tckVM);
         }
@@ -1473,19 +1473,7 @@ public abstract class TruffleTCK {
     }
 
     private static Object unwrapTruffleObject(Object obj) {
-        try {
-            if (obj instanceof TruffleObject) {
-                Class<?> eto = Class.forName("com.oracle.truffle.api.vm.EngineTruffleObject");
-                if (eto.isInstance(obj)) {
-                    final Field field = eto.getDeclaredField("delegate");
-                    field.setAccessible(true);
-                    return field.get(obj);
-                }
-            }
-            return obj;
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
-        }
+        return obj;
     }
 
     interface CompoundObject {

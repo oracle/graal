@@ -59,6 +59,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.instrumentation",
+        "com.oracle.truffle.api.object",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
@@ -73,6 +74,7 @@ suite = {
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.vm",
+        "com.oracle.truffle.object.basic",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
