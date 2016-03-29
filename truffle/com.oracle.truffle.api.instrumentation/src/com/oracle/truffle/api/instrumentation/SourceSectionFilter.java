@@ -756,12 +756,15 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(SourceSection rootSourceSection) {
-                return LineIn.isLineIn(rootSourceSection, ranges);
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
+                if (rootSection == null) {
+                    return true;
+                }
+                return LineIn.isLineIn(rootSection, ranges);
             }
 
             @Override
-            boolean isIncluded(SourceSection sourceSection) {
+            boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
                 int otherStart = sourceSection.getStartLine();
                 for (IndexRange indexRange : ranges) {
                     if (indexRange.contains(otherStart, otherStart)) {
@@ -794,12 +797,15 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(SourceSection rootSourceSection) {
-                return LineIn.isLineIn(rootSourceSection, ranges);
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
+                if (rootSection == null) {
+                    return true;
+                }
+                return LineIn.isLineIn(rootSection, ranges);
             }
 
             @Override
-            boolean isIncluded(SourceSection sourceSection) {
+            boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
                 int otherStart = sourceSection.getStartLine();
                 int otherEnd;
                 if (sourceSection.getSource() == null) {
