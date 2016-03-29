@@ -78,10 +78,10 @@ public class TruffleProfilerTest extends AbstractInstrumentationTest {
         counters = profiler.getCounters();
         Assert.assertEquals(4, counters.size());
 
-        final SourceSection rootSection = source.createSection(null, 0, 140, "ROOT");
-        final SourceSection leafSection = source.createSection(null, 17, 16, "ROOT");
-        final SourceSection callfooSection = source.createSection(null, 47, 27, "ROOT");
-        final SourceSection callbarSection = source.createSection(null, 88, 27, "ROOT");
+        final SourceSection rootSection = source.createSection(null, 0, 140);
+        final SourceSection leafSection = source.createSection(null, 17, 16);
+        final SourceSection callfooSection = source.createSection(null, 47, 27);
+        final SourceSection callbarSection = source.createSection(null, 88, 27);
         Counter root = counters.get(rootSection);
         Counter leaf = counters.get(leafSection);
         Counter callfoo = counters.get(callfooSection);

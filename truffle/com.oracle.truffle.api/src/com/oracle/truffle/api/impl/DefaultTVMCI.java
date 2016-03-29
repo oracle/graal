@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,35 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl.test.interop;
+package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
-public class InvalidTruffleObject2 {
+final class DefaultTVMCI extends TVMCI {
 
-    public static class NestedInvalidTruffleObject implements TruffleObject {
-
-        public ForeignAccess getForeignAccess() {
-            return null;
-        }
-
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof ValidTruffleObject;
-        }
-
+    @Override
+    protected void onLoopCount(Node source, int count) {
+        // do nothing
     }
 
-    public class Nested2InvalidTruffleObject implements TruffleObject {
+    @SuppressWarnings("rawtypes")
+    Class<? extends TruffleLanguage> findLanguage(RootNode root) {
+        return super.findLanguageClass(root);
+    }
 
-        public ForeignAccess getForeignAccess() {
-            return null;
-        }
-
-        public boolean isInstance(TruffleObject obj) {
-            return obj instanceof ValidTruffleObject;
-        }
-
+    void initCallTarget(DefaultCallTarget callTarget) {
+        super.onFirstExecution(callTarget.getRootNode());
     }
 
 }

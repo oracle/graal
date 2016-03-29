@@ -60,7 +60,7 @@ public final class EventContext {
      * <b>Performance note:</b> this is method may be invoked in compiled code and is guaranteed to
      * always return a compilation constant .
      * </p>
-     * 
+     *
      * @since 0.12
      */
     public SourceSection getInstrumentedSourceSection() {
@@ -74,7 +74,7 @@ public final class EventContext {
      * <b>Performance note:</b> this is method may be invoked in compiled code and is guaranteed to
      * always return a compilation constant .
      * </p>
-     * 
+     *
      * @since 0.12
      */
     public Node getInstrumentedNode() {

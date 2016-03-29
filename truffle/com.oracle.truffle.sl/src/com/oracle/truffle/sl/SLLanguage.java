@@ -60,6 +60,8 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -188,6 +190,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * </ul>
  */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
+@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String builtinKind = "SL builtin";
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.source;
+package com.oracle.truffle.api.dsl.test.interop;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObjectC.Nested2TruffleObject;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.AcceptMessage;
 
-public final class JavaRecognizer extends FileTypeDetector {
+@AcceptMessage(value = "READ", receiverType = Nested2TruffleObject.class, language = TestTruffleLanguage.class)
+public final class ReadNode9 extends BaseReadNode9 {
+
     @Override
-    public String probeContentType(Path path) throws IOException {
-        if (path.getFileName().toString().endsWith(".java")) {
-            return "text/x-java";
-        }
-        return null;
+    protected Object access(VirtualFrame frame, Object receiver, Object name) {
+        return 0;
     }
 }

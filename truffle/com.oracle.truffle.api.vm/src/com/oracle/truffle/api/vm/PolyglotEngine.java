@@ -497,6 +497,7 @@ public class PolyglotEngine {
                         LOG.log(Level.SEVERE, "Error disposing " + instrument, ex);
                     }
                 }
+
                 return null;
             }
         };
@@ -947,7 +948,7 @@ public class PolyglotEngine {
         void setEnabledImpl(final boolean enabled, boolean cleanup) {
             if (this.enabled != enabled) { // check again for thread safety
                 if (enabled) {
-                    SPI.addInstrument(instrumentationHandler, this, getCache().getInstrumentClass());
+                    SPI.addInstrument(instrumentationHandler, this, getCache().getInstrumentationClass());
                 } else {
                     SPI.disposeInstrument(instrumentationHandler, this, cleanup);
                 }
@@ -1219,8 +1220,8 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected void addInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass) {
-            super.addInstrument(instrumentationHandler, key, instrumentClass);
+        protected void addInstrument(Object instrumentationHandler, Object key, Class<?> instrumentationClass) {
+            super.addInstrument(instrumentationHandler, key, instrumentationClass);
         }
 
         @Override

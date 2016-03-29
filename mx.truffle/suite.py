@@ -47,6 +47,8 @@ suite = {
     "com.oracle.truffle.api" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -140,8 +142,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.vm",
-        "com.oracle.truffle.api.debug",
+        "com.oracle.truffle.tools",
         "com.oracle.truffle.api.dsl.test",
         "mx:JUNIT"
       ],

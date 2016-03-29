@@ -31,8 +31,10 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -40,9 +42,6 @@ import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing an
@@ -532,7 +531,7 @@ public abstract class TruffleLanguage<C> {
         }
     }
 
-    private static final AccessAPI API = new AccessAPI();
+    static final AccessAPI API = new AccessAPI();
 
     @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {

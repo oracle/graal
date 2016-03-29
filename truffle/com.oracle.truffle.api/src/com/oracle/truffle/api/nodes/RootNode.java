@@ -168,8 +168,10 @@ public abstract class RootNode extends Node {
         }
     }
 
-    /** @since 0.8 or earlier */
-    @SuppressWarnings("deprecation")
+    /**
+     * @since 0.8 or earlier
+     * @deprecated
+     */
     @Deprecated
     public final void applyInstrumentation() {
         if (isInstrumentable()) {

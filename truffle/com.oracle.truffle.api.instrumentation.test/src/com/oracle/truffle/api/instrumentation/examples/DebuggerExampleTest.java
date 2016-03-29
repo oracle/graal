@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.instrumentation.examples;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -33,13 +36,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.AbstractInstrumentationTest;
 import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.examples.DebuggerController.Callback;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 public final class DebuggerExampleTest extends AbstractInstrumentationTest {
     private DebuggerController debugger;
@@ -65,7 +65,6 @@ public final class DebuggerExampleTest extends AbstractInstrumentationTest {
         debugger.installBreakpoint(1, new Callback() {
             @Override
             public void halted(DebuggerController d, EventContext haltedAt) {
-                Assert.assertTrue(haltedAt.getInstrumentedSourceSection().hasTag(InstrumentationTestLanguage.STATEMENT));
                 Assert.assertEquals(1, haltedAt.getInstrumentedSourceSection().getStartLine());
                 breakpointHit.set(true);
             }
@@ -123,7 +122,6 @@ public final class DebuggerExampleTest extends AbstractInstrumentationTest {
     }
 
     private static void assertLineAt(EventContext haltedAt, int index) {
-        Assert.assertTrue(haltedAt.getInstrumentedSourceSection().hasTag(InstrumentationTestLanguage.STATEMENT));
         Assert.assertEquals(index, haltedAt.getInstrumentedSourceSection().getStartLine());
     }
 

@@ -57,6 +57,8 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
@@ -153,7 +155,8 @@ final class BreakpointFactory {
     Breakpoint create(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
         BreakpointImpl breakpoint = breakpoints.get(lineLocation);
         if (breakpoint == null) {
-            final SourceSectionFilter query = SourceSectionFilter.newBuilder().sourceIs(lineLocation.getSource()).lineIs(lineLocation.getLineNumber()).tagIs(Debugger.HALT_TAG).build();
+            final SourceSectionFilter query = SourceSectionFilter.newBuilder().sourceIs(lineLocation.getSource()).lineStartsIn(IndexRange.byLength(lineLocation.getLineNumber(), 1)).tagIs(
+                            StandardTags.StatementTag.class).build();
             breakpoint = new BreakpointImpl(lineLocation, query, ignoreCount, oneShot);
             if (TRACE) {
                 trace("NEW " + breakpoint.getShortDescription());
@@ -185,7 +188,7 @@ final class BreakpointFactory {
      * @throws IOException if a breakpoint already exists at the location and the ignore count is
      *             the same
      */
-    Breakpoint create(int ignoreCount, String tag, boolean oneShot) throws IOException {
+    Breakpoint create(int ignoreCount, Class<?> tag, boolean oneShot) throws IOException {
         BreakpointImpl breakpoint = breakpoints.get(tag);
         if (breakpoint == null) {
             final SourceSectionFilter query = SourceSectionFilter.newBuilder().tagIs(tag).build();
