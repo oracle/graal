@@ -91,7 +91,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
-        Debug.dump(lir, "Before TraceRegisterAllocation");
+        Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
             for (Trace<B> trace : resultTraces.getTraces()) {
                 try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
@@ -114,7 +114,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-        Debug.dump(lir, "After trace allocation");
+        Debug.dump(Debug.INFO_LOG_LEVEL, lir, "After trace allocation");
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
         deconstructSSIForm(lir);

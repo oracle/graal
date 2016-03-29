@@ -345,7 +345,7 @@ public final class SSIConstructionPhase extends AllocationPhase {
 
         @SuppressWarnings("try")
         private void finish() {
-            Debug.dump(getLIR(), "Before SSI operands");
+            Debug.dump(Debug.INFO_LOG_LEVEL, getLIR(), "Before SSI operands");
             for (AbstractBlockBase<?> block : getBlocks()) {
                 try (Indent indent = Debug.logAndIndent("Finish Block %s", block)) {
                     // set label

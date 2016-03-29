@@ -579,8 +579,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             plugin.notifyAfterInline(inlineMethod);
         }
 
-        if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
-            Debug.dump(methodScope.graph, "Inline finished: %s.%s", inlineMethod.getDeclaringClass().getUnqualifiedName(), inlineMethod.getName());
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue()) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, methodScope.graph, "Inline finished: %s.%s", inlineMethod.getDeclaringClass().getUnqualifiedName(), inlineMethod.getName());
         }
         return true;
     }

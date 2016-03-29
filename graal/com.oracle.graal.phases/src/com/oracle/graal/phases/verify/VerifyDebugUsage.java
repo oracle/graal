@@ -42,10 +42,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Additionally this phase verifies that no argument is the result of a call to
  * {@link StringBuilder#toString()} or {@link StringBuffer#toString()}. Ideally the parameters at
  * callsites of {@link Debug} are eliminated, and do not produce additional allocations, if
- * {@link Debug#isDumpEnabled()} (or {@link Debug#isLogEnabled()}, ...) is {@code false}.
+ * {@link Debug#isDumpEnabled(int)} (or {@link Debug#isLogEnabled(int)}, ...) is {@code false}.
  *
  * Methods in {@link Debug} checked by this phase are various different versions of
- * {@link Debug#log(String)} , {@link Debug#dump(Object, String)},
+ * {@link Debug#log(String)} , {@link Debug#dump(int, Object, String)},
  * {@link Debug#logAndIndent(String)} and {@link Debug#verify(Object, String)}.
  */
 public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {

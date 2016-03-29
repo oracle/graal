@@ -232,14 +232,14 @@ public class ForeignCallStub extends Stub {
         }
         kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
 
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(graph, "Initial stub graph");
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Initial stub graph");
         }
 
         kit.inlineInvokes();
 
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(graph, "Stub graph before compilation");
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Stub graph before compilation");
         }
 
         return graph;

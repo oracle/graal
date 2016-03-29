@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 public class SimpleCFGTest extends GraalCompilerTest {
 
     private static void dumpGraph(final StructuredGraph graph) {
-        Debug.dump(graph, "Graph");
+        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "Graph");
     }
 
     @Test

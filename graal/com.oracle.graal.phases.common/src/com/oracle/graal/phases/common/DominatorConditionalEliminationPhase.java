@@ -848,7 +848,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         public void pushElement(InfoElement element) {
-            Debug.log(4, "Pushing an info element:%s   size %d", element, infos);
+            Debug.log(Debug.VERBOSE_LOG_LEVEL, "Pushing an info element:%s   size %d", element, infos);
             infos.add(element);
         }
 

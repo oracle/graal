@@ -230,7 +230,7 @@ public class TruffleGraphBuilderPlugins {
                      * and constant folding could still eliminate the call to bailout(). However, we
                      * also want to stop parsing, since we are sure that we will never need the
                      * graph beyond the bailout point.
-                     *
+                     * 
                      * Therefore, we manually emit the call to bailout, which will be intrinsified
                      * later when intrinsifications can no longer be delayed. The call is followed
                      * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
@@ -317,7 +317,7 @@ public class TruffleGraphBuilderPlugins {
                         }
                         sb.append(")");
                     }
-                    Debug.dump(value.graph(), "Graph before bailout at node %s", sb);
+                    Debug.dump(Debug.BASIC_LOG_LEVEL, value.graph(), "Graph before bailout at node %s", sb);
                     throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb);
                 }
             }
