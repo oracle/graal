@@ -52,7 +52,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
     }
 
     private boolean shouldSplit() {
-        if (call.getClonedCallTarget() != null) {
+        if (call.isCallTargetCloned()) {
             return false;
         }
         if (!TruffleCompilerOptions.TruffleSplitting.getValue()) {
