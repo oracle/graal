@@ -555,7 +555,6 @@ public final class Instrumenter {
         return attach(probe, null, source, listener, instrumentInfo, names, params);
     }
 
-    @SuppressWarnings("unchecked")
     private ProbeInstrument attach(Probe probe, Class<? extends TruffleLanguage<?>> languageClass, Source source, EvalInstrumentListener listener, String instrumentInfo, String[] argumentNames,
                     Object[] parameters) {
         assert probe.getInstrumenter() == this;
