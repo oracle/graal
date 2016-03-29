@@ -46,6 +46,9 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.LineLocation;
@@ -66,6 +69,8 @@ import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.Location
  */
 public final class REPLServer {
 
+    private static final String REPL_SERVER_INSTRUMENT = "REPLServer";
+
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
     private static final String TRACE_PREFIX = "REPLSrv: ";
     private static final PrintStream OUT = System.out;
@@ -84,20 +89,19 @@ public final class REPLServer {
         return name.substring(name.lastIndexOf('.') + 1);
     }
 
-    private static final String[] knownTags = {Debugger.HALT_TAG, Debugger.CALL_TAG};
-
     private static int nextBreakpointUID = 0;
 
     // Language-agnostic
     private final PolyglotEngine engine;
-    private Debugger db;
-    private Context currentServerContext;
-    private SimpleREPLClient replClient = null;
-    private String statusPrefix;
+    private final Debugger db;
+    private final SimpleREPLClient replClient;
+    private final String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
-    private ASTPrinter astPrinter = new REPLASTPrinter();
-    private LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
-    private REPLVisualizer visualizer = new REPLVisualizer();
+    private final ASTPrinter astPrinter;
+    private final LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
+    private final REPLVisualizer visualizer = new REPLVisualizer();
+
+    private Context currentServerContext;
 
     /** Languages sorted by name. */
     private final TreeSet<Language> engineLanguages = new TreeSet<>(new Comparator<Language>() {
@@ -111,20 +115,22 @@ public final class REPLServer {
     private final Map<String, Language> nameToLanguage = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     // TODO (mlvdv) Language-specific
-    private PolyglotEngine.Language defaultLanguage;
+    private final PolyglotEngine.Language defaultLanguage = null;
 
-    private Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
+    private final Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
 
     public REPLServer(SimpleREPLClient client) {
         this.replClient = client;
         this.engine = PolyglotEngine.newBuilder().onEvent(onHalted).onEvent(onExec).build();
+        this.engine.getInstruments().get(REPL_SERVER_INSTRUMENT).setEnabled(true);
+
         this.db = Debugger.find(this.engine);
         engineLanguages.addAll(engine.getLanguages().values());
 
         for (Language language : engineLanguages) {
             nameToLanguage.put(language.getName(), language);
         }
-
+        astPrinter = new REPLASTPrinter(engine);
         statusPrefix = "";
     }
 
@@ -551,6 +557,15 @@ public final class REPLServer {
         return new ArrayList<>(breakpoints.values());
     }
 
+    @Registration(id = "REPLServer")
+    public static final class REPLServerInstrument extends TruffleInstrument {
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(env.getInstrumenter());
+        }
+    }
+
     final class LineBreakpointInfo extends BreakpointInfo {
 
         private final LineLocation lineLocation;
@@ -790,18 +805,23 @@ public final class REPLServer {
 
     private static class REPLASTPrinter extends InstrumentationUtils.ASTPrinter {
 
+        private final Instrumenter instrumenter;
+
+        REPLASTPrinter(PolyglotEngine engine) {
+            this.instrumenter = engine.getInstruments().get(REPL_SERVER_INSTRUMENT).lookup(Instrumenter.class);
+        }
+
         @Override
-        protected String displayTags(final Object node) {
-            if (node instanceof Node) {
-                final SourceSection sourceSection = ((Node) node).getSourceSection();
+        protected String displayTags(final Object objectNode) {
+            if (objectNode instanceof Node) {
+                Node node = (Node) objectNode;
+                final SourceSection sourceSection = node.getSourceSection();
                 if (sourceSection != null) {
                     final StringBuilder sb = new StringBuilder("[");
                     String sep = "";
-                    for (String tag : knownTags) {
-                        if (sourceSection.hasTag(tag)) {
-                            sb.append(sep).append(tag);
-                            sep = ",";
-                        }
+                    for (Class<?> tag : instrumenter.queryTags(node)) {
+                        sb.append(sep).append(tag.getSimpleName());
+                        sep = ",";
                     }
                     sb.append("]");
                     return sb.toString();

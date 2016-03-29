@@ -73,6 +73,7 @@ public final class SLRootNode extends RootNode {
         super(SLLanguage.class, sourceSection, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
+        this.bodyNode.setRootTagged(true);
     }
 
     @Override
@@ -102,4 +103,5 @@ public final class SLRootNode extends RootNode {
     public Node getBodyNode() {
         return bodyNode;
     }
+
 }

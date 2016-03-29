@@ -40,6 +40,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.JSONHelper;
@@ -524,6 +525,47 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
+     * Returns <code>true</code> if this node should be considered tagged by a given tag else
+     * <code>false</code>. The method is only invoked for tags which are explicitly declared as
+     * {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by the
+     * {@link TruffleLanguage language}. If the {@link #getSourceSection() source section} of the
+     * node returns <code>null</code> then this node is considered to be not tagged by any tag.
+     * <p>
+     * Tags are used by guest languages to indicate that a {@link Node node} is a member of a
+     * certain category of nodes. For example a debugger
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument instrument} might require a
+     * guest language to tag all nodes as halt locations that should be considered as such.
+     * <p>
+     * The node implementor may decide how to implement tagging for nodes. The simplest way to
+     * implement tagging using Java types is by overriding the {@link #isTaggedWith(Class)} method.
+     * This example shows how to tag a node subclass and all its subclasses as expression and
+     * statement:
+     *
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode}
+     *
+     * <p>
+     * Often it is impossible to just rely on the node's Java type to implement tagging. This
+     * example shows how to use local state to implement tagging for a node.
+     *
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt}
+     *
+     * <p>
+     * The implementation of isTaggedWith method must ensure that its result is stable after the
+     * parent {@link RootNode root node} was wrapped in a {@link CallTarget} using
+     * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
+     * calling this method for a particular tag remains always the same.
+     *
+     * @param tag the class {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by
+     *            the {@link TruffleLanguage language}
+     * @return <code>true</code> if the node should be considered tagged by a tag else
+     *         <code>false</code>.
+     * @since 0.12
+     */
+    protected boolean isTaggedWith(Class<?> tag) {
+        return false;
+    }
+
+    /**
      * Returns a user-readable description of the purpose of the Node, or "" if no description is
      * available.
      *
@@ -597,6 +639,11 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         @Override
+        protected boolean isTaggedWith(Node node, Class<?> tag) {
+            return node.isTaggedWith(tag);
+        }
+
+        @Override
         protected void probeAST(RootNode rootNode) {
             super.probeAST(rootNode);
         }
@@ -647,4 +694,45 @@ class NodeSnippets {
         }
         // END: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
     }
+
+    private static final class Debugger {
+        static class HaltTag {
+        }
+    }
+
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
+    class StatementNode extends Node {
+        private boolean isDebuggerHalt;
+
+        public void setDebuggerHalt(boolean isDebuggerHalt) {
+            this.isDebuggerHalt = isDebuggerHalt;
+        }
+
+        @Override
+        protected boolean isTaggedWith(Class<?> tag) {
+            if (tag == Debugger.HaltTag.class) {
+                return isDebuggerHalt;
+            }
+            return super.isTaggedWith(tag);
+        }
+    }
+
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
+
+    static class ExpressionTag {
+    }
+
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
+    class ExpressionNode extends Node {
+
+        @Override
+        protected boolean isTaggedWith(Class<?> tag) {
+            if (tag == ExpressionTag.class) {
+                return true;
+            }
+            return super.isTaggedWith(tag);
+        }
+    }
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
+
 }

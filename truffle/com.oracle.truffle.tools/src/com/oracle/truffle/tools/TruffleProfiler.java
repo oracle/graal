@@ -42,6 +42,7 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
@@ -54,7 +55,6 @@ import com.oracle.truffle.tools.TruffleProfiler.Counter.TimeKind;
 public class TruffleProfiler extends TruffleInstrument {
 
     public static final String ID = "truffle_profiler";
-    public static final String ROOT_TAG = "ROOT";
 
     private static final int MAX_CODE_LENGTH = 30;
 
@@ -84,7 +84,7 @@ public class TruffleProfiler extends TruffleInstrument {
             filterBuilder.mimeTypeIs(mimeTypes);
         }
 
-        env.getInstrumenter().attachFactory(filterBuilder.tagIs(ROOT_TAG).build(), new ExecutionEventNodeFactory() {
+        env.getInstrumenter().attachFactory(filterBuilder.tagIs(StandardTags.RootTag.class).build(), new ExecutionEventNodeFactory() {
             public ExecutionEventNode create(EventContext context) {
                 return createCountingNode(context);
             }
