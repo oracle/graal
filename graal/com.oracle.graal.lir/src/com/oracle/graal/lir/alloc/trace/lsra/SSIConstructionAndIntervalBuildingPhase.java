@@ -20,31 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.ssi;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
 import java.util.List;
 
+import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.ssa.SSAUtil;
+import com.oracle.graal.lir.ssi.SSIUtil;
 
 import jdk.vm.ci.code.TargetDescription;
 
 /**
- * Constructs {@linkplain SSIUtil SSI LIR} using a liveness analysis.
- *
- * Implementation derived from {@link LinearScanLifetimeAnalysisPhase}.
+ * Constructs {@linkplain SSIUtil SSI LIR} and builds {@link TraceInterval intervals}.
  *
  * @see SSIUtil
  */
-public final class SSIConstructionPhase extends AllocationPhase {
+public final class SSIConstructionAndIntervalBuildingPhase extends AllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     AllocationContext context) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
-        new SSIBuilder(lirGenRes.getLIR()).build();
+        TraceBuilderResult<?> traceBuilderResult = context.contextLookup(TraceBuilderResult.class);
+        assert traceBuilderResult != null : "no trace builder result";
+        boolean neverSpillConstants = false;
+        TraceIntervalMap intervalMap = new SSIAndIntervalBuilder(lirGenRes.getLIR(), traceBuilderResult, target, lirGenRes, context.registerAllocationConfig, neverSpillConstants,
+                        context.spillMoveFactory).buildSSIAndIntervals();
+        context.contextAdd(intervalMap);
     }
 }

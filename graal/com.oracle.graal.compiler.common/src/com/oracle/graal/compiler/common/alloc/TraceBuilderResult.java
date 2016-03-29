@@ -42,6 +42,10 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         return blockToTrace[block.getId()];
     }
 
+    public Trace<T> traceForBlock(AbstractBlockBase<?> block) {
+        return getTraces().get(blockToTrace[block.getId()]);
+    }
+
     public List<Trace<T>> getTraces() {
         return traces;
     }

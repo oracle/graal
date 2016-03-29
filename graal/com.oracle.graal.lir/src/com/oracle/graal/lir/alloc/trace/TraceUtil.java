@@ -59,7 +59,7 @@ public class TraceUtil {
         return (ShadowedRegisterValue) value;
     }
 
-    static boolean isTrivialTrace(LIR lir, Trace<? extends AbstractBlockBase<?>> trace) {
+    public static boolean isTrivialTrace(LIR lir, Trace<? extends AbstractBlockBase<?>> trace) {
         if (trace.size() != 1) {
             return false;
         }

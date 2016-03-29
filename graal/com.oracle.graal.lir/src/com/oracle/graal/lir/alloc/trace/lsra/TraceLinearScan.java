@@ -24,11 +24,12 @@ package com.oracle.graal.lir.alloc.trace.lsra;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAuseInterTraceHints;
+import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.finalizeFixedIntervals;
 import static jdk.vm.ci.code.CodeUtil.isEven;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
-import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.Arrays;
@@ -96,9 +97,7 @@ public final class TraceLinearScan {
     private static final TraceLinearScanLifetimeAnalysisPhase TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE = new TraceLinearScanLifetimeAnalysisPhase();
 
     public static final int DOMINATOR_SPILL_MOVE_ID = -2;
-    private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
 
-    private final LIR ir;
     private final FrameMapBuilder frameMapBuilder;
     private final RegisterAttributes[] registerAttributes;
     private final Register[] registers;
@@ -110,23 +109,6 @@ public final class TraceLinearScan {
      */
     private final List<? extends AbstractBlockBase<?>> sortedBlocks;
 
-    /** @see #fixedIntervals() */
-    private final FixedInterval[] fixedIntervals;
-
-    /** @see #intervals() */
-    private TraceInterval[] intervals;
-
-    /**
-     * The number of valid entries in {@link #intervals}.
-     */
-    private int intervalsSize;
-
-    /**
-     * The index of the first entry in {@link #intervals} for a
-     * {@linkplain #createDerivedInterval(TraceInterval) derived interval}.
-     */
-    private int firstDerivedIntervalIndex = -1;
-
     /**
      * Intervals sorted by {@link TraceInterval#from()}.
      */
@@ -137,21 +119,8 @@ public final class TraceLinearScan {
      */
     private FixedInterval[] sortedFixedIntervals;
 
-    /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the instruction. Entries should
-     * be retrieved with {@link #instructionForId(int)} as the id is not simply an index into this
-     * array.
-     */
-    private LIRInstruction[] opIdToInstructionMap;
-
-    /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the
-     * {@linkplain AbstractBlockBase block} containing the instruction. Entries should be retrieved
-     * with {@link #blockForId(int)} as the id is not simply an index into this array.
-     */
-    private AbstractBlockBase<?>[] opIdToBlockMap;
-
     protected final TraceBuilderResult<?> traceBuilderResult;
+
     private final boolean neverSpillConstants;
 
     /**
@@ -161,30 +130,38 @@ public final class TraceLinearScan {
      */
     private final AllocatableValue[] cachedStackSlots;
 
+    private IntervalData intervalData = null;
+    private final LIRGenerationResult res;
+    private final Trace<? extends AbstractBlockBase<?>> trace;
+
     public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace,
                     TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
-        this.ir = res.getLIR();
+        this.res = res;
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
         this.sortedBlocks = trace.getBlocks();
         this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();
         this.regAllocConfig = regAllocConfig;
 
+        this.trace = trace;
         this.registers = target.arch.getRegisters();
-        this.fixedIntervals = new FixedInterval[registers.length];
         this.traceBuilderResult = traceBuilderResult;
         this.neverSpillConstants = neverSpillConstants;
         this.cachedStackSlots = cachedStackSlots;
     }
 
+    public IntervalData getIntervalData() {
+        return intervalData;
+    }
+
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
-        int result = ir.getLIRforBlock(block).get(0).id();
+        int result = getLIR().getLIRforBlock(block).get(0).id();
         assert result >= 0;
         return result;
     }
 
     public int getLastLirInstructionId(AbstractBlockBase<?> block) {
-        List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+        List<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
         int result = instructions.get(instructions.size() - 1).id();
         assert result >= 0;
         return result;
@@ -220,7 +197,7 @@ public final class TraceLinearScan {
      * Gets the number of operands. This value will increase by 1 for new variable.
      */
     int operandSize() {
-        return ir.numVariables();
+        return getLIR().numVariables();
     }
 
     /**
@@ -311,49 +288,14 @@ public final class TraceLinearScan {
      * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
      */
     public TraceInterval[] intervals() {
-        return intervals;
+        return intervalData.intervals();
     }
 
     /**
      * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
      */
     public FixedInterval[] fixedIntervals() {
-        return fixedIntervals;
-    }
-
-    void initIntervals() {
-        intervalsSize = operandSize();
-        intervals = new TraceInterval[intervalsSize + (intervalsSize >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT)];
-    }
-
-    /**
-     * Creates a new fixed interval.
-     *
-     * @param reg the operand for the interval
-     * @return the created interval
-     */
-    FixedInterval createFixedInterval(RegisterValue reg) {
-        FixedInterval interval = new FixedInterval(reg);
-        int operandNumber = reg.getRegister().number;
-        assert fixedIntervals[operandNumber] == null;
-        fixedIntervals[operandNumber] = interval;
-        return interval;
-    }
-
-    /**
-     * Creates a new interval.
-     *
-     * @param operand the operand for the interval
-     * @return the created interval
-     */
-    TraceInterval createInterval(AllocatableValue operand) {
-        assert isLegal(operand);
-        int operandNumber = operandNumber(operand);
-        TraceInterval interval = new TraceInterval(operand, operandNumber);
-        assert operandNumber < intervalsSize;
-        assert intervals[operandNumber] == null;
-        intervals[operandNumber] = interval;
-        return interval;
+        return intervalData.fixedIntervals();
     }
 
     /**
@@ -363,28 +305,7 @@ public final class TraceLinearScan {
      * @return a new interval derived from {@code source}
      */
     TraceInterval createDerivedInterval(TraceInterval source) {
-        if (firstDerivedIntervalIndex == -1) {
-            firstDerivedIntervalIndex = intervalsSize;
-        }
-        if (intervalsSize == intervals.length) {
-            intervals = Arrays.copyOf(intervals, intervals.length + (intervals.length >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT) + 1);
-        }
-        // increments intervalsSize
-        Variable variable = createVariable(source.kind());
-
-        assert intervalsSize <= intervals.length;
-
-        TraceInterval interval = createInterval(variable);
-        assert intervals[intervalsSize - 1] == interval;
-        return interval;
-    }
-
-    /**
-     * Creates a new variable for a derived interval. Note that the variable is not
-     * {@linkplain LIR#nextVariable() managed} so it must not be inserted into the {@link LIR}.
-     */
-    private Variable createVariable(LIRKind kind) {
-        return new Variable(kind, intervalsSize++);
+        return intervalData.createDerivedInterval(source);
     }
 
     // access to block list (sorted in linear scan order)
@@ -397,66 +318,30 @@ public final class TraceLinearScan {
     }
 
     int numLoops() {
-        return ir.getControlFlowGraph().getLoops().size();
+        return getLIR().getControlFlowGraph().getLoops().size();
     }
 
     public FixedInterval fixedIntervalFor(RegisterValue reg) {
-        return fixedIntervals[reg.getRegister().number];
+        return intervalData.fixedIntervalFor(reg);
     }
 
     public FixedInterval getOrCreateFixedInterval(RegisterValue reg) {
-        FixedInterval ret = fixedIntervalFor(reg);
-        if (ret == null) {
-            return createFixedInterval(reg);
-        } else {
-            return ret;
-        }
-    }
-
-    TraceInterval intervalFor(int operandNumber) {
-        return intervals[operandNumber];
+        return intervalData.getOrCreateFixedInterval(reg);
     }
 
     public TraceInterval intervalFor(Value operand) {
-        int operandNumber = operandNumber(operand);
-        assert operandNumber < intervalsSize;
-        return intervals[operandNumber];
+        return intervalData.intervalFor(operand);
     }
 
     public TraceInterval getOrCreateInterval(AllocatableValue operand) {
-        TraceInterval ret = intervalFor(operand);
-        if (ret == null) {
-            return createInterval(operand);
-        } else {
-            return ret;
-        }
-    }
-
-    void initOpIdMaps(int numInstructions) {
-        opIdToInstructionMap = new LIRInstruction[numInstructions];
-        opIdToBlockMap = new AbstractBlockBase<?>[numInstructions];
-    }
-
-    void putOpIdMaps(int index, LIRInstruction op, AbstractBlockBase<?> block) {
-        opIdToInstructionMap[index] = op;
-        opIdToBlockMap[index] = block;
+        return intervalData.getOrCreateInterval(operand);
     }
 
     /**
      * Gets the highest instruction id allocated by this object.
      */
     int maxOpId() {
-        assert opIdToInstructionMap.length > 0 : "no operations";
-        return (opIdToInstructionMap.length - 1) << 1;
-    }
-
-    /**
-     * Converts an {@linkplain LIRInstruction#id instruction id} to an instruction index. All LIR
-     * instructions in a method have an index one greater than their linear-scan order predecessor
-     * with the first instruction having an index of 0.
-     */
-    private static int opIdToIndex(int opId) {
-        return opId >> 1;
+        return intervalData.maxOpId();
     }
 
     /**
@@ -466,10 +351,7 @@ public final class TraceLinearScan {
      * @return the instruction whose {@linkplain LIRInstruction#id} {@code == id}
      */
     public LIRInstruction instructionForId(int opId) {
-        assert isEven(opId) : "opId not even";
-        LIRInstruction instr = opIdToInstructionMap[opIdToIndex(opId)];
-        assert instr.id() == opId;
-        return instr;
+        return intervalData.instructionForId(opId);
     }
 
     /**
@@ -479,8 +361,7 @@ public final class TraceLinearScan {
      * @return the block containing the instruction denoted by {@code opId}
      */
     public AbstractBlockBase<?> blockForId(int opId) {
-        assert opIdToBlockMap.length > 0 && opId >= 0 && opId <= maxOpId() + 1 : "opId out of range: " + opId;
-        return opIdToBlockMap[opIdToIndex(opId)];
+        return intervalData.blockForId(opId);
     }
 
     boolean isBlockBegin(int opId) {
@@ -632,22 +513,22 @@ public final class TraceLinearScan {
 
     protected void sortIntervalsBeforeAllocation() {
         int sortedLen = 0;
-        for (TraceInterval interval : intervals) {
+        for (TraceInterval interval : intervals()) {
             if (interval != null) {
                 sortedLen++;
             }
         }
-        sortedIntervals = sortIntervalsBeforeAllocation(intervals, new TraceInterval[sortedLen]);
+        sortedIntervals = sortIntervalsBeforeAllocation(intervals(), new TraceInterval[sortedLen]);
     }
 
     protected void sortFixedIntervalsBeforeAllocation() {
         int sortedLen = 0;
-        for (FixedInterval interval : fixedIntervals) {
+        for (FixedInterval interval : fixedIntervals()) {
             if (interval != null) {
                 sortedLen++;
             }
         }
-        sortedFixedIntervals = sortIntervalsBeforeAllocation(fixedIntervals, new FixedInterval[sortedLen]);
+        sortedFixedIntervals = sortIntervalsBeforeAllocation(fixedIntervals(), new FixedInterval[sortedLen]);
     }
 
     private static <T extends IntervalHint> T[] sortIntervalsBeforeAllocation(T[] intervals, T[] sortedList) {
@@ -679,13 +560,13 @@ public final class TraceLinearScan {
     }
 
     void sortIntervalsAfterAllocation() {
-        if (firstDerivedIntervalIndex == -1) {
+        if (intervalData.hasDerivedIntervals()) {
             // no intervals have been added during allocation, so sorted list is already up to date
             return;
         }
 
         TraceInterval[] oldList = sortedIntervals;
-        TraceInterval[] newList = Arrays.copyOfRange(intervals, firstDerivedIntervalIndex, intervalsSize);
+        TraceInterval[] newList = Arrays.copyOfRange(intervals(), intervalData.firstDerivedIntervalIndex(), intervalData.intervalsSize());
         int oldLen = oldList.length;
         int newLen = newList.length;
 
@@ -758,7 +639,7 @@ public final class TraceLinearScan {
 
     @SuppressWarnings("try")
     public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig) {
+                    RegisterAllocationConfig registerAllocationConfig, IntervalData intervals) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
@@ -766,7 +647,19 @@ public final class TraceLinearScan {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
-            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            if (intervals == null) {
+                intervalData = new IntervalData(target, res, regAllocConfig, trace);
+                TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            } else {
+                intervalData = intervals;
+                if (TraceRAuseInterTraceHints.getValue()) {
+                    // add hints
+                    try (Scope s = Debug.scope("InterTraceHints")) {
+                        TraceLinearScanLifetimeAnalysisPhase.addInterTraceHints(lirGenRes.getLIR(), traceBuilderResult, intervals);
+                        finalizeFixedIntervals(intervalData);
+                    }
+                }
+            }
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {
 
@@ -800,33 +693,8 @@ public final class TraceLinearScan {
         }
     }
 
-    @SuppressWarnings("try")
     public void printIntervals(String label) {
-        if (Debug.isDumpEnabled(TraceBuilderPhase.TRACE_DUMP_LEVEL)) {
-            if (Debug.isLogEnabled()) {
-                try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
-                    for (FixedInterval interval : fixedIntervals) {
-                        if (interval != null) {
-                            Debug.log("%s", interval.logString());
-                        }
-                    }
-
-                    for (TraceInterval interval : intervals) {
-                        if (interval != null) {
-                            Debug.log("%s", interval.logString());
-                        }
-                    }
-
-                    try (Indent indent2 = Debug.logAndIndent("Basic Blocks")) {
-                        for (int i = 0; i < blockCount(); i++) {
-                            AbstractBlockBase<?> block = blockAt(i);
-                            Debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
-                        }
-                    }
-                }
-            }
-            Debug.dump(Debug.INFO_LOG_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervalsSize)), label);
-        }
+        getIntervalData().printIntervals(label);
     }
 
     public void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
@@ -858,10 +726,10 @@ public final class TraceLinearScan {
     @SuppressWarnings("try")
     protected void verifyIntervals() {
         try (Indent indent = Debug.logAndIndent("verifying intervals")) {
-            int len = intervalsSize;
+            int len = intervalData.intervalsSize();
 
             for (int i = 0; i < len; i++) {
-                final TraceInterval i1 = intervals[i];
+                final TraceInterval i1 = intervals()[i];
                 if (i1 == null) {
                     continue;
                 }
@@ -905,7 +773,7 @@ public final class TraceLinearScan {
                 }
                 // check any intervals
                 for (int j = i + 1; j < len; j++) {
-                    final TraceInterval i2 = intervals[j];
+                    final TraceInterval i2 = intervals()[j];
                     if (i2 == null) {
                         continue;
                     }
@@ -928,7 +796,7 @@ public final class TraceLinearScan {
                     }
                 }
                 // check fixed intervals
-                for (FixedInterval i2 : fixedIntervals) {
+                for (FixedInterval i2 : fixedIntervals()) {
                     if (i2 == null) {
                         continue;
                     }
@@ -978,7 +846,7 @@ public final class TraceLinearScan {
             TraceIntervalWalker iw = new TraceIntervalWalker(this, fixedInts, otherIntervals);
 
             for (AbstractBlockBase<?> block : sortedBlocks) {
-                List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+                List<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
 
                 for (int j = 0; j < instructions.size(); j++) {
                     LIRInstruction op = instructions.get(j);
@@ -1018,7 +886,7 @@ public final class TraceLinearScan {
     }
 
     public LIR getLIR() {
-        return ir;
+        return res.getLIR();
     }
 
     public FrameMapBuilder getFrameMapBuilder() {
