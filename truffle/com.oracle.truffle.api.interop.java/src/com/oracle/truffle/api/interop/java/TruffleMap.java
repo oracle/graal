@@ -91,7 +91,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     private final class TruffleEntry implements Entry<K, V> {
         private final K key;
 
-        public TruffleEntry(K key) {
+        TruffleEntry(K key) {
             this.key = key;
         }
 
