@@ -53,8 +53,8 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         try {
             Object props = ToJavaNode.message(Message.PROPERTIES, obj);
             if (Boolean.TRUE.equals(ToJavaNode.message(Message.HAS_SIZE, props))) {
-                Number size = (Number)ToJavaNode.message(Message.GET_SIZE, props);
-                LinkedHashSet<Entry<K,V>> entries = new LinkedHashSet<>();
+                Number size = (Number) ToJavaNode.message(Message.GET_SIZE, props);
+                LinkedHashSet<Entry<K, V>> entries = new LinkedHashSet<>();
                 for (int i = 0; i < size.intValue(); i++) {
                     Object key = ToJavaNode.message(Message.READ, props, i);
                     entries.add(new TruffleEntry(keyType.cast(key)));

@@ -1186,9 +1186,9 @@ public abstract class TruffleTCK {
     @Test
     public void testPropertiesInteropMessage() throws Exception {
         PolyglotEngine.Value values = findGlobalSymbol(valuesObject());
-        Map<?,?> res = values.execute().as(Map.class);
+        Map<?, ?> res = values.execute().as(Map.class);
 
-        Map<String,Object> expected = new HashMap<>();
+        Map<String, Object> expected = new HashMap<>();
         expected.put("intValue", 0);
         expected.put("byteValue", 0);
         expected.put("doubleValue", 0.0);
@@ -1199,7 +1199,7 @@ public abstract class TruffleTCK {
 
             Object expValue = expected.remove(key);
             if (expValue != null) {
-                assertEquals("For key " + key, ((Number)expValue).doubleValue(), ((Number)value).doubleValue(), 0.01);
+                assertEquals("For key " + key, ((Number) expValue).doubleValue(), ((Number) value).doubleValue(), 0.01);
             }
         }
 

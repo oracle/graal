@@ -128,8 +128,7 @@ public final class InteropProcessor extends AbstractProcessor {
                 } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
                                 Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
                                 Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
-                            Message.PROPERTIES.toString().equalsIgnoreCase(messageName)
-                    ) {
+                                Message.PROPERTIES.toString().equalsIgnoreCase(messageName)) {
                     currentGenerator = new UnaryGenerator(processingEnv, e, pkg, clazzName, fqn, messageName, ((TypeElement) e).getSimpleName().toString(), truffleLanguageFullClazzName);
                 } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
                                 Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
