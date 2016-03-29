@@ -22,37 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java.test;
+package com.oracle.truffle.api.instrument;
 
-import static org.junit.Assert.fail;
+import com.oracle.truffle.api.TruffleLanguage;
 
-import java.lang.reflect.Field;
-
-import com.oracle.truffle.api.vm.PolyglotEngine;
-
-@Deprecated
-public class InstrumentationTestMode {
-
-    @SuppressWarnings("deprecation")
-    public static void set(boolean enable) {
-
-        final PolyglotEngine vm = PolyglotEngine.newBuilder().build();
-        try {
-            final Field instrumenterField = vm.getClass().getDeclaredField("instrumenter");
-            instrumenterField.setAccessible(true);
-            final Object instrumenter = instrumenterField.get(vm);
-            final java.lang.reflect.Field testVMField = com.oracle.truffle.api.instrument.Instrumenter.class.getDeclaredField("testVM");
-            testVMField.setAccessible(true);
-            if (enable) {
-                testVMField.set(instrumenter, vm);
-            } else {
-                testVMField.set(instrumenter, null);
-            }
-        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-            fail("Reflective access to Instrumenter for testing");
-        } finally {
-            vm.dispose();
-        }
-
+final class Util {
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    static Class<? extends TruffleLanguage<?>> toClass(Class<? extends TruffleLanguage> language) {
+        return (Class<? extends TruffleLanguage<?>>) language;
     }
 }

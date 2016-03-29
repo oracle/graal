@@ -561,7 +561,7 @@ public final class Instrumenter {
         Class<? extends TruffleLanguage<?>> foundLanguageClass = null;
         if (languageClass == null) {
             if (source.getMimeType() == null) {
-                foundLanguageClass = (Class<? extends TruffleLanguage<?>>) ACCESSOR.findLanguage(probe);
+                foundLanguageClass = Util.toClass(ACCESSOR.findLanguage(probe));
             }
         } else {
             foundLanguageClass = languageClass;
@@ -712,7 +712,7 @@ public final class Instrumenter {
     static final class AccessorInstrument extends Accessor {
 
         @Override
-        protected Instrumenter createInstrumenter(Object vm) {
+        protected Object createInstrumenter(Object vm) {
             return new Instrumenter(vm);
         }
 
@@ -747,7 +747,7 @@ public final class Instrumenter {
         @Override
         protected void probeAST(RootNode rootNode) {
             // Normally null vm argument; can be reflectively set for testing
-            Instrumenter instrumenter = super.getInstrumenter(testVM);
+            Instrumenter instrumenter = (Instrumenter) super.getInstrumenter(testVM);
             if (instrumenter != null) {
                 instrumenter.probeAST(rootNode);
             }

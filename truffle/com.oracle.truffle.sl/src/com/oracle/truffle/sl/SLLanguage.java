@@ -81,9 +81,7 @@ import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
-import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
-import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
@@ -484,33 +482,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return object instanceof SLFunction;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    @Override
-    protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-        return null;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    @Override
-    protected boolean isInstrumentable(Node node) {
-        return node instanceof SLStatementNode;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    @Override
-    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-        if (node instanceof SLExpressionNode) {
-            return new com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode((SLExpressionNode) node);
-        }
-        if (node instanceof SLStatementNode) {
-            return new com.oracle.truffle.sl.nodes.instrument.SLStatementWrapperNode((SLStatementNode) node);
-        }
-        return null;
     }
 
     @Override

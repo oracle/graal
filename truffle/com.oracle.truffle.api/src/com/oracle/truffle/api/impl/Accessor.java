@@ -156,9 +156,7 @@ public abstract class Accessor {
         }
     }
 
-    protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn,
-                    @SuppressWarnings("deprecation") com.oracle.truffle.api.instrument.Instrumenter instrumenter,
-                    Map<String, Object> config) {
+    protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Object instrumenter, Map<String, Object> config) {
         return API.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
     }
 
@@ -268,9 +266,7 @@ public abstract class Accessor {
         return SPI.findLanguageImpl(vm, languageClass, mimeType);
     }
 
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    protected com.oracle.truffle.api.instrument.Instrumenter getInstrumenter(Object known) {
+    protected Object getInstrumenter(Object known) {
         Object vm;
         if (known == null) {
             vm = CURRENT_VM.get();
@@ -283,9 +279,7 @@ public abstract class Accessor {
         return SPI.getInstrumenter(vm);
     }
 
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    protected com.oracle.truffle.api.instrument.Instrumenter createInstrumenter(Object vm) {
+    protected Object createInstrumenter(Object vm) {
         return INSTRUMENT.createInstrumenter(vm);
     }
 

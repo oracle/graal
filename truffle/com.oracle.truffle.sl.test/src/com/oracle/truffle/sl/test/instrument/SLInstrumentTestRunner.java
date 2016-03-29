@@ -45,7 +45,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
@@ -229,7 +228,6 @@ public final class SLInstrumentTestRunner extends ParentRunner<com.oracle.truffl
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(out);
-        final com.oracle.truffle.api.instrument.ASTProber prober = new com.oracle.truffle.sl.nodes.instrument.SLStandardASTProber();
 
         PolyglotEngine vm = null;
         try {
@@ -238,19 +236,8 @@ public final class SLInstrumentTestRunner extends ParentRunner<com.oracle.truffl
                 // Set up the execution context for Simple and register our two listeners
                 vm = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
 
-                final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
-                field.setAccessible(true);
-                final com.oracle.truffle.api.instrument.Instrumenter instrumenter = (com.oracle.truffle.api.instrument.Instrumenter) field.get(vm);
-                instrumenter.registerASTProber(prober);
-
                 final String src = readAllLines(testCase.path);
                 vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));
-
-                // Attach an instrument to every probe tagged as an assignment
-                for (com.oracle.truffle.api.instrument.Probe probe : instrumenter.findProbesTaggedAs(com.oracle.truffle.api.instrument.StandardSyntaxTag.ASSIGNMENT)) {
-                    SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(ps);
-                    instrumenter.attach(probe, slPrintAssigmentValueListener, "SL print assignment value");
-                }
 
                 PolyglotEngine.Value main = vm.findGlobalSymbol("main");
                 main.execute();

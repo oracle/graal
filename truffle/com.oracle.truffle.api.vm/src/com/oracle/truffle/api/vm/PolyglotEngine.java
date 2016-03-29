@@ -55,7 +55,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -114,7 +113,7 @@ public class PolyglotEngine {
     private final OutputStream out;
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
-    private final Instrumenter instrumenter;
+    private final Object instrumenter; // old instrumentation
     private final Object instrumentationHandler; // new instrumentation
     private final Map<String, Instrument> instruments;
     private final List<Object[]> config;
@@ -1169,9 +1168,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn,
-                        com.oracle.truffle.api.instrument.Instrumenter instrumenter,
-                        Map<String, Object> config) {
+        protected Env attachEnv(Object obj, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Object instrumenter, Map<String, Object> config) {
             PolyglotEngine vm = (PolyglotEngine) obj;
             return super.attachEnv(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
         }
@@ -1193,7 +1190,7 @@ public class PolyglotEngine {
 
         @Deprecated
         @Override
-        protected com.oracle.truffle.api.instrument.Instrumenter createInstrumenter(Object vm) {
+        protected Object createInstrumenter(Object vm) {
             return super.createInstrumenter(vm);
         }
 
@@ -1204,7 +1201,7 @@ public class PolyglotEngine {
 
         @Deprecated
         @Override
-        protected com.oracle.truffle.api.instrument.Instrumenter getInstrumenter(Object obj) {
+        protected Object getInstrumenter(Object obj) {
             final PolyglotEngine vm = (PolyglotEngine) obj;
             return vm.instrumenter;
         }

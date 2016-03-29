@@ -46,12 +46,6 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 
-/**
- * A Truffle node that can be inserted into a Simple AST (assumed not to have executed yet) to
- * enable {@linkplain Instrumenter Instrumentation} of a {@link SLStatementNode}. Tools wishing to
- * interact with AST execution may attach {@link ProbeInstrument}s to the {@link Probe} uniquely
- * associated with the wrapper, and to which this wrapper routes execution events.
- */
 @Deprecated
 @SuppressWarnings("deprecation")
 @NodeInfo(cost = NodeCost.NONE)

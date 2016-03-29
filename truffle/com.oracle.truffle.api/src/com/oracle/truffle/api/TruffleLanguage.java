@@ -374,13 +374,13 @@ public abstract class TruffleLanguage<C> {
         private final Map<String, Object> config;
 
         @SuppressWarnings("deprecation")
-        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, com.oracle.truffle.api.instrument.Instrumenter instrumenter, Map<String, Object> config) {
+        Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Object instrumenter, Map<String, Object> config) {
             this.vm = vm;
             this.in = in;
             this.err = err;
             this.out = out;
             this.lang = lang;
-            this.instrumenter = instrumenter;
+            this.instrumenter = (com.oracle.truffle.api.instrument.Instrumenter) instrumenter;
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             API.collectEnvServices(collectedServices, vm, lang, this);
             this.services = collectedServices.toArray();
@@ -537,8 +537,7 @@ public abstract class TruffleLanguage<C> {
     private static final class AccessAPI extends Accessor {
         @Override
         protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn,
-                        @SuppressWarnings("deprecation") com.oracle.truffle.api.instrument.Instrumenter instrumenter,
-                        Map<String, Object> config) {
+                        Object instrumenter, Map<String, Object> config) {
             Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
             return env;
         }

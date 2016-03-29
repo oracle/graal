@@ -22,14 +22,11 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 
 import org.junit.After;
-import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -38,7 +35,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -62,39 +58,6 @@ public class InitializationTest {
         if (vm != null) {
             vm.dispose();
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    @Test
-    @Deprecated
-    public void accessProbeForAbstractLanguage() throws IOException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-        vm = PolyglotEngine.newBuilder().build();
-
-        final Field field = PolyglotEngine.class.getDeclaredField("instrumenter");
-        field.setAccessible(true);
-        final com.oracle.truffle.api.instrument.Instrumenter instrumenter = (com.oracle.truffle.api.instrument.Instrumenter) field.get(vm);
-        instrumenter.registerASTProber(new com.oracle.truffle.api.instrument.ASTProber() {
-
-            public void probeAST(final com.oracle.truffle.api.instrument.Instrumenter inst, RootNode startNode) {
-                startNode.accept(new NodeVisitor() {
-
-                    public boolean visit(Node node) {
-
-                        if (node instanceof ANode) {
-                            inst.probe(node).tagAs(com.oracle.truffle.api.instrument.StandardSyntaxTag.STATEMENT, null);
-                        }
-                        return true;
-                    }
-                });
-            }
-        });
-
-        Source source = Source.fromText("accessProbeForAbstractLanguage text", "accessProbeForAbstractLanguage").withMimeType("application/x-abstrlang");
-
-        assertEquals(vm.eval(source).get(), 1);
-
-        vm.dispose();
-        vm = null;
     }
 
     private static final class MMRootNode extends RootNode {
