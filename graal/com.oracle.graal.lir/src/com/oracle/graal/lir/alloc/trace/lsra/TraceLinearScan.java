@@ -24,8 +24,6 @@ package com.oracle.graal.lir.alloc.trace.lsra;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAuseInterTraceHints;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.finalizeFixedIntervals;
 import static jdk.vm.ci.code.CodeUtil.isEven;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
@@ -652,13 +650,6 @@ public final class TraceLinearScan {
                 TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
             } else {
                 intervalData = intervals;
-                if (TraceRAuseInterTraceHints.getValue()) {
-                    // add hints
-                    try (Scope s = Debug.scope("InterTraceHints")) {
-                        TraceLinearScanLifetimeAnalysisPhase.addInterTraceHints(lirGenRes.getLIR(), traceBuilderResult, intervals);
-                        finalizeFixedIntervals(intervalData);
-                    }
-                }
             }
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {

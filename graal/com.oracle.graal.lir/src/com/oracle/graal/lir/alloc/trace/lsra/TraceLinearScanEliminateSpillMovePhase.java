@@ -233,8 +233,8 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
                 assert temp.spillDefinitionPos() >= prev.spillDefinitionPos() : "when intervals are sorted by from :  then they must also be sorted by spillDefinitionPos";
             }
 
-            assert temp.spillSlot() != null || temp.canMaterialize() : "interval has no spill slot assigned" + temp;
-            assert temp.spillDefinitionPos() >= temp.from() : "invalid order spill pos: " + temp.spillDefinitionPos() + " vs. from: " + temp.from();
+            assert temp.spillSlot() != null || temp.canMaterialize() : "interval has no spill slot assigned";
+            assert temp.spillDefinitionPos() >= temp.from() : "invalid order";
             // assert temp.spillDefinitionPos() <= temp.from() + 2 :
             // "only intervals defined once at their start-pos can be optimized";
 
