@@ -47,6 +47,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tck.Schema.Type;
+import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
@@ -1178,6 +1179,20 @@ public abstract class TruffleTCK {
 
         assertDouble("The same value returned", 42.0, a.get(ComplexNumber.REAL_IDENTIFIER));
         assertDouble("The same value returned", 42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER));
+    }
+
+    /** @since 0.13 */
+    @Test
+    public void testPropertiesInteropMessage() throws Exception {
+        PolyglotEngine.Value id = findGlobalSymbol(identity());
+
+        ComplexNumber a = new ComplexNumber(32, 10);
+        Map<?,?> res = id.execute(a).as(Map.class);
+
+        assertEquals("The same value returned", 32, ((Number)res.get(ComplexNumber.REAL_IDENTIFIER)).intValue());
+        assertEquals("The same value returned", 10, ((Number)res.get(ComplexNumber.IMAGINARY_IDENTIFIER)).intValue());
+
+        assertEquals("Just two elements", 2, res.size());
     }
 
     /** @since 0.8 or earlier */

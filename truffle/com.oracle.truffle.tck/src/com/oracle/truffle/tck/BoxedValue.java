@@ -112,4 +112,9 @@ final class BoxedValue implements TruffleObject, ForeignAccess.Factory10 {
     public CallTarget accessMessage(Message unknown) {
         return null;
     }
+
+    @Override
+    public CallTarget accessProperties() {
+        return null;
+    }
 }

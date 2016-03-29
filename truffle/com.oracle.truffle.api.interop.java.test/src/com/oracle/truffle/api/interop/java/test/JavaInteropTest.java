@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.Iterator;
 import java.util.Map;
 
 public class JavaInteropTest {
@@ -157,6 +158,23 @@ public class JavaInteropTest {
 
         map.put("x", 13);
         assertEquals("x changed", data.x, 13);
+
+        boolean foundX = false;
+        boolean foundY = false;
+        Iterator<Map.Entry<String, Object>> it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Object> entry = it.next();
+            if ("x".equals(entry.getKey())) {
+                assertEquals("x value found", data.x, entry.getValue());
+                foundX = true;
+            }
+            if ("y".equals(entry.getKey())) {
+                assertEquals("y value found", data.y, entry.getValue());
+                foundY = true;
+            }
+        }
+        assertTrue(foundX);
+        assertTrue(foundY);
     }
 
     @Test

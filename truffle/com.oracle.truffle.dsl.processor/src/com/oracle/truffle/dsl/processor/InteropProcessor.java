@@ -870,6 +870,7 @@ public final class InteropProcessor extends AbstractProcessor {
                 appendFactory10accessExecute(w);
                 appendFactory10accessInvoke(w);
                 appendFactory10accessNew(w);
+                appendFactory10accessProperties(w);
                 appendFactoryAccessMessage(w);
 
                 w.append("}\n");
@@ -980,6 +981,12 @@ public final class InteropProcessor extends AbstractProcessor {
         private void appendFactory10accessNew(Writer w) throws IOException {
             w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
             appendOptionalHandlerBody(w, Message.createNew(0), "Message.createNew(argumentsLength)");
+            w.append("    }").append("\n");
+        }
+
+        private void appendFactory10accessProperties(Writer w) throws IOException {
+            w.append("    public CallTarget accessProperties() {").append("\n");
+            appendOptionalHandlerBody(w, Message.PROPERTIES, "Message.PROPERTIES");
             w.append("    }").append("\n");
         }
 

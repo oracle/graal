@@ -346,6 +346,8 @@ public abstract class Message {
      */
     public static final Message IS_BOXED = IsBoxed.INSTANCE;
 
+    public static final Message PROPERTIES = Properties.INSTANCE;
+
     /**
      * Compares types of two messages. Messages are encouraged to implement this method. All
      * standard ones ({@link #IS_NULL}, {@link #READ}, etc.) do so. Messages obtained via the same
@@ -415,6 +417,9 @@ public abstract class Message {
         }
         if (Message.IS_EXECUTABLE == message) {
             return "IS_EXECUTABLE"; // NOI18N
+        }
+        if (Message.PROPERTIES == message) {
+            return "PROPERTIES"; // NOI18N
         }
         if (message instanceof Execute) {
             return ((Execute) message).name();

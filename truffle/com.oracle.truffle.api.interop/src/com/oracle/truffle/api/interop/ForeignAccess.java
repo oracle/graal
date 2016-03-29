@@ -634,6 +634,8 @@ public final class ForeignAccess {
          * @since 0.8 or earlier
          */
         CallTarget accessMessage(Message unknown);
+
+        CallTarget accessProperties();
     }
 
     private static class DelegatingFactory implements Factory {
@@ -679,6 +681,8 @@ public final class ForeignAccess {
                         return factory.accessUnbox();
                     case Write.HASH:
                         return factory.accessWrite();
+                    case Properties.HASH:
+                        return factory.accessProperties();
                 }
             }
             return factory.accessMessage(msg);
