@@ -60,7 +60,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 public final class InteropProcessor extends AbstractProcessor {
 
     private static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{Message.READ, Message.WRITE, Message.IS_NULL, Message.IS_EXECUTABLE, Message.IS_BOXED, Message.HAS_SIZE,
-                    Message.GET_SIZE, Message.UNBOX, Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
+                    Message.GET_SIZE, Message.UNBOX, Message.PROPERTIES, Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
