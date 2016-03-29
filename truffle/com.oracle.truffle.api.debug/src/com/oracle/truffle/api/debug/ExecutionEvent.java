@@ -63,6 +63,9 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public Debugger getDebugger() {
+        if (debugger == null) {
+            throw new IllegalStateException("Event was disposed.");
+        }
         if (debugger instanceof Debugger) {
             return (Debugger) debugger;
         }
@@ -106,10 +109,13 @@ public final class ExecutionEvent {
      * and reverts by default to Continue mode.</li>
      * </ul>
      *
-     * @throws IllegalArgumentException if the specified number is {@code <= 0}
      * @since 0.9
      */
     public void prepareStepInto() {
         getDebugger().prepareStepInto(1);
+    }
+
+    void dispose() {
+        debugger = null;
     }
 }
