@@ -76,8 +76,8 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 /**
- * An implementation of the linear scan register allocator algorithm described in
- * <a href="http://doi.acm.org/10.1145/1064979.1064998" >
+ * An implementation of the linear scan register allocator algorithm described in <a
+ * href="http://doi.acm.org/10.1145/1064979.1064998" >
  * "Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
  * Hanspeter Moessenboeck.
  */
