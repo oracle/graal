@@ -269,12 +269,7 @@ public final class SourceSectionFilter {
          * @since 0.12
          */
         public Builder lineIn(IndexRange... ranges) {
-            verifyNotNull(ranges);
-            for (IndexRange indexRange : ranges) {
-                if (indexRange.startIndex < 1) {
-                    throw new IllegalArgumentException(String.format("Start line indices must be >= 1 but were %s.", indexRange.startIndex));
-                }
-            }
+            verifyLineIndices(ranges);
             expressions.add(new EventFilterExpression.LineIn(ranges));
             return this;
         }
@@ -288,12 +283,7 @@ public final class SourceSectionFilter {
          * @since 0.12
          */
         public Builder lineNotIn(IndexRange... ranges) {
-            verifyNotNull(ranges);
-            for (IndexRange indexRange : ranges) {
-                if (indexRange.startIndex < 1) {
-                    throw new IllegalArgumentException(String.format("Start line indices must be >= 1 but were %s.", indexRange.startIndex));
-                }
-            }
+            verifyLineIndices(ranges);
             expressions.add(new Not(new EventFilterExpression.LineIn(ranges)));
             return this;
         }
@@ -309,6 +299,43 @@ public final class SourceSectionFilter {
          */
         public Builder lineIn(int startLine, int length) {
             return lineIn(IndexRange.byLength(startLine, length));
+        }
+
+        /**
+         * Add a filter for all sources sections start in one of the given index ranges. Line
+         * indices must be greater or equal to <code>1</code>.
+         *
+         * @param ranges matches lines that start in one of the given index ranges
+         * @return the builder to chain calls
+         * @since 0.12
+         */
+        public Builder lineStartsIn(IndexRange... ranges) {
+            verifyLineIndices(ranges);
+            expressions.add(new EventFilterExpression.LineStartsIn(ranges));
+            return this;
+        }
+
+        /**
+         * Add a filter for all sources sections end in one of the given index ranges. Line indices
+         * must be greater or equal to <code>1</code>.
+         *
+         * @param ranges matches lines that end in one of the given index ranges
+         * @return the builder to chain calls
+         * @since 0.12
+         */
+        public Builder lineEndsIn(IndexRange... ranges) {
+            verifyLineIndices(ranges);
+            expressions.add(new EventFilterExpression.LineEndsIn(ranges));
+            return this;
+        }
+
+        private void verifyLineIndices(IndexRange... ranges) {
+            verifyNotNull(ranges);
+            for (IndexRange indexRange : ranges) {
+                if (indexRange.startIndex < 1) {
+                    throw new IllegalArgumentException(String.format("Start line indices must be >= 1 but were %s.", indexRange.startIndex));
+                }
+            }
         }
 
         /**
@@ -720,6 +747,88 @@ public final class SourceSectionFilter {
             }
         }
 
+        private static final class LineStartsIn extends EventFilterExpression {
+
+            private final IndexRange[] ranges;
+
+            LineStartsIn(IndexRange[] ranges) {
+                this.ranges = ranges;
+            }
+
+            @Override
+            boolean isRootIncluded(SourceSection rootSourceSection) {
+                return LineIn.isLineIn(rootSourceSection, ranges);
+            }
+
+            @Override
+            boolean isIncluded(SourceSection sourceSection) {
+                int otherStart = sourceSection.getStartLine();
+                for (IndexRange indexRange : ranges) {
+                    if (indexRange.contains(otherStart, otherStart)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            protected int getOrder() {
+                return 10;
+            }
+
+            @Override
+            public String toString() {
+                StringBuilder builder = new StringBuilder("(line-starts-between ");
+                appendRanges(builder, ranges);
+                builder.append(")");
+                return builder.toString();
+            }
+        }
+
+        private static final class LineEndsIn extends EventFilterExpression {
+
+            private final IndexRange[] ranges;
+
+            LineEndsIn(IndexRange[] ranges) {
+                this.ranges = ranges;
+            }
+
+            @Override
+            boolean isRootIncluded(SourceSection rootSourceSection) {
+                return LineIn.isLineIn(rootSourceSection, ranges);
+            }
+
+            @Override
+            boolean isIncluded(SourceSection sourceSection) {
+                int otherStart = sourceSection.getStartLine();
+                int otherEnd;
+                if (sourceSection.getSource() == null) {
+                    otherEnd = otherStart;
+                } else {
+                    otherEnd = sourceSection.getEndLine();
+                }
+                for (IndexRange indexRange : ranges) {
+                    if (indexRange.contains(otherEnd, otherEnd)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            protected int getOrder() {
+                return 10;
+            }
+
+            @Override
+            public String toString() {
+                StringBuilder builder = new StringBuilder("(line-ends-between ");
+                appendRanges(builder, ranges);
+                builder.append(")");
+                return builder.toString();
+            }
+        }
+
         private static final class LineIn extends EventFilterExpression {
 
             private final IndexRange[] ranges;
@@ -738,6 +847,10 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                return isLineIn(sourceSection, ranges);
+            }
+
+            static boolean isLineIn(SourceSection sourceSection, IndexRange[] ranges) {
                 int otherStart = sourceSection.getStartLine();
                 int otherEnd;
                 if (sourceSection.getSource() == null) {
