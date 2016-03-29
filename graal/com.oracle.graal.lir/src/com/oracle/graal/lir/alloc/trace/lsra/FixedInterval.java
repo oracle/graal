@@ -271,6 +271,9 @@ final class FixedInterval extends IntervalHint {
 
     @Override
     public String toString() {
+        if (this == EndMarker) {
+            return "EndMarker [?,?]";
+        }
         String from = "?";
         String to = "?";
         if (first != null && first != FixedRange.EndMarker) {
