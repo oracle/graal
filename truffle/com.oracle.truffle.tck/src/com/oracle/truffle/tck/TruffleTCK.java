@@ -47,6 +47,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tck.Schema.Type;
+import java.util.HashMap;
 import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -1184,15 +1185,25 @@ public abstract class TruffleTCK {
     /** @since 0.13 */
     @Test
     public void testPropertiesInteropMessage() throws Exception {
-        PolyglotEngine.Value id = findGlobalSymbol(identity());
+        PolyglotEngine.Value values = findGlobalSymbol(valuesObject());
+        Map<?,?> res = values.execute().as(Map.class);
 
-        ComplexNumber a = new ComplexNumber(32, 10);
-        Map<?,?> res = id.execute(a).as(Map.class);
+        Map<String,Object> expected = new HashMap<>();
+        expected.put("intValue", 0);
+        expected.put("byteValue", 0);
+        expected.put("doubleValue", 0.0);
 
-        assertEquals("The same value returned", 32, ((Number)res.get(ComplexNumber.REAL_IDENTIFIER)).intValue());
-        assertEquals("The same value returned", 10, ((Number)res.get(ComplexNumber.IMAGINARY_IDENTIFIER)).intValue());
+        for (Map.Entry<? extends Object, ? extends Object> entry : res.entrySet()) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
 
-        assertEquals("Just two elements", 2, res.size());
+            Object expValue = expected.remove(key);
+            if (expValue != null) {
+                assertEquals("For key " + key, ((Number)expValue).doubleValue(), ((Number)value).doubleValue(), 0.01);
+            }
+        }
+
+        assertTrue("All expected properties found: " + expected, expected.isEmpty());
     }
 
     /** @since 0.8 or earlier */
