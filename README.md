@@ -24,6 +24,23 @@ code snippets and more. In case you want to embedded Truffle into your
 application or write your own high speed language interpreter, start
 [here](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/).
 
+Truffle bits are uploaded to Maven central. You can use them from your
+`pom.xml` file as:
+
+```xml
+<dependency>
+    <groupId>com.oracle.truffle</groupId>
+    <artifactId>truffle-api</artifactId>
+    <version>0.11</version> <!-- or any later version -->
+</dependency>
+<dependency>
+    <groupId>com.oracle.truffle</groupId>
+    <artifactId>truffle-dsl-processor</artifactId>
+    <version>0.11</version>
+    <scope>provided</scope>
+</dependency>
+```
+
 Our typicial sample language is called the SimpleLanguage. A good entry point for
 exploring SimpleLanguage is the [SLLanguage class](https://github.com/graalvm/Truffle/blob/master/truffle/com.oracle.truffle.sl/src/com/oracle/truffle/sl/SLLanguage.java).
 In addition to that here are links to presentations, FAQs and papers about
@@ -37,12 +54,12 @@ Graal and Truffle:
 
 ## Hacking Truffle
 
-Truffle and Graal use the [MX build tool](https://bitbucket.org/allr/mx),
+Truffle and Graal use the [MX build tool](https://github.com/graalvm/mx/),
 which needs to be installed before using this repository. To do so execute
 in a clean directory:
 
 ```bash
-$ hg clone https://bitbucket.org/allr/mx
+$ git clone https://github.com/graalvm/mx.git/
 $ mx/mx
 ```
 
@@ -82,15 +99,15 @@ and then it is possible to include the artifacts as dependencies to a `pom.xml`:
 
 ```xml
 <dependency>
-  <groupId>com.oracle</groupId>
-  <artifactId>truffle</artifactId>
-  <version>0.8</version>
+    <groupId>com.oracle.truffle</groupId>
+    <artifactId>truffle-api</artifactId>
+    <version>0.12-SNAPSHOT</version> <!-- or whether version got installed by mx maven-install -->
 </dependency>
 <dependency>
-  <groupId>com.oracle</groupId>
-  <artifactId>truffle-dsl-processor</artifactId>
-  <version>0.8</version>
-  <scope>provided</scope>
+    <groupId>com.oracle.truffle</groupId>
+    <artifactId>truffle-dsl-processor</artifactId>
+    <version>0.12-SNAPSHOT</version>
+    <scope>provided</scope>
 </dependency>
 ```
 
