@@ -880,7 +880,7 @@ public final class Debugger {
                 // Debug client finished normally, execution resumes
                 // Presume that the client has set a new strategy (or default to Continue)
                 running = true;
-		 if (TRACE) {
+                if (TRACE) {
                     final String reason = haltReason == null ? "" : haltReason;
                     trace("RESUME %s : (%s) stack base=%d", haltedPosition.toString(), reason, contextStackBase);
                 }
