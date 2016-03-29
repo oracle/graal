@@ -28,8 +28,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
@@ -72,18 +70,23 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     }
 
     @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    protected Visualizer getVisualizer() {
+    protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
     protected boolean isInstrumentable(Node node) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    protected WrapperNode createWrapperNode(Node node) {
+    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
         throw new UnsupportedOperationException();
     }
 

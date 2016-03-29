@@ -25,25 +25,25 @@
 package com.oracle.truffle.api.instrument.impl;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.StandardInstrumentListener;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * A listener for AST {@linkplain StandardInstrumentListener execution events} that provides a no-op
  * implementation of every event.
  */
-public class DefaultStandardInstrumentListener implements StandardInstrumentListener {
+@SuppressWarnings("deprecation")
+@Deprecated
+public class DefaultStandardInstrumentListener implements com.oracle.truffle.api.instrument.StandardInstrumentListener {
 
-    public void onEnter(Probe probe, Node node, VirtualFrame frame) {
+    public void onEnter(com.oracle.truffle.api.instrument.Probe probe, Node node, VirtualFrame frame) {
     }
 
-    public void onReturnVoid(Probe probe, Node node, VirtualFrame frame) {
+    public void onReturnVoid(com.oracle.truffle.api.instrument.Probe probe, Node node, VirtualFrame frame) {
     }
 
-    public void onReturnValue(Probe probe, Node node, VirtualFrame frame, Object result) {
+    public void onReturnValue(com.oracle.truffle.api.instrument.Probe probe, Node node, VirtualFrame frame, Object result) {
     }
 
-    public void onReturnExceptional(Probe probe, Node node, VirtualFrame frame, Throwable exception) {
+    public void onReturnExceptional(com.oracle.truffle.api.instrument.Probe probe, Node node, VirtualFrame frame, Throwable exception) {
     }
 }

@@ -44,7 +44,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -225,10 +224,10 @@ public final class Debugger {
      * @throws IOException if the breakpoint already set
      * @since 0.9
      */
-    @SuppressWarnings("static-method")
+    @SuppressWarnings({"static-method", "deprecation"})
     @Deprecated
     @TruffleBoundary
-    public Breakpoint setTagBreakpoint(int ignoreCount, SyntaxTag tag, boolean oneShot) throws IOException {
+    public Breakpoint setTagBreakpoint(int ignoreCount, com.oracle.truffle.api.instrument.SyntaxTag tag, boolean oneShot) throws IOException {
         throw new UnsupportedOperationException();
     }
 

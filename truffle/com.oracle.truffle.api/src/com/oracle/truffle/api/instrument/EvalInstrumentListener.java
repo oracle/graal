@@ -40,6 +40,7 @@ import com.oracle.truffle.api.source.Source;
  * @see Instrumenter
  * @since 0.8 or earlier
  */
+@Deprecated
 public interface EvalInstrumentListener {
 
     /**

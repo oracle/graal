@@ -24,23 +24,22 @@
  */
 package com.oracle.truffle.api.instrument.impl;
 
-import com.oracle.truffle.api.instrument.Probe;
-import com.oracle.truffle.api.instrument.SimpleInstrumentListener;
-
 /**
  * A listener for Truffle execution events that provides a no-op implementation of every event.
  */
-public class DefaultSimpleInstrumentListener implements SimpleInstrumentListener {
+@SuppressWarnings("deprecation")
+@Deprecated
+public class DefaultSimpleInstrumentListener implements com.oracle.truffle.api.instrument.SimpleInstrumentListener {
 
-    public void onEnter(Probe probe) {
+    public void onEnter(com.oracle.truffle.api.instrument.Probe probe) {
     }
 
-    public void onReturnVoid(Probe probe) {
+    public void onReturnVoid(com.oracle.truffle.api.instrument.Probe probe) {
     }
 
-    public void onReturnValue(Probe probe, Object result) {
+    public void onReturnValue(com.oracle.truffle.api.instrument.Probe probe, Object result) {
     }
 
-    public void onReturnExceptional(Probe probe, Throwable exception) {
+    public void onReturnExceptional(com.oracle.truffle.api.instrument.Probe probe, Throwable exception) {
     }
 }

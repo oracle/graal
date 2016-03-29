@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tck.impl;
 
+import java.io.IOException;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -31,8 +33,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -40,8 +40,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-
-import java.io.IOException;
 
 @TruffleLanguage.Registration(mimeType = "application/x-tck", name = "TCK", version = "1.0")
 public final class TckLanguage extends TruffleLanguage<Env> {
@@ -81,22 +79,6 @@ public final class TckLanguage extends TruffleLanguage<Env> {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return false;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Visualizer getVisualizer() {
-        return null;
-    }
-
-    @Override
-    protected boolean isInstrumentable(Node node) {
-        return false;
-    }
-
-    @Override
-    protected WrapperNode createWrapperNode(Node node) {
-        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -25,8 +25,6 @@ package com.oracle.truffle.api;
 import java.io.IOException;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
@@ -57,18 +55,23 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
     }
 
     @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    protected Visualizer getVisualizer() {
+    protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
     protected boolean isInstrumentable(Node node) {
         return false;
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    protected WrapperNode createWrapperNode(Node node) {
+    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
         return null;
     }
 

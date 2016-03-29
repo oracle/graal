@@ -48,7 +48,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.instrument.Instrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -365,8 +364,7 @@ public class SLNodeFactory {
     /**
      * Returns a {@link SLReadLocalVariableNode} if this read is a local variable or a
      * {@link SLFunctionLiteralNode} if this read is global. In Simple, the only global names are
-     * functions. </br> There is currently no instrumentation{@linkplain Instrumenter
-     * Instrumentation} for this node.
+     * functions.
      *
      * @param nameToken The name of the variable/function being read
      * @return either:
