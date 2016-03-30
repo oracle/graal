@@ -36,6 +36,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
         this.call = call;
     }
 
+    @Override
     public void beforeCall(Object[] arguments) {
         if (call.getCallCount() == 2) {
             if (shouldSplit()) {
@@ -44,15 +45,16 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
         }
     }
 
+    @Override
     public void forceSplitting() {
-        if (call.isCallTargetCloned()) {
+        if (!canSplit()) {
             return;
         }
         call.installSplitCallTarget(call.getCallTarget().cloneUninitialized());
     }
 
-    private boolean shouldSplit() {
-        if (call.getClonedCallTarget() != null) {
+    private boolean canSplit() {
+        if (call.isCallTargetCloned()) {
             return false;
         }
         if (!TruffleCompilerOptions.TruffleSplitting.getValue()) {
@@ -61,15 +63,23 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
         if (!call.isCallTargetCloningAllowed()) {
             return false;
         }
-        OptimizedCallTarget splitTarget = call.getCallTarget();
-        int nodeCount = splitTarget.getNonTrivialNodeCount();
+        return true;
+    }
+
+    private boolean shouldSplit() {
+        if (!canSplit()) {
+            return false;
+        }
+
+        OptimizedCallTarget callTarget = call.getCallTarget();
+        int nodeCount = callTarget.getNonTrivialNodeCount();
         if (nodeCount > TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
             return false;
         }
 
         // disable recursive splitting for now
         OptimizedCallTarget root = (OptimizedCallTarget) call.getRootNode().getCallTarget();
-        if (root == splitTarget || root.getSourceCallTarget() == splitTarget) {
+        if (root == callTarget || root.getSourceCallTarget() == callTarget) {
             // recursive call found
             return false;
         }
@@ -82,7 +92,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
     }
 
     private static boolean isMaxSingleCall(OptimizedDirectCallNode call) {
-        return NodeUtil.countNodes(call.getCurrentCallTarget().getRootNode(), new NodeCountFilter() {
+        return NodeUtil.countNodes(call.getCallTarget().getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
                 return node instanceof DirectCallNode;
             }
@@ -90,7 +100,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
     }
 
     private static int countPolymorphic(OptimizedDirectCallNode call) {
-        return NodeUtil.countNodes(call.getCurrentCallTarget().getRootNode(), new NodeCountFilter() {
+        return NodeUtil.countNodes(call.getCallTarget().getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
                 NodeCost cost = node.getCost();
                 boolean polymorphic = cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;
