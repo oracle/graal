@@ -208,8 +208,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     private void ensureCloned() {
-        if (uninitializedRootNode == UNINITIALIZED) {
-            this.uninitializedRootNode = sourceCallTarget == null ? cloneRootNode(rootNode) : sourceCallTarget.uninitializedRootNode;
+        if (sourceCallTarget != null) {
+            // sourceCallTarget is initialized before cloning
+            this.uninitializedRootNode = sourceCallTarget.uninitializedRootNode;
+        } else if (rootNode.isCloningAllowed()) {
+            this.uninitializedRootNode = cloneRootNode(rootNode);
         }
     }
 
