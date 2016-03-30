@@ -47,7 +47,7 @@ public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
     }
 
     public PiArrayNode(ValueNode object, ValueNode length, Stamp stamp) {
-        super(TYPE, object, stamp);
+        super(TYPE, object, stamp, null);
         this.length = length;
     }
 
