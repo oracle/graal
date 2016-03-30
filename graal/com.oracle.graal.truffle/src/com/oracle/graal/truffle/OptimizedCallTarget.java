@@ -144,9 +144,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     private static RootNode cloneRootNode(RootNode root) {
-        if (root == null || !root.isCloningAllowed()) {
-            return null;
-        }
+        assert root.isCloningAllowed();
         return NodeUtil.cloneNode(root);
     }
 
@@ -194,9 +192,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             initialize();
         }
         RootNode copiedRoot = cloneRootNode(uninitializedRootNode);
-        if (copiedRoot == null) {
-            return null;
-        }
         OptimizedCallTarget splitTarget = (OptimizedCallTarget) runtime().createClonedCallTarget(this, copiedRoot);
         splitTarget.cloneIndex = cloneIndex++;
         return splitTarget;
