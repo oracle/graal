@@ -139,18 +139,18 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
 
         assert !isCallTargetCloned();
         OptimizedCallTarget currentTarget = getCallTarget();
-        OptimizedCallTarget newTarget = getCallTarget().cloneUninitialized();
+        OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
 
         if (callCount >= 1) {
             currentTarget.decrementKnownCallSites();
         }
-        newTarget.incrementKnownCallSites();
+        splitTarget.incrementKnownCallSites();
 
         if (getParent() != null) {
             // dummy replace to report the split, irrelevant if this node is not adopted
-            replace(this, "Split call " + newTarget.toString());
+            replace(this, "Split call " + splitTarget.toString());
         }
-        splitCallTarget = newTarget;
+        splitCallTarget = splitTarget;
         runtime.getCompilationNotify().notifyCompilationSplit(this);
     }
 
