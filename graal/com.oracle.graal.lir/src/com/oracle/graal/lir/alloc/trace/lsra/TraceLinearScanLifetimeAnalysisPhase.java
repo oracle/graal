@@ -65,7 +65,6 @@ import com.oracle.graal.lir.ssi.SSIUtil;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -118,6 +117,14 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         private void analyze() {
             countInstructions();
             buildIntervals();
+        }
+
+        private boolean sameTrace(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+            return traceBuilderResult.getTraceForBlock(b) == traceBuilderResult.getTraceForBlock(a);
+        }
+
+        private boolean isAllocatedOrCurrent(AbstractBlockBase<?> currentBlock, AbstractBlockBase<?> other) {
+            return traceBuilderResult.getTraceForBlock(other) <= traceBuilderResult.getTraceForBlock(currentBlock);
         }
 
         /**
@@ -245,63 +252,50 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         }
 
         private void addInterTraceHints() {
-            TraceLinearScanLifetimeAnalysisPhase.addInterTraceHints(lir, traceBuilderResult, intervalData);
-        }
-    }
-
-    static void addInterTraceHints(LIR lir, TraceBuilderResult<?> traceBuilderResult, IntervalData intervalData) {
-        List<? extends AbstractBlockBase<?>> sortedBlocks = intervalData.getBlocks();
-        // set hints for phi/sigma intervals
-        int currentTrace = traceBuilderResult.getTraceForBlock(sortedBlocks.get(0));
-        for (AbstractBlockBase<?> block : sortedBlocks) {
-            LabelOp label = SSIUtil.incoming(lir, block);
-            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                int predTrace = traceBuilderResult.getTraceForBlock(pred);
-                if (predTrace <= currentTrace) {
-                    BlockEndOp outgoing = SSIUtil.outgoing(lir, pred);
-                    for (int i = 0; i < outgoing.getOutgoingSize(); i++) {
-                        Value toValue = label.getIncomingValue(i);
-                        assert !isShadowedRegisterValue(toValue) : "Shadowed Registers are not allowed here: " + toValue;
-                        if (isVariable(toValue)) {
-                            Value fromValue = outgoing.getOutgoingValue(i);
-                            assert predTrace == currentTrace || !isVariable(fromValue) : "Unallocated variable: " + fromValue;
-                            if (!LIRValueUtil.isConstantValue(fromValue) && !fromValue.equals(toValue)) {
-                                addInterTraceHint(label, (AllocatableValue) toValue, fromValue, intervalData);
+            // set hints for phi/sigma intervals
+            for (AbstractBlockBase<?> block : sortedBlocks()) {
+                LabelOp label = SSIUtil.incoming(lir, block);
+                for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+                    if (isAllocatedOrCurrent(block, pred)) {
+                        BlockEndOp outgoing = SSIUtil.outgoing(lir, pred);
+                        for (int i = 0; i < outgoing.getOutgoingSize(); i++) {
+                            Value toValue = label.getIncomingValue(i);
+                            assert !isShadowedRegisterValue(toValue) : "Shadowed Registers are not allowed here: " + toValue;
+                            if (isVariable(toValue)) {
+                                Value fromValue = outgoing.getOutgoingValue(i);
+                                assert sameTrace(block, pred) || !isVariable(fromValue) : "Unallocated variable: " + fromValue;
+                                if (!LIRValueUtil.isConstantValue(fromValue)) {
+                                    addInterTraceHint(label, (AllocatableValue) toValue, fromValue);
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
 
-    private static void addInterTraceHint(LabelOp label, AllocatableValue toValue, Value fromValue, IntervalData intervalData) {
-        assert isVariable(toValue) : "Wrong toValue: " + toValue;
-        assert isRegister(fromValue) || isVariable(fromValue) || isStackSlotValue(fromValue) || isShadowedRegisterValue(fromValue) : "Wrong fromValue: " + fromValue;
-        if (isVariableOrRegister(fromValue)) {
-            TraceInterval to = intervalData.getOrCreateInterval(toValue);
-            IntervalHint from = getIntervalHint(intervalData, (AllocatableValue) fromValue);
-            setHint(label, to, from);
-        } else if (isStackSlotValue(fromValue)) {
-            TraceInterval to = intervalData.getOrCreateInterval(toValue);
-            setSpillSpotHint(label, ValueUtil.asAllocatableValue(fromValue), to);
-        } else if (TraceRAshareSpillInformation.getValue() && isShadowedRegisterValue(fromValue)) {
-            ShadowedRegisterValue shadowedRegisterValue = asShadowedRegisterValue(fromValue);
-            IntervalHint from = getIntervalHint(intervalData, shadowedRegisterValue.getRegister());
-            TraceInterval to = intervalData.getOrCreateInterval(toValue);
-            setHint(label, to, from);
-            AllocatableValue stackSlot = shadowedRegisterValue.getStackSlot();
-            setSpillSpotHint(label, stackSlot, to);
-        } else {
-            throw JVMCIError.shouldNotReachHere();
+        private void addInterTraceHint(LabelOp label, AllocatableValue toValue, Value fromValue) {
+            assert isVariable(toValue) : "Wrong toValue: " + toValue;
+            assert isRegister(fromValue) || isVariable(fromValue) || isStackSlotValue(fromValue) || isShadowedRegisterValue(fromValue) : "Wrong fromValue: " + fromValue;
+            if (isVariableOrRegister(fromValue)) {
+                TraceInterval to = intervalData.getOrCreateInterval(toValue);
+                IntervalHint from = getIntervalHint(intervalData, (AllocatableValue) fromValue);
+                setHint(label, to, from);
+            } else if (isStackSlotValue(fromValue)) {
+                TraceInterval to = intervalData.getOrCreateInterval(toValue);
+                to.setSpillSlot((AllocatableValue) fromValue);
+                to.setSpillState(SpillState.StartInMemory);
+            } else if (TraceRAshareSpillInformation.getValue() && isShadowedRegisterValue(fromValue)) {
+                ShadowedRegisterValue shadowedRegisterValue = asShadowedRegisterValue(fromValue);
+                IntervalHint from = getIntervalHint(intervalData, shadowedRegisterValue.getRegister());
+                TraceInterval to = intervalData.getOrCreateInterval(toValue);
+                setHint(label, to, from);
+                to.setSpillSlot(shadowedRegisterValue.getStackSlot());
+                to.setSpillState(SpillState.StartInMemory);
+            } else {
+                throw JVMCIError.shouldNotReachHere();
+            }
         }
-    }
 
-    private static void setSpillSpotHint(LabelOp label, AllocatableValue spillSlot, TraceInterval to) {
-        if (label.id() == 0) {
-            to.setSpillSlot(spillSlot);
-            to.setSpillState(SpillState.StartInMemory);
-            to.setSpillDefinitionPos(0);
-        }
     }
 }
