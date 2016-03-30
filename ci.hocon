@@ -50,10 +50,10 @@ gateBootstrap : ${common} {
   ]
 }
 
-gateTestEight : ${gateTest} ${java8Downloads}
-gateTestNine  : ${gateTest} ${java9Downloads}
-gateBootstrapEight : ${gateBootstrap} ${java8Downloads}
-gateBootstrapNine  : ${gateBootstrap} ${java9Downloads}
+gateTest8 : ${gateTest} ${java8Downloads}
+gateTest9  : ${gateTest} ${java9Downloads}
+gateBootstrap8 : ${gateBootstrap} ${java8Downloads}
+gateBootstrap9  : ${gateBootstrap} ${java9Downloads}
 
 gateStyle : ${common} {
   # need pyhocon fix
@@ -92,12 +92,12 @@ benchDaCapo : ${common} ${java8Downloads.downloads} {
 }
 
 builds = [
-  ${gateTestEight}      {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
-  ${gateBootstrapEight} {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
-  ${gateTestNine}       {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
-  ${gateBootstrapNine}  {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
+  ${gateTest8}      {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
+  ${gateBootstrap8} {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
+# ${gateTest9}       {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
+# ${gateBootstrap9}  {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
   ${gateStyle}          {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
-  ${gateTestEight}      {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9"}
+  ${gateTest8}      {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9"}
   ${benchSPECjvm2008}   {capabilities : [linux, amd64, bench],  name: "gate-specjvm2008-linux-amd64"}
   ${benchDaCapo}        {capabilities : [linux, amd64, bench],  name: "gate-specjvm2008-linux-amd64"}
 ]
