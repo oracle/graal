@@ -25,6 +25,7 @@ package com.oracle.graal.replacements.test;
 import jdk.vm.ci.meta.JavaKind;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -73,6 +74,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("Only works on hardware with popcnt at the moment")
     public void testBitCountInt() {
         ValueNode result = parseAndInline("bitCountIntSnippet");
         Assert.assertEquals(StampFactory.forInteger(JavaKind.Int, 8, 24), result.stamp());
@@ -83,6 +85,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("Only works on hardware with popcnt at the moment")
     public void testBitCountIntEmpty() {
         ValueNode result = parseAndInline("bitCountIntEmptySnippet");
         Assert.assertEquals(StampFactory.forInteger(JavaKind.Int, 0, 24), result.stamp());
@@ -99,6 +102,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("Only works on hardware with popcnt at the moment")
     public void testBitCountLong() {
         ValueNode result = parseAndInline("bitCountLongSnippet");
         Assert.assertEquals(StampFactory.forInteger(JavaKind.Int, 8, 40), result.stamp());
@@ -109,6 +113,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("Only works on hardware with popcnt at the moment")
     public void testBitCountLongEmpty() {
         ValueNode result = parseAndInline("bitCountLongEmptySnippet");
         Assert.assertEquals(StampFactory.forInteger(JavaKind.Int, 0, 40), result.stamp());
