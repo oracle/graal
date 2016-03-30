@@ -638,14 +638,15 @@ public abstract class Node implements NodeInterface, Cloneable {
             return rootNode.isInstrumentable();
         }
 
-        @Override
-        protected boolean isTaggedWith(Node node, Class<?> tag) {
-            return node.isTaggedWith(tag);
-        }
-
+        @SuppressWarnings("deprecation")
         @Override
         protected void probeAST(RootNode rootNode) {
             super.probeAST(rootNode);
+        }
+
+        @Override
+        protected boolean isTaggedWith(Node node, Class<?> tag) {
+            return node.isTaggedWith(tag);
         }
 
         @Override

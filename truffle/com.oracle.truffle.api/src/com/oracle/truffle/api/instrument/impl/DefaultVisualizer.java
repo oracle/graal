@@ -26,22 +26,21 @@ package com.oracle.truffle.api.instrument.impl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.instrument.ASTPrinter;
-import com.oracle.truffle.api.instrument.Visualizer;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("deprecation")
-public class DefaultVisualizer implements Visualizer {
+@Deprecated
+public class DefaultVisualizer implements com.oracle.truffle.api.instrument.Visualizer {
 
-    private final ASTPrinter astPrinter;
+    private final com.oracle.truffle.api.instrument.ASTPrinter astPrinter;
 
     public DefaultVisualizer() {
         this.astPrinter = new DefaultASTPrinter();
     }
 
-    public ASTPrinter getASTPrinter() {
+    public com.oracle.truffle.api.instrument.ASTPrinter getASTPrinter() {
         return astPrinter;
     }
 

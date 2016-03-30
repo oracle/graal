@@ -34,15 +34,17 @@ import com.oracle.truffle.api.nodes.Node;
  * from the underlying Truffle implementation.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
- * 
+ *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public interface Visualizer {
 
     /**
      * Gets a printer for Truffle ASTs, possibly specialized to be helpful for a specific guest
      * language implementation.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Deprecated
@@ -50,7 +52,7 @@ public interface Visualizer {
 
     /**
      * A short description of a source location in terms of source + line number.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Deprecated
@@ -58,7 +60,7 @@ public interface Visualizer {
 
     /**
      * Describes the name of the method containing a node.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Deprecated
@@ -66,7 +68,7 @@ public interface Visualizer {
 
     /**
      * The name of the method.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Deprecated
@@ -84,7 +86,7 @@ public interface Visualizer {
 
     /**
      * Converts a slot identifier in the guest language to a display string.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Deprecated

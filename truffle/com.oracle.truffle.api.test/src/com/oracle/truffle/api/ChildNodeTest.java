@@ -24,16 +24,13 @@ package com.oracle.truffle.api;
 
 import java.util.Iterator;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.utilities.InstrumentationTestMode;
 
 /**
  * <h3>Creating a Child Node</h3>
@@ -56,16 +53,6 @@ import com.oracle.truffle.api.utilities.InstrumentationTestMode;
  * </p>
  */
 public class ChildNodeTest {
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
-    }
 
     @Test
     public void test() {

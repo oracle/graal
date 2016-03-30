@@ -43,9 +43,9 @@
  *
  * Guest languages that want to use the capabilities of the instrumentation framework can access
  * {@link com.oracle.truffle.api.instrumentation.Instrumenter} for their
- * {@link com.oracle.truffle.api.TruffleLanguage language} by calling
- * {@link com.oracle.truffle.api.TruffleLanguage.Env#lookup lookup(Instrumenter.class)}.
- * {@link com.oracle.truffle.api.instrumentation.SourceSectionFilter Filters} created using guest
+ * {@link com.oracle.truffle.api.TruffleLanguage} by calling
+ * {@link com.oracle.truffle.api.TruffleLanguage.Env#lookup(Class)}.
+ * {@link com.oracle.truffle.api.instrumentation.SourceSectionFilter} created using guest
  * languages may be used to implement guest language features that require meta-programming
  * capabilities.
  *

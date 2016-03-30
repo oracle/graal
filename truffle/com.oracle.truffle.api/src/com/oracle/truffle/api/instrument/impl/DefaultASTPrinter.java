@@ -24,23 +24,23 @@
  */
 package com.oracle.truffle.api.instrument.impl;
 
-import com.oracle.truffle.api.instrument.ASTPrinter;
-import com.oracle.truffle.api.instrument.InstrumentationNode;
-import com.oracle.truffle.api.instrument.WrapperNode;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.ArrayList;
+
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.ArrayList;
 
 /**
  * A language-agnostic for printing out various pieces of a Truffle AST.
  */
-public class DefaultASTPrinter implements ASTPrinter {
+@SuppressWarnings("deprecation")
+@Deprecated
+public class DefaultASTPrinter implements com.oracle.truffle.api.instrument.ASTPrinter {
 
     public DefaultASTPrinter() {
     }
@@ -72,15 +72,15 @@ public class DefaultASTPrinter implements ASTPrinter {
         final StringBuilder sb = new StringBuilder();
         sb.append(nodeName(node));
         sb.append("(");
-        if (node instanceof InstrumentationNode) {
-            sb.append(instrumentInfo((InstrumentationNode) node));
+        if (node instanceof com.oracle.truffle.api.instrument.InstrumentationNode) {
+            sb.append(instrumentInfo((com.oracle.truffle.api.instrument.InstrumentationNode) node));
         }
         sb.append(sourceInfo(node));
         sb.append(NodeUtil.printSyntaxTags(node));
         sb.append(")");
         final Node parent = node.getParent();
-        if (parent instanceof WrapperNode) {
-            final WrapperNode wrapper = (WrapperNode) parent;
+        if (parent instanceof com.oracle.truffle.api.instrument.WrapperNode) {
+            final com.oracle.truffle.api.instrument.WrapperNode wrapper = (com.oracle.truffle.api.instrument.WrapperNode) parent;
             sb.append(" Probed");
             sb.append(NodeUtil.printSyntaxTags(wrapper));
         }
@@ -97,8 +97,8 @@ public class DefaultASTPrinter implements ASTPrinter {
 
         p.print("(");
 
-        if (node instanceof InstrumentationNode) {
-            p.print(instrumentInfo((InstrumentationNode) node));
+        if (node instanceof com.oracle.truffle.api.instrument.InstrumentationNode) {
+            p.print(instrumentInfo((com.oracle.truffle.api.instrument.InstrumentationNode) node));
         }
 
         p.print(sourceInfo(node));
@@ -204,7 +204,7 @@ public class DefaultASTPrinter implements ASTPrinter {
         return "";
     }
 
-    protected static String instrumentInfo(InstrumentationNode node) {
+    protected static String instrumentInfo(com.oracle.truffle.api.instrument.InstrumentationNode node) {
         final String info = node.instrumentationInfo();
         return info == null ? "" : info;
     }

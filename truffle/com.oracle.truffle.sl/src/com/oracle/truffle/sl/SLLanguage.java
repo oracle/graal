@@ -60,8 +60,6 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.ArityException;
@@ -83,9 +81,7 @@ import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
-import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
-import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
@@ -108,8 +104,6 @@ import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
 import com.oracle.truffle.sl.nodes.expression.SLMulNode;
 import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNode;
-import com.oracle.truffle.sl.nodes.instrument.SLExpressionWrapperNode;
-import com.oracle.truffle.sl.nodes.instrument.SLStatementWrapperNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.parser.Parser;
@@ -488,28 +482,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return object instanceof SLFunction;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Visualizer getVisualizer() {
-        return null;
-    }
-
-    @Override
-    protected boolean isInstrumentable(Node node) {
-        return node instanceof SLStatementNode;
-    }
-
-    @Override
-    protected WrapperNode createWrapperNode(Node node) {
-        if (node instanceof SLExpressionNode) {
-            return new SLExpressionWrapperNode((SLExpressionNode) node);
-        }
-        if (node instanceof SLStatementNode) {
-            return new SLStatementWrapperNode((SLStatementNode) node);
-        }
-        return null;
     }
 
     @Override

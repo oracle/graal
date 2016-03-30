@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.instrument.ProbeFailure.Reason;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -32,15 +31,17 @@ import com.oracle.truffle.api.nodes.Node;
  * failure.
  * <p>
  * Language and tool implementations should ensure that clients of tools never see this exception.
- * 
+ *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public class ProbeException extends RuntimeException {
     static final long serialVersionUID = 1L;
     private final ProbeFailure failure;
 
     /** @since 0.8 or earlier */
-    public ProbeException(Reason reason, Node parent, Node child, Object wrapper) {
+    public ProbeException(com.oracle.truffle.api.instrument.ProbeFailure.Reason reason, Node parent, Node child, Object wrapper) {
         this.failure = new ProbeFailure(reason, parent, child, wrapper);
     }
 

@@ -27,16 +27,18 @@ package com.oracle.truffle.tools.debug.shell;
 /**
  * The client side of a simple message-based protocol for a possibly remote language
  * Read-Eval-Print-Loop.
- * 
+ *
  * @since 0.8 or earlier
  */
+@Deprecated
 public interface REPLClient {
 
     /**
      * Accepts a reply from the server; there may be more than one reply in response to a request.
-     * 
+     *
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     REPLMessage receive(REPLMessage reply);
 
 }

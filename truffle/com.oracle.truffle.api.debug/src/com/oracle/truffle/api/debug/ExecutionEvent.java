@@ -99,9 +99,7 @@ public final class ExecutionEvent {
      * <li>User breakpoints are disabled.</li>
      * <li>Execution will continue until either:
      * <ol>
-     * <li>execution arrives at a node with the tag
-     * {@linkplain com.oracle.truffle.api.instrument.StandardSyntaxTag#STATEMENT STATMENT},
-     * <strong>or:</strong></li>
+     * <li>execution arrives at a node with the tag representing halt <strong>or:</strong></li>
      * <li>execution completes.</li>
      * </ol>
      * <li>StepInto mode persists only through one resumption (i.e. {@code stepIntoCount} steps),

@@ -34,8 +34,6 @@ import java.util.List;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument;
-import com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -66,7 +64,8 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * @see SyntaxTag
  * @since 0.8 or earlier
  */
-@SuppressWarnings("rawtypes")
+@Deprecated
+@SuppressWarnings({"rawtypes", "deprecation"})
 public final class Probe {
     private final Class<? extends TruffleLanguage> language;
 
@@ -161,7 +160,7 @@ public final class Probe {
     /**
      * Adds a {@linkplain SyntaxTag tag} to the set of tags associated with this {@link Probe};
      * {@code no-op} if already in the set.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public void tagAs(SyntaxTag tag, Object tagValue) {
@@ -172,12 +171,12 @@ public final class Probe {
 
             // Update the status of this Probe with respect to global TagInstruments
             boolean tagInstrumentsChanged = false;
-            final BeforeTagInstrument beforeTagInstrument = instrumenter.getBeforeTagInstrument();
+            final com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument beforeTagInstrument = instrumenter.getBeforeTagInstrument();
             if (beforeTagInstrument != null && tag == beforeTagInstrument.getTag()) {
                 this.isBeforeTagInstrumentActive = true;
                 tagInstrumentsChanged = true;
             }
-            final AfterTagInstrument afterTagInstrument = instrumenter.getAfterTagInstrument();
+            final com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument afterTagInstrument = instrumenter.getAfterTagInstrument();
             if (afterTagInstrument != null && tag == afterTagInstrument.getTag()) {
                 this.isAfterTagInstrumentActive = true;
                 tagInstrumentsChanged = true;
@@ -194,7 +193,7 @@ public final class Probe {
     /**
      * Is the <em>Probed node</em> tagged as belonging to a particular human-sensible category of
      * language constructs?
-     * 
+     *
      * @since 0.8 or earlier
      */
     public boolean isTaggedAs(SyntaxTag tag) {
@@ -205,7 +204,7 @@ public final class Probe {
     /**
      * In which user-sensible categories has the <em>Probed node</em> been tagged (
      * <em>empty set</em> if none).
-     * 
+     *
      * @since 0.8 or earlier
      */
     public Collection<SyntaxTag> getSyntaxTags() {
@@ -238,7 +237,7 @@ public final class Probe {
     /**
      * Gets the {@link SourceSection} associated with the <en>Probed AST node</em>, possibly
      * {@code null}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public SourceSection getProbedSourceSection() {
@@ -282,7 +281,7 @@ public final class Probe {
      * the global {@linkplain BeforeTagInstrument} is set and if this Probe holds the
      * {@link SyntaxTag} specified in the instrument.
      */
-    BeforeTagInstrument getBeforeTagInstrument() {
+    com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument getBeforeTagInstrument() {
         checkProbeUnchanged();
         return isBeforeTagInstrumentActive ? instrumenter.getBeforeTagInstrument() : null;
     }
@@ -292,7 +291,7 @@ public final class Probe {
      * the global {@linkplain BeforeTagInstrument} is set and if this Probe holds the
      * {@link SyntaxTag} specified in the instrument.
      */
-    AfterTagInstrument getAfterTagInstrument() {
+    com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument getAfterTagInstrument() {
         checkProbeUnchanged();
         return isAfterTagInstrumentActive ? instrumenter.getAfterTagInstrument() : null;
     }
@@ -320,9 +319,9 @@ public final class Probe {
     }
 
     void notifyTagInstrumentsChanged() {
-        final BeforeTagInstrument beforeTagInstrument = instrumenter.getBeforeTagInstrument();
+        final com.oracle.truffle.api.instrument.TagInstrument.BeforeTagInstrument beforeTagInstrument = instrumenter.getBeforeTagInstrument();
         this.isBeforeTagInstrumentActive = beforeTagInstrument != null && this.isTaggedAs(beforeTagInstrument.getTag());
-        final AfterTagInstrument afterTagInstrument = instrumenter.getAfterTagInstrument();
+        final com.oracle.truffle.api.instrument.TagInstrument.AfterTagInstrument afterTagInstrument = instrumenter.getAfterTagInstrument();
         this.isAfterTagInstrumentActive = afterTagInstrument != null && this.isTaggedAs(afterTagInstrument.getTag());
         invalidateProbeUnchanged();
     }

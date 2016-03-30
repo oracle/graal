@@ -39,14 +39,12 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
-import com.oracle.truffle.api.instrument.SyntaxTag;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Utility class that manages the special access methods for node instances.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class NodeUtil {
@@ -302,7 +300,7 @@ public final class NodeUtil {
 
     /**
      * Determines whether a proposed child replacement would be safe: structurally and type.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static boolean isReplacementSafe(Node parent, Node oldChild, Node newChild) {
@@ -409,7 +407,7 @@ public final class NodeUtil {
     /**
      * Get the nth parent of a node, where the 0th parent is the node itself. Returns null if there
      * are less than n ancestors.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static Node getNthParent(Node node, int n) {
@@ -428,7 +426,7 @@ public final class NodeUtil {
 
     /**
      * Find annotation in class/interface hierarchy.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static <T extends Annotation> T findAnnotation(Class<?> clazz, Class<T> annotationClass) {
@@ -646,15 +644,8 @@ public final class NodeUtil {
     }
 
     /**
-     * Returns a string listing the {@linkplain SyntaxTag syntax tags}, if any, associated with a
-     * node:
-     * <ul>
-     * <li>"[{@linkplain StandardSyntaxTag#STATEMENT STATEMENT},
-     * {@linkplain StandardSyntaxTag#ASSIGNMENT ASSIGNMENT}]" if tags have been applied;</li>
-     * <li>"[]" if the node supports tags, but none are present; and</li>
-     * <li>"" if the node does not support tags.</li>
-     * </ul>
-     * 
+     * Originally returned the <em>tags</em> if any, associated with a node; now unsupported.
+     *
      * @since 0.8 or earlier
      */
     public static String printSyntaxTags(final Object node) {

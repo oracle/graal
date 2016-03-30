@@ -40,6 +40,8 @@ package com.oracle.truffle.api.instrument;
  * @see Instrumenter
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public abstract class TagInstrument extends Instrument {
 
     private Instrumenter instrumenter;
