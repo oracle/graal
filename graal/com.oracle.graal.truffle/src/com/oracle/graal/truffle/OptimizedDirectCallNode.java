@@ -135,10 +135,13 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     }
 
     /** Used by the splitting strategy to install new targets. */
-    void split() {
+    synchronized void split() {
         CompilerAsserts.neverPartOfCompilation();
 
-        assert !isCallTargetCloned();
+        if (splitCallTarget != null) {
+            return;
+        }
+
         OptimizedCallTarget currentTarget = getCallTarget();
         OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
 
