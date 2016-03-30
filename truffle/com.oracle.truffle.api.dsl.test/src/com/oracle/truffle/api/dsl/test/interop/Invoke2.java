@@ -28,7 +28,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 
 @AcceptMessage(value = "INVOKE", receiverType = ValidTruffleObject.class, language = TestTruffleLanguage.class)
 public final class Invoke2 extends BaseInvoke2 {
-    @SuppressWarnings({"static-method", "unused"})
+    @Override
     @ExpectError({"The third argument must be a java.lang.String- but is int"})
     public Object access(VirtualFrame frame, ValidTruffleObject object, int name, Object[] args) {
         return true;

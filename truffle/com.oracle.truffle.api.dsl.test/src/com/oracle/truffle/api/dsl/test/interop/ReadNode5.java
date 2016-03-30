@@ -28,7 +28,7 @@ import com.oracle.truffle.api.interop.AcceptMessage;
 @AcceptMessage(value = "READ", receiverType = ValidTruffleObject.class, language = TestTruffleLanguage.class)
 public final class ReadNode5 extends BaseReadNode5 {
 
-    @SuppressWarnings({"static-method", "unused"})
+    @Override
     @ExpectError({"The first argument must be a com.oracle.truffle.api.frame.VirtualFrame- but is java.lang.String"})
     protected int access(String string, Object receiver, Object name) {
         return 0;

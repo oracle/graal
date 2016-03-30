@@ -192,7 +192,7 @@ public final class InteropProcessor extends AbstractProcessor {
             for (ExecutableElement m : methods) {
                 String errorMessage = currentGenerator.checkSignature(m);
                 if (errorMessage != null) {
-                    generateErrorClass(e, pkg, fqn, clazzName, null);
+                    generateErrorClass(e, pkg, fqn, clazzName, methods);
                     emitError(errorMessage, m);
                     continue top;
                 }
