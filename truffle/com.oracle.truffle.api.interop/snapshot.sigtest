@@ -103,6 +103,7 @@ hfds message,serialVersionUID
 
 CLSS public final com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public java.lang.Object[] getSuppliedValues()
+meth public static java.lang.RuntimeException raise(java.lang.Exception,java.lang.Object[])
 meth public static java.lang.RuntimeException raise(java.lang.Object[])
 supr com.oracle.truffle.api.interop.InteropException
 hfds serialVersionUID,suppliedValues

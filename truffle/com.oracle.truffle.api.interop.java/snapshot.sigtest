@@ -7,8 +7,7 @@ meth public static <%0 extends java.lang.Object> {%%0} asJavaFunction(java.lang.
 meth public static <%0 extends java.lang.Object> {%%0} asJavaObject(java.lang.Class<{%%0}>,com.oracle.truffle.api.interop.TruffleObject)
 meth public static com.oracle.truffle.api.interop.TruffleObject asTruffleObject(java.lang.Object)
 supr java.lang.Object
-hfds EMPTY
-hcls JavaFunctionObject,JavaObject,SingleHandler,TemporaryRoot,TruffleHandler
+hcls TemporaryConvertRoot
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.interop.java.MethodMessage
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)

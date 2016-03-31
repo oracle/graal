@@ -1,0 +1,104 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract com.oracle.truffle.api.debug.Breakpoint
+innr public final static !enum State
+meth public abstract boolean isEnabled()
+meth public abstract boolean isOneShot()
+meth public abstract com.oracle.truffle.api.debug.Breakpoint$State getState()
+meth public abstract com.oracle.truffle.api.source.Source getCondition()
+meth public abstract int getHitCount()
+meth public abstract int getIgnoreCount()
+meth public abstract java.lang.String getLocationDescription()
+meth public abstract void dispose()
+meth public abstract void setCondition(java.lang.String) throws java.io.IOException
+meth public abstract void setEnabled(boolean)
+meth public abstract void setIgnoreCount(int)
+supr java.lang.Object
+
+CLSS public final static !enum com.oracle.truffle.api.debug.Breakpoint$State
+ outer com.oracle.truffle.api.debug.Breakpoint
+fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISABLED
+fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISABLED_UNRESOLVED
+fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISPOSED
+fld public final static com.oracle.truffle.api.debug.Breakpoint$State ENABLED
+fld public final static com.oracle.truffle.api.debug.Breakpoint$State ENABLED_UNRESOLVED
+meth public java.lang.String getName()
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.debug.Breakpoint$State valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.debug.Breakpoint$State[] values()
+supr java.lang.Enum<com.oracle.truffle.api.debug.Breakpoint$State>
+hfds name
+
+CLSS public final com.oracle.truffle.api.debug.Debugger
+fld public final static java.lang.String CALL_TAG = "debug-CALL"
+ anno 0 java.lang.Deprecated()
+fld public final static java.lang.String HALT_TAG = "debug-HALT"
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,com.oracle.truffle.api.source.LineLocation,boolean) throws java.io.IOException
+meth public com.oracle.truffle.api.debug.Breakpoint setTagBreakpoint(int,com.oracle.truffle.api.instrument.SyntaxTag,boolean) throws java.io.IOException
+ anno 0 java.lang.Deprecated()
+meth public java.util.Collection<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
+meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.vm.PolyglotEngine)
+supr java.lang.Object
+hfds ACCESSOR,CALL_FILTER,FACTORY,HALT_FILTER,OUT,TRACE,TRACE_PREFIX,breakpointCallback,breakpoints,currentDebugContext,engine,instrumenter,lastSource,nextActionID,warningLog
+hcls AccessorDebug,BreakpointCallback,Continue,DebugExecutionContext,HaltPosition,StepInto,StepOut,StepOver,StepOverNested,StepStrategy,WarningLog
+
+CLSS public final com.oracle.truffle.api.debug.ExecutionEvent
+meth public com.oracle.truffle.api.debug.Debugger getDebugger()
+meth public void prepareContinue()
+meth public void prepareStepInto()
+supr java.lang.Object
+hfds debugger
+
+CLSS public final com.oracle.truffle.api.debug.SuspendedEvent
+meth public com.oracle.truffle.api.debug.Debugger getDebugger()
+meth public com.oracle.truffle.api.frame.MaterializedFrame getFrame()
+meth public com.oracle.truffle.api.nodes.Node getNode()
+meth public java.lang.Object eval(java.lang.String,com.oracle.truffle.api.frame.FrameInstance) throws java.io.IOException
+meth public java.util.List<com.oracle.truffle.api.frame.FrameInstance> getStack()
+meth public java.util.List<java.lang.String> getRecentWarnings()
+meth public void prepareContinue()
+meth public void prepareKill()
+meth public void prepareStepInto(int)
+meth public void prepareStepOut()
+meth public void prepareStepOver(int)
+supr java.lang.Object
+hfds OUT,TRACE,TRACE_PREFIX,debugger,haltedFrame,haltedNode,kill,stack,warnings
+
+CLSS public abstract interface java.io.Serializable
+
+CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
+meth public abstract int compareTo({java.lang.Comparable%0})
+
+CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
+cons protected init(java.lang.String,int)
+intf java.io.Serializable
+intf java.lang.Comparable<{java.lang.Enum%0}>
+meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected final void finalize()
+meth public final boolean equals(java.lang.Object)
+meth public final int compareTo({java.lang.Enum%0})
+meth public final int hashCode()
+meth public final int ordinal()
+meth public final java.lang.Class<{java.lang.Enum%0}> getDeclaringClass()
+meth public final java.lang.String name()
+meth public java.lang.String toString()
+meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
+supr java.lang.Object
+hfds name,ordinal
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
