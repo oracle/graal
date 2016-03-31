@@ -78,10 +78,15 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * as properties.
      */
     @Override
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) {
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) {
         beginGroup();
         beginProperties();
         printProperty("name", name);
+        if (properties != null) {
+            for (Entry<Object, Object> entry : properties.entrySet()) {
+                printProperty(entry.getKey().toString(), entry.getValue().toString());
+            }
+        }
         endProperties();
         beginMethod(name, shortName, bci);
         if (method != null && method.getCode() != null) {
@@ -95,7 +100,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * nodes.
      */
     @Override
-    public void print(Graph graph, String title) {
+    public void print(Graph graph, String title, Map<Object, Object> properties) {
         beginGraph(title);
         Set<Node> noBlockNodes = Node.newSet();
         ScheduleResult schedule = null;
@@ -114,6 +119,14 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             }
         }
         ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
+
+        if (properties != null) {
+            beginProperties();
+            for (Entry<Object, Object> entry : properties.entrySet()) {
+                printProperty(entry.getKey().toString(), entry.getValue().toString());
+            }
+            endProperties();
+        }
 
         beginNodes();
         List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes);
