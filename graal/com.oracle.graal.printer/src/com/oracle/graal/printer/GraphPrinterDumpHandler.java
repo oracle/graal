@@ -22,13 +22,6 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.compiler.common.GraalOptions.DumpPath;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintBinaryGraphPort;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintBinaryGraphs;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraph;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphAddress;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphFile;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphPort;
 import static com.oracle.graal.debug.GraalDebugConfig.asJavaMethod;
 
 import java.io.IOException;
@@ -60,6 +53,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugDumpScope;
+import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
 
@@ -101,7 +95,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     protected void createPrinter() {
-        if (PrintIdealGraphFile.getValue()) {
+        if (Options.PrintIdealGraphFile.getValue()) {
             initializeFilePrinter();
         } else {
             initializeNetworkPrinter();
@@ -119,7 +113,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     private void initializeFilePrinter() {
         Path path = getFilePrinterPath();
         try {
-            if (PrintBinaryGraphs.getValue()) {
+            if (Options.PrintBinaryGraphs.getValue()) {
                 printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
             } else {
                 printer = new IdealGraphPrinter(Files.newOutputStream(path), true);
@@ -142,16 +136,16 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             dumpIgvTimestamp = System.currentTimeMillis();
         }
         // Encode the kind of the file in the extension.
-        final String ext = (PrintBinaryGraphs.getValue() ? ".bgv" : ".gv.xml");
+        final String ext = (Options.PrintBinaryGraphs.getValue() ? ".bgv" : ".gv.xml");
         // Construct the path to the file.
-        return Paths.get(DumpPath.getValue(), "runtime-graphs-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet() + ext);
+        return Paths.get(Options.DumpPath.getValue(), "runtime-graphs-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet() + ext);
     }
 
     private void initializeNetworkPrinter() {
-        String host = PrintIdealGraphAddress.getValue();
-        int port = PrintBinaryGraphs.getValue() ? PrintBinaryGraphPort.getValue() : PrintIdealGraphPort.getValue();
+        String host = Options.PrintIdealGraphAddress.getValue();
+        int port = Options.PrintBinaryGraphs.getValue() ? Options.PrintBinaryGraphPort.getValue() : Options.PrintIdealGraphPort.getValue();
         try {
-            if (PrintBinaryGraphs.getValue()) {
+            if (Options.PrintBinaryGraphs.getValue()) {
                 printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
             } else {
                 IdealGraphPrinter xmlPrinter = new IdealGraphPrinter(new Socket(host, port).getOutputStream(), true);
@@ -175,7 +169,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     @Override
     @SuppressWarnings("try")
     public void dump(Object object, final String message) {
-        if (object instanceof Graph && PrintIdealGraph.getValue()) {
+        if (object instanceof Graph && Options.PrintIdealGraph.getValue()) {
             ensureInitialized();
             if (printer == null) {
                 return;
